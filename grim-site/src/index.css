@@ -1,0 +1,32 @@
+:root {
+  font-family: "Courier New", "Lucida Console", "Monaco", monospace;
+  font-size: 16px;
+  line-height: 1.25;
+  color: #f5f5f5;
+  background: #000;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: #000;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100svh;
+  background: #000;
+}
+
+::selection {
+  color: #000;
+  background: #f5f5f5;
+}
