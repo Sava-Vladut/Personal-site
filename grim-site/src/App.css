@@ -13,9 +13,13 @@
   --ease-in-out-cubic: cubic-bezier(.645, .045, .355, 1);
 
   min-height: 100svh;
+  padding-bottom: 46px;
   color: var(--fg);
   background: var(--bg);
   overflow-x: hidden;
+  transition:
+    background-color var(--dur-3) var(--ease-in-out-cubic),
+    color var(--dur-3) var(--ease-in-out-cubic);
 }
 
 .terminal-site.is-inverted {
@@ -160,6 +164,77 @@ h2 {
   box-sizing: border-box;
   background: var(--bg);
   border-block: 1px solid var(--line);
+  transition:
+    background-color var(--dur-3) var(--ease-in-out-cubic),
+    border-color var(--dur-3) var(--ease-in-out-cubic);
+}
+
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.14) 2px 3px
+  );
+}
+
+.crt-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.26) 100%);
+}
+
+.is-inverted .crt-overlay {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.045) 2px 3px
+  );
+}
+
+.is-inverted .crt-overlay::after {
+  background: radial-gradient(ellipse at center, transparent 64%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+.status-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 3vw, 44px);
+  padding: 9px clamp(10px, 1.4vw, 22px);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+  text-transform: uppercase;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  transition:
+    background-color var(--dur-3) var(--ease-in-out-cubic),
+    border-color var(--dur-3) var(--ease-in-out-cubic),
+    color var(--dur-3) var(--ease-in-out-cubic);
+}
+
+.status-cell {
+  white-space: nowrap;
+}
+
+.status-path {
+  color: var(--fg);
+}
+
+.status-hint {
+  margin-left: auto;
+}
+
+.status-clock {
+  color: var(--fg);
 }
 
 .view-panel {
@@ -298,7 +373,7 @@ h2 {
   text-transform: uppercase;
 }
 
-h2 span {
+h2 .title-cursor {
   color: var(--fg);
   -webkit-text-stroke: 0;
   animation: blink 1.05s steps(1) infinite;
@@ -388,6 +463,17 @@ h2 span {
   grid-template-columns: 82px minmax(0, 1fr) minmax(120px, 190px);
   gap: clamp(12px, 4vw, 56px);
   align-items: start;
+  transition: transform var(--dur-2) var(--ease-out-quart);
+}
+
+@media (hover: hover) {
+  .project-row:hover {
+    transform: translateX(clamp(4px, 0.6vw, 10px));
+  }
+
+  .project-row:hover .project-index {
+    color: var(--fg);
+  }
 }
 
 .project-index,
@@ -627,6 +713,19 @@ h2 span {
 
   .services li:nth-child(n) a {
     padding-left: 0;
+  }
+
+  .status-hint {
+    display: none;
+  }
+
+  .status-bar {
+    gap: 12px;
+    font-size: 0.7rem;
+  }
+
+  .status-clock {
+    margin-left: auto;
   }
 }
 

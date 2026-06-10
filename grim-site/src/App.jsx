@@ -1,26 +1,43 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ContactSection } from './components/sections/ContactSection.jsx'
 import { BiographySection } from './components/sections/BiographySection.jsx'
 import { HeroSection } from './components/sections/HeroSection.jsx'
 import { ProjectsSection } from './components/sections/ProjectsSection.jsx'
 import { ServicesSection } from './components/sections/ServicesSection.jsx'
 import { TerminalNav } from './components/navigation/TerminalNav.jsx'
+import { StatusBar } from './components/navigation/StatusBar.jsx'
 import { navItems } from './data/navigation.js'
 import { useGithubProjects } from './hooks/useGithubProjects.js'
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation.js'
 import './App.css'
 
+const getViewFromHash = () => {
+  const hash = window.location.hash.replace(/^#\/?/, '')
+  return navItems.some((item) => item.target === hash) ? hash : 'home'
+}
+
 function App() {
   const [inverted, setInverted] = useState(false)
-  const [activeView, setActiveView] = useState('home')
+  const [activeView, setActiveView] = useState(getViewFromHash)
   const { projects, status: projectStatus } = useGithubProjects()
   const toggleInvert = useCallback(() => {
     setInverted((value) => !value)
   }, [])
   const showView = useCallback((target) => {
+    window.location.hash = `/${target}`
     setActiveView(target)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
+
+  useEffect(() => {
+    const onHashChange = () => setActiveView(getViewFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  useEffect(() => {
+    document.title = `VLADU GRIM — ~/${activeView}`
+  }, [activeView])
 
   useKeyboardNavigation({
     navItems,
@@ -45,6 +62,8 @@ function App() {
           {activeView === 'contact' && <ContactSection />}
         </div>
       </div>
+      <StatusBar activeView={activeView} inverted={inverted} />
+      <div className="crt-overlay" aria-hidden="true" />
     </main>
   )
 }

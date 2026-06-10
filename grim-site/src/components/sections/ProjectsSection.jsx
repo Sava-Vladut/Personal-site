@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Braces, ExternalLink, RadioTower } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
@@ -8,16 +8,27 @@ const projectsPerPage = 3
 
 export function ProjectsSection({ projects, status }) {
   const [currentPage, setCurrentPage] = useState(1)
+  const [prevProjects, setPrevProjects] = useState(projects)
   const totalPages = Math.max(1, Math.ceil(projects.length / projectsPerPage))
+
+  if (prevProjects !== projects) {
+    setPrevProjects(projects)
+    setCurrentPage(1)
+  }
+
   const pageStartIndex = (currentPage - 1) * projectsPerPage
   const visibleProjects = useMemo(
     () => projects.slice(pageStartIndex, pageStartIndex + projectsPerPage),
     [pageStartIndex, projects],
   )
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [projects])
+  const goToPreviousPage = useCallback(() => {
+    setCurrentPage((page) => Math.max(1, page - 1))
+  }, [])
+
+  const goToNextPage = useCallback(() => {
+    setCurrentPage((page) => Math.min(totalPages, page + 1))
+  }, [totalPages])
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -38,15 +49,7 @@ export function ProjectsSection({ projects, status }) {
 
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [totalPages])
-
-  function goToPreviousPage() {
-    setCurrentPage((page) => Math.max(1, page - 1))
-  }
-
-  function goToNextPage() {
-    setCurrentPage((page) => Math.min(totalPages, page + 1))
-  }
+  }, [goToNextPage, goToPreviousPage])
 
   return (
     <section className="section projects" id="projects">
