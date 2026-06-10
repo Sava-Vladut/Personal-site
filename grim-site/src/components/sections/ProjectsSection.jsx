@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Braces, ExternalLink, RadioTower } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
+import { isKeyboardCommand, isTypingTarget } from '../../utils/keyboard.js'
 
 const projectsPerPage = 3
 
@@ -17,6 +18,27 @@ export function ProjectsSection({ projects, status }) {
   useEffect(() => {
     setCurrentPage(1)
   }, [projects])
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (isTypingTarget(event.target) || !isKeyboardCommand(event)) return
+
+      const command = event.key.toLowerCase()
+
+      if (command === 'l') {
+        event.preventDefault()
+        goToPreviousPage()
+      }
+
+      if (command === 'r') {
+        event.preventDefault()
+        goToNextPage()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [totalPages])
 
   function goToPreviousPage() {
     setCurrentPage((page) => Math.max(1, page - 1))
@@ -34,7 +56,13 @@ export function ProjectsSection({ projects, status }) {
         [/sync] {status}
       </p>
       <div className="project-pagination" aria-label="Project pagination">
-        <button type="button" onClick={goToPreviousPage} disabled={currentPage === 1}>
+        <button
+          type="button"
+          onClick={goToPreviousPage}
+          disabled={currentPage === 1}
+          aria-keyshortcuts="Control+L Alt+L L"
+          title="Press L for previous page"
+        >
           <span>^L</span>
           <TerminalIcon icon={ArrowLeft} label="" />
           Prev
@@ -42,7 +70,13 @@ export function ProjectsSection({ projects, status }) {
         <p>
           page {String(currentPage).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
         </p>
-        <button type="button" onClick={goToNextPage} disabled={currentPage === totalPages}>
+        <button
+          type="button"
+          onClick={goToNextPage}
+          disabled={currentPage === totalPages}
+          aria-keyshortcuts="Control+R Alt+R R"
+          title="Press R for next page"
+        >
           <span>^R</span>
           <TerminalIcon icon={ArrowRight} label="" />
           Next

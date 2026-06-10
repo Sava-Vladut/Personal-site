@@ -5,6 +5,12 @@
   --weak: #5f5f5f;
   --line: #f5f5f5;
   --cursor: #f5f5f5;
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
+  --ease-out-quad: cubic-bezier(.25, .46, .45, .94);
+  --ease-out-quart: cubic-bezier(.165, .84, .44, 1);
+  --ease-in-out-cubic: cubic-bezier(.645, .045, .355, 1);
 
   min-height: 100svh;
   color: var(--fg);
@@ -31,16 +37,16 @@
 }
 
 .hero-shell {
-  min-height: 55svh;
+  min-height: 62svh;
   padding-top: clamp(10px, 1.5vw, 22px);
   padding-bottom: clamp(36px, 7vw, 100px);
 }
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(240px, 0.85fr) minmax(230px, 0.75fr);
+  grid-template-columns: minmax(760px, 1.65fr) minmax(190px, 0.62fr) minmax(180px, 0.55fr);
   grid-template-rows: auto minmax(120px, auto) auto;
-  column-gap: clamp(28px, 7vw, 122px);
+  column-gap: clamp(18px, 3vw, 48px);
   row-gap: clamp(22px, 4vw, 70px);
   align-items: start;
 }
@@ -86,22 +92,26 @@ h2 {
 
 .portrait {
   grid-column: 1;
-  width: min(100%, 560px);
-  min-height: 260px;
-  border-left: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: min(100%, 920px);
+  height: clamp(360px, 47svh, 520px);
+  min-height: 0;
   color: var(--dim);
-  overflow: hidden;
+  overflow: visible;
   opacity: 0.95;
 }
 
 .portrait pre {
   margin: 0;
-  padding: 12px 0 12px 12px;
-  font-size: clamp(0.66rem, 1.15vw, 1.08rem);
-  line-height: 0.92;
+  padding: 10px 0;
+  font-size: clamp(0.64rem, 0.96vw, 1.03rem);
+  line-height: 0.74;
+  letter-spacing: 0;
   white-space: pre;
-  transform: scaleX(1.25);
-  transform-origin: left top;
+  transform: scaleX(0.74);
+  transform-origin: left center;
 }
 
 .hero-copy,
@@ -114,8 +124,9 @@ h2 {
 }
 
 .hero-copy {
-  grid-column: 2;
+  grid-column: 2 / -1;
   padding-top: 10px;
+  padding-left: clamp(16px, 3vw, 44px);
 }
 
 .location-copy {
@@ -139,8 +150,6 @@ h2 {
 }
 
 .terminal-nav {
-  position: sticky;
-  top: 0;
   z-index: 5;
   display: grid;
   grid-template-columns: repeat(6, minmax(110px, 1fr));
@@ -153,9 +162,62 @@ h2 {
   border-block: 1px solid var(--line);
 }
 
-.terminal-nav.nav-bottom {
-  position: static;
-  margin-top: clamp(48px, 10vw, 140px);
+.view-panel {
+  min-height: 62svh;
+}
+
+.view-frame {
+  animation: terminal-page-in var(--dur-2) var(--ease-out-quart) both;
+  transform-origin: top left;
+}
+
+.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .keyboard-hint, h2, .project-status, .project-pagination, .project-row, .bio-grid p, .services li, .contact-grid p) {
+  animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
+}
+
+.view-frame .portrait,
+.view-frame .bio-grid p:nth-child(2),
+.view-frame .project-pagination,
+.view-frame .services li:nth-child(2),
+.view-frame .contact-grid p:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.view-frame .hero-copy,
+.view-frame .bio-grid p:nth-child(3),
+.view-frame .project-row:nth-child(1),
+.view-frame .services li:nth-child(3),
+.view-frame .contact-grid p:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.view-frame .location-copy,
+.view-frame .bio-grid p:nth-child(4),
+.view-frame .project-row:nth-child(2),
+.view-frame .services li:nth-child(4),
+.view-frame .contact-grid p:nth-child(4) {
+  animation-delay: 105ms;
+}
+
+.view-frame .keyboard-hint,
+.view-frame .project-row:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.terminal-nav button {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.terminal-nav button .terminal-icon {
+  transition: transform var(--dur-1) var(--ease-out-quad);
+}
+
+.terminal-nav button:hover .terminal-icon,
+.terminal-nav button:focus-visible .terminal-icon,
+.terminal-nav button[aria-current='page'] .terminal-icon {
+  transform: translateX(2px);
 }
 
 button,
@@ -212,8 +274,19 @@ button:focus-visible span {
   color: var(--fg);
 }
 
+button[aria-current='page'] {
+  color: var(--bg);
+  background: var(--fg);
+}
+
+button[aria-current='page'] span {
+  background: var(--bg);
+  color: var(--fg);
+}
+
 .section {
-  padding-top: clamp(52px, 11vw, 170px);
+  padding-top: clamp(44px, 8vw, 120px);
+  padding-bottom: clamp(36px, 8vw, 110px);
 }
 
 h2 {
@@ -279,6 +352,20 @@ h2 span {
 
 .project-pagination button {
   min-height: 32px;
+}
+
+.project-pagination button:not(:disabled) .terminal-icon {
+  transition: transform var(--dur-1) var(--ease-out-quad);
+}
+
+.project-pagination button:not(:disabled):hover .terminal-icon,
+.project-pagination button:not(:disabled):focus-visible .terminal-icon {
+  transform: translateX(-2px);
+}
+
+.project-pagination button:not(:disabled):last-child:hover .terminal-icon,
+.project-pagination button:not(:disabled):last-child:focus-visible .terminal-icon {
+  transform: translateX(2px);
 }
 
 .project-pagination button:disabled {
@@ -409,7 +496,35 @@ h2 span {
   }
 }
 
-@media (max-width: 900px) {
+@keyframes terminal-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scaleY(0.985);
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes terminal-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1320px) {
   .hero-grid {
     grid-template-columns: 1fr;
     row-gap: 28px;
@@ -430,7 +545,9 @@ h2 span {
   }
 
   .portrait {
-    min-height: 210px;
+    height: clamp(300px, 44svh, 440px);
+    width: 100%;
+    overflow: hidden;
   }
 
   .keyboard-hint {
@@ -483,11 +600,15 @@ h2 span {
   }
 
   .portrait {
-    min-height: 158px;
+    height: clamp(220px, 34svh, 320px);
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .portrait pre {
-    font-size: 0.56rem;
+    font-size: clamp(0.4125rem, 1.5375vw, 0.6375rem);
+    transform: scaleX(0.68);
+    transform-origin: left top;
   }
 
   .terminal-nav {
@@ -506,5 +627,16 @@ h2 span {
 
   .services li:nth-child(n) a {
     padding-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

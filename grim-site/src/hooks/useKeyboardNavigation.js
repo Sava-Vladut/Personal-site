@@ -1,17 +1,17 @@
 import { useEffect } from 'react'
-import { scrollToSection } from '../utils/navigation.js'
+import { isKeyboardCommand, isTypingTarget } from '../utils/keyboard.js'
 
-export function useKeyboardNavigation({ navItems, onInvert }) {
+export function useKeyboardNavigation({ navItems, onNavigate, onInvert }) {
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (!event.ctrlKey) return
+      if (isTypingTarget(event.target) || !isKeyboardCommand(event)) return
 
       const command = event.key.toLowerCase()
       const match = navItems.find((item) => item.shortcut === command)
 
       if (match) {
         event.preventDefault()
-        scrollToSection(match.target)
+        onNavigate(match.target)
       }
 
       if (command === 'i') {
@@ -20,7 +20,7 @@ export function useKeyboardNavigation({ navItems, onInvert }) {
       }
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [navItems, onInvert])
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [navItems, onInvert, onNavigate])
 }

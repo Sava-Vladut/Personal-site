@@ -12,25 +12,39 @@ import './App.css'
 
 function App() {
   const [inverted, setInverted] = useState(false)
+  const [activeView, setActiveView] = useState('home')
   const { projects, status: projectStatus } = useGithubProjects()
   const toggleInvert = useCallback(() => {
     setInverted((value) => !value)
   }, [])
+  const showView = useCallback((target) => {
+    setActiveView(target)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   useKeyboardNavigation({
     navItems,
+    onNavigate: showView,
     onInvert: toggleInvert,
   })
 
   return (
     <main className={`terminal-site${inverted ? ' is-inverted' : ''}`}>
-      <HeroSection />
-      <TerminalNav inverted={inverted} setInverted={setInverted} />
-      <BiographySection />
-      <ProjectsSection projects={projects} status={projectStatus} />
-      <ServicesSection />
-      <ContactSection />
-      <TerminalNav inverted={inverted} setInverted={setInverted} compact />
+      <TerminalNav
+        activeTarget={activeView}
+        inverted={inverted}
+        onNavigate={showView}
+        setInverted={setInverted}
+      />
+      <div className="view-panel" aria-live="polite">
+        <div className="view-frame" data-view={activeView} key={activeView}>
+          {activeView === 'home' && <HeroSection />}
+          {activeView === 'biography' && <BiographySection />}
+          {activeView === 'projects' && <ProjectsSection projects={projects} status={projectStatus} />}
+          {activeView === 'services' && <ServicesSection />}
+          {activeView === 'contact' && <ContactSection />}
+        </div>
+      </div>
     </main>
   )
 }
