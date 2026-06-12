@@ -96,6 +96,7 @@ h2 {
   width: min(100%, 920px);
   height: clamp(360px, 47svh, 520px);
   min-height: 0;
+  margin-top: clamp(28px, 3vw, 46px);
   color: var(--dim);
   overflow: visible;
   opacity: 0.95;
@@ -150,9 +151,11 @@ h2 {
 .spinner-stack {
   grid-column: 2;
   grid-row: 2;
-  place-self: center;
+  align-self: start;
+  justify-self: center;
   display: grid;
   gap: 14px;
+  margin-top: clamp(-120px, -8vw, -70px);
 }
 
 .ascii-spinner {
@@ -656,6 +659,7 @@ h2 .title-cursor {
   .spinner-stack {
     justify-self: start;
     gap: 20px;
+    margin-top: 0;
   }
 
   .ascii-spinner pre {
@@ -670,6 +674,7 @@ h2 .title-cursor {
   .portrait {
     height: auto;
     width: 100%;
+    margin-top: 0;
     overflow: visible;
   }
 
