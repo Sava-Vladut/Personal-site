@@ -56,10 +56,6 @@ export function HeroSection() {
           />
         </div>
 
-        <div className="location-copy">
-          <p>/ {profile.location[0]}</p>
-          <p>{profile.location[1]}</p>
-        </div>
       </div>
     </section>
   )
