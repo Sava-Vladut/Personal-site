@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Braces, ExternalLink, RadioTower } from 'lucide-
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
 import { isKeyboardCommand, isTypingTarget } from '../../utils/keyboard.js'
+import { ui } from '../../data/ui.js'
 
 const projectsPerPage = 3
 
@@ -56,7 +57,7 @@ export function ProjectsSection({ projects, status }) {
       <SectionTitle>Projects</SectionTitle>
       <p className="project-status">
         <TerminalIcon icon={RadioTower} label="" />
-        [/sync] {status}
+        {ui.syncLabel} {status}
       </p>
       <div className="project-pagination" aria-label="Project pagination">
         <button
@@ -68,7 +69,7 @@ export function ProjectsSection({ projects, status }) {
         >
           <span>^L</span>
           <TerminalIcon icon={ArrowLeft} label="" />
-          Prev
+          {ui.prevButton}
         </button>
         <p>
           page {String(currentPage).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
@@ -82,7 +83,7 @@ export function ProjectsSection({ projects, status }) {
         >
           <span>^R</span>
           <TerminalIcon icon={ArrowRight} label="" />
-          Next
+          {ui.nextButton}
         </button>
       </div>
       <div className="project-list">
@@ -107,12 +108,12 @@ function ProjectRow({ project, index }) {
         <p>{project.description}</p>
         <a href={project.readMore} target="_blank" rel="noreferrer">
           <TerminalIcon icon={Braces} label="" />
-          Read more <span aria-hidden="true">-&gt;</span>
+          {ui.readMoreLink} <span aria-hidden="true">-&gt;</span>
         </a>
       </div>
       <a className="visit-link" href={project.visitSite} target="_blank" rel="noreferrer">
         <TerminalIcon icon={ExternalLink} label="" />
-        Visit site <span aria-hidden="true">-&gt;</span>
+        {ui.visitSiteLink} <span aria-hidden="true">-&gt;</span>
       </a>
     </article>
   )

@@ -1,6 +1,9 @@
-export const biographyColumns = [
-  ['CALM', 'SYSTEMS', 'FOR', 'NOISY', 'PRODUCTS'],
-  ['FOCUSED', 'BUILDING', 'IN', 'SMALL', 'ITERATIONS'],
-  ['CREATIVE', 'TOOLS', 'FOR', 'HUMAN', 'MOMENTUM'],
-  ['EXPERIMENTAL', 'INTERFACES', 'WITH', 'A', 'STEADY HAND'],
-]
+import biographyText from '../content/biography.txt?raw'
+import { parseLines } from '../utils/textContent.js'
+
+export const biographyColumns = parseLines(biographyText).map((line) =>
+  line
+    .split(',')
+    .map((word) => word.trim())
+    .filter(Boolean),
+)

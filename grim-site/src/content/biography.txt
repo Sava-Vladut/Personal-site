@@ -1,0 +1,7 @@
+# Each line is one column on the biography page.
+# Separate words with commas; each word appears on its own row.
+
+CALM, SYSTEMS, FOR, NOISY, PRODUCTS
+FOCUSED, BUILDING, IN, SMALL, ITERATIONS
+CREATIVE, TOOLS, FOR, HUMAN, MOMENTUM
+EXPERIMENTAL, INTERFACES, WITH, A, STEADY HAND

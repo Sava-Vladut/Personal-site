@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { fallbackProjects } from '../data/projects.js'
 import { fetchGithubProjects, githubUser } from '../services/github.js'
+import { ui } from '../data/ui.js'
+
+const withUser = (text) => text.replace('{user}', githubUser)
 
 export function useGithubProjects() {
   const [projects, setProjects] = useState(fallbackProjects)
-  const [status, setStatus] = useState('syncing github repos...')
+  const [status, setStatus] = useState(ui.statusSyncing)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -15,13 +18,13 @@ export function useGithubProjects() {
 
         if (githubProjects.length > 0) {
           setProjects(githubProjects)
-          setStatus(`source: github.com/${githubUser}`)
+          setStatus(withUser(ui.statusSource))
         } else {
-          setStatus('github source empty / showing fallback')
+          setStatus(ui.statusEmpty)
         }
       } catch (error) {
         if (error.name === 'AbortError') return
-        setStatus('github unavailable / showing fallback')
+        setStatus(ui.statusError)
       }
     }
 

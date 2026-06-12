@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ui } from '../../data/ui.js'
 
 const formatTime = (date) =>
   [date.getHours(), date.getMinutes(), date.getSeconds()]
@@ -15,10 +16,10 @@ export function StatusBar({ activeView, inverted }) {
 
   return (
     <footer className="status-bar" aria-label="Session status">
-      <span className="status-cell">[/&gt;] grim_os</span>
+      <span className="status-cell">{ui.statusBarName}</span>
       <span className="status-cell status-path">~/{activeView}</span>
       <span className="status-cell status-hint">
-        keys: h b p s c &middot; i &middot; video: {inverted ? 'inverse' : 'normal'}
+        {ui.statusBarKeys} {inverted ? 'inverse' : 'normal'}
       </span>
       <span className="status-cell status-clock">
         {time} <span className="cursor" aria-hidden="true">█</span>

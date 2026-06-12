@@ -3,10 +3,11 @@ import { ContactSection } from './components/sections/ContactSection.jsx'
 import { BiographySection } from './components/sections/BiographySection.jsx'
 import { HeroSection } from './components/sections/HeroSection.jsx'
 import { ProjectsSection } from './components/sections/ProjectsSection.jsx'
-import { ServicesSection } from './components/sections/ServicesSection.jsx'
+import { GlyphField } from './components/common/GlyphField.jsx'
 import { TerminalNav } from './components/navigation/TerminalNav.jsx'
 import { StatusBar } from './components/navigation/StatusBar.jsx'
 import { navItems } from './data/navigation.js'
+import { profile } from './data/profile.js'
 import { useGithubProjects } from './hooks/useGithubProjects.js'
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation.js'
 import './App.css'
@@ -36,7 +37,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    document.title = `VLADU GRIM — ~/${activeView}`
+    document.title = `${profile.firstName} ${profile.lastName} — ~/${activeView}`
   }, [activeView])
 
   useKeyboardNavigation({
@@ -47,6 +48,7 @@ function App() {
 
   return (
     <main className={`terminal-site${inverted ? ' is-inverted' : ''}`}>
+      <GlyphField inverted={inverted} />
       <TerminalNav
         activeTarget={activeView}
         inverted={inverted}
@@ -58,7 +60,6 @@ function App() {
           {activeView === 'home' && <HeroSection />}
           {activeView === 'biography' && <BiographySection />}
           {activeView === 'projects' && <ProjectsSection projects={projects} status={projectStatus} />}
-          {activeView === 'services' && <ServicesSection />}
           {activeView === 'contact' && <ContactSection />}
         </div>
       </div>
