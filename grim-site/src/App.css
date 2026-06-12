@@ -733,8 +733,8 @@ h2 .title-cursor {
   }
 
   .portrait pre {
-    font-size: calc((100vw - 16px) / 41);
-    transform: scaleX(0.68);
+    font-size: calc((100vw - 16px) / 62);
+    transform: scaleX(0.62);
     transform-origin: left top;
   }
 
