@@ -307,26 +307,26 @@ h2 {
   transform-origin: top left;
 }
 
-.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .project-status, .project-pagination, .project-row, .bio-grid p, .contact-grid p, .service-intro, .service-tabs, .service-pane) {
+.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .bio-lead, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane) {
   animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
 }
 
 .view-frame .portrait,
-.view-frame .bio-grid p:nth-child(2),
+.view-frame .bio-col:nth-child(2),
 .view-frame .project-pagination,
 .view-frame .contact-grid p:nth-child(2) {
   animation-delay: 35ms;
 }
 
 .view-frame .hero-copy,
-.view-frame .bio-grid p:nth-child(3),
+.view-frame .bio-col:nth-child(3),
 .view-frame .project-row:nth-child(1),
 .view-frame .contact-grid p:nth-child(3) {
   animation-delay: 70ms;
 }
 
 .view-frame .location-copy,
-.view-frame .bio-grid p:nth-child(4),
+.view-frame .bio-col:nth-child(4),
 .view-frame .project-row:nth-child(2),
 .view-frame .contact-grid p:nth-child(4) {
   animation-delay: 105ms;
@@ -449,14 +449,39 @@ h2 .title-cursor {
   animation: blink 1.05s steps(1) infinite;
 }
 
+.bio-lead {
+  margin-top: clamp(-18px, -1.4vw, -8px);
+  margin-bottom: clamp(28px, 4.5vw, 60px);
+  font-size: clamp(0.74rem, 0.95vw, 0.92rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--weak);
+}
+
 .bio-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(140px, 1fr));
-  gap: clamp(22px, 5vw, 90px);
-  max-width: 1120px;
+  gap: clamp(22px, 4vw, 64px);
+  max-width: 1180px;
 }
 
-.bio-grid p {
+.bio-col {
+  display: grid;
+  gap: clamp(16px, 2vw, 30px);
+  padding-top: clamp(14px, 1.4vw, 22px);
+  border-top: 1px solid var(--line);
+  transition: border-color var(--dur-2) var(--ease-out-quad);
+}
+
+.bio-index {
+  font-size: clamp(0.72rem, 0.92vw, 0.92rem);
+  letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
+  color: var(--weak);
+  transition: color var(--dur-2) var(--ease-out-quad);
+}
+
+.bio-phrase {
   display: grid;
   gap: clamp(12px, 2.2vw, 30px);
   font-size: clamp(1.25rem, 2.2vw, 2.45rem);
@@ -464,12 +489,28 @@ h2 .title-cursor {
   text-transform: uppercase;
 }
 
-.bio-grid span:nth-child(even) {
+.bio-phrase span {
+  transition: color var(--dur-2) var(--ease-out-quad);
+}
+
+.bio-phrase span:nth-child(even) {
   padding-left: clamp(24px, 5vw, 86px);
 }
 
-.bio-grid span:nth-child(3n) {
+.bio-phrase .is-dim {
   color: var(--dim);
+}
+
+/* Hover lifts a single principle: rule + index brighten, dimmed ligatures
+   resolve back to full weight so the whole phrase reads as one line. */
+@media (hover: hover) {
+  .bio-col:hover .bio-index {
+    color: var(--fg);
+  }
+
+  .bio-col:hover .bio-phrase .is-dim {
+    color: var(--fg);
+  }
 }
 
 .project-list {
@@ -1300,13 +1341,13 @@ h2 .title-cursor {
     gap: 22px 16px;
   }
 
-  .bio-grid p {
+  .bio-phrase {
     gap: 10px;
     font-size: clamp(1rem, 4.4vw, 1.55rem);
     line-height: 1;
   }
 
-  .bio-grid span:nth-child(even) {
+  .bio-phrase span:nth-child(even) {
     padding-left: clamp(12px, 3vw, 28px);
   }
 
@@ -1390,25 +1431,24 @@ h2 .title-cursor {
   }
 
   .bio-grid {
-    gap: 12px;
+    gap: 14px;
   }
 
-  .bio-grid p {
+  .bio-col {
+    gap: 8px;
+    padding-top: 12px;
+  }
+
+  .bio-phrase {
     display: flex;
     flex-wrap: wrap;
     gap: 6px 10px;
     align-items: baseline;
-    padding-block: 10px;
-    border-bottom: 1px solid var(--weak);
     font-size: clamp(1rem, 5.6vw, 1.45rem);
     line-height: 1.05;
   }
 
-  .bio-grid p:last-child {
-    border-bottom: 0;
-  }
-
-  .bio-grid span:nth-child(even) {
+  .bio-phrase span:nth-child(even) {
     padding-left: 0;
   }
 
