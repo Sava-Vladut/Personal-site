@@ -7,3 +7,11 @@ README.md
 npm-debug.log
 .env
 .env.*
+
+# Python caches from local runs of the converter scripts
+**/__pycache__/
+**/*.pyc
+
+# Sample media / inputs not needed in any image
+src/services/HEIC to png/
+src/services/tiktok/Favorite Videos.txt

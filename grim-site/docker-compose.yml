@@ -2,6 +2,17 @@ services:
   site:
     build: .
     restart: unless-stopped
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    # Reached only through the site's nginx /api proxy, so no published ports.
+    expose:
+      - "8000"
 
   caddy:
     image: caddy:alpine

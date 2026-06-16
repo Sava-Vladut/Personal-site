@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpenText, ChevronDown, Code2, Contact, Home, SunMoon } from 'lucide-react'
+import { BookOpenText, ChevronDown, Code2, Contact, Home, SunMoon, Wrench } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { navItems } from '../../data/navigation.js'
 
@@ -7,13 +7,21 @@ const navIcons = {
   home: Home,
   biography: BookOpenText,
   projects: Code2,
+  services: Wrench,
   contact: Contact,
 }
 
-export function TerminalNav({ activeTarget, inverted, onNavigate, setInverted, compact = false }) {
+export function TerminalNav({
+  activeTarget,
+  inverted,
+  items = navItems,
+  onNavigate,
+  setInverted,
+  compact = false,
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const navRef = useRef(null)
-  const activeItem = navItems.find((item) => item.target === activeTarget)
+  const activeItem = items.find((item) => item.target === activeTarget)
 
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -50,7 +58,7 @@ export function TerminalNav({ activeTarget, inverted, onNavigate, setInverted, c
         <TerminalIcon icon={ChevronDown} label="" />
       </button>
       <div className="nav-items" id="nav-menu">
-        {navItems.map((item) => (
+        {items.map((item) => (
           <button
             aria-current={activeTarget === item.target ? 'page' : undefined}
             aria-keyshortcuts={`Control+${item.shortcut.toUpperCase()} Alt+${item.shortcut.toUpperCase()} ${item.shortcut.toUpperCase()}`}
