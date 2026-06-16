@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Braces, ExternalLink, RadioTower } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
-import { SectionTitle } from '../common/SectionTitle.jsx'
 import { isKeyboardCommand, isTypingTarget } from '../../utils/keyboard.js'
 import { ui } from '../../data/ui.js'
 
@@ -54,7 +53,6 @@ export function ProjectsSection({ projects, status }) {
 
   return (
     <section className="section projects" id="projects">
-      <SectionTitle>Projects</SectionTitle>
       <p className="project-status">
         <TerminalIcon icon={RadioTower} label="" />
         {ui.syncLabel} {status}

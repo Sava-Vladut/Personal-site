@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { isKeyboardCommand, isTypingTarget } from '../utils/keyboard.js'
 
-export function useKeyboardNavigation({ navItems, onNavigate, onInvert }) {
+export function useKeyboardNavigation({ navItems, onNavigate }) {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (isTypingTarget(event.target) || !isKeyboardCommand(event)) return
@@ -11,16 +11,15 @@ export function useKeyboardNavigation({ navItems, onNavigate, onInvert }) {
 
       if (match) {
         event.preventDefault()
-        onNavigate(match.target)
-      }
-
-      if (command === 'i') {
-        event.preventDefault()
-        onInvert()
+        if (match.href) {
+          window.open(match.href, '_blank', 'noopener,noreferrer')
+        } else {
+          onNavigate(match.target)
+        }
       }
     }
 
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [navItems, onInvert, onNavigate])
+  }, [navItems, onNavigate])
 }

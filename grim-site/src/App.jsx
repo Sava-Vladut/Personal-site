@@ -30,7 +30,6 @@ const readUnlocked = () => {
 }
 
 function App() {
-  const [inverted, setInverted] = useState(false)
   const [activeView, setActiveView] = useState(getViewFromHash)
   const [servicesUnlocked, setServicesUnlocked] = useState(readUnlocked)
   const contactTapsRef = useRef(0)
@@ -41,10 +40,6 @@ function App() {
     () => navItems.filter((item) => item.target !== 'services' || servicesUnlocked),
     [servicesUnlocked],
   )
-
-  const toggleInvert = useCallback(() => {
-    setInverted((value) => !value)
-  }, [])
 
   const showView = useCallback(
     (target) => {
@@ -96,18 +91,15 @@ function App() {
   useKeyboardNavigation({
     navItems: visibleNavItems,
     onNavigate: showView,
-    onInvert: toggleInvert,
   })
 
   return (
-    <main className={`terminal-site${inverted ? ' is-inverted' : ''}`}>
-      <GlyphField inverted={inverted} />
+    <main className="terminal-site">
+      <GlyphField />
       <TerminalNav
         activeTarget={effectiveView}
-        inverted={inverted}
         items={visibleNavItems}
         onNavigate={showView}
-        setInverted={setInverted}
       />
       <div className="view-panel" aria-live="polite">
         <div className="view-frame" data-view={effectiveView} key={effectiveView}>
@@ -118,7 +110,7 @@ function App() {
           {effectiveView === 'contact' && <ContactSection />}
         </div>
       </div>
-      <StatusBar activeView={effectiveView} inverted={inverted} />
+      <StatusBar activeView={effectiveView} />
       <div className="crt-overlay" aria-hidden="true" />
     </main>
   )

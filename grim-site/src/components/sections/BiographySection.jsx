@@ -1,4 +1,3 @@
-import { SectionTitle } from '../common/SectionTitle.jsx'
 import { biographyColumns } from '../../data/biography.js'
 
 // Connective words read as quiet "ligatures" between the load-bearing keywords,
@@ -8,8 +7,6 @@ const CONNECTIVES = new Set(['FOR', 'IN', 'WITH', 'A', 'THE', 'OF', 'TO', 'AND']
 export function BiographySection() {
   return (
     <section className="section biography" id="biography">
-      <SectionTitle>Biography</SectionTitle>
-      <p className="bio-lead" aria-hidden="true">// four operating principles</p>
       <div className="bio-grid">
         {biographyColumns.map((column, index) => (
           <article className="bio-col" key={column.join('-')}>

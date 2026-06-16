@@ -6,7 +6,7 @@ const formatTime = (date) =>
     .map((part) => String(part).padStart(2, '0'))
     .join(':')
 
-export function StatusBar({ activeView, inverted }) {
+export function StatusBar({ activeView }) {
   const [time, setTime] = useState(() => formatTime(new Date()))
 
   useEffect(() => {
@@ -18,9 +18,7 @@ export function StatusBar({ activeView, inverted }) {
     <footer className="status-bar" aria-label="Session status">
       <span className="status-cell">{ui.statusBarName}</span>
       <span className="status-cell status-path">~/{activeView}</span>
-      <span className="status-cell status-hint">
-        {ui.statusBarKeys} {inverted ? 'inverse' : 'normal'}
-      </span>
+      <span className="status-cell status-hint">{ui.statusBarKeys}</span>
       <span className="status-cell status-clock">
         {time} <span className="cursor" aria-hidden="true">█</span>
       </span>
