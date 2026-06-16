@@ -307,7 +307,7 @@ h2 {
   transform-origin: top left;
 }
 
-.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .bio-lead, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane) {
+.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .bio-lead, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .service-external) {
   animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
 }
 
@@ -335,6 +335,10 @@ h2 {
 .view-frame .project-row:nth-child(3),
 .view-frame .service-pane {
   animation-delay: 140ms;
+}
+
+.view-frame .service-external {
+  animation-delay: 175ms;
 }
 
 .view-frame .service-tabs {
@@ -736,6 +740,73 @@ h2 .title-cursor {
   border: 1px solid var(--line);
   border-top-width: 2px;
   transition: border-color var(--dur-3) var(--ease-in-out-cubic);
+}
+
+/* Link out to the wider self-hosted network — leaves the site, so it lives
+   outside the converter tablist and is rendered as an anchor. */
+.service-external {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 58px;
+  margin-top: clamp(18px, 2.4vw, 28px);
+  padding: 10px 16px;
+  border: 1px solid var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.service-external-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  background: var(--fg);
+  color: var(--bg);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.service-external-host {
+  margin-left: auto;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--weak);
+}
+
+.service-external .service-mode--ext {
+  margin-left: 12px;
+  font-style: normal;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.service-external:hover,
+.service-external:focus-visible {
+  color: var(--bg);
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.service-external:hover .service-external-mark,
+.service-external:focus-visible .service-external-mark {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.service-external:hover :is(.service-external-host, .service-mode--ext),
+.service-external:focus-visible :is(.service-external-host, .service-mode--ext) {
+  color: var(--bg);
 }
 
 .service-pane-head {

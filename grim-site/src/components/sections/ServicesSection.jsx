@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clapperboard, ImageDown, Music2, SquareTerminal } from 'lucide-react'
+import { Clapperboard, ImageDown, Music2, Network, SquareTerminal } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
@@ -71,6 +71,19 @@ export function ServicesSection() {
 
         {active.mode === 'live' ? <HeicConverter /> : <MediaConverter service={active} />}
       </div>
+
+      <a
+        className="service-external"
+        href="http://grimnetwork.srvp.ro:5000/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span className="service-external-mark" aria-hidden="true">↗</span>
+        <TerminalIcon icon={Network} label="" />
+        <span className="service-external-label">grimnetwork</span>
+        <span className="service-external-host">grimnetwork.srvp.ro:5000</span>
+        <em className="service-mode service-mode--ext">live host</em>
+      </a>
     </section>
   )
 }
