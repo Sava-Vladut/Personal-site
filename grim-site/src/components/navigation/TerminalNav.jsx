@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpenText, ChevronDown, Code2, Contact, Home, SunMoon, Wrench } from 'lucide-react'
+import { BookOpenText, ChevronDown, Code2, Contact, Home, LogIn, LogOut, SunMoon, Wrench } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { navItems } from '../../data/navigation.js'
 
@@ -17,6 +17,9 @@ export function TerminalNav({
   items = navItems,
   onNavigate,
   setInverted,
+  isLoggedIn = false,
+  onLogin,
+  onLogout,
   compact = false,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -86,6 +89,34 @@ export function TerminalNav({
           <TerminalIcon icon={SunMoon} label="" />
           Invert
         </button>
+        {isLoggedIn ? (
+          <button
+            type="button"
+            onClick={() => {
+              onLogout?.()
+              setMenuOpen(false)
+            }}
+            title="Sign out"
+          >
+            <span>^Q</span>
+            <TerminalIcon icon={LogOut} label="" />
+            Logout
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-current={activeTarget === 'login' ? 'page' : undefined}
+            onClick={() => {
+              onLogin?.()
+              setMenuOpen(false)
+            }}
+            title="Sign in"
+          >
+            <span>^L</span>
+            <TerminalIcon icon={LogIn} label="" />
+            Login
+          </button>
+        )}
       </div>
     </nav>
   )

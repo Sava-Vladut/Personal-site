@@ -17,12 +17,21 @@ const shortUrl = (url) => {
 }
 
 export function MediaConverter({ service }) {
-  const { endpoint, formats, placeholder, note } = service
+  const { endpoint, formats, placeholder, note, quality } = service
   const [url, setUrl] = useState('')
   const [format, setFormat] = useState(formats[0])
+  const qualityOptions = quality?.[format] ?? []
+  const [selectedQuality, setSelectedQuality] = useState(qualityOptions[0])
   const [busy, setBusy] = useState(false)
   const [entries, setEntries] = useState([])
   const entriesRef = useRef(entries)
+
+  // Quality choices are format-specific, so fall back to the first valid option
+  // when the current selection doesn't belong to the active format (e.g. right
+  // after switching mp3 ⇄ mp4). Deriving this avoids a setState-in-effect loop.
+  const effectiveQuality = qualityOptions.includes(selectedQuality)
+    ? selectedQuality
+    : qualityOptions[0]
 
   useEffect(() => {
     entriesRef.current = entries
@@ -48,7 +57,17 @@ export function MediaConverter({ service }) {
       const id = (entryId += 1)
       setEntries((current) => [
         ...current,
-        { id, status: 'working', label: shortUrl(trimmed), format, name: null, size: null, url: null, error: null },
+        {
+          id,
+          status: 'working',
+          label: shortUrl(trimmed),
+          format,
+          quality: effectiveQuality,
+          name: null,
+          size: null,
+          url: null,
+          error: null,
+        },
       ])
       setBusy(true)
 
@@ -56,7 +75,7 @@ export function MediaConverter({ service }) {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: trimmed, format }),
+          body: JSON.stringify({ url: trimmed, format, quality: effectiveQuality }),
         })
 
         if (!response.ok) {
@@ -94,7 +113,7 @@ export function MediaConverter({ service }) {
         setBusy(false)
       }
     },
-    [busy, endpoint, format, patch, url],
+    [busy, endpoint, format, patch, effectiveQuality, url],
   )
 
   const clearAll = useCallback(() => {
@@ -139,6 +158,22 @@ export function MediaConverter({ service }) {
               ))}
             </div>
           )}
+
+          {qualityOptions.length > 1 && (
+            <div className="media-formats media-qualities" role="group" aria-label="Quality">
+              {qualityOptions.map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  className="media-format"
+                  aria-pressed={effectiveQuality === option}
+                  onClick={() => setSelectedQuality(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
           <button type="submit" className="media-run" disabled={busy || !url.trim()}>
             <TerminalIcon icon={Play} label="" />
             {busy ? 'working…' : 'convert'}
@@ -163,7 +198,8 @@ export function MediaConverter({ service }) {
               <span className="media-line">
                 {entry.status === 'working' && (
                   <>
-                    converting <em>{entry.label}</em> → {entry.format}…
+                    converting <em>{entry.label}</em> → {entry.format}
+                    {entry.quality ? ` ${entry.quality}` : ''}…
                   </>
                 )}
                 {entry.status === 'ok' && (

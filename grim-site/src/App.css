@@ -214,11 +214,13 @@ h2 {
 .terminal-nav {
   position: relative;
   z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(110px, 1fr));
-  gap: clamp(8px, 3vw, 64px);
-  width: min(100%, 1440px);
-  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px clamp(12px, 2vw, 40px);
+  width: 100%;
+  margin: 0;
   padding: 14px clamp(10px, 1.4vw, 22px);
   box-sizing: border-box;
   background: var(--bg);
@@ -307,8 +309,12 @@ h2 {
   transform-origin: top left;
 }
 
-.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .bio-lead, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .service-external) {
+.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .bio-lead, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .service-external, .login-intro, .login-form) {
   animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
+}
+
+.view-frame .login-form {
+  animation-delay: 35ms;
 }
 
 .view-frame .portrait,
@@ -1403,6 +1409,7 @@ h2 .title-cursor {
   }
 
   .terminal-nav {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px 16px;
   }
@@ -1596,4 +1603,98 @@ h2 .title-cursor {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Login ─────────────────────────────────────────────────────────── */
+.login-intro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: clamp(22px, 3vw, 40px);
+  color: var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.login-form {
+  display: grid;
+  gap: clamp(12px, 1.6vw, 16px);
+  max-width: 440px;
+}
+
+.login-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--weak);
+  transition: border-color 150ms ease;
+}
+
+.login-row:focus-within {
+  border-color: var(--fg);
+}
+
+.login-prompt {
+  display: inline-grid;
+  place-items: center;
+  color: var(--weak);
+}
+
+.login-input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg);
+  caret-color: var(--fg);
+}
+
+.login-input::placeholder {
+  color: var(--weak);
+  text-transform: none;
+}
+
+.login-input:focus {
+  outline: 0;
+}
+
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--fg);
+  color: var(--fg);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.login-submit {
+  justify-content: flex-start;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.login-submit:disabled {
+  color: var(--weak);
+  border-color: var(--weak);
+  cursor: progress;
+}
+
+.login-submit:disabled:hover,
+.login-submit:disabled:focus-visible {
+  color: var(--weak);
+  background: transparent;
+}
+
+.login-submit:disabled span {
+  background: var(--weak);
 }

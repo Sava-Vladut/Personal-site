@@ -16,15 +16,20 @@ export const services = [
   {
     id: 'youtube',
     index: '02',
-    slug: 'yt→mp3',
-    title: 'YouTube → MP3',
+    slug: 'yt→mp3/mp4',
+    title: 'YouTube → MP3 / MP4',
     mode: 'api',
     blurb:
-      'Paste a YouTube video link. The server pulls the best audio stream and transcodes it to a 320 kbps MP3, then your browser downloads it.',
+      'Paste a YouTube video link, then pick a format and quality. The server pulls the stream with yt-dlp — MP3 audio at your chosen bitrate or MP4 video at your chosen resolution — and your browser downloads it.',
     endpoint: '/api/youtube',
     placeholder: 'https://www.youtube.com/watch?v=…',
-    formats: ['mp3'],
-    note: 'single video · 320 kbps mp3',
+    formats: ['mp3', 'mp4'],
+    // Quality choices depend on the selected format; the first entry is default.
+    quality: {
+      mp3: ['320k', '256k', '192k', '128k'],
+      mp4: ['1080p', '720p', '480p', '360p'],
+    },
+    note: 'single video',
   },
   {
     id: 'tiktok',

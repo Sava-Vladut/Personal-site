@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ContactSection } from './components/sections/ContactSection.jsx'
 import { BiographySection } from './components/sections/BiographySection.jsx'
 import { HeroSection } from './components/sections/HeroSection.jsx'
+import { LoginSection } from './components/sections/LoginSection.jsx'
 import { ProjectsSection } from './components/sections/ProjectsSection.jsx'
 import { ServicesSection } from './components/sections/ServicesSection.jsx'
 import { GlyphField } from './components/common/GlyphField.jsx'
@@ -11,69 +12,51 @@ import { navItems } from './data/navigation.js'
 import { profile } from './data/profile.js'
 import { useGithubProjects } from './hooks/useGithubProjects.js'
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation.js'
+import { useAuth } from './auth/context.js'
 import './App.css'
 
-const SERVICES_UNLOCK_KEY = 'grim:servicesUnlocked'
-const CONTACT_TAPS_TO_UNLOCK = 3
+// 'login' is reachable but lives outside the main nav (no shortcut, hidden tab).
+const knownViews = new Set([...navItems.map((item) => item.target), 'login'])
 
 const getViewFromHash = () => {
   const hash = window.location.hash.replace(/^#\/?/, '')
-  return navItems.some((item) => item.target === hash) ? hash : 'home'
-}
-
-const readUnlocked = () => {
-  try {
-    return localStorage.getItem(SERVICES_UNLOCK_KEY) === '1'
-  } catch {
-    return false
-  }
+  return knownViews.has(hash) ? hash : 'home'
 }
 
 function App() {
   const [inverted, setInverted] = useState(false)
   const [activeView, setActiveView] = useState(getViewFromHash)
-  const [servicesUnlocked, setServicesUnlocked] = useState(readUnlocked)
-  const contactTapsRef = useRef(0)
   const { projects, status: projectStatus } = useGithubProjects()
+  const { isLoggedIn, signOut } = useAuth()
 
-  // Services is a hidden tab: it only appears once Contact is tapped 3x in a row.
+  // Services is a gated tab: it only appears in the nav once you're logged in.
   const visibleNavItems = useMemo(
-    () => navItems.filter((item) => item.target !== 'services' || servicesUnlocked),
-    [servicesUnlocked],
+    () => navItems.filter((item) => item.target !== 'services' || isLoggedIn),
+    [isLoggedIn],
   )
 
   const toggleInvert = useCallback(() => {
     setInverted((value) => !value)
   }, [])
 
-  const showView = useCallback(
-    (target) => {
-      let destination = target
+  const showView = useCallback((target) => {
+    // Services is reachable only by authenticated users — route guests to login.
+    const destination = target === 'services' && !isLoggedIn ? 'login' : target
+    window.location.hash = `/${destination}`
+    setActiveView(destination)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [isLoggedIn])
 
-      if (target === 'contact') {
-        contactTapsRef.current += 1
-        if (!servicesUnlocked && contactTapsRef.current >= CONTACT_TAPS_TO_UNLOCK) {
-          setServicesUnlocked(true)
-          try {
-            localStorage.setItem(SERVICES_UNLOCK_KEY, '1')
-          } catch {
-            /* storage unavailable — unlock for this session only */
-          }
-          destination = 'services'
-        }
-      } else {
-        contactTapsRef.current = 0
-      }
+  const handleLogout = useCallback(async () => {
+    await signOut()
+    showView('home')
+  }, [signOut, showView])
 
-      window.location.hash = `/${destination}`
-      setActiveView(destination)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    },
-    [servicesUnlocked],
-  )
-
-  // Keep the locked tab unreachable via direct URL / back button.
-  const effectiveView = activeView === 'services' && !servicesUnlocked ? 'home' : activeView
+  // Keep the gated tab unreachable via direct URL / back button. Once logged in,
+  // bounce the login view straight to services.
+  let effectiveView = activeView
+  if (activeView === 'services' && !isLoggedIn) effectiveView = 'login'
+  if (activeView === 'login' && isLoggedIn) effectiveView = 'services'
 
   useEffect(() => {
     const onHashChange = () => setActiveView(getViewFromHash())
@@ -81,7 +64,7 @@ function App() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  // Normalise the URL when it points at a locked view (no state set here — the
+  // Normalise the URL when it points at a gated view (no state set here — the
   // hashchange listener picks up the corrected hash).
   useEffect(() => {
     if (activeView !== effectiveView) {
@@ -108,6 +91,9 @@ function App() {
         items={visibleNavItems}
         onNavigate={showView}
         setInverted={setInverted}
+        isLoggedIn={isLoggedIn}
+        onLogin={() => showView('login')}
+        onLogout={handleLogout}
       />
       <div className="view-panel" aria-live="polite">
         <div className="view-frame" data-view={effectiveView} key={effectiveView}>
@@ -115,6 +101,7 @@ function App() {
           {effectiveView === 'biography' && <BiographySection />}
           {effectiveView === 'projects' && <ProjectsSection projects={projects} status={projectStatus} />}
           {effectiveView === 'services' && <ServicesSection />}
+          {effectiveView === 'login' && <LoginSection onAuthed={() => showView('services')} />}
           {effectiveView === 'contact' && <ContactSection />}
         </div>
       </div>

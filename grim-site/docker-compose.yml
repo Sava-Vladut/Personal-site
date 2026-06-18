@@ -1,6 +1,11 @@
 services:
   site:
-    build: .
+    build:
+      context: .
+      args:
+        # Pulled from the .env file next to this compose file (or the shell).
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
     restart: unless-stopped
     depends_on:
       - api

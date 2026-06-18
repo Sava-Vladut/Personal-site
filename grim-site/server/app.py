@@ -3,7 +3,8 @@
 Wraps the existing CLI converters in src/services so the browser can POST a
 link and stream back the finished file:
 
-    POST /api/youtube  {"url": "..."}                 -> audio/mpeg (.mp3)
+    POST /api/youtube  {"url": "...", "format": "mp3", "quality": "320k"} -> audio/mpeg
+    POST /api/youtube  {"url": "...", "format": "mp4", "quality": "720p"} -> video/mp4
     POST /api/tiktok   {"url": "...", "format": "mp4"} -> video/mp4 or audio/mpeg
 
 The HEIC converter stays client-side and is not handled here.
@@ -55,6 +56,8 @@ app.add_middleware(
 
 class YouTubeRequest(BaseModel):
     url: str
+    format: str = "mp3"
+    quality: str | None = None
 
 
 class TikTokRequest(BaseModel):
@@ -86,10 +89,14 @@ def health() -> dict:
 
 
 @app.post("/api/youtube")
-def youtube_to_mp3(request: YouTubeRequest) -> FileResponse:
+def youtube_download(request: YouTubeRequest) -> FileResponse:
     url = request.url.strip()
+    requested_format = request.format.lower()
+
     if not url:
         raise HTTPException(status_code=422, detail="A YouTube URL is required.")
+    if requested_format not in {"mp3", "mp4"}:
+        raise HTTPException(status_code=422, detail="format must be 'mp3' or 'mp4'.")
     if "list=" in url and "watch?v=" not in url and "/watch" not in url:
         raise HTTPException(
             status_code=422,
@@ -100,12 +107,12 @@ def youtube_to_mp3(request: YouTubeRequest) -> FileResponse:
     workdir = Path(tempfile.mkdtemp(prefix="yt_"))
 
     try:
-        yt = yt_service.YouTube(url)
-        stream = yt_service.get_best_audio_stream(yt)
-        if stream is None:
-            raise HTTPException(status_code=422, detail="No audio stream was found for this video.")
-        downloaded = Path(stream.download(output_path=str(workdir)))
-        mp3_path = yt_service.convert_to_mp3(downloaded)
+        if requested_format == "mp3":
+            saved_path = yt_service.download_audio_to_mp3(url, workdir, request.quality)
+            media_type = "audio/mpeg"
+        else:
+            saved_path = yt_service.download_video_to_mp4(url, workdir, request.quality)
+            media_type = "video/mp4"
     except HTTPException:
         shutil.rmtree(workdir, ignore_errors=True)
         raise
@@ -113,7 +120,7 @@ def youtube_to_mp3(request: YouTubeRequest) -> FileResponse:
         shutil.rmtree(workdir, ignore_errors=True)
         raise HTTPException(status_code=422, detail=_clean_error(exc)) from exc
 
-    return _file_response(mp3_path, "audio/mpeg", workdir)
+    return _file_response(saved_path, media_type, workdir)
 
 
 @app.post("/api/tiktok")
