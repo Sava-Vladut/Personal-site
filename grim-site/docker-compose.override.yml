@@ -1,0 +1,10 @@
+# Local development overrides — auto-merged by `docker compose`.
+# Skips the production `caddy`/${DOMAIN} layer: bring up only the two app
+# containers and reach the site directly.
+#
+#   docker compose up --build site api   ->   http://localhost:8088
+#
+services:
+  site:
+    ports:
+      - "8088:80"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clapperboard, ImageDown, Music2, SquareTerminal } from 'lucide-react'
+import { Clapperboard, ImageDown, SquareTerminal } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
 import { MediaConverter } from './MediaConverter.jsx'
@@ -8,7 +8,6 @@ import { isKeyboardCommand, isTypingTarget } from '../../utils/keyboard.js'
 
 const serviceIcons = {
   heic: ImageDown,
-  youtube: Music2,
   tiktok: Clapperboard,
 }
 
@@ -33,8 +32,8 @@ export function ServicesSection() {
     <section className="section services" id="services">
       <p className="service-intro">
         <TerminalIcon icon={SquareTerminal} label="" />
-        three converters — <span className="live-dot" aria-hidden="true">●</span> 01 runs in your
-        browser · 02—03 stream from the local api. press 1—3 to switch.
+        two converters — <span className="live-dot" aria-hidden="true">●</span> 01 runs in your
+        browser · 02 streams from the local api. press 1—2 to switch.
       </p>
 
       <div className="service-tabs" role="tablist" aria-label="Converters">

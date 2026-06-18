@@ -1,6 +1,6 @@
 # grim services API
 
-FastAPI backend that powers the live YouTube and TikTok converters in the
+FastAPI backend that powers the live TikTok converter in the
 `/services` tab. It wraps the existing scripts in `../src/services/` — the
 browser POSTs a link and the server streams the finished file back.
 
@@ -27,7 +27,6 @@ are running the converters work at `http://localhost:5174/#/services`.
 | Method | Path           | Body                              | Returns          |
 | ------ | -------------- | --------------------------------- | ---------------- |
 | GET    | `/api/health`  | —                                 | `{ ok, ffmpeg }` |
-| POST   | `/api/youtube` | `{ "url" }`                       | `audio/mpeg`     |
 | POST   | `/api/tiktok`  | `{ "url", "format": "mp4"\|"mp3" }` | video/mp4 or audio/mpeg |
 
 Errors come back as JSON `{ "detail": "..." }` with a `4xx`/`5xx` status.

@@ -216,7 +216,7 @@ h2 {
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: clamp(8px, 2vw, 48px);
-  width: min(100%, 1440px);
+  width: 100%;
   margin: 0 auto;
   padding: 14px clamp(10px, 1.4vw, 22px);
   box-sizing: border-box;
@@ -232,6 +232,7 @@ h2 {
   inset: 0;
   z-index: 80;
   pointer-events: none;
+  opacity: 0.6;
   background: repeating-linear-gradient(
     0deg,
     transparent 0 2px,
@@ -923,7 +924,7 @@ h2 .title-cursor {
   background: transparent;
 }
 
-/* --- media (api) converters: youtube / tiktok --- */
+/* --- media (api) converters: tiktok --- */
 .media-tool {
   display: grid;
   gap: clamp(14px, 2vw, 20px);
