@@ -10,6 +10,7 @@ yt-dlp is used instead of pytubefix because it handles YouTube's bot-detection
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -44,8 +45,9 @@ def render_download_error(error: Exception) -> str:
 
     if "sign in to confirm" in lowered or "not a bot" in lowered or "bot" in lowered:
         return (
-            "YouTube flagged this request as automated. Update yt-dlp with "
-            "`pip install -U yt-dlp` and try again."
+            "YouTube flagged this request as automated. Make sure yt-dlp is current "
+            "(`pip install -U yt-dlp`), or set YTDLP_COOKIES_FROM_BROWSER (e.g. 'chrome') "
+            "to download with your browser session."
         )
     if "private" in lowered:
         return "This video is private or unavailable."
@@ -73,6 +75,29 @@ def _normalise_height(quality: str | None) -> str:
     return digits if digits in MP4_HEIGHTS else "1080"
 
 
+def cookie_options() -> dict:
+    """Optional auth so YouTube treats requests as a real session.
+
+    Bot-detection ("sign in to confirm you're not a bot") can hit a server IP
+    even on the latest yt-dlp. Set one of these env vars to bypass it:
+
+      YTDLP_COOKIES_FROM_BROWSER  browser name, e.g. "chrome", "firefox", "edge"
+                                  (the browser must be closed so its cookie DB
+                                  isn't locked).
+      YTDLP_COOKIE_FILE           path to an exported cookies.txt (Netscape).
+    """
+    browser = os.environ.get("YTDLP_COOKIES_FROM_BROWSER", "").strip()
+    if browser:
+        # yt-dlp wants a tuple: (browser, profile, keyring, container).
+        return {"cookiesfrombrowser": (browser,)}
+
+    cookie_file = os.environ.get("YTDLP_COOKIE_FILE", "").strip()
+    if cookie_file:
+        return {"cookiefile": cookie_file}
+
+    return {}
+
+
 def build_audio_options(output_template: str, allow_playlist: bool, quality: str) -> dict:
     return {
         "outtmpl": output_template,
@@ -87,6 +112,7 @@ def build_audio_options(output_template: str, allow_playlist: bool, quality: str
                 "preferredquality": quality,
             }
         ],
+        **cookie_options(),
     }
 
 
@@ -105,6 +131,7 @@ def build_video_options(output_template: str, allow_playlist: bool, height: str)
         "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
+        **cookie_options(),
     }
 
 
