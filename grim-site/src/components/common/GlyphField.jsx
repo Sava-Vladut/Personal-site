@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 const CELL = 14
 const FONT = '12px "Courier New", "Lucida Console", monospace'
 const GLYPHS = '·:.+*/\\<>'
-const REST_ALPHA = 0.05
+const REST_ALPHA = 0.09
 const ACTIVE_ALPHA = 0.34
 const CURSOR_RADIUS = 130
 const DECAY = 0.92
@@ -11,17 +11,32 @@ const SCRAMBLE_CHANCE = 0.18
 const RIPPLE_SPEED = 1.1
 const RIPPLE_WIDTH = 90
 const EPSILON = 0.015
+const AMBIENT_INTERVAL = 2600
 
 const randomGlyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
 
-const parseHex = (value) => {
-  const hex = value.replace('#', '')
-  const full = hex.length === 3 ? hex.replace(/./g, '$&$&') : hex
-  const n = parseInt(full, 16)
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+const parseColor = (value) => {
+  const color = value.trim()
+  if (color.startsWith('#')) {
+    const hex = color.replace('#', '')
+    const full = hex.length === 3 ? hex.replace(/./g, '$&$&') : hex
+    const n = parseInt(full, 16)
+    if (!Number.isNaN(n)) return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  }
+
+  const channels = color.match(/rgba?\(([^)]+)\)/i)?.[1]
+  if (channels) {
+    const rgb = channels
+      .split(',')
+      .slice(0, 3)
+      .map((channel) => Number.parseFloat(channel))
+    if (rgb.every(Number.isFinite)) return rgb
+  }
+
+  return [245, 245, 245]
 }
 
-export function GlyphField({ inverted }) {
+export function GlyphField() {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -41,6 +56,7 @@ export function GlyphField({ inverted }) {
     let rgb = [245, 245, 245]
     let ripples = []
     let raf = 0
+    let ambientTimer = 0
     let running = false
     let lastTime = 0
 
@@ -79,11 +95,13 @@ export function GlyphField({ inverted }) {
       dpr = Math.min(window.devicePixelRatio || 1, 2)
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
       cols = Math.ceil(width / CELL)
       rows = Math.ceil(height / CELL)
       cells = new Float32Array(cols * rows)
       glyphs = Array.from({ length: cols * rows }, randomGlyph)
-      rgb = parseHex(getComputedStyle(canvas).getPropertyValue('--fg').trim() || '#f5f5f5')
+      rgb = parseColor(getComputedStyle(canvas).getPropertyValue('--fg') || '#f5f5f5')
 
       rest.width = canvas.width
       rest.height = canvas.height
@@ -170,21 +188,32 @@ export function GlyphField({ inverted }) {
       wake()
     }
     const onResize = () => build()
+    const ambientPulse = () => {
+      ripples.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        start: performance.now(),
+      })
+      wake()
+    }
 
     build()
     window.addEventListener('resize', onResize)
     if (!reduceMotion) {
       window.addEventListener('pointermove', onPointerMove)
       window.addEventListener('pointerdown', onPointerDown)
+      stamp(width * 0.5, height * 0.5)
+      ambientTimer = window.setInterval(ambientPulse, AMBIENT_INTERVAL)
     }
 
     return () => {
       cancelAnimationFrame(raf)
+      window.clearInterval(ambientTimer)
       window.removeEventListener('resize', onResize)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerdown', onPointerDown)
     }
-  }, [inverted])
+  }, [])
 
   return <canvas ref={canvasRef} className="glyph-field" aria-hidden="true" />
 }

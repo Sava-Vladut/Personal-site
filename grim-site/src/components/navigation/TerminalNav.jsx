@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpenText, ChevronDown, Code2, Contact, Home, LogIn, LogOut, SunMoon, Wrench } from 'lucide-react'
+import { BookOpenText, ChevronDown, Code2, Contact, Home, LogIn, LogOut, Network, Wrench } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { navItems } from '../../data/navigation.js'
 
@@ -8,15 +8,14 @@ const navIcons = {
   biography: BookOpenText,
   projects: Code2,
   services: Wrench,
+  miner: Network,
   contact: Contact,
 }
 
 export function TerminalNav({
   activeTarget,
-  inverted,
   items = navItems,
   onNavigate,
-  setInverted,
   isLoggedIn = false,
   onLogin,
   onLogout,
@@ -69,26 +68,24 @@ export function TerminalNav({
             title={`Press ${item.shortcut.toUpperCase()} to open ${item.label}`}
             type="button"
             onClick={() => {
-              onNavigate(item.target)
+              if (item.href) {
+                window.open(item.href, '_blank', 'noopener,noreferrer')
+              } else {
+                onNavigate(item.target)
+              }
               setMenuOpen(false)
             }}
           >
             <span>{item.key}</span>
             <TerminalIcon icon={navIcons[item.target]} label="" />
             {item.label}
+            {item.external && (
+              <span className="nav-external-mark" aria-hidden="true">
+                ↗
+              </span>
+            )}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => setInverted((value) => !value)}
-          aria-keyshortcuts="Control+I Alt+I I"
-          aria-pressed={inverted}
-          title="Press I to invert"
-        >
-          <span>^I</span>
-          <TerminalIcon icon={SunMoon} label="" />
-          Invert
-        </button>
         {isLoggedIn ? (
           <button
             type="button"

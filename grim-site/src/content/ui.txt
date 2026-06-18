@@ -12,7 +12,7 @@ contactEmailLabel: Email
 contactSocialLabel: Social
 contactCopyrightLabel: Copyright
 statusBarName: [/>] grim_os
-statusBarKeys: keys: h b p c · i · video:
+statusBarKeys: keys: h b p c · video:
 statusSyncing: syncing github repos...
 statusSource: source: github.com/{user}
 statusEmpty: github source empty / showing fallback

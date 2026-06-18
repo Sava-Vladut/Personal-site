@@ -1,6 +1,5 @@
 import { AtSign, CalendarDays, Mail, UserRound } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
-import { SectionTitle } from '../common/SectionTitle.jsx'
 import { profile } from '../../data/profile.js'
 import { ui } from '../../data/ui.js'
 
@@ -9,7 +8,6 @@ export function ContactSection() {
 
   return (
     <section className="section contact" id="contact">
-      <SectionTitle>Contact</SectionTitle>
       <div className="contact-grid">
         <p>
           <span><TerminalIcon icon={UserRound} label="" />{ui.contactNameLabel}</span>

@@ -24,7 +24,6 @@ const getViewFromHash = () => {
 }
 
 function App() {
-  const [inverted, setInverted] = useState(false)
   const [activeView, setActiveView] = useState(getViewFromHash)
   const { projects, status: projectStatus } = useGithubProjects()
   const { isLoggedIn, signOut } = useAuth()
@@ -34,10 +33,6 @@ function App() {
     () => navItems.filter((item) => item.target !== 'services' || isLoggedIn),
     [isLoggedIn],
   )
-
-  const toggleInvert = useCallback(() => {
-    setInverted((value) => !value)
-  }, [])
 
   const showView = useCallback((target) => {
     // Services is reachable only by authenticated users — route guests to login.
@@ -79,18 +74,15 @@ function App() {
   useKeyboardNavigation({
     navItems: visibleNavItems,
     onNavigate: showView,
-    onInvert: toggleInvert,
   })
 
   return (
-    <main className={`terminal-site${inverted ? ' is-inverted' : ''}`}>
-      <GlyphField inverted={inverted} />
+    <main className="terminal-site">
+      <GlyphField />
       <TerminalNav
         activeTarget={effectiveView}
-        inverted={inverted}
         items={visibleNavItems}
         onNavigate={showView}
-        setInverted={setInverted}
         isLoggedIn={isLoggedIn}
         onLogin={() => showView('login')}
         onLogout={handleLogout}
@@ -105,7 +97,7 @@ function App() {
           {effectiveView === 'contact' && <ContactSection />}
         </div>
       </div>
-      <StatusBar activeView={effectiveView} inverted={inverted} />
+      <StatusBar activeView={effectiveView} />
       <div className="crt-overlay" aria-hidden="true" />
     </main>
   )
