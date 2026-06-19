@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Clapperboard, ImageDown, SquareTerminal } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
 import { MediaConverter } from './MediaConverter.jsx'
 import { services } from '../../data/services.js'
-import { isKeyboardCommand, isTypingTarget } from '../../utils/keyboard.js'
 
 const serviceIcons = {
   heic: ImageDown,
@@ -15,29 +14,16 @@ export function ServicesSection() {
   const [activeId, setActiveId] = useState(services[0].id)
   const active = services.find((service) => service.id === activeId) ?? services[0]
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (isTypingTarget(event.target) || !isKeyboardCommand(event)) return
-      const slot = Number.parseInt(event.key, 10)
-      if (slot >= 1 && slot <= services.length) {
-        event.preventDefault()
-        setActiveId(services[slot - 1].id)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [])
-
   return (
     <section className="section services" id="services">
       <p className="service-intro">
         <TerminalIcon icon={SquareTerminal} label="" />
         two converters — <span className="live-dot" aria-hidden="true">●</span> 01 runs in your
-        browser · 02 streams from the local api. press 1—2 to switch.
+        browser · 02 streams from the local api.
       </p>
 
       <div className="service-tabs" role="tablist" aria-label="Converters">
-        {services.map((service, index) => (
+        {services.map((service) => (
           <button
             type="button"
             role="tab"
@@ -46,7 +32,7 @@ export function ServicesSection() {
             aria-current={service.id === activeId ? 'true' : undefined}
             className="service-tab"
             onClick={() => setActiveId(service.id)}
-            title={`Press ${index + 1} to open ${service.title}`}
+            title={`Open ${service.title}`}
           >
             <span>{service.index}</span>
             <TerminalIcon icon={serviceIcons[service.id]} label="" />

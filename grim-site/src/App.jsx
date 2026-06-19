@@ -11,12 +11,14 @@ import { StatusBar } from './components/navigation/StatusBar.jsx'
 import { navItems } from './data/navigation.js'
 import { profile } from './data/profile.js'
 import { useGithubProjects } from './hooks/useGithubProjects.js'
-import { useKeyboardNavigation } from './hooks/useKeyboardNavigation.js'
 import { useAuth } from './auth/context.js'
 import './App.css'
 
-// 'login' is reachable but lives outside the main nav (no shortcut, hidden tab).
+// 'login' is reachable but lives outside the main nav (hidden tab).
 const knownViews = new Set([...navItems.map((item) => item.target), 'login'])
+
+// Tabs that only appear in the nav once the visitor is authenticated.
+const gatedTargets = new Set(['services', 'miner'])
 
 const getViewFromHash = () => {
   const hash = window.location.hash.replace(/^#\/?/, '')
@@ -28,9 +30,9 @@ function App() {
   const { projects, status: projectStatus } = useGithubProjects()
   const { isLoggedIn, signOut } = useAuth()
 
-  // Services is a gated tab: it only appears in the nav once you're logged in.
+  // Services and Miner are gated tabs (see gatedTargets) — only shown logged in.
   const visibleNavItems = useMemo(
-    () => navItems.filter((item) => item.target !== 'services' || isLoggedIn),
+    () => navItems.filter((item) => !gatedTargets.has(item.target) || isLoggedIn),
     [isLoggedIn],
   )
 
@@ -70,11 +72,6 @@ function App() {
   useEffect(() => {
     document.title = `${profile.firstName} ${profile.lastName} — ~/${effectiveView}`
   }, [effectiveView])
-
-  useKeyboardNavigation({
-    navItems: visibleNavItems,
-    onNavigate: showView,
-  })
 
   return (
     <main className="terminal-site">

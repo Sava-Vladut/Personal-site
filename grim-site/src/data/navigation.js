@@ -1,15 +1,13 @@
 export const navItems = [
-  { key: '^H', label: 'Home', target: 'home', shortcut: 'h' },
-  { key: '^B', label: 'Biography', target: 'biography', shortcut: 'b' },
-  { key: '^P', label: 'Projects', target: 'projects', shortcut: 'p' },
-  { key: '^S', label: 'Services', target: 'services', shortcut: 's' },
+  { label: 'Home', target: 'home' },
+  { label: 'Biography', target: 'biography' },
+  { label: 'Projects', target: 'projects' },
+  { label: 'Services', target: 'services' },
   {
-    key: '^M',
     label: 'Miner',
     target: 'miner',
-    shortcut: 'm',
     href: 'http://grimnetwork.srvp.ro:5000/',
     external: true,
   },
-  { key: '^C', label: 'Contact', target: 'contact', shortcut: 'c' },
+  { label: 'Contact', target: 'contact' },
 ]

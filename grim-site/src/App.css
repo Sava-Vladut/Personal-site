@@ -276,11 +276,8 @@ h2 {
   color: var(--fg);
 }
 
-.status-hint {
-  margin-left: auto;
-}
-
 .status-clock {
+  margin-left: auto;
   color: var(--fg);
 }
 
@@ -1455,10 +1452,6 @@ h2 .title-cursor {
 
   .project-main h3 {
     font-size: 1.42rem;
-  }
-
-  .status-hint {
-    display: none;
   }
 
   .status-bar {

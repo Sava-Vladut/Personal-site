@@ -18,7 +18,6 @@ export function StatusBar({ activeView }) {
     <footer className="status-bar" aria-label="Session status">
       <span className="status-cell">{ui.statusBarName}</span>
       <span className="status-cell status-path">~/{activeView}</span>
-      <span className="status-cell status-hint">{ui.statusBarKeys}</span>
       <span className="status-cell status-clock">
         {time} <span className="cursor" aria-hidden="true">█</span>
       </span>

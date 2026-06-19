@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Braces, ExternalLink, RadioTower } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
-import { isKeyboardCommand, isTypingTarget } from '../../utils/keyboard.js'
 import { ui } from '../../data/ui.js'
 
 const projectsPerPage = 3
@@ -30,27 +29,6 @@ export function ProjectsSection({ projects, status }) {
     setCurrentPage((page) => Math.min(totalPages, page + 1))
   }, [totalPages])
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (isTypingTarget(event.target) || !isKeyboardCommand(event)) return
-
-      const command = event.key.toLowerCase()
-
-      if (command === 'l') {
-        event.preventDefault()
-        goToPreviousPage()
-      }
-
-      if (command === 'r') {
-        event.preventDefault()
-        goToNextPage()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [goToNextPage, goToPreviousPage])
-
   return (
     <section className="section projects" id="projects">
       <p className="project-status">
@@ -62,10 +40,7 @@ export function ProjectsSection({ projects, status }) {
           type="button"
           onClick={goToPreviousPage}
           disabled={currentPage === 1}
-          aria-keyshortcuts="Control+L Alt+L L"
-          title="Press L for previous page"
         >
-          <span>^L</span>
           <TerminalIcon icon={ArrowLeft} label="" />
           {ui.prevButton}
         </button>
@@ -76,10 +51,7 @@ export function ProjectsSection({ projects, status }) {
           type="button"
           onClick={goToNextPage}
           disabled={currentPage === totalPages}
-          aria-keyshortcuts="Control+R Alt+R R"
-          title="Press R for next page"
         >
-          <span>^R</span>
           <TerminalIcon icon={ArrowRight} label="" />
           {ui.nextButton}
         </button>

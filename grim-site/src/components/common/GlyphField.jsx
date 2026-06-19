@@ -11,7 +11,6 @@ const SCRAMBLE_CHANCE = 0.18
 const RIPPLE_SPEED = 1.1
 const RIPPLE_WIDTH = 90
 const EPSILON = 0.015
-const AMBIENT_INTERVAL = 2600
 
 const randomGlyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
 
@@ -56,7 +55,6 @@ export function GlyphField() {
     let rgb = [245, 245, 245]
     let ripples = []
     let raf = 0
-    let ambientTimer = 0
     let running = false
     let lastTime = 0
 
@@ -188,14 +186,6 @@ export function GlyphField() {
       wake()
     }
     const onResize = () => build()
-    const ambientPulse = () => {
-      ripples.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        start: performance.now(),
-      })
-      wake()
-    }
 
     build()
     window.addEventListener('resize', onResize)
@@ -203,12 +193,10 @@ export function GlyphField() {
       window.addEventListener('pointermove', onPointerMove)
       window.addEventListener('pointerdown', onPointerDown)
       stamp(width * 0.5, height * 0.5)
-      ambientTimer = window.setInterval(ambientPulse, AMBIENT_INTERVAL)
     }
 
     return () => {
       cancelAnimationFrame(raf)
-      window.clearInterval(ambientTimer)
       window.removeEventListener('resize', onResize)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerdown', onPointerDown)

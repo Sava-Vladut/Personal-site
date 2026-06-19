@@ -1,7 +1,6 @@
 # Small interface copy. Edit the part after each colon.
 # In the status texts, {user} is replaced with your GitHub username.
 
-keyboardHint: use your keyboard to navigate
 syncLabel: [/sync]
 prevButton: Prev
 nextButton: Next
@@ -12,7 +11,6 @@ contactEmailLabel: Email
 contactSocialLabel: Social
 contactCopyrightLabel: Copyright
 statusBarName: [/>] grim_os
-statusBarKeys: keys: h b p c · video:
 statusSyncing: syncing github repos...
 statusSource: source: github.com/{user}
 statusEmpty: github source empty / showing fallback

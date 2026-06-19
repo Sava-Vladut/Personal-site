@@ -63,9 +63,8 @@ export function TerminalNav({
         {items.map((item) => (
           <button
             aria-current={activeTarget === item.target ? 'page' : undefined}
-            aria-keyshortcuts={`Control+${item.shortcut.toUpperCase()} Alt+${item.shortcut.toUpperCase()} ${item.shortcut.toUpperCase()}`}
             key={item.target}
-            title={`Press ${item.shortcut.toUpperCase()} to open ${item.label}`}
+            title={`Open ${item.label}`}
             type="button"
             onClick={() => {
               if (item.href) {
@@ -76,7 +75,6 @@ export function TerminalNav({
               setMenuOpen(false)
             }}
           >
-            <span>{item.key}</span>
             <TerminalIcon icon={navIcons[item.target]} label="" />
             {item.label}
             {item.external && (
@@ -95,7 +93,6 @@ export function TerminalNav({
             }}
             title="Sign out"
           >
-            <span>^Q</span>
             <TerminalIcon icon={LogOut} label="" />
             Logout
           </button>
@@ -109,7 +106,6 @@ export function TerminalNav({
             }}
             title="Sign in"
           >
-            <span>^L</span>
             <TerminalIcon icon={LogIn} label="" />
             Login
           </button>
