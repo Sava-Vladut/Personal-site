@@ -1614,3 +1614,80 @@ h2 .title-cursor {
 .login-submit:disabled span {
   background: var(--weak);
 }
+
+/* Admin toggle — drawn as a terminal-style [ ] / [×] checkbox. */
+.auth-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 440px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-checkbox input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.auth-checkbox-box {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  border: 1px solid var(--weak);
+  color: var(--fg);
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.auth-checkbox:hover .auth-checkbox-box,
+.auth-checkbox input:focus-visible + .auth-checkbox-box {
+  border-color: var(--fg);
+}
+
+.auth-checkbox input:checked ~ .auth-checkbox-label {
+  color: var(--fg);
+}
+
+.auth-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 150ms ease;
+}
+
+/* Cross-link between the login and register panels. */
+.auth-switch {
+  margin-top: clamp(18px, 2.4vw, 26px);
+  max-width: 440px;
+  color: var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-switch-link {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--weak);
+  background: transparent;
+  font: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.auth-switch-link:hover,
+.auth-switch-link:focus-visible {
+  border-bottom-color: var(--fg);
+  outline: 0;
+}

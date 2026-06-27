@@ -1,0 +1,31 @@
+# Local development stack with hot-reloading Vite + the converter API.
+#
+#   docker compose -f docker-compose.dev.yml up --build   ->   http://localhost:5173
+#
+# Source is bind-mounted so edits reload instantly; the container's node_modules
+# is preserved by an anonymous volume so it isn't shadowed by the host mount.
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    environment:
+      # Reach the FastAPI container through Vite's /api proxy.
+      VITE_API_PROXY: http://api:8000
+      # Reliable file watching across the host bind mount.
+      VITE_USE_POLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"

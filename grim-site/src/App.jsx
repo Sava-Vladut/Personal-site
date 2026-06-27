@@ -3,6 +3,7 @@ import { ContactSection } from './components/sections/ContactSection.jsx'
 import { BiographySection } from './components/sections/BiographySection.jsx'
 import { HeroSection } from './components/sections/HeroSection.jsx'
 import { LoginSection } from './components/sections/LoginSection.jsx'
+import { RegisterSection } from './components/sections/RegisterSection.jsx'
 import { ProjectsSection } from './components/sections/ProjectsSection.jsx'
 import { ServicesSection } from './components/sections/ServicesSection.jsx'
 import { GlyphField } from './components/common/GlyphField.jsx'
@@ -14,8 +15,8 @@ import { useGithubProjects } from './hooks/useGithubProjects.js'
 import { useAuth } from './auth/context.js'
 import './App.css'
 
-// 'login' is reachable but lives outside the main nav (hidden tab).
-const knownViews = new Set([...navItems.map((item) => item.target), 'login'])
+// 'login' and 'register' are reachable but live outside the main nav (hidden tabs).
+const knownViews = new Set([...navItems.map((item) => item.target), 'login', 'register'])
 
 // Tabs that only appear in the nav once the visitor is authenticated.
 const gatedTargets = new Set(['services', 'miner'])
@@ -53,7 +54,7 @@ function App() {
   // bounce the login view straight to services.
   let effectiveView = activeView
   if (activeView === 'services' && !isLoggedIn) effectiveView = 'login'
-  if (activeView === 'login' && isLoggedIn) effectiveView = 'services'
+  if ((activeView === 'login' || activeView === 'register') && isLoggedIn) effectiveView = 'services'
 
   useEffect(() => {
     const onHashChange = () => setActiveView(getViewFromHash())
@@ -90,7 +91,18 @@ function App() {
           {effectiveView === 'biography' && <BiographySection />}
           {effectiveView === 'projects' && <ProjectsSection projects={projects} status={projectStatus} />}
           {effectiveView === 'services' && <ServicesSection />}
-          {effectiveView === 'login' && <LoginSection onAuthed={() => showView('services')} />}
+          {effectiveView === 'login' && (
+            <LoginSection
+              onAuthed={() => showView('services')}
+              onRegister={() => showView('register')}
+            />
+          )}
+          {effectiveView === 'register' && (
+            <RegisterSection
+              onAuthed={() => showView('services')}
+              onLogin={() => showView('login')}
+            />
+          )}
           {effectiveView === 'contact' && <ContactSection />}
         </div>
       </div>

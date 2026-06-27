@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { KeyRound, LogIn, Mail, ShieldAlert } from 'lucide-react'
+import { KeyRound, LogIn, ShieldAlert, User } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
 import { useAuth } from '../../auth/context.js'
 
-export function LoginSection({ onAuthed }) {
-  const { signIn, configured } = useAuth()
-  const [email, setEmail] = useState('')
+export function LoginSection({ onAuthed, onRegister }) {
+  const { signIn } = useAuth()
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -16,27 +16,15 @@ export function LoginSection({ onAuthed }) {
     if (busy) return
     setError('')
     setBusy(true)
-    const { error: signInError } = await signIn(email.trim(), password)
-    setBusy(false)
-    if (signInError) {
+    try {
+      await signIn(username.trim(), password)
+      setPassword('')
+      onAuthed?.()
+    } catch (signInError) {
       setError(signInError.message || 'Login failed.')
-      return
+    } finally {
+      setBusy(false)
     }
-    setPassword('')
-    onAuthed?.()
-  }
-
-  if (!configured) {
-    return (
-      <section className="section login" id="login">
-        <SectionTitle>Login</SectionTitle>
-        <p className="login-error" role="alert">
-          <TerminalIcon icon={ShieldAlert} label="" />
-          Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in
-          your .env file.
-        </p>
-      </section>
-    )
   }
 
   return (
@@ -50,16 +38,16 @@ export function LoginSection({ onAuthed }) {
       <form className="login-form" onSubmit={onSubmit}>
         <label className="login-row">
           <span className="login-prompt" aria-hidden="true">
-            <TerminalIcon icon={Mail} label="" />
+            <TerminalIcon icon={User} label="" />
           </span>
           <input
             className="login-input"
-            type="email"
-            name="email"
-            autoComplete="email"
-            placeholder="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            type="text"
+            name="username"
+            autoComplete="username"
+            placeholder="username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
             required
           />
         </label>
@@ -94,6 +82,13 @@ export function LoginSection({ onAuthed }) {
           {busy ? 'authenticating…' : 'sign in'}
         </button>
       </form>
+
+      <p className="auth-switch">
+        no account yet?{' '}
+        <button type="button" className="auth-switch-link" onClick={() => onRegister?.()}>
+          register
+        </button>
+      </p>
     </section>
   )
 }

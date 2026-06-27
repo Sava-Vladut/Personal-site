@@ -1,41 +1,48 @@
-import { useEffect, useMemo, useState } from 'react'
-import { isSupabaseConfigured, supabase } from '../lib/supabase.js'
+import { useMemo, useState } from 'react'
+import { createUser, verifyUser } from '../lib/db.js'
 import { AuthContext } from './context.js'
 
+// The signed-in account is mirrored here so a reload restores the session
+// without re-reading the SQLite blob on every paint.
+const SESSION_KEY = 'grim.auth.session'
+
+function readSession() {
+  const raw = localStorage.getItem(SESSION_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null)
-  // `loading` stays true until the initial session has been resolved, so the UI
-  // doesn't flash the locked state before an existing session is restored.
-  const [loading, setLoading] = useState(isSupabaseConfigured)
+  // localStorage is synchronous, so the persisted session is restored on the
+  // first render — no loading flash before an existing session resolves.
+  const [user, setUser] = useState(readSession)
+  const loading = false
 
-  useEffect(() => {
-    if (!supabase) return undefined
+  const value = useMemo(() => {
+    const remember = (account) => {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(account))
+      setUser(account)
+      return account
+    }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-    })
-
-    return () => subscription.subscription.unsubscribe()
-  }, [])
-
-  const value = useMemo(
-    () => ({
-      session,
-      user: session?.user ?? null,
-      isLoggedIn: Boolean(session),
+    return {
+      user,
+      isLoggedIn: Boolean(user),
+      isAdmin: Boolean(user?.isAdmin),
       loading,
-      configured: isSupabaseConfigured,
-      signIn: (email, password) =>
-        supabase.auth.signInWithPassword({ email, password }),
-      signOut: () => supabase.auth.signOut(),
-    }),
-    [session, loading],
-  )
+      signIn: async (username, password) => remember(await verifyUser({ username, password })),
+      signUp: async (username, password, isAdmin) =>
+        remember(await createUser({ username, password, isAdmin })),
+      signOut: async () => {
+        localStorage.removeItem(SESSION_KEY)
+        setUser(null)
+      },
+    }
+  }, [user, loading])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
