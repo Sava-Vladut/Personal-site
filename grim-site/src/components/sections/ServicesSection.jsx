@@ -1,13 +1,28 @@
 import { useState } from 'react'
-import { Clapperboard, ImageDown, SquareTerminal } from 'lucide-react'
+import { Clapperboard, ImageDown, MessageSquare, Network, SquareTerminal } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
 import { MediaConverter } from './MediaConverter.jsx'
+import { TwitchLogs } from './TwitchLogs.jsx'
 import { services } from '../../data/services.js'
 
 const serviceIcons = {
   heic: ImageDown,
   tiktok: Clapperboard,
+  twitchlogs: MessageSquare,
+  miner: Network,
+}
+
+// Live (in-browser) services render their own component, keyed by id.
+const liveComponents = {
+  heic: HeicConverter,
+  twitchlogs: TwitchLogs,
+}
+
+const serviceModeLabels = {
+  live: '● live',
+  api: '↯ api',
+  external: '↗ open',
 }
 
 export function ServicesSection() {
@@ -18,11 +33,11 @@ export function ServicesSection() {
     <section className="section services" id="services">
       <p className="service-intro">
         <TerminalIcon icon={SquareTerminal} label="" />
-        two converters — <span className="live-dot" aria-hidden="true">●</span> 01 runs in your
-        browser · 02 streams from the local api.
+        converters, a twitch log reader + a live miner — <span className="live-dot" aria-hidden="true">●</span>{' '}
+        01 / 03 run in your browser · 02 streams from the local api · 04 opens the miner node.
       </p>
 
-      <div className="service-tabs" role="tablist" aria-label="Converters">
+      <div className="service-tabs" role="tablist" aria-label="Services">
         {services.map((service) => (
           <button
             type="button"
@@ -38,7 +53,7 @@ export function ServicesSection() {
             <TerminalIcon icon={serviceIcons[service.id]} label="" />
             {service.slug}
             <em className={`service-mode service-mode--${service.mode}`}>
-              {service.mode === 'live' ? '● live' : '↯ api'}
+              {serviceModeLabels[service.mode] ?? service.mode}
             </em>
           </button>
         ))}
@@ -49,7 +64,28 @@ export function ServicesSection() {
           <p>{active.blurb}</p>
         </header>
 
-        {active.mode === 'live' ? <HeicConverter /> : <MediaConverter service={active} />}
+        {active.mode === 'external' ? (
+          <div className="service-external">
+            <p className="service-external-url">{active.href}</p>
+            <a
+              className="service-launch"
+              href={active.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <TerminalIcon icon={Network} label="" />
+              Launch {active.title}
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        ) : active.mode === 'live' ? (
+          (() => {
+            const Live = liveComponents[active.id]
+            return Live ? <Live /> : null
+          })()
+        ) : (
+          <MediaConverter service={active} />
+        )}
       </div>
     </section>
   )

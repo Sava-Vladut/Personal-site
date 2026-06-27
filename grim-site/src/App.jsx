@@ -20,8 +20,9 @@ import './App.css'
 const knownViews = new Set([...navItems.map((item) => item.target), 'login', 'register'])
 
 // Tabs reserved for admin accounts — hidden from the nav and unreachable by URL
-// for everyone else (services + miner converters, plus the admin dashboard).
-const adminTargets = new Set(['services', 'miner', 'admin'])
+// for everyone else (the services console — which now also hosts the miner —
+// plus the admin dashboard).
+const adminTargets = new Set(['services', 'admin'])
 
 const getViewFromHash = () => {
   const hash = window.location.hash.replace(/^#\/?/, '')
@@ -33,7 +34,7 @@ function App() {
   const { projects, status: projectStatus } = useGithubProjects()
   const { isLoggedIn, isAdmin, signOut } = useAuth()
 
-  // Services, Miner and Admin are admin-only tabs (see adminTargets) — they only
+  // Services and Admin are admin-only tabs (see adminTargets) — they only
   // appear in the nav once an admin account is signed in.
   const visibleNavItems = useMemo(
     () => navItems.filter((item) => !adminTargets.has(item.target) || isAdmin),

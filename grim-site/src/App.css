@@ -673,9 +673,15 @@ h2 .title-cursor {
 
 .service-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(8px, 1.4vw, 16px);
   margin-bottom: clamp(22px, 3vw, 40px);
+}
+
+@media (max-width: 640px) {
+  .service-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .service-tab {
@@ -758,6 +764,44 @@ h2 .title-cursor {
   text-transform: uppercase;
   font-size: clamp(0.8rem, 1vw, 0.96rem);
   line-height: 1.32;
+}
+
+/* --- external launch (miner) --- */
+.service-external {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vw, 22px);
+  padding: clamp(20px, 3vw, 34px) clamp(16px, 2.2vw, 28px);
+}
+
+.service-external-url {
+  color: var(--weak);
+  font-size: clamp(0.74rem, 0.95vw, 0.9rem);
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}
+
+.service-launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+  min-height: 52px;
+  padding: 12px 22px;
+  border: 1px solid var(--fg);
+  color: var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.service-launch:hover,
+.service-launch:focus-visible {
+  color: var(--bg);
+  background: var(--fg);
 }
 
 /* --- live heic converter --- */
@@ -1146,6 +1190,355 @@ h2 .title-cursor {
   text-transform: uppercase;
   font-size: 0.72rem;
   color: var(--weak);
+}
+
+/* --- live twitch chat-log reader --- */
+.tlog-tool {
+  display: grid;
+  gap: clamp(14px, 2vw, 20px);
+  padding: clamp(16px, 2.2vw, 26px);
+}
+
+.tlog-modes {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--weak);
+  width: fit-content;
+}
+
+.tlog-mode {
+  min-height: 38px;
+  padding: 0 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tlog-mode + .tlog-mode {
+  border-left: 1px solid var(--weak);
+}
+
+.tlog-mode[aria-selected='true'] {
+  color: var(--bg);
+  background: var(--fg);
+}
+
+.tlog-form {
+  display: grid;
+  gap: clamp(12px, 1.6vw, 16px);
+}
+
+.tlog-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 16px);
+}
+
+@media (max-width: 560px) {
+  .tlog-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tlog-field {
+  display: grid;
+  gap: 6px;
+}
+
+.tlog-label {
+  display: flex;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.66rem;
+  color: var(--weak);
+}
+
+.tlog-label em {
+  font-style: normal;
+  color: color-mix(in srgb, var(--weak) 80%, transparent);
+}
+
+.tlog-input,
+.tlog-select {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--weak);
+  background: transparent;
+  font: inherit;
+  color: var(--fg);
+  caret-color: var(--fg);
+  transition: border-color 150ms ease;
+}
+
+.tlog-input::placeholder {
+  color: var(--weak);
+}
+
+.tlog-input:focus,
+.tlog-select:focus {
+  outline: 0;
+  border-color: var(--fg);
+}
+
+.tlog-month {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tlog-select {
+  flex: 1;
+  min-width: 200px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.tlog-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.tlog-toggle {
+  min-height: 34px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tlog-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+  color: var(--dim);
+}
+
+.tlog-limit-input {
+  width: 76px;
+  padding: 7px 9px;
+  border: 1px solid var(--weak);
+  background: transparent;
+  font: inherit;
+  text-align: center;
+  color: var(--fg);
+}
+
+.tlog-limit-input:focus {
+  outline: 0;
+  border-color: var(--fg);
+}
+
+.tlog-note {
+  color: var(--weak);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.tlog-run {
+  min-height: 40px;
+  padding: 0 18px;
+  margin-left: auto;
+  border: 1px solid var(--fg);
+  text-transform: uppercase;
+}
+
+.tlog-run:disabled {
+  color: var(--weak);
+  border-color: var(--weak);
+  cursor: progress;
+}
+
+.tlog-run:disabled:hover,
+.tlog-run:disabled:focus-visible {
+  color: var(--weak);
+  background: transparent;
+}
+
+.tlog-ghost {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tlog-shuffle {
+  gap: 8px;
+}
+
+/* output */
+.tlog-output {
+  border: 1px solid var(--weak);
+}
+
+.tlog-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.72rem;
+  color: var(--dim);
+}
+
+.tlog-subject {
+  color: var(--fg);
+}
+
+.tlog-pill {
+  padding: 2px 8px;
+  border: 1px solid var(--weak);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+}
+
+.tlog-count {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.tlog-grep {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--weak);
+}
+
+.tlog-grep-input {
+  width: clamp(120px, 22vw, 200px);
+  padding: 6px 9px;
+  border: 1px solid var(--weak);
+  background: transparent;
+  font: inherit;
+  text-transform: none;
+  color: var(--fg);
+}
+
+.tlog-grep-input:focus {
+  outline: 0;
+  border-color: var(--fg);
+}
+
+.tlog-feed {
+  max-height: 52vh;
+  overflow: auto;
+  font-size: clamp(0.72rem, 0.95vw, 0.84rem);
+}
+
+.tlog-line {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--weak) 28%, transparent);
+  /* Let the browser skip layout/paint for rows scrolled out of view. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 26px;
+}
+
+.tlog-line:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.tlog-ts {
+  color: var(--weak);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.tlog-who {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.tlog-badge {
+  align-self: center;
+  padding: 1px 4px;
+  border: 1px solid var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.56rem;
+  color: var(--dim);
+}
+
+.tlog-name {
+  color: var(--fg);
+}
+
+.tlog-name::after {
+  content: ':';
+  color: var(--weak);
+}
+
+.tlog-msg {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--dim);
+}
+
+.tlog-msg.is-action {
+  font-style: italic;
+  color: var(--fg);
+}
+
+.tlog-emote {
+  height: 1.6em;
+  width: auto;
+  max-width: 100%;
+  vertical-align: -0.4em;
+  margin: 0 1px;
+  filter: grayscale(1) contrast(1.1);
+  transition: filter 150ms ease;
+}
+
+.tlog-line:hover .tlog-emote {
+  filter: none;
+}
+
+.tlog-mark {
+  padding: 0 2px;
+  color: var(--bg);
+  background: var(--fg);
+}
+
+.tlog-empty {
+  padding: 28px 16px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.76rem;
+  color: var(--weak);
+}
+
+.tlog-empty--err {
+  color: var(--dim);
+}
+
+.tlog-more,
+.tlog-end {
+  padding: 16px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--weak);
+}
+
+.tlog-more {
+  color: var(--dim);
+  animation: blink 1.2s steps(1) infinite;
 }
 
 /* --- copy command --- */

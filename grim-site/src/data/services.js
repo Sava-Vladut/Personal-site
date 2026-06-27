@@ -26,4 +26,23 @@ export const services = [
     formats: ['mp4', 'mp3'],
     note: 'single video',
   },
+  {
+    id: 'twitchlogs',
+    index: '03',
+    slug: 'twitch→logs',
+    title: 'Twitch Chat Logs',
+    mode: 'live',
+    blurb:
+      "Retrieve a user's Twitch chat history across indexed channels — latest, a random line, a specific archived month, or raw numeric ID. Reads the open rustlog API; runs entirely in your browser.",
+  },
+  {
+    id: 'miner',
+    index: '04',
+    slug: 'grim→miner',
+    title: 'Grim Miner Network',
+    mode: 'external',
+    blurb:
+      'Live dashboard for the grimnetwork mining node. Opens the realtime hashrate + payout panel in a new tab.',
+    href: 'http://grimnetwork.srvp.ro:5000/',
+  },
 ]
