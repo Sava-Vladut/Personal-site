@@ -77,9 +77,29 @@ function readOne(db, sql, params) {
   }
 }
 
+function readAll(db, sql, params = []) {
+  const stmt = db.prepare(sql)
+  const rows = []
+  try {
+    stmt.bind(params)
+    while (stmt.step()) rows.push(stmt.getAsObject())
+  } finally {
+    stmt.free()
+  }
+  return rows
+}
+
 const toAccount = (row) => ({
   username: row.username,
   isAdmin: Boolean(row.is_admin),
+})
+
+// Full row shape for the admin registry (never includes the password hash).
+const toUser = (row) => ({
+  id: row.id,
+  username: row.username,
+  isAdmin: Boolean(row.is_admin),
+  createdAt: row.created_at,
 })
 
 export async function createUser({ username, password, isAdmin = false }) {
@@ -116,4 +136,37 @@ export async function countUsers() {
   const db = await getDb()
   const row = readOne(db, 'SELECT COUNT(*) AS total FROM users', [])
   return row?.total ?? 0
+}
+
+// ── Admin registry ────────────────────────────────────────────────────
+export async function listUsers() {
+  const db = await getDb()
+  return readAll(
+    db,
+    'SELECT id, username, is_admin, created_at FROM users ORDER BY id',
+  ).map(toUser)
+}
+
+export async function deleteUser(id) {
+  const db = await getDb()
+  db.run('DELETE FROM users WHERE id = ?', [id])
+  persist(db)
+}
+
+export async function setUserAdmin(id, isAdmin) {
+  const db = await getDb()
+  db.run('UPDATE users SET is_admin = ? WHERE id = ?', [isAdmin ? 1 : 0, id])
+  persist(db)
+}
+
+export async function resetPassword(id, password) {
+  const db = await getDb()
+  const salt = makeSalt()
+  const passwordHash = await hashPassword(password, salt)
+  const result = db.run(
+    'UPDATE users SET password_hash = ?, salt = ? WHERE id = ?',
+    [passwordHash, salt, id],
+  )
+  persist(db)
+  return result
 }

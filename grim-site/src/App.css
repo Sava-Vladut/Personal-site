@@ -292,9 +292,14 @@ h2 {
   transform-origin: top left;
 }
 
-.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .login-intro, .login-form) {
+.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .login-intro, .login-form, .admin-status, .admin-card, .admin-board) {
   animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
 }
+
+.view-frame .admin-card:nth-child(2) { animation-delay: 45ms; }
+.view-frame .admin-card:nth-child(3) { animation-delay: 90ms; }
+.view-frame .admin-card:nth-child(4) { animation-delay: 135ms; }
+.view-frame .admin-board { animation-delay: 160ms; }
 
 .view-frame .login-form {
   animation-delay: 35ms;
@@ -1662,6 +1667,365 @@ h2 .title-cursor {
   align-items: center;
   gap: 8px;
   transition: color 150ms ease;
+}
+
+/* ── Admin dashboard (work in progress) ────────────────────────────── */
+.admin-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: calc(clamp(30px, 5vw, 76px) * -0.66) 0 clamp(26px, 4vw, 44px);
+  padding: 11px 16px;
+  border: 1px dashed var(--weak);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: clamp(0.72rem, 1vw, 0.9rem);
+}
+
+.admin-status-dot {
+  color: var(--fg);
+  animation: blink 1.4s steps(1) infinite;
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 1.4vw, 16px);
+  margin-bottom: clamp(16px, 2.4vw, 28px);
+}
+
+.admin-card {
+  display: grid;
+  gap: 10px;
+  padding: clamp(14px, 1.8vw, 22px);
+  border: 1px solid var(--weak);
+  transition: border-color var(--dur-2) var(--ease-out-quad), transform var(--dur-2) var(--ease-out-quart);
+}
+
+@media (hover: hover) {
+  .admin-card:hover {
+    border-color: var(--fg);
+    transform: translateY(-2px);
+  }
+}
+
+.admin-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+}
+
+.admin-card-value {
+  font-size: clamp(1.5rem, 2.6vw, 2.5rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.admin-card-meta {
+  color: var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.66rem;
+}
+
+.admin-board {
+  display: grid;
+  gap: clamp(8px, 1.4vw, 16px);
+}
+
+.admin-modules {
+  border: 1px solid var(--line);
+  border-top-width: 2px;
+}
+
+.admin-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px clamp(14px, 1.8vw, 20px);
+  border-bottom: 1px solid var(--weak);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+
+.admin-panel-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+}
+
+.admin-panel-head em {
+  font-style: normal;
+  color: var(--weak);
+}
+
+/* Add-operator form */
+.user-add {
+  padding: clamp(12px, 1.6vw, 18px) clamp(14px, 1.8vw, 20px);
+  border-bottom: 1px solid var(--weak);
+}
+
+.user-add-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-add-input {
+  padding: 0 12px;
+}
+
+.user-add-input .login-input {
+  padding: 10px 0;
+}
+
+.user-add-admin {
+  max-width: none;
+  font-size: 0.72rem;
+}
+
+.user-add-admin .auth-checkbox-box {
+  width: 1.4em;
+  height: 1.4em;
+}
+
+.user-add-submit {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.user-add-submit:disabled {
+  color: var(--weak);
+  border-color: var(--weak);
+  cursor: progress;
+}
+
+.user-add-submit:disabled span {
+  background: var(--weak);
+}
+
+/* Registry list */
+.user-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.user-empty {
+  padding: clamp(16px, 2.2vw, 24px) clamp(14px, 1.8vw, 20px);
+  color: var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+
+.user-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--weak) 40%, transparent);
+}
+
+.user-row:last-child {
+  border-bottom: 0;
+}
+
+.user-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 0.7fr) auto auto;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 18px);
+  padding: clamp(11px, 1.4vw, 15px) clamp(14px, 1.8vw, 20px);
+  transition: background-color var(--dur-2) var(--ease-out-quad);
+}
+
+@media (hover: hover) {
+  .user-row:hover .user-main {
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+  }
+}
+
+.user-id {
+  color: var(--weak);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+}
+
+.user-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.user-you {
+  font-style: normal;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--bg);
+  background: var(--fg);
+  padding: 1px 5px;
+}
+
+.user-role {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  color: var(--weak);
+}
+
+.user-role--admin {
+  color: var(--fg);
+}
+
+.user-date {
+  color: var(--weak);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.user-actions {
+  display: inline-flex;
+  gap: clamp(8px, 1vw, 14px);
+  justify-self: end;
+}
+
+.user-act {
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.user-act:hover,
+.user-act:focus-visible {
+  border-color: var(--fg);
+}
+
+.user-act--danger:hover,
+.user-act--danger:focus-visible {
+  color: var(--bg);
+  background: var(--fg);
+}
+
+.user-act:disabled {
+  color: var(--weak);
+  border-color: color-mix(in srgb, var(--weak) 50%, transparent);
+  cursor: not-allowed;
+}
+
+.user-act:disabled:hover {
+  color: var(--weak);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--weak) 50%, transparent);
+}
+
+/* Inline reset / delete-confirm rows */
+.user-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 clamp(14px, 1.8vw, 20px) clamp(12px, 1.6vw, 16px);
+}
+
+.user-inline--danger {
+  color: var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+}
+
+.user-confirm-text strong {
+  font-weight: 400;
+}
+
+.user-inline-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0 12px;
+}
+
+.user-inline-input .login-input {
+  padding: 10px 0;
+}
+
+.user-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px clamp(14px, 1.8vw, 20px);
+  color: var(--fg);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.82rem;
+  border-top: 1px solid var(--weak);
+}
+
+@media (max-width: 900px) {
+  .admin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-add-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .user-main {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    row-gap: 8px;
+  }
+
+  .user-date {
+    display: none;
+  }
+
+  .user-actions {
+    grid-column: 1 / -1;
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .user-add-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .user-main {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .user-role {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 /* Cross-link between the login and register panels. */

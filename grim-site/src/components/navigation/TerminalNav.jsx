@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpenText, ChevronDown, Code2, Contact, Home, LogIn, LogOut, Network, Wrench } from 'lucide-react'
+import { BookOpenText, ChevronDown, Code2, Contact, Home, LayoutDashboard, LogIn, LogOut, Network, Wrench } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { navItems } from '../../data/navigation.js'
 
@@ -9,6 +9,7 @@ const navIcons = {
   projects: Code2,
   services: Wrench,
   miner: Network,
+  admin: LayoutDashboard,
   contact: Contact,
 }
 

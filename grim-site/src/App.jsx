@@ -6,6 +6,7 @@ import { LoginSection } from './components/sections/LoginSection.jsx'
 import { RegisterSection } from './components/sections/RegisterSection.jsx'
 import { ProjectsSection } from './components/sections/ProjectsSection.jsx'
 import { ServicesSection } from './components/sections/ServicesSection.jsx'
+import { AdminSection } from './components/sections/AdminSection.jsx'
 import { GlyphField } from './components/common/GlyphField.jsx'
 import { TerminalNav } from './components/navigation/TerminalNav.jsx'
 import { StatusBar } from './components/navigation/StatusBar.jsx'
@@ -18,8 +19,9 @@ import './App.css'
 // 'login' and 'register' are reachable but live outside the main nav (hidden tabs).
 const knownViews = new Set([...navItems.map((item) => item.target), 'login', 'register'])
 
-// Tabs that only appear in the nav once the visitor is authenticated.
-const gatedTargets = new Set(['services', 'miner'])
+// Tabs reserved for admin accounts — hidden from the nav and unreachable by URL
+// for everyone else (services + miner converters, plus the admin dashboard).
+const adminTargets = new Set(['services', 'miner', 'admin'])
 
 const getViewFromHash = () => {
   const hash = window.location.hash.replace(/^#\/?/, '')
@@ -29,32 +31,36 @@ const getViewFromHash = () => {
 function App() {
   const [activeView, setActiveView] = useState(getViewFromHash)
   const { projects, status: projectStatus } = useGithubProjects()
-  const { isLoggedIn, signOut } = useAuth()
+  const { isLoggedIn, isAdmin, signOut } = useAuth()
 
-  // Services and Miner are gated tabs (see gatedTargets) — only shown logged in.
+  // Services, Miner and Admin are admin-only tabs (see adminTargets) — they only
+  // appear in the nav once an admin account is signed in.
   const visibleNavItems = useMemo(
-    () => navItems.filter((item) => !gatedTargets.has(item.target) || isLoggedIn),
-    [isLoggedIn],
+    () => navItems.filter((item) => !adminTargets.has(item.target) || isAdmin),
+    [isAdmin],
   )
 
   const showView = useCallback((target) => {
-    // Services is reachable only by authenticated users — route guests to login.
-    const destination = target === 'services' && !isLoggedIn ? 'login' : target
-    window.location.hash = `/${destination}`
-    setActiveView(destination)
+    window.location.hash = `/${target}`
+    setActiveView(target)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [isLoggedIn])
+  }, [])
 
   const handleLogout = useCallback(async () => {
     await signOut()
     showView('home')
   }, [signOut, showView])
 
-  // Keep the gated tab unreachable via direct URL / back button. Once logged in,
-  // bounce the login view straight to services.
+  // Enforce the admin gate on whatever view is requested. Non-admins are bounced
+  // off admin-only views — to login if they're a guest, otherwise home. Once
+  // authenticated, the login/register views resolve to a sensible landing.
   let effectiveView = activeView
-  if (activeView === 'services' && !isLoggedIn) effectiveView = 'login'
-  if ((activeView === 'login' || activeView === 'register') && isLoggedIn) effectiveView = 'services'
+  if (adminTargets.has(activeView) && !isAdmin) {
+    effectiveView = isLoggedIn ? 'home' : 'login'
+  }
+  if ((activeView === 'login' || activeView === 'register') && isLoggedIn) {
+    effectiveView = isAdmin ? 'admin' : 'home'
+  }
 
   useEffect(() => {
     const onHashChange = () => setActiveView(getViewFromHash())
@@ -91,15 +97,16 @@ function App() {
           {effectiveView === 'biography' && <BiographySection />}
           {effectiveView === 'projects' && <ProjectsSection projects={projects} status={projectStatus} />}
           {effectiveView === 'services' && <ServicesSection />}
+          {effectiveView === 'admin' && <AdminSection />}
           {effectiveView === 'login' && (
             <LoginSection
-              onAuthed={() => showView('services')}
+              onAuthed={() => showView('admin')}
               onRegister={() => showView('register')}
             />
           )}
           {effectiveView === 'register' && (
             <RegisterSection
-              onAuthed={() => showView('services')}
+              onAuthed={() => showView('admin')}
               onLogin={() => showView('login')}
             />
           )}
