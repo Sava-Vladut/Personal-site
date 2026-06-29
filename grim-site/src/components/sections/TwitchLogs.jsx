@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Maximize2, Minimize2 } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
+import { GLOBAL_BADGES, badgeImageUrl } from '../../data/twitchBadges.js'
 
 // Reads the open rustlog API hosted at logs.zonian.dev. CORS is wide-open so the
 // retrieval happens entirely client-side — nothing proxies through the backend.
@@ -79,6 +80,21 @@ async function loadThirdPartyEmotes(channelTwitchId) {
 }
 
 const EMPTY_EMOTES = new Map()
+const EMPTY_BADGES = {}
+
+// Channel-specific Twitch badges (custom sub tiers + bits) come from our backend's
+// Helix proxy (/api/twitch/channel-badges). Cached per room id; a missing/empty
+// response just means no channel overrides, so the global map + labels stand in.
+const channelBadgesCache = new Map() // room id -> Promise<{ set/ver: {url1x,url2x,title} }>
+const fetchChannelBadges = (roomId) => {
+  if (!roomId) return Promise.resolve(EMPTY_BADGES)
+  if (!channelBadgesCache.has(roomId)) {
+    const promise = fetchJson(`/api/twitch/channel-badges?broadcaster_id=${encodeURIComponent(roomId)}`)
+      .then((j) => (j && j.badges) || EMPTY_BADGES)
+    channelBadgesCache.set(roomId, promise)
+  }
+  return channelBadgesCache.get(roomId)
+}
 
 const MODES = [
   { id: 'latest', label: 'latest', note: 'newest stored month for this subject' },
@@ -88,6 +104,9 @@ const MODES = [
   { id: 'id', label: 'by id', note: 'bypass name lookup with raw numeric ids' },
 ]
 
+// Short text fallback, keyed by badge *set* (the part before the slash), used
+// only when a badge has no global image — e.g. a channel's custom subscriber
+// tiers, which aren't in the global badge map.
 const BADGE_LABELS = {
   broadcaster: 'host',
   moderator: 'mod',
@@ -103,9 +122,31 @@ const BADGE_LABELS = {
 
 const MONTHS = ['', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
-const badgesOf = (tagStr) =>
+// Parse the `badges` tag ("moderator/1,subscriber/12,bits/100") into render-ready
+// descriptors. A channel's own badge art (custom sub tiers / bits, fetched from
+// Helix via /api/twitch/channel-badges) wins; otherwise the baked-in global badge
+// map; otherwise a short text label by set (or skip it if even that is unknown).
+// `key` is unique per line, so it doubles as React key.
+const badgesOf = (tagStr, channelBadges = EMPTY_BADGES) =>
   (tagStr ? tagStr.split(',') : [])
-    .map((b) => BADGE_LABELS[b.split('/')[0]])
+    .map((entry) => {
+      const setId = entry.slice(0, entry.indexOf('/'))
+      const channel = channelBadges[entry]
+      if (channel) {
+        return { key: entry, src: channel.url1x, src2: channel.url2x, title: channel.title }
+      }
+      const global = GLOBAL_BADGES[entry]
+      if (global) {
+        return {
+          key: entry,
+          src: badgeImageUrl(global.id, 1),
+          src2: badgeImageUrl(global.id, 2),
+          title: global.title,
+        }
+      }
+      const label = BADGE_LABELS[setId]
+      return label ? { key: entry, label, title: setId } : null
+    })
     .filter(Boolean)
 
 // Rebuild a message into React nodes: Twitch emotes (from the emote tag) and 7TV
@@ -224,12 +265,12 @@ const PAGE_SIZE = 50
 
 // One log row. Memoized so appending more rows never re-renders existing ones —
 // the heavy work (date formatting + emote parsing) runs once per message and is
-// skipped on every subsequent scroll-load. Only changes to grep/emoteMap (which
-// affect every visible line) trigger a re-render.
-const LogLine = memo(function LogLine({ message, grep, emoteMap }) {
+// skipped on every subsequent scroll-load. Only changes to grep/emoteMap/badgeMap
+// (which affect every visible line) trigger a re-render.
+const LogLine = memo(function LogLine({ message, grep, emoteMap, badgeMap }) {
   const date = new Date(message.timestamp)
   const name = message.displayName || message.username || 'unknown'
-  const tags = badgesOf(message.tags && message.tags.badges)
+  const tags = badgesOf(message.tags && message.tags.badges, badgeMap)
   const { nodes, action } = renderMessage(message, grep, emoteMap)
   return (
     <div className="tlog-line">
@@ -237,11 +278,23 @@ const LogLine = memo(function LogLine({ message, grep, emoteMap }) {
         {fmtStamp(date)}
       </span>
       <span className="tlog-who">
-        {tags.map((t) => (
-          <span className="tlog-badge" key={t}>
-            {t}
-          </span>
-        ))}
+        {tags.map((b) =>
+          b.src ? (
+            <img
+              key={b.key}
+              className="tlog-badge-img"
+              src={b.src}
+              srcSet={`${b.src} 1x, ${b.src2} 2x`}
+              alt={b.title}
+              title={b.title}
+              loading="lazy"
+            />
+          ) : (
+            <span className="tlog-badge" key={b.key} title={b.title}>
+              {b.label}
+            </span>
+          ),
+        )}
         <span className="tlog-name">{name}</span>
       </span>
       <span className={`tlog-msg${action ? ' is-action' : ''}`}>{nodes}</span>
@@ -268,10 +321,29 @@ export function TwitchLogs() {
   const [error, setError] = useState('')
   const [messages, setMessages] = useState([])
   const [emoteMap, setEmoteMap] = useState(EMPTY_EMOTES)
+  const [badgeMap, setBadgeMap] = useState(EMPTY_BADGES)
   const [label, setLabel] = useState('')
   const feedRef = useRef(null)
+  const outputRef = useRef(null)
 
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0]
+
+  // Fullscreen the output panel via the native Fullscreen API so logs can be read
+  // edge-to-edge. Tracking `fullscreenchange` keeps the button label in sync even
+  // when the user exits with Esc or the browser chrome.
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === outputRef.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    } else if (outputRef.current) {
+      outputRef.current.requestFullscreen().catch(() => {})
+    }
+  }, [])
 
   const loadMonths = useCallback(async () => {
     const ch = channel.trim().toLowerCase()
@@ -356,6 +428,7 @@ export function TwitchLogs() {
       setLabel(target.label)
       setGrep('')
       setEmoteMap(EMPTY_EMOTES)
+      setBadgeMap(EMPTY_BADGES)
       try {
         const r = await fetch(target.url)
         if (r.status === 404) {
@@ -378,6 +451,10 @@ export function TwitchLogs() {
         if (roomId) {
           loadThirdPartyEmotes(roomId)
             .then((map) => setEmoteMap(map))
+            .catch(() => {})
+          // Channel-specific badges (custom sub tiers / bits) via the Helix proxy.
+          fetchChannelBadges(roomId)
+            .then((map) => setBadgeMap(map))
             .catch(() => {})
         }
       } catch (err) {
@@ -612,7 +689,7 @@ export function TwitchLogs() {
       </form>
 
       {status !== 'idle' && (
-        <div className="tlog-output">
+        <div className={`tlog-output${isFullscreen ? ' is-fullscreen' : ''}`} ref={outputRef}>
           <div className="tlog-status">
             <span className="tlog-subject">{label || '—'}</span>
             <span className="tlog-pill">{mode}</span>
@@ -638,6 +715,16 @@ export function TwitchLogs() {
                 />
               </span>
             )}
+            <button
+              type="button"
+              className="tlog-fs"
+              onClick={toggleFullscreen}
+              aria-pressed={isFullscreen}
+              title={isFullscreen ? 'Exit fullscreen' : 'View logs fullscreen'}
+            >
+              <TerminalIcon icon={isFullscreen ? Minimize2 : Maximize2} label="" />
+              {isFullscreen ? 'exit' : 'fullscreen'}
+            </button>
           </div>
 
           <div className="tlog-feed" ref={feedRef} role="status" aria-live="polite">
@@ -650,7 +737,13 @@ export function TwitchLogs() {
             )}
             {status === 'done' &&
               visible.map((m, i) => (
-                <LogLine key={m.id || i} message={m} grep={grepTrimmed} emoteMap={emoteMap} />
+                <LogLine
+                  key={m.id || i}
+                  message={m}
+                  grep={grepTrimmed}
+                  emoteMap={emoteMap}
+                  badgeMap={badgeMap}
+                />
               ))}
             {status === 'done' && hasMore && (
               <div className="tlog-more" ref={sentinelRef}>

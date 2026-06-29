@@ -1434,10 +1434,40 @@ h2 .title-cursor {
   border-color: var(--fg);
 }
 
+.tlog-fs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid var(--weak);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+}
+
+/* When grep is present it already claims the right edge; keep the button beside it. */
+.tlog-grep + .tlog-fs {
+  margin-left: 16px;
+}
+
 .tlog-feed {
   max-height: 52vh;
   overflow: auto;
   font-size: clamp(0.72rem, 0.95vw, 0.84rem);
+}
+
+/* Native fullscreen: the output panel fills the viewport, so paint a solid
+   backdrop and let the feed grow to use the height freed up by the chrome. */
+.tlog-output:fullscreen {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.tlog-output:fullscreen .tlog-feed {
+  max-height: none;
+  flex: 1;
 }
 
 .tlog-line {
@@ -1478,6 +1508,16 @@ h2 .title-cursor {
   letter-spacing: 0.06em;
   font-size: 0.56rem;
   color: var(--dim);
+}
+
+/* Real Twitch badge icon (global badges). Sized to sit inline with the name. */
+.tlog-badge-img {
+  align-self: center;
+  width: 1.05em;
+  height: 1.05em;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  vertical-align: middle;
 }
 
 .tlog-name {

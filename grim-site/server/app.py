@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 import auth
+import twitch
 
 BASE_DIR = Path(__file__).resolve().parent
 SERVICES_DIR = BASE_DIR.parent / "src" / "services"
@@ -116,7 +117,24 @@ def _file_response(path: Path, media_type: str, workdir: Path) -> FileResponse:
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True, "ffmpeg": shutil.which("ffmpeg") is not None}
+    return {
+        "ok": True,
+        "ffmpeg": shutil.which("ffmpeg") is not None,
+        "twitch": twitch.is_configured(),
+    }
+
+
+@app.get("/api/twitch/channel-badges")
+def channel_badges(broadcaster_id: str) -> dict:
+    """Channel-specific chat badges (custom sub tiers, bits) for a broadcaster id.
+
+    Returns an empty map when Twitch creds aren't configured or the id is invalid,
+    so the client simply falls back to global badges + text labels.
+    """
+    try:
+        return {"badges": twitch.channel_badges(broadcaster_id.strip())}
+    except Exception:  # noqa: BLE001 — a Helix hiccup shouldn't break the log view.
+        return {"badges": {}}
 
 
 # ── auth ───────────────────────────────────────────────────────────────
