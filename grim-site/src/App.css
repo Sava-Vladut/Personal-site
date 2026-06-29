@@ -1457,15 +1457,19 @@ h2 .title-cursor {
   font-size: clamp(0.72rem, 0.95vw, 0.84rem);
 }
 
-/* Native fullscreen: the output panel fills the viewport, so paint a solid
-   backdrop and let the feed grow to use the height freed up by the chrome. */
-.tlog-output:fullscreen {
+/* CSS "fullscreen": a fixed overlay filling the viewport so logs read edge-to-edge.
+   Toggled by the .is-fullscreen class (no native Fullscreen API), so exiting always
+   restores the normal in-flow panel cleanly. */
+.tlog-output.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   background: var(--bg);
   display: flex;
   flex-direction: column;
 }
 
-.tlog-output:fullscreen .tlog-feed {
+.tlog-output.is-fullscreen .tlog-feed {
   max-height: none;
   flex: 1;
 }

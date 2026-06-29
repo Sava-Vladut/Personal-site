@@ -324,26 +324,31 @@ export function TwitchLogs() {
   const [badgeMap, setBadgeMap] = useState(EMPTY_BADGES)
   const [label, setLabel] = useState('')
   const feedRef = useRef(null)
-  const outputRef = useRef(null)
 
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0]
 
-  // Fullscreen the output panel via the native Fullscreen API so logs can be read
-  // edge-to-edge. Tracking `fullscreenchange` keeps the button label in sync even
-  // when the user exits with Esc or the browser chrome.
+  // "Fullscreen" the output panel with a CSS overlay (position: fixed) rather than
+  // the native Fullscreen API — the native one leaves the panel stretched on exit
+  // (a repaint quirk, worsened by the content-visibility rows) and can't be styled
+  // to match. This is just a class toggle, so exiting always restores cleanly.
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+
+  // While the overlay is open, lock body scroll and let Esc close it (parity with
+  // the native behaviour the button replaces).
   useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === outputRef.current)
-    document.addEventListener('fullscreenchange', onChange)
-    return () => document.removeEventListener('fullscreenchange', onChange)
-  }, [])
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {})
-    } else if (outputRef.current) {
-      outputRef.current.requestFullscreen().catch(() => {})
+    if (!isFullscreen) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') setIsFullscreen(false)
     }
-  }, [])
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [isFullscreen])
 
   const loadMonths = useCallback(async () => {
     const ch = channel.trim().toLowerCase()
@@ -689,7 +694,7 @@ export function TwitchLogs() {
       </form>
 
       {status !== 'idle' && (
-        <div className={`tlog-output${isFullscreen ? ' is-fullscreen' : ''}`} ref={outputRef}>
+        <div className={`tlog-output${isFullscreen ? ' is-fullscreen' : ''}`}>
           <div className="tlog-status">
             <span className="tlog-subject">{label || '—'}</span>
             <span className="tlog-pill">{mode}</span>
