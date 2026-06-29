@@ -3,8 +3,8 @@ import { useEffect, useRef } from 'react'
 const CELL = 14
 const FONT = '12px "Courier New", "Lucida Console", monospace'
 const GLYPHS = '·:.+*/\\<>'
-const REST_ALPHA = 0.09
-const ACTIVE_ALPHA = 0.34
+const REST_ALPHA = 0.0675
+const ACTIVE_ALPHA = 0.255
 const CURSOR_RADIUS = 130
 const DECAY = 0.92
 const SCRAMBLE_CHANCE = 0.18

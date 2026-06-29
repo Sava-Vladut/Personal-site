@@ -12,11 +12,14 @@
   --ease-out-quart: cubic-bezier(.165, .84, .44, 1);
   --ease-in-out-cubic: cubic-bezier(.645, .045, .355, 1);
 
-  min-height: 100svh;
-  padding-bottom: 46px;
+  /* Locked to the viewport: a fixed-height flex column (nav / view / status)
+     so the page itself never scrolls. */
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
   color: var(--fg);
   background: var(--bg);
-  overflow-x: hidden;
+  overflow: hidden;
   transition:
     background-color var(--dur-3) var(--ease-in-out-cubic),
     color var(--dur-3) var(--ease-in-out-cubic);
@@ -32,7 +35,7 @@
 }
 
 .hero-shell {
-  min-height: calc(100svh - 46px);
+  min-height: 100%;
   padding-top: clamp(6px, 0.9vw, 14px);
   padding-bottom: clamp(14px, 2vw, 28px);
 }
@@ -248,9 +251,8 @@ h2 {
 }
 
 .status-bar {
-  position: fixed;
-  inset-inline: 0;
-  bottom: 0;
+  position: relative;
+  flex: 0 0 auto;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -284,7 +286,11 @@ h2 {
 .view-panel {
   position: relative;
   z-index: 1;
-  min-height: 62svh;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Fills the space between nav and status bar. Content is sized to fit, but
+     any overflow scrolls silently here (scrollbar chrome is hidden). */
+  overflow-y: auto;
 }
 
 .view-frame {
@@ -436,14 +442,14 @@ button[aria-current='page'] span {
 }
 
 .section {
-  padding-top: clamp(44px, 8vw, 120px);
-  padding-bottom: clamp(36px, 8vw, 110px);
+  padding-top: clamp(24px, 4vw, 56px);
+  padding-bottom: clamp(24px, 4vw, 56px);
 }
 
 h2 {
-  margin-bottom: clamp(30px, 5vw, 76px);
+  margin-bottom: clamp(20px, 3vw, 44px);
   font-family: "Courier New", "Lucida Console", monospace;
-  font-size: clamp(3rem, 6.6vw, 8.7rem);
+  font-size: clamp(2.6rem, 5.4vw, 6rem);
   font-weight: 400;
   line-height: 0.9;
   text-transform: uppercase;
@@ -519,7 +525,7 @@ h2 .title-cursor {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: calc(clamp(30px, 5vw, 76px) * -0.7) 0 clamp(24px, 4vw, 48px);
+  margin: calc(clamp(20px, 3vw, 44px) * -0.7) 0 clamp(20px, 4vw, 40px);
   color: var(--dim);
   text-transform: uppercase;
 }
@@ -659,7 +665,7 @@ h2 .title-cursor {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: calc(clamp(30px, 5vw, 76px) * -0.66) 0 clamp(26px, 4vw, 44px);
+  margin: calc(clamp(20px, 3vw, 44px) * -0.66) 0 clamp(22px, 4vw, 40px);
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2068,7 +2074,7 @@ h2 .title-cursor {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: calc(clamp(30px, 5vw, 76px) * -0.66) 0 clamp(26px, 4vw, 44px);
+  margin: calc(clamp(20px, 3vw, 44px) * -0.66) 0 clamp(22px, 4vw, 40px);
   padding: 11px 16px;
   border: 1px dashed var(--weak);
   color: var(--dim);

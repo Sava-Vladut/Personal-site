@@ -5,12 +5,12 @@ import { formatBytes } from '../../utils/format.js'
 
 const HEIC_PATTERN = /\.(heic|heif)$/i
 
-let heic2anyPromise = null
-const loadHeic2any = () => {
-  if (!heic2anyPromise) {
-    heic2anyPromise = import('heic2any').then((module) => module.default ?? module)
+let heicToPromise = null
+const loadHeicTo = () => {
+  if (!heicToPromise) {
+    heicToPromise = import('heic-to').then((module) => module.heicTo)
   }
-  return heic2anyPromise
+  return heicToPromise
 }
 
 let rowId = 0
@@ -56,11 +56,11 @@ export function HeicConverter() {
       setItems((current) => [...current, ...queued])
       setIsBusy(true)
 
-      const heic2any = await loadHeic2any()
+      const heicTo = await loadHeicTo()
 
       for (const entry of queued) {
         try {
-          const result = await heic2any({ blob: entry.file, toType: 'image/png' })
+          const result = await heicTo({ blob: entry.file, type: 'image/png' })
           const blob = Array.isArray(result) ? result[0] : result
           patchItem(entry.id, {
             status: 'ok',
