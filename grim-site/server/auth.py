@@ -56,6 +56,11 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 """
 
 _initialized = False
@@ -212,6 +217,24 @@ def reset_password(user_id: int, password: str) -> None:
         conn.execute(
             "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?",
             (_hash_password(password, salt), salt, user_id),
+        )
+
+
+# ── settings (generic key/value store) ─────────────────────────────────
+def get_setting(key: str, default: str | None = None) -> str | None:
+    _ensure_db()
+    with _connect() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(key: str, value: str) -> None:
+    _ensure_db()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
         )
 
 

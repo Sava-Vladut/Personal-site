@@ -236,6 +236,38 @@ def users_reset_password(
     return {"ok": True}
 
 
+# ── settings: Twitch credentials (admin) ───────────────────────────────
+class TwitchSettings(BaseModel):
+    clientId: str
+    # Omit / leave blank to keep the stored secret unchanged.
+    clientSecret: str | None = None
+
+
+def _twitch_settings_view() -> dict:
+    """Safe view of the Twitch creds — the secret value is never returned."""
+    return {
+        "clientId": auth.get_setting("twitch_client_id", "") or "",
+        "hasSecret": bool(auth.get_setting("twitch_client_secret", "")),
+        "configured": twitch.is_configured(),
+    }
+
+
+@app.get("/api/settings/twitch")
+def twitch_settings_get(_: dict = Depends(require_admin)) -> dict:
+    return _twitch_settings_view()
+
+
+@app.put("/api/settings/twitch")
+def twitch_settings_put(body: TwitchSettings, _: dict = Depends(require_admin)) -> dict:
+    auth.set_setting("twitch_client_id", body.clientId.strip())
+    # Only overwrite the secret when a new one is supplied, so an admin can edit
+    # the id (or re-save) without re-entering the secret each time.
+    if body.clientSecret and body.clientSecret.strip():
+        auth.set_setting("twitch_client_secret", body.clientSecret.strip())
+    twitch.invalidate()  # creds changed — drop cached token + badge maps.
+    return _twitch_settings_view()
+
+
 @app.post("/api/tiktok")
 def tiktok_download(request: TikTokRequest) -> FileResponse:
     url = request.url.strip()

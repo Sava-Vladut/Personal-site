@@ -58,8 +58,10 @@ Errors come back as JSON `{ "detail": "..." }` with a `4xx`/`5xx` status.
 | --------------- | ---------------- | ------------------------------------------------- |
 | `AUTH_DB_PATH`  | `/data/users.db` | SQLite file (mounted on the `auth_data` volume).  |
 | `COOKIE_SECURE` | `false`          | Set `true` in production (HTTPS) for a Secure cookie. |
-| `TWITCH_CLIENT_ID` | _(blank)_     | Twitch app client id for channel badges (see below). |
-| `TWITCH_CLIENT_SECRET` | _(blank)_ | Twitch app client secret.                         |
+
+Twitch credentials are **not** env vars — they're set through the Admin dashboard
+and stored in the DB (see below). `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` are
+still honoured as a fallback if you'd rather inject them, but nothing is required.
 
 ## Twitch badges (optional)
 
@@ -72,8 +74,9 @@ API Twitch app credentials so it can call Helix:
 
 1. Create an app at <https://dev.twitch.tv/console/apps> (any redirect URL — the
    client-credentials flow doesn't use it).
-2. Put the id/secret in `.env` (`TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`); the
-   compose files pass them through to the `api` container.
+2. Sign in as an admin, open the **Admin** tab, and paste the client id + secret
+   into the **Twitch integration** panel. They're stored in the DB (the secret is
+   never sent back to the browser) and take effect immediately.
 
 The server caches an app access token (refreshed on expiry/401) and each
 channel's badge map for an hour. With no credentials, `/api/twitch/channel-badges`

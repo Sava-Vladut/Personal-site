@@ -6,9 +6,10 @@ requires an app access token — a server-only secret. This module mints and
 caches that token (client-credentials flow) and serves a channel's badge map to
 the browser through /api/twitch/channel-badges.
 
-Set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET (a registered Twitch application)
-to enable it. Without them the endpoint just returns an empty map and the log
-view falls back to global badges + text labels.
+Credentials come from the settings store (set via the Admin dashboard), so they
+live in the DB rather than env files; TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET
+are still honoured as a fallback if present. Without credentials the endpoint
+returns an empty map and the log view falls back to global badges + text labels.
 """
 
 from __future__ import annotations
@@ -21,8 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID", "")
-CLIENT_SECRET = os.environ.get("TWITCH_CLIENT_SECRET", "")
+import auth
 
 TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 HELIX_CHANNEL_BADGES = "https://api.twitch.tv/helix/chat/badges"
@@ -38,8 +38,27 @@ _token_expiry = 0.0  # unix seconds; refresh a minute early
 _badge_cache: dict[str, tuple[float, dict]] = {}  # broadcaster_id -> (fetched_at, map)
 
 
+def _creds() -> tuple[str, str]:
+    """Current (client_id, client_secret): DB settings first, then env fallback."""
+    cid = auth.get_setting("twitch_client_id") or os.environ.get("TWITCH_CLIENT_ID", "")
+    secret = auth.get_setting("twitch_client_secret") or os.environ.get(
+        "TWITCH_CLIENT_SECRET", ""
+    )
+    return cid, secret
+
+
 def is_configured() -> bool:
-    return bool(CLIENT_ID and CLIENT_SECRET)
+    cid, secret = _creds()
+    return bool(cid and secret)
+
+
+def invalidate() -> None:
+    """Drop the cached token + per-channel badge maps (call when creds change)."""
+    global _token, _token_expiry
+    with _lock:
+        _token = None
+        _token_expiry = 0.0
+        _badge_cache.clear()
 
 
 # ── HTTP helpers (stdlib only — no extra dependency) ───────────────────
@@ -58,11 +77,12 @@ def _get_json(url: str, headers: dict) -> dict:
 
 # ── app access token (client-credentials) ─────────────────────────────
 def _fetch_token() -> str:
+    cid, secret = _creds()
     payload = _post_form(
         TOKEN_URL,
         {
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
+            "client_id": cid,
+            "client_secret": secret,
             "grant_type": "client_credentials",
         },
     )
@@ -102,7 +122,8 @@ def _fetch_channel_badges(broadcaster_id: str) -> dict:
     url = f"{HELIX_CHANNEL_BADGES}?broadcaster_id={urllib.parse.quote(broadcaster_id)}"
 
     def call(token: str) -> dict:
-        return _get_json(url, {"Client-Id": CLIENT_ID, "Authorization": f"Bearer {token}"})
+        cid, _ = _creds()
+        return _get_json(url, {"Client-Id": cid, "Authorization": f"Bearer {token}"})
 
     try:
         payload = call(_get_token())

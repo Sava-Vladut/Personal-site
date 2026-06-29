@@ -3,6 +3,7 @@ import { Construction, Cpu, Network, Server, Users } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
 import { UserManager } from './UserManager.jsx'
+import { TwitchSettings } from './TwitchSettings.jsx'
 import { useAuth } from '../../auth/context.js'
 import { listUsers } from '../../lib/authApi.js'
 import { services } from '../../data/services.js'
@@ -84,6 +85,7 @@ export function AdminSection() {
           currentUsername={user?.username}
           onChange={loadUsers}
         />
+        <TwitchSettings />
       </div>
     </section>
   )

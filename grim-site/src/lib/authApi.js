@@ -58,3 +58,10 @@ export const setUserAdmin = (id, isAdmin) =>
 
 export const resetPassword = (id, password) =>
   request(`/users/${id}/password`, { method: 'POST', body: { password } })
+
+// ── settings: Twitch credentials (admin) ──────────────────────────────────
+export const getTwitchSettings = () => request('/settings/twitch')
+
+// clientSecret may be omitted/blank to keep the stored secret unchanged.
+export const saveTwitchSettings = ({ clientId, clientSecret }) =>
+  request('/settings/twitch', { method: 'PUT', body: { clientId, clientSecret } })

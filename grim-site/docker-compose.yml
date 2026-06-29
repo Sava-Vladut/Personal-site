@@ -14,11 +14,10 @@ services:
     restart: unless-stopped
     environment:
       # Account DB lives on the mounted volume; cookies are Secure behind Caddy's HTTPS.
+      # Twitch Helix creds for channel badges are set via the Admin dashboard (stored
+      # in the DB), so no secrets live here.
       AUTH_DB_PATH: /data/users.db
       COOKIE_SECURE: "true"
-      # Twitch Helix creds for channel-specific chat badges (optional — blank = off).
-      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
-      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
     volumes:
       - auth_data:/data
     # Reached only through the site's nginx /api proxy, so no published ports.

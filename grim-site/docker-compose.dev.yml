@@ -29,8 +29,6 @@ services:
     restart: unless-stopped
     environment:
       AUTH_DB_PATH: /data/users.db
-      TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID:-}
-      TWITCH_CLIENT_SECRET: ${TWITCH_CLIENT_SECRET:-}
     volumes:
       - auth_data_dev:/data
     expose:

@@ -2425,6 +2425,26 @@ h2 .title-cursor {
   border-top: 1px solid var(--weak);
 }
 
+/* Twitch integration panel (admin) */
+.twitch-state--on {
+  color: var(--fg);
+}
+
+.twitch-state--off {
+  color: var(--weak);
+}
+
+.twitch-hint {
+  padding: 10px clamp(14px, 1.8vw, 20px) 0;
+  color: var(--dim);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.twitch-hint-url {
+  color: var(--fg);
+}
+
 @media (max-width: 900px) {
   .admin-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
