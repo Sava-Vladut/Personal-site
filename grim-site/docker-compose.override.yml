@@ -8,3 +8,9 @@ services:
   site:
     ports:
       - "8088:80"
+
+  api:
+    # This stack is reached over plain http://localhost:8088, where a Secure
+    # cookie would never be returned — so disable it for local runs.
+    environment:
+      COOKIE_SECURE: "false"

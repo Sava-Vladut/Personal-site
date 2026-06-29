@@ -1,48 +1,49 @@
-import { useMemo, useState } from 'react'
-import { createUser, verifyUser } from '../lib/db.js'
+import { useEffect, useMemo, useState } from 'react'
+import * as authApi from '../lib/authApi.js'
 import { AuthContext } from './context.js'
 
-// The signed-in account is mirrored here so a reload restores the session
-// without re-reading the SQLite blob on every paint.
-const SESSION_KEY = 'grim.auth.session'
-
-function readSession() {
-  const raw = localStorage.getItem(SESSION_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
+// The session lives in an httpOnly cookie the server owns, so on mount we ask
+// the backend who we are (GET /api/auth/me) rather than reading any local copy.
 export function AuthProvider({ children }) {
-  // localStorage is synchronous, so the persisted session is restored on the
-  // first render — no loading flash before an existing session resolves.
-  const [user, setUser] = useState(readSession)
-  const loading = false
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const value = useMemo(() => {
-    const remember = (account) => {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(account))
-      setUser(account)
-      return account
+  useEffect(() => {
+    let active = true
+    authApi.fetchSession().then((account) => {
+      if (active) {
+        setUser(account)
+        setLoading(false)
+      }
+    })
+    return () => {
+      active = false
     }
+  }, [])
 
-    return {
+  const value = useMemo(
+    () => ({
       user,
       isLoggedIn: Boolean(user),
       isAdmin: Boolean(user?.isAdmin),
       loading,
-      signIn: async (username, password) => remember(await verifyUser({ username, password })),
-      signUp: async (username, password, isAdmin) =>
-        remember(await createUser({ username, password, isAdmin })),
+      signIn: async (username, password) => {
+        const account = await authApi.login(username, password)
+        setUser(account)
+        return account
+      },
+      signUp: async (username, password) => {
+        const account = await authApi.register(username, password)
+        setUser(account)
+        return account
+      },
       signOut: async () => {
-        localStorage.removeItem(SESSION_KEY)
+        await authApi.logout()
         setUser(null)
       },
-    }
-  }, [user, loading])
+    }),
+    [user, loading],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

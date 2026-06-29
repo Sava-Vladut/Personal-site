@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Dices, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 
 // Reads the open rustlog API hosted at logs.zonian.dev. CORS is wide-open so the
@@ -7,53 +7,82 @@ import { TerminalIcon } from '../common/TerminalIcon.jsx'
 const API = 'https://logs.zonian.dev'
 const emoteUrl = (id) => `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/1.0`
 
-// 7TV emotes are plain words in the message text (not in Twitch's emote tag), so
-// they're resolved per-channel from the 7TV API and matched by exact word.
+// Third-party emotes (7TV + BetterTTV) are plain words in the message text — not in
+// Twitch's emote tag — so they're resolved per-channel from each provider's API and
+// matched by exact word. Each map entry carries its own CDN url + label, so providers
+// with different url schemes merge cleanly into one name -> emote map.
 const SEVENTV = 'https://7tv.io/v3'
 const seventvUrl = (id) => `https://cdn.7tv.app/emote/${id}/1x.webp`
+const BTTV = 'https://api.betterttv.net/3'
+const bttvUrl = (id) => `https://cdn.betterttv.net/emote/${id}/1x.webp`
 
-const sevenSetToPairs = (emotes) => (emotes || []).map((e) => [e.name, e.id])
+const sevenToPairs = (emotes) =>
+  (emotes || []).map((e) => [e.name, { src: seventvUrl(e.id), title: `${e.name} · 7TV` }])
+const bttvToPairs = (emotes) =>
+  (emotes || []).map((e) => [e.code, { src: bttvUrl(e.id), title: `${e.code} · BTTV` }])
 
-let globalEmotesPromise = null
-const fetchGlobalEmotes = () => {
-  if (!globalEmotesPromise) {
-    globalEmotesPromise = fetch(`${SEVENTV}/emote-sets/global`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => sevenSetToPairs(j && j.emotes))
-      .catch(() => {
-        globalEmotesPromise = null
-        return []
-      })
+// Fetch JSON, swallowing any network/parse error into null so a provider being down
+// just contributes no emotes rather than breaking the whole render.
+const fetchJson = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+
+// Globals are fetched once and cached; a failed fetch resets the cache so it retries.
+let sevenGlobalPromise = null
+const fetchSevenGlobal = () => {
+  if (!sevenGlobalPromise) {
+    sevenGlobalPromise = fetchJson(`${SEVENTV}/emote-sets/global`).then((j) => {
+      const pairs = sevenToPairs(j && j.emotes)
+      if (pairs.length === 0) sevenGlobalPromise = null
+      return pairs
+    })
   }
-  return globalEmotesPromise
+  return sevenGlobalPromise
 }
 
-const channelEmotesCache = new Map() // twitch channel id -> Promise<[name, id][]>
+let bttvGlobalPromise = null
+const fetchBttvGlobal = () => {
+  if (!bttvGlobalPromise) {
+    bttvGlobalPromise = fetchJson(`${BTTV}/cached/emotes/global`).then((j) => {
+      const pairs = bttvToPairs(j)
+      if (pairs.length === 0) bttvGlobalPromise = null
+      return pairs
+    })
+  }
+  return bttvGlobalPromise
+}
+
+const channelEmotesCache = new Map() // twitch channel id -> Promise<[name, entry][]>
 const fetchChannelEmotes = (channelTwitchId) => {
   if (!channelTwitchId) return Promise.resolve([])
   if (!channelEmotesCache.has(channelTwitchId)) {
-    const promise = fetch(`${SEVENTV}/users/twitch/${channelTwitchId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => sevenSetToPairs(j && j.emote_set && j.emote_set.emotes))
-      .catch(() => [])
+    const promise = Promise.all([
+      fetchJson(`${SEVENTV}/users/twitch/${channelTwitchId}`).then((j) =>
+        sevenToPairs(j && j.emote_set && j.emote_set.emotes),
+      ),
+      fetchJson(`${BTTV}/cached/users/twitch/${channelTwitchId}`).then((j) =>
+        bttvToPairs(j && [...(j.channelEmotes || []), ...(j.sharedEmotes || [])]),
+      ),
+    ]).then(([seven, bttv]) => [...bttv, ...seven]) // 7TV wins on a name clash
     channelEmotesCache.set(channelTwitchId, promise)
   }
   return channelEmotesCache.get(channelTwitchId)
 }
 
-// Build a name -> emote-id map for a channel; channel emotes override globals.
-async function loadSeventvEmotes(channelTwitchId) {
-  const [globals, channel] = await Promise.all([
-    fetchGlobalEmotes(),
+// Build a name -> emote map for a channel; channel emotes override globals, and
+// within a tier 7TV overrides BTTV when both define the same word.
+async function loadThirdPartyEmotes(channelTwitchId) {
+  const [bttvGlobal, sevenGlobal, channel] = await Promise.all([
+    fetchBttvGlobal(),
+    fetchSevenGlobal(),
     fetchChannelEmotes(channelTwitchId),
   ])
-  return new Map([...globals, ...channel])
+  return new Map([...bttvGlobal, ...sevenGlobal, ...channel])
 }
 
 const EMPTY_EMOTES = new Map()
 
 const MODES = [
   { id: 'latest', label: 'latest', note: 'newest stored month for this subject' },
+  { id: 'channel', label: 'channel', note: "entire channel's chat — blank day = latest stored" },
   { id: 'random', label: 'random', note: 'one random line — re-run for another' },
   { id: 'month', label: 'by month', note: 'pick an exact archived YYYY / MM' },
   { id: 'id', label: 'by id', note: 'bypass name lookup with raw numeric ids' },
@@ -73,20 +102,6 @@ const BADGE_LABELS = {
 }
 
 const MONTHS = ['', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-
-// A handful of known-indexed channels used purely as autocomplete hints and for
-// the "random subject" button. The full /channels index is ~265k entries (11 MB),
-// so we deliberately do NOT download it — you just type the channel you want.
-const EXAMPLE_CHANNELS = [
-  'jacksepticeye',
-  'martincitopants',
-  'alveussanctuary',
-  'hbomberguy',
-  'darkosto',
-  'codingtrainchoochoo',
-  'thebacklogs',
-  'bringusstudios',
-]
 
 const badgesOf = (tagStr) =>
   (tagStr ? tagStr.split(',') : [])
@@ -143,7 +158,7 @@ function renderMessage(message, grep, emoteMap) {
   return { nodes, action }
 }
 
-// A run of plain text (no Twitch emotes): swap whole words that are 7TV emotes
+// A run of plain text (no Twitch emotes): swap whole words that are 7TV/BTTV emotes
 // for images, and highlight grep matches in whatever text remains.
 function renderTextRun(text, grep, emoteMap, keyBase) {
   if (!emoteMap || emoteMap.size === 0) return highlight(text, grep, keyBase)
@@ -151,15 +166,15 @@ function renderTextRun(text, grep, emoteMap, keyBase) {
   const tokens = text.split(/(\s+)/)
   const out = []
   tokens.forEach((tok, idx) => {
-    const id = tok && emoteMap.get(tok)
-    if (id) {
+    const emote = tok && emoteMap.get(tok)
+    if (emote) {
       out.push(
         <img
           key={`${keyBase}s${idx}`}
-          className="tlog-emote tlog-emote--7tv"
-          src={seventvUrl(id)}
+          className="tlog-emote tlog-emote--3p"
+          src={emote.src}
           alt={tok}
-          title={`${tok} · 7TV`}
+          title={emote.title}
           loading="lazy"
         />,
       )
@@ -247,6 +262,7 @@ export function TwitchLogs() {
   const [months, setMonths] = useState([])
   const [month, setMonth] = useState('')
   const [monthState, setMonthState] = useState('idle') // idle | loading | empty | ready
+  const [day, setDay] = useState('') // 'YYYY-MM-DD' for whole-channel mode; blank = latest
 
   const [status, setStatus] = useState('idle') // idle | loading | error | done
   const [error, setError] = useState('')
@@ -298,6 +314,17 @@ export function TwitchLogs() {
       }
     }
 
+    if (mode === 'channel') {
+      const ch = channel.trim().toLowerCase()
+      if (!ch) throw new Error('Enter a channel.')
+      const base = `${API}/channel/${encodeURIComponent(ch)}`
+      if (day) {
+        const [y, m, d] = day.split('-')
+        return { url: `${base}/${y}/${Number(m)}/${Number(d)}?${params}`, label: `#${ch} · ${day}` }
+      }
+      return { url: `${base}?${params}`, label: `#${ch} · latest day` }
+    }
+
     const ch = channel.trim().toLowerCase()
     const us = user.trim().toLowerCase()
     if (!ch || !us) throw new Error('Enter both a channel and a subject username.')
@@ -310,7 +337,7 @@ export function TwitchLogs() {
       return { url: `${base}/${month}?${params}`, label: `${niceLabel} · ${month}` }
     }
     return { url: `${base}?${params}`, label: niceLabel }
-  }, [mode, limit, reverse, channelId, userId, channel, user, month])
+  }, [mode, limit, reverse, channelId, userId, channel, user, month, day])
 
   const retrieve = useCallback(
     async (event) => {
@@ -344,12 +371,12 @@ export function TwitchLogs() {
         setStatus('done')
         if (feedRef.current) feedRef.current.scrollTop = 0
 
-        // Resolve 7TV emotes for this channel and re-render once they arrive.
+        // Resolve 7TV + BTTV emotes for this channel and re-render once they arrive.
         // room-id is on every message; fall back to the entered channel id.
         const roomId =
           (mode === 'id' && channelId.trim()) || (msgs[0] && msgs[0].tags && msgs[0].tags['room-id'])
         if (roomId) {
-          loadSeventvEmotes(roomId)
+          loadThirdPartyEmotes(roomId)
             .then((map) => setEmoteMap(map))
             .catch(() => {})
         }
@@ -361,13 +388,6 @@ export function TwitchLogs() {
     },
     [buildTarget, mode, channelId],
   )
-
-  const randomSubject = useCallback(() => {
-    const pick = EXAMPLE_CHANNELS[Math.floor(Math.random() * EXAMPLE_CHANNELS.length)]
-    setMode('latest')
-    setChannel(pick)
-    setUser(pick)
-  }, [])
 
   const filtered = useMemo(() => {
     const needle = grep.trim().toLowerCase()
@@ -471,15 +491,39 @@ export function TwitchLogs() {
               />
             </label>
           </div>
-        ) : (
+        ) : mode === 'channel' ? (
           <div className="tlog-fields">
             <label className="tlog-field">
+              <span className="tlog-label">channel</span>
+              <input
+                className="tlog-input"
+                placeholder="jacksepticeye"
+                value={channel}
+                spellCheck="false"
+                autoCapitalize="off"
+                autoCorrect="off"
+                onChange={(e) => setChannel(e.target.value)}
+              />
+            </label>
+            <label className="tlog-field">
               <span className="tlog-label">
-                channel <em>type any indexed channel</em>
+                day <em>blank = latest stored</em>
               </span>
               <input
                 className="tlog-input"
-                list="tlog-channels"
+                type="date"
+                value={day}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDay(e.target.value)}
+              />
+            </label>
+          </div>
+        ) : (
+          <div className="tlog-fields">
+            <label className="tlog-field">
+              <span className="tlog-label">channel</span>
+              <input
+                className="tlog-input"
                 placeholder="jacksepticeye"
                 value={channel}
                 spellCheck="false"
@@ -490,11 +534,6 @@ export function TwitchLogs() {
                   setMonthState('idle')
                 }}
               />
-              <datalist id="tlog-channels">
-                {EXAMPLE_CHANNELS.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
             </label>
             <label className="tlog-field">
               <span className="tlog-label">subject username</span>
@@ -568,10 +607,6 @@ export function TwitchLogs() {
           <button type="submit" className="tlog-run" disabled={status === 'loading'}>
             <TerminalIcon icon={Search} label="" />
             {status === 'loading' ? 'accessing…' : 'retrieve'}
-          </button>
-          <button type="button" className="tlog-ghost tlog-shuffle" onClick={randomSubject}>
-            <TerminalIcon icon={Dices} label="" />
-            random subject
           </button>
         </div>
       </form>

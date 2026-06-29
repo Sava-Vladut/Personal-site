@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyRound, ShieldAlert, ShieldCheck, UserPlus } from 'lucide-react'
+import { KeyRound, ShieldAlert, UserPlus } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { SectionTitle } from '../common/SectionTitle.jsx'
 import { useAuth } from '../../auth/context.js'
@@ -9,7 +9,6 @@ export function RegisterSection({ onAuthed, onLogin }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [isAdmin, setIsAdmin] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -34,7 +33,7 @@ export function RegisterSection({ onAuthed, onLogin }) {
 
     setBusy(true)
     try {
-      await signUp(name, password, isAdmin)
+      await signUp(name, password)
       setPassword('')
       setConfirm('')
       onAuthed?.()
@@ -100,21 +99,6 @@ export function RegisterSection({ onAuthed, onLogin }) {
             onChange={(event) => setConfirm(event.target.value)}
             required
           />
-        </label>
-
-        <label className="auth-checkbox">
-          <input
-            type="checkbox"
-            checked={isAdmin}
-            onChange={(event) => setIsAdmin(event.target.checked)}
-          />
-          <span className="auth-checkbox-box" aria-hidden="true">
-            {isAdmin ? '×' : ' '}
-          </span>
-          <span className="auth-checkbox-label">
-            <TerminalIcon icon={ShieldCheck} label="" />
-            grant admin privileges
-          </span>
         </label>
 
         {error && (

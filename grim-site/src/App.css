@@ -1280,6 +1280,12 @@ h2 .title-cursor {
   color: var(--weak);
 }
 
+/* Render the native date picker (calendar icon, dropdown) light-on-dark so it
+   matches the terminal theme instead of showing a black icon on a black field. */
+.tlog-input[type='date'] {
+  color-scheme: dark;
+}
+
 .tlog-input:focus,
 .tlog-select:focus {
   outline: 0;
@@ -1369,10 +1375,6 @@ h2 .title-cursor {
   border: 1px solid var(--weak);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.tlog-shuffle {
-  gap: 8px;
 }
 
 /* output */

@@ -33,7 +33,7 @@ export const services = [
     title: 'Twitch Chat Logs',
     mode: 'live',
     blurb:
-      "Retrieve a user's Twitch chat history across indexed channels — latest, a random line, a specific archived month, or raw numeric ID. Reads the open rustlog API; runs entirely in your browser.",
+      "Retrieve Twitch chat history from indexed channels — a single user's logs (latest, a random line, an archived month, or raw numeric ID) or an entire channel's chat for a given day. Reads the open rustlog API; runs entirely in your browser.",
   },
   {
     id: 'miner',

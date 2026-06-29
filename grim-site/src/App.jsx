@@ -32,7 +32,7 @@ const getViewFromHash = () => {
 function App() {
   const [activeView, setActiveView] = useState(getViewFromHash)
   const { projects, status: projectStatus } = useGithubProjects()
-  const { isLoggedIn, isAdmin, signOut } = useAuth()
+  const { isLoggedIn, isAdmin, loading, signOut } = useAuth()
 
   // Services and Admin are admin-only tabs (see adminTargets) — they only
   // appear in the nav once an admin account is signed in.
@@ -70,12 +70,13 @@ function App() {
   }, [])
 
   // Normalise the URL when it points at a gated view (no state set here — the
-  // hashchange listener picks up the corrected hash).
+  // hashchange listener picks up the corrected hash). Held off until the session
+  // has resolved so a refresh on a gated view doesn't bounce a returning admin.
   useEffect(() => {
-    if (activeView !== effectiveView) {
+    if (!loading && activeView !== effectiveView) {
       window.location.hash = `/${effectiveView}`
     }
-  }, [activeView, effectiveView])
+  }, [loading, activeView, effectiveView])
 
   useEffect(() => {
     document.title = `${profile.firstName} ${profile.lastName} — ~/${effectiveView}`
@@ -93,6 +94,11 @@ function App() {
         onLogout={handleLogout}
       />
       <div className="view-panel" aria-live="polite">
+        {loading ? (
+          <div className="view-frame" data-view="booting">
+            <p className="login-intro">restoring session…</p>
+          </div>
+        ) : (
         <div className="view-frame" data-view={effectiveView} key={effectiveView}>
           {effectiveView === 'home' && <HeroSection />}
           {effectiveView === 'biography' && <BiographySection />}
@@ -113,6 +119,7 @@ function App() {
           )}
           {effectiveView === 'contact' && <ContactSection />}
         </div>
+        )}
       </div>
       <StatusBar activeView={effectiveView} />
       <div className="crt-overlay" aria-hidden="true" />

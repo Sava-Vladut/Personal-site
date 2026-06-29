@@ -16,13 +16,13 @@ import {
   deleteUser,
   resetPassword,
   setUserAdmin,
-} from '../../lib/db.js'
+} from '../../lib/authApi.js'
 
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '—')
 
 // Admin-only operator registry: list every account and add / reset / delete /
-// promote them. All mutations hit the in-browser SQLite store, then call
-// onChange() so the parent reloads the canonical list.
+// promote them. All mutations hit the server auth API, then call onChange() so
+// the parent reloads the canonical list.
 export function UserManager({ users, currentUsername, onChange }) {
   // New-operator form.
   const [name, setName] = useState('')

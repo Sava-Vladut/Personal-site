@@ -11,15 +11,18 @@ The HEIC converter stays client-side and is not handled here.
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
+
+import auth
 
 BASE_DIR = Path(__file__).resolve().parent
 SERVICES_DIR = BASE_DIR.parent / "src" / "services"
@@ -40,8 +43,15 @@ tiktok_service = _load_module("tiktok_service", "tiktok/tiktok_convert.py")
 
 app = FastAPI(title="grim services api")
 
-# Vite proxies /api during dev so this is same-origin, but keep CORS open for
-# direct calls and make the download filename header readable to JS.
+
+@app.on_event("startup")
+def _startup() -> None:
+    auth.init_db()
+
+
+# Same-origin via the Vite/nginx /api proxy, so credentialed cookies work
+# without a permissive CORS policy. allow_credentials with a wildcard origin is
+# invalid, so we don't echo arbitrary origins here.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -49,6 +59,36 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
+
+# Set COOKIE_SECURE=true in production (behind HTTPS via Caddy). Left false by
+# default so the cookie still works over plain http during local dev.
+_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        auth.COOKIE_NAME,
+        token,
+        max_age=auth.SESSION_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=_COOKIE_SECURE,
+        path="/",
+    )
+
+
+def current_account(grim_session: str | None = Cookie(default=None)) -> dict:
+    """Resolve the session cookie to an account or reject with 401."""
+    account = auth.account_for_token(grim_session)
+    if account is None:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    return account
+
+
+def require_admin(account: dict = Depends(current_account)) -> dict:
+    if not account["isAdmin"]:
+        raise HTTPException(status_code=403, detail="Admin privileges required.")
+    return account
 
 
 class TikTokRequest(BaseModel):
@@ -77,6 +117,105 @@ def _file_response(path: Path, media_type: str, workdir: Path) -> FileResponse:
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "ffmpeg": shutil.which("ffmpeg") is not None}
+
+
+# ── auth ───────────────────────────────────────────────────────────────
+class Credentials(BaseModel):
+    username: str
+    password: str
+
+
+class NewUser(BaseModel):
+    username: str
+    password: str
+    isAdmin: bool = False
+
+
+class AdminFlag(BaseModel):
+    isAdmin: bool
+
+
+class NewPassword(BaseModel):
+    password: str
+
+
+def _auth_call(fn, *args):
+    """Run an auth.py operation, mapping its AuthError to an HTTP error."""
+    try:
+        return fn(*args)
+    except auth.AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@app.post("/api/auth/register")
+def auth_register(body: Credentials, response: Response) -> dict:
+    account = _auth_call(auth.register, body.username, body.password)
+    _set_session_cookie(response, auth.open_session(account["username"]))
+    return account
+
+
+@app.post("/api/auth/login")
+def auth_login(body: Credentials, response: Response) -> dict:
+    account = _auth_call(auth.verify, body.username, body.password)
+    _set_session_cookie(response, auth.open_session(account["username"]))
+    return account
+
+
+@app.post("/api/auth/logout")
+def auth_logout(
+    response: Response, grim_session: str | None = Cookie(default=None)
+) -> dict:
+    auth.close_session(grim_session)
+    response.delete_cookie(auth.COOKIE_NAME, path="/")
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def auth_me(account: dict = Depends(current_account)) -> dict:
+    return account
+
+
+# ── admin registry ─────────────────────────────────────────────────────
+@app.get("/api/users")
+def users_list(_: dict = Depends(require_admin)) -> list[dict]:
+    return auth.list_users()
+
+
+@app.post("/api/users")
+def users_create(body: NewUser, _: dict = Depends(require_admin)) -> dict:
+    return _auth_call(auth.create_user, body.username, body.password, body.isAdmin)
+
+
+def _guard_not_self(user_id: int, admin: dict, action: str) -> None:
+    """Block an admin from deleting/demoting their own account (avoids lockout)."""
+    target = next((u for u in auth.list_users() if u["id"] == user_id), None)
+    if target and target["username"].lower() == admin["username"].lower():
+        raise HTTPException(status_code=400, detail=f"You cannot {action} your own account.")
+
+
+@app.delete("/api/users/{user_id}")
+def users_delete(user_id: int, admin: dict = Depends(require_admin)) -> dict:
+    _guard_not_self(user_id, admin, "delete")
+    auth.delete_user(user_id)
+    return {"ok": True}
+
+
+@app.patch("/api/users/{user_id}/admin")
+def users_set_admin(
+    user_id: int, body: AdminFlag, admin: dict = Depends(require_admin)
+) -> dict:
+    if not body.isAdmin:
+        _guard_not_self(user_id, admin, "demote")
+    auth.set_admin(user_id, body.isAdmin)
+    return {"ok": True}
+
+
+@app.post("/api/users/{user_id}/password")
+def users_reset_password(
+    user_id: int, body: NewPassword, _: dict = Depends(require_admin)
+) -> dict:
+    _auth_call(auth.reset_password, user_id, body.password)
+    return {"ok": True}
 
 
 @app.post("/api/tiktok")
