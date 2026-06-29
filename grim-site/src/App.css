@@ -1434,44 +1434,10 @@ h2 .title-cursor {
   border-color: var(--fg);
 }
 
-.tlog-fs {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  padding: 5px 10px;
-  border: 1px solid var(--weak);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.68rem;
-}
-
-/* When grep is present it already claims the right edge; keep the button beside it. */
-.tlog-grep + .tlog-fs {
-  margin-left: 16px;
-}
-
 .tlog-feed {
   max-height: 52vh;
   overflow: auto;
   font-size: clamp(0.72rem, 0.95vw, 0.84rem);
-}
-
-/* CSS "fullscreen": a fixed overlay filling the viewport so logs read edge-to-edge.
-   Toggled by the .is-fullscreen class (no native Fullscreen API), so exiting always
-   restores the normal in-flow panel cleanly. */
-.tlog-output.is-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
-}
-
-.tlog-output.is-fullscreen .tlog-feed {
-  max-height: none;
-  flex: 1;
 }
 
 .tlog-line {

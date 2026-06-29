@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Maximize2, Minimize2 } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { GLOBAL_BADGES, badgeImageUrl } from '../../data/twitchBadges.js'
 
@@ -326,29 +326,6 @@ export function TwitchLogs() {
   const feedRef = useRef(null)
 
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0]
-
-  // "Fullscreen" the output panel with a CSS overlay (position: fixed) rather than
-  // the native Fullscreen API — the native one leaves the panel stretched on exit
-  // (a repaint quirk, worsened by the content-visibility rows) and can't be styled
-  // to match. This is just a class toggle, so exiting always restores cleanly.
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
-
-  // While the overlay is open, lock body scroll and let Esc close it (parity with
-  // the native behaviour the button replaces).
-  useEffect(() => {
-    if (!isFullscreen) return undefined
-    const onKey = (e) => {
-      if (e.key === 'Escape') setIsFullscreen(false)
-    }
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prevOverflow
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [isFullscreen])
 
   const loadMonths = useCallback(async () => {
     const ch = channel.trim().toLowerCase()
@@ -694,7 +671,7 @@ export function TwitchLogs() {
       </form>
 
       {status !== 'idle' && (
-        <div className={`tlog-output${isFullscreen ? ' is-fullscreen' : ''}`}>
+        <div className="tlog-output">
           <div className="tlog-status">
             <span className="tlog-subject">{label || '—'}</span>
             <span className="tlog-pill">{mode}</span>
@@ -720,16 +697,6 @@ export function TwitchLogs() {
                 />
               </span>
             )}
-            <button
-              type="button"
-              className="tlog-fs"
-              onClick={toggleFullscreen}
-              aria-pressed={isFullscreen}
-              title={isFullscreen ? 'Exit fullscreen' : 'View logs fullscreen'}
-            >
-              <TerminalIcon icon={isFullscreen ? Minimize2 : Maximize2} label="" />
-              {isFullscreen ? 'exit' : 'fullscreen'}
-            </button>
           </div>
 
           <div className="tlog-feed" ref={feedRef} role="status" aria-live="polite">
