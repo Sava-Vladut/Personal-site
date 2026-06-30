@@ -976,6 +976,184 @@ h2 .title-cursor {
   background: transparent;
 }
 
+/* --- live miner telemetry --- */
+.miner-tool {
+  display: grid;
+  gap: clamp(14px, 2vw, 20px);
+  padding: clamp(16px, 2.2vw, 26px);
+  font-size: clamp(0.72rem, 0.95vw, 0.86rem);
+  letter-spacing: 0.02em;
+}
+
+.miner-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--weak);
+  text-transform: uppercase;
+}
+
+.miner-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+  letter-spacing: 0.08em;
+}
+
+.miner-state .terminal-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.miner-pulse {
+  font-size: 0.7em;
+}
+
+.miner-state--live .miner-pulse {
+  color: var(--fg);
+  animation: blink 1.2s steps(1) infinite;
+}
+
+.miner-state--cached {
+  color: var(--dim);
+}
+
+.miner-state--cached .miner-pulse {
+  color: var(--weak);
+}
+
+.miner-state--wait .miner-pulse {
+  color: var(--weak);
+  animation: blink 0.82s steps(1) infinite;
+}
+
+.miner-meta {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.miner-loading,
+.miner-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(18px, 4vh, 40px) 0;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.miner-error .terminal-icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.miner-cursor {
+  margin-left: 1px;
+  animation: blink 0.82s steps(1) infinite;
+}
+
+.miner-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.miner-row {
+  display: grid;
+  grid-template-columns: auto minmax(7ch, 1fr) auto auto auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--weak) 40%, transparent);
+}
+
+.miner-rank {
+  color: var(--weak);
+  font-variant-numeric: tabular-nums;
+}
+
+.miner-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--fg);
+}
+
+.miner-bar {
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+
+.miner-bar-fill {
+  color: var(--fg);
+}
+
+.miner-bar-track {
+  color: var(--weak);
+}
+
+.miner-points {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.miner-seen {
+  color: var(--weak);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.miner-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--weak);
+  color: var(--weak);
+  text-transform: uppercase;
+}
+
+.miner-launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color var(--dur-2) var(--ease-out-quad);
+}
+
+.miner-launch .terminal-icon {
+  width: 1em;
+  height: 1em;
+}
+
+.miner-launch:hover,
+.miner-launch:focus-visible {
+  color: var(--dim);
+}
+
+@media (max-width: 560px) {
+  .miner-bar {
+    display: none;
+  }
+
+  .miner-row {
+    grid-template-columns: auto minmax(7ch, 1fr) auto auto;
+  }
+}
+
 /* --- media (api) converters: tiktok --- */
 .media-tool {
   display: grid;

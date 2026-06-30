@@ -3,6 +3,7 @@ import { Clapperboard, ImageDown, MessageSquare, Network, SquareTerminal } from 
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
 import { MediaConverter } from './MediaConverter.jsx'
+import { MinerStats } from './MinerStats.jsx'
 import { TwitchLogs } from './TwitchLogs.jsx'
 import { services } from '../../data/services.js'
 
@@ -17,6 +18,7 @@ const serviceIcons = {
 const liveComponents = {
   heic: HeicConverter,
   twitchlogs: TwitchLogs,
+  miner: MinerStats,
 }
 
 const serviceModeLabels = {
@@ -34,7 +36,7 @@ export function ServicesSection() {
       <p className="service-intro">
         <TerminalIcon icon={SquareTerminal} label="" />
         converters, a twitch log reader + a live miner — <span className="live-dot" aria-hidden="true">●</span>{' '}
-        01 / 03 run in your browser · 02 streams from the local api · 04 opens the miner node.
+        01 / 03 run in your browser · 02 streams from the local api · 04 reads live miner telemetry.
       </p>
 
       <div className="service-tabs" role="tablist" aria-label="Services">

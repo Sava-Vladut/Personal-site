@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 import auth
+import miner
 import twitch
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -122,6 +123,19 @@ def health() -> dict:
         "ffmpeg": shutil.which("ffmpeg") is not None,
         "twitch": twitch.is_configured(),
     }
+
+
+@app.get("/api/miner/streamers")
+def miner_streamers() -> dict:
+    """Live channel-points telemetry from the miner node (server-side proxy).
+
+    Returns {"streamers": [{name, points, lastActivity}], "online": bool}. The
+    node is HTTP-only on another origin, so the browser reads it through here.
+    """
+    try:
+        return miner.streamers()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="Miner node unreachable.") from exc
 
 
 @app.get("/api/twitch/channel-badges")
