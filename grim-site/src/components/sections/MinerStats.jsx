@@ -64,18 +64,18 @@ export function MinerStats() {
           </span>
         </span>
         <span className="miner-meta">
-          {streamers.length} channel{streamers.length === 1 ? '' : 's'} · {formatPoints(total)} pts farmed
+          {streamers.length} channel{streamers.length === 1 ? '' : 's'} · {formatPoints(total)} pts
         </span>
       </div>
 
       {status === 'error' ? (
         <p className="miner-error" role="alert">
           <TerminalIcon icon={CircleAlert} label="" />
-          node unreachable — telemetry offline
+          miner unreachable — stats unavailable
         </p>
       ) : status === 'loading' ? (
         <p className="miner-loading">
-          reading node<span className="miner-cursor" aria-hidden="true">█</span>
+          loading<span className="miner-cursor" aria-hidden="true">█</span>
         </p>
       ) : (
         <ol className="miner-list" aria-label="Watched channels by channel points">
@@ -101,7 +101,7 @@ export function MinerStats() {
 
       <div className="miner-foot">
         <span className="miner-stamp">
-          {updatedAt ? `synced ${timeAgo(updatedAt)} ago` : 'channel-points miner · read-only feed'}
+          {updatedAt ? `updated ${timeAgo(updatedAt)} ago` : 'channel-points miner'}
         </span>
         <a className="miner-launch" href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer">
           full dashboard

@@ -250,39 +250,6 @@ h2 {
   background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.26) 100%);
 }
 
-.status-bar {
-  position: relative;
-  flex: 0 0 auto;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: clamp(14px, 3vw, 44px);
-  padding: 9px clamp(10px, 1.4vw, 22px);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  color: var(--dim);
-  text-transform: uppercase;
-  background: var(--bg);
-  border-top: 1px solid var(--line);
-  transition:
-    background-color var(--dur-3) var(--ease-in-out-cubic),
-    border-color var(--dur-3) var(--ease-in-out-cubic),
-    color var(--dur-3) var(--ease-in-out-cubic);
-}
-
-.status-cell {
-  white-space: nowrap;
-}
-
-.status-path {
-  color: var(--fg);
-}
-
-.status-clock {
-  margin-left: auto;
-  color: var(--fg);
-}
-
 .view-panel {
   position: relative;
   z-index: 1;
@@ -1590,21 +1557,21 @@ h2 .title-cursor {
 }
 
 .tlog-feed {
-  max-height: 52vh;
+  max-height: 72vh;
   overflow: auto;
-  font-size: clamp(0.72rem, 0.95vw, 0.84rem);
+  font-size: clamp(0.82rem, 1.05vw, 0.96rem);
 }
 
 .tlog-line {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
   align-items: baseline;
-  padding: 5px 14px;
+  padding: 8px 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--weak) 28%, transparent);
   /* Let the browser skip layout/paint for rows scrolled out of view. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 26px;
+  contain-intrinsic-size: auto 34px;
 }
 
 .tlog-line:hover {
@@ -2023,15 +1990,6 @@ h2 .title-cursor {
 
   .project-main h3 {
     font-size: 1.42rem;
-  }
-
-  .status-bar {
-    gap: 12px;
-    font-size: 0.7rem;
-  }
-
-  .status-clock {
-    margin-left: auto;
   }
 }
 

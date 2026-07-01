@@ -20,11 +20,11 @@ import {
 
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '—')
 
-// Admin-only operator registry: list every account and add / reset / delete /
+// Admin-only user management: list every account and add / reset / delete /
 // promote them. All mutations hit the server auth API, then call onChange() so
 // the parent reloads the canonical list.
 export function UserManager({ users, currentUsername, onChange }) {
-  // New-operator form.
+  // New-user form.
   const [name, setName] = useState('')
   const [pass, setPass] = useState('')
   const [makeAdmin, setMakeAdmin] = useState(false)
@@ -129,12 +129,12 @@ export function UserManager({ users, currentUsername, onChange }) {
       <header className="admin-panel-head">
         <span>
           <TerminalIcon icon={User} label="" />
-          operator registry
+          users
         </span>
         <em>{users === null ? 'loading…' : `${users.length} total`}</em>
       </header>
 
-      {/* Add operator */}
+      {/* Add user */}
       <form className="user-add" onSubmit={handleAdd}>
         <div className="user-add-fields">
           <label className="login-row user-add-input">
@@ -189,10 +189,10 @@ export function UserManager({ users, currentUsername, onChange }) {
         )}
       </form>
 
-      {/* Registry */}
+      {/* User list */}
       <ul className="user-list">
-        {users === null && <li className="user-empty">querying registry…</li>}
-        {users?.length === 0 && <li className="user-empty">no operators yet.</li>}
+        {users === null && <li className="user-empty">loading…</li>}
+        {users?.length === 0 && <li className="user-empty">no users yet.</li>}
         {users?.map((user) => {
           const isSelf = user.username === currentUsername
           const isResetting = resetId === user.id
@@ -208,7 +208,7 @@ export function UserManager({ users, currentUsername, onChange }) {
                   {isSelf && <em className="user-you">you</em>}
                 </span>
                 <span className={`user-role user-role--${user.isAdmin ? 'admin' : 'op'}`}>
-                  {user.isAdmin ? '● admin' : '· operator'}
+                  {user.isAdmin ? '● admin' : '· user'}
                 </span>
                 <span className="user-date">{formatDate(user.createdAt)}</span>
                 <span className="user-actions">

@@ -9,7 +9,6 @@ import { ServicesSection } from './components/sections/ServicesSection.jsx'
 import { AdminSection } from './components/sections/AdminSection.jsx'
 import { GlyphField } from './components/common/GlyphField.jsx'
 import { TerminalNav } from './components/navigation/TerminalNav.jsx'
-import { StatusBar } from './components/navigation/StatusBar.jsx'
 import { navItems } from './data/navigation.js'
 import { profile } from './data/profile.js'
 import { useGithubProjects } from './hooks/useGithubProjects.js'
@@ -31,7 +30,7 @@ const getViewFromHash = () => {
 
 function App() {
   const [activeView, setActiveView] = useState(getViewFromHash)
-  const { projects, status: projectStatus } = useGithubProjects()
+  const { projects } = useGithubProjects()
   const { isLoggedIn, isAdmin, loading, signOut } = useAuth()
 
   // Services and Admin are admin-only tabs (see adminTargets) — they only
@@ -102,7 +101,7 @@ function App() {
         <div className="view-frame" data-view={effectiveView} key={effectiveView}>
           {effectiveView === 'home' && <HeroSection />}
           {effectiveView === 'biography' && <BiographySection />}
-          {effectiveView === 'projects' && <ProjectsSection projects={projects} status={projectStatus} />}
+          {effectiveView === 'projects' && <ProjectsSection projects={projects} />}
           {effectiveView === 'services' && <ServicesSection />}
           {effectiveView === 'admin' && <AdminSection />}
           {effectiveView === 'login' && (
@@ -121,7 +120,6 @@ function App() {
         </div>
         )}
       </div>
-      <StatusBar activeView={effectiveView} />
       <div className="crt-overlay" aria-hidden="true" />
     </main>
   )

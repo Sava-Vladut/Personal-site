@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, Braces, ExternalLink, RadioTower } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Braces, ExternalLink } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { ui } from '../../data/ui.js'
 
 const projectsPerPage = 3
 
-export function ProjectsSection({ projects, status }) {
+export function ProjectsSection({ projects }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [prevProjects, setPrevProjects] = useState(projects)
   const totalPages = Math.max(1, Math.ceil(projects.length / projectsPerPage))
@@ -31,10 +31,6 @@ export function ProjectsSection({ projects, status }) {
 
   return (
     <section className="section projects" id="projects">
-      <p className="project-status">
-        <TerminalIcon icon={RadioTower} label="" />
-        {ui.syncLabel} {status}
-      </p>
       <div className="project-pagination" aria-label="Project pagination">
         <button
           type="button"

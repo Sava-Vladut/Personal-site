@@ -32,7 +32,7 @@ export function LoginSection({ onAuthed, onRegister }) {
       <SectionTitle>Login</SectionTitle>
       <p className="login-intro">
         <TerminalIcon icon={KeyRound} label="" />
-        restricted area — authenticate to unlock the converters.
+        sign in to continue.
       </p>
 
       <form className="login-form" onSubmit={onSubmit}>

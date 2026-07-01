@@ -49,7 +49,7 @@ export function RegisterSection({ onAuthed, onLogin }) {
       <SectionTitle>Register</SectionTitle>
       <p className="login-intro">
         <TerminalIcon icon={UserPlus} label="" />
-        provision a new operator account.
+        create a new account.
       </p>
 
       <form className="login-form" onSubmit={onSubmit}>
@@ -112,7 +112,7 @@ export function RegisterSection({ onAuthed, onLogin }) {
           <span>
             <TerminalIcon icon={UserPlus} label="" />
           </span>
-          {busy ? 'provisioning…' : 'create account'}
+          {busy ? 'creating…' : 'create account'}
         </button>
       </form>
 

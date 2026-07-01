@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Clapperboard, ImageDown, MessageSquare, Network, SquareTerminal } from 'lucide-react'
+import { Clapperboard, ImageDown, MessageSquare, Network } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
 import { MediaConverter } from './MediaConverter.jsx'
@@ -33,12 +33,6 @@ export function ServicesSection() {
 
   return (
     <section className="section services" id="services">
-      <p className="service-intro">
-        <TerminalIcon icon={SquareTerminal} label="" />
-        converters, a twitch log reader + a live miner — <span className="live-dot" aria-hidden="true">●</span>{' '}
-        01 / 03 run in your browser · 02 streams from the local api · 04 reads live miner telemetry.
-      </p>
-
       <div className="service-tabs" role="tablist" aria-label="Services">
         {services.map((service) => (
           <button

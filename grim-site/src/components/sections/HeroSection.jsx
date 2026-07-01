@@ -3,17 +3,14 @@ import { AsciiSpinner } from '../common/AsciiSpinner.jsx'
 import { renderBrain, renderLaptop, renderMug } from '../../utils/ascii3d.js'
 import { profile } from '../../data/profile.js'
 import { useAsciiScramble } from '../../hooks/useAsciiScramble.js'
-import { useDecodedText } from '../../hooks/useDecodedText.js'
 
 export function HeroSection() {
-  const bootLine = useDecodedText(profile.bootLine, 900)
   const { text: portrait, preRef } = useAsciiScramble(asciiPortrait)
 
   return (
     <section className="hero-shell" id="home" aria-labelledby="site-name">
       <div className="hero-grid">
         <header className="nameplate">
-          <p className="system-line">{bootLine}</p>
           <h1 id="site-name" aria-label={profile.name}>
             <span>{profile.firstName}</span>
             <span>{profile.lastName}</span>
