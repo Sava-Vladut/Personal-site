@@ -62,10 +62,6 @@ export function ServicesSection() {
       </div>
 
       <div className="service-pane" data-mode={active.mode} key={active.id}>
-        <header className="service-pane-head">
-          <p>{active.blurb}</p>
-        </header>
-
         {active.mode === 'external' ? (
           <div className="service-external">
             <p className="service-external-url">{active.href}</p>

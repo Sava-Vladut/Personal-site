@@ -747,31 +747,6 @@ h2 .title-cursor {
   transition: border-color var(--dur-3) var(--ease-in-out-cubic);
 }
 
-.service-pane-head {
-  padding: clamp(16px, 2.2vw, 26px) clamp(16px, 2.2vw, 28px);
-  border-bottom: 1px solid var(--weak);
-}
-
-.service-pane-head h3 {
-  margin-bottom: 10px;
-  font-weight: 400;
-  font-size: clamp(1.45rem, 2.6vw, 2.6rem);
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.service-pane-head h3 span {
-  color: var(--weak);
-}
-
-.service-pane-head p {
-  max-width: 72ch;
-  color: var(--dim);
-  text-transform: uppercase;
-  font-size: clamp(0.8rem, 1vw, 0.96rem);
-  line-height: 1.32;
-}
-
 /* --- external launch (miner) --- */
 .service-external {
   display: flex;
@@ -1059,6 +1034,7 @@ h2 .title-cursor {
 
 .miner-list {
   display: grid;
+  grid-template-columns: auto minmax(7ch, 1fr) auto auto auto;
   gap: 2px;
   margin: 0;
   padding: 0;
@@ -1067,7 +1043,8 @@ h2 .title-cursor {
 
 .miner-row {
   display: grid;
-  grid-template-columns: auto minmax(7ch, 1fr) auto auto auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
   gap: 12px;
   padding: 7px 0;
@@ -1149,7 +1126,7 @@ h2 .title-cursor {
     display: none;
   }
 
-  .miner-row {
+  .miner-list {
     grid-template-columns: auto minmax(7ch, 1fr) auto auto;
   }
 }
