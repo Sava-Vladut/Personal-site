@@ -41,6 +41,33 @@ export function TerminalNav({
     }
   }, [menuOpen])
 
+  // The numbered keycaps in the rail are live shortcuts: pressing 1–9 jumps
+  // straight to that entry, terminal-menu style. Ignored while typing.
+  useEffect(() => {
+    if (compact) return undefined
+    const onKeyDown = (event) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return
+      const el = event.target
+      if (
+        el instanceof HTMLElement &&
+        (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))
+      ) {
+        return
+      }
+      const index = Number.parseInt(event.key, 10) - 1
+      if (Number.isNaN(index) || index < 0 || index >= items.length) return
+      const item = items[index]
+      if (item.href) {
+        window.open(item.href, '_blank', 'noopener,noreferrer')
+      } else {
+        onNavigate(item.target)
+      }
+      setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [compact, items, onNavigate])
+
   return (
     <nav
       className={`terminal-nav${compact ? ' nav-bottom' : ''}${menuOpen ? ' is-open' : ''}`}
@@ -59,12 +86,17 @@ export function TerminalNav({
         {activeItem?.label ?? activeTarget}
         <TerminalIcon icon={ChevronDown} label="" />
       </button>
+      <p className="nav-rail-head" aria-hidden="true">
+        ~/{activeTarget}
+        <span className="cursor">_</span>
+      </p>
       <div className="nav-items" id="nav-menu">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <button
             aria-current={activeTarget === item.target ? 'page' : undefined}
+            aria-keyshortcuts={index < 9 ? String(index + 1) : undefined}
             key={item.target}
-            title={`Open ${item.label}`}
+            title={`Open ${item.label}${index < 9 ? ` (${index + 1})` : ''}`}
             type="button"
             onClick={() => {
               if (item.href) {
@@ -75,6 +107,7 @@ export function TerminalNav({
               setMenuOpen(false)
             }}
           >
+            {index < 9 && <span className="nav-key">{index + 1}</span>}
             <TerminalIcon icon={navIcons[item.target]} label="" />
             {item.label}
             {item.external && (
@@ -87,6 +120,7 @@ export function TerminalNav({
         {isLoggedIn ? (
           <button
             type="button"
+            className="nav-session"
             onClick={() => {
               onLogout?.()
               setMenuOpen(false)
@@ -99,6 +133,7 @@ export function TerminalNav({
         ) : (
           <button
             type="button"
+            className="nav-session"
             aria-current={activeTarget === 'login' ? 'page' : undefined}
             onClick={() => {
               onLogin?.()

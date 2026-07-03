@@ -36,8 +36,17 @@ export const services = [
       "Retrieve Twitch chat history from indexed channels — a single user's logs (latest, a random line, an archived month, or raw numeric ID) or an entire channel's chat for a given day. Reads the open rustlog API; runs entirely in your browser.",
   },
   {
-    id: 'miner',
+    id: 'twitchchat',
     index: '04',
+    slug: 'twitch→chat',
+    title: 'Twitch Live Chat',
+    mode: 'live',
+    blurb:
+      'Join any Twitch channel anonymously over the public IRC websocket and watch chat in real time — Twitch, 7TV and BetterTTV emotes plus badges rendered inline. Click a chatter to jump straight to their archived logs.',
+  },
+  {
+    id: 'miner',
+    index: '05',
     slug: 'grim→miner',
     title: 'Grim Miner Network',
     mode: 'live',

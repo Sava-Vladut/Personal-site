@@ -12,11 +12,12 @@
   --ease-out-quart: cubic-bezier(.165, .84, .44, 1);
   --ease-in-out-cubic: cubic-bezier(.645, .045, .355, 1);
 
-  /* Locked to the viewport: a fixed-height flex column (nav / view / status)
-     so the page itself never scrolls. */
+  /* Locked to the viewport: a fixed-height flex row (nav rail / view) so the
+     page itself never scrolls. Collapses back to a column (top bar / view)
+     on narrow viewports. */
   height: 100svh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   color: var(--fg);
   background: var(--bg);
   overflow: hidden;
@@ -212,22 +213,45 @@ h2 {
 .terminal-nav {
   position: relative;
   z-index: 5;
-  display: grid;
-  /* One auto-sized column per button, so the bar stays a single row no matter
-     how many nav items exist. minmax(0, 1fr) lets columns shrink to fit rather
-     than overflow/wrap. (Hidden buttons like .nav-toggle generate no column.) */
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: clamp(8px, 2vw, 48px);
-  width: 100%;
-  margin: 0 auto;
-  padding: 14px clamp(10px, 1.4vw, 22px);
+  /* Full-height rail pinned to the left: prompt header on top, nav entries
+     stacked below it, session control pushed to the bottom. (.nav-items is
+     display: contents, so every button is a direct flex item of the rail.) */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+  width: clamp(200px, 17vw, 236px);
+  padding: 14px 12px 16px;
   box-sizing: border-box;
   background: var(--bg);
-  border-block: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
   transition:
     background-color var(--dur-3) var(--ease-in-out-cubic),
     border-color var(--dur-3) var(--ease-in-out-cubic);
+}
+
+/* The rail header is the shell prompt: it prints the current view as the
+   working directory, cursor still blinking. */
+.nav-rail-head {
+  display: flex;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 2px 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* Numbered keycap on each rail entry — it is a live shortcut (press 1–9),
+   rendered with the same filled-square treatment as every other keycap. */
+.terminal-nav .nav-items button {
+  padding: 0 10px 0 6px;
+}
+
+.terminal-nav .nav-session {
+  margin-top: auto;
+  border-top: 1px solid var(--weak);
 }
 
 .crt-overlay {
@@ -255,9 +279,22 @@ h2 {
   z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
-  /* Fills the space between nav and status bar. Content is sized to fit, but
-     any overflow scrolls silently here (scrollbar chrome is hidden). */
-  overflow-y: auto;
+  min-width: 0;
+  /* Every route is scaled as one composition if its natural dimensions exceed
+     the available panel, so the shell never needs a scrollbar. */
+  overflow: hidden;
+}
+
+.view-fit-stage {
+  width: 100%;
+  min-width: 0;
+  transform: scale(var(--view-fit-scale, 1));
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.view-frame {
+  min-width: 0;
 }
 
 .view-frame {
@@ -1681,6 +1718,151 @@ h2 .title-cursor {
   animation: blink 1.2s steps(1) infinite;
 }
 
+/* --- twitch live chat --- */
+.tchat-tool {
+  display: grid;
+  gap: clamp(14px, 2vw, 20px);
+  padding: clamp(16px, 2.2vw, 26px);
+}
+
+.tchat-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px 16px;
+}
+
+.tchat-channel {
+  flex: 1;
+  min-width: 200px;
+}
+
+.tchat-connect {
+  margin-left: 0;
+}
+
+.tchat-hint {
+  margin-left: auto;
+  color: var(--weak);
+}
+
+.tchat-pill--live {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+.tchat-feedwrap {
+  position: relative;
+}
+
+.tchat-feed {
+  height: min(64vh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: clamp(0.82rem, 1.05vw, 0.96rem);
+}
+
+/* Popped-out window (#/chatpop/<channel>): the chat is the whole page, so the
+   feed takes every pixel left under the join form and status row. */
+.tchat-tool--popout {
+  padding: 12px 14px 14px;
+}
+
+.tchat-tool--popout .tchat-feed {
+  height: calc(100vh - 200px);
+  min-height: 240px;
+}
+
+.tchat-line {
+  padding: 5px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--weak) 18%, transparent);
+  overflow-wrap: anywhere;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 30px;
+}
+
+.tchat-line:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+/* The whole badges+name cluster is one click target that pulls the user's logs.
+   It must escape the site-wide button chrome: the keycap treatment on `button
+   span`, the 38px min-height, uppercase, and the full hover inversion — a
+   chatter's name should read like Twitch chat, not like a nav key. */
+.tchat-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 0;
+  margin-right: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  text-transform: none;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.tchat-user:hover,
+.tchat-user:focus-visible {
+  background: none;
+  color: inherit;
+}
+
+.tchat-user:hover .tchat-name,
+.tchat-user:focus-visible .tchat-name {
+  text-decoration: underline;
+}
+
+.tchat-user span {
+  display: inline;
+  min-width: 0;
+  height: auto;
+  background: none;
+  box-shadow: none;
+}
+
+.tchat-name {
+  color: var(--fg);
+}
+
+.tchat-msg {
+  color: var(--dim);
+}
+
+.tchat-msg.is-action {
+  font-style: italic;
+  color: var(--fg);
+}
+
+/* Live chat keeps emotes in full color — the grayscale-until-hover treatment
+   from the logs view reads as broken when lines are streaming in. */
+.tchat-line .tlog-emote {
+  filter: none;
+}
+
+.tchat-system {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  color: var(--weak);
+}
+
+.tchat-resume {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border: 1px solid var(--fg);
+  background: var(--bg);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+}
+
 /* --- copy command --- */
 .cmd-line {
   display: grid;
@@ -1796,7 +1978,9 @@ h2 .title-cursor {
   }
 }
 
-@media (max-width: 900px) {
+/* Narrow-content reflow. Threshold is the old 900px content breakpoint plus
+   the ~220px the sidebar rail now takes from the viewport. */
+@media (max-width: 1120px) {
   .hero-shell {
     min-height: auto;
     padding-bottom: 28px;
@@ -1864,12 +2048,6 @@ h2 .title-cursor {
 
   .portrait pre {
     font-size: min(calc((100vw - 30px) / 45), 0.95rem);
-  }
-
-  .terminal-nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 16px;
   }
 
   .bio-grid {
@@ -1993,12 +2171,31 @@ h2 .title-cursor {
   }
 }
 
-@media (max-width: 880px) {
+/* Collapse the rail into a top bar with the off-canvas dropdown. */
+@media (max-width: 900px) {
+  .terminal-site {
+    flex-direction: column;
+  }
+
   .terminal-nav {
     position: relative;
     z-index: 10;
     display: flex;
-    padding-block: 8px;
+    flex-direction: row;
+    width: 100%;
+    padding: 8px clamp(10px, 1.4vw, 22px);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+
+  .nav-rail-head {
+    display: none;
+  }
+
+  .terminal-nav .nav-session {
+    margin-top: 0;
+    border-top: 0;
   }
 
   .nav-toggle {
@@ -2598,4 +2795,26 @@ h2 .title-cursor {
 .auth-switch-link:focus-visible {
   border-bottom-color: var(--fg);
   outline: 0;
+}
+
+@media (min-width: 901px) and (max-height: 520px) {
+  .terminal-nav {
+    padding-block: 6px;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .nav-rail-head {
+    margin-bottom: 4px;
+    padding-block: 0 5px;
+  }
+
+  .terminal-nav button {
+    min-height: 30px;
+  }
+
+  .terminal-nav button span {
+    min-width: 24px;
+    height: 24px;
+  }
 }
