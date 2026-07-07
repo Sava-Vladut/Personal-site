@@ -8,6 +8,16 @@
   --dur-1: 120ms;
   --dur-2: 180ms;
   --dur-3: 240ms;
+
+  /* Spacing scale — every recurring gap/pad in the shell maps onto one of
+     these steps so vertical rhythm stays consistent across views. */
+  --space-xs: clamp(12px, 1.6vw, 16px);
+  --space-sm: clamp(14px, 2vw, 22px);
+  --space-md: clamp(16px, 2.2vw, 26px);
+  --space-lg: clamp(22px, 3vw, 40px);
+  --space-xl: clamp(24px, 4vw, 56px);
+  --gap-grid: clamp(8px, 1.4vw, 16px);
+  --pad-shell: clamp(10px, 1.4vw, 22px);
   --ease-out-quad: cubic-bezier(.25, .46, .45, .94);
   --ease-out-quart: cubic-bezier(.165, .84, .44, 1);
   --ease-in-out-cubic: cubic-bezier(.645, .045, .355, 1);
@@ -30,7 +40,7 @@
 .section {
   width: min(100%, 1440px);
   margin: 0 auto;
-  padding-inline: clamp(10px, 1.4vw, 22px);
+  padding-inline: var(--pad-shell);
   box-sizing: border-box;
   scroll-margin-top: 18px;
 }
@@ -132,17 +142,13 @@ h2 {
 }
 
 .hero-copy {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: end;
   color: var(--fg);
   font-size: clamp(1rem, 1.35vw, 1.45rem);
   line-height: 1.16;
   text-transform: uppercase;
-}
-
-.hero-copy {
-  grid-column: 2;
-  grid-row: 3;
-  align-self: end;
-  padding-left: 0;
   /* Pull the right column toward the ASCII art, which is squished to the left
      of its own column by .portrait pre's scaleX(0.7). */
   margin-left: clamp(-96px, -5vw, -28px);
@@ -295,9 +301,6 @@ h2 {
 
 .view-frame {
   min-width: 0;
-}
-
-.view-frame {
   animation: terminal-page-in var(--dur-2) var(--ease-out-quart) both;
   transform-origin: top left;
 }
@@ -420,19 +423,32 @@ button span {
   box-shadow: inset 0 0 0 1px var(--bg);
 }
 
-button:hover,
 button:focus-visible,
-a:hover,
 a:focus-visible {
   outline: 0;
   color: var(--bg);
   background: var(--fg);
 }
 
-button:hover span,
 button:focus-visible span {
   background: var(--bg);
   color: var(--fg);
+}
+
+/* Hover inversion only where hover is a real state — on touch screens it
+   sticks after a tap and leaves buttons inverted. */
+@media (hover: hover) {
+  button:hover,
+  a:hover {
+    outline: 0;
+    color: var(--bg);
+    background: var(--fg);
+  }
+
+  button:hover span {
+    background: var(--bg);
+    color: var(--fg);
+  }
 }
 
 button[aria-current='page'] {
@@ -446,8 +462,8 @@ button[aria-current='page'] span {
 }
 
 .section {
-  padding-top: clamp(24px, 4vw, 56px);
-  padding-bottom: clamp(24px, 4vw, 56px);
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-xl);
 }
 
 h2 {
@@ -669,7 +685,7 @@ h2 .title-cursor {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: calc(clamp(20px, 3vw, 44px) * -0.66) 0 clamp(22px, 4vw, 40px);
+  margin: calc(clamp(20px, 3vw, 44px) * -0.66) 0 var(--space-lg);
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -684,8 +700,8 @@ h2 .title-cursor {
 .service-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(8px, 1.4vw, 16px);
-  margin-bottom: clamp(22px, 3vw, 40px);
+  gap: var(--gap-grid);
+  margin-bottom: var(--space-lg);
 }
 
 @media (max-width: 640px) {
@@ -725,9 +741,16 @@ h2 .title-cursor {
   border-color: var(--fg);
 }
 
-.service-tab:hover .service-mode,
 .service-tab:focus-visible .service-mode {
   color: var(--bg);
+}
+
+/* Paired with the (hover: hover)-gated inversion — the label must not go
+   background-coloured on touch taps where no inversion happens. */
+@media (hover: hover) {
+  .service-tab:hover .service-mode {
+    color: var(--bg);
+  }
 }
 
 .service-tab[aria-selected='true'] {
@@ -755,7 +778,7 @@ h2 .title-cursor {
 .service-external {
   display: flex;
   flex-direction: column;
-  gap: clamp(14px, 2vw, 22px);
+  gap: var(--space-sm);
   padding: clamp(20px, 3vw, 34px) clamp(16px, 2.2vw, 28px);
 }
 
@@ -792,8 +815,8 @@ h2 .title-cursor {
 /* --- live heic converter --- */
 .heic-tool {
   display: grid;
-  gap: clamp(14px, 2vw, 22px);
-  padding: clamp(16px, 2.2vw, 26px);
+  gap: var(--space-sm);
+  padding: var(--space-md);
 }
 
 .heic-drop {
@@ -958,8 +981,8 @@ h2 .title-cursor {
 /* --- live miner telemetry --- */
 .miner-tool {
   display: grid;
-  gap: clamp(14px, 2vw, 20px);
-  padding: clamp(16px, 2.2vw, 26px);
+  gap: var(--space-sm);
+  padding: var(--space-md);
   font-size: clamp(0.72rem, 0.95vw, 0.86rem);
   letter-spacing: 0.02em;
 }
@@ -1138,13 +1161,13 @@ h2 .title-cursor {
 /* --- media (api) converters: tiktok --- */
 .media-tool {
   display: grid;
-  gap: clamp(14px, 2vw, 20px);
-  padding: clamp(16px, 2.2vw, 26px);
+  gap: var(--space-sm);
+  padding: var(--space-md);
 }
 
 .media-form {
   display: grid;
-  gap: clamp(12px, 1.6vw, 16px);
+  gap: var(--space-xs);
 }
 
 .media-input-row {
@@ -1360,8 +1383,8 @@ h2 .title-cursor {
 /* --- live twitch chat-log reader --- */
 .tlog-tool {
   display: grid;
-  gap: clamp(14px, 2vw, 20px);
-  padding: clamp(16px, 2.2vw, 26px);
+  gap: var(--space-sm);
+  padding: var(--space-md);
 }
 
 .tlog-modes {
@@ -1389,13 +1412,13 @@ h2 .title-cursor {
 
 .tlog-form {
   display: grid;
-  gap: clamp(12px, 1.6vw, 16px);
+  gap: var(--space-xs);
 }
 
 .tlog-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(12px, 1.6vw, 16px);
+  gap: var(--space-xs);
 }
 
 @media (max-width: 560px) {
@@ -1594,7 +1617,7 @@ h2 .title-cursor {
 }
 
 .tlog-feed {
-  max-height: 72vh;
+  max-height: 72svh;
   overflow: auto;
   font-size: clamp(0.82rem, 1.05vw, 0.96rem);
 }
@@ -1721,8 +1744,8 @@ h2 .title-cursor {
 /* --- twitch live chat --- */
 .tchat-tool {
   display: grid;
-  gap: clamp(14px, 2vw, 20px);
-  padding: clamp(16px, 2.2vw, 26px);
+  gap: var(--space-sm);
+  padding: var(--space-md);
 }
 
 .tchat-form {
@@ -1756,7 +1779,7 @@ h2 .title-cursor {
 }
 
 .tchat-feed {
-  height: min(64vh, 640px);
+  height: min(64svh, 640px);
   overflow-y: auto;
   overscroll-behavior: contain;
   font-size: clamp(0.82rem, 1.05vw, 0.96rem);
@@ -1769,7 +1792,7 @@ h2 .title-cursor {
 }
 
 .tchat-tool--popout .tchat-feed {
-  height: calc(100vh - 200px);
+  height: calc(100svh - 200px);
   min-height: 240px;
 }
 
@@ -2044,10 +2067,18 @@ h2 .title-cursor {
     width: 100%;
     margin-top: 0;
     overflow: visible;
+    container-type: inline-size;
   }
 
   .portrait pre {
-    font-size: min(calc((100vw - 30px) / 45), 0.95rem);
+    /* The art is 100 monospace columns (~0.6em each): /62 keeps the pre's
+       layout box inside its column, so the fitter never has to shrink the
+       whole page to absorb its overflow. Visually the glyph size is
+       unchanged — the overflow used to be scaled away anyway. The cqw
+       version sizes against the actual column (the vw fallback overshoots
+       when the nav rail is on screen at 901–1120px). */
+    font-size: min(calc((100vw - 30px) / 62), 0.95rem);
+    font-size: min(calc(100cqw / 62), 0.95rem);
   }
 
   .bio-grid {
@@ -2177,13 +2208,21 @@ h2 .title-cursor {
     flex-direction: column;
   }
 
+  /* Companion to ViewportFitter's mobile mode: tall views scroll here at
+     full size instead of being shrunk to fit the viewport height. */
+  .view-panel {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .terminal-nav {
     position: relative;
     z-index: 10;
     display: flex;
     flex-direction: row;
     width: 100%;
-    padding: 8px clamp(10px, 1.4vw, 22px);
+    padding: 8px var(--pad-shell);
     border-right: 0;
     border-bottom: 1px solid var(--line);
     overflow: visible;
@@ -2220,7 +2259,11 @@ h2 .title-cursor {
     z-index: 20;
     display: grid;
     gap: 4px;
-    padding: 10px clamp(8px, 1.4vw, 22px) 16px;
+    padding: 10px var(--pad-shell) 16px;
+    /* Short landscape viewports: the dropdown scrolls rather than running
+       off-screen. */
+    max-height: min(75svh, 480px);
+    overflow-y: auto;
     background: var(--bg);
     border-bottom: 1px solid var(--line);
     transform-origin: top center;
@@ -2252,7 +2295,7 @@ h2 .title-cursor {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: clamp(22px, 3vw, 40px);
+  margin-bottom: var(--space-lg);
   color: var(--weak);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2260,7 +2303,7 @@ h2 .title-cursor {
 
 .login-form {
   display: grid;
-  gap: clamp(12px, 1.6vw, 16px);
+  gap: var(--space-xs);
   max-width: 440px;
 }
 
@@ -2396,7 +2439,7 @@ h2 .title-cursor {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: calc(clamp(20px, 3vw, 44px) * -0.66) 0 clamp(22px, 4vw, 40px);
+  margin: calc(clamp(20px, 3vw, 44px) * -0.66) 0 var(--space-lg);
   padding: 11px 16px;
   border: 1px dashed var(--weak);
   color: var(--dim);
@@ -2413,7 +2456,7 @@ h2 .title-cursor {
 .admin-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(8px, 1.4vw, 16px);
+  gap: var(--gap-grid);
   margin-bottom: clamp(16px, 2.4vw, 28px);
 }
 
@@ -2458,7 +2501,7 @@ h2 .title-cursor {
 
 .admin-board {
   display: grid;
-  gap: clamp(8px, 1.4vw, 16px);
+  gap: var(--gap-grid);
 }
 
 .admin-modules {
@@ -2816,5 +2859,29 @@ h2 .title-cursor {
   .terminal-nav button span {
     min-width: 24px;
     height: 24px;
+  }
+}
+
+/* ── Touch ergonomics ──────────────────────────────────────────────── */
+/* On coarse pointers every tap control meets the ~44px target size.
+   Desktop keeps its denser rhythm. The inline chat-name button opts out —
+   it must keep reading as a chat line, and its full-width row is the
+   effective target. */
+@media (pointer: coarse) {
+  button,
+  .project-pagination button,
+  .heic-actions button,
+  .media-format,
+  .media-clear,
+  .media-run,
+  .tlog-toggle,
+  .tlog-mode,
+  .tlog-run,
+  .tlog-ghost,
+  .user-act,
+  .cmd-copy,
+  .tchat-resume,
+  .service-launch {
+    min-height: 44px;
   }
 }

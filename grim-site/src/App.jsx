@@ -32,6 +32,12 @@ const getViewFromHash = () => {
   return knownViews.has(hash) ? hash : 'home'
 }
 
+// Below this width the nav collapses into a top bar (see App.css) and the
+// shell stops height-fitting: shrinking a tall page into a phone viewport
+// renders it unreadable, so the panel scrolls vertically instead. Width
+// overflow is still scaled away so the page never scrolls sideways.
+const mobileFitQuery = '(max-width: 900px)'
+
 function ViewportFitter({ view, children }) {
   const stageRef = useRef(null)
   const [scale, setScale] = useState(1)
@@ -41,26 +47,42 @@ function ViewportFitter({ view, children }) {
     const panel = stage?.parentElement
     if (!stage || !panel) return undefined
 
+    const mobileFit = window.matchMedia(mobileFitQuery)
     let frameId = 0
+    let timeoutId = 0
+
+    const measure = () => {
+      // A panel that used to be scrollable can retain a non-zero scroll
+      // offset after overflow is locked, which visually crops its top/left.
+      // On mobile the panel is the scroller, so only the sideways offset is
+      // pinned — content mutations (live chat feeds) must not yank the
+      // user back to the top.
+      panel.scrollLeft = 0
+      if (!mobileFit.matches) panel.scrollTop = 0
+
+      const naturalWidth = Math.max(stage.scrollWidth, stage.offsetWidth)
+      const naturalHeight = Math.max(stage.scrollHeight, stage.offsetHeight)
+      const widthScale = panel.clientWidth / Math.max(1, naturalWidth)
+      const heightScale = panel.clientHeight / Math.max(1, naturalHeight)
+      const rawScale = Math.min(1, widthScale, mobileFit.matches ? 1 : heightScale)
+      // Snap near-fits to 1 so a view that already fits is never rendered
+      // fractionally scaled (blurry text for no gain).
+      const nextScale = rawScale >= 0.995 ? 1 : rawScale
+      setScale((current) => Math.abs(current - nextScale) < 0.002 ? current : nextScale)
+    }
+
+    // Coalesce bursts of mutations into one measurement per frame. The
+    // timeout is the safety net: rAF is suspended in background tabs, and
+    // without it a resize that happens while hidden leaves a stale scale
+    // on return.
     const fit = () => {
       cancelAnimationFrame(frameId)
+      clearTimeout(timeoutId)
       frameId = requestAnimationFrame(() => {
-        // A panel that used to be scrollable can retain a non-zero scroll
-        // offset after overflow is locked, which visually crops its top/left.
-        panel.scrollTop = 0
-        panel.scrollLeft = 0
-
-        const naturalWidth = Math.max(stage.scrollWidth, stage.offsetWidth)
-        const naturalHeight = Math.max(stage.scrollHeight, stage.offsetHeight)
-        const safeWidth = Math.max(1, panel.clientWidth - 2)
-        const safeHeight = Math.max(1, panel.clientHeight - 2)
-        const nextScale = Math.min(
-          1,
-          safeWidth / Math.max(1, naturalWidth),
-          safeHeight / Math.max(1, naturalHeight),
-        )
-        setScale((current) => Math.abs(current - nextScale) < 0.002 ? current : nextScale)
+        clearTimeout(timeoutId)
+        measure()
       })
+      timeoutId = setTimeout(measure, 120)
     }
 
     const resizeObserver = new ResizeObserver(fit)
@@ -69,15 +91,18 @@ function ViewportFitter({ view, children }) {
     resizeObserver.observe(stage)
     mutationObserver.observe(stage, { childList: true, subtree: true, characterData: true })
     window.addEventListener('resize', fit)
+    mobileFit.addEventListener('change', fit)
     panel.scrollTop = 0
     panel.scrollLeft = 0
     fit()
 
     return () => {
       cancelAnimationFrame(frameId)
+      clearTimeout(timeoutId)
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       window.removeEventListener('resize', fit)
+      mobileFit.removeEventListener('change', fit)
     }
   }, [view])
 
