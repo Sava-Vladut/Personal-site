@@ -305,6 +305,11 @@ h2 {
   transform-origin: top left;
 }
 
+.view-frame[data-view='chatpop'] {
+  height: 100svh;
+  overflow: hidden;
+}
+
 .view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .login-intro, .login-form, .admin-status, .admin-card, .admin-board) {
   animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
 }
@@ -702,6 +707,7 @@ h2 .title-cursor {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--gap-grid);
   margin-bottom: var(--space-lg);
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -769,6 +775,9 @@ h2 .title-cursor {
 }
 
 .service-pane {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-top-width: 2px;
   transition: border-color var(--dur-3) var(--ease-in-out-cubic);
@@ -1745,6 +1754,8 @@ h2 .title-cursor {
 .tchat-tool {
   display: grid;
   gap: var(--space-sm);
+  min-width: 0;
+  max-width: 100%;
   padding: var(--space-md);
 }
 
@@ -1753,6 +1764,7 @@ h2 .title-cursor {
   flex-wrap: wrap;
   align-items: end;
   gap: 12px 16px;
+  min-width: 0;
 }
 
 .tchat-channel {
@@ -1766,7 +1778,9 @@ h2 .title-cursor {
 
 .tchat-hint {
   margin-left: auto;
+  min-width: 0;
   color: var(--weak);
+  overflow-wrap: anywhere;
 }
 
 .tchat-pill--live {
@@ -1776,30 +1790,55 @@ h2 .title-cursor {
 
 .tchat-feedwrap {
   position: relative;
+  min-width: 0;
+}
+
+.tchat-output {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .tchat-feed {
-  height: min(64svh, 640px);
+  height: clamp(300px, 48svh, 540px);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   font-size: clamp(0.82rem, 1.05vw, 0.96rem);
 }
 
-/* Popped-out window (#/chatpop/<channel>): the chat is the whole page, so the
-   feed takes every pixel left under the join form and status row. */
+/* Popped-out window (#/chatpop/<channel>): the chat is the whole page, with no
+   join form, so the output grid owns the full viewport height. */
 .tchat-tool--popout {
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
   padding: 12px 14px 14px;
 }
 
+.tchat-tool--popout .tchat-output {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.tchat-tool--popout .tchat-feedwrap {
+  min-height: 0;
+}
+
 .tchat-tool--popout .tchat-feed {
-  height: calc(100svh - 200px);
-  min-height: 240px;
+  height: 100%;
+  min-height: 0;
 }
 
 .tchat-line {
+  min-width: 0;
   padding: 5px 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--weak) 18%, transparent);
   overflow-wrap: anywhere;
+  word-break: break-word;
   content-visibility: auto;
   contain-intrinsic-size: auto 30px;
 }
@@ -1852,6 +1891,9 @@ h2 .title-cursor {
 }
 
 .tchat-msg {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--dim);
 }
 
