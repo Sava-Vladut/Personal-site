@@ -79,7 +79,7 @@ export function ServicesSection() {
   }
 
   return (
-    <section className="section services" id="services">
+    <section className="section services" id="services" data-service={active.id}>
       <div className="service-tabs" role="tablist" aria-label="Services">
         {visibleServices.map((service) => (
           <button

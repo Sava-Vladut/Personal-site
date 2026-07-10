@@ -7,6 +7,7 @@ import { RegisterSection } from './components/sections/RegisterSection.jsx'
 import { ProjectsSection } from './components/sections/ProjectsSection.jsx'
 import { ServicesSection } from './components/sections/ServicesSection.jsx'
 import { TwitchChatPopout } from './components/sections/TwitchChatPopout.jsx'
+import { TwitchLogsPopout } from './components/sections/TwitchLogsPopout.jsx'
 import { AdminSection } from './components/sections/AdminSection.jsx'
 import { GlyphField } from './components/common/GlyphField.jsx'
 import { TerminalNav } from './components/navigation/TerminalNav.jsx'
@@ -21,13 +22,13 @@ const knownViews = new Set([...navItems.map((item) => item.target), 'login', 're
 
 // Tabs reserved for admin accounts — hidden from the nav and unreachable by URL
 // for everyone else.
-const adminTargets = new Set(['admin', 'chatpop'])
+const adminTargets = new Set(['admin', 'chatpop', 'chatlogspop'])
 
 const getViewFromHash = () => {
   const hash = window.location.hash.replace(/^#\/?/, '')
-  // #/chatpop/<channel> — the popped-out chat window; the channel segment is
-  // read by TwitchChatPopout itself.
+  // Bare Twitch utility windows carry their target in the rest of the hash.
   if (hash.startsWith('chatpop')) return 'chatpop'
+  if (hash.startsWith('chatlogspop')) return 'chatlogspop'
   return knownViews.has(hash) ? hash : 'home'
 }
 
@@ -170,16 +171,15 @@ function App() {
     document.title = `${profile.firstName} ${profile.lastName} — ~/${effectiveView}`
   }, [effectiveView])
 
-  // The popped-out chat is a bare utility window: no nav rail, no glyph field —
-  // just the chat tool owning the viewport (still admin-gated above, like the
-  // services console it was opened from).
-  if (effectiveView === 'chatpop') {
+  // Popped-out Twitch tools are bare utility windows: no nav rail or glyph
+  // field, just the active tool owning the viewport (still admin-gated above).
+  if (effectiveView === 'chatpop' || effectiveView === 'chatlogspop') {
     return (
       <main className="terminal-site">
         <div className="view-panel">
-          <ViewportFitter view="chatpop">
-            <div className="view-frame" data-view="chatpop">
-              <TwitchChatPopout />
+          <ViewportFitter view={effectiveView}>
+            <div className="view-frame" data-view={effectiveView}>
+              {effectiveView === 'chatpop' ? <TwitchChatPopout /> : <TwitchLogsPopout />}
             </div>
           </ViewportFitter>
         </div>

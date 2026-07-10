@@ -80,7 +80,7 @@ const LogLine = memo(function LogLine({ message, grep, emoteMap, badgeMap }) {
 // `preset` (optional) = { channel, user, nonce } — pushed by the live Chat
 // service when a chatter is clicked. It prefills the form in `latest` mode and
 // auto-runs the retrieval; the nonce makes repeat clicks on the same user fire.
-export function TwitchLogs({ preset = null }) {
+export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
   const [mode, setMode] = useState('latest')
   const [channel, setChannel] = useState('')
   const [user, setUser] = useState('')
@@ -309,7 +309,10 @@ export function TwitchLogs({ preset = null }) {
   }, [hasMore, total])
 
   return (
-    <div className="tlog-tool">
+    <div
+      className={popout ? 'tlog-tool tlog-tool--popout' : 'tlog-tool'}
+      style={accent ? { '--tlog-accent': accent } : undefined}
+    >
       <div className="tlog-modes" role="tablist" aria-label="Retrieval mode">
         {MODES.map((m) => (
           <button

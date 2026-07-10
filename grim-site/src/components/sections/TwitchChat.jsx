@@ -97,8 +97,8 @@ const ChatLine = memo(function ChatLine({ message, emoteMap, badgeMap, userBadge
       <button
         type="button"
         className="tchat-user"
-        onClick={() => onUser(message.username)}
-        title={`Pull ${message.username}'s logs`}
+        onClick={() => onUser(message.username, color)}
+        title={`Open ${message.username}'s logs`}
       >
         {badges.map((b) =>
           b.src ? (
@@ -386,8 +386,8 @@ export function TwitchChat({ onOpenLogs, initialChannel = '', popout = false }) 
   }, [])
 
   const openLogs = useCallback(
-    (username) => {
-      if (onOpenLogs && joined) onOpenLogs({ channel: joined, user: username })
+    (username, color) => {
+      if (onOpenLogs && joined) onOpenLogs({ channel: joined, user: username, color })
     },
     [onOpenLogs, joined],
   )
@@ -437,7 +437,7 @@ export function TwitchChat({ onOpenLogs, initialChannel = '', popout = false }) 
               {status === 'live' ? '● live' : status}
             </span>
             <span className="tlog-count">{messages.length.toLocaleString()} msgs</span>
-            <span className="tchat-hint">click a chatter to pull their logs</span>
+            <span className="tchat-hint">click a chatter to open their logs</span>
           </div>
 
           <div className="tchat-feedwrap">

@@ -305,7 +305,8 @@ h2 {
   transform-origin: top left;
 }
 
-.view-frame[data-view='chatpop'] {
+.view-frame[data-view='chatpop'],
+.view-frame[data-view='chatlogspop'] {
   height: 100svh;
   overflow: hidden;
 }
@@ -685,6 +686,14 @@ h2 .title-cursor {
 }
 
 /* ============================== services ============================== */
+.services {
+  /* Services are a working console, so let the active tool use the entire
+     viewport beside the navigation rail instead of inheriting the editorial
+     1440px cap used by the portfolio sections. */
+  width: 100%;
+  margin: 0;
+}
+
 .service-intro {
   display: flex;
   align-items: center;
@@ -781,6 +790,40 @@ h2 .title-cursor {
   border: 1px solid var(--line);
   border-top-width: 2px;
   transition: border-color var(--dur-3) var(--ease-in-out-cubic);
+}
+
+/* Log results used to make the route taller than the viewport. ViewportFitter
+   then scaled the whole route down to fit that height, which also shrank its
+   width and left a large dead strip on the right. On desktop the console owns
+   the viewport height and only the message feed scrolls. */
+@media (min-width: 901px) {
+  .services[data-service='twitchlogs'] {
+    height: 100svh;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .services[data-service='twitchlogs'] .service-pane,
+  .services[data-service='twitchlogs'] .tlog-tool,
+  .services[data-service='twitchlogs'] .tlog-output,
+  .services[data-service='twitchlogs'] .tlog-feed {
+    min-height: 0;
+  }
+
+  .services[data-service='twitchlogs'] .tlog-tool {
+    height: 100%;
+    box-sizing: border-box;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .services[data-service='twitchlogs'] .tlog-output {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .services[data-service='twitchlogs'] .tlog-feed {
+    max-height: none;
+  }
 }
 
 /* --- external launch (miner) --- */
@@ -1571,6 +1614,35 @@ h2 .title-cursor {
 /* output */
 .tlog-output {
   border: 1px solid var(--weak);
+}
+
+/* User archive opened from the detached chat. Its route already identifies the
+   subject, so the retrieval controls disappear and the log owns the viewport. */
+.tlog-tool--popout {
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  padding: 12px 14px 14px;
+}
+
+.tlog-tool--popout > .tlog-modes,
+.tlog-tool--popout > .tlog-form {
+  display: none;
+}
+
+.tlog-tool--popout .tlog-output {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.tlog-tool--popout .tlog-feed {
+  max-height: none;
+  min-height: 0;
+}
+
+.tlog-tool--popout .tlog-subject {
+  color: var(--tlog-accent, var(--fg));
+  font-weight: 700;
 }
 
 .tlog-status {
