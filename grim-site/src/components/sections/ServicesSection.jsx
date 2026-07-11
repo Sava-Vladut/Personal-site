@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Clapperboard, ImageDown, MessageSquare, MessagesSquare, Network, Plane } from 'lucide-react'
+import { Blocks, Clapperboard, ImageDown, MessageSquare, MessagesSquare, Network, Plane } from 'lucide-react'
 import { useAuth } from '../../auth/context.js'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { HeicConverter } from './HeicConverter.jsx'
 import { MediaConverter } from './MediaConverter.jsx'
+import { MinecraftServer } from './MinecraftServer.jsx'
 import { MinerStats } from './MinerStats.jsx'
 import { TwitchChat } from './TwitchChat.jsx'
 import { TwitchLogs } from './TwitchLogs.jsx'
@@ -16,6 +17,7 @@ const serviceIcons = {
   twitchchat: MessagesSquare,
   miner: Network,
   flightmanager: Plane,
+  minecraft: Blocks,
 }
 
 // Live (in-browser) services render their own component, keyed by id.
@@ -24,6 +26,7 @@ const liveComponents = {
   twitchlogs: TwitchLogs,
   twitchchat: TwitchChat,
   miner: MinerStats,
+  minecraft: MinecraftServer,
 }
 
 const serviceModeLabels = {

@@ -19,6 +19,11 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
+      '/minecraft-map': {
+        target: 'http://grimnetwork.srvp.ro:8100',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/minecraft-map/, ''),
+      },
     },
   },
 })

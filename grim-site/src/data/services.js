@@ -65,4 +65,15 @@ export const services = [
       'Open the public Flight Manager console hosted on grimnetwork. No account is required.',
     href: 'http://grimnetwork.srvp.ro:5002/',
   },
+  {
+    id: 'minecraft',
+    index: '07',
+    slug: 'grim→minecraft',
+    title: 'Minecraft Server',
+    mode: 'live',
+    public: true,
+    blurb:
+      'Live player telemetry and a window into the Grim Network world, powered by the server map on port 8100.',
+    href: 'http://grimnetwork.srvp.ro:8100/',
+  },
 ]

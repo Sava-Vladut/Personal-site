@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 import auth
+import minecraft
 import miner
 import twitch
 
@@ -136,6 +137,15 @@ def miner_streamers() -> dict:
         return miner.streamers()
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail="Miner node unreachable.") from exc
+
+
+@app.get("/api/minecraft/status")
+def minecraft_status() -> dict:
+    """Live player and server telemetry for the Grim Network Minecraft node."""
+    try:
+        return minecraft.status()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="Minecraft server unreachable.") from exc
 
 
 @app.get("/api/twitch/channel-badges")
