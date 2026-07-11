@@ -3,17 +3,13 @@
 # readMore / visitSite lines are optional; they default to your GitHub profile.
 
 title: SIGNAL DESK
-mark: ::::
 description: A tiny operations cockpit for teams moving fast.
 
 title: MOTION LEDGER
-mark: ####
 description: Interactive stories for product launches and prototypes.
 
 title: FIELD NOTES OS
-mark: [][]
 description: A personal knowledge system with a terminal-first soul.
 
 title: NORTHSTAR API
-mark: ....
 description: Clean integrations for maps, payments, auth, and analytics.

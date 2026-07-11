@@ -1,6 +1,4 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, Braces, ExternalLink } from 'lucide-react'
-import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import { ui } from '../../data/ui.js'
 
 const projectsPerPage = 3
@@ -37,18 +35,16 @@ export function ProjectsSection({ projects }) {
           onClick={goToPreviousPage}
           disabled={currentPage === 1}
         >
-          <TerminalIcon icon={ArrowLeft} label="" />
           {ui.prevButton}
         </button>
         <p>
-          page {String(currentPage).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
+          Page {currentPage} of {totalPages}
         </p>
         <button
           type="button"
           onClick={goToNextPage}
           disabled={currentPage === totalPages}
         >
-          <TerminalIcon icon={ArrowRight} label="" />
           {ui.nextButton}
         </button>
       </div>
@@ -64,22 +60,16 @@ export function ProjectsSection({ projects }) {
 function ProjectRow({ project, index }) {
   return (
     <article className="project-row">
-      <div className="project-index">[/&gt;] {String(index + 1).padStart(2, '0')}</div>
+      <div className="project-index">{String(index + 1).padStart(2, '0')}</div>
       <div className="project-main">
-        <h3>
-          <span aria-hidden="true">{project.mark}</span>
-          {project.title}
-          <span aria-hidden="true">{project.mark}</span>
-        </h3>
+        <h3>{project.title}</h3>
         <p>{project.description}</p>
         <a href={project.readMore} target="_blank" rel="noreferrer">
-          <TerminalIcon icon={Braces} label="" />
-          {ui.readMoreLink} <span aria-hidden="true">-&gt;</span>
+          {ui.readMoreLink}
         </a>
       </div>
       <a className="visit-link" href={project.visitSite} target="_blank" rel="noreferrer">
-        <TerminalIcon icon={ExternalLink} label="" />
-        {ui.visitSiteLink} <span aria-hidden="true">-&gt;</span>
+        {ui.visitSiteLink}
       </a>
     </article>
   )

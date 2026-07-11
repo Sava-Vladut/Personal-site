@@ -569,20 +569,6 @@ h2 .title-cursor {
   min-height: 32px;
 }
 
-.project-pagination button:not(:disabled) .terminal-icon {
-  transition: transform var(--dur-1) var(--ease-out-quad);
-}
-
-.project-pagination button:not(:disabled):hover .terminal-icon,
-.project-pagination button:not(:disabled):focus-visible .terminal-icon {
-  transform: translateX(-2px);
-}
-
-.project-pagination button:not(:disabled):last-child:hover .terminal-icon,
-.project-pagination button:not(:disabled):last-child:focus-visible .terminal-icon {
-  transform: translateX(2px);
-}
-
 .project-pagination button:disabled {
   color: var(--weak);
   cursor: not-allowed;
@@ -600,8 +586,8 @@ h2 .title-cursor {
 
 .project-row {
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr) minmax(120px, 190px);
-  gap: clamp(12px, 4vw, 56px);
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: clamp(12px, 2vw, 28px);
   align-items: start;
   transition: transform var(--dur-2) var(--ease-out-quart);
 }
@@ -625,20 +611,11 @@ h2 .title-cursor {
 }
 
 .project-main h3 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: baseline;
   margin-bottom: 8px;
   font-size: clamp(1.55rem, 2.8vw, 3.15rem);
   font-weight: 400;
   line-height: 1;
   text-transform: uppercase;
-}
-
-.project-main h3 span {
-  color: var(--weak);
-  letter-spacing: 0;
 }
 
 .project-main p {
