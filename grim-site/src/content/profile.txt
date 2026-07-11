@@ -2,7 +2,7 @@
 # Use | to split a value across two lines on the page.
 
 name: Sava Vlad
-firstName: SAVA
+firstName: Sava
 lastName: VLAD
 subtitle: freelance developer | & creative technologist
 location: bucharest | romania / remote

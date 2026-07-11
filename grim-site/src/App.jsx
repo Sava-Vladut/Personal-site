@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ContactSection } from './components/sections/ContactSection.jsx'
-import { BiographySection } from './components/sections/BiographySection.jsx'
 import { HeroSection } from './components/sections/HeroSection.jsx'
 import { LoginSection } from './components/sections/LoginSection.jsx'
 import { RegisterSection } from './components/sections/RegisterSection.jsx'
@@ -168,7 +166,7 @@ function App() {
   }, [loading, activeView, effectiveView])
 
   useEffect(() => {
-    document.title = `${profile.firstName} ${profile.lastName} — ~/${effectiveView}`
+    document.title = profile.firstName
   }, [effectiveView])
 
   // Popped-out Twitch tools are bare utility windows: no nav rail or glyph
@@ -208,7 +206,6 @@ function App() {
         ) : (
         <div className="view-frame" data-view={effectiveView} key={effectiveView}>
           {effectiveView === 'home' && <HeroSection />}
-          {effectiveView === 'biography' && <BiographySection />}
           {effectiveView === 'projects' && <ProjectsSection projects={projects} />}
           {effectiveView === 'services' && <ServicesSection />}
           {effectiveView === 'admin' && <AdminSection />}
@@ -224,7 +221,6 @@ function App() {
               onLogin={() => showView('login')}
             />
           )}
-          {effectiveView === 'contact' && <ContactSection />}
         </div>
         )}
         </ViewportFitter>

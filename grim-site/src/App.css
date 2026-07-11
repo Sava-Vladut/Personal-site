@@ -545,6 +545,7 @@ h2 .title-cursor {
 .project-list {
   display: grid;
   gap: clamp(34px, 5vw, 72px);
+  background: var(--bg);
 }
 
 .project-status {
@@ -692,6 +693,7 @@ h2 .title-cursor {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
+  position: relative;
   min-width: 0;
   margin-bottom: var(--space-lg);
   border: 1px solid var(--weak);
@@ -705,27 +707,42 @@ h2 .title-cursor {
 .service-picker-label {
   display: inline-flex;
   align-items: center;
-  padding: 10px 16px;
+  padding: 4px 10px;
   border-right: 1px solid var(--weak);
   color: var(--dim);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .service-picker-select {
   width: 100%;
-  min-height: 58px;
-  padding: 10px 16px;
+  min-height: 29px;
+  padding: 4px 32px 4px 10px;
   border: 0;
   appearance: none;
-  background: transparent;
+  background: var(--bg);
   color: var(--fg);
   cursor: pointer;
   font: inherit;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   outline: 0;
+}
+
+.service-picker-arrow {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: var(--dim);
+  font-size: 0.9rem;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.service-picker:focus-within .service-picker-arrow {
+  color: var(--fg);
 }
 
 .service-picker-select option {
@@ -2200,17 +2217,17 @@ h2 .title-cursor {
 
 @media (max-width: 760px) {
   .service-picker {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .service-picker-label {
-    padding-bottom: 4px;
-    border-right: 0;
+    padding: 4px 10px;
+    border-right: 1px solid var(--weak);
   }
 
   .service-picker-select {
-    min-height: 48px;
-    padding-top: 4px;
+    min-height: 29px;
+    padding: 4px 32px 4px 10px;
   }
 
   .cmd-line {
@@ -3161,4 +3178,49 @@ h2 .title-cursor {
   .service-launch {
     min-height: 44px;
   }
+}
+
+/* The animated glyph field belongs to the page canvas, never to a working
+   surface. Every interactive console, field, and status module owns an opaque
+   black layer so content stays calm and readable while the surrounding page
+   can retain its terminal atmosphere. */
+.service-picker,
+.service-pane,
+.project-pagination,
+.heic-tool,
+.heic-drop,
+.miner-tool,
+.media-tool,
+.media-input-row,
+.tlog-tool,
+.tlog-modes,
+.tlog-output,
+.tchat-tool,
+.login-form,
+.auth-switch,
+.login-row,
+.login-error,
+.admin-status,
+.admin-metrics,
+.admin-card,
+.admin-board,
+.admin-modules,
+.admin-panel-head,
+.user-add,
+.user-main,
+.user-inline,
+.user-msg,
+.cmd-code {
+  background-color: var(--bg);
+}
+
+.terminal-site :is(input, select, textarea) {
+  background-color: var(--bg);
+}
+
+.heic-drop:hover,
+.heic-drop:focus-visible,
+.heic-drop.is-drag,
+.minecraft-map-head {
+  background: var(--bg);
 }

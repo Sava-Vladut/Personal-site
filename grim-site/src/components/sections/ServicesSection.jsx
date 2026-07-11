@@ -103,6 +103,7 @@ export function ServicesSection() {
             </option>
           ))}
         </select>
+        <span className="service-picker-arrow" aria-hidden="true">↓</span>
       </div>
 
       <div className="service-pane" data-mode={active.mode} key={active.id}>

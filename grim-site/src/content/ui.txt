@@ -4,7 +4,3 @@ prevButton: Prev
 nextButton: Next
 readMoreLink: Read more
 visitSiteLink: Visit site
-contactNameLabel: Name
-contactEmailLabel: Email
-contactSocialLabel: Social
-contactCopyrightLabel: Copyright
