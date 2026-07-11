@@ -311,7 +311,7 @@ h2 {
   overflow: hidden;
 }
 
-.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-tabs, .service-pane, .login-intro, .login-form, .admin-status, .admin-card, .admin-board) {
+.view-frame :is(.nameplate, .portrait, .hero-copy, .location-copy, .spinner-stack, h2, .project-status, .project-pagination, .project-row, .bio-col, .contact-grid p, .service-intro, .service-picker, .service-pane, .login-intro, .login-form, .admin-status, .admin-card, .admin-board) {
   animation: terminal-line-in var(--dur-2) var(--ease-out-quad) both;
 }
 
@@ -350,7 +350,7 @@ h2 {
   animation-delay: 140ms;
 }
 
-.view-frame .service-tabs {
+.view-frame .service-picker {
   animation-delay: 70ms;
 }
 
@@ -688,77 +688,51 @@ h2 .title-cursor {
   animation: blink 1.4s steps(1) infinite;
 }
 
-.service-tabs {
+.service-picker {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--gap-grid);
-  margin-bottom: var(--space-lg);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
   min-width: 0;
+  margin-bottom: var(--space-lg);
+  border: 1px solid var(--weak);
+  transition: border-color 150ms ease;
 }
 
-@media (max-width: 640px) {
-  .service-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.service-picker:focus-within {
+  border-color: var(--fg);
 }
 
-.service-tab {
-  gap: 12px;
+.service-picker-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-right: 1px solid var(--weak);
+  color: var(--dim);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.service-picker-select {
+  width: 100%;
   min-height: 58px;
   padding: 10px 16px;
-  border: 1px solid var(--weak);
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  transition:
-    color 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease;
+  outline: 0;
 }
 
-.service-tab .service-mode {
-  margin-left: auto;
-  font-style: normal;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  color: var(--weak);
-}
-
-.service-tab .service-mode--live {
-  color: var(--fg);
-}
-
-.service-tab:hover,
-.service-tab:focus-visible {
-  border-color: var(--fg);
-}
-
-.service-tab:focus-visible .service-mode {
-  color: var(--bg);
-}
-
-/* Paired with the (hover: hover)-gated inversion — the label must not go
-   background-coloured on touch taps where no inversion happens. */
-@media (hover: hover) {
-  .service-tab:hover .service-mode {
-    color: var(--bg);
-  }
-}
-
-.service-tab[aria-selected='true'] {
-  color: var(--bg);
-  background: var(--fg);
-  border-color: var(--fg);
-}
-
-.service-tab[aria-selected='true'] span {
+.service-picker-select option {
   background: var(--bg);
   color: var(--fg);
 }
 
-.service-tab[aria-selected='true'] .service-mode {
-  color: var(--bg);
-}
 
 .service-pane {
   min-width: 0;
@@ -2223,8 +2197,18 @@ h2 .title-cursor {
 }
 
 @media (max-width: 760px) {
-  .service-tabs {
+  .service-picker {
     grid-template-columns: 1fr;
+  }
+
+  .service-picker-label {
+    padding-bottom: 4px;
+    border-right: 0;
+  }
+
+  .service-picker-select {
+    min-height: 48px;
+    padding-top: 4px;
   }
 
   .cmd-line {

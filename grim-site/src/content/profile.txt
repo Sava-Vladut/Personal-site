@@ -1,9 +1,9 @@
 # Your personal info. Edit the part after each colon.
 # Use | to split a value across two lines on the page.
 
-name: Vladu Grim
-firstName: VLADU
-lastName: GRIM
+name: Sava Vlad
+firstName: SAVA
+lastName: VLAD
 subtitle: freelance developer | & creative technologist
 location: bucharest | romania / remote
 email: hello@vladugrim.dev

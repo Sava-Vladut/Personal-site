@@ -30,9 +30,13 @@ const liveComponents = {
 }
 
 const serviceModeLabels = {
-  live: '● live',
-  api: '↯ api',
-  external: '↗ open',
+  live: 'live',
+  api: 'api',
+  external: 'open',
+}
+
+function serviceOptionLabel(service) {
+  return `${service.index} - ${service.title.replace(/\u2192/g, '-')} - ${serviceModeLabels[service.mode] ?? service.mode}`
 }
 
 export function ServicesSection() {
@@ -83,26 +87,22 @@ export function ServicesSection() {
 
   return (
     <section className="section services" id="services" data-service={active.id}>
-      <div className="service-tabs" role="tablist" aria-label="Services">
-        {visibleServices.map((service) => (
-          <button
-            type="button"
-            role="tab"
-            key={service.id}
-            aria-selected={service.id === active.id}
-            aria-current={service.id === active.id ? 'true' : undefined}
-            className="service-tab"
-            onClick={() => setActiveId(service.id)}
-            title={`Open ${service.title}`}
-          >
-            <span>{service.index}</span>
-            <TerminalIcon icon={serviceIcons[service.id]} label="" />
-            {service.slug}
-            <em className={`service-mode service-mode--${service.mode}`}>
-              {serviceModeLabels[service.mode] ?? service.mode}
-            </em>
-          </button>
-        ))}
+      <div className="service-picker">
+        <label className="service-picker-label" htmlFor="service-picker">
+          Services
+        </label>
+        <select
+          className="service-picker-select"
+          id="service-picker"
+          value={active.id}
+          onChange={(event) => setActiveId(event.target.value)}
+        >
+          {visibleServices.map((service) => (
+            <option key={service.id} value={service.id}>
+              {serviceOptionLabel(service)}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="service-pane" data-mode={active.mode} key={active.id}>
@@ -117,7 +117,6 @@ export function ServicesSection() {
             >
               <TerminalIcon icon={serviceIcons[active.id] ?? Plane} label="" />
               Launch {active.title}
-              <span aria-hidden="true">↗</span>
             </a>
           </div>
         ) : active.mode === 'live' ? (
