@@ -797,7 +797,7 @@ h2 .title-cursor {
    width and left a large dead strip on the right. On desktop the console owns
    the viewport height and only the message feed scrolls. */
 @media (min-width: 901px) {
-  .services[data-service='twitchlogs'] {
+  .services:is([data-service='twitchlogs'], [data-service='minecraft']) {
     height: 100svh;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
@@ -823,6 +823,22 @@ h2 .title-cursor {
 
   .services[data-service='twitchlogs'] .tlog-feed {
     max-height: none;
+  }
+
+  .services[data-service='minecraft'] .service-pane,
+  .services[data-service='minecraft'] .minecraft-tool,
+  .services[data-service='minecraft'] .minecraft-map,
+  .services[data-service='minecraft'] .minecraft-map iframe {
+    min-height: 0;
+  }
+
+  .services[data-service='minecraft'] .minecraft-tool,
+  .services[data-service='minecraft'] .minecraft-map iframe {
+    height: 100%;
+  }
+
+  .services[data-service='minecraft'] .minecraft-map iframe {
+    display: block;
   }
 }
 
