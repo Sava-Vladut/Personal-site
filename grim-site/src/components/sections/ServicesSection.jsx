@@ -39,19 +39,17 @@ function serviceOptionLabel(service) {
   return `${service.index} - ${service.title.replace(/\u2192/g, '-')} - ${serviceModeLabels[service.mode] ?? service.mode}`
 }
 
-export function ServicesSection() {
+export function ServicesSection({ activeServiceId, onSelectService }) {
   const { isLoggedIn } = useAuth()
   const visibleServices = useMemo(
     () => services.filter((service) => isLoggedIn || service.public),
     [isLoggedIn],
   )
-  const [activeId, setActiveId] = useState(visibleServices[0]?.id)
-  const active = visibleServices.find((service) => service.id === activeId) ?? visibleServices[0]
+  const active = visibleServices.find((service) => service.id === activeServiceId) ?? visibleServices[0]
 
-  useEffect(() => {
-    if (!active || visibleServices.some((service) => service.id === activeId)) return
-    setActiveId(visibleServices[0]?.id)
-  }, [active, activeId, visibleServices])
+  const selectService = useCallback((serviceId) => {
+    onSelectService?.(serviceId)
+  }, [onSelectService])
 
   // Chat -> Logs hand-off: clicking a chatter stores the subject here and flips
   // the active tab; TwitchLogs picks the preset up and auto-runs the retrieval.
@@ -59,8 +57,8 @@ export function ServicesSection() {
   const [logsPreset, setLogsPreset] = useState(null)
   const openLogs = useCallback((subject) => {
     setLogsPreset({ ...subject, nonce: Date.now() })
-    setActiveId('twitchlogs')
-  }, [])
+    selectService('twitchlogs')
+  }, [selectService])
 
   // A popped-out chat window (TwitchChatPopout) broadcasts chatter clicks here
   // so the main tab can jump to the Logs service for them.
@@ -95,7 +93,7 @@ export function ServicesSection() {
           className="service-picker-select"
           id="service-picker"
           value={active.id}
-          onChange={(event) => setActiveId(event.target.value)}
+          onChange={(event) => selectService(event.target.value)}
         >
           {visibleServices.map((service) => (
             <option key={service.id} value={service.id}>

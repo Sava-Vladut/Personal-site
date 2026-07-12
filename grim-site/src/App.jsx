@@ -22,12 +22,15 @@ const knownViews = new Set([...navItems.map((item) => item.target), 'login', 're
 // for everyone else.
 const adminTargets = new Set(['admin', 'chatpop', 'chatlogspop'])
 
-const getViewFromHash = () => {
+const getRouteFromHash = () => {
   const hash = window.location.hash.replace(/^#\/?/, '')
   // Bare Twitch utility windows carry their target in the rest of the hash.
-  if (hash.startsWith('chatpop')) return 'chatpop'
-  if (hash.startsWith('chatlogspop')) return 'chatlogspop'
-  return knownViews.has(hash) ? hash : 'home'
+  if (hash.startsWith('chatpop')) return { view: 'chatpop' }
+  if (hash.startsWith('chatlogspop')) return { view: 'chatlogspop' }
+
+  const [view, serviceId] = hash.split('/')
+  if (view === 'services') return { view, serviceId: serviceId || undefined }
+  return { view: knownViews.has(view) ? view : 'home' }
 }
 
 // Below this width the nav collapses into a top bar (see App.css) and the
@@ -116,7 +119,8 @@ function ViewportFitter({ view, children }) {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState(getViewFromHash)
+  const [activeRoute, setActiveRoute] = useState(getRouteFromHash)
+  const activeView = activeRoute.view
   const { projects } = useGithubProjects()
   const { isLoggedIn, isAdmin, loading, signOut } = useAuth()
 
@@ -130,8 +134,13 @@ function App() {
 
   const showView = useCallback((target) => {
     window.location.hash = `/${target}`
-    setActiveView(target)
+    setActiveRoute({ view: target })
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  const showService = useCallback((serviceId) => {
+    window.location.hash = `/services/${serviceId}`
+    setActiveRoute({ view: 'services', serviceId })
   }, [])
 
   const handleLogout = useCallback(async () => {
@@ -151,7 +160,7 @@ function App() {
   }
 
   useEffect(() => {
-    const onHashChange = () => setActiveView(getViewFromHash())
+    const onHashChange = () => setActiveRoute(getRouteFromHash())
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
@@ -207,7 +216,12 @@ function App() {
         <div className="view-frame" data-view={effectiveView} key={effectiveView}>
           {effectiveView === 'home' && <HeroSection />}
           {effectiveView === 'projects' && <ProjectsSection projects={projects} />}
-          {effectiveView === 'services' && <ServicesSection />}
+          {effectiveView === 'services' && (
+            <ServicesSection
+              activeServiceId={activeRoute.serviceId}
+              onSelectService={showService}
+            />
+          )}
           {effectiveView === 'admin' && <AdminSection />}
           {effectiveView === 'login' && (
             <LoginSection
