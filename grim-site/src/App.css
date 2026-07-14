@@ -46,12 +46,33 @@
 }
 
 .hero-shell {
-  min-height: 100%;
+  position: relative;
+  height: 100svh;
   padding-top: clamp(6px, 0.9vw, 14px);
   padding-bottom: clamp(14px, 2vw, 28px);
+  display: flex;
+  align-items: center;
+}
+
+.hero-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.96) 0%,
+    rgba(0, 0, 0, 0.68) 24%,
+    rgba(0, 0, 0, 0.2) 55%,
+    transparent 82%
+  );
 }
 
 .hero-grid {
+  position: relative;
+  z-index: 1;
+  width: 100%;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: minmax(0, 1fr);
@@ -2357,7 +2378,8 @@ h2 .title-cursor {
    the ~220px the sidebar rail now takes from the viewport. */
 @media (max-width: 1120px) {
   .hero-shell {
-    min-height: auto;
+    height: auto;
+    display: block;
     padding-bottom: 28px;
   }
 
