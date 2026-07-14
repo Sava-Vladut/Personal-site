@@ -27,28 +27,26 @@ export function HeroSection() {
           </pre>
         </div>
 
-        <div className="hero-copy">
-          <p>/ {profile.subtitle[0]}</p>
-          <p>{profile.subtitle[1]}</p>
-        </div>
-
         <div className="spinner-stack">
+          <svg className="ascii-links" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M 38 33 C 30 24, 22 18, 14 16" />
+            <path d="M 66 50 C 74 50, 82 50, 89 50" />
+            <path d="M 38 68 C 30 76, 22 82, 14 85" />
+            <circle cx="14" cy="16" r="0.42" />
+            <circle cx="89" cy="50" r="0.42" />
+            <circle cx="14" cy="85" r="0.42" />
+          </svg>
+
           <AsciiSpinner
             render={renderMug}
-            label="caffeine"
-            note="primary fuel source"
             ariaLabel="Rotating ASCII coffee mug"
           />
           <AsciiSpinner
             render={renderLaptop}
-            label="code"
-            note="daily output"
             ariaLabel="Rotating ASCII laptop"
           />
           <AsciiSpinner
             render={renderBrain}
-            label="ideas"
-            note="always compiling"
             ariaLabel="Rotating ASCII brain"
           />
         </div>

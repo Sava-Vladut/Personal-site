@@ -53,9 +53,8 @@
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(620px, 1.55fr) minmax(220px, 0.68fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  column-gap: clamp(8px, 1.4vw, 22px);
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   row-gap: clamp(10px, 1.8vw, 28px);
   align-items: start;
 }
@@ -99,7 +98,7 @@ h2 {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  width: min(100%, 880px);
+  width: 100%;
   height: clamp(320px, 58svh, 520px);
   min-height: 0;
   margin-top: 0;
@@ -116,7 +115,7 @@ h2 {
   letter-spacing: 0;
   white-space: pre;
   transform: scaleX(0.7);
-  transform-origin: left top;
+  transform-origin: center top;
 }
 
 .portrait-line {
@@ -139,6 +138,10 @@ h2 {
   .portrait-line {
     animation: none;
   }
+
+  .ascii-links path {
+    animation: none;
+  }
 }
 
 .hero-copy {
@@ -155,14 +158,71 @@ h2 {
 }
 
 .spinner-stack {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 2;
-  align-self: start;
-  justify-self: start;
+  align-self: stretch;
+  justify-self: stretch;
   display: grid;
-  gap: clamp(12px, 2.2svh, 22px);
-  margin-top: clamp(-16px, -1.2vw, -8px);
-  margin-left: clamp(-96px, -5vw, -28px);
+  grid-template-columns: minmax(140px, 1fr) minmax(600px, 820px) minmax(140px, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  height: clamp(320px, 58svh, 520px);
+  pointer-events: none;
+}
+
+.ascii-links {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--dim);
+  opacity: 0.52;
+}
+
+.ascii-links path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-dasharray: 2 4;
+  vector-effect: non-scaling-stroke;
+  animation: ascii-signal 14s linear infinite;
+}
+
+.ascii-links circle {
+  fill: currentColor;
+}
+
+@keyframes ascii-signal {
+  to {
+    stroke-dashoffset: -48;
+  }
+}
+
+.spinner-stack .ascii-spinner:nth-of-type(1) {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+}
+
+.spinner-stack .ascii-spinner:nth-of-type(2) {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: center;
+  justify-self: start;
+}
+
+.spinner-stack .ascii-spinner:nth-of-type(3) {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
+}
+
+.spinner-stack .ascii-spinner {
+  position: relative;
+  z-index: 1;
 }
 
 .ascii-spinner {
@@ -2323,10 +2383,23 @@ h2 .title-cursor {
   .spinner-stack {
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto;
+    height: auto;
     justify-self: start;
     gap: 12px;
     margin-top: 0;
     margin-left: 0;
+  }
+
+  .ascii-links {
+    display: none;
+  }
+
+  .spinner-stack .ascii-spinner:nth-child(n) {
+    grid-column: auto;
+    grid-row: auto;
+    align-self: start;
+    justify-self: center;
   }
 
   .ascii-spinner {
@@ -2429,13 +2502,13 @@ h2 .title-cursor {
   .portrait {
     height: auto;
     align-items: flex-start;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .portrait pre {
-    font-size: calc((100vw - 16px) / 62);
-    transform: scaleX(0.62);
-    transform-origin: left top;
+    font-size: calc((100vw - 16px) / 59);
+    transform: scaleX(0.68);
+    transform-origin: center top;
   }
 
   .spinner-stack {

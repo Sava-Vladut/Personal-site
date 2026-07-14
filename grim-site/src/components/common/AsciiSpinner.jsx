@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export function AsciiSpinner({ render, label, note, ariaLabel }) {
+export function AsciiSpinner({ render, ariaLabel }) {
   const preRef = useRef(null)
 
   useEffect(() => {
@@ -22,10 +22,6 @@ export function AsciiSpinner({ render, label, note, ariaLabel }) {
   return (
     <figure className="ascii-spinner" role="img" aria-label={ariaLabel}>
       <pre ref={preRef} aria-hidden="true" />
-      <figcaption>
-        <span className="spinner-label">/ {label}</span>
-        {note ? <span className="spinner-note">{note}</span> : null}
-      </figcaption>
     </figure>
   )
 }
