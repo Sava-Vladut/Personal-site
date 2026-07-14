@@ -86,10 +86,27 @@ h1 {
     1px 0 0 var(--fg);
 }
 
-h1 span,
+.nameplate h1 {
+  justify-content: center;
+  text-align: center;
+}
+
 h2 {
   color: var(--bg);
   -webkit-text-stroke: 1px var(--fg);
+}
+
+.ascii-name {
+  display: block;
+  color: var(--fg);
+  opacity: 0.78;
+  font-size: clamp(0.55rem, 1.8vw, 1.6rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: 0;
+  white-space: pre;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
 }
 
 .portrait {
@@ -105,9 +122,12 @@ h2 {
   color: var(--dim);
   overflow: visible;
   opacity: 0.95;
+  position: relative;
 }
 
 .portrait pre {
+  position: relative;
+  z-index: 1;
   margin: 0;
   padding: 10px 0;
   font-size: clamp(0.66rem, 0.98vw, 1.03rem);
@@ -116,6 +136,15 @@ h2 {
   white-space: pre;
   transform: scaleX(0.7);
   transform-origin: center top;
+}
+
+.radiating-numbers {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .portrait-line {
@@ -208,8 +237,8 @@ h2 {
 
 .spinner-stack .ascii-spinner:nth-of-type(2) {
   grid-column: 3;
-  grid-row: 2;
-  align-self: center;
+  grid-row: 1;
+  align-self: start;
   justify-self: start;
 }
 
@@ -218,6 +247,13 @@ h2 {
   grid-row: 3;
   align-self: end;
   justify-self: end;
+}
+
+.spinner-stack .ascii-spinner:nth-of-type(4) {
+  grid-column: 3;
+  grid-row: 3;
+  align-self: end;
+  justify-self: start;
 }
 
 .spinner-stack .ascii-spinner {
@@ -2382,7 +2418,7 @@ h2 .title-cursor {
 
   .spinner-stack {
     width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-template-rows: auto;
     height: auto;
     justify-self: start;
@@ -2516,7 +2552,7 @@ h2 .title-cursor {
   }
 
   .ascii-spinner pre {
-    font-size: clamp(0.28rem, 1.08vw, 0.36rem);
+    font-size: clamp(0.2rem, 0.82vw, 0.3rem);
   }
 
   .spinner-label {

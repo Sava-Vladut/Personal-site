@@ -237,9 +237,36 @@ const buildBrain = () => {
   return points
 }
 
+const buildGlobe = () => {
+  const points = []
+
+  for (let i = 0; i <= 38; i += 1) {
+    const theta = (i / 38) * Math.PI
+    const st = Math.sin(theta)
+    const ct = Math.cos(theta)
+
+    for (let j = 0; j < 72; j += 1) {
+      const phi = (j / 72) * Math.PI * 2
+      const x = st * Math.cos(phi)
+      const y = ct
+      const z = st * Math.sin(phi)
+      const terrain =
+        Math.sin(phi * 3 + theta * 2.4) +
+        0.55 * Math.sin(phi * 7 - theta * 4.2) +
+        0.35 * Math.cos(phi * 11 + theta)
+      const albedo = terrain > 0.45 ? 1.3 : 0.68
+
+      points.push([x, y, z, x, y, z, albedo])
+    }
+  }
+
+  return points
+}
+
 const MUG = buildMug()
 const LAPTOP = buildLaptop()
 const BRAIN = buildBrain()
+const GLOBE = buildGlobe()
 
 export function renderMug(angle, time) {
   const chars = project(MUG, angle)
@@ -263,4 +290,8 @@ export function renderLaptop(angle) {
 
 export function renderBrain(angle) {
   return stringify(project(BRAIN, angle))
+}
+
+export function renderGlobe(angle) {
+  return stringify(project(GLOBE, angle))
 }
