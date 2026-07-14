@@ -2,23 +2,14 @@ import asciiPortrait from '../../content/ascii.txt?raw'
 import { AsciiSpinner } from '../common/AsciiSpinner.jsx'
 import { RadiatingNumbers } from '../common/RadiatingNumbers.jsx'
 import { renderBrain, renderGlobe, renderLaptop, renderMug } from '../../utils/ascii3d.js'
-import { renderAsciiName } from '../../utils/asciiText.js'
-import { profile } from '../../data/profile.js'
 import { useAsciiScramble } from '../../hooks/useAsciiScramble.js'
 
 export function HeroSection() {
   const { text: portrait, preRef } = useAsciiScramble(asciiPortrait)
-  const asciiName = renderAsciiName(profile.name)
 
   return (
-    <section className="hero-shell" id="home" aria-labelledby="site-name">
+    <section className="hero-shell" id="home" aria-label="Home">
       <div className="hero-grid">
-        <header className="nameplate">
-          <h1 id="site-name" aria-label={profile.name}>
-            <span className="ascii-name" aria-hidden="true">{asciiName}</span>
-          </h1>
-        </header>
-
         <div className="portrait" aria-label="Abstract ASCII portrait">
           <RadiatingNumbers />
           <pre ref={preRef}>

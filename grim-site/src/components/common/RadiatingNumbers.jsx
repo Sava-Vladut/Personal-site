@@ -49,7 +49,7 @@ export function RadiatingNumbers() {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.shadowBlur = 2
-      ctx.shadowColor = 'rgba(255, 104, 24, 0.5)'
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)'
 
       for (const particle of particles) {
         const distance = reduceMotion
@@ -62,7 +62,7 @@ export function RadiatingNumbers() {
         const fade = Math.sin(Math.PI * progress) ** 1.35
 
         ctx.font = `${particle.fontSize}px ${FONT_STACK}`
-        ctx.fillStyle = `rgba(255, 104, 24, ${particle.opacity * fade})`
+        ctx.fillStyle = `rgba(255, 255, 255, ${particle.opacity * fade})`
         ctx.fillText(particle.digit, x, y)
       }
     }
