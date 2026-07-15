@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ui } from '../../data/ui.js'
 
-const projectsPerPage = 3
+const projectsPerPage = 5
 
 export function ProjectsSection({ projects }) {
   const [currentPage, setCurrentPage] = useState(1)

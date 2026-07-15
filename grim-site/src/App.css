@@ -297,7 +297,7 @@ h2 {
 
 .ascii-spinner pre {
   margin: 0;
-  font-size: clamp(0.42rem, 0.54vw, 0.58rem);
+  font-size: clamp(0.63rem, 0.81vw, 0.87rem);
   line-height: 1;
   letter-spacing: 0;
   white-space: pre;
@@ -469,6 +469,14 @@ h2 {
 .view-frame .project-row:nth-child(3),
 .view-frame .service-pane {
   animation-delay: 140ms;
+}
+
+.view-frame .project-row:nth-child(4) {
+  animation-delay: 175ms;
+}
+
+.view-frame .project-row:nth-child(5) {
+  animation-delay: 210ms;
 }
 
 .view-frame .service-picker {
@@ -2505,7 +2513,7 @@ h2 .title-cursor {
   }
 
   .ascii-spinner pre {
-    font-size: clamp(0.34rem, 1.15vw, 0.48rem);
+    font-size: clamp(0.51rem, 1.725vw, 0.72rem);
   }
 
   .ascii-spinner figcaption {
@@ -2621,7 +2629,7 @@ h2 .title-cursor {
   }
 
   .ascii-spinner pre {
-    font-size: clamp(0.2rem, 0.82vw, 0.3rem);
+    font-size: clamp(0.3rem, 1.23vw, 0.45rem);
   }
 
   .spinner-label {
