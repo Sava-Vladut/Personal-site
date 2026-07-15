@@ -51,28 +51,15 @@
   padding-top: clamp(6px, 0.9vw, 14px);
   padding-bottom: clamp(14px, 2vw, 28px);
   display: flex;
-  align-items: center;
-}
-
-.hero-shell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.96) 0%,
-    rgba(0, 0, 0, 0.68) 24%,
-    rgba(0, 0, 0, 0.2) 55%,
-    transparent 82%
-  );
+  align-items: flex-start;
 }
 
 .hero-grid {
   position: relative;
   z-index: 1;
   width: 100%;
+  height: 100%;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: minmax(0, 1fr);
@@ -99,13 +86,42 @@ h2 {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: clamp(320px, 58svh, 520px);
+  height: 100%;
   min-height: 0;
   margin-top: 0;
   color: var(--dim);
   overflow: visible;
   opacity: 0.95;
   position: relative;
+}
+
+.hero-identity {
+  position: absolute;
+  left: 50%;
+  top: clamp(4px, 1.4vh, 16px);
+  z-index: 3;
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  color: var(--fg);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.hero-identity-label {
+  color: var(--weak);
+  font-size: clamp(0.58rem, 0.72vw, 0.7rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero-identity pre {
+  margin: 0;
+  font-size: clamp(0.52rem, 0.82vw, 0.74rem);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  white-space: pre;
 }
 
 .portrait pre {
@@ -154,6 +170,11 @@ h2 {
   .ascii-links path {
     animation: none;
   }
+
+  .spinner-stack .ascii-spinner {
+    animation: none;
+    will-change: auto;
+  }
 }
 
 .hero-copy {
@@ -174,22 +195,14 @@ h2 {
   grid-row: 1;
   align-self: stretch;
   justify-self: stretch;
-  display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(600px, 820px) minmax(140px, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  height: clamp(320px, 58svh, 520px);
+  position: relative;
+  height: 100%;
+  --orbit-duration: 72s;
   pointer-events: none;
 }
 
 .ascii-links {
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
-  align-self: stretch;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  color: var(--dim);
-  opacity: 0.52;
+  display: none;
 }
 
 .ascii-links path {
@@ -211,37 +224,44 @@ h2 {
   }
 }
 
+.spinner-stack .ascii-spinner {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 1;
+  offset-path: ellipse(41% 39% at 50% 50%);
+  offset-anchor: center;
+  offset-rotate: 0deg;
+  animation: ascii-orbit var(--orbit-duration) linear infinite;
+  will-change: offset-distance;
+}
+
 .spinner-stack .ascii-spinner:nth-of-type(1) {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-  justify-self: end;
+  offset-distance: 0%;
 }
 
 .spinner-stack .ascii-spinner:nth-of-type(2) {
-  grid-column: 3;
-  grid-row: 1;
-  align-self: start;
-  justify-self: start;
+  offset-distance: 25%;
+  animation-delay: calc(var(--orbit-duration) * -0.25);
 }
 
 .spinner-stack .ascii-spinner:nth-of-type(3) {
-  grid-column: 1;
-  grid-row: 3;
-  align-self: end;
-  justify-self: end;
+  offset-distance: 50%;
+  animation-delay: calc(var(--orbit-duration) * -0.5);
 }
 
 .spinner-stack .ascii-spinner:nth-of-type(4) {
-  grid-column: 3;
-  grid-row: 3;
-  align-self: end;
-  justify-self: start;
+  offset-distance: 75%;
+  animation-delay: calc(var(--orbit-duration) * -0.75);
 }
 
-.spinner-stack .ascii-spinner {
-  position: relative;
-  z-index: 1;
+@keyframes ascii-orbit {
+  from {
+    offset-distance: 0%;
+  }
+
+  to {
+    offset-distance: 100%;
+  }
 }
 
 .ascii-spinner {
@@ -2385,14 +2405,26 @@ h2 .title-cursor {
 
   .hero-grid {
     grid-template-columns: 1fr;
+    height: auto;
     row-gap: 22px;
   }
 
   .portrait,
+  .hero-identity,
   .hero-copy,
   .spinner-stack {
     grid-column: 1;
     grid-row: auto;
+  }
+
+  .hero-identity {
+    position: relative;
+    left: auto;
+    top: auto;
+    bottom: auto;
+    justify-self: center;
+    margin-top: 4px;
+    transform: none;
   }
 
   .hero-copy {
@@ -2415,10 +2447,15 @@ h2 .title-cursor {
   }
 
   .spinner-stack .ascii-spinner:nth-child(n) {
+    position: relative;
+    inset: auto;
     grid-column: auto;
     grid-row: auto;
     align-self: start;
     justify-self: center;
+    offset-path: none;
+    animation: none;
+    will-change: auto;
   }
 
   .ascii-spinner {
@@ -2523,6 +2560,20 @@ h2 .title-cursor {
     font-size: calc((100vw - 16px) / 59);
     transform: scaleX(0.68);
     transform-origin: center top;
+  }
+
+  .hero-identity {
+    width: max-content;
+    max-width: 100%;
+    gap: 5px;
+  }
+
+  .hero-identity-label {
+    font-size: 0.54rem;
+  }
+
+  .hero-identity pre {
+    font-size: clamp(0.32rem, 1.65vw, 0.5rem);
   }
 
   .spinner-stack {

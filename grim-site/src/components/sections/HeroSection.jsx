@@ -1,7 +1,9 @@
 import asciiPortrait from '../../content/ascii.txt?raw'
 import { AsciiSpinner } from '../common/AsciiSpinner.jsx'
 import { RadiatingNumbers } from '../common/RadiatingNumbers.jsx'
+import { profile } from '../../data/profile.js'
 import { renderBrain, renderGlobe, renderLaptop, renderMug } from '../../utils/ascii3d.js'
+import { renderAsciiName } from '../../utils/asciiText.js'
 import { useAsciiScramble } from '../../hooks/useAsciiScramble.js'
 
 export function HeroSection() {
@@ -10,6 +12,13 @@ export function HeroSection() {
   return (
     <section className="hero-shell" id="home" aria-label="Home">
       <div className="hero-grid">
+        <div className="hero-identity" role="img" aria-label={profile.name}>
+          <span className="hero-identity-label" aria-hidden="true">
+            profile://{profile.name.toLowerCase().replaceAll(' ', '-')}
+          </span>
+          <pre aria-hidden="true">{renderAsciiName(profile.name)}</pre>
+        </div>
+
         <div className="portrait" aria-label="Abstract ASCII portrait">
           <RadiatingNumbers />
           <pre ref={preRef}>
