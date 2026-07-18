@@ -1766,15 +1766,27 @@ h2 .title-cursor {
   gap: var(--space-xs);
 }
 
+.tlog-query {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-xs);
+}
+
 .tlog-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-xs);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 700px) {
+  .tlog-query,
   .tlog-fields {
     grid-template-columns: 1fr;
+  }
+
+  .tlog-run {
+    width: 100%;
   }
 }
 
@@ -1838,56 +1850,12 @@ h2 .title-cursor {
   text-transform: uppercase;
 }
 
-.tlog-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-}
-
-.tlog-toggle {
-  min-height: 34px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.tlog-limit {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.78rem;
-  color: var(--dim);
-}
-
-.tlog-limit-input {
-  width: 76px;
-  padding: 7px 9px;
-  border: 1px solid var(--weak);
-  background: transparent;
-  font: inherit;
-  text-align: center;
-  color: var(--fg);
-}
-
-.tlog-limit-input:focus {
-  outline: 0;
-  border-color: var(--fg);
-}
-
-.tlog-note {
-  color: var(--weak);
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
-}
-
 .tlog-run {
-  min-height: 40px;
-  padding: 0 18px;
-  margin-left: auto;
+  min-height: 42px;
+  padding: 0 20px;
   border: 1px solid var(--fg);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .tlog-run:disabled {
@@ -1999,19 +1967,21 @@ h2 .title-cursor {
 .tlog-feed {
   max-height: 72svh;
   overflow: auto;
-  font-size: clamp(0.82rem, 1.05vw, 0.96rem);
+  scrollbar-gutter: stable;
+  font-size: clamp(0.68rem, 0.82vw, 0.78rem);
+  line-height: 1.35;
 }
 
 .tlog-line {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 12px;
+  gap: 8px;
   align-items: baseline;
-  padding: 8px 16px;
+  padding: 5px 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--weak) 28%, transparent);
   /* Let the browser skip layout/paint for rows scrolled out of view. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 34px;
+  contain-intrinsic-size: auto 27px;
 }
 
 .tlog-line:hover {
@@ -3354,7 +3324,6 @@ h2 .title-cursor {
   .media-format,
   .media-clear,
   .media-run,
-  .tlog-toggle,
   .tlog-mode,
   .tlog-run,
   .tlog-ghost,

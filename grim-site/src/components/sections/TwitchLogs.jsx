@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 import { TerminalIcon } from '../common/TerminalIcon.jsx'
 import {
@@ -15,11 +15,11 @@ import {
 const API = 'https://logs.zonian.dev'
 
 const MODES = [
-  { id: 'latest', label: 'latest', note: 'newest stored month for this subject' },
-  { id: 'channel', label: 'channel', note: "entire channel's chat — blank day = latest stored" },
-  { id: 'random', label: 'random', note: 'one random line — re-run for another' },
-  { id: 'month', label: 'by month', note: 'pick an exact archived YYYY / MM' },
-  { id: 'id', label: 'by id', note: 'bypass name lookup with raw numeric ids' },
+  { id: 'latest', label: 'latest' },
+  { id: 'channel', label: 'channel' },
+  { id: 'random', label: 'random' },
+  { id: 'month', label: 'by month' },
+  { id: 'id', label: 'by id' },
 ]
 
 const MONTHS = ['', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
@@ -35,7 +35,8 @@ const fmtStamp = (d) =>
     hour12: false,
   })
 
-// How many rows to reveal per "page" as the user scrolls to the bottom.
+// Keep the archive query compact and reveal older rows as the user scrolls up.
+const LOG_LIMIT = 500
 const PAGE_SIZE = 50
 
 // One log row. Memoized so appending more rows never re-renders existing ones —
@@ -86,8 +87,6 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
   const [user, setUser] = useState('')
   const [channelId, setChannelId] = useState('')
   const [userId, setUserId] = useState('')
-  const [reverse, setReverse] = useState(true)
-  const [limit, setLimit] = useState('500')
   const [grep, setGrep] = useState('')
 
   const [months, setMonths] = useState([])
@@ -102,8 +101,6 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
   const [badgeMap, setBadgeMap] = useState(EMPTY_BADGES)
   const [label, setLabel] = useState('')
   const feedRef = useRef(null)
-
-  const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0]
 
   const loadMonths = useCallback(async () => {
     const ch = channel.trim().toLowerCase()
@@ -129,11 +126,10 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
   }, [channel, user])
 
   const buildTarget = useCallback(() => {
-    const lim = Math.max(1, Math.min(100000, Number(limit) || 500))
     const params = new URLSearchParams({ json: '1' })
     if (mode !== 'random') {
-      params.set('limit', String(lim))
-      if (reverse) params.set('reverse', 'true')
+      params.set('limit', String(LOG_LIMIT))
+      params.set('reverse', 'true')
     }
 
     if (mode === 'id') {
@@ -169,7 +165,7 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
       return { url: `${base}/${month}?${params}`, label: `${niceLabel} · ${month}` }
     }
     return { url: `${base}?${params}`, label: niceLabel }
-  }, [mode, limit, reverse, channelId, userId, channel, user, month, day])
+  }, [mode, channelId, userId, channel, user, month, day])
 
   const retrieve = useCallback(
     async (event) => {
@@ -202,8 +198,6 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
         const msgs = j.messages || []
         setMessages(msgs)
         setStatus('done')
-        if (feedRef.current) feedRef.current.scrollTop = 0
-
         // Resolve 7TV + BTTV emotes for this channel and re-render once they arrive.
         // room-id is on every message; fall back to the entered channel id.
         const roomId =
@@ -264,10 +258,11 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
     return { first: times[0], last: times[times.length - 1] }
   }, [messages])
 
-  // Progressive rendering: only `visibleCount` rows are in the DOM at once. Each
-  // time the bottom sentinel scrolls into view we reveal another PAGE_SIZE.
+  // Progressive rendering: the API returns newest-first, but the viewport reads
+  // chronologically from top to bottom. Reaching the top reveals older history.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef(null)
+  const preservedBottomOffsetRef = useRef(null)
 
   // A new result set (or a grep change) produces a new `filtered` array — reset
   // back to the first page. Done during render (React's recommended pattern for
@@ -278,15 +273,25 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
     setVisibleCount(PAGE_SIZE)
   }
 
-  // Scroll the feed back to the top when the result set changes (DOM-only).
-  useEffect(() => {
-    if (feedRef.current) feedRef.current.scrollTop = 0
+  // A fresh query opens at the newest message. This runs after the rows have
+  // been laid out so scrollHeight reflects the new result set.
+  useLayoutEffect(() => {
+    if (feedRef.current) feedRef.current.scrollTop = feedRef.current.scrollHeight
   }, [filtered])
 
   const total = filtered.length
   const hasMore = visibleCount < total
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const visible = useMemo(() => filtered.slice(0, visibleCount).reverse(), [filtered, visibleCount])
   const grepTrimmed = grep.trim()
+
+  // Prepending an older page must not move the line the reader was looking at.
+  useLayoutEffect(() => {
+    const root = feedRef.current
+    const bottomOffset = preservedBottomOffsetRef.current
+    if (!root || bottomOffset === null) return
+    root.scrollTop = root.scrollHeight - bottomOffset
+    preservedBottomOffsetRef.current = null
+  }, [visibleCount])
 
   // Observe the sentinel within the scrollable feed. IntersectionObserver avoids
   // a per-frame scroll handler; rootMargin pre-loads the next page slightly early
@@ -299,6 +304,7 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
+          preservedBottomOffsetRef.current = root.scrollHeight - root.scrollTop
           setVisibleCount((c) => Math.min(c + PAGE_SIZE, total))
         }
       },
@@ -332,8 +338,9 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
       </div>
 
       <form className="tlog-form" onSubmit={retrieve}>
-        {mode === 'id' ? (
-          <div className="tlog-fields">
+        <div className="tlog-query">
+          {mode === 'id' ? (
+            <div className="tlog-fields">
             <label className="tlog-field">
               <span className="tlog-label">channel id</span>
               <input
@@ -356,9 +363,9 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
                 onChange={(e) => setUserId(e.target.value)}
               />
             </label>
-          </div>
-        ) : mode === 'channel' ? (
-          <div className="tlog-fields">
+            </div>
+          ) : mode === 'channel' ? (
+            <div className="tlog-fields">
             <label className="tlog-field">
               <span className="tlog-label">channel</span>
               <input
@@ -383,9 +390,9 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
                 onChange={(e) => setDay(e.target.value)}
               />
             </label>
-          </div>
-        ) : (
-          <div className="tlog-fields">
+            </div>
+          ) : (
+            <div className="tlog-fields">
             <label className="tlog-field">
               <span className="tlog-label">channel</span>
               <input
@@ -416,8 +423,14 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
                 }}
               />
             </label>
-          </div>
-        )}
+            </div>
+          )}
+
+          <button type="submit" className="tlog-run" disabled={status === 'loading'}>
+            <TerminalIcon icon={Search} label="" />
+            {status === 'loading' ? 'accessing…' : 'retrieve'}
+          </button>
+        </div>
 
         {mode === 'month' && (
           <div className="tlog-month">
@@ -444,37 +457,6 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
           </div>
         )}
 
-        <div className="tlog-controls">
-          {mode !== 'random' && (
-            <>
-              <button
-                type="button"
-                className="tlog-toggle"
-                aria-pressed={reverse}
-                onClick={() => setReverse((v) => !v)}
-              >
-                {reverse ? '[x]' : '[ ]'} newest first
-              </button>
-              <label className="tlog-limit">
-                limit
-                <input
-                  className="tlog-limit-input"
-                  type="number"
-                  min="1"
-                  max="100000"
-                  value={limit}
-                  onChange={(e) => setLimit(e.target.value)}
-                />
-              </label>
-            </>
-          )}
-          <span className="tlog-note">// {activeMode.note}</span>
-
-          <button type="submit" className="tlog-run" disabled={status === 'loading'}>
-            <TerminalIcon icon={Search} label="" />
-            {status === 'loading' ? 'accessing…' : 'retrieve'}
-          </button>
-        </div>
       </form>
 
       {status !== 'idle' && (
@@ -514,25 +496,25 @@ export function TwitchLogs({ preset = null, popout = false, accent = '' }) {
                 {messages.length === 0 ? 'the archive returned no messages.' : `nothing matched “${grep}”.`}
               </div>
             )}
+            {status === 'done' && hasMore && (
+              <div className="tlog-more" ref={sentinelRef}>
+                scroll up for {Math.min(PAGE_SIZE, total - visibleCount)} older ·{' '}
+                {visibleCount.toLocaleString()} / {total.toLocaleString()}
+              </div>
+            )}
+            {status === 'done' && total > 0 && !hasMore && total > PAGE_SIZE && (
+              <div className="tlog-end">— start of {total.toLocaleString()} messages —</div>
+            )}
             {status === 'done' &&
               visible.map((m, i) => (
                 <LogLine
-                  key={m.id || i}
+                  key={m.id || `${m.timestamp || 'message'}:${m.username || ''}:${visible.length - 1 - i}`}
                   message={m}
                   grep={grepTrimmed}
                   emoteMap={emoteMap}
                   badgeMap={badgeMap}
                 />
               ))}
-            {status === 'done' && hasMore && (
-              <div className="tlog-more" ref={sentinelRef}>
-                loading next {Math.min(PAGE_SIZE, total - visibleCount)} · {visibleCount.toLocaleString()}{' '}
-                / {total.toLocaleString()}
-              </div>
-            )}
-            {status === 'done' && total > 0 && !hasMore && total > PAGE_SIZE && (
-              <div className="tlog-end">— end of {total.toLocaleString()} messages —</div>
-            )}
           </div>
         </div>
       )}
