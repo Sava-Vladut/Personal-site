@@ -900,6 +900,14 @@ h2 .title-cursor {
     grid-template-rows: auto minmax(0, 1fr);
   }
 
+  .services[data-service='twitchlogs'] {
+    padding-bottom: 0;
+  }
+
+  .services[data-service='twitchlogs'] .service-picker {
+    margin-bottom: 0;
+  }
+
   .services[data-service='twitchlogs'] .service-pane,
   .services[data-service='twitchlogs'] .tlog-tool,
   .services[data-service='twitchlogs'] .tlog-output,
