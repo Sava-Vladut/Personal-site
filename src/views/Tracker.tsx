@@ -2,9 +2,10 @@ import { useMemo, useState } from 'preact/hooks';
 import { EMOTION, FEELINGS, shortName } from '../data/emotions';
 import { keyOf, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { blankEntry, deleteEntry, saveEntry, toast, useEntries } from '../lib/store';
+import { blankEntry, deleteEntry, saveEntry, toast, useEntries, useSettings } from '../lib/store';
 import { streaks } from '../lib/stats';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
+import { EmotionWheel } from '../components/EmotionWheel';
 import { Icon, Sprite } from '../components/icons';
 import { CheckInRow } from './Journal';
 
@@ -15,6 +16,7 @@ const localInput = (ms: number) => {
 
 export function Tracker({ query }: { query: URLSearchParams }) {
   const entries = useEntries();
+  const { picker } = useSettings();
   const [core, setCore] = useState<string | null>(query.get('world'));
   const [picked, setPicked] = useState<string | null>(null);
   const [intensity, setIntensity] = useState(3);
@@ -88,6 +90,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
             <button class="btn btn-primary grow" onClick={log}>Log feeling</button>
           </div>
         </div>
+      ) : picker === 'wheel' ? (
+        <EmotionWheel focus={core} onFocus={setCore} onPick={setPicked} />
       ) : core ? (
         <div class="card pad-s">
           <WorldDetail core={core} onBack={() => setCore(null)} onPick={setPicked} />

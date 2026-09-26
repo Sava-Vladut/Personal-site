@@ -34,7 +34,7 @@ export function NoteIcon({ id, size = 22 }: { id: string; size?: number }) {
 }
 
 const spritePaths: Record<string, string> = {};
-function spritePath(core: string) {
+export function spritePath(core: string) {
   if (!spritePaths[core]) {
     let d = '';
     CORE[core].sprite.forEach((row, y) => [...row].forEach((c, x) => c === 'X' && (d += `M${x} ${y}h1v1h-1z`)));

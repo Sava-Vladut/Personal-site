@@ -1,6 +1,8 @@
 import { useState } from 'preact/hooks';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
 import { Icon, Sprite } from './icons';
+import { useSettings } from '../lib/store';
+import { EmotionWheel } from './EmotionWheel';
 
 /** "Worried" with its world's sprite. `path` adds the trail: Fear › Anxiety. */
 export function EmotionChip({ id, onRemove, path, size = 'md' }: { id: string; onRemove?: () => void; path?: boolean; size?: 'sm' | 'md' }) {
@@ -124,6 +126,8 @@ export function WorldDetail({ core, onBack, onPick, selected = [] }: {
 /** Two-step picker used in sheets. */
 export function EmotionPicker({ onPick, selected, start }: { onPick: (id: string) => void; selected?: string[]; start?: string | null }) {
   const [core, setCore] = useState<string | null>(start ?? (selected?.length ? coreOf(selected[0]).id : null));
+  const { picker } = useSettings();
+  if (picker === 'wheel') return <EmotionWheel focus={core} onFocus={setCore} onPick={onPick} selected={selected} />;
   return core ? (
     <WorldDetail core={core} onBack={() => setCore(null)} onPick={onPick} selected={selected} />
   ) : (

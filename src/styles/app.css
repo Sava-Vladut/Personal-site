@@ -321,6 +321,43 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .feeling-def { font-size: 12.5px; line-height: 1.4; color: var(--ink-3); }
 .just-core { width: 100%; margin-top: 18px; font-weight: 500; color: var(--ink-2); }
 
+/* wheel variant (Settings → Emotion picker) */
+.ew { container-type: inline-size; }
+.ew-svg { display: block; width: 100%; max-width: 540px; margin: 0 auto; overflow: visible; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ew-seg {
+  --m: 20%;
+  fill: color-mix(in oklab, var(--c) var(--m), var(--surface));
+  stroke: color-mix(in oklab, var(--c) var(--m), var(--surface));
+  stroke-width: 3; stroke-linejoin: round; cursor: pointer; outline: none;
+  transition: fill 0.15s, stroke 0.15s;
+}
+.ew-seg.d1 { --m: 12%; }
+.ew-seg.d2 { --m: 7%; }
+.ew-seg.has { --m: 28%; }
+.ew-seg.hot, .ew-seg:active { --m: 34%; }
+.ew-seg.on { --m: 46%; }
+.ew-seg:focus-visible { stroke: var(--ink); }
+.ew-hub { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.ew-svg text { text-anchor: middle; fill: var(--ink-2); font-family: var(--sans); }
+.ew-core-label { font-size: 12.5px; font-weight: 600; transition: fill 0.15s; }
+.ew-core-label.hot { fill: var(--ink); }
+.ew-fam-label { font-size: 9px; font-weight: 550; }
+.ew-arc-label { font-weight: 650; fill: var(--ink); }
+.ew-arc-label.d1 { font-size: 15.5px; }
+.ew-arc-label.d2 { font-size: 14px; font-weight: 550; fill: var(--ink-2); }
+.ew-svg .ew-hub-hint { font-size: 11.5px; font-weight: 550; fill: var(--ink-3); }
+.ew-labels { pointer-events: none; }
+.ew-svg .ew-hub-name { font: 500 17px var(--serif); fill: var(--ink); }
+.ew-svg .ew-hub-back { font-size: 10.5px; font-weight: 600; fill: var(--ink-3); letter-spacing: 0.02em; }
+@container (max-width: 440px) { .ew-fam-label { display: none; } }
+.ew-caption { max-width: 540px; margin: 14px auto 0; min-height: 66px; padding: 0 4px; text-align: center; }
+.ew-cap-head { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
+.ew-cap-name { font: 500 19px/1.25 var(--serif); }
+.ew-cap-path { font-size: 12.5px; color: var(--ink-3); }
+.ew-caption .world-def { text-wrap: balance; }
+.ew-actions { max-width: 540px; margin: 12px auto 0; }
+.ew-actions .btn { font-weight: 500; color: var(--ink-2); }
+
 .confirm { padding: 18px; display: grid; gap: 14px; }
 .confirm-head { display: flex; align-items: center; gap: 12px; }
 .confirm-name { font: 500 25px/1.15 var(--serif); }

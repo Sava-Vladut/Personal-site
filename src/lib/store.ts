@@ -202,6 +202,7 @@ export async function deleteAll() {
 export interface Settings {
   theme: 'system' | 'light' | 'dark';
   weekStart: 0 | 1;
+  picker: 'grid' | 'wheel';
 }
 const SETTINGS_KEY = 'mm-settings';
 function loadSettings(): Settings {
@@ -209,7 +210,7 @@ function loadSettings(): Settings {
   try {
     s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   } catch {}
-  return { theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1 };
+  return { theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid' };
 }
 const settings$ = observable<Settings>(loadSettings());
 export const useSettings = settings$.use;
