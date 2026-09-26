@@ -1,10 +1,13 @@
-// Offline support. Pages: network first, cached copy when offline. Hashed assets: cache first.
-// Pinterest images: cache first, so notes keep their pictures offline.
-const APP = 'mm-app-v2';
+// Offline support. The whole build is cached on install. Pages: network first, cached copy when offline.
+// Hashed assets: cache first. Pinterest images: cache first, so notes keep their pictures offline.
+// VERSION and PRECACHE are filled in by the build (see vite.config.ts).
+const VERSION = 'dev';
+const PRECACHE = [];
+const APP = 'mm-app-' + VERSION;
 const IMG = 'mm-img-v1';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(APP).then((c) => c.addAll(['/', '/theme.js', '/manifest.webmanifest', '/icon.svg'])));
+  e.waitUntil(caches.open(APP).then((c) => c.addAll(PRECACHE.length ? PRECACHE : ['/', '/theme.js', '/manifest.webmanifest', '/icon.svg'])));
   self.skipWaiting();
 });
 

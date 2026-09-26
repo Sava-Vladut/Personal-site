@@ -15,7 +15,26 @@ npm start            # → http://localhost:8085
 While developing, `npm run dev` runs the API server and Vite (hot reload) together; open http://localhost:5173.
 
 Install it on a phone: open the site, then **Share → Add to Home Screen** (iOS) or **Install app** (Android/Chrome).
-It works offline after the first visit.
+It works offline after the first visit: the service worker caches the whole build when it installs.
+
+### Offline with Safari
+
+Offline mode needs the site served over **https** (or `localhost`). Safari won't run the service worker on a
+plain `http://192.168.x.x:8085` address, so host it behind https first (a reverse proxy with a certificate, or a tunnel).
+
+- **iPhone / iPad:** open the https address in Safari → **Share → Add to Home Screen** → open **My Mind** from the
+  Home Screen once while online. After that it opens with no connection.
+- **Mac (Safari 17+):** open the address → **File → Add to Dock** → open it once while online.
+
+Things to know:
+
+- The Home Screen / Dock app keeps its **own** data, separate from Safari tabs. Journal in the installed app, not in a
+  tab. To move entries across, use **Settings → Export backup** in one, then **Import backup** in the other.
+- Safari can clear a website's storage after about 7 days without a visit. Installed Home Screen / Dock apps aren't
+  affected, which is another reason to use the installed app. Export a backup now and then anyway.
+- Offline you can write notes, check in and see stats. Pinterest and Spotify need a connection. Pinterest images
+  you've already viewed stay cached.
+- To get a new version, open the app while online. It picks up the new build and caches it.
 
 ## What's in it
 
