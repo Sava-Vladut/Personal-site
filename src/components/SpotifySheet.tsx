@@ -1,0 +1,277 @@
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import {
+  embedHeight, embedUrl, KIND_LABEL, listPlaylistItems, listPlaylists, resolveSpotify, searchSpotify, spotifyStatus,
+  type Playlist, type SpotifyStatus,
+} from '../lib/spotify';
+import type { Music } from '../lib/store';
+import { ConnectSetup } from './ConnectSetup';
+import { Icon } from './icons';
+import { Sheet } from './Sheet';
+
+type Tab = 'search' | 'playlists' | 'link';
+const same = (a: Music, b: Music) => a.kind === b.kind && a.id === b.id;
+
+/** One song/album/playlist row: cover, title, artists. */
+export function MusicRow({ m, pressed, onClick, end }: { m: Music; pressed?: boolean; onClick: () => void; end?: ComponentChildren }) {
+  return (
+    <button class="track" aria-pressed={pressed} onClick={onClick}>
+      <span class="track-art">{m.image ? <img src={m.image} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <Icon name="music" size={20} />}</span>
+      <span class="track-main">
+        <span class="track-title">{m.title}</span>
+        <span class="track-sub">{m.kind === 'track' ? m.sub ?? 'Song' : KIND_LABEL[m.kind] + (m.sub ? ` · ${m.sub}` : '')}</span>
+      </span>
+      <span class="track-end">{end}</span>
+    </button>
+  );
+}
+
+/** Spotify's own player for a song, album, playlist or podcast. */
+export function MusicEmbed({ m }: { m: Music }) {
+  return (
+    <iframe
+      class="embed"
+      src={embedUrl(m)}
+      height={embedHeight(m)}
+      title={`${m.title} on Spotify`}
+      loading="lazy"
+      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+    />
+  );
+}
+
+export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolean; onClose: () => void; onAdd: (m: Music[]) => void; onConnect: () => void }) {
+  const [tab, setTab] = useState<Tab>('link');
+  const [status, setStatus] = useState<SpotifyStatus | null>(null);
+  const [selected, setSelected] = useState<Music[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelected([]);
+    spotifyStatus().then((s) => {
+      setStatus(s);
+      if (s.connected) setTab((t) => (t === 'link' ? 'search' : t));
+    });
+  }, [open]);
+
+  const toggle = (m: Music) => setSelected((s) => (s.some((x) => same(x, m)) ? s.filter((x) => !same(x, m)) : [...s, m]));
+  const isSel = (m: Music) => selected.some((x) => same(x, m));
+  const add = (m: Music[]) => {
+    onAdd(m);
+    onClose();
+  };
+  const row = (m: Music) => (
+    <MusicRow m={m} pressed={isSel(m)} onClick={() => toggle(m)} end={<span class="track-check"><Icon name="check" size={14} stroke={2.5} /></span>} />
+  );
+  const gate = status && !status.connected ? <Gate status={status} onConnect={onConnect} /> : null;
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      tall
+      title={<span class="row gap-s"><Icon name="brand-spotify" /> Spotify</span>}
+      label="Add music from Spotify"
+      footer={
+        tab !== 'link' && selected.length ? (
+          <>
+            <span class="foot-note">{selected.length} selected</span>
+            <button class="btn btn-primary" onClick={() => add(selected)}>Add {selected.length === 1 ? 'to note' : `${selected.length} to note`}</button>
+          </>
+        ) : undefined
+      }
+    >
+      <div class="seg" role="tablist">
+        <button role="tab" aria-selected={tab === 'search'} onClick={() => setTab('search')}>Search</button>
+        <button role="tab" aria-selected={tab === 'playlists'} onClick={() => setTab('playlists')}>My playlists</button>
+        <button role="tab" aria-selected={tab === 'link'} onClick={() => setTab('link')}>Paste a link</button>
+      </div>
+      {status?.error && <p class="error">{status.error}</p>}
+      {tab === 'link' ? (
+        <LinkTab onAdd={(m) => add([m])} />
+      ) : !status ? (
+        <p class="hint">Checking Spotify…</p>
+      ) : gate ? (
+        gate
+      ) : (
+        <>
+          <div hidden={tab !== 'search'}><SearchTab row={row} /></div>
+          <div hidden={tab !== 'playlists'}><PlaylistsTab row={row} /></div>
+        </>
+      )}
+      <p class="attribution"><Icon name="brand-spotify" size={14} /> Music and artwork from Spotify</p>
+    </Sheet>
+  );
+}
+
+function Gate({ status, onConnect }: { status: SpotifyStatus; onConnect: () => void }) {
+  const [setup, setSetup] = useState(false);
+  if (status.offline)
+    return <p class="empty-note">Search and playlists need the app’s server. Start it with <code>npm start</code>, or paste a Spotify link instead.</p>;
+  return (
+    <div class="empty-note center">
+      <p>Log in with Spotify to search music and pick songs from your playlists.</p>
+      <button class="btn btn-primary" onClick={status.configured ? onConnect : () => setSetup(true)}><Icon name="brand-spotify" size={18} /> Log in with Spotify</button>
+      {!status.configured && <p>Pasting a song link works without logging in.</p>}
+      <ConnectSetup service="spotify" redirect={status.redirect} open={setup} onClose={() => setSetup(false)} />
+    </div>
+  );
+}
+
+/** Loads pages of results and appends "Load more". */
+function usePaged<T>() {
+  const [items, setItems] = useState<T[]>([]);
+  const [next, setNext] = useState<number | undefined>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const req = useRef(0);
+  const load = async (fetchPage: (offset?: number) => Promise<{ items: T[]; next?: number }>, more = false) => {
+    const n = ++req.current;
+    setBusy(true);
+    setError('');
+    if (!more) setItems([]);
+    try {
+      const page = await fetchPage(more ? next : undefined);
+      if (n !== req.current) return; // a newer search replaced this one
+      setItems((x) => (more ? [...x, ...page.items] : page.items));
+      setNext(page.next);
+    } catch (e) {
+      if (n === req.current) setError((e as Error).message);
+    }
+    if (n === req.current) setBusy(false);
+  };
+  const reset = () => {
+    req.current++;
+    setItems([]);
+    setNext(undefined);
+    setBusy(false);
+    setError('');
+  };
+  return { items, next, busy, error, load, reset };
+}
+
+function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
+  const [q, setQ] = useState('');
+  const res = usePaged<Music>();
+  const fetchPage = (offset?: number) => searchSpotify(q, offset);
+
+  useEffect(() => {
+    if (!q.trim()) return res.reset();
+    const t = setTimeout(() => res.load(fetchPage), 350);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  return (
+    <div class="stack">
+      <label class="search">
+        <Icon name="search" size={18} />
+        <input type="search" placeholder="Songs, artists, albums" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search Spotify" />
+      </label>
+      <div class="tracks">{res.items.map(row)}</div>
+      {res.busy && <p class="hint center">Searching…</p>}
+      {res.error && <p class="error">{res.error}</p>}
+      {!res.busy && res.next !== undefined && <button class="btn btn-quiet block" onClick={() => res.load(fetchPage, true)}>More results</button>}
+      {!res.busy && !res.error && q.trim() && !res.items.length && <p class="hint center">No songs found.</p>}
+      {!q.trim() && <p class="hint center">Find the song that goes with this moment.</p>}
+    </div>
+  );
+}
+
+function PlaylistsTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
+  const [open, setOpen] = useState<Playlist | null>(null);
+  const lists = usePaged<Playlist>();
+  const songs = usePaged<Music>();
+
+  useEffect(() => {
+    lists.load(listPlaylists);
+  }, []);
+  useEffect(() => {
+    if (open) songs.load((o) => listPlaylistItems(open.id, o));
+    else songs.reset();
+  }, [open?.id]);
+
+  if (open)
+    return (
+      <div class="stack">
+        <button class="back-link" onClick={() => setOpen(null)}><Icon name="chevron-left" size={18} /> {open.name}</button>
+        <div class="tracks">{songs.items.map(row)}</div>
+        {songs.busy && <p class="hint center">Loading…</p>}
+        {songs.error && <p class="error">{songs.error}</p>}
+        {!songs.busy && songs.next !== undefined && <button class="btn btn-quiet block" onClick={() => songs.load((o) => listPlaylistItems(open.id, o), true)}>Load more</button>}
+        {!songs.busy && !songs.error && !songs.items.length && <p class="hint center">This playlist is empty.</p>}
+      </div>
+    );
+
+  return (
+    <div class="stack">
+      <div class="board-grid">
+        {lists.items.map((p) => (
+          <button class="board" onClick={() => setOpen(p)}>
+            <span class="board-cover">{p.cover ? <img src={p.cover} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <Icon name="playlist" size={22} />}</span>
+            <span class="board-name">{p.name}</span>
+            <span class="board-count">{p.count} {p.count === 1 ? 'song' : 'songs'}</span>
+          </button>
+        ))}
+      </div>
+      {lists.busy && <p class="hint center">Loading…</p>}
+      {lists.error && <p class="error">{lists.error}</p>}
+      {!lists.busy && lists.next !== undefined && <button class="btn btn-quiet block" onClick={() => lists.load(listPlaylists, true)}>Load more</button>}
+      {!lists.busy && !lists.error && !lists.items.length && lists.next === undefined && (
+        <p class="hint center">No playlists of your own yet. Spotify only lets apps open playlists you made or collaborate on.</p>
+      )}
+    </div>
+  );
+}
+
+function LinkTab({ onAdd }: { onAdd: (m: Music) => void }) {
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState<Music | null>(null);
+
+  const fetchLink = async (e?: Event) => {
+    e?.preventDefault();
+    if (!url.trim()) return;
+    setBusy(true);
+    setError('');
+    setPreview(null);
+    try {
+      setPreview(await resolveSpotify(url));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setBusy(false);
+  };
+  const paste = async () => {
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t) setUrl(t.trim());
+    } catch {}
+  };
+
+  return (
+    <form class="stack" onSubmit={fetchLink}>
+      <p class="hint">In Spotify, tap <b>Share → Copy link</b> on a song, album or playlist, then paste it here.</p>
+      <div class="row gap-s">
+        <input
+          class="input grow"
+          type="url"
+          inputMode="url"
+          placeholder="open.spotify.com/track/…"
+          value={url}
+          onInput={(e) => setUrl(e.currentTarget.value)}
+          aria-label="Spotify link"
+        />
+        {'clipboard' in navigator && !url && <button type="button" class="btn btn-quiet" onClick={paste}>Paste</button>}
+      </div>
+      <button class="btn btn-primary block" disabled={busy || !url.trim()}>{busy ? 'Finding it…' : 'Get music'}</button>
+      {error && <p class="error">{error}</p>}
+      {preview && (
+        <div class="stack">
+          <MusicEmbed m={preview} />
+          <button type="button" class="btn btn-primary block" onClick={() => onAdd(preview)}>Add to note</button>
+        </div>
+      )}
+    </form>
+  );
+}

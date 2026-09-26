@@ -1,0 +1,27 @@
+{
+  "name": "my-mind",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build",
+    "start": "node server/index.js",
+    "icons": "node scripts/build-icons.mjs && node scripts/make-app-icons.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/instrument-sans": "^5.3.0",
+    "@fontsource-variable/source-serif-4": "^5.3.0",
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@iconify-json/fluent-emoji-high-contrast": "^1.2.6",
+    "@iconify-json/tabler": "^1.2.40",
+    "@preact/preset-vite": "^2.10.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

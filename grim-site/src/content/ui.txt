@@ -1,6 +1,0 @@
-# Small interface copy. Edit the part after each colon.
-
-prevButton: Prev
-nextButton: Next
-readMoreLink: Read more
-visitSiteLink: Visit site

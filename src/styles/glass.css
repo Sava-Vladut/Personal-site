@@ -1,0 +1,181 @@
+/* ============================================================
+   Liquid glass — the material for things that float above content:
+   the tab bar, toolbar buttons, sheets, toasts and tooltips.
+   Content (cards, notes, charts) stays solid so it stays legible.
+   ============================================================ */
+
+:root {
+  --glass-fill: rgb(255 255 255 / 0.56);
+  --glass-fill-strong: rgb(251 251 250 / 0.84);   /* sheets, toasts: lots of text on top */
+  --glass-tint: rgb(26 26 25 / 0.82);             /* prominent glass, tinted with ink */
+  --glass-on-tint: #ffffff;
+  --glass-pill: rgb(26 26 25 / 0.07);             /* selected tab */
+  --glass-rim-hi: rgb(255 255 255 / 0.95);        /* specular edge, top-left */
+  --glass-rim-lo: rgb(255 255 255 / 0.4);         /* bounce light, bottom-right */
+  --glass-sheen: rgb(255 255 255 / 0.55);
+  --glass-hairline: rgb(0 0 0 / 0.06);
+  --glass-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.24), 0 2px 8px -4px rgb(0 0 0 / 0.1);
+  --glass-blur: 16px;
+  --ease-out: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-io: cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --glass-fill: rgb(40 40 38 / 0.52); --glass-fill-strong: rgb(30 30 29 / 0.86);
+    --glass-tint: rgb(243 243 241 / 0.88); --glass-on-tint: #141413; --glass-pill: rgb(255 255 255 / 0.11);
+    --glass-rim-hi: rgb(255 255 255 / 0.3); --glass-rim-lo: rgb(255 255 255 / 0.08); --glass-sheen: rgb(255 255 255 / 0.09);
+    --glass-hairline: rgb(0 0 0 / 0.55); --glass-shadow: 0 14px 36px -12px rgb(0 0 0 / 0.75), 0 2px 8px -4px rgb(0 0 0 / 0.5);
+  }
+}
+:root[data-theme='dark'] {
+  --glass-fill: rgb(40 40 38 / 0.52); --glass-fill-strong: rgb(30 30 29 / 0.86);
+  --glass-tint: rgb(243 243 241 / 0.88); --glass-on-tint: #141413; --glass-pill: rgb(255 255 255 / 0.11);
+  --glass-rim-hi: rgb(255 255 255 / 0.3); --glass-rim-lo: rgb(255 255 255 / 0.08); --glass-sheen: rgb(255 255 255 / 0.09);
+  --glass-hairline: rgb(0 0 0 / 0.55); --glass-shadow: 0 14px 36px -12px rgb(0 0 0 / 0.75), 0 2px 8px -4px rgb(0 0 0 / 0.5);
+}
+
+/* ---------- the material ---------- */
+
+.glass {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  /* --lens is set by useLens() on Chromium: an SVG displacement map that bends the rim */
+  backdrop-filter: var(--lens,) blur(var(--glass-blur)) saturate(1.8);
+  box-shadow: 0 0 0 0.5px var(--glass-hairline), var(--glass-shadow);
+}
+/* specular rim: bright where light hits (top-left), a faint bounce opposite */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(150deg, var(--glass-rim-hi), transparent 32%, transparent 68%, var(--glass-rim-lo));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+/* sheen: light pooling in the upper part of the surface */
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 60%);
+  opacity: 0.55;
+  transition: opacity 0.16s ease;
+}
+
+.glass.tinted { background: var(--glass-tint); color: var(--glass-on-tint); }
+.glass.tinted::after { opacity: 0.35; }
+
+/* ---------- glass buttons: grow and brighten under the finger ---------- */
+
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  transition: transform 0.16s var(--ease-out);
+}
+.glass-btn.round { width: 44px; padding: 0; }
+.glass-btn.tinted { color: var(--glass-on-tint); }
+.glass-btn:active { transform: scale(1.07); }
+.glass-btn:active::after { opacity: 1; }
+
+/* ---------- tab bar ---------- */
+
+.nav {
+  position: fixed;
+  z-index: 40;
+  left: 12px;
+  right: 12px;
+  bottom: calc(max(var(--safe-b), 8px) + 8px);
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none; /* only the glass pieces catch taps; the gap lets them through */
+}
+.nav > * { pointer-events: auto; }
+
+.tabbar {
+  --seg: calc((100% - 8px) / 4);
+  flex: 1;
+  display: flex;
+  height: 62px;
+  padding: 4px;
+  border-radius: 999px;
+}
+.tab-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: calc(4px + var(--i) * var(--seg));
+  right: calc(4px + (3 - var(--i)) * var(--seg));
+  border-radius: 999px;
+  background: var(--glass-pill);
+  box-shadow: inset 0 0.5px 0 var(--glass-rim-hi);
+}
+/* leading edge first, trailing edge 70ms later: the pill stretches toward the tab, then settles */
+.tabbar[data-dir='right'] .tab-pill { transition: right 0.3s var(--ease-io), left 0.3s var(--ease-io) 0.07s; }
+.tabbar[data-dir='left'] .tab-pill { transition: left 0.3s var(--ease-io), right 0.3s var(--ease-io) 0.07s; }
+
+.nav-item {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 10.5px;
+  font-weight: 550;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.nav-item[aria-current='page'] { color: var(--ink); font-weight: 650; }
+.nav-item:focus-visible { outline-offset: -2px; }
+
+.nav-new { flex: none; width: 62px; height: 62px; padding: 0; }
+
+/* ---------- smaller pieces ---------- */
+
+.editor-status .glass {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+/* ---------- when glass isn't possible or wanted: solid surfaces ---------- */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--surface); }
+  .glass.tinted { background: var(--ink); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .tooltip { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .glass.tinted { background: var(--ink); }
+}

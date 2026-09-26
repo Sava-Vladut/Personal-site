@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "my-mind", "runtimeExecutable": "node", "runtimeArgs": ["server/index.js"], "port": 8085 },
+    { "name": "my-mind-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 }
+  ]
+}
