@@ -3,6 +3,10 @@
 const NAME = 'my-mind';
 let dbp: Promise<IDBDatabase> | null = null;
 
+/** Called when an older copy of the app (another tab, or the installed app) is holding the database open during an upgrade. */
+let blockedHandler = () => {};
+export const onBlocked = (f: () => void) => void (blockedHandler = f);
+
 function open() {
   dbp ??= new Promise((resolve, reject) => {
     const req = indexedDB.open(NAME, 2);
@@ -12,7 +16,16 @@ function open() {
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
       if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' });
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onblocked = () => blockedHandler();
+    req.onsuccess = () => {
+      const db = req.result;
+      // A newer version of the app wants to upgrade: let go and reload into it instead of blocking it.
+      db.onversionchange = () => {
+        db.close();
+        location.reload();
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
   });
   return dbp;
