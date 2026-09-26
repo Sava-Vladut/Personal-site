@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { db } from './db';
 import { todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
+import { PHOTO_ID, clearPhotos, exportPhotos, importPhotos, prunePhotos, type Photo } from './photos';
 
 export interface PinImage {
   url: string;
@@ -34,6 +35,7 @@ export interface Entry {
   dateEnd: string | null;   // set when the note covers a range
   time: number;             // when it happened (ms) — drives time-of-day stats
   images: PinImage[];
+  photos: Photo[];          // from the device's gallery, stored locally (see photos.ts)
   music: Music[];
   created: number;
   updated: number;
@@ -79,11 +81,11 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   const now = Date.now();
   return {
     id: uid(), kind, title: '', icon: null, text: '', emotions: [], intensity: 3,
-    date: todayKey(), dateEnd: null, time: now, images: [], music: [], created: now, updated: now,
+    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], created: now, updated: now,
   };
 }
 
-export const isEmpty = (e: Entry) => !e.title.trim() && !e.text.trim() && !e.emotions.length && !e.images.length && !e.music.length;
+export const isEmpty = (e: Entry) => !e.title.trim() && !e.text.trim() && !e.emotions.length && !e.images.length && !e.photos.length && !e.music.length;
 
 let persistAsked = false;
 export async function saveEntry(e: Entry) {
@@ -122,6 +124,7 @@ export async function init() {
   entries$.set((list.map(normalize).filter(Boolean) as Entry[]).sort(byNewest));
   icons$.set(icons ?? {});
   ready$.set(true);
+  prunePhotos(new Set(entries$.get().flatMap((e) => e.photos.map((p) => p.id)))).catch(() => {});
 }
 
 /* ---------- backup ---------- */
@@ -150,6 +153,12 @@ function normalize(raw: any): Entry | null {
           .map((i: any) => ({ url: str(i.url, 2000), w: +i.w || undefined, h: +i.h || undefined, link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined, title: str(i.title, 300) || undefined }))
           .slice(0, 12)
       : [],
+    photos: Array.isArray(raw.photos)
+      ? raw.photos
+          .filter((p: any) => p && typeof p.id === 'string' && PHOTO_ID.test(p.id))
+          .map((p: any) => ({ id: p.id, w: Math.max(1, +p.w || 1), h: Math.max(1, +p.h || 1) }))
+          .slice(0, 20)
+      : [],
     music: Array.isArray(raw.music)
       ? raw.music
           .filter((m: any) => m && MUSIC_KINDS.includes(m.kind) && /^[A-Za-z0-9]{10,40}$/.test(m.id))
@@ -164,8 +173,10 @@ function normalize(raw: any): Entry | null {
   };
 }
 
-export function exportJSON() {
-  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries: entries$.get() }, null, 1);
+export async function exportJSON() {
+  const entries = entries$.get();
+  const photos = await exportPhotos(new Set(entries.flatMap((e) => e.photos.map((p) => p.id))));
+  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, photos }, null, 1);
 }
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
@@ -174,6 +185,7 @@ export async function importJSON(text: string) {
   const incoming = (Array.isArray(data) ? data : data?.entries ?? []).map(normalize).filter(Boolean) as Entry[];
   const current = new Map(entries$.get().map((e) => [e.id, e]));
   const changed = incoming.filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated);
+  await importPhotos(data?.photos, new Set(changed.flatMap((e) => e.photos.map((p) => p.id))));
   changed.forEach((e) => current.set(e.id, e));
   entries$.set([...current.values()].sort(byNewest));
   await db.putMany(changed);
@@ -182,7 +194,7 @@ export async function importJSON(text: string) {
 
 export async function deleteAll() {
   entries$.set([]);
-  await db.clear();
+  await Promise.all([db.clear(), clearPhotos()]);
 }
 
 /* ---------- settings (small, synchronous → localStorage) ---------- */

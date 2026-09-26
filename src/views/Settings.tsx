@@ -35,8 +35,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
     if (p || s) navigate('settings', true);
   }, []);
 
-  const download = () => {
-    const blob = new Blob([exportJSON()], { type: 'application/json' });
+  const download = async () => {
+    const blob = new Blob([await exportJSON()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `my-mind-${todayKey()}.json`;

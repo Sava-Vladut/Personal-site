@@ -23,7 +23,7 @@ It works offline after the first visit.
 |---|---|
 | **Journal** | Notes and check-ins grouped by day. Search, filter by type or by emotion world, or open the calendar to see one day. |
 | **Check in** | "Name it to tame it": pick a world → a zone → the exact feeling (48 of them, each with a definition), set intensity 1–5, optionally add a line. |
-| **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), and images from Pinterest. Saves automatically. |
+| **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), photos from your gallery (or, on desktop, a file browser, drag and drop, or paste), and images from Pinterest. Saves automatically. |
 | **Stats** | Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Dex**: every feeling you've named so far. Every chart has a table view. |
 | **Settings** | Light / dark / system theme, week start, Pinterest connection, backup export/import, delete everything. |
 
@@ -32,6 +32,7 @@ Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant �
 ## Your data
 
 Everything is stored in the browser (IndexedDB) on the device you use. Nothing is uploaded.
+Photos are resized on the device (longest side 2048px) and stored there too; backups include them.
 Use **Settings → Export backup** to keep a copy or move it to another device (**Import backup** merges; newer copies win).
 
 ## Pinterest

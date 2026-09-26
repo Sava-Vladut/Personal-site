@@ -6,6 +6,7 @@ import { useEntries, useReady, type Entry } from '../lib/store';
 import { sized } from '../lib/pinterest';
 import { Calendar } from '../components/Calendar';
 import { EmotionChip } from '../components/emotion';
+import { PhotoImg } from '../components/Photo';
 import { AppMark, Icon, NoteIcon, Sprite } from '../components/icons';
 
 type Filter = 'all' | 'note' | 'checkin' | string; // string = core emotion id
@@ -162,6 +163,7 @@ function CheckInPrompt() {
 
 function NoteCard({ e }: { e: Entry }) {
   const excerpt = e.text.trim().slice(0, 240);
+  const pictures = e.photos.length + e.images.length;
   return (
     <button class="note card" onClick={() => navigate('note/' + e.id)}>
       <div class="note-top">
@@ -172,7 +174,7 @@ function NoteCard({ e }: { e: Entry }) {
         </div>
       </div>
       {excerpt && e.title.trim() && <p class="note-text">{excerpt}</p>}
-      {(e.emotions.length > 0 || e.images.length > 0 || e.music.length > 0) && (
+      {(e.emotions.length > 0 || pictures > 0 || e.music.length > 0) && (
         <div class="note-foot">
           <div class="note-emos">
             {e.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
@@ -182,10 +184,11 @@ function NoteCard({ e }: { e: Entry }) {
               </span>
             )}
           </div>
-          {e.images.length > 0 && (
+          {pictures > 0 && (
             <div class="note-imgs">
-              {e.images.slice(0, 3).map((img) => <img src={sized(img.url, 236)} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
-              {e.images.length > 3 && <span class="more">+{e.images.length - 3}</span>}
+              {e.photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} />)}
+              {e.images.slice(0, Math.max(0, 3 - e.photos.length)).map((img) => <img src={sized(img.url, 236)} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
+              {pictures > 3 && <span class="more">+{pictures - 3}</span>}
             </div>
           )}
         </div>

@@ -253,7 +253,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .note-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .note-emos { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .note-imgs { display: flex; gap: 4px; flex: none; align-items: center; }
-.note-imgs img { width: 40px; height: 40px; object-fit: cover; border-radius: 9px; background: var(--surface-2); }
+.note-imgs img, .note-imgs .photo-ph { width: 40px; height: 40px; object-fit: cover; border-radius: 9px; background: var(--surface-2); }
 .note-imgs .more { font-size: 12px; color: var(--ink-3); padding-left: 2px; }
 
 .checkin {
@@ -367,6 +367,19 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .image { border-radius: 13px; overflow: hidden; background: var(--surface-2); }
 .image img { width: 100%; max-height: 340px; object-fit: cover; }
 .lightbox { width: 100%; max-height: 64dvh; object-fit: contain; border-radius: 14px; background: var(--surface-2); }
+.photo-ph { display: block; background: var(--surface-2); }
+.image.photo-ph { width: 100%; aspect-ratio: 1; }
+.image .photo-ph { width: 100%; max-height: 340px; }
+.photo-ph.is-loading { animation: photo-pulse 1.2s ease-in-out infinite alternate; }
+@keyframes photo-pulse { to { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .photo-ph.is-loading { animation: none; } }
+.drop-hint { display: none; margin: 8px 2px 0; font-size: 13px; color: var(--ink-3); }
+@media (hover: hover) and (pointer: fine) { .drop-hint { display: block; } }
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 50; pointer-events: none; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--bg) 55%, transparent); outline: 2px dashed var(--ink-3); outline-offset: -12px;
+}
+.drop-overlay .glass { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; font-weight: 600; }
 
 /* ============================================================
    Sheets

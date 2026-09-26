@@ -3,17 +3,22 @@ import { EMOTION } from '../data/emotions';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
 import { sized } from '../lib/pinterest';
+import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
 import { blankEntry, deleteEntry, getEntries, isEmpty, saveEntry, toast, type Entry, type Music, type PinImage } from '../lib/store';
 import { DateSheet } from '../components/Calendar';
 import { EmotionChip, EmotionPicker, IntensityPicker } from '../components/emotion';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
+import { PhotoImg } from '../components/Photo';
 import { PinterestSheet } from '../components/PinterestSheet';
 import { Sheet } from '../components/Sheet';
 import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
 
-type Open = null | 'icon' | 'date' | 'emotion' | 'pinterest' | 'spotify' | { image: PinImage } | { music: Music };
+type Open = null | 'icon' | 'date' | 'emotion' | 'pinterest' | 'spotify' | { image: PinImage } | { photo: Photo } | { music: Music };
+
+const MAX_PHOTOS = 20;
+const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
 
 function useAutosize(value: string) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -30,6 +35,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [draft, setDraft] = useState<Entry | null>(() => (id === 'new' ? blankEntry('note') : getEntries().find((e) => e.id === id) ?? null));
   const [open, setOpen] = useState<Open>(null);
   const [status, setStatus] = useState('');
+  const [adding, setAdding] = useState(0);
+  const [dropping, setDropping] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -108,11 +116,33 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     setOpen(null);
   };
 
+  const addFiles = async (all: File[]) => {
+    const files = all.filter(isImageFile);
+    if (!files.length) return;
+    const room = MAX_PHOTOS - draft.photos.length - adding;
+    if (room <= 0) return toast(`A note can hold ${MAX_PHOTOS} photos`);
+    const take = files.slice(0, room);
+    setAdding((n) => n + take.length);
+    const { photos, failed } = await addPhotos(take);
+    setAdding((n) => n - take.length);
+    const d = latest.current;
+    if (d && photos.length) update({ photos: [...d.photos, ...photos].slice(0, MAX_PHOTOS) });
+    if (failed) toast(failed === take.length && failed === 1 ? 'Couldn’t read that image' : `Couldn’t read ${failed} of the images`);
+    else if (files.length > room) toast(`Added ${take.length} — a note can hold ${MAX_PHOTOS} photos`);
+  };
+  const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
 
   return (
-    <div class="page editor">
+    <div
+      class={`page editor${dropping ? ' is-dropping' : ''}`}
+      onDragOver={(e) => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; setDropping(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false); }}
+      onDrop={(e) => { if (hasFiles(e)) { e.preventDefault(); setDropping(false); addFiles([...e.dataTransfer!.files]); } }}
+      onPaste={(e) => { const files = [...(e.clipboardData?.files ?? [])].filter(isImageFile); if (files.length) { e.preventDefault(); addFiles(files); } }}
+    >
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={() => { flush(); goBack(); }} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
@@ -180,8 +210,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           ))}
         </div>
       )}
-      {draft.images.length > 0 && (
+      {(draft.photos.length > 0 || draft.images.length > 0 || adding > 0) && (
         <div class="images">
+          {draft.photos.map((p) => (
+            <button class="image" onClick={() => setOpen({ photo: p })} aria-label="Open photo">
+              <PhotoImg photo={p} alt="Photo" />
+            </button>
+          ))}
+          {Array.from({ length: adding }, () => <span class="image photo-ph is-loading" aria-label="Adding photo" />)}
           {draft.images.map((img) => (
             <button class="image" onClick={() => setOpen({ image: img })}>
               <img src={sized(img.url, 474)} alt={img.title || 'Image from Pinterest'} loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
@@ -189,7 +225,18 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           ))}
         </div>
       )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,.heic,.heif"
+        multiple
+        hidden
+        onChange={(e) => { const input = e.currentTarget; addFiles([...(input.files ?? [])]); input.value = ''; }}
+      />
       <div class="add-row">
+        <button class="btn btn-quiet" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS}>
+          <Icon name="photo-plus" size={18} /> Add photos
+        </button>
         <button class="btn btn-quiet" onClick={() => setOpen('spotify')}>
           <Icon name="brand-spotify" size={18} /> Add music from Spotify
         </button>
@@ -197,6 +244,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <Icon name="brand-pinterest" size={18} /> Add image from Pinterest
         </button>
       </div>
+      <p class="drop-hint">You can also drag photos onto the note, or paste them.</p>
+      {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
 
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />
       <DateSheet open={open === 'date'} onClose={close} start={draft.date} end={draft.dateEnd} onChange={(date, dateEnd) => update({ date, dateEnd })} />
@@ -229,6 +278,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </div>
         )}
       </Sheet>
+      <Sheet open={typeof open === 'object' && open !== null && 'photo' in open} onClose={close} title="Photo">
+        {typeof open === 'object' && open && 'photo' in open && (
+          <PhotoView
+            photo={open.photo}
+            name={draft.title.trim() || 'photo'}
+            onRemove={() => { update({ photos: draft.photos.filter((x) => x.id !== open.photo.id) }); close(); }}
+          />
+        )}
+      </Sheet>
       <Sheet open={typeof open === 'object' && open !== null && 'image' in open} onClose={close} title="Image">
         {typeof open === 'object' && open && 'image' in open && (
           <div class="stack">
@@ -246,6 +304,25 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </div>
         )}
       </Sheet>
+    </div>
+  );
+}
+
+function PhotoView({ photo, name, onRemove }: { photo: Photo; name: string; onRemove: () => void }) {
+  const url = usePhotoUrl(photo.id);
+  return (
+    <div class="stack">
+      <PhotoImg photo={photo} class="lightbox" alt="" fit={false} />
+      <div class="row gap-s">
+        {url && (
+          <a class="btn btn-quiet grow" href={url} download={name.replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'photo'}>
+            <Icon name="download" size={18} /> Save
+          </a>
+        )}
+        <button class="btn btn-quiet grow danger" onClick={onRemove}>
+          <Icon name="trash" size={18} /> Remove
+        </button>
+      </div>
     </div>
   );
 }
