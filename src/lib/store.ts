@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { db } from './db';
+import { plainText } from './body';
 import { todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
 import { PHOTO_ID, clearPhotos, exportPhotos, importPhotos, prunePhotos, type Photo } from './photos';
@@ -88,7 +89,7 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   };
 }
 
-export const isEmpty = (e: Entry) => !e.title.trim() && !e.text.trim() && !e.emotions.length && !e.images.length && !e.photos.length && !e.music.length;
+export const isEmpty = (e: Entry) => !e.title.trim() && !plainText(e.text).trim() && !e.emotions.length && !e.images.length && !e.photos.length && !e.music.length;
 
 let persistAsked = false;
 export async function saveEntry(e: Entry) {

@@ -21,7 +21,7 @@ export async function searchImages(q: string, page = 1): Promise<Page> {
   if (!res.ok) throw new Error(`Image search failed (${res.status})`);
   const body = await res.json();
   const items: WebImage[] = (body.results ?? [])
-    .filter((r: any) => /^https:\/\//.test(r.url))
+    .filter((r: any) => /^https:\/\/[^\]\s]+$/.test(r.url)) // the url is kept in the note's text, so no ] or spaces
     .map((r: any) => ({
       url: r.url,
       thumb: /^https:\/\//.test(r.thumbnail) ? r.thumbnail : undefined,

@@ -3,6 +3,7 @@ import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions
 import { dayLabel, longToday, rangeLabel, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { useEntries, useReady, type Entry } from '../lib/store';
+import { plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { Calendar } from '../components/Calendar';
 import { EmotionChip } from '../components/emotion';
@@ -37,7 +38,7 @@ export function Journal() {
       else if (filter !== 'all' && !e.emotions.some((id) => id.startsWith(filter))) return false;
       if (day && !(e.date === day || (e.dateEnd && e.date <= day && day <= e.dateEnd))) return false;
       if (words.length) {
-        const hay = `${e.title} ${e.text} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')}`.toLowerCase();
+        const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')}`.toLowerCase();
         if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;
@@ -162,7 +163,7 @@ function CheckInPrompt() {
 }
 
 function NoteCard({ e }: { e: Entry }) {
-  const excerpt = e.text.trim().slice(0, 240);
+  const excerpt = plainText(e.text).trim().slice(0, 240);
   const pictures = e.photos.length + e.images.length;
   return (
     <button class="note card" onClick={() => navigate('note/' + e.id)}>
@@ -204,7 +205,7 @@ export function CheckInRow({ e }: { e: Entry }) {
     <button class="checkin" onClick={() => navigate('note/' + e.id)}>
       {em ? <Sprite core={em.core} size={16} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
-      <span class="checkin-meta">{em && em.depth > 0 ? shortName(em.core) : ''}{e.text ? ` · ${e.text.slice(0, 60)}` : ''}</span>
+      <span class="checkin-meta">{em && em.depth > 0 ? shortName(em.core) : ''}{e.text.trim() ? ` · ${plainText(e.text).trim().slice(0, 60)}` : ''}</span>
       <span class="checkin-time">{timeLabel(e.time)}</span>
     </button>
   );

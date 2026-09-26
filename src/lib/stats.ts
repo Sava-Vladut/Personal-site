@@ -1,5 +1,6 @@
 import { CHART_ORDER, EMOTION, coreOf, shortName, valence } from '../data/emotions';
 import { WEEKDAYS, addDays, diffDays, startOfWeek, todayKey, weekday } from './dates';
+import { plainText } from './body';
 import type { Entry } from './store';
 
 export type RangeKey = '7d' | '30d' | '90d' | '1y' | 'all';
@@ -59,7 +60,7 @@ function kpis(list: Entry[]) {
     pleasantShare: total ? pleasant / total : null,
     feelings: new Set(occ.filter((id) => EMOTION[id]?.depth === 2)).size,
     diversity: total > 1 && leaves.size > 1 ? (entropy / Math.log(Math.min(total, 48 + 24 + 8))) * 100 : null,
-    words: list.reduce((s, e) => s + words(e.text), 0),
+    words: list.reduce((s, e) => s + words(plainText(e.text)), 0),
   };
 }
 export type Kpis = ReturnType<typeof kpis>;

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION } from '../data/emotions';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
+import { bodyOf, insertMedia, removeMedia, serializeBody, type Body, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
@@ -31,6 +32,32 @@ function useAutosize(value: string) {
   return ref;
 }
 
+/** One stretch of the note's text, between pictures. Grows with its content. */
+function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
+  value: string;
+  onChange: (v: string) => void;
+  onCaret: (pos: number) => void;
+  placeholder?: string;
+  grow?: boolean;
+  textRef?: { current: HTMLTextAreaElement | null };
+}) {
+  const ref = useAutosize(value);
+  const caret = (e: Event) => onCaret((e.currentTarget as HTMLTextAreaElement).selectionStart ?? 0);
+  return (
+    <textarea
+      ref={(el) => { ref.current = el; if (textRef) textRef.current = el; }}
+      class={`body-input${grow ? ' grow' : ''}`}
+      rows={1}
+      placeholder={placeholder}
+      value={value}
+      onInput={(e) => { onChange(e.currentTarget.value); caret(e); }}
+      onBlur={caret}
+      onSelect={caret}
+      aria-label="Note"
+    />
+  );
+}
+
 export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [draft, setDraft] = useState<Entry | null>(() => (id === 'new' ? blankEntry('note') : getEntries().find((e) => e.id === id) ?? null));
   const [open, setOpen] = useState<Open>(null);
@@ -45,7 +72,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   latest.current = draft;
 
   const titleRef = useAutosize(draft?.title ?? '');
-  const textRef = useAutosize(draft?.text ?? '');
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+  // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
+  const where = useRef({ seg: -1, pos: 0 });
 
   // Once a new note is saved, point the URL at it so a reload reopens it. Never rewrite a sheet's history entry.
   const syncUrl = () => {
@@ -126,14 +155,31 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const { photos, failed } = await addPhotos(take);
     setAdding((n) => n - take.length);
     const d = latest.current;
-    if (d && photos.length) update({ photos: [...d.photos, ...photos].slice(0, MAX_PHOTOS) });
+    if (d && photos.length) {
+      const fit = photos.slice(0, MAX_PHOTOS - d.photos.length);
+      update({ photos: [...d.photos, ...fit], text: place(bodyOf(d), fit.map((p) => ({ kind: 'photo', id: p.id }))) });
+    }
     if (failed) toast(failed === take.length && failed === 1 ? 'Couldn’t read that image' : `Couldn’t read ${failed} of the images`);
     else if (files.length > room) toast(`Added ${take.length} — a note can hold ${MAX_PHOTOS} photos`);
+  };
+  /** Inserts pictures where the caret was (or at the end), and moves the insert point after them. */
+  const place = (b: Body, add: Media[]) => {
+    const last = b.texts.length - 1;
+    const { seg, pos } = where.current.seg < 0 || where.current.seg > last ? { seg: last, pos: b.texts[last].length } : where.current;
+    where.current = { seg: seg + add.length, pos: 0 };
+    return serializeBody(insertMedia(b, add, seg, pos));
+  };
+  const setText = (i: number, v: string) => {
+    const b = bodyOf(draft);
+    b.texts[i] = v;
+    update({ text: serializeBody(b) });
   };
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
+  const body = bodyOf(draft);
+  const last = body.texts.length - 1;
 
   return (
     <div
@@ -194,34 +240,27 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
       )}
 
-      <textarea
-        ref={textRef}
-        class="body-input"
-        placeholder="What’s on your mind?"
-        value={draft.text}
-        onInput={(e) => update({ text: e.currentTarget.value })}
-        aria-label="Note"
-      />
+      <div class="note-body">
+        {body.texts.map((t, i) => (
+          <>
+            {i > 0 && <InlineMedia m={body.media[i - 1]} draft={draft} onOpen={setOpen} />}
+            <BodyText
+              value={t}
+              textRef={i === 0 ? textRef : undefined}
+              grow={i === last}
+              placeholder={i === 0 && !body.media.length ? 'What’s on your mind?' : i === last ? 'Keep writing…' : undefined}
+              onChange={(v) => setText(i, v)}
+              onCaret={(pos) => (where.current = { seg: i, pos })}
+            />
+          </>
+        ))}
+        {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label="Adding photo" />)}
+      </div>
 
       {draft.music.length > 0 && (
         <div class="tracks">
           {draft.music.map((m) => (
             <MusicRow m={m} onClick={() => setOpen({ music: m })} end={<Icon name="brand-spotify" size={18} />} />
-          ))}
-        </div>
-      )}
-      {(draft.photos.length > 0 || draft.images.length > 0 || adding > 0) && (
-        <div class="images">
-          {draft.photos.map((p) => (
-            <button class="image" onClick={() => setOpen({ photo: p })} aria-label="Open photo">
-              <PhotoImg photo={p} alt="Photo" />
-            </button>
-          ))}
-          {Array.from({ length: adding }, () => <span class="image photo-ph is-loading" aria-label="Adding photo" />)}
-          {draft.images.map((img) => (
-            <button class="image" onClick={() => setOpen({ image: img })}>
-              <img src={imageSrc(img, 'thumb')} alt={img.title || 'Image'} loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
-            </button>
           ))}
         </div>
       )}
@@ -255,7 +294,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <ImageSearchSheet
         open={open === 'images'}
         onClose={close}
-        onAdd={(imgs) => update({ images: [...draft.images, ...imgs.filter((i) => !draft.images.some((x) => x.url === i.url))].slice(0, 12) })}
+        onAdd={(imgs) => {
+          const fresh = imgs.filter((i) => !draft.images.some((x) => x.url === i.url)).slice(0, 12 - draft.images.length);
+          update({ images: [...draft.images, ...fresh], text: place(body, fresh.map((i) => ({ kind: 'image', url: i.url }))) });
+        }}
       />
       <SpotifySheet
         open={open === 'spotify'}
@@ -283,7 +325,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <PhotoView
             photo={open.photo}
             name={draft.title.trim() || 'photo'}
-            onRemove={() => { update({ photos: draft.photos.filter((x) => x.id !== open.photo.id) }); close(); }}
+            onRemove={() => { update({ photos: draft.photos.filter((x) => x.id !== open.photo.id), text: serializeBody(removeMedia(body, { kind: 'photo', id: open.photo.id })) }); close(); }}
           />
         )}
       </Sheet>
@@ -300,7 +342,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                   <Icon name="arrow-up-right" size={18} /> Open source
                 </a>
               )}
-              <button class="btn btn-quiet grow danger" onClick={() => { update({ images: draft.images.filter((x) => x.url !== open.image.url) }); close(); }}>
+              <button class="btn btn-quiet grow danger" onClick={() => { update({ images: draft.images.filter((x) => x.url !== open.image.url), text: serializeBody(removeMedia(body, { kind: 'image', url: open.image.url })) }); close(); }}>
                 <Icon name="trash" size={18} /> Remove
               </button>
             </div>
@@ -328,4 +370,22 @@ function PhotoView({ photo, name, onRemove }: { photo: Photo; name: string; onRe
       </div>
     </div>
   );
+}
+
+/** A photo or web image sitting between paragraphs. Tap to view or remove it. */
+function InlineMedia({ m, draft, onOpen }: { m: Media; draft: Entry; onOpen: (o: Open) => void }) {
+  if (m.kind === 'photo') {
+    const photo = draft.photos.find((p) => p.id === m.id);
+    return photo ? (
+      <button class="inline-media" onClick={() => onOpen({ photo })} aria-label="Open photo">
+        <PhotoImg photo={photo} alt="Photo" />
+      </button>
+    ) : null;
+  }
+  const img = draft.images.find((i) => i.url === m.url);
+  return img ? (
+    <button class="inline-media" onClick={() => onOpen({ image: img })} aria-label={img.title ? `Open image: ${img.title}` : 'Open image'}>
+      <img src={imageSrc(img, 'thumb')} alt={img.title || 'Image'} loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
+    </button>
+  ) : null;
 }
