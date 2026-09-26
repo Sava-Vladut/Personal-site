@@ -3,7 +3,7 @@ import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions
 import { dayLabel, longToday, rangeLabel, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { useEntries, useReady, type Entry } from '../lib/store';
-import { sized } from '../lib/pinterest';
+import { imageSrc } from '../lib/images';
 import { Calendar } from '../components/Calendar';
 import { EmotionChip } from '../components/emotion';
 import { PhotoImg } from '../components/Photo';
@@ -187,7 +187,7 @@ function NoteCard({ e }: { e: Entry }) {
           {pictures > 0 && (
             <div class="note-imgs">
               {e.photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} />)}
-              {e.images.slice(0, Math.max(0, 3 - e.photos.length)).map((img) => <img src={sized(img.url, 236)} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
+              {e.images.slice(0, Math.max(0, 3 - e.photos.length)).map((img) => <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
               {pictures > 3 && <span class="more">+{pictures - 3}</span>}
             </div>
           )}

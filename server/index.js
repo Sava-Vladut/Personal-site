@@ -1,7 +1,5 @@
 // My Mind — tiny server, no dependencies.
 //  • serves the built app from dist/ (compressed, cached, with security headers)
-//  • Pinterest: resolves pasted pin links (no key needed) and, when an app key is configured,
-//    runs the OAuth flow from pinterest/api-quickstart and proxies board/pin listing.
 //  • Spotify: resolves pasted song/album/playlist links (no key needed) and, when a client id is
 //    configured, runs the authorization-code flow and proxies search and playlist listing.
 //    Access tokens live in encrypted http-only cookies — per browser, never in JS, never on disk.
@@ -18,14 +16,9 @@ loadEnv(join(ROOT, '.env'));
 const PORT = Number(process.env.PORT) || 8085;
 const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/+$/, '');
 const APP_URL = (process.env.APP_URL || PUBLIC_URL).replace(/\/+$/, ''); // where to land after connecting
-const APP_ID = process.env.PINTEREST_APP_ID || '';
-const APP_SECRET = process.env.PINTEREST_APP_SECRET || '';
-const SCOPES = process.env.PINTEREST_SCOPES || 'boards:read,pins:read,user_accounts:read';
-const REDIRECT_URI = `${PUBLIC_URL}/api/pinterest/callback`;
 const SECURE = PUBLIC_URL.startsWith('https://');
 const DIST = join(ROOT, 'dist');
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
-const API = 'https://api.pinterest.com';
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
 const SP_SCOPES = 'playlist-read-private playlist-read-collaborative';
@@ -62,8 +55,8 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Content-Security-Policy':
-    "default-src 'self'; img-src 'self' data: blob: https://i.pinimg.com https://*.scdn.co https://*.spotifycdn.com; " +
-    "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://i.pinimg.com; font-src 'self'; manifest-src 'self'; " +
+    "default-src 'self'; img-src 'self' data: blob: https:; " +
+    "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://api.openverse.org; font-src 'self'; manifest-src 'self'; " +
     "worker-src 'self'; frame-src https://open.spotify.com; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
@@ -94,7 +87,7 @@ function cookies(req) {
   return out;
 }
 
-const cookie = (name, value, maxAge, path = '/api/pinterest') =>
+const cookie = (name, value, maxAge, path) =>
   `${name}=${encodeURIComponent(value)}; Path=${path}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${SECURE ? '; Secure' : ''}`;
 
 /* ---------------- sealed session cookie (AES-256-GCM) ---------------- */
@@ -117,11 +110,9 @@ function unseal(str) {
   }
 }
 
-/* ---------------- Pinterest ---------------- */
+/* ---------------- OAuth ---------------- */
 
-const configured = () => Boolean(APP_ID && APP_SECRET);
-
-async function tokenRequest(params, url = `${API}/v5/oauth/token`, id = APP_ID, secret = APP_SECRET) {
+async function tokenRequest(params, url, id, secret) {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -142,7 +133,7 @@ const toSession = (t, prevRefresh) => ({
 });
 
 /** Returns a valid session (refreshing it if expired) or null. May queue a Set-Cookie. */
-async function session(req, setCookies, name = 'mm_pin', path = '/api/pinterest', refresh = tokenRequest) {
+async function session(req, setCookies, name, path, refresh) {
   const s = unseal(cookies(req)[name] || '');
   if (!s?.a) return null;
   if (s.e > Date.now()) return s;
@@ -154,77 +145,6 @@ async function session(req, setCookies, name = 'mm_pin', path = '/api/pinterest'
   } catch {
     return null;
   }
-}
-
-async function pinApi(s, path) {
-  const res = await fetch(API + path, { headers: { Authorization: `Bearer ${s.a}` } });
-  const body = await res.json().catch(() => ({}));
-  if (res.status === 401) throw new HttpError(401, 'Your Pinterest connection expired. Connect again in Settings.');
-  if (!res.ok) throw new HttpError(502, body.message || `Pinterest returned an error (${res.status})`);
-  return body;
-}
-
-function pinOut(p) {
-  const imgs = p.media?.images || {};
-  const big = imgs['1200x'] || imgs['600x'];
-  const mid = imgs['600x'] || big;
-  const link = `https://www.pinterest.com/pin/${p.id}/`;
-  const title = (p.title || p.description || '').slice(0, 200) || undefined;
-  if (!big) {
-    const cover = p.media?.cover_image_url || imgs['400x300']?.url || imgs['150x150']?.url;
-    return cover ? { id: p.id, url: cover, thumb: cover, link, title } : null;
-  }
-  return { id: p.id, url: big.url, thumb: mid.url, w: mid.width, h: mid.height, link, title };
-}
-
-const boardOut = (b) => ({
-  id: b.id,
-  name: b.name,
-  count: b.pin_count ?? 0,
-  cover: b.media?.image_cover_url || b.media?.pin_thumbnail_urls?.[0],
-});
-
-const page = (body, map) => ({ items: (body.items || []).map(map).filter(Boolean), bookmark: body.bookmark || undefined });
-
-const PIN_HOST = /^([a-z]{2}\.|www\.)?pinterest\.(com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})$/;
-
-/** Turns any pasted Pinterest link into an image, using the public oEmbed endpoint (no key needed). */
-async function resolvePin(raw) {
-  raw = String(raw || '').trim();
-  let u;
-  try {
-    u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
-  } catch {
-    throw new HttpError(400, 'That doesn’t look like a link.');
-  }
-  if (u.hostname === 'i.pinimg.com') return { url: u.href.replace(/^http:/, 'https:') };
-
-  // Short links (pin.it/…) redirect a couple of times; follow them, but only through Pinterest hosts.
-  for (let hop = 0; u.hostname === 'pin.it' || u.hostname === 'api.pinterest.com'; hop++) {
-    if (hop > 4) throw new HttpError(400, 'Couldn’t follow that pin.it link.');
-    const r = await fetch(u.href, { redirect: 'manual', headers: { 'User-Agent': UA } });
-    const loc = r.headers.get('location');
-    if (!loc) throw new HttpError(400, 'Couldn’t follow that pin.it link.');
-    u = new URL(loc, u);
-    if (!(u.hostname === 'pin.it' || u.hostname === 'api.pinterest.com' || PIN_HOST.test(u.hostname)))
-      throw new HttpError(400, 'That link doesn’t lead to Pinterest.');
-  }
-  if (!PIN_HOST.test(u.hostname)) throw new HttpError(400, 'Paste a link from pinterest.com or pin.it.');
-  const id = u.pathname.match(/\/pin\/(?:[^/]*--)?(\d+)/)?.[1];
-  if (!id) throw new HttpError(400, 'That isn’t a link to a single pin. Open the pin, then copy its link.');
-
-  const link = `https://www.pinterest.com/pin/${id}/`;
-  const res = await fetch(`https://www.pinterest.com/oembed.json?url=${encodeURIComponent(link)}`, { headers: { 'User-Agent': UA } });
-  const o = res.ok ? await res.json().catch(() => null) : null;
-  if (!o?.thumbnail_url) throw new HttpError(404, 'Pinterest didn’t return that pin — it may be private or deleted.');
-  const w = Number(o.thumbnail_width) || 0, h = Number(o.thumbnail_height) || 0;
-  return {
-    url: o.thumbnail_url.replace(/\/\d+x\//, '/736x/'),
-    w: w ? 736 : undefined,
-    h: w ? Math.round((h / w) * 736) : undefined,
-    link,
-    title: o.title || undefined,
-  };
 }
 
 /* ---------------- Spotify ---------------- */
@@ -414,69 +334,10 @@ async function spotify(req, res, url, p, setCookies, out) {
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
   const setCookies = [];
-  const need = async () => {
-    const s = await session(req, setCookies);
-    if (!s) throw new HttpError(401, 'Connect Pinterest in Settings first.');
-    return s;
-  };
-  const bm = url.searchParams.get('bookmark');
-  const q = (path) => `${path}?page_size=50${bm ? `&bookmark=${encodeURIComponent(bm)}` : ''}`;
   const out = (body) => json(res, 200, body, setCookies.length ? { 'Set-Cookie': setCookies } : {});
 
   if (p === '/api/health') return json(res, 200, { ok: true });
   if (p.startsWith('/api/spotify/')) return spotify(req, res, url, p, setCookies, out);
-
-  if (p === '/api/pinterest/status') {
-    const status = { configured: configured(), connected: false, redirect: REDIRECT_URI };
-    const s = configured() ? await session(req, setCookies) : null;
-    if (s) {
-      try {
-        const u = await pinApi(s, '/v5/user_account');
-        Object.assign(status, { connected: true, user: { username: u.username, image: u.profile_image } });
-      } catch (e) {
-        if (e.status === 401) setCookies.push(cookie('mm_pin', '', 0));
-        else status.connected = true;
-      }
-    }
-    return out(status);
-  }
-
-  if (p === '/api/pinterest/resolve') return out(await resolvePin(url.searchParams.get('url')));
-
-  if (p === '/api/pinterest/connect') {
-    if (!configured()) throw new HttpError(400, 'Pinterest isn’t configured on this server.');
-    const state = crypto.randomBytes(16).toString('hex');
-    const auth = new URL('https://www.pinterest.com/oauth/');
-    auth.search = new URLSearchParams({ client_id: APP_ID, redirect_uri: REDIRECT_URI, response_type: 'code', scope: SCOPES, state }).toString();
-    return redirect(res, auth.href, [cookie('mm_state', state, 600)]);
-  }
-
-  if (p === '/api/pinterest/callback') {
-    const clear = cookie('mm_state', '', 0);
-    const expected = Buffer.from(cookies(req).mm_state || '');
-    const got = Buffer.from(url.searchParams.get('state') || '');
-    const code = url.searchParams.get('code');
-    if (!code || !expected.length || expected.length !== got.length || !crypto.timingSafeEqual(expected, got))
-      return redirect(res, `${APP_URL}/#/settings?pinterest=error`, [clear]);
-    try {
-      const t = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI });
-      return redirect(res, `${APP_URL}/#/settings?pinterest=connected`, [clear, cookie('mm_pin', seal(toSession(t)), 365 * 86400)]);
-    } catch (e) {
-      console.error('Pinterest token exchange failed:', e.message);
-      return redirect(res, `${APP_URL}/#/settings?pinterest=error`, [clear]);
-    }
-  }
-
-  if (p === '/api/pinterest/disconnect' && req.method === 'POST') {
-    res.writeHead(204, { 'Set-Cookie': cookie('mm_pin', '', 0) });
-    return res.end();
-  }
-
-  if (p === '/api/pinterest/boards') return out(page(await pinApi(await need(), q('/v5/boards')), boardOut));
-  if (p === '/api/pinterest/pins') return out(page(await pinApi(await need(), q('/v5/pins')), pinOut));
-  const m = p.match(/^\/api\/pinterest\/boards\/(\d+)\/pins$/);
-  if (m) return out(page(await pinApi(await need(), q(`/v5/boards/${m[1]}/pins`)), pinOut));
-
   throw new HttpError(404, 'Not found');
 }
 
@@ -556,6 +417,5 @@ http
   })
   .listen(PORT, () => {
     console.log(`My Mind → ${PUBLIC_URL}  (listening on :${PORT})`);
-    console.log(configured() ? `Pinterest: configured · redirect URI ${REDIRECT_URI}` : 'Pinterest: pin links only (set PINTEREST_APP_ID / PINTEREST_APP_SECRET in .env to browse boards)');
     console.log(spConfigured() ? `Spotify: configured · redirect URI ${SP_REDIRECT}` : 'Spotify: links only (set SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in .env to search and browse playlists)');
   });

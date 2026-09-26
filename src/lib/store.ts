@@ -4,12 +4,15 @@ import { todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
 import { PHOTO_ID, clearPhotos, exportPhotos, importPhotos, prunePhotos, type Photo } from './photos';
 
-export interface PinImage {
+/** An image from the web: found through Openverse, or saved from Pinterest by older versions. */
+export interface WebImage {
   url: string;
+  thumb?: string;
   w?: number;
   h?: number;
-  link?: string;
+  link?: string;     // the page it came from
   title?: string;
+  credit?: string;   // creator and license
 }
 
 /** A Spotify song, album, playlist or podcast attached to a note — a reference, played through Spotify's embed. */
@@ -34,7 +37,7 @@ export interface Entry {
   date: string;             // 'YYYY-MM-DD'
   dateEnd: string | null;   // set when the note covers a range
   time: number;             // when it happened (ms) — drives time-of-day stats
-  images: PinImage[];
+  images: WebImage[];
   photos: Photo[];          // from the device's gallery, stored locally (see photos.ts)
   music: Music[];
   created: number;
@@ -150,7 +153,15 @@ function normalize(raw: any): Entry | null {
     images: Array.isArray(raw.images)
       ? raw.images
           .filter((i: any) => i && /^https:\/\//.test(i.url))
-          .map((i: any) => ({ url: str(i.url, 2000), w: +i.w || undefined, h: +i.h || undefined, link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined, title: str(i.title, 300) || undefined }))
+          .map((i: any) => ({
+            url: str(i.url, 2000),
+            thumb: /^https:\/\//.test(i.thumb) ? str(i.thumb, 2000) : undefined,
+            w: +i.w || undefined,
+            h: +i.h || undefined,
+            link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined,
+            title: str(i.title, 300) || undefined,
+            credit: str(i.credit, 300) || undefined,
+          }))
           .slice(0, 12)
       : [],
     photos: Array.isArray(raw.photos)

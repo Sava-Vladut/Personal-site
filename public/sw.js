@@ -1,5 +1,5 @@
 // Offline support. The whole build is cached on install. Pages: network first, cached copy when offline.
-// Hashed assets: cache first. Pinterest images: cache first, so notes keep their pictures offline.
+// Hashed assets: cache first. Web images (Openverse thumbnails, older Pinterest images): cache first, so notes keep their pictures offline.
 // VERSION and PRECACHE are filled in by the build (see vite.config.ts).
 const VERSION = 'dev';
 const PRECACHE = [];
@@ -45,5 +45,5 @@ self.addEventListener('fetch', (e) => {
     if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) return e.respondWith(cacheFirst(req, APP));
     return e.respondWith(networkFirst(req));
   }
-  if (url.hostname === 'i.pinimg.com') e.respondWith(cacheFirst(req, IMG));
+  if (url.hostname === 'i.pinimg.com' || (url.hostname === 'api.openverse.org' && url.pathname.endsWith('/thumb/'))) e.respondWith(cacheFirst(req, IMG));
 });

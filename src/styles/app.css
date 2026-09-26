@@ -460,22 +460,14 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .icon-cell:hover { background: var(--surface-2); color: var(--ink); }
 .icon-cell[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
 
-/* pinterest */
-.pin-preview { display: grid; gap: 10px; margin-top: 6px; }
-.pin-preview img { width: 100%; max-height: 48dvh; object-fit: contain; border-radius: 14px; background: var(--surface-2); }
-.board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.board { text-align: left; min-width: 0; }
-.board-cover { aspect-ratio: 1; border-radius: 13px; overflow: hidden; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--ink-3); }
-.board-cover img { width: 100%; height: 100%; object-fit: cover; }
-.board-name { display: block; font-weight: 600; font-size: 14px; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.board-count { display: block; font-size: 12.5px; color: var(--ink-3); }
-.pin-grid { columns: 2; column-gap: 8px; }
-.pin { position: relative; display: block; width: 100%; margin-bottom: 8px; break-inside: avoid; border-radius: 13px; overflow: hidden; }
-.pin img { width: 100%; background: var(--surface-2); transition: opacity 0.15s; }
-.pin-check { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: rgb(255 255 255 / 0.85); color: transparent; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12); }
-.pin[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--ink); }
-.pin[aria-pressed='true'] img { opacity: 0.82; }
-.pin[aria-pressed='true'] .pin-check { background: var(--ink); color: var(--on-ink); }
+/* image search */
+.img-grid { columns: 2; column-gap: 8px; }
+.img-pick { position: relative; display: block; width: 100%; margin-bottom: 8px; break-inside: avoid; border-radius: 13px; overflow: hidden; }
+.img-pick img { width: 100%; background: var(--surface-2); transition: opacity 0.15s; }
+.img-check { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: rgb(255 255 255 / 0.85); color: transparent; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12); }
+.img-pick[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--ink); }
+.img-pick[aria-pressed='true'] img { opacity: 0.82; }
+.img-pick[aria-pressed='true'] .img-check { background: var(--ink); color: var(--on-ink); }
 .back-link { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 14.5px; padding: 4px 0; justify-self: start; }
 
 /* spotify */

@@ -2,20 +2,20 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION } from '../data/emotions';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
-import { sized } from '../lib/pinterest';
+import { imageSrc } from '../lib/images';
 import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getEntries, isEmpty, saveEntry, toast, type Entry, type Music, type PinImage } from '../lib/store';
+import { blankEntry, deleteEntry, getEntries, isEmpty, saveEntry, toast, type Entry, type Music, type WebImage } from '../lib/store';
 import { DateSheet } from '../components/Calendar';
 import { EmotionChip, EmotionPicker, IntensityPicker } from '../components/emotion';
+import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { PhotoImg } from '../components/Photo';
-import { PinterestSheet } from '../components/PinterestSheet';
 import { Sheet } from '../components/Sheet';
 import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
 
-type Open = null | 'icon' | 'date' | 'emotion' | 'pinterest' | 'spotify' | { image: PinImage } | { photo: Photo } | { music: Music };
+type Open = null | 'icon' | 'date' | 'emotion' | 'images' | 'spotify' | { image: WebImage } | { photo: Photo } | { music: Music };
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -220,7 +220,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           {Array.from({ length: adding }, () => <span class="image photo-ph is-loading" aria-label="Adding photo" />)}
           {draft.images.map((img) => (
             <button class="image" onClick={() => setOpen({ image: img })}>
-              <img src={sized(img.url, 474)} alt={img.title || 'Image from Pinterest'} loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
+              <img src={imageSrc(img, 'thumb')} alt={img.title || 'Image'} loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
             </button>
           ))}
         </div>
@@ -240,8 +240,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <button class="add-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
           <Icon name="brand-spotify" size={20} />
         </button>
-        <button class="add-btn" onClick={() => setOpen('pinterest')} aria-label="Add image from Pinterest" title="Add image from Pinterest">
-          <Icon name="brand-pinterest" size={20} />
+        <button class="add-btn" onClick={() => setOpen('images')} aria-label="Find an image" title="Find an image">
+          <Icon name="photo-search" size={20} />
         </button>
       </div>
       <p class="drop-hint">You can also drag photos onto the note, or paste them.</p>
@@ -252,8 +252,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <Sheet open={open === 'emotion'} onClose={close} title="How does it feel?">
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
-      <PinterestSheet
-        open={open === 'pinterest'}
+      <ImageSearchSheet
+        open={open === 'images'}
         onClose={close}
         onAdd={(imgs) => update({ images: [...draft.images, ...imgs.filter((i) => !draft.images.some((x) => x.url === i.url))].slice(0, 12) })}
       />
@@ -290,11 +290,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <Sheet open={typeof open === 'object' && open !== null && 'image' in open} onClose={close} title="Image">
         {typeof open === 'object' && open && 'image' in open && (
           <div class="stack">
-            <img class="lightbox" src={sized(open.image.url, 736)} alt={open.image.title || ''} referrerpolicy="no-referrer" />
+            <img class="lightbox" src={imageSrc(open.image, 'full')} alt={open.image.title || ''} referrerpolicy="no-referrer" />
+            {(open.image.title || open.image.credit) && (
+              <p class="hint center">{[open.image.title, open.image.credit].filter(Boolean).join(' — ')}</p>
+            )}
             <div class="row gap-s">
               {open.image.link && (
                 <a class="btn btn-quiet grow" href={open.image.link} target="_blank" rel="noopener noreferrer">
-                  <Icon name="arrow-up-right" size={18} /> Open on Pinterest
+                  <Icon name="arrow-up-right" size={18} /> Open source
                 </a>
               )}
               <button class="btn btn-quiet grow danger" onClick={() => { update({ images: draft.images.filter((x) => x.url !== open.image.url) }); close(); }}>

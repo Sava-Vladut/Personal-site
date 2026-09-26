@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { connectPinterest, disconnectPinterest, pinStatus, type PinStatus } from '../lib/pinterest';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { navigate } from '../lib/router';
 import { deleteAll, exportJSON, importJSON, setSettings, toast, useEntries, useSettings, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { todayKey } from '../lib/dates';
 import { Icon, type UiName } from '../components/icons';
-import { ConnectSetup, type Service } from '../components/ConnectSetup';
+import { ConnectSetup } from '../components/ConnectSetup';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
 let installEvent: (Event & { prompt: () => Promise<void> }) | null = null;
@@ -18,21 +17,19 @@ addEventListener('beforeinstallprompt', (e) => {
 export function Settings({ query }: { query: URLSearchParams }) {
   const settings = useSettings();
   const entries = useEntries();
-  const [pin, setPin] = useState<PinStatus | null>(null);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
-  const [setup, setSetup] = useState<Service | null>(null);
+  const [setup, setSetup] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   useEffect(() => {
-    pinStatus().then(setPin);
     spotifyStatus().then(setSp);
-    const p = query.get('pinterest');
     const s = query.get('spotify');
-    if (p) toast(p === 'connected' ? 'Pinterest connected' : 'Couldn’t connect Pinterest — try again');
-    if (s) toast(s === 'connected' ? 'Spotify connected' : s === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
-    if (p || s) navigate('settings', true);
+    if (s) {
+      toast(s === 'connected' ? 'Spotify connected' : s === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
+      navigate('settings', true);
+    }
   }, []);
 
   const download = async () => {
@@ -104,29 +101,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
       </section>
 
       <section class="section">
-        <h2 class="section-title">Pinterest</h2>
-        <div class="card list">
-          <div class="list-row">
-            <div>
-              <div class="row gap-s"><Icon name="brand-pinterest" size={18} /> {pin?.connected ? `Connected${pin.user ? ` as @${pin.user.username}` : ''}` : 'Not connected'}</div>
-              <div class="muted small">
-                {!pin ? 'Checking…'
-                  : (pin as { offline?: boolean }).offline ? 'The app’s server isn’t running, so only saved images show.'
-                  : !pin.configured ? 'Log in to pick images from your boards. Pasting pin links works without it.'
-                  : pin.connected ? 'Pick images from your boards while writing a note.'
-                  : 'Connect to pick images from your boards.'}
-              </div>
-            </div>
-            {pin && !(pin as { offline?: boolean }).offline && (pin.connected ? (
-              <button class="btn btn-quiet" onClick={async () => { await disconnectPinterest(); setPin(await pinStatus()); toast('Pinterest disconnected'); }}>Disconnect</button>
-            ) : (
-              <button class="btn btn-primary" onClick={pin.configured ? connectPinterest : () => setSetup('pinterest')}>Log in</button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
         <h2 class="section-title">Spotify</h2>
         <div class="card list">
           <div class="list-row">
@@ -144,7 +118,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             {sp && !sp.offline && (sp.connected ? (
               <button class="btn btn-quiet" onClick={async () => { await disconnectSpotify(); setSp(await spotifyStatus()); toast('Spotify disconnected'); }}>Disconnect</button>
             ) : (
-              <button class="btn btn-primary" onClick={sp.configured ? () => connectSpotify('#/settings') : () => setSetup('spotify')}>Log in</button>
+              <button class="btn btn-primary" onClick={sp.configured ? () => connectSpotify('#/settings') : () => setSetup(true)}>Log in</button>
             ))}
           </div>
         </div>
@@ -181,10 +155,10 @@ export function Settings({ query }: { query: URLSearchParams }) {
       )}
 
       <p class="credit">
-        Emotion wheel from Mindful · Emotion Quest. Music, artwork and player from Spotify. Icons: Tabler Icons and Microsoft Fluent Emoji (MIT). Type: Source Serif 4 and Instrument Sans (OFL).
+        Emotion wheel from Mindful · Emotion Quest. Music, artwork and player from Spotify. Images from Openverse, each under its own open license. Icons: Tabler Icons and Microsoft Fluent Emoji (MIT). Type: Source Serif 4 and Instrument Sans (OFL).
       </p>
 
-      <ConnectSetup service={setup ?? 'spotify'} redirect={setup === 'pinterest' ? pin?.redirect : sp?.redirect} open={setup !== null} onClose={() => setSetup(null)} />
+      <ConnectSetup redirect={sp?.redirect} open={setup} onClose={() => setSetup(false)} />
     </div>
   );
 }

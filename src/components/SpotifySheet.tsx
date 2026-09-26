@@ -113,7 +113,7 @@ function Gate({ status, onConnect }: { status: SpotifyStatus; onConnect: () => v
       <p>Log in with Spotify to search music and pick songs from your playlists.</p>
       <button class="btn btn-primary" onClick={status.configured ? onConnect : () => setSetup(true)}><Icon name="brand-spotify" size={18} /> Log in with Spotify</button>
       {!status.configured && <p>Pasting a song link works without logging in.</p>}
-      <ConnectSetup service="spotify" redirect={status.redirect} open={setup} onClose={() => setSetup(false)} />
+      <ConnectSetup redirect={status.redirect} open={setup} onClose={() => setSetup(false)} />
     </div>
   );
 }

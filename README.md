@@ -32,7 +32,7 @@ Things to know:
   tab. To move entries across, use **Settings → Export backup** in one, then **Import backup** in the other.
 - Safari can clear a website's storage after about 7 days without a visit. Installed Home Screen / Dock apps aren't
   affected, which is another reason to use the installed app. Export a backup now and then anyway.
-- Offline you can write notes, check in and see stats. Pinterest and Spotify need a connection. Pinterest images
+- Offline you can write notes, check in and see stats. Image search and Spotify need a connection. Images
   you've already viewed stay cached.
 - To get a new version, open the app while online. It picks up the new build and caches it.
 
@@ -42,9 +42,9 @@ Things to know:
 |---|---|
 | **Journal** | Notes and check-ins grouped by day. Search, filter by type or by emotion world, or open the calendar to see one day. |
 | **Check in** | "Name it to tame it": pick a world → a zone → the exact feeling (48 of them, each with a definition), set intensity 1–5, optionally add a line. |
-| **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), photos from your gallery (or, on desktop, a file browser, drag and drop, or paste), and images from Pinterest. Saves automatically. |
+| **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), photos from your gallery (or, on desktop, a file browser, drag and drop, or paste), images from a web search (Openverse), and music from Spotify. Saves automatically. |
 | **Stats** | Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Dex**: every feeling you've named so far. Every chart has a table view. |
-| **Settings** | Light / dark / system theme, week start, Pinterest connection, backup export/import, delete everything. |
+| **Settings** | Light / dark / system theme, week start, emotion picker style, Spotify connection, backup export/import, delete everything. |
 
 Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant −1), from −5 to +5.
 
@@ -54,18 +54,12 @@ Everything is stored in the browser (IndexedDB) on the device you use. Nothing i
 Photos are resized on the device (longest side 2048px) and stored there too; backups include them.
 Use **Settings → Export backup** to keep a copy or move it to another device (**Import backup** merges; newer copies win).
 
-## Pinterest
+## Image search
 
-- **Paste a pin link** works with no setup — the server looks the pin up through Pinterest's public oEmbed endpoint.
-- **Browse your boards** needs a Pinterest app (same flow as [pinterest/api-quickstart](https://github.com/pinterest/api-quickstart)):
-  1. Create an app at https://developers.pinterest.com/apps/ (you may need to request trial access first).
-  2. In the app's settings, add the redirect URI `<PUBLIC_URL>/api/pinterest/callback`, e.g. `http://localhost:8085/api/pinterest/callback`.
-  3. Copy `.env.example` to `.env` and fill in `PINTEREST_APP_ID` and `PINTEREST_APP_SECRET`.
-  4. Restart the server, then **Settings → Pinterest → Connect**.
-
-  The access token is kept in an encrypted, http-only cookie for that browser only — never in JavaScript, never on disk.
-  Scopes default to `boards:read,pins:read,user_accounts:read`; set `PINTEREST_SCOPES` in `.env` to add
-  `boards:read_secret,pins:read_secret` if you want secret boards too.
+The image button in a note searches [Openverse](https://openverse.org): openly licensed images from Flickr, Wikimedia
+Commons and other collections. It needs no key or setup. The browser calls the Openverse API directly, so each device
+gets its own anonymous limit of 20 searches a minute and 200 a day. Each saved image keeps its title, creator, license
+and a link to its source page, shown when you open it.
 
 Spotify settings are described in `.env.example`.
 
@@ -90,7 +84,7 @@ compressed, cache-busted assets, and sends a strict Content-Security-Policy.
 ## Layout
 
 ```
-server/index.js          static hosting + Pinterest (and Spotify) proxy, no dependencies
+server/index.js          static hosting + Spotify proxy, no dependencies
 src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours, sprites
 src/lib/                 storage (IndexedDB), stats, dates, router, API clients
 src/components/          sheets, pickers, charts

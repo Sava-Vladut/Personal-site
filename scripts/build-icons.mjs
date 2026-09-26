@@ -118,7 +118,7 @@ console.log(`curated: ${n} icons in ${out.length} categories · all: ${Object.ke
 
 // Interface icons (navigation, buttons) — tiny, bundled with the app.
 const UI = `notebook chart-bar plus settings search x chevron-left chevron-right chevron-down calendar photo trash check
-  arrow-left dots download upload brand-pinterest sun moon device-desktop link table info-circle clock sparkles
+  arrow-left dots download upload photo-search sun moon device-desktop link table info-circle clock sparkles
   mood-smile mood-plus arrow-up-right refresh logout photo-plus calendar-event pencil list layout-grid chart-dots
   lock alert-circle brand-spotify music playlist chart-donut-2`.split(/\s+/);
 const ui = {};
