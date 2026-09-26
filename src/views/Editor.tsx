@@ -234,14 +234,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         onChange={(e) => { const input = e.currentTarget; addFiles([...(input.files ?? [])]); input.value = ''; }}
       />
       <div class="add-row">
-        <button class="btn btn-quiet" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS}>
-          <Icon name="photo-plus" size={18} /> Add photos
+        <button class="add-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label="Add photos" title="Add photos">
+          <Icon name="photo-plus" size={20} />
         </button>
-        <button class="btn btn-quiet" onClick={() => setOpen('spotify')}>
-          <Icon name="brand-spotify" size={18} /> Add music from Spotify
+        <button class="add-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
+          <Icon name="brand-spotify" size={20} />
         </button>
-        <button class="btn btn-quiet" onClick={() => setOpen('pinterest')}>
-          <Icon name="brand-pinterest" size={18} /> Add image from Pinterest
+        <button class="add-btn" onClick={() => setOpen('pinterest')} aria-label="Add image from Pinterest" title="Add image from Pinterest">
+          <Icon name="brand-pinterest" size={20} />
         </button>
       </div>
       <p class="drop-hint">You can also drag photos onto the note, or paste them.</p>
