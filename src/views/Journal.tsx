@@ -9,6 +9,7 @@ import { stripMarkdown } from '../lib/markdown';
 import { Calendar } from '../components/Calendar';
 import { useHold } from '../components/EntryMenu';
 import { EmotionChip } from '../components/emotion';
+import { Sky } from '../components/Sky';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
@@ -58,11 +59,16 @@ export function Journal() {
   }, [shown]);
 
   const filtering = !!q.trim() || !!day;
+  // the sky takes the colour of the world you last checked in with today
+  const today = todayKey();
+  const mood = entries.find((e) => e.kind === 'checkin' && e.date === today && e.emotions.length);
+  const world = (mood && coreOf(mood.emotions[0])?.id) || null;
 
   return (
     <div class="page">
       {/* the day and the check-in, set apart from the notes below on a panel of their own */}
-      <div class="journal-top">
+      <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
+      <Sky world={world} />
       <header class="page-head">
         <div class="brand"><AppMark size={12} /> My Mind</div>
         <div class="row between">
