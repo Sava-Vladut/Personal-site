@@ -1,25 +1,26 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
-import { bodyOf, canStep, insertMedia, mediaKey, moveMedia, plainText, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, type Body, type Media } from '../lib/body';
+import { bodyOf, canStep, insertMedia, mediaKey, moveMedia, plainText, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, type Body, type Layout, type Media } from '../lib/body';
+import { editable, messy, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
 import { listKey, toggleTask } from '../lib/markdown';
-import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
+import { addPhotos, photoUrl } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getEntries, getPeople, isEmpty, saveEntry, toast, type Entry, type Music, type WebImage } from '../lib/store';
+import { blankEntry, deleteEntry, getEntries, getPeople, isEmpty, saveEntry, toast, type Entry, type Music } from '../lib/store';
+import { openViewer } from '../lib/viewer';
 import { FormatBar } from '../components/FormatBar';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { Markdown } from '../components/Markdown';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
-import { dropTargets, MediaBlock, type DropTarget } from '../components/NoteMedia';
-import { PhotoImg } from '../components/Photo';
+import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarget, type Side } from '../components/NoteMedia';
 import { Sheet } from '../components/Sheet';
 import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 
-type Open = null | 'icon' | 'images' | 'spotify' | { image: WebImage } | { photo: Photo } | { music: Music };
+type Open = null | 'icon' | 'images' | 'spotify' | { music: Music };
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -30,10 +31,10 @@ function fit(el: HTMLTextAreaElement | null) {
   el.style.height = el.scrollHeight + 'px';
 }
 
-/** Keeps a text box as tall as its text — again when its class changes (a box that stops growing drops its min-height) or the window is resized. */
-function useAutosize(value: string, grow?: boolean) {
+/** Keeps the title box as tall as its text, again when the window is resized. */
+function useAutosize(value: string) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => fit(ref.current), [value, grow]);
+  useLayoutEffect(() => fit(ref.current), [value]);
   useEffect(() => {
     const on = () => fit(ref.current);
     addEventListener('resize', on);
@@ -42,29 +43,69 @@ function useAutosize(value: string, grow?: boolean) {
   return ref;
 }
 
-/** One stretch of the note's text, between pictures. Grows with its content. */
+/**
+ * One stretch of the note's text, between pictures. A plain-text editable block, not a textarea, so that its lines
+ * wrap around a picture floated beside it. The browser owns what's in it; it's only rewritten when the text changes
+ * from outside (a picture moved, a formatting command that fell back to rewriting).
+ */
 function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
   value: string;
   onChange: (v: string) => void;
   onCaret: (pos: number) => void;
   placeholder?: string;
   grow?: boolean;
-  textRef?: (el: HTMLTextAreaElement | null) => void;
+  textRef?: (el: HTMLDivElement | null) => void;
 }) {
-  const ref = useAutosize(value, grow);
-  const caret = (e: Event) => onCaret((e.currentTarget as HTMLTextAreaElement).selectionStart ?? 0);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const box = editable(el);
+    if (box.value === value) return;
+    const focused = document.activeElement === el;
+    const at = box.selectionStart;
+    box.value = value;
+    if (focused) box.setSelectionRange(at, at);
+  }, [value]);
+  const caret = (e: Event) => {
+    const el = e.currentTarget as HTMLDivElement;
+    if (document.activeElement === el || e.type === 'blur') onCaret(editable(el).selectionStart);
+  };
   return (
-    <textarea
+    <div
       ref={(el) => { ref.current = el; textRef?.(el); }}
-      class={`body-input${grow ? ' grow' : ''}`}
-      rows={1}
-      placeholder={placeholder}
-      value={value}
-      onInput={(e) => { onChange(e.currentTarget.value); caret(e); }}
-      onKeyDown={(e) => listKey(e.currentTarget, e) && e.preventDefault()}
-      onBlur={caret}
-      onSelect={caret}
+      class={`body-input${grow ? ' grow' : ''}${value ? '' : ' is-empty'}`}
+      contentEditable={PLAIN ? 'plaintext-only' : 'true'}
+      role="textbox"
+      aria-multiline="true"
       aria-label="Note"
+      data-placeholder={placeholder}
+      spellcheck
+      onInput={(e) => {
+        const el = e.currentTarget;
+        if (!(e as InputEvent).isComposing && messy(el)) editable(el).tidy();
+        onChange(editable(el).value);
+        caret(e);
+      }}
+      onBeforeInput={(e) => {
+        // browsers without plain-text editing: no bold, lists or pasted formatting, and Enter makes a line break
+        if (PLAIN) return;
+        if (e.inputType.startsWith('format')) e.preventDefault();
+        else if (e.inputType === 'insertParagraph') {
+          e.preventDefault();
+          document.execCommand('insertText', false, '\n');
+        }
+      }}
+      onPaste={(e) => {
+        if (PLAIN || e.clipboardData?.files.length) return; // pictures are the page's to add
+        e.preventDefault();
+        document.execCommand('insertText', false, e.clipboardData?.getData('text/plain') ?? '');
+      }}
+      onKeyDown={(e) => listKey(editable(e.currentTarget), e) && e.preventDefault()}
+      onKeyUp={caret}
+      onPointerUp={caret}
+      onFocus={caret}
+      onBlur={caret}
     />
   );
 }
@@ -81,7 +122,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [adding, setAdding] = useState(0);
   const [dropping, setDropping] = useState(false);
   const [sel, setSel] = useState<string | null>(null); // the selected picture's mediaKey
-  const [moving, setMoving] = useState<{ key: string; y: number } | null>(null); // a picture being dragged, and where it would land
+  // a picture being dragged, and where it would land: how far down the note, on which side, and its size there
+  const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number } | null>(null);
   const [details, setDetails] = useState(false); // the Feelings page
   // Notes that already have words open formatted, to read; the pencil (or a tap on the words) switches to writing.
   const [reading, setReading] = useState(() => !!draft && id !== 'new' && !!plainText(draft.text).trim());
@@ -93,8 +135,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   latest.current = draft;
 
   const titleRef = useAutosize(draft?.title ?? '');
-  const textRef = useRef<HTMLTextAreaElement | null>(null);
-  const areas = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const textRef = useRef<HTMLDivElement | null>(null);
+  const areas = useRef<(HTMLDivElement | null)[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
   // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
@@ -150,7 +192,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   useEffect(() => {
     if (!sel) return;
     const down = (e: PointerEvent) => {
-      if (!(e.target as Element).closest?.('.media.is-selected, .sheet, .toast')) setSel(null);
+      if (!(e.target as Element).closest?.('.media.is-selected, .format-bar, .sheet, .toast, .pswp')) setSel(null);
     };
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !document.documentElement.classList.contains('sheet-open')) setSel(null);
@@ -248,22 +290,43 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     });
   };
 
-  /** Follows the pointer and shows where the picture would land; drops it there on release. Escape cancels. */
-  const startMove = (i: number, e: PointerEvent) => {
+  /**
+   * Picks a picture up: a small copy of it follows the finger (or pointer), and an outline shows where it would land —
+   * which paragraph it goes before, and on which side: over the left or right third of the note it sits on that side
+   * with the text wrapping around it, over the middle it's centred on its own. Drops it there on release; Escape cancels.
+   */
+  const startMove = (i: number, e: PointerEvent, el: HTMLElement) => {
     const bodyEl = bodyRef.current;
     const d = latest.current;
     if (!bodyEl || !d) return;
-    const key = mediaKey(bodyOf(d).media[i]);
+    const m = bodyOf(d).media[i];
+    const key = mediaKey(m);
     const targets = dropTargets(areas.current.slice(0, bodyOf(d).texts.length));
     if (!targets.length) return;
-    const origin = bodyEl.getBoundingClientRect().top + scrollY;
+    const r = el.getBoundingClientRect();
+    const ratio = r.width / Math.max(1, r.height);
+
+    // the copy under the finger, shrunk about the point that was grabbed
+    const ghost = document.createElement('div');
+    ghost.className = 'media-ghost';
+    const pic = el.querySelector('img');
+    if (pic) ghost.append(pic.cloneNode(true));
+    const scale = Math.min(1, 150 / r.width, 150 / r.height);
+    const ox = e.clientX - r.left, oy = e.clientY - r.top;
+    Object.assign(ghost.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', transformOrigin: `${ox}px ${oy}px` });
+    document.body.append(ghost);
+
     let target: DropTarget | null = null;
-    let y = e.clientY;
+    let side: Side = 'center';
+    let x = e.clientX, y = e.clientY;
     let frame = 0;
     const pick = () => {
+      const col = bodyEl.getBoundingClientRect();
       const at = y + scrollY;
       target = targets.reduce((a, b) => (Math.abs(b.y - at) < Math.abs(a.y - at) ? b : a));
-      setMoving({ key, y: target.y - origin });
+      side = sideAt(x, col);
+      ghost.style.transform = `translate(${x - e.clientX}px, ${y - e.clientY}px) scale(${scale})`;
+      setMoving({ key, y: target.y - (col.top + scrollY), side, layout: dropLayout(m, side), ratio });
     };
     // Near the top or bottom of the screen the page scrolls along.
     const tick = () => {
@@ -277,6 +340,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
     const move = (ev: PointerEvent) => {
       ev.preventDefault();
+      x = ev.clientX;
       y = ev.clientY;
       pick();
     };
@@ -287,13 +351,18 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       removeEventListener('pointercancel', cancel);
       removeEventListener('keydown', esc, true);
       document.documentElement.classList.remove('is-moving');
+      ghost.remove();
       setMoving(null);
       const now = latest.current;
       if (!drop || !target || !now) return;
       const b = bodyOf(now);
       const j = b.media.findIndex((x) => mediaKey(x) === key);
       if (j < 0) return;
-      const next = moveMedia(b, j, target.seg, target.pos);
+      let next = moveMedia(b, j, target.seg, target.pos);
+      const k = next.media.findIndex((x) => mediaKey(x) === key);
+      const was = next.media[k];
+      const layout = dropLayout(was, side);
+      if ((layout.size ?? 100) !== (was.size ?? 100) || (layout.size ?? 100) < 100 && layout.align !== was.align) next = setLayout(next, k, layout);
       if (next !== b) setBody(next);
     };
     const up = () => end(true);
@@ -308,9 +377,42 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     addEventListener('pointercancel', cancel);
     addEventListener('keydown', esc, true);
     document.documentElement.classList.add('is-moving');
+    (document.activeElement as HTMLElement | null)?.blur?.(); // the keyboard would only get in the way
     setSel(key);
     pick();
     frame = requestAnimationFrame(tick);
+  };
+
+  /** Opens the note's pictures full screen, at picture `i`. */
+  const view = async (i: number, el?: HTMLElement | null) => {
+    const d = latest.current;
+    if (!d) return;
+    const b = bodyOf(d);
+    const pics = bodyRef.current ? [...bodyRef.current.querySelectorAll<HTMLElement>(':scope > .media .media-pic')] : [];
+    const name = d.title.trim().replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'photo';
+    const items = await Promise.all(
+      b.media.map(async (m, j) => {
+        const at = j === i && el ? el : pics[j];
+        if (m.kind === 'photo') {
+          const p = d.photos.find((x) => x.id === m.id);
+          return { src: (await photoUrl(m.id)) ?? '', w: p?.w, h: p?.h, el: at, save: name, alt: 'Photo' };
+        }
+        const img = d.images.find((x) => x.url === m.url);
+        return {
+          src: img ? imageSrc(img, 'full') : m.url, w: img?.w, h: img?.h, el: at, link: img?.link, alt: img?.title || 'Image',
+          caption: img ? [img.title, img.credit].filter(Boolean).join(' — ') : undefined,
+        };
+      }),
+    );
+    const shown = items.filter((x) => x.src);
+    openViewer(shown, Math.max(0, shown.indexOf(items[i])), {
+      onRemove: reading ? undefined : (k) => {
+        const j = items.indexOf(shown[k]);
+        const now = latest.current;
+        const m = now && bodyOf(now).media[j];
+        if (m) removePicture(m);
+      },
+    });
   };
 
   /** Switches to writing, with the caret at the end of text block `seg` (or where it was). */
@@ -318,8 +420,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const go = () => {
       const el = seg === undefined ? areas.current[Math.max(0, where.current.seg)] ?? textRef.current : areas.current[seg];
       if (!el) return;
-      if (seg !== undefined) el.setSelectionRange(el.value.length, el.value.length);
       el.focus();
+      if (seg !== undefined) {
+        const box = editable(el);
+        box.setSelectionRange(box.value.length, box.value.length);
+      }
     };
     if (!reading) return go();
     setReading(false);
@@ -328,14 +433,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   /** The text box the toolbar formats: the one being written in, or the last one that was. */
   const target = () => {
     const active = document.activeElement;
-    if (active instanceof HTMLTextAreaElement && areas.current.includes(active)) return active;
-    return areas.current[where.current.seg] ?? areas.current[body.texts.length - 1] ?? null;
+    const el = active instanceof HTMLDivElement && areas.current.includes(active) ? active : areas.current[where.current.seg] ?? areas.current[body.texts.length - 1];
+    return el ? editable(el) : null;
   };
 
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
   const body = bodyOf(draft);
   const last = body.texts.length - 1;
+  const selIndex = reading || !sel ? -1 : body.media.findIndex((m) => mediaKey(m) === sel);
 
   return (
     <div
@@ -388,23 +494,18 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             {i > 0 && (() => {
               const m = body.media[i - 1];
               const key = mediaKey(m);
-              const photo = m.kind === 'photo' ? draft.photos.find((p) => p.id === m.id) : undefined;
-              const image = m.kind === 'image' ? draft.images.find((x) => x.url === m.url) : undefined;
               return (
                 <MediaBlock
                   key={key}
                   m={m}
                   draft={draft}
+                  editing={!reading}
                   selected={!reading && sel === key}
                   dragging={moving?.key === key}
-                  canUp={canStep(body, i - 1, -1)}
-                  canDown={canStep(body, i - 1, 1)}
-                  onSelect={() => (reading ? photo ? setOpen({ photo }) : image && setOpen({ image }) : setSel(key))}
-                  onOpen={() => photo ? setOpen({ photo }) : image && setOpen({ image })}
-                  onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, l)) })}
-                  onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), i - 1, dir))}
-                  onRemove={() => removePicture(m)}
-                  onDrag={(e) => !reading && startMove(i - 1, e)}
+                  onSelect={() => setSel(key)}
+                  onOpen={(el) => view(i - 1, el)}
+                  onResize={(size) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, { size, align: m.align })) })}
+                  onDrag={(e, el) => !reading && startMove(i - 1, e, el)}
                 />
               );
             })()}
@@ -434,7 +535,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </>
         ))}
         {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label="Adding photo" />)}
-        {moving && <span class="drop-line" style={{ top: moving.y + 'px' }} aria-hidden="true" />}
+        {moving && (
+          <span
+            class={`drop-slot is-${moving.side}`}
+            style={{ top: moving.y + 'px', width: (moving.layout.size ?? 100) + '%', aspectRatio: String(moving.ratio) }}
+            aria-hidden="true"
+          >
+            <span class="drop-slot-label glass">{moving.side === 'center' ? 'On its own line' : 'Text wraps around'}</span>
+          </span>
+        )}
         {reading && !plainText(draft.text).trim() && (
           <button class="read-empty" onClick={() => write(last)}>Nothing written yet. Tap to write.</button>
         )}
@@ -456,7 +565,21 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         hidden
         onChange={(e) => { const input = e.currentTarget; addFiles([...(input.files ?? [])]); input.value = ''; }}
       />
-      <FormatBar target={target} format={!reading}>
+      <FormatBar
+        target={target}
+        format={!reading}
+        swap={selIndex >= 0 && (
+          <MediaTools
+            m={body.media[selIndex]}
+            canUp={canStep(body, selIndex, -1)}
+            canDown={canStep(body, selIndex, 1)}
+            onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, l)) })}
+            onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), selIndex, dir))}
+            onOpen={() => view(selIndex)}
+            onRemove={() => removePicture(body.media[selIndex])}
+          />
+        )}
+      >
         <button class="format-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label="Add photos" title="Add photos">
           <Icon name="photo-plus" size={19} />
         </button>
@@ -500,54 +623,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </div>
         )}
       </Sheet>
-      <Sheet open={typeof open === 'object' && open !== null && 'photo' in open} onClose={close} title="Photo">
-        {typeof open === 'object' && open && 'photo' in open && (
-          <PhotoView
-            photo={open.photo}
-            name={draft.title.trim() || 'photo'}
-            onRemove={() => removePicture({ kind: 'photo', id: open.photo.id })}
-          />
-        )}
-      </Sheet>
-      <Sheet open={typeof open === 'object' && open !== null && 'image' in open} onClose={close} title="Image">
-        {typeof open === 'object' && open && 'image' in open && (
-          <div class="stack">
-            <img class="lightbox" src={imageSrc(open.image, 'full')} alt={open.image.title || ''} referrerpolicy="no-referrer" />
-            {(open.image.title || open.image.credit) && (
-              <p class="hint center">{[open.image.title, open.image.credit].filter(Boolean).join(' — ')}</p>
-            )}
-            <div class="row gap-s">
-              {open.image.link && (
-                <a class="btn btn-quiet grow" href={open.image.link} target="_blank" rel="noopener noreferrer">
-                  <Icon name="arrow-up-right" size={18} /> Open source
-                </a>
-              )}
-              <button class="btn btn-quiet grow danger" onClick={() => removePicture({ kind: 'image', url: open.image.url })}>
-                <Icon name="trash" size={18} /> Remove
-              </button>
-            </div>
-          </div>
-        )}
-      </Sheet>
-    </div>
-  );
-}
-
-function PhotoView({ photo, name, onRemove }: { photo: Photo; name: string; onRemove: () => void }) {
-  const url = usePhotoUrl(photo.id);
-  return (
-    <div class="stack">
-      <PhotoImg photo={photo} class="lightbox" alt="" fit={false} />
-      <div class="row gap-s">
-        {url && (
-          <a class="btn btn-quiet grow" href={url} download={name.replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'photo'}>
-            <Icon name="download" size={18} /> Save
-          </a>
-        )}
-        <button class="btn btn-quiet grow danger" onClick={onRemove}>
-          <Icon name="trash" size={18} /> Remove
-        </button>
-      </div>
     </div>
   );
 }

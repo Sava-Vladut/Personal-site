@@ -23,11 +23,22 @@ const markerFor = (kind: LineKind, n: number) =>
 
 /* ---------- editing a text box ---------- */
 
+/** What the commands need of a text box: a textarea, or a note's editable block (lib/editable.ts). */
+export interface TextBox {
+  value: string;
+  readonly selectionStart: number;
+  readonly selectionEnd: number;
+  setSelectionRange(start: number, end: number): void;
+  setRangeText(text: string, start: number, end: number): void;
+  focus(options?: FocusOptions): void;
+  dispatchEvent(e: Event): boolean;
+}
+
 /**
  * Replaces [start, end) with `text` and selects [selStart, selEnd]. Goes through the browser's own editing so
  * undo keeps working, and the input event updates the note like typing does.
  */
-export function replace(el: HTMLTextAreaElement, start: number, end: number, text: string, selStart = start + text.length, selEnd = selStart) {
+export function replace(el: TextBox, start: number, end: number, text: string, selStart = start + text.length, selEnd = selStart) {
   el.focus({ preventScroll: true });
   el.setSelectionRange(start, end);
   let done = false;
@@ -49,7 +60,7 @@ const lineEnd = (v: string, i: number) => {
 const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}_'’-]/u.test(c);
 
 /** Bold, italic, strike, highlight or code around the selection — or off again if it's already there. */
-export function toggleWrap(el: HTMLTextAreaElement, mark: string) {
+export function toggleWrap(el: TextBox, mark: string) {
   const v = el.value;
   let s = el.selectionStart, e = el.selectionEnd;
   const n = mark.length;
@@ -78,7 +89,7 @@ export function toggleWrap(el: HTMLTextAreaElement, mark: string) {
  * Turns the selected lines into a heading, list, task list or quote — or back into plain text when they all
  * already are one. Headings step through #, ##, ### and back to plain.
  */
-export function toggleLines(el: HTMLTextAreaElement, kind: LineKind | 'heading') {
+export function toggleLines(el: TextBox, kind: LineKind | 'heading') {
   const v = el.value;
   const s = lineStart(v, el.selectionStart);
   const e = lineEnd(v, el.selectionEnd);
@@ -109,7 +120,7 @@ export function toggleLines(el: HTMLTextAreaElement, kind: LineKind | 'heading')
 }
 
 /** Puts a block (a divider, a code block, a callout) on lines of its own at the caret, then carries on below it. */
-export function insertBlock(el: HTMLTextAreaElement, block: string, caretAt?: number) {
+export function insertBlock(el: TextBox, block: string, caretAt?: number) {
   const v = el.value;
   const s = el.selectionStart, e = el.selectionEnd;
   const ls = lineStart(v, s);
@@ -122,7 +133,7 @@ export function insertBlock(el: HTMLTextAreaElement, block: string, caretAt?: nu
 }
 
 /** Adds a link around the selection, or an empty one to fill in. */
-export function insertLink(el: HTMLTextAreaElement) {
+export function insertLink(el: TextBox) {
   const v = el.value;
   const s = el.selectionStart, e = el.selectionEnd;
   const sel = v.slice(s, e);
@@ -132,7 +143,7 @@ export function insertLink(el: HTMLTextAreaElement) {
 }
 
 /** Moves the selected list lines in or out a level. */
-export function indentLines(el: HTMLTextAreaElement, out: boolean) {
+export function indentLines(el: TextBox, out: boolean) {
   const v = el.value;
   const s = lineStart(v, el.selectionStart);
   const e = lineEnd(v, el.selectionEnd);
@@ -148,7 +159,7 @@ export function indentLines(el: HTMLTextAreaElement, out: boolean) {
  * List typing, as in Obsidian: Enter carries a list, task or quote on to the next line (Enter on an empty item ends
  * it), Tab and Shift+Tab move list items in and out. Returns true when it handled the key.
  */
-export function listKey(el: HTMLTextAreaElement, e: KeyboardEvent) {
+export function listKey(el: TextBox, e: KeyboardEvent) {
   if (e.isComposing || e.keyCode === 229 || e.altKey || e.ctrlKey || e.metaKey) return false;
   const v = el.value;
   const s = el.selectionStart;

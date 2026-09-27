@@ -56,7 +56,7 @@ async function shrink(file: Blob): Promise<PhotoRecord> {
 const loaded = new Map<string, string>();
 const loading = new Map<string, Promise<string | null>>();
 
-function photoUrl(id: string) {
+export function photoUrl(id: string) {
   let p = loading.get(id);
   if (!p) {
     p = db.photo<PhotoRecord>(id).then(

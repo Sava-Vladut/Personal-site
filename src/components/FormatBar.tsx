@@ -1,9 +1,9 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { insertBlock, insertLink, toggleLines, toggleWrap } from '../lib/markdown';
+import { insertBlock, insertLink, toggleLines, toggleWrap, type TextBox } from '../lib/markdown';
 import { Icon, type UiName } from './icons';
 
-type Action = (el: HTMLTextAreaElement) => void;
+type Action = (el: TextBox) => void;
 
 const TOOLS: [UiName, string, Action][] = [
   ['bold', 'Bold', (el) => toggleWrap(el, '**')],
@@ -24,8 +24,9 @@ const TOOLS: [UiName, string, Action][] = [
 /**
  * The note's toolbar: formatting for the text box being written in (or the last one), then `children` — the
  * buttons that add photos, images and music. It floats at the bottom and rides up on top of a phone's keyboard.
+ * With `swap` (a selected picture's tools), it shows those instead.
  */
-export function FormatBar({ target, format = true, children }: { target: () => HTMLTextAreaElement | null; format?: boolean; children?: ComponentChildren }) {
+export function FormatBar({ target, format = true, swap, children }: { target: () => TextBox | null; format?: boolean; swap?: ComponentChildren; children?: ComponentChildren }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +48,12 @@ export function FormatBar({ target, format = true, children }: { target: () => H
     if (el) f(el);
   };
 
+  if (swap)
+    return (
+      <div ref={ref} class="format-bar glass is-swapped" role="toolbar" aria-label="Picture">
+        <div class="format-scroll">{swap}</div>
+      </div>
+    );
   return (
     <div ref={ref} class="format-bar glass" role="toolbar" aria-label="Formatting">
       {format && (

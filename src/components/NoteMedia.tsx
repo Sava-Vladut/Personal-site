@@ -1,4 +1,5 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { editable } from '../lib/editable';
 import { MIN_SIZE, type Layout, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Entry } from '../lib/store';
@@ -9,207 +10,294 @@ const SIZES = [100, 75, 50, 33];
 /** The next preset down from `size`, back to full width after the smallest. */
 const nextSize = (size: number) => SIZES.find((s) => s < size - 1) ?? 100;
 
-/** A photo or web image sitting between paragraphs. Tap to select it: then it can be resized, moved, opened or removed. */
-export function MediaBlock({ m, draft, selected, dragging, canUp, canDown, onSelect, onOpen, onLayout, onStep, onRemove, onDrag }: {
+export type Side = 'left' | 'center' | 'right';
+
+/** A size in % of the column, from a width in px. Close to full width snaps to it. */
+function pctOf(w: number, col: number) {
+  const p = Math.round(Math.min(100, Math.max(MIN_SIZE, (w / col) * 100)));
+  return p >= 96 ? 100 : p;
+}
+
+const ratioOf = (m: Media, draft: Entry) => {
+  if (m.kind === 'photo') {
+    const p = draft.photos.find((x) => x.id === m.id);
+    return p ? p.w / p.h : 0;
+  }
+  const i = draft.images.find((x) => x.url === m.url);
+  return i?.w && i.h ? i.w / i.h : 0;
+};
+
+/** Where a picture lands when dropped: its size (a side picture is at most half the column) and side. */
+export function dropLayout(m: Media, side: Side): Layout {
+  const size = m.size ?? 100;
+  return side === 'center' ? { size } : { size: size >= 100 ? 50 : size, align: side };
+}
+
+interface Gesture {
+  pts: Map<number, { x: number; y: number }>;
+  kind: 'press' | 'pinch' | 'done';
+  x0: number;
+  y0: number;
+  last: PointerEvent;
+  timer?: ReturnType<typeof setTimeout>;
+  d0: number;
+  w0: number;
+  col: number;
+  pct?: number;
+}
+
+/**
+ * A photo or web image in a note. Smaller than full width, it sits on the left or right with the text wrapping around
+ * it, or centred on its own. Tap to select it; then pinch it or pull a corner to resize, and drag it anywhere to move it.
+ * On touch, holding a picture that isn't selected picks it up too. Selected, a tap opens it full screen.
+ */
+export function MediaBlock({ m, draft, editing, selected, dragging, onSelect, onOpen, onResize, onDrag }: {
   m: Media;
   draft: Entry;
+  editing: boolean;
   selected: boolean;
   dragging: boolean;
-  canUp: boolean;
-  canDown: boolean;
   onSelect: () => void;
-  onOpen: () => void;
-  onLayout: (l: Layout) => void;
-  onStep: (dir: -1 | 1) => void;
-  onRemove: () => void;
-  onDrag: (e: PointerEvent) => void;
+  onOpen: (el: HTMLElement) => void;
+  onResize: (size: number) => void;
+  onDrag: (e: PointerEvent, el: HTMLElement) => void;
 }) {
-  const frame = useRef<HTMLDivElement>(null);
-  const [live, setLive] = useState<number | null>(null); // width while a handle is dragged
-  const moved = useRef(false);
+  const box = useRef<HTMLDivElement>(null);
+  const [live, setLive] = useState<number | null>(null); // size while pinching or pulling a corner
+  const gesture = useRef<Gesture | null>(null);
+  const acted = useRef(false); // the press moved, resized or picked up the picture: it isn't a tap
+
+  // A picture held on touch has to stop the page scrolling under the finger. That only works from a listener that
+  // was already there when the touch began, and isn't passive.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const block = (e: TouchEvent) => {
+      if (document.documentElement.classList.contains('is-moving') || gesture.current?.kind === 'pinch') e.preventDefault();
+    };
+    el.addEventListener('touchmove', block, { passive: false });
+    return () => el.removeEventListener('touchmove', block);
+  }, []);
 
   const photo = m.kind === 'photo' ? draft.photos.find((p) => p.id === m.id) : undefined;
   const img = m.kind === 'image' ? draft.images.find((i) => i.url === m.url) : undefined;
   if (!photo && !img) return null;
-  const ratio = photo ? photo.w / photo.h : img!.w && img!.h ? img!.w / img!.h : 0;
+  const ratio = ratioOf(m, draft);
   const label = photo ? 'Photo' : img!.title ? `Image: ${img!.title}` : 'Image';
   const size = live ?? m.size ?? 100;
   const align = size < 100 ? m.align : undefined;
+  const colWidth = () => box.current?.parentElement?.clientWidth ?? 0;
 
-  // With a mouse, dragging the picture itself moves it. Touch keeps scrolling; the grip in the toolbar moves it there.
-  const pressPic = (e: PointerEvent) => {
-    moved.current = false;
-    if (e.pointerType !== 'mouse' || e.button !== 0) return;
-    const x = e.clientX, y = e.clientY;
-    const move = (ev: PointerEvent) => {
-      if (Math.hypot(ev.clientX - x, ev.clientY - y) < 6) return;
-      moved.current = true;
-      stop();
-      onDrag(ev);
-    };
-    const stop = () => {
-      removeEventListener('pointermove', move);
-      removeEventListener('pointerup', stop);
-    };
-    addEventListener('pointermove', move);
-    addEventListener('pointerup', stop);
+  const down = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    let g = gesture.current;
+    if (!g) {
+      acted.current = false;
+      const cur: Gesture = (g = gesture.current = { pts: new Map(), kind: 'press', x0: e.clientX, y0: e.clientY, last: e, d0: 0, w0: 0, col: 0 });
+      const pickUp = (ev: PointerEvent) => {
+        clearTimeout(cur.timer);
+        cur.kind = 'done';
+        acted.current = true;
+        onDrag(ev, box.current!);
+      };
+      const move = (ev: PointerEvent) => {
+        if (!cur.pts.has(ev.pointerId)) return;
+        cur.pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        cur.last = ev;
+        if (cur.kind === 'pinch') {
+          ev.preventDefault();
+          if (cur.pts.size < 2) return;
+          const [a, b] = [...cur.pts.values()];
+          cur.pct = pctOf((cur.w0 * Math.hypot(a.x - b.x, a.y - b.y)) / cur.d0, cur.col);
+          setLive(cur.pct);
+        } else if (cur.kind === 'press' && Math.hypot(ev.clientX - cur.x0, ev.clientY - cur.y0) > 8) {
+          // A mouse, or a finger on the selected picture, drags it. A finger on any other picture scrolls the page.
+          if (editing && (ev.pointerType === 'mouse' || selected)) pickUp(ev);
+          else {
+            clearTimeout(cur.timer);
+            cur.kind = 'done';
+          }
+        }
+      };
+      const up = (ev: PointerEvent) => {
+        if (!cur.pts.delete(ev.pointerId) || cur.pts.size) return;
+        clearTimeout(cur.timer);
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        removeEventListener('pointercancel', up);
+        gesture.current = null;
+        if (cur.kind !== 'pinch') return;
+        setLive(null);
+        if (cur.pct !== undefined && cur.pct !== (m.size ?? 100)) onResize(cur.pct);
+      };
+      addEventListener('pointermove', move, { passive: false });
+      addEventListener('pointerup', up);
+      addEventListener('pointercancel', up);
+      // On touch, holding a picture picks it up; a quick swipe still scrolls.
+      if (editing && e.pointerType !== 'mouse' && !selected)
+        cur.timer = setTimeout(() => {
+          if (gesture.current !== cur || cur.kind !== 'press' || cur.pts.size !== 1) return;
+          navigator.vibrate?.(10);
+          pickUp(cur.last);
+        }, 420);
+    }
+    g.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    // Two fingers on the selected picture resize it.
+    if (g.pts.size === 2 && editing && selected && g.kind === 'press') {
+      clearTimeout(g.timer);
+      const [a, b] = [...g.pts.values()];
+      Object.assign(g, { kind: 'pinch', d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), w0: box.current!.getBoundingClientRect().width, col: colWidth() });
+      acted.current = true;
+    }
   };
 
-  // Handles on both sides. A centred picture grows from its middle, so it moves twice as fast.
-  const resize = (side: -1 | 1) => (e: PointerEvent) => {
-    const el = frame.current;
-    const col = el?.parentElement?.clientWidth;
+  // Pulling a corner away from the picture makes it bigger. A centred picture grows on both sides, so twice as fast.
+  const corner = (sx: -1 | 1, sy: -1 | 1) => (e: PointerEvent) => {
+    const el = box.current;
+    const col = colWidth();
     if (!el || !col) return;
     e.preventDefault();
     e.stopPropagation();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const start = el.getBoundingClientRect().width;
-    const x0 = e.clientX;
+    const t = e.currentTarget as HTMLElement;
+    t.setPointerCapture(e.pointerId);
+    const r = el.getBoundingClientRect();
+    const len = Math.hypot(r.width, r.height);
     const factor = align ? 1 : 2;
+    const x0 = e.clientX, y0 = e.clientY;
     let pct = size;
     const move = (ev: PointerEvent) => {
-      const w = start + (ev.clientX - x0) * side * factor;
-      pct = Math.round(Math.min(100, Math.max(MIN_SIZE, (w / col) * 100)));
-      if (pct >= 96) pct = 100;
+      const out = ((ev.clientX - x0) * sx * r.width + (ev.clientY - y0) * sy * r.height) / len; // px along the diagonal
+      pct = pctOf(r.width + out * (r.width / len) * factor, col);
       setLive(pct);
     };
     const end = (ev: PointerEvent) => {
-      const t = ev.currentTarget as HTMLElement;
       t.removeEventListener('pointermove', move);
       t.removeEventListener('pointerup', end);
       t.removeEventListener('pointercancel', end);
       setLive(null);
-      if (ev.type === 'pointerup' && pct !== size) onLayout({ size: pct, align: m.align });
+      if (ev.type === 'pointerup' && pct !== size) onResize(pct);
     };
-    const t = e.currentTarget as HTMLElement;
     t.addEventListener('pointermove', move);
     t.addEventListener('pointerup', end);
     t.addEventListener('pointercancel', end);
   };
-
-  const place = (a: 'left' | 'center' | 'right') => {
-    const side = a === 'center' ? undefined : a;
-    onLayout({ size: size === 100 && side ? 50 : size, align: side });
-  };
+  const corners: [string, -1 | 1, -1 | 1][] = [['tl', -1, -1], ['tr', 1, -1], ['bl', -1, 1], ['br', 1, 1]];
 
   return (
-    <div class={`media${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${live !== null ? ' is-resizing' : ''}`}>
-      {selected && (
-        <div class="media-bar">
-          <div class="media-tools glass" role="toolbar" aria-label={`${photo ? 'Photo' : 'Image'} options`}>
-            <button class="grip" onPointerDown={(e) => { e.preventDefault(); onDrag(e); }} aria-label="Drag to move" title="Drag to move">
-              <Icon name="grip-vertical" size={18} />
-            </button>
-            <button onClick={() => onStep(-1)} disabled={!canUp} aria-label="Move up" title="Move up">
-              <Icon name="arrow-up" size={18} />
-            </button>
-            <button onClick={() => onStep(1)} disabled={!canDown} aria-label="Move down" title="Move down">
-              <Icon name="arrow-down" size={18} />
-            </button>
-            <span class="sep" />
-            <button class="size" onClick={() => onLayout({ size: nextSize(size), align: m.align })} aria-label={`Size: ${size === 100 ? 'full width' : size + '%'}. Change size`} title="Change size">
-              {size === 100 ? 'Full' : size + '%'}
-            </button>
-            <button onClick={() => place('left')} aria-pressed={align === 'left'} aria-label="Left" title="Left">
-              <Icon name="float-left" size={18} />
-            </button>
-            <button onClick={() => place('center')} aria-pressed={!align} aria-label="Centre" title="Centre">
-              <Icon name="float-center" size={18} />
-            </button>
-            <button onClick={() => place('right')} aria-pressed={align === 'right'} aria-label="Right" title="Right">
-              <Icon name="float-right" size={18} />
-            </button>
-            <span class="sep" />
-            <button onClick={onOpen} aria-label="View" title="View">
-              <Icon name="maximize" size={18} />
-            </button>
-            <button class="danger" onClick={onRemove} aria-label="Remove" title="Remove">
-              <Icon name="trash" size={18} />
-            </button>
-          </div>
-        </div>
-      )}
-      <div
-        ref={frame}
-        class="media-frame"
-        style={{
-          width: `${size}%`,
-          maxWidth: ratio ? `calc(70dvh * ${ratio.toFixed(4)})` : undefined,
-          marginLeft: align === 'left' ? 0 : 'auto',
-          marginRight: align === 'right' ? 0 : 'auto',
+    <div
+      ref={box}
+      class={`media${align ? ' is-' + align : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${live !== null ? ' is-resizing' : ''}`}
+      style={{ width: `${size}%`, maxWidth: ratio ? `calc(70dvh * ${ratio.toFixed(4)})` : undefined }}
+      onContextMenu={(e) => editing && e.preventDefault()}
+    >
+      <button
+        class="media-pic"
+        onPointerDown={down}
+        onClick={(e) => {
+          if (acted.current) return void (acted.current = false);
+          if (selected || !editing) onOpen(e.currentTarget);
+          else onSelect();
         }}
+        aria-label={selected || !editing ? `View ${label.toLowerCase()}` : `Select ${label.toLowerCase()}`}
+        aria-pressed={editing ? selected : undefined}
       >
-        <button
-          class="media-pic"
-          onPointerDown={pressPic}
-          onClick={() => { if (!moved.current) (selected ? onOpen : onSelect)(); }}
-          onKeyDown={(e) => {
-            if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); onRemove(); }
-            else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); onStep(e.key === 'ArrowUp' ? -1 : 1); }
-          }}
-          aria-label={selected ? `View ${label.toLowerCase()}` : `Select ${label.toLowerCase()}`}
-          aria-pressed={selected}
-        >
-          {photo ? (
-            <PhotoImg photo={photo} alt={label} />
-          ) : (
-            <img src={imageSrc(img!, 'thumb')} alt={img!.title || 'Image'} loading="lazy" referrerpolicy="no-referrer" style={ratio ? { aspectRatio: `${img!.w} / ${img!.h}` } : undefined} />
-          )}
-        </button>
-        {selected && (
-          <>
-            <span class="media-handle left" onPointerDown={resize(-1)} aria-hidden="true" />
-            <span class="media-handle right" onPointerDown={resize(1)} aria-hidden="true" />
-          </>
+        {photo ? (
+          <PhotoImg photo={photo} alt={label} draggable={false} />
+        ) : (
+          <img src={imageSrc(img!, 'thumb')} alt={img!.title || 'Image'} loading="lazy" draggable={false} referrerpolicy="no-referrer" style={ratio ? { aspectRatio: `${img!.w} / ${img!.h}` } : undefined} />
         )}
-        {live !== null && <span class="media-badge glass">{live === 100 ? 'Full width' : live + '%'}</span>}
-      </div>
+      </button>
+      {selected && !dragging &&
+        corners
+          // a picture on a side is pulled from its free side, the one the text is on
+          .filter(([, sx]) => !align || (align === 'left' ? sx > 0 : sx < 0))
+          .map(([c, sx, sy]) => <span key={c} class={`media-corner ${c}`} onPointerDown={corner(sx, sy)} aria-hidden="true" />)}
+      {live !== null && <span class="media-badge glass">{live === 100 ? 'Full width' : live + '%'}</span>}
     </div>
+  );
+}
+
+/** The toolbar for the selected picture, in place of the formatting buttons. */
+export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove }: {
+  m: Media;
+  canUp: boolean;
+  canDown: boolean;
+  onLayout: (l: Layout) => void;
+  onStep: (dir: -1 | 1) => void;
+  onOpen: () => void;
+  onRemove: () => void;
+}) {
+  const size = m.size ?? 100;
+  const align = size < 100 ? m.align : undefined;
+  const side = (s: Side) => onLayout(s === 'center' ? { size } : dropLayout(m, s));
+  return (
+    <>
+      <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label="Left, text wraps around it" title="Left, text wraps around it">
+        <Icon name="float-left" size={19} />
+      </button>
+      <button class="format-btn" onClick={() => side('center')} aria-pressed={!align} aria-label="Centre, on its own line" title="Centre, on its own line">
+        <Icon name="float-center" size={19} />
+      </button>
+      <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label="Right, text wraps around it" title="Right, text wraps around it">
+        <Icon name="float-right" size={19} />
+      </button>
+      <span class="format-sep" />
+      <button class="format-btn media-size" onClick={() => onLayout({ size: nextSize(size), align: m.align })} aria-label={`Size: ${size === 100 ? 'full width' : size + '%'}. Change size`} title="Change size">
+        {size === 100 ? 'Full' : size + '%'}
+      </button>
+      <span class="format-sep" />
+      <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label="Move up" title="Move up">
+        <Icon name="arrow-up" size={19} />
+      </button>
+      <button class="format-btn" onClick={() => onStep(1)} disabled={!canDown} aria-label="Move down" title="Move down">
+        <Icon name="arrow-down" size={19} />
+      </button>
+      <span class="format-sep" />
+      <button class="format-btn" onClick={onOpen} aria-label="View" title="View">
+        <Icon name="maximize" size={19} />
+      </button>
+      <button class="format-btn danger" onClick={onRemove} aria-label="Remove" title="Remove">
+        <Icon name="trash" size={19} />
+      </button>
+    </>
   );
 }
 
 export interface DropTarget { seg: number; pos: number; y: number }
 
-const COPY = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'wordSpacing', 'textTransform',
-  'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'tabSize', 'overflowWrap', 'wordBreak'] as const;
-
-/** Where each line of a text box starts, and where its text ends, in px from its top — measured on a copy, since text wraps. */
-function lineTops(el: HTMLTextAreaElement) {
-  const cs = getComputedStyle(el);
-  const copy = document.createElement('div');
-  for (const p of COPY) copy.style[p] = cs[p];
-  copy.style.cssText += `;position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;box-sizing:border-box;width:${el.offsetWidth}px`;
-  const lines = el.value.split('\n');
-  const marks = lines.map((l, k) => {
-    const s = document.createElement('span');
-    copy.append(s, l + (k < lines.length - 1 ? '\n' : ''));
-    return s;
-  });
-  document.body.append(copy);
-  const tops = marks.map((s) => s.offsetTop);
-  const end = copy.offsetHeight;
-  copy.remove();
-  let pos = 0;
-  const starts = lines.map((l, k) => {
-    const out = { pos, y: tops[k] };
-    pos += l.length + 1;
-    return out;
-  });
-  return { starts, end };
-}
-
-/** Every place a picture can be dropped: the edges of each text box and the start of each line in it (page coordinates). */
-export function dropTargets(areas: (HTMLTextAreaElement | null)[]): DropTarget[] {
+/**
+ * Every place a picture can be dropped (page coordinates): the start of each text block, the start of each line
+ * (paragraph) in it, and the end of its text.
+ */
+export function dropTargets(areas: (HTMLElement | null)[]): DropTarget[] {
   const out: DropTarget[] = [];
   areas.forEach((el, seg) => {
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    const top = r.top + scrollY;
+    const top = el.getBoundingClientRect().top + scrollY;
     out.push({ seg, pos: 0, y: top });
-    if (!el.value) return;
-    const { starts, end } = lineTops(el); // not the box's height: the last one is kept tall to write in
-    for (const l of starts.slice(1)) out.push({ seg, pos: l.pos, y: top + l.y });
-    out.push({ seg, pos: el.value.length, y: top + end });
+    const box = editable(el);
+    const v = box.value;
+    if (!v) return;
+    const lh = parseFloat(getComputedStyle(el).lineHeight) || 28;
+    let pos = 0;
+    let bottom = top;
+    v.split('\n').forEach((line, k) => {
+      let y = bottom; // a blank line sits just below the one before
+      const rects = line ? [...box.range(pos, pos + line.length).getClientRects()].filter((r) => r.height) : [];
+      if (rects.length) {
+        y = rects[0].top + scrollY;
+        bottom = rects[rects.length - 1].bottom + scrollY;
+      } else bottom += lh;
+      if (k > 0) out.push({ seg, pos, y });
+      pos += line.length + 1;
+    });
+    out.push({ seg, pos: v.length, y: bottom });
   });
   return out;
+}
+
+/** Which side of the column a point is over: its left or right third, or the middle. */
+export function sideAt(x: number, col: DOMRect): Side {
+  const f = (x - col.left) / col.width;
+  return f < 0.34 ? 'left' : f > 0.66 ? 'right' : 'center';
 }
