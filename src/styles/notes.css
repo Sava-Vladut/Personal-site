@@ -1,0 +1,168 @@
+/* ============================================================
+   Notes: the header section, the Feelings page, the formatting
+   toolbar, formatted (Markdown) text and cover pictures.
+   ============================================================ */
+
+/* ---------- the note's header: icon, title and a one-line summary, apart from the writing ---------- */
+
+.note-head {
+  position: relative; isolation: isolate; overflow: hidden;
+  margin-top: 6px; padding: 12px 12px 8px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.note-head > .eyebrow { margin: 0 2px 6px; }
+.note-head .editor-top { margin-top: 0; gap: 12px; align-items: center; }
+.note-head .icon-pick { width: 44px; height: 44px; border-radius: 13px; background: var(--surface-2); border-color: transparent; }
+.note-head .icon-pick.is-empty { background: none; border-color: var(--line-2); }
+.note-head .title-input { font-size: 24px; padding: 2px 0; }
+.note-head-cover, .note-cover {
+  position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+  opacity: 0.2;
+  -webkit-mask-image: linear-gradient(90deg, transparent 5%, #000 85%);
+  mask-image: linear-gradient(90deg, transparent 5%, #000 85%);
+}
+.note-head-cover { opacity: 0.26; }
+:root[data-theme='dark'] :is(.note-head-cover, .note-cover) { opacity: 0.3; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) :is(.note-head-cover, .note-cover) { opacity: 0.3; } }
+
+.details-summary {
+  display: flex; align-items: center; gap: 8px; width: calc(100% + 8px); margin: 10px -4px 0; padding: 8px 4px 2px;
+  text-align: left; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px;
+}
+.details-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.details-date, .details-add { display: inline-flex; align-items: center; gap: 5px; height: 24px; font-size: 13px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+.details-date { margin-right: 2px; }
+.details-add { color: var(--ink-3); }
+.details-go { flex: none; color: var(--ink-3); transition: transform 0.2s var(--ease); }
+@media (hover: hover) { .details-summary:hover .details-go { transform: translateX(2px); color: var(--ink); } }
+.details-summary:active .details-go { transform: translateX(3px); }
+.mini-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; padding: 0 4px; }
+.mini-bars i { width: 3px; border-radius: 1px; background: var(--line-2); }
+.mini-bars i.on { background: var(--ink-2); }
+
+/* ---------- the Feelings page ---------- */
+
+.details {
+  position: fixed; inset: 0; z-index: 40; overflow-y: auto; overscroll-behavior: contain; outline: none;
+  background: var(--bg); animation: details-in 0.38s var(--ease-emph);
+}
+.details.closing { animation: details-out 0.22s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; pointer-events: none; }
+@keyframes details-in { from { transform: translateX(100%); box-shadow: -20px 0 40px rgb(0 0 0 / 0.12); } }
+@keyframes details-out { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .details { animation: fade-in 0.15s ease-out; }
+  .details.closing { animation: fade-out 0.15s ease-in forwards; }
+}
+.details-page { max-width: 640px; margin: 0 auto; padding: calc(var(--safe-t) + 18px) var(--gutter) calc(var(--safe-b) + 40px); }
+.details-title { margin-top: 4px; }
+.details-of { margin-top: 2px; color: var(--ink-3); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.details-section { margin-top: 14px; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+.details-title + .details-section, .details-of + .details-section { margin-top: 18px; }
+.details-section > .eyebrow { margin: 0 2px; }
+.details-section .meta { margin-top: 10px; }
+.details-section .meta-row { background: var(--surface-2); border-color: transparent; }
+.details-hint { font-size: 13px; color: var(--ink-3); margin: 2px 2px 0; }
+.cover-preview { position: relative; margin-top: 10px; border-radius: 14px; overflow: hidden; aspect-ratio: 16 / 7; background: var(--surface-2); }
+.cover-preview img, .cover-preview .photo-ph { width: 100%; height: 100%; object-fit: cover; }
+.cover-remove { position: absolute; top: 8px; right: 8px; width: 36px !important; height: 36px; }
+.cover-picks { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.cover-picks::-webkit-scrollbar { display: none; }
+.cover-pick {
+  flex: none; width: 64px; height: 64px; border-radius: 13px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: var(--surface-2); color: var(--ink-2); font-size: 11.5px; font-weight: 600;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+.cover-pick:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
+.cover-pick.is-pic img, .cover-pick.is-pic .photo-ph { width: 100%; height: 100%; object-fit: cover; }
+.cover-pick[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+
+/* ---------- the toolbar: formatting, then pictures and music ---------- */
+
+.editor { padding-bottom: 76px; }
+.app.route-note ~ .toasts { bottom: calc(var(--safe-b) + 78px); }
+.format-bar {
+  position: fixed; z-index: 30; left: 50%; translate: -50% 0;
+  bottom: max(calc(var(--safe-b) + 10px), calc(var(--kb, 0px) + 6px));
+  display: flex; align-items: center; width: min(calc(100% - 20px), 680px); border-radius: 999px; padding: 4px;
+  animation: rise-in 0.4s var(--ease-emph);
+}
+.format-scroll, .format-fixed { display: flex; align-items: center; gap: 1px; }
+.format-scroll {
+  flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; border-radius: 999px;
+  /* a fade at the end says there's more to scroll to; the spacer lets the last button clear it */
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+}
+.format-scroll::after { content: ''; flex: none; width: 18px; }
+.format-scroll::-webkit-scrollbar { display: none; }
+.format-fixed { flex: none; }
+.format-btn {
+  flex: none; width: 40px; height: 40px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-2); transition: background-color 0.12s, color 0.12s, transform 0.1s;
+}
+.format-btn:hover:not(:disabled) { background: var(--glass-pill); color: var(--ink); }
+.format-btn:active:not(:disabled) { transform: scale(0.9); background: var(--glass-pill); }
+.format-sep { flex: none; width: 1px; height: 20px; margin: 0 4px; background: var(--line-2); }
+/* only the picture buttons in reading view: keep the pill snug */
+.format-bar:not(:has(.format-scroll)) { width: auto; }
+@media (min-width: 720px) { .format-scroll { -webkit-mask-image: none; mask-image: none; } .format-scroll::after { display: none; } }
+
+/* ---------- reading view ---------- */
+
+.note-body.is-reading { padding-top: 4px; }
+.note-body.is-reading ~ .drop-hint { display: none; }
+.read-text { cursor: text; }
+.read-empty { display: block; width: 100%; text-align: left; padding: 6px 0; font: 400 17.5px/1.65 var(--serif); color: var(--ink-3); }
+.read-tail { display: block; width: 100%; min-height: 28vh; cursor: text; }
+
+/* ---------- formatted text ---------- */
+
+.md { font: 400 17.5px/1.65 var(--serif); color: var(--ink); overflow-wrap: anywhere; }
+.md p { margin: 0; }
+.md .md-gap { height: 0.7em; }
+.md .md-h { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; margin: 0.5em 0 0.2em; }
+.md > .md-h:first-child { margin-top: 0.1em; }
+.md .md-h1 { font-size: 1.55em; }
+.md .md-h2 { font-size: 1.3em; }
+.md .md-h3 { font-size: 1.12em; }
+.md :is(.md-h4, .md-h5, .md-h6) { font-size: 1em; }
+.md strong { font-weight: 650; }
+.md s { color: var(--ink-3); }
+.md mark { background: color-mix(in oklab, var(--emo-joy) 38%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; }
+.md a { color: var(--ink); text-decoration-color: var(--ink-3); text-underline-offset: 2px; }
+.md code { font: 0.82em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.md pre { margin: 0.3em 0; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); overflow-x: auto; }
+.md pre code { background: none; padding: 0; font-size: 0.8em; white-space: pre; }
+.md hr { border: 0; height: 1px; background: var(--line-2); margin: 0.9em 0; }
+.md .md-tag { font-family: var(--sans); font-size: 0.8em; font-weight: 600; color: var(--ink-2); background: var(--surface-2); padding: 1px 7px; border-radius: 999px; }
+.md .md-wiki { color: var(--ink); text-decoration: underline dotted var(--ink-3); text-underline-offset: 3px; }
+
+.md .md-li { display: flex; gap: 8px; align-items: flex-start; padding-left: calc(var(--depth, 0) * 1.3em); }
+.md .md-marker { flex: none; min-width: 1.1em; text-align: center; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.md .md-ol .md-marker { min-width: 1.4em; text-align: right; font-size: 0.92em; padding-top: 0.06em; }
+.md .md-li-text { flex: 1; min-width: 0; }
+.md .md-task input {
+  appearance: none; -webkit-appearance: none; flex: none; width: 18px; height: 18px; margin: 0.32em 2px 0 1px; border-radius: 6px;
+  border: 1.5px solid var(--ink-3); background: var(--surface); cursor: pointer; display: grid; place-content: center;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.md .md-task input::after { content: ''; width: 9px; height: 5px; border: solid var(--on-ink); border-width: 0 0 2px 2px; rotate: -45deg; translate: 0 -1px; scale: 0; transition: scale 0.2s var(--spring-bouncy); }
+.md .md-task input:checked { background: var(--ink); border-color: var(--ink); }
+.md .md-task input:checked::after { scale: 1; }
+.md .md-task.is-done .md-li-text { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
+
+.md blockquote { margin: 0.3em 0; padding: 0 0 0 14px; border-left: 3px solid var(--line-2); color: var(--ink-2); }
+.md .md-callout { --tone: var(--emo-sadness); margin: 0.4em 0; padding: 10px 14px; border-radius: 12px; background: color-mix(in oklab, var(--tone) 10%, var(--surface)); border-left: 3px solid var(--tone); }
+.md .md-callout.tone-tip { --tone: var(--emo-calm-safety); }
+.md .md-callout.tone-good { --tone: var(--emo-shame-aversion); }
+.md .md-callout.tone-warn { --tone: var(--emo-hope-interest); }
+.md .md-callout.tone-bad { --tone: var(--emo-anger); }
+.md .md-callout-title { display: flex; gap: 8px; align-items: baseline; font: 600 14.5px/1.4 var(--sans); color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
+.md .md-callout-title + * { margin-top: 4px; }
+.md .md-callout > :not(.md-callout-title) { font-size: 0.95em; }
+
+/* ---------- journal cards with a cover ---------- */
+
+.note.has-cover { position: relative; isolation: isolate; overflow: hidden; }
+.note-cover { border-radius: inherit; }

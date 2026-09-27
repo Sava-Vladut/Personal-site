@@ -4,7 +4,8 @@ import type { WebImage } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
 
-export function ImageSearchSheet({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (imgs: WebImage[]) => void }) {
+/** Search Openverse and pick images. `single` picks one, with `action` as the button's label. */
+export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { open: boolean; onClose: () => void; onAdd: (imgs: WebImage[]) => void; single?: boolean; action?: string }) {
   const [q, setQ] = useState('');
   const [searched, setSearched] = useState('');
   const [items, setItems] = useState<WebImage[]>([]);
@@ -44,7 +45,7 @@ export function ImageSearchSheet({ open, onClose, onAdd }: { open: boolean; onCl
   };
 
   const isSel = (url: string) => selected.some((s) => s.url === url);
-  const toggle = (img: WebImage) => setSelected((s) => (isSel(img.url) ? s.filter((x) => x.url !== img.url) : [...s, img]));
+  const toggle = (img: WebImage) => setSelected((s) => (isSel(img.url) ? s.filter((x) => x.url !== img.url) : single ? [img] : [...s, img]));
 
   return (
     <Sheet
@@ -57,7 +58,7 @@ export function ImageSearchSheet({ open, onClose, onAdd }: { open: boolean; onCl
         selected.length ? (
           <>
             <span class="foot-note">{selected.length} selected</span>
-            <button class="btn btn-primary" onClick={() => { onAdd(selected); onClose(); }}>Add {selected.length === 1 ? 'image' : `${selected.length} images`}</button>
+            <button class="btn btn-primary" onClick={() => { onAdd(selected); onClose(); }}>{action ?? `Add ${selected.length === 1 ? 'image' : `${selected.length} images`}`}</button>
           </>
         ) : undefined
       }

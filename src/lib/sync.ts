@@ -2,7 +2,7 @@
 // browser, with a key derived from that code, and the server keeps only the ciphertext, filed under an id that is
 // also derived from the code. So the server can't read the journal, and anyone with the code can.
 // Each device merges what's on the server with what it has (newest edit wins, deletions stick) and sends the result back.
-import { getDeleted, getEntries, getPeople, mergeSynced, observable, onLocalChange, toast } from './store';
+import { getDeleted, getEntries, getPeople, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
 import { photoBlob, photoIds, storePhotos, type Photo } from './photos';
 import { resolveIcon } from './icons';
 
@@ -134,7 +134,7 @@ function aheadOf(doc: Doc) {
 
 const photosInUse = () => {
   const out = new Map<string, Photo>();
-  getEntries().forEach((e) => e.photos.forEach((p) => out.set(p.id, p)));
+  getEntries().forEach((e) => photosOf(e).forEach((p) => out.set(p.id, p)));
   return out;
 };
 

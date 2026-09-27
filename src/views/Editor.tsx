@@ -1,24 +1,25 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { EMOTION } from '../data/emotions';
-import { rangeLabel, timeLabel } from '../lib/dates';
+import { timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
-import { bodyOf, canStep, insertMedia, mediaKey, moveMedia, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, type Body, type Media } from '../lib/body';
+import { bodyOf, canStep, insertMedia, mediaKey, moveMedia, plainText, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, type Body, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
+import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
 import { blankEntry, deleteEntry, getEntries, getPeople, isEmpty, saveEntry, toast, type Entry, type Music, type WebImage } from '../lib/store';
-import { DateSheet } from '../components/Calendar';
-import { EmotionChip, EmotionPicker, IntensityPicker } from '../components/emotion';
+import { FormatBar } from '../components/FormatBar';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
+import { Markdown } from '../components/Markdown';
+import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
 import { dropTargets, MediaBlock, type DropTarget } from '../components/NoteMedia';
 import { PhotoImg } from '../components/Photo';
-import { PeopleChips, PeopleSheet } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
+import '../styles/notes.css';
 
-type Open = null | 'icon' | 'date' | 'emotion' | 'people' | 'images' | 'spotify' | { image: WebImage } | { photo: Photo } | { music: Music };
+type Open = null | 'icon' | 'images' | 'spotify' | { image: WebImage } | { photo: Photo } | { music: Music };
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -60,6 +61,7 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
       placeholder={placeholder}
       value={value}
       onInput={(e) => { onChange(e.currentTarget.value); caret(e); }}
+      onKeyDown={(e) => listKey(e.currentTarget, e) && e.preventDefault()}
       onBlur={caret}
       onSelect={caret}
       aria-label="Note"
@@ -80,6 +82,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [dropping, setDropping] = useState(false);
   const [sel, setSel] = useState<string | null>(null); // the selected picture's mediaKey
   const [moving, setMoving] = useState<{ key: string; y: number } | null>(null); // a picture being dragged, and where it would land
+  const [details, setDetails] = useState(false); // the Feelings page
+  // Notes that already have words open formatted, to read; the pencil (or a tap on the words) switches to writing.
+  const [reading, setReading] = useState(() => !!draft && id !== 'new' && !!plainText(draft.text).trim());
   const fileRef = useRef<HTMLInputElement>(null);
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
@@ -175,12 +180,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const removed = saved.current ? await deleteEntry(draft.id) : null;
     goBack();
     if (removed) toast(removed.kind === 'checkin' ? 'Check-in deleted' : 'Note deleted', { label: 'Undo', run: () => saveEntry(removed) });
-  };
-
-  const addEmotion = (eid: string) => {
-    const list = draft.emotions.filter((x) => x !== eid && !eid.startsWith(x + '/') && !x.startsWith(eid + '/'));
-    update({ emotions: [...list, eid].slice(-3) });
-    setOpen(null);
   };
 
   const addFiles = async (all: File[]) => {
@@ -314,6 +313,25 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     frame = requestAnimationFrame(tick);
   };
 
+  /** Switches to writing, with the caret at the end of text block `seg` (or where it was). */
+  const write = (seg?: number) => {
+    const go = () => {
+      const el = seg === undefined ? areas.current[Math.max(0, where.current.seg)] ?? textRef.current : areas.current[seg];
+      if (!el) return;
+      if (seg !== undefined) el.setSelectionRange(el.value.length, el.value.length);
+      el.focus();
+    };
+    if (!reading) return go();
+    setReading(false);
+    requestAnimationFrame(go); // once the text boxes are back
+  };
+  /** The text box the toolbar formats: the one being written in, or the last one that was. */
+  const target = () => {
+    const active = document.activeElement;
+    if (active instanceof HTMLTextAreaElement && areas.current.includes(active)) return active;
+    return areas.current[where.current.seg] ?? areas.current[body.texts.length - 1] ?? null;
+  };
+
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
   const body = bodyOf(draft);
@@ -330,58 +348,41 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={() => { flush(); goBack(); }} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
+        <button
+          class="glass glass-btn round"
+          onClick={() => (reading ? write() : setReading(true))}
+          aria-label={reading ? 'Edit' : 'Reading view'}
+          title={reading ? 'Edit' : 'Reading view'}
+        >
+          <Icon name={reading ? 'pencil' : 'book'} />
+        </button>
         <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? 'Delete check-in' : 'Delete note'}><Icon name="trash" /></button>
         <button class="glass glass-btn tinted" onClick={() => { flush(); goBack(); }}>Done</button>
       </div>
 
-      {isCheckin && <div class="eyebrow">Check-in · {timeLabel(draft.time)}</div>}
-
-      <div class="editor-top">
-        <button class={`icon-pick${draft.icon ? '' : ' is-empty'}`} onClick={() => setOpen('icon')} aria-label={draft.icon ? 'Change icon' : 'Add icon'}>
-          {draft.icon ? <NoteIcon id={draft.icon} size={28} /> : <Icon name="mood-plus" size={22} />}
-        </button>
-        <textarea
-          ref={titleRef}
-          class="title-input"
-          rows={1}
-          placeholder="Title"
-          value={draft.title}
-          maxLength={300}
-          onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), textRef.current?.focus())}
-          aria-label="Title"
-        />
-      </div>
-
-      <div class="meta">
-        <button class="chip" onClick={() => setOpen('date')}>
-          <Icon name="calendar-event" size={16} /> {rangeLabel(draft.date, draft.dateEnd)}
-        </button>
-        {draft.emotions.map((eid) => (
-          <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />
-        ))}
-        {draft.emotions.length < 3 && (
-          <button class="chip" onClick={() => setOpen('emotion')}>
-            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? 'Add' : 'How does it feel?'}
+      <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
+        {draft.cover && <CoverImg cover={draft.cover} class="note-head-cover" />}
+        {isCheckin && <div class="eyebrow">Check-in · {timeLabel(draft.time)}</div>}
+        <div class="editor-top">
+          <button class={`icon-pick${draft.icon ? '' : ' is-empty'}`} onClick={() => setOpen('icon')} aria-label={draft.icon ? 'Change icon' : 'Add icon'}>
+            {draft.icon ? <NoteIcon id={draft.icon} size={24} /> : <Icon name="mood-plus" size={20} />}
           </button>
-        )}
-      </div>
-      <div class="meta people-meta">
-        <PeopleChips ids={draft.people} onChange={(people) => update({ people })} onAdd={() => setOpen('people')} label="Who is it about?" />
-      </div>
-
-      {draft.emotions.length > 0 && (
-        <div class="meta-row">
-          <span class="eyebrow">Intensity</span>
-          <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} />
+          <textarea
+            ref={titleRef}
+            class="title-input"
+            rows={1}
+            placeholder="Title"
+            value={draft.title}
+            maxLength={300}
+            onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write(0))}
+            aria-label="Title"
+          />
         </div>
-      )}
+        <DetailsSummary draft={draft} onOpen={() => setDetails(true)} />
+      </section>
 
-      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && (
-        <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
-      )}
-
-      <div class="note-body" ref={bodyRef}>
+      <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef}>
         {body.texts.map((t, i) => (
           <>
             {i > 0 && (() => {
@@ -394,19 +395,33 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                   key={key}
                   m={m}
                   draft={draft}
-                  selected={sel === key}
+                  selected={!reading && sel === key}
                   dragging={moving?.key === key}
                   canUp={canStep(body, i - 1, -1)}
                   canDown={canStep(body, i - 1, 1)}
-                  onSelect={() => setSel(key)}
+                  onSelect={() => (reading ? photo ? setOpen({ photo }) : image && setOpen({ image }) : setSel(key))}
                   onOpen={() => photo ? setOpen({ photo }) : image && setOpen({ image })}
                   onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, l)) })}
                   onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), i - 1, dir))}
                   onRemove={() => removePicture(m)}
-                  onDrag={(e) => startMove(i - 1, e)}
+                  onDrag={(e) => !reading && startMove(i - 1, e)}
                 />
               );
             })()}
+            {reading ? (
+              t.trim() && (
+                <div
+                  class="read-text"
+                  onClick={(e) => {
+                    // a tap on the words starts writing there; links, ticks and selecting text don't
+                    if ((e.target as Element).closest('a, input, button') || !getSelection()?.isCollapsed) return;
+                    write(i);
+                  }}
+                >
+                  <Markdown text={t} onTask={(line) => setText(i, toggleTask(t, line))} />
+                </div>
+              )
+            ) : (
             <BodyText
               value={t}
               textRef={(el) => { areas.current[i] = el; if (i === 0) textRef.current = el; }}
@@ -415,10 +430,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               onChange={(v) => setText(i, v)}
               onCaret={(pos) => (where.current = { seg: i, pos })}
             />
+            )}
           </>
         ))}
         {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label="Adding photo" />)}
         {moving && <span class="drop-line" style={{ top: moving.y + 'px' }} aria-hidden="true" />}
+        {reading && !plainText(draft.text).trim() && (
+          <button class="read-empty" onClick={() => write(last)}>Nothing written yet. Tap to write.</button>
+        )}
+        {reading && <button class="read-tail" onClick={() => write(last)} aria-label="Keep writing" tabIndex={-1} />}
       </div>
 
       {draft.music.length > 0 && (
@@ -436,26 +456,22 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         hidden
         onChange={(e) => { const input = e.currentTarget; addFiles([...(input.files ?? [])]); input.value = ''; }}
       />
-      <div class="add-row">
-        <button class="add-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label="Add photos" title="Add photos">
-          <Icon name="photo-plus" size={20} />
+      <FormatBar target={target} format={!reading}>
+        <button class="format-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label="Add photos" title="Add photos">
+          <Icon name="photo-plus" size={19} />
         </button>
-        <button class="add-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
-          <Icon name="brand-spotify" size={20} />
+        <button class="format-btn" onClick={() => setOpen('images')} aria-label="Find an image" title="Find an image">
+          <Icon name="photo-search" size={19} />
         </button>
-        <button class="add-btn" onClick={() => setOpen('images')} aria-label="Find an image" title="Find an image">
-          <Icon name="photo-search" size={20} />
+        <button class="format-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
+          <Icon name="brand-spotify" size={19} />
         </button>
-      </div>
+      </FormatBar>
       <p class="drop-hint">You can also drag photos onto the note, or paste them.</p>
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
 
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />
-      <DateSheet open={open === 'date'} onClose={close} start={draft.date} end={draft.dateEnd} onChange={(date, dateEnd) => update({ date, dateEnd })} />
-      <Sheet open={open === 'emotion'} onClose={close} title="How does it feel?">
-        <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
-      </Sheet>
-      <PeopleSheet open={open === 'people'} onClose={close} selected={draft.people} onChange={(people) => update({ people })} />
+      <NoteDetails open={details} onClose={() => setDetails(false)} draft={draft} update={update} />
       <ImageSearchSheet
         open={open === 'images'}
         onClose={close}

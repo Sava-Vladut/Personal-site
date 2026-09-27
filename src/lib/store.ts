@@ -27,6 +27,9 @@ export interface Music {
 }
 const MUSIC_KINDS = ['track', 'album', 'playlist', 'episode', 'show', 'artist'];
 
+/** The picture a note is shown with: faintly behind its card in the journal, and at the top of the note. */
+export type Cover = { photo: Photo } | { image: WebImage };
+
 export interface Entry {
   id: string;
   kind: 'note' | 'checkin';
@@ -42,6 +45,7 @@ export interface Entry {
   photos: Photo[];          // from the device's gallery, stored locally (see photos.ts)
   music: Music[];
   people: string[];         // ids of the people it's about or who were there
+  cover: Cover | null;
   created: number;
   updated: number;
 }
@@ -99,11 +103,14 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   const now = Date.now();
   return {
     id: uid(), kind, title: '', icon: null, text: '', emotions: [], intensity: 3,
-    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], created: now, updated: now,
+    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, created: now, updated: now,
   };
 }
 
-export const isEmpty = (e: Entry) => !e.title.trim() && !plainText(e.text).trim() && !e.emotions.length && !e.images.length && !e.photos.length && !e.music.length && !e.people.length;
+/** Every photo a note uses: those in its text and its cover. */
+export const photosOf = (e: Entry) => (e.cover && 'photo' in e.cover ? [...e.photos, e.cover.photo] : e.photos);
+
+export const isEmpty = (e: Entry) => !e.title.trim() && !plainText(e.text).trim() && !e.emotions.length && !e.images.length && !e.photos.length && !e.music.length && !e.people.length && !e.cover;
 
 /** Told about every change made on this device (sync uses it to know there's something to send). */
 let changeHandler = () => {};
@@ -196,7 +203,7 @@ export async function init() {
   icons$.set(icons ?? {});
   deleted = gone ?? {};
   ready$.set(true);
-  prunePhotos(new Set(entries$.get().flatMap((e) => e.photos.map((p) => p.id)))).catch(() => {});
+  prunePhotos(new Set(entries$.get().flatMap((e) => photosOf(e).map((p) => p.id)))).catch(() => {});
 }
 
 /* ---------- backup ---------- */
@@ -204,24 +211,28 @@ export async function init() {
 const KEY = /^\d{4}-\d{2}-\d{2}$/;
 const str = (v: unknown, max = 100_000) => (typeof v === 'string' ? v.slice(0, max) : '');
 
+const webImage = (i: any): WebImage | null =>
+  i && /^https:\/\//.test(i.url)
+    ? {
+        url: str(i.url, 2000),
+        thumb: /^https:\/\//.test(i.thumb) ? str(i.thumb, 2000) : undefined,
+        w: +i.w || undefined,
+        h: +i.h || undefined,
+        link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined,
+        title: str(i.title, 300) || undefined,
+        credit: str(i.credit, 300) || undefined,
+      }
+    : null;
+const photo = (p: any): Photo | null =>
+  p && typeof p.id === 'string' && PHOTO_ID.test(p.id) ? { id: p.id, w: Math.max(1, +p.w || 1), h: Math.max(1, +p.h || 1) } : null;
+
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !KEY.test(raw.date)) return null;
   const now = Date.now();
-  const images: WebImage[] = Array.isArray(raw.images)
-    ? raw.images
-        .filter((i: any) => i && /^https:\/\//.test(i.url))
-        .map((i: any) => ({
-          url: str(i.url, 2000),
-          thumb: /^https:\/\//.test(i.thumb) ? str(i.thumb, 2000) : undefined,
-          w: +i.w || undefined,
-          h: +i.h || undefined,
-          link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined,
-          title: str(i.title, 300) || undefined,
-          credit: str(i.credit, 300) || undefined,
-        }))
-        .slice(0, 12)
-    : [];
+  const images: WebImage[] = Array.isArray(raw.images) ? raw.images.map(webImage).filter(Boolean).slice(0, 12) : [];
+  const coverPhoto = photo(raw.cover?.photo);
+  const coverImage = webImage(raw.cover?.image);
   return {
     id: str(raw.id, 40) || uid(),
     kind: raw.kind === 'checkin' ? 'checkin' : 'note',
@@ -234,12 +245,7 @@ function normalize(raw: any): Entry | null {
     dateEnd: KEY.test(raw.dateEnd) && raw.dateEnd > raw.date ? raw.dateEnd : null,
     time: Number.isFinite(raw.time) ? raw.time : now,
     images,
-    photos: Array.isArray(raw.photos)
-      ? raw.photos
-          .filter((p: any) => p && typeof p.id === 'string' && PHOTO_ID.test(p.id))
-          .map((p: any) => ({ id: p.id, w: Math.max(1, +p.w || 1), h: Math.max(1, +p.h || 1) }))
-          .slice(0, 20)
-      : [],
+    photos: Array.isArray(raw.photos) ? raw.photos.map(photo).filter(Boolean).slice(0, 20) : [],
     music: Array.isArray(raw.music)
       ? raw.music
           .filter((m: any) => m && MUSIC_KINDS.includes(m.kind) && /^[A-Za-z0-9]{10,40}$/.test(m.id))
@@ -250,6 +256,7 @@ function normalize(raw: any): Entry | null {
           .slice(0, 20)
       : [],
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
+    cover: coverPhoto ? { photo: coverPhoto } : coverImage ? { image: coverImage } : null,
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };
@@ -274,7 +281,7 @@ const normalizePeople = (raw: unknown) => (Array.isArray(raw) ? (raw.map(normali
 
 export async function exportJSON() {
   const entries = entries$.get();
-  const photos = await exportPhotos(new Set(entries.flatMap((e) => e.photos.map((p) => p.id))));
+  const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
   return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: people$.get(), photos }, null, 1);
 }
 
@@ -288,7 +295,7 @@ export async function importJSON(text: string) {
   const changed = incoming
     .filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated)
     .map((e) => (deleted[e.id] >= e.updated ? { ...e, updated: now } : e));
-  await importPhotos(data?.photos, new Set(changed.flatMap((e) => e.photos.map((p) => p.id))));
+  await importPhotos(data?.photos, new Set(changed.flatMap((e) => photosOf(e).map((p) => p.id))));
   changed.forEach((e) => current.set(e.id, e));
   entries$.set([...current.values()].sort(byNewest));
   await db.putMany(changed);

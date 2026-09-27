@@ -5,11 +5,14 @@ import { navigate } from '../lib/router';
 import { useEntries, usePeople, useReady, type Entry } from '../lib/store';
 import { plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
+import { stripMarkdown } from '../lib/markdown';
 import { Calendar } from '../components/Calendar';
 import { EmotionChip } from '../components/emotion';
+import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
 import { AppMark, Icon, NoteIcon, Sprite } from '../components/icons';
+import '../styles/notes.css';
 
 type Filter = 'all' | 'note' | 'checkin' | string; // string = core emotion id
 
@@ -170,11 +173,12 @@ function CheckInPrompt() {
 
 export function NoteCard({ e }: { e: Entry }) {
   const byId = usePeopleById();
-  const excerpt = plainText(e.text).trim().slice(0, 240);
+  const excerpt = stripMarkdown(plainText(e.text)).trim().slice(0, 240);
   const pictures = e.photos.length + e.images.length;
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   return (
-    <button class="note card" onClick={() => navigate('note/' + e.id)}>
+    <button class={`note card${e.cover ? ' has-cover' : ''}`} onClick={() => navigate('note/' + e.id)}>
+      {e.cover && <CoverImg cover={e.cover} class="note-cover" />}
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
         <div class="note-main">
@@ -216,7 +220,7 @@ export function CheckInRow({ e }: { e: Entry }) {
     <button class="checkin" onClick={() => navigate('note/' + e.id)}>
       {em ? <Sprite core={em.core} size={16} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
-      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', with_.length ? `with ${with_.join(', ')}` : '', plainText(e.text).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
+      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', with_.length ? `with ${with_.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{timeLabel(e.time)}</span>
     </button>
   );
