@@ -65,6 +65,8 @@ export function Journal() {
 
   return (
     <div class="page">
+      {/* the day, the check-in and the filters, set apart from the notes below on a panel of their own */}
+      <div class="journal-top">
       <header class="page-head">
         <div class="brand"><AppMark size={12} /> My Mind</div>
         <div class="row between">
@@ -130,6 +132,7 @@ export function Journal() {
           <button class="link" onClick={() => setDay(null)}>Clear</button>
         </div>
       )}
+      </div>
 
       {ready && !entries.length && (
         <div class="empty">
