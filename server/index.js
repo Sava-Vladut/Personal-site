@@ -3,10 +3,12 @@
 //  • Spotify: resolves pasted song/album/playlist links (no key needed) and, when a client id is
 //    configured, runs the authorization-code flow and proxies search and playlist listing.
 //    Access tokens live in encrypted http-only cookies — per browser, never in JS, never on disk.
+//  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
+//    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +20,7 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replac
 const APP_URL = (process.env.APP_URL || PUBLIC_URL).replace(/\/+$/, ''); // where to land after connecting
 const SECURE = PUBLIC_URL.startsWith('https://');
 const DIST = join(ROOT, 'dist');
+const SYNC_DIR = join(ROOT, 'data', 'sync');
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -331,6 +334,105 @@ async function spotify(req, res, url, p, setCookies, out) {
   throw new HttpError(404, 'Not found');
 }
 
+/* ---------------- sync ---------------- */
+
+// A synced journal is a folder: 'doc' holds the encrypted entries, every other file is one encrypted photo.
+// Photos never change once added, so they upload once each instead of riding along with every edit.
+const SYNC_DOC_MAX = 16 * 1024 * 1024;
+const SYNC_PHOTO_MAX = 16 * 1024 * 1024;
+const revs = new Map(); // doc path → { mtime, rev }
+
+function readBody(req, max) {
+  return new Promise((resolve, reject) => {
+    if (Number(req.headers['content-length']) > max) return reject(new HttpError(413, 'That’s too big to sync.'));
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > max) {
+        reject(new HttpError(413, 'That’s too big to sync.'));
+        req.destroy();
+      } else chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+/** The doc's revision: a hash of its bytes, so any write gives a new one. Null when there's no doc. */
+function revOf(file) {
+  if (!existsSync(file)) return null;
+  const mtime = statSync(file).mtimeMs;
+  const hit = revs.get(file);
+  if (hit?.mtime === mtime) return hit.rev;
+  const rev = crypto.createHash('sha256').update(readFileSync(file)).digest('base64url').slice(0, 22);
+  revs.set(file, { mtime, rev });
+  return rev;
+}
+
+function writeAtomic(file, data) {
+  mkdirSync(dirname(file), { recursive: true });
+  const tmp = `${file}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+  writeFileSync(tmp, data, { mode: 0o600 });
+  renameSync(tmp, file);
+}
+
+function sendBytes(res, data, headers = {}) {
+  res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': data.length, 'Cache-Control': 'no-store', ...headers });
+  res.end(data);
+}
+
+async function sync(req, res, p) {
+  const m = p.match(/^\/api\/sync\/([a-f0-9]{64})(?:\/(p[a-z0-9]{6,40}))?$/);
+  if (!m) throw new HttpError(404, 'Not found');
+  const dir = join(SYNC_DIR, m[1]);
+
+  if (m[2]) {
+    const file = join(dir, m[2]);
+    if (req.method === 'GET') {
+      if (!existsSync(file)) throw new HttpError(404, 'No such photo.');
+      return sendBytes(res, readFileSync(file));
+    }
+    if (req.method === 'PUT') {
+      const body = await readBody(req, SYNC_PHOTO_MAX);
+      if (!body.length) throw new HttpError(400, 'Empty photo.');
+      if (!existsSync(file)) writeAtomic(file, body);
+      res.writeHead(204);
+      return res.end();
+    }
+    throw new HttpError(405, 'Method not allowed');
+  }
+
+  const doc = join(dir, 'doc');
+  if (req.method === 'GET') {
+    const rev = revOf(doc);
+    if (!rev) throw new HttpError(404, 'Nothing is saved under that code.');
+    if (req.headers['x-sync-rev'] === rev) {
+      res.writeHead(304, { 'X-Sync-Rev': rev, 'Cache-Control': 'no-store' });
+      return res.end();
+    }
+    return sendBytes(res, readFileSync(doc), { 'X-Sync-Rev': rev });
+  }
+  if (req.method === 'PUT') {
+    const body = await readBody(req, SYNC_DOC_MAX);
+    if (!body.length) throw new HttpError(400, 'Empty upload.');
+    // Only replace the revision the device last saw ('new' when it expects there to be none), so edits from
+    // two devices can't silently overwrite each other; on a conflict the device merges and tries again.
+    // Everything from here to the rename is synchronous, so the check and the write can't interleave.
+    const current = revOf(doc);
+    const expected = req.headers['x-sync-rev'];
+    if ((current ?? 'new') !== expected) return json(res, 409, { error: 'Changed on another device.', rev: current });
+    writeAtomic(doc, body);
+    return json(res, 200, { rev: revOf(doc) });
+  }
+  if (req.method === 'DELETE') {
+    rmSync(dir, { recursive: true, force: true });
+    res.writeHead(204);
+    return res.end();
+  }
+  throw new HttpError(405, 'Method not allowed');
+}
+
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
   const setCookies = [];
@@ -338,6 +440,7 @@ async function api(req, res, url) {
 
   if (p === '/api/health') return json(res, 200, { ok: true });
   if (p.startsWith('/api/spotify/')) return spotify(req, res, url, p, setCookies, out);
+  if (p.startsWith('/api/sync/')) return sync(req, res, p);
   throw new HttpError(404, 'Not found');
 }
 

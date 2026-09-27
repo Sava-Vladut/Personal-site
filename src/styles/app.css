@@ -513,6 +513,19 @@ span.inline-media { aspect-ratio: 4 / 3; }
 }
 .steps a { text-decoration: underline; text-underline-offset: 2px; font-weight: 550; }
 .copy-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 6px 6px 10px; border-radius: 11px; background: var(--surface-2); }
+.switch {
+  position: relative; flex: none; width: 50px; height: 30px; border-radius: 999px; background: var(--surface-3);
+  transition: background-color 0.2s;
+}
+.switch::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 999px;
+  background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); transition: transform 0.2s, background-color 0.2s;
+}
+.switch[aria-checked='true'] { background: var(--ink); }
+.switch[aria-checked='true']::after { transform: translateX(20px); background: var(--on-ink); }
+.switch:disabled { opacity: 0.5; }
+.sync-code { display: block; margin: 6px 0 4px; padding: 0; background: none; font: 600 21px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.06em; }
+.code-input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
 .copy-row code { flex: 1; min-width: 0; background: none; padding: 0; overflow-wrap: anywhere; font-size: 13px; }
 .attribution { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--ink-3); margin-top: 6px; }
 
@@ -651,7 +664,7 @@ span.inline-media { aspect-ratio: 4 / 3; }
 
 .list { overflow: hidden; }
 .list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; min-height: 56px; border-bottom: 1px solid var(--line); }
-.list-row:last-of-type { border-bottom: 0; }
+.list-row:not(:has(~ .list-row)) { border-bottom: 0; }
 .list-row .muted.small { margin-top: 3px; line-height: 1.45; }
 .list-row.action { width: 100%; text-align: left; font-size: 15px; transition: background-color 0.12s; }
 .list-row.action:hover:not(:disabled) { background: var(--surface-2); }

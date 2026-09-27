@@ -1,4 +1,4 @@
-// Minimal IndexedDB wrapper. Everything lives on this device; nothing is sent anywhere.
+// Minimal IndexedDB wrapper. Everything lives on this device; only sync (off by default) sends an encrypted copy out.
 
 const NAME = 'my-mind';
 let dbp: Promise<IDBDatabase> | null = null;
@@ -51,6 +51,7 @@ export const db = {
   set: (key: string, value: unknown) => run('kv', 'readwrite', (s) => void s.put(value, key)),
   photo: <T>(id: string) => run<T | undefined>('photos', 'readonly', (s) => s.get(id)),
   photos: <T>() => run<T[]>('photos', 'readonly', (s) => s.getAll() as IDBRequest<T[]>),
+  photoIds: () => run<string[]>('photos', 'readonly', (s) => s.getAllKeys() as IDBRequest<string[]>),
   putPhotos: (values: unknown[]) => run('photos', 'readwrite', (s) => values.forEach((v) => s.put(v))),
   delPhotos: (ids: string[]) => run('photos', 'readwrite', (s) => ids.forEach((id) => s.delete(id))),
   clearPhotos: () => run('photos', 'readwrite', (s) => void s.clear()),

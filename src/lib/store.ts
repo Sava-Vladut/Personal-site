@@ -47,7 +47,7 @@ export interface Entry {
 
 /* ---------- tiny observable ---------- */
 
-function observable<T>(initial: T) {
+export function observable<T>(initial: T) {
   let value = initial;
   const subs = new Set<() => void>();
   return {
@@ -91,6 +91,10 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
 
 export const isEmpty = (e: Entry) => !e.title.trim() && !plainText(e.text).trim() && !e.emotions.length && !e.images.length && !e.photos.length && !e.music.length;
 
+/** Told about every change made on this device (sync uses it to know there's something to send). */
+let changeHandler = () => {};
+export const onLocalChange = (f: () => void) => void (changeHandler = f);
+
 let persistAsked = false;
 export async function saveEntry(e: Entry) {
   const next = { ...e, updated: Date.now() };
@@ -98,6 +102,7 @@ export async function saveEntry(e: Entry) {
   list.push(next);
   entries$.set(list.sort(byNewest));
   await db.put(next);
+  changeHandler();
   if (!persistAsked) {
     persistAsked = true;
     navigator.storage?.persist?.().catch(() => {});
@@ -108,8 +113,21 @@ export async function saveEntry(e: Entry) {
 export async function deleteEntry(id: string) {
   const removed = entries$.get().find((x) => x.id === id);
   entries$.set(entries$.get().filter((x) => x.id !== id));
-  await db.del(id);
+  await Promise.all([db.del(id), forget([id])]);
+  changeHandler();
   return removed;
+}
+
+/* ---------- deletions: remembered (id → when) so a synced device doesn't bring the entry back ---------- */
+
+let deleted: Record<string, number> = {};
+export const getDeleted = () => deleted;
+
+async function forget(ids: string[]) {
+  const now = Date.now();
+  deleted = { ...deleted };
+  ids.forEach((id) => (deleted[id] = now));
+  await db.set('deleted', deleted);
 }
 
 /* ---------- icon cache: bodies of icons used by notes, so lists render without loading icon sets ---------- */
@@ -124,9 +142,10 @@ export async function rememberIcon(id: string, body: string) {
 }
 
 export async function init() {
-  const [list, icons] = await Promise.all([db.all<Entry>(), db.get<Record<string, string>>('icons')]);
+  const [list, icons, gone] = await Promise.all([db.all<Entry>(), db.get<Record<string, string>>('icons'), db.get<Record<string, number>>('deleted')]);
   entries$.set((list.map(normalize).filter(Boolean) as Entry[]).sort(byNewest));
   icons$.set(icons ?? {});
+  deleted = gone ?? {};
   ready$.set(true);
   prunePhotos(new Set(entries$.get().flatMap((e) => e.photos.map((p) => p.id)))).catch(() => {});
 }
@@ -196,17 +215,50 @@ export async function importJSON(text: string) {
   const data = JSON.parse(text);
   const incoming = (Array.isArray(data) ? data : data?.entries ?? []).map(normalize).filter(Boolean) as Entry[];
   const current = new Map(entries$.get().map((e) => [e.id, e]));
-  const changed = incoming.filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated);
+  // Restoring an entry deleted here counts as a fresh edit, so it also comes back on synced devices.
+  const now = Date.now();
+  const changed = incoming
+    .filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated)
+    .map((e) => (deleted[e.id] >= e.updated ? { ...e, updated: now } : e));
   await importPhotos(data?.photos, new Set(changed.flatMap((e) => e.photos.map((p) => p.id))));
   changed.forEach((e) => current.set(e.id, e));
   entries$.set([...current.values()].sort(byNewest));
   await db.putMany(changed);
-  return { changed: changed.length, total: incoming.length, icons: [...new Set(changed.map((e) => e.icon).filter(Boolean))] as string[] };
+  if (changed.length) changeHandler();
+  return { changed: changed.length, total: incoming.length, icons: iconsOf(changed) };
+}
+
+const iconsOf = (list: Entry[]) => [...new Set(list.map((e) => e.icon).filter(Boolean))] as string[];
+
+/**
+ * Merges another device's copy: the newest edit of each entry wins, and a deletion wins over edits made before it.
+ * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
+ */
+export async function mergeSynced(raw: { entries?: unknown; deleted?: unknown }) {
+  const incoming = (Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[];
+  const gone: Record<string, number> = {};
+  if (raw.deleted && typeof raw.deleted === 'object')
+    for (const [id, t] of Object.entries(raw.deleted)) if (Number.isFinite(t) && id.length <= 40) gone[id] = t as number;
+
+  const nextDeleted = { ...deleted };
+  for (const [id, t] of Object.entries(gone)) if (!(nextDeleted[id] >= t)) nextDeleted[id] = t;
+  const current = new Map(entries$.get().map((e) => [e.id, e]));
+  const removed = [...current.values()].filter((e) => nextDeleted[e.id] >= e.updated).map((e) => e.id);
+  removed.forEach((id) => current.delete(id));
+  const changed = incoming.filter((e) => !(nextDeleted[e.id] >= e.updated) && (!current.has(e.id) || current.get(e.id)!.updated < e.updated));
+  changed.forEach((e) => current.set(e.id, e));
+
+  deleted = nextDeleted;
+  if (changed.length || removed.length) entries$.set([...current.values()].sort(byNewest));
+  await Promise.all([db.putMany(changed), ...removed.map((id) => db.del(id)), db.set('deleted', deleted)]);
+  return { changed, removed: removed.length, icons: iconsOf(changed) };
 }
 
 export async function deleteAll() {
+  const ids = entries$.get().map((e) => e.id);
   entries$.set([]);
-  await Promise.all([db.clear(), clearPhotos()]);
+  await Promise.all([db.clear(), clearPhotos(), forget(ids)]);
+  changeHandler();
 }
 
 /* ---------- settings (small, synchronous → localStorage) ---------- */

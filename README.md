@@ -50,9 +50,15 @@ Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant �
 
 ## Your data
 
-Everything is stored in the browser (IndexedDB) on the device you use. Nothing is uploaded.
+Everything is stored in the browser (IndexedDB) on the device you use. Nothing is uploaded unless you turn on sync.
 Photos are resized on the device (longest side 2048px) and stored there too; backups include them.
 Use **Settings → Export backup** to keep a copy or move it to another device (**Import backup** merges; newer copies win).
+
+**Settings → Save on server** syncs across devices. Turning it on shows a 12-character code; enter it on another device
+under **Load with a code**. The browser encrypts everything (AES-GCM, key derived from the code) before uploading, and
+the server stores only ciphertext in `data/sync/`, filed under an id also derived from the code, so it can't read the
+journal. Anyone with the code can, so keep it private. Devices merge on every sync: the newest edit of an entry wins and
+deletions carry over. Photos upload once each.
 
 ## Image search
 
@@ -84,7 +90,7 @@ compressed, cache-busted assets, and sends a strict Content-Security-Policy.
 ## Layout
 
 ```
-server/index.js          static hosting + Spotify proxy, no dependencies
+server/index.js          static hosting + Spotify proxy + encrypted sync storage, no dependencies
 src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours, sprites
 src/lib/                 storage (IndexedDB), stats, dates, router, API clients
 src/components/          sheets, pickers, charts

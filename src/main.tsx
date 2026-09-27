@@ -6,6 +6,7 @@ import './styles/glass.css';
 import { App } from './app';
 import { applyTheme, init } from './lib/store';
 import { onBlocked } from './lib/db';
+import { initSync } from './lib/sync';
 
 applyTheme();
 // Until the upgrade can finish, say why the journal isn't showing instead of leaving the page blank.
@@ -21,6 +22,7 @@ onBlocked(() =>
   ),
 );
 init()
+  .then(initSync)
   .catch((e) => console.error('Could not open the journal database', e))
   .finally(() => render(<App />, document.getElementById('app')!));
 

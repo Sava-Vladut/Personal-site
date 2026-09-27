@@ -119,6 +119,17 @@ export async function prunePhotos(keep: Set<string>) {
 
 export const clearPhotos = () => db.clearPhotos();
 
+/* ---------- sync: photos travel one by one as raw files ---------- */
+
+export const photoBlob = async (id: string) => (await db.photo<PhotoRecord>(id))?.blob;
+export const photoIds = async () => new Set(await db.photoIds());
+
+export async function storePhotos(list: (Photo & { blob: Blob })[]) {
+  if (!list.length) return;
+  await db.putPhotos(list.map((p) => ({ ...p, created: Date.now() })));
+  list.forEach((p) => loading.delete(p.id));
+}
+
 /* ---------- backup: photos travel inside the JSON as data URLs ---------- */
 
 const toDataUrl = (blob: Blob) =>
