@@ -70,34 +70,36 @@ export function Tracker({ query }: { query: URLSearchParams }) {
       {p ? (
         <div class="card confirm" style={{ '--c': `var(--emo-${p.core})` }}>
           <div class="confirm-head">
-            <Sprite core={p.core} size={30} />
-            <div>
-              <h2 class="confirm-name">{p.depth === 0 ? EMOTION[p.core].name : p.name}</h2>
+            <span class="confirm-sprite"><Sprite core={p.core} size={26} /></span>
+            <div class="grow">
+              <div class="row gap-s">
+                <h2 class="confirm-name">{p.depth === 0 ? EMOTION[p.core].name : p.name}</h2>
+                {p.depth === 2 && !named.has(p.id) && <span class="badge">New</span>}
+              </div>
               {p.depth > 0 && <div class="confirm-path">{trail(p.id)}</div>}
             </div>
-            {p.depth === 2 && !named.has(p.id) && <span class="badge">New</span>}
+            <button class="btn btn-quiet btn-s" onClick={() => setPicked(null)}>Change</button>
           </div>
           <p class="definition">{p.def}</p>
-          <div class="meta-row">
-            <span class="eyebrow">Intensity</span>
-            <IntensityPicker value={intensity} onChange={setIntensity} />
+
+          <IntensityPicker value={intensity} onChange={setIntensity} title="How strong is it?" />
+
+          <div class="confirm-extra">
+            <span class="field-label">Add context <span class="muted">· optional</span></span>
+            <textarea class="input confirm-note" rows={2} placeholder="What’s behind it?" value={note} onInput={(e) => setNote(e.currentTarget.value)} aria-label="Note" />
+            <div class="meta confirm-people">
+              <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} label="Who’s it about?" />
+              {when === null ? (
+                <button class="chip" onClick={() => setWhen(localInput(Date.now()))} aria-label="When: now. Change time">
+                  <Icon name="clock" size={16} /> Now <Icon name="chevron-down" size={14} />
+                </button>
+              ) : (
+                <input class="input input-s confirm-when" type="datetime-local" value={when} max={localInput(Date.now())} onInput={(e) => setWhen(e.currentTarget.value)} aria-label="When" />
+              )}
+            </div>
           </div>
-          <textarea class="input" rows={2} placeholder="What’s behind it? (optional)" value={note} onInput={(e) => setNote(e.currentTarget.value)} aria-label="Note" />
-          <div class="meta confirm-people">
-            <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} label="Who’s it about?" />
-          </div>
-          <div class="row between">
-            <span class="eyebrow">When</span>
-            {when === null ? (
-              <button class="chip" onClick={() => setWhen(localInput(Date.now()))}><Icon name="clock" size={16} /> Now</button>
-            ) : (
-              <input class="input input-s" type="datetime-local" value={when} max={localInput(Date.now())} onInput={(e) => setWhen(e.currentTarget.value)} aria-label="When" />
-            )}
-          </div>
-          <div class="row gap-s">
-            <button class="btn btn-quiet" onClick={() => setPicked(null)}>Back</button>
-            <button class="btn btn-primary grow" onClick={log}>Log feeling</button>
-          </div>
+
+          <button class="btn btn-primary block confirm-log" onClick={log}>Log feeling</button>
         </div>
       ) : picker === 'wheel' ? (
         <EmotionWheel focus={core} onFocus={setCore} onPick={setPicked} />

@@ -229,9 +229,20 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .intensity-steps { display: flex; align-items: flex-end; gap: 4px; }
 .intensity-step { width: 30px; height: 32px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; border-radius: 8px; }
 .intensity-step:hover { background: var(--surface-2); }
-.intensity-step i { display: block; width: 12px; border-radius: 3px; background: var(--line-2); transition: background-color 0.15s; }
+.intensity-step i { display: block; width: 12px; height: calc(8px + var(--i) * 4px); border-radius: 3px; background: var(--line-2); transition: background-color 0.15s; }
 .intensity-step.on i { background: var(--ink); }
 .intensity-label { font-size: 13.5px; color: var(--ink-2); min-width: 60px; }
+/* full-width version: even, easy-to-hit steps tinted with the feeling's colour */
+.intensity.wide { display: grid; gap: 8px; }
+.intensity-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.intensity.wide .intensity-label { min-width: 0; font-weight: 600; color: color-mix(in oklab, var(--c, var(--ink)) 70%, var(--ink)); }
+.intensity.wide .intensity-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.intensity.wide .intensity-step { width: auto; height: 52px; padding-bottom: 9px; border-radius: 12px; background: var(--surface-2); }
+.intensity.wide .intensity-step:hover { background: var(--surface-3); }
+.intensity.wide .intensity-step i { width: 8px; height: calc(10px + var(--i) * 6px); }
+.intensity.wide .intensity-step.on { background: color-mix(in oklab, var(--c, var(--ink)) 14%, var(--surface-2)); }
+.intensity.wide .intensity-step.on i { background: var(--c, var(--ink)); }
+.intensity.wide .intensity-step[aria-checked='true'] { box-shadow: inset 0 0 0 1.5px var(--c, var(--ink)); }
 
 /* Navigation: the floating glass tab bar lives in glass.css */
 
@@ -389,12 +400,24 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .ew-actions { max-width: 540px; margin: 12px auto 0; }
 .ew-actions .btn { font-weight: 500; color: var(--ink-2); }
 
-.confirm { padding: 18px; display: grid; gap: 14px; }
+.confirm { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .confirm-head { display: flex; align-items: center; gap: 12px; }
-.confirm-name { font: 500 25px/1.15 var(--serif); }
+.confirm-sprite {
+  width: 46px; height: 46px; flex: none; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--c) 16%, var(--surface-2));
+}
+.confirm-name { font: 500 24px/1.15 var(--serif); overflow-wrap: anywhere; }
+.confirm-head .badge { margin-left: 0; font-size: 10px; padding: 3px 7px; }
 .confirm-path { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
-.confirm .definition { margin: -4px 0 0; }
-.confirm .meta-row { margin: 0; }
+.confirm .definition { margin: -6px 0 0; }
+.confirm-extra { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+.confirm-note { border-color: transparent; background: var(--surface-2); }
+.confirm-note:focus { background: var(--surface); }
+.confirm-when { min-height: 34px; height: 34px; border-radius: 999px; padding: 0 12px; font-size: 14px; }
+.confirm-log { height: 50px; font-size: 15.5px; }
+.field-label { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.field-label .muted { font-weight: 400; }
 
 .dex-link { display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; padding: 14px 16px; margin-top: 18px; }
 .dex-link .section-title { margin: 0; }
@@ -962,7 +985,7 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .sheet .search { margin-bottom: 0; }
 
 .people-meta { margin-top: 8px; }
-.confirm-people { margin: 0; }
+.confirm-people { margin: 0; align-items: center; }
 
 .avatar-pick { border-radius: 999px; }
 .avatar-pick.tinted { background: color-mix(in oklab, var(--c) 22%, var(--surface)); border-color: transparent; color: color-mix(in oklab, var(--c) 55%, var(--ink)); }

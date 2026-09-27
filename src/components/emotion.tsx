@@ -34,22 +34,37 @@ export function trail(id: string) {
 
 export const INTENSITY = ['Barely', 'Mild', 'Moderate', 'Strong', 'Intense'];
 
-export function IntensityPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+export function IntensityPicker({ value, onChange, title }: { value: number; onChange: (n: number) => void; title?: string }) {
+  const steps = (
+    <div class="intensity-steps">
+      {INTENSITY.map((label, i) => (
+        <button
+          role="radio"
+          aria-checked={value === i + 1}
+          aria-label={`${i + 1} · ${label}`}
+          class={`intensity-step${i < value ? ' on' : ''}`}
+          onClick={() => onChange(i + 1)}
+        >
+          <i style={{ '--i': i }} />
+        </button>
+      ))}
+    </div>
+  );
+  // With a title it spreads across the full width: title and chosen word above, big even steps below.
+  if (title) {
+    return (
+      <div class="intensity wide" role="radiogroup" aria-label={title}>
+        <div class="intensity-head">
+          <span class="field-label">{title}</span>
+          <span class="intensity-label">{INTENSITY[value - 1]}</span>
+        </div>
+        {steps}
+      </div>
+    );
+  }
   return (
     <div class="intensity" role="radiogroup" aria-label="Intensity">
-      <div class="intensity-steps">
-        {INTENSITY.map((label, i) => (
-          <button
-            role="radio"
-            aria-checked={value === i + 1}
-            aria-label={`${i + 1} · ${label}`}
-            class={`intensity-step${i < value ? ' on' : ''}`}
-            onClick={() => onChange(i + 1)}
-          >
-            <i style={{ height: `${8 + i * 4}px` }} />
-          </button>
-        ))}
-      </div>
+      {steps}
       <span class="intensity-label">{INTENSITY[value - 1]}</span>
     </div>
   );
