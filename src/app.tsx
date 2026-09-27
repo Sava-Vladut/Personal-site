@@ -3,6 +3,7 @@ import { navigate, useRoute, type RouteName } from './lib/router';
 import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
+import { EntryMenu } from './components/EntryMenu';
 import { Icon, type UiName } from './components/icons';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
@@ -47,6 +48,7 @@ export function App() {
         )}
       </main>
       {route.name !== 'note' && route.name !== 'person' && <TabBar active={route.name} />}
+      <EntryMenu />
       <Toasts />
       <TooltipLayer />
     </>

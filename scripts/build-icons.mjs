@@ -122,7 +122,8 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   mood-smile mood-plus arrow-up-right refresh logout photo-plus calendar-event pencil list layout-grid chart-dots
   lock alert-circle brand-spotify music playlist chart-donut-2 cloud copy key devices users user user-plus
   arrow-up arrow-down float-left float-center float-right grip-vertical maximize
-  bold italic strikethrough highlight heading list-numbers list-check blockquote code separator-horizontal book`.split(/\s+/);
+  bold italic strikethrough highlight heading list-numbers list-check blockquote code separator-horizontal book
+  share copy-plus`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

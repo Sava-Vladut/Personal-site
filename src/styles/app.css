@@ -290,6 +290,8 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .checkin-name { font-weight: 600; font-size: 14.5px; white-space: nowrap; }
 .checkin-meta { flex: 1; min-width: 0; color: var(--ink-3); font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .checkin-time { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+/* holding one brings up its options: no text selection or image callout while the finger rests on it */
+.note, .checkin { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
 /* calendar */
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
@@ -750,6 +752,12 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .list-row .muted.small { margin-top: 3px; line-height: 1.45; }
 .list-row.action { width: 100%; text-align: left; font-size: 15px; transition: background-color 0.12s; }
 .list-row.action:hover:not(:disabled) { background: var(--surface-2); }
+
+/* an entry's options, from holding it in a list */
+.sheet-title:has(.menu-head) { min-width: 0; }
+.menu-head { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.menu-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-when { font: 400 13px/1.3 var(--sans); color: var(--ink-3); }
 @media (max-width: 420px) {
   .list-row:has(.seg) { flex-direction: column; align-items: stretch; gap: 10px; }
   .list-row .seg.compact button { flex: 1; }

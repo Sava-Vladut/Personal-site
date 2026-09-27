@@ -7,6 +7,7 @@ import { plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { stripMarkdown } from '../lib/markdown';
 import { Calendar } from '../components/Calendar';
+import { useHold } from '../components/EntryMenu';
 import { EmotionChip } from '../components/emotion';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
@@ -190,8 +191,9 @@ export function NoteCard({ e }: { e: Entry }) {
   const excerpt = stripMarkdown(plainText(e.text)).trim().slice(0, 240);
   const pictures = e.photos.length + e.images.length;
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
+  const hold = useHold(e, () => navigate('note/' + e.id));
   return (
-    <button class={`note card${e.cover ? ' has-cover' : ''}`} onClick={() => navigate('note/' + e.id)}>
+    <button class={`note card${e.cover ? ' has-cover' : ''}`} {...hold}>
       {e.cover && <CoverImg cover={e.cover} class="note-cover" />}
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
@@ -230,8 +232,9 @@ export function CheckInRow({ e }: { e: Entry }) {
   const id = e.emotions[0];
   const em = id ? EMOTION[id] : null;
   const with_ = e.people.map((pid) => byId.get(pid)?.name).filter(Boolean);
+  const hold = useHold(e, () => navigate('note/' + e.id));
   return (
-    <button class="checkin" onClick={() => navigate('note/' + e.id)}>
+    <button class="checkin" {...hold}>
       {em ? <Sprite core={em.core} size={16} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
       <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', with_.length ? `with ${with_.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
