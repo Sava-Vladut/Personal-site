@@ -25,7 +25,7 @@ function parse(): Route {
    in from the right, and going back pops it off again. The CSS lives under "Page transitions". */
 
 type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';
-const TABS: RouteName[] = ['journal', 'tracker', 'people', 'settings'];
+const TABS: RouteName[] = ['journal', 'tracker', 'people'];
 const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
 
 function motionFor(a: Route, b: Route): Motion | null {

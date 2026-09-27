@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
-import { navigate } from '../lib/router';
+import { goBack, navigate } from '../lib/router';
 import { deleteAll, exportJSON, importJSON, setSettings, toast, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
@@ -105,7 +105,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   return (
     <div class="page">
       <header class="page-head">
-        <div class="eyebrow">Settings</div>
+        <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> Back</button>
         <h1 class="title">Settings</h1>
       </header>
 

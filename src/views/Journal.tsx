@@ -82,6 +82,9 @@ export function Journal() {
             <button class="icon-btn" aria-label="Stats" title="Stats" onClick={() => navigate('stats')}>
               <Icon name="chart-dots" />
             </button>
+            <button class="icon-btn" aria-label="Settings" title="Settings" onClick={() => navigate('settings')}>
+              <Icon name="settings" />
+            </button>
           </div>
         </div>
       </header>

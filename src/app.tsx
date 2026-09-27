@@ -18,7 +18,6 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['journal', 'Journal', 'notebook', ''],
   ['tracker', 'Check in', 'mood-smile', 'tracker'],
   ['people', 'People', 'users', 'people'],
-  ['settings', 'Settings', 'settings', 'settings'],
 ];
 
 export function App() {
