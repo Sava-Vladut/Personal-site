@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.0',
+    date: '2026-09-27',
+    changes: [
+      'Settings: “Export as text” saves your journal, feelings, people, books and picture captions as one Markdown file, without the pictures',
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-09-27',
     changes: [

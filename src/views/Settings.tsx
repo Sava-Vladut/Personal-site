@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { goBack, navigate } from '../lib/router';
+import { exportText } from '../lib/exportText';
 import { deleteAll, exportJSON, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
@@ -59,6 +60,14 @@ export function Settings({ query }: { query: URLSearchParams }) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `my-mind-${todayKey()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  const downloadText = () => {
+    const blob = new Blob([exportText()], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `my-mind-${todayKey()}.md`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
@@ -209,6 +218,13 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <button class="list-row action" onClick={() => setJoining(true)}><span class="row gap-s"><Icon name="key" size={18} /> Load with a code</span><Icon name="chevron-right" size={18} /></button>
           )}
           <button class="list-row action" onClick={download}><span class="row gap-s"><Icon name="download" size={18} /> Export backup</span><Icon name="chevron-right" size={18} /></button>
+          <button class="list-row action" onClick={downloadText} disabled={!entries.length && !people.length && !books.length}>
+            <span class="grow">
+              <span class="row gap-s"><Icon name="download" size={18} /> Export as text</span>
+              <div class="muted small">Your journal, feelings, people, books and picture captions in one file, without the pictures. Handy for asking an AI about your life. It can’t be imported back.</div>
+            </span>
+            <Icon name="chevron-right" size={18} />
+          </button>
           <button class="list-row action" onClick={() => file.current?.click()}><span class="row gap-s"><Icon name="upload" size={18} /> Import backup</span><Icon name="chevron-right" size={18} /></button>
           <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length && !books.length}><span class="row gap-s"><Icon name="trash" size={18} /> Delete all entries</span></button>
           {sync.on && (
