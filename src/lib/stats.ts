@@ -156,7 +156,9 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
   }
 
   /* what tends to come next: world of one entry → world of the next one (within 2 days) */
-  const chrono = list.filter((e) => e.emotions.length).sort((a, b) => a.time - b.time);
+  const chrono = list.filter((e) => e.emotions.length).sort((a, b) =>
+    a.date === b.date ? a.time - b.time : a.date < b.date ? -1 : 1,
+  );
   const trans = new Map<string, number>();
   for (let i = 1; i < chrono.length; i++) {
     const [a, b] = [chrono[i - 1], chrono[i]];
@@ -259,4 +261,3 @@ export function insights(s: Stats, rangeName: string, entries: Entry[]): string[
   return out;
 }
 const full = (d: string) => ({ Mon: 'Mondays', Tue: 'Tuesdays', Wed: 'Wednesdays', Thu: 'Thursdays', Fri: 'Fridays', Sat: 'Saturdays', Sun: 'Sundays' })[d];
-

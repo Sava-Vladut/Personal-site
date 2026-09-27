@@ -81,7 +81,7 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = 'Who is
   const shown = people
     .filter((p) => !needle || p.name.toLowerCase().includes(needle) || p.relation.toLowerCase().includes(needle))
     .sort((a, b) => (recent.get(b.id) ?? 0) - (recent.get(a.id) ?? 0));
-  const exact = people.some((p) => p.name.trim().toLowerCase() === needle);
+  const exact = people.find((p) => p.name.trim().toLowerCase() === needle);
 
   const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id].slice(0, 20));
   const create = async () => {
@@ -94,7 +94,7 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = 'Who is
 
   return (
     <Sheet open={open} onClose={() => { setQ(''); onClose(); }} title={title} footer={<button class="btn btn-primary" onClick={() => { setQ(''); onClose(); }}>Done</button>}>
-      <form class="search" onSubmit={(e) => { e.preventDefault(); if (!exact) create(); else if (shown[0]) toggle(shown[0].id); }}>
+      <form class="search" onSubmit={(e) => { e.preventDefault(); if (exact) toggle(exact.id); else create(); }}>
         <Icon name="search" size={18} />
         <input type="search" placeholder={people.length ? 'Find or add someone' : 'Type a name to add someone'} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Find or add a person" maxLength={120} />
       </form>

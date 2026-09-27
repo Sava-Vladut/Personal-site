@@ -11,6 +11,22 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.2.1',
+    date: '2026-09-27',
+    changes: [
+      'People saved in different tabs no longer overwrite each other',
+      'Pending photo imports no longer restore deleted notes or overwrite later edits',
+      'Long notes keep all their text after reopening',
+      'Missing synced photos retry automatically and appear when downloaded',
+      'Backup imports restore missing photos in existing notes',
+      'Searching an exact name selects the correct person',
+      'Large Spotify playlists load every page without repeating songs',
+      'Emotion transitions respect backdated entries',
+      'Mood chart tooltips select the day under your pointer',
+      'Malformed requests no longer interrupt the server',
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-09-27',
     changes: ['Settings shows the app’s version; tap it to see what’s new'],

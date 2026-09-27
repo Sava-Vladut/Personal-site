@@ -55,12 +55,24 @@ async function shrink(file: Blob): Promise<PhotoRecord> {
 
 const loaded = new Map<string, string>();
 const loading = new Map<string, Promise<string | null>>();
+const listeners = new Map<string, Set<() => void>>();
+
+function cachePhoto(id: string, blob: Blob) {
+  const previous = loaded.get(id);
+  const url = URL.createObjectURL(blob);
+  loaded.set(id, url);
+  loading.set(id, Promise.resolve(url));
+  listeners.get(id)?.forEach((notify) => notify());
+  if (previous) URL.revokeObjectURL(previous);
+}
 
 export function photoUrl(id: string) {
   let p = loading.get(id);
   if (!p) {
     p = db.photo<PhotoRecord>(id).then(
       (r) => {
+        // A download or clear may have replaced this request while IndexedDB was reading.
+        if (loading.get(id) !== p) return loaded.get(id) ?? null;
         if (!r) {
           loading.delete(id); // may show up later (backup import)
           return null;
@@ -69,7 +81,10 @@ export function photoUrl(id: string) {
         loaded.set(id, url);
         return url;
       },
-      () => (loading.delete(id), null),
+      () => {
+        if (loading.get(id) === p) loading.delete(id);
+        return loaded.get(id) ?? null;
+      },
     );
     loading.set(id, p);
   }
@@ -80,9 +95,21 @@ export function usePhotoUrl(id: string) {
   const [url, setUrl] = useState(() => loaded.get(id) ?? null);
   useEffect(() => {
     let live = true;
-    if (!loaded.has(id)) photoUrl(id).then((u) => live && setUrl(u));
-    else setUrl(loaded.get(id)!);
-    return () => void (live = false);
+    let request = 0;
+    const refresh = () => {
+      const current = ++request;
+      setUrl(loaded.get(id) ?? null);
+      if (!loaded.has(id)) photoUrl(id).then((u) => live && current === request && setUrl(u));
+    };
+    const subs = listeners.get(id) ?? new Set<() => void>();
+    listeners.set(id, subs);
+    subs.add(refresh);
+    refresh();
+    return () => {
+      live = false;
+      subs.delete(refresh);
+      if (!subs.size) listeners.delete(id);
+    };
   }, [id]);
   return url;
 }
@@ -101,9 +128,7 @@ export async function addPhotos(files: Iterable<File>) {
   }
   if (records.length) await db.putPhotos(records);
   for (const r of records) {
-    const url = URL.createObjectURL(r.blob);
-    loaded.set(r.id, url);
-    loading.set(r.id, Promise.resolve(url));
+    cachePhoto(r.id, r.blob);
     photos.push({ id: r.id, w: r.w, h: r.h });
   }
   return { photos, failed };
@@ -117,7 +142,13 @@ export async function prunePhotos(keep: Set<string>) {
   if (stale.length) await db.delPhotos(stale);
 }
 
-export const clearPhotos = () => db.clearPhotos();
+export async function clearPhotos() {
+  await db.clearPhotos();
+  loaded.forEach((url) => URL.revokeObjectURL(url));
+  loaded.clear();
+  loading.clear();
+  listeners.forEach((subs) => subs.forEach((notify) => notify()));
+}
 
 /* ---------- sync: photos travel one by one as raw files ---------- */
 
@@ -127,7 +158,7 @@ export const photoIds = async () => new Set(await db.photoIds());
 export async function storePhotos(list: (Photo & { blob: Blob })[]) {
   if (!list.length) return;
   await db.putPhotos(list.map((p) => ({ ...p, created: Date.now() })));
-  list.forEach((p) => loading.delete(p.id));
+  list.forEach((p) => cachePhoto(p.id, p.blob));
 }
 
 /* ---------- backup: photos travel inside the JSON as data URLs ---------- */
@@ -153,16 +184,17 @@ const DATA_URL = /^data:(image\/(?:jpeg|png|webp|gif|avif));base64,([A-Za-z0-9+/
 /** Stores photos from a backup (only the ones asked for). Returns how many were stored. */
 export async function importPhotos(raw: unknown, ids: Set<string>) {
   if (!raw || typeof raw !== 'object') return 0;
+  const have = await photoIds();
   const records: PhotoRecord[] = [];
   for (const [id, p] of Object.entries(raw as Record<string, any>)) {
+    if (have.has(id)) continue;
     const m = ids.has(id) && PHOTO_ID.test(id) && typeof p?.data === 'string' ? DATA_URL.exec(p.data) : null;
     if (!m) continue;
     const bin = atob(m[2]);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     records.push({ id, w: +p.w || 1, h: +p.h || 1, blob: new Blob([bytes], { type: m[1] }), created: Date.now() });
-    loading.delete(id);
   }
-  if (records.length) await db.putPhotos(records);
+  await storePhotos(records);
   return records.length;
 }

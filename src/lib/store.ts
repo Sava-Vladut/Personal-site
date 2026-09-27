@@ -151,14 +151,34 @@ export function blankPerson(name = ''): Person {
   return { id: uid(), name, icon: null, relation: '', text: '', emotions: [], created: now, updated: now };
 }
 
-const savePeople = (list: Person[]) => {
-  people$.set([...list].sort(byName));
-  return db.set('people', people$.get());
+const peopleChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('my-mind-people');
+peopleChannel?.addEventListener('message', () => {
+  Promise.all([db.get('people'), db.get<Record<string, number>>('deleted')]).then(([saved, gone]) => {
+    people$.set(normalizePeople(saved));
+    deleted = combineDeleted(deleted, gone ?? {});
+    changeHandler();
+  }).catch(() => {}); // A later notification or reload can retry a failed read.
+});
+
+const savePeople = async (changes: Person[], removed: Record<string, number> = {}, clear = false, broadcast = true) => {
+  const list = await db.update<Person[]>('people', (saved) => {
+    const current = new Map((clear ? [] : normalizePeople(saved)).map((p) => [p.id, p]));
+    for (const [id, time] of Object.entries(removed)) {
+      const person = current.get(id);
+      if (person && person.updated <= time) current.delete(id);
+    }
+    changes.forEach((p) => {
+      if (!current.has(p.id) || current.get(p.id)!.updated <= p.updated) current.set(p.id, p);
+    });
+    return [...current.values()].sort(byName);
+  });
+  people$.set(list);
+  if (broadcast) peopleChannel?.postMessage(null);
 };
 
 export async function savePerson(p: Person) {
   const next = { ...p, updated: Date.now() };
-  await savePeople([...people$.get().filter((x) => x.id !== p.id), next]);
+  await savePeople([next]);
   changeHandler();
   return next;
 }
@@ -166,7 +186,9 @@ export async function savePerson(p: Person) {
 /** Deletes a person. Notes they were tagged in stay; the tag just stops showing. */
 export async function deletePerson(id: string) {
   const removed = people$.get().find((x) => x.id === id);
-  await Promise.all([savePeople(people$.get().filter((x) => x.id !== id)), forget([id])]);
+  const time = Date.now();
+  await Promise.all([savePeople([], { [id]: time }, false, false), forget([id], time)]);
+  peopleChannel?.postMessage(null);
   changeHandler();
   return removed;
 }
@@ -176,11 +198,21 @@ export async function deletePerson(id: string) {
 let deleted: Record<string, number> = {};
 export const getDeleted = () => deleted;
 
-async function forget(ids: string[]) {
-  const now = Date.now();
+function combineDeleted(a: Record<string, number>, b: Record<string, number>) {
+  const merged = { ...a };
+  for (const [id, time] of Object.entries(b)) if (!(merged[id] >= time)) merged[id] = time;
+  return merged;
+}
+
+async function persistDeleted() {
+  const changes = deleted;
+  deleted = await db.update<Record<string, number>>('deleted', (saved) => combineDeleted(saved ?? {}, changes));
+}
+
+async function forget(ids: string[], now = Date.now()) {
   deleted = { ...deleted };
   ids.forEach((id) => (deleted[id] = now));
-  await db.set('deleted', deleted);
+  await persistDeleted();
 }
 
 /* ---------- icon cache: bodies of icons used by notes, so lists render without loading icon sets ---------- */
@@ -238,7 +270,7 @@ function normalize(raw: any): Entry | null {
     kind: raw.kind === 'checkin' ? 'checkin' : 'note',
     title: str(raw.title, 300),
     icon: typeof raw.icon === 'string' && /^[te]:[a-z0-9-]+$/.test(raw.icon) ? raw.icon : null,
-    text: dropImageLinks(str(raw.text), images),
+    text: dropImageLinks(typeof raw.text === 'string' ? raw.text : '', images),
     emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, 3) : [],
     intensity: Math.min(5, Math.max(1, Math.round(Number(raw.intensity) || 3))),
     date: raw.date,
@@ -271,7 +303,7 @@ function normalizePerson(raw: any): Person | null {
     name: str(raw.name, 120),
     icon: typeof raw.icon === 'string' && /^[te]:[a-z0-9-]+$/.test(raw.icon) ? raw.icon : null,
     relation: str(raw.relation, 60),
-    text: str(raw.text),
+    text: typeof raw.text === 'string' ? raw.text : '',
     emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, MAX_PERSON_EMOTIONS) : [],
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
@@ -295,7 +327,8 @@ export async function importJSON(text: string) {
   const changed = incoming
     .filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated)
     .map((e) => (deleted[e.id] >= e.updated ? { ...e, updated: now } : e));
-  await importPhotos(data?.photos, new Set(changed.flatMap((e) => photosOf(e).map((p) => p.id))));
+  // Photos can be missing even when the note itself is already up to date.
+  const restoredPhotos = await importPhotos(data?.photos, new Set(incoming.flatMap((e) => photosOf(e).map((p) => p.id))));
   changed.forEach((e) => current.set(e.id, e));
   entries$.set([...current.values()].sort(byNewest));
   await db.putMany(changed);
@@ -305,10 +338,10 @@ export async function importJSON(text: string) {
     .filter((p) => !pNow.has(p.id) || pNow.get(p.id)!.updated < p.updated)
     .map((p) => (deleted[p.id] >= p.updated ? { ...p, updated: now } : p));
   pChanged.forEach((p) => pNow.set(p.id, p));
-  if (pChanged.length) await savePeople([...pNow.values()]);
+  if (pChanged.length) await savePeople(pChanged);
 
-  if (changed.length || pChanged.length) changeHandler();
-  return { changed: changed.length, people: pChanged.length, total: incoming.length, icons: iconsOf([...changed, ...pChanged]) };
+  if (changed.length || pChanged.length || restoredPhotos) changeHandler();
+  return { changed: changed.length, people: pChanged.length, photos: restoredPhotos, total: incoming.length, icons: iconsOf([...changed, ...pChanged]) };
 }
 
 const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) => e.icon).filter(Boolean))] as string[];
@@ -341,16 +374,18 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; de
   deleted = nextDeleted;
   if (changed.length || removed.length) entries$.set([...current.values()].sort(byNewest));
   await Promise.all([
-    db.putMany(changed), ...removed.map((id) => db.del(id)), db.set('deleted', deleted),
-    pChanged.length || pRemoved.length ? savePeople([...pNow.values()]) : null,
+    db.putMany(changed), ...removed.map((id) => db.del(id)), persistDeleted(),
+    pChanged.length || pRemoved.length ? savePeople(pChanged, Object.fromEntries(pRemoved.map((id) => [id, nextDeleted[id]])), false, false) : null,
   ]);
+  if (pChanged.length || pRemoved.length) peopleChannel?.postMessage(null);
   return { changed, removed: removed.length, icons: iconsOf([...changed, ...pChanged]) };
 }
 
 export async function deleteAll() {
   const ids = [...entries$.get().map((e) => e.id), ...people$.get().map((p) => p.id)];
   entries$.set([]);
-  await Promise.all([db.clear(), clearPhotos(), savePeople([]), forget(ids)]);
+  await Promise.all([db.clear(), clearPhotos(), savePeople([], {}, true, false), forget(ids)]);
+  peopleChannel?.postMessage(null);
   changeHandler();
 }
 

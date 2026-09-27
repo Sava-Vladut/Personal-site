@@ -41,7 +41,30 @@ async function run<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObject
   });
 }
 
+/** Read and change a shared value in one transaction, including writes from other tabs. */
+async function update<T>(key: string, change: (current: T | undefined) => T): Promise<T> {
+  const database = await open();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('kv', 'readwrite');
+    const store = tx.objectStore('kv');
+    const req = store.get(key);
+    let next: T;
+    req.onsuccess = () => {
+      try {
+        next = change(req.result);
+        store.put(next, key);
+      } catch (error) {
+        tx.abort();
+        reject(error);
+      }
+    };
+    tx.oncomplete = () => resolve(next);
+    tx.onerror = tx.onabort = () => reject(tx.error);
+  });
+}
+
 export const db = {
+  update,
   all: <T>() => run<T[]>('entries', 'readonly', (s) => s.getAll() as IDBRequest<T[]>),
   put: (value: unknown) => run('entries', 'readwrite', (s) => void s.put(value)),
   putMany: (values: unknown[]) => run('entries', 'readwrite', (s) => values.forEach((v) => s.put(v))),

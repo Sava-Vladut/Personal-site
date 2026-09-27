@@ -120,6 +120,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [open, setOpen] = useState<Open>(null);
   const [status, setStatus] = useState('');
   const [adding, setAdding] = useState(0);
+  const [coverAdding, setCoverAdding] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [sel, setSel] = useState<string | null>(null); // the selected picture's mediaKey
   // a picture being dragged, and where it would land: how far down the note, on which side, and its size there
@@ -140,6 +141,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const areas = useRef<(HTMLDivElement | null)[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
+  const removing = useRef(false);
+  const pendingImports = useRef(0);
   // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
   const where = useRef({ seg: -1, pos: 0 });
 
@@ -162,7 +165,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
 
   const update = (patch: Partial<Entry>) => {
-    setDraft((d) => (d ? { ...d, ...patch } : d));
+    if (!alive.current || removing.current || !latest.current) return;
+    latest.current = { ...latest.current, ...patch };
+    setDraft(latest.current);
     dirty.current = true;
     setStatus('');
     clearTimeout(timer.current);
@@ -183,6 +188,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     } else if (id === 'new') titleRef.current?.focus();
     return () => {
       alive.current = false;
+      if (pendingImports.current && !removing.current) toast('Photo import cancelled because you left the note');
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
       flush();
@@ -218,6 +224,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     );
 
   const remove = async () => {
+    removing.current = true;
     clearTimeout(timer.current);
     dirty.current = false;
     const removed = saved.current ? await deleteEntry(draft.id) : null;
@@ -226,21 +233,47 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
 
   const addFiles = async (all: File[]) => {
+    if (!alive.current || removing.current) return;
     const files = all.filter(isImageFile);
     if (!files.length) return;
     const room = MAX_PHOTOS - draft.photos.length - adding;
     if (room <= 0) return toast(`A note can hold ${MAX_PHOTOS} photos`);
     const take = files.slice(0, room);
+    pendingImports.current++;
     setAdding((n) => n + take.length);
-    const { photos, failed } = await addPhotos(take);
-    setAdding((n) => n - take.length);
-    const d = latest.current;
-    if (d && photos.length) {
-      const fit = photos.slice(0, MAX_PHOTOS - d.photos.length);
-      update({ photos: [...d.photos, ...fit], text: place(bodyOf(d), fit.map((p) => ({ kind: 'photo', id: p.id }))) });
+    try {
+      const { photos, failed } = await addPhotos(take);
+      if (!alive.current || removing.current) return;
+      const d = latest.current;
+      if (d && photos.length) {
+        const fit = photos.slice(0, MAX_PHOTOS - d.photos.length);
+        update({ photos: [...d.photos, ...fit], text: place(bodyOf(d), fit.map((p) => ({ kind: 'photo', id: p.id }))) });
+      }
+      if (failed) toast(failed === take.length && failed === 1 ? 'Couldn’t read that image' : `Couldn’t read ${failed} of the images`);
+      else if (files.length > room) toast(`Added ${take.length} — a note can hold ${MAX_PHOTOS} photos`);
+    } catch {
+      if (alive.current && !removing.current) toast('Couldn’t save those photos. Please try again.');
+    } finally {
+      pendingImports.current--;
+      if (alive.current && !removing.current) setAdding((n) => n - take.length);
     }
-    if (failed) toast(failed === take.length && failed === 1 ? 'Couldn’t read that image' : `Couldn’t read ${failed} of the images`);
-    else if (files.length > room) toast(`Added ${take.length} — a note can hold ${MAX_PHOTOS} photos`);
+  };
+
+  const uploadCover = async (file: File | undefined) => {
+    if (!file || !alive.current || removing.current) return;
+    pendingImports.current++;
+    setCoverAdding(true);
+    try {
+      const { photos } = await addPhotos([file]);
+      if (!alive.current || removing.current) return;
+      if (photos[0]) update({ cover: { photo: photos[0] } });
+      else toast('Couldn’t read that image');
+    } catch {
+      if (alive.current && !removing.current) toast('Couldn’t save that cover. Please try again.');
+    } finally {
+      pendingImports.current--;
+      if (alive.current && !removing.current) setCoverAdding(false);
+    }
   };
   /** Inserts pictures where the caret was (or at the end), and moves the insert point after them. */
   const place = (b: Body, add: Media[]) => {
@@ -483,7 +516,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       onPaste={(e) => { const files = [...(e.clipboardData?.files ?? [])].filter(isImageFile); if (files.length) { e.preventDefault(); addFiles(files); } }}
     >
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={() => { flush(); goBack(); }} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={() => { flush(); goBack(); }} disabled={adding > 0 || coverAdding} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button
           class="glass glass-btn round"
@@ -494,7 +527,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <Icon name={reading ? 'pencil' : 'book'} />
         </button>
         <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? 'Delete check-in' : 'Delete note'}><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack(); }}>Done</button>
+        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack(); }} disabled={adding > 0 || coverAdding}>Done</button>
       </div>
 
       <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
@@ -630,7 +663,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
 
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />
-      <NoteDetails open={details} onClose={() => setDetails(false)} draft={draft} update={update} />
+      <NoteDetails open={details} onClose={() => setDetails(false)} draft={draft} update={update} uploadCover={uploadCover} uploadingCover={coverAdding} />
       <ImageSearchSheet
         open={open === 'images'}
         onClose={close}

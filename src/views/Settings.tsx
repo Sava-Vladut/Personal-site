@@ -65,7 +65,11 @@ export function Settings({ query }: { query: URLSearchParams }) {
     try {
       const r = await importJSON(await f.text());
       r.icons.forEach((id) => resolveIcon(id));
-      const parts = [r.changed ? `${r.changed} ${r.changed === 1 ? 'entry' : 'entries'}` : '', r.people ? `${r.people} ${r.people === 1 ? 'person' : 'people'}` : ''].filter(Boolean);
+      const parts = [
+        r.changed ? `${r.changed} ${r.changed === 1 ? 'entry' : 'entries'}` : '',
+        r.people ? `${r.people} ${r.people === 1 ? 'person' : 'people'}` : '',
+        r.photos ? `${r.photos} ${r.photos === 1 ? 'photo' : 'photos'}` : '',
+      ].filter(Boolean);
       toast(parts.length ? `Imported ${parts.join(' and ')}` : 'Nothing new in that backup');
     } catch {
       toast('That file isn’t a My Mind backup');

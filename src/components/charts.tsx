@@ -201,7 +201,8 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
   const ticks = n > 1 ? [0, Math.floor((n - 1) / 2), n - 1] : [0];
 
   const pick = (clientX: number, rect: DOMRect) => {
-    const i = Math.round(((clientX - rect.left - L) / Math.max(1, pw)) * (n - 1));
+    // The target rectangle starts at the plot's left edge, after the axis margin.
+    const i = Math.round(((clientX - rect.left) / Math.max(1, rect.width)) * (n - 1));
     return Math.max(0, Math.min(n - 1, i));
   };
   const tipFor = (i: number) => {
@@ -641,4 +642,3 @@ function spriteD(core: string) {
   CORE[core].sprite.forEach((row, y) => [...row].forEach((ch, x) => ch === 'X' && (d += `M${x} ${y}h1v1h-1z`)));
   return d;
 }
-

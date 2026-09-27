@@ -189,8 +189,9 @@ async function pass(s: State) {
     if (doc) {
       const r = await mergeSynced(doc);
       r.icons.forEach((i) => resolveIcon(i));
-      await fetchPhotos(s, id, key);
     }
+    // Photos may have failed on an earlier pass even when the document is unchanged.
+    await fetchPhotos(s, id, key);
     if (!(rev ? (doc ? aheadOf(doc) : s.dirty) : true)) {
       s.rev = rev;
       s.dirty = false;

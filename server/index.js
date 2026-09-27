@@ -192,7 +192,12 @@ function musicOut(t) {
 }
 
 const playlistOut = (p) => ({ id: p.id, name: p.name, count: p.items?.total ?? p.tracks?.total ?? 0, cover: pickImage(p.images) });
-const nextOffset = (b) => (b?.next ? (b.offset || 0) + (b.limit || b.items?.length || 0) : undefined);
+const nextOffset = (b, max = Number.MAX_SAFE_INTEGER) => {
+  if (!b?.next) return undefined;
+  const current = b.offset || 0;
+  const next = current + (b.limit || b.items?.length || 0);
+  return Number.isSafeInteger(next) && next > current && next <= max ? next : undefined;
+};
 
 function sameState(a, b) {
   const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || ''));
@@ -243,7 +248,11 @@ async function spotify(req, res, url, p, setCookies, out) {
     if (!s) throw new HttpError(401, 'Connect Spotify in Settings first.');
     return s;
   };
-  const offset = Math.max(0, Math.min(1000, parseInt(url.searchParams.get('offset') || '', 10) || 0));
+  // Spotify limits search and playlist listings differently; playlist items have no documented cap.
+  // Reject out-of-range offsets instead of clamping them and repeating the previous page.
+  const maxOffset = p === '/api/spotify/search' ? 1000 : p === '/api/spotify/playlists' ? 100_000 : Number.MAX_SAFE_INTEGER;
+  const offset = Number(url.searchParams.get('offset') || 0);
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > maxOffset) throw new HttpError(400, 'Invalid Spotify page offset.');
 
   if (p === '/api/spotify/status') {
     const status = { configured: spConfigured(), connected: false, redirect: SP_REDIRECT };
@@ -315,7 +324,7 @@ async function spotify(req, res, url, p, setCookies, out) {
     const body = await spApi(s, `/me/playlists?limit=50&offset=${offset}`);
     // Spotify only lets apps read the songs of playlists you own or collaborate on, so only those are listed.
     const items = (body.items || []).filter((pl) => pl?.id && (pl.collaborative || !s.u || pl.owner?.id === s.u)).map(playlistOut);
-    return out({ items, next: nextOffset(body) });
+    return out({ items, next: nextOffset(body, maxOffset) });
   }
 
   const pm = p.match(/^\/api\/spotify\/playlists\/([A-Za-z0-9]{10,40})\/items$/);
@@ -328,7 +337,7 @@ async function spotify(req, res, url, p, setCookies, out) {
     const q = (url.searchParams.get('q') || '').trim().slice(0, 200);
     if (!q) return out({ items: [] });
     const body = await spApi(await need(), `/search?type=track&limit=10&offset=${offset}&q=${encodeURIComponent(q)}`);
-    return out({ items: (body.tracks?.items || []).map(musicOut).filter(Boolean), next: nextOffset(body.tracks) });
+    return out({ items: (body.tracks?.items || []).map(musicOut).filter(Boolean), next: nextOffset(body.tracks, maxOffset) });
   }
 
   throw new HttpError(404, 'Not found');
@@ -508,8 +517,13 @@ function serveStatic(req, res, pathname) {
 http
   .createServer(async (req, res) => {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
-    const url = new URL(req.url || '/', 'http://localhost');
     try {
+      let url;
+      try {
+        url = new URL(req.url || '/', 'http://localhost');
+      } catch {
+        throw new HttpError(400, 'Bad request URL');
+      }
       if (url.pathname.startsWith('/api/')) return await api(req, res, url);
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
       return serveStatic(req, res, url.pathname);

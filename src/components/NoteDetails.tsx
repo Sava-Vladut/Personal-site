@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION } from '../data/emotions';
 import { rangeLabel } from '../lib/dates';
 import { imageSrc } from '../lib/images';
-import { addPhotos } from '../lib/photos';
 import { pushBack } from '../lib/router';
-import { toast, type Cover, type Entry } from '../lib/store';
+import { type Cover, type Entry } from '../lib/store';
 import { DateSheet } from './Calendar';
 import { EmotionChip, EmotionPicker, INTENSITY, IntensityPicker } from './emotion';
 import { Icon } from './icons';
@@ -54,11 +53,17 @@ type Open = null | 'date' | 'emotion' | 'people' | 'cover-search';
  * The Feelings page: everything about a note apart from its words — how it felt and how strongly, who it's about,
  * when it happened and its cover. It slides over the note and edits the same draft; Back returns to the writing.
  */
-export function NoteDetails({ open, onClose, draft, update }: { open: boolean; onClose: () => void; draft: Entry; update: (patch: Partial<Entry>) => void }) {
+export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadingCover }: {
+  open: boolean;
+  onClose: () => void;
+  draft: Entry;
+  update: (patch: Partial<Entry>) => void;
+  uploadCover: (file: File | undefined) => Promise<void>;
+  uploadingCover: boolean;
+}) {
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const [sheet, setSheet] = useState<Open>(null);
-  const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -90,14 +95,6 @@ export function NoteDetails({ open, onClose, draft, update }: { open: boolean; o
     const list = draft.emotions.filter((x) => x !== eid && !eid.startsWith(x + '/') && !x.startsWith(eid + '/'));
     update({ emotions: [...list, eid].slice(-3) });
     setSheet(null);
-  };
-  const upload = async (file: File | undefined) => {
-    if (!file) return;
-    setBusy(true);
-    const { photos } = await addPhotos([file]);
-    setBusy(false);
-    if (photos[0]) update({ cover: { photo: photos[0] } });
-    else toast('Couldn’t read that image');
   };
   const pictures: Cover[] = [...draft.photos.map((photo) => ({ photo })), ...draft.images.map((image) => ({ image }))];
   const same = (a: Cover | null, b: Cover) => !!a && ('photo' in a ? 'photo' in b && a.photo.id === b.photo.id : 'image' in b && a.image.url === b.image.url);
@@ -169,8 +166,8 @@ export function NoteDetails({ open, onClose, draft, update }: { open: boolean; o
             </div>
           )}
           <div class="cover-picks">
-            <button class="cover-pick" onClick={() => fileRef.current?.click()} disabled={busy}>
-              <Icon name="photo-plus" size={20} /><span>{busy ? 'Adding…' : 'Upload'}</span>
+            <button class="cover-pick" onClick={() => fileRef.current?.click()} disabled={uploadingCover}>
+              <Icon name="photo-plus" size={20} /><span>{uploadingCover ? 'Adding…' : 'Upload'}</span>
             </button>
             <button class="cover-pick" onClick={() => setSheet('cover-search')}>
               <Icon name="photo-search" size={20} /><span>Find</span>
@@ -181,7 +178,7 @@ export function NoteDetails({ open, onClose, draft, update }: { open: boolean; o
               </button>
             ))}
           </div>
-          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => { const input = e.currentTarget; upload(input.files?.[0]); input.value = ''; }} />
+          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => { const input = e.currentTarget; uploadCover(input.files?.[0]); input.value = ''; }} />
         </section>
       </div>
 
