@@ -467,7 +467,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <Icon name="brand-spotify" size={19} />
         </button>
       </FormatBar>
-      <p class="drop-hint">You can also drag photos onto the note, or paste them.</p>
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
 
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />

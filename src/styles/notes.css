@@ -111,7 +111,6 @@
 /* ---------- reading view ---------- */
 
 .note-body.is-reading { padding-top: 4px; }
-.note-body.is-reading ~ .drop-hint { display: none; }
 .read-text { cursor: text; }
 .read-empty { display: block; width: 100%; text-align: left; padding: 6px 0; font: 400 17.5px/1.65 var(--serif); color: var(--ink-3); }
 .read-tail { display: block; width: 100%; min-height: 28vh; cursor: text; }

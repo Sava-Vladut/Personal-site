@@ -477,8 +477,6 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .photo-ph.is-loading { animation: photo-pulse 1.2s ease-in-out infinite alternate; }
 @keyframes photo-pulse { to { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .photo-ph.is-loading { animation: none; } }
-.drop-hint { display: none; margin: 8px 2px 0; font-size: 13px; color: var(--ink-3); }
-@media (hover: hover) and (pointer: fine) { .drop-hint { display: block; } }
 .drop-overlay {
   animation: fade-in 0.15s ease-out;
   position: fixed; inset: 0; z-index: 50; pointer-events: none; display: flex; align-items: center; justify-content: center;
