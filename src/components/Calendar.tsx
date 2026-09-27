@@ -23,8 +23,8 @@ export function Calendar({ focus, isSelected, inRange, onPick, mark }: CalendarP
   const first = keyOf(new Date(y, m, 1));
   const gridStart = startOfWeek(first, weekStart);
   const today = todayKey();
+  // always 6 weeks so the calendar keeps the same height from month to month
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const weeks = days[35] > keyOf(new Date(y, m + 1, 0)) ? 5 : 6;
   const labels = weekStart === 1 ? WEEKDAYS : [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)];
   const shift = (n: number) => setYm(([yy, mm]) => {
     const d = new Date(yy, mm + n, 1);
@@ -40,7 +40,7 @@ export function Calendar({ focus, isSelected, inRange, onPick, mark }: CalendarP
       </div>
       <div class="cal-grid" role="grid">
         {labels.map((l) => <span class="cal-dow">{l.slice(0, 2)}</span>)}
-        {days.slice(0, weeks * 7).map((k) => {
+        {days.map((k) => {
           const out = parseKey(k).getMonth() !== m;
           const sel = isSelected?.(k);
           return (
