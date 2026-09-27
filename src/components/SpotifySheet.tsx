@@ -1,15 +1,16 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
-  embedHeight, embedUrl, KIND_LABEL, listPlaylistItems, listPlaylists, resolveSpotify, searchSpotify, spotifyStatus,
-  type Playlist, type SpotifyStatus,
+  embedHeight, embedUrl, KIND_LABEL, listPlaylistItems, listPlaylists, nowPlaying, resolveSpotify, searchSpotify, spotifyStatus,
+  type NowPlaying, type Playlist, type SpotifyStatus,
 } from '../lib/spotify';
 import type { Music } from '../lib/store';
 import { ConnectSetup } from './ConnectSetup';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
 
-type Tab = 'search' | 'playlists' | 'link';
+type Tab = 'now' | 'search' | 'playlists';
+const isLink = (q: string) => /^\s*(https?:\/\/|spotify:|(open\.)?spotify\.(com|link|app\.link)\/)/i.test(q);
 const same = (a: Music, b: Music) => a.kind === b.kind && a.id === b.id;
 
 /** One song/album/playlist row: cover, title, artists. */
@@ -41,17 +42,14 @@ export function MusicEmbed({ m }: { m: Music }) {
 }
 
 export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolean; onClose: () => void; onAdd: (m: Music[]) => void; onConnect: () => void }) {
-  const [tab, setTab] = useState<Tab>('link');
+  const [tab, setTab] = useState<Tab>('now');
   const [status, setStatus] = useState<SpotifyStatus | null>(null);
   const [selected, setSelected] = useState<Music[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setSelected([]);
-    spotifyStatus().then((s) => {
-      setStatus(s);
-      if (s.connected) setTab((t) => (t === 'link' ? 'search' : t));
-    });
+    spotifyStatus().then(setStatus);
   }, [open]);
 
   const toggle = (m: Music) => setSelected((s) => (s.some((x) => same(x, m)) ? s.filter((x) => !same(x, m)) : [...s, m]));
@@ -73,7 +71,7 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolea
       title={<span class="row gap-s"><Icon name="brand-spotify" /> Spotify</span>}
       label="Add music from Spotify"
       footer={
-        tab !== 'link' && selected.length ? (
+        selected.length ? (
           <>
             <span class="foot-note">{selected.length} selected</span>
             <button class="btn btn-primary" onClick={() => add(selected)}>Add {selected.length === 1 ? 'to note' : `${selected.length} to note`}</button>
@@ -82,19 +80,21 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolea
       }
     >
       <div class="seg" role="tablist">
+        <button role="tab" aria-selected={tab === 'now'} onClick={() => setTab('now')}>Listening</button>
         <button role="tab" aria-selected={tab === 'search'} onClick={() => setTab('search')}>Search</button>
-        <button role="tab" aria-selected={tab === 'playlists'} onClick={() => setTab('playlists')}>My playlists</button>
-        <button role="tab" aria-selected={tab === 'link'} onClick={() => setTab('link')}>Paste a link</button>
+        <button role="tab" aria-selected={tab === 'playlists'} onClick={() => setTab('playlists')}>Playlists</button>
       </div>
       {status?.error && <p class="error">{status.error}</p>}
-      {tab === 'link' ? (
-        <LinkTab onAdd={(m) => add([m])} />
-      ) : !status ? (
+      {!status ? (
         <p class="hint">Checking Spotify…</p>
       ) : gate ? (
-        gate
+        <>
+          {gate}
+          <LinkTab onAdd={(m) => add([m])} />
+        </>
       ) : (
         <>
+          <div hidden={tab !== 'now'}><NowTab row={row} active={tab === 'now'} onConnect={onConnect} /></div>
           <div hidden={tab !== 'search'}><SearchTab row={row} /></div>
           <div hidden={tab !== 'playlists'}><PlaylistsTab row={row} /></div>
         </>
@@ -153,7 +153,7 @@ function usePaged<T>() {
 function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
   const [q, setQ] = useState('');
   const res = usePaged<Music>();
-  const fetchPage = (offset?: number) => searchSpotify(q, offset);
+  const fetchPage = (offset?: number) => (isLink(q) ? resolveSpotify(q).then((m) => ({ items: [m] })) : searchSpotify(q, offset));
 
   useEffect(() => {
     if (!q.trim()) return res.reset();
@@ -165,14 +165,68 @@ function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
     <div class="stack">
       <label class="search">
         <Icon name="search" size={18} />
-        <input type="search" placeholder="Songs, artists, albums" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search Spotify" />
+        <input type="search" placeholder="Songs, artists, or paste a link" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search Spotify" />
       </label>
       <div class="tracks">{res.items.map(row)}</div>
       {res.busy && <p class="hint center">Searching…</p>}
       {res.error && <p class="error">{res.error}</p>}
       {!res.busy && res.next !== undefined && <button class="btn btn-quiet block" onClick={() => res.load(fetchPage, true)}>More results</button>}
       {!res.busy && !res.error && q.trim() && !res.items.length && <p class="hint center">No songs found.</p>}
+      {res.items.length === 1 && isLink(q) && res.items[0].kind !== 'track' && <MusicEmbed m={res.items[0]} />}
       {!q.trim() && <p class="hint center">Find the song that goes with this moment.</p>}
+    </div>
+  );
+}
+
+function NowTab({ row, active, onConnect }: { row: (m: Music) => preact.JSX.Element; active: boolean; onConnect: () => void }) {
+  const [now, setNow] = useState<NowPlaying | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const refresh = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      setNow(await nowPlaying());
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  };
+  // Refresh on showing the tab, and every 20 seconds while it's open, so a new song shows up.
+  useEffect(() => {
+    if (!active) return;
+    refresh();
+    const t = setInterval(refresh, 20_000);
+    return () => clearInterval(t);
+  }, [active]);
+
+  if (now?.reconnect)
+    return (
+      <div class="empty-note center">
+        <p>Log in with Spotify again to see what you’re listening to.</p>
+        <button class="btn btn-primary" onClick={onConnect}><Icon name="brand-spotify" size={18} /> Log in again</button>
+      </div>
+    );
+
+  return (
+    <div class="stack">
+      <div class="row now-head">
+        <span class="section-label">{now?.current ? (now.playing ? 'Playing now' : 'Paused') : 'Now'}</span>
+        <button class="icon-btn" onClick={refresh} disabled={busy} aria-label="Refresh"><Icon name="refresh" size={18} /></button>
+      </div>
+      {now?.current ? (
+        <div class="tracks">{row(now.current)}</div>
+      ) : now ? (
+        <p class="hint">Nothing playing right now. Play something in Spotify and it’ll show up here.</p>
+      ) : null}
+      {!now && busy && <p class="hint center">Loading…</p>}
+      {error && <p class="error">{error}</p>}
+      {!!now?.recent.length && (
+        <>
+          <span class="section-label">Recently played</span>
+          <div class="tracks">{now.recent.map(row)}</div>
+        </>
+      )}
     </div>
   );
 }
@@ -251,7 +305,7 @@ function LinkTab({ onAdd }: { onAdd: (m: Music) => void }) {
 
   return (
     <form class="stack" onSubmit={fetchLink}>
-      <p class="hint">In Spotify, tap <b>Share → Copy link</b> on a song, album or playlist, then paste it here.</p>
+      <p class="hint">Or, without logging in: in Spotify, tap <b>Share → Copy link</b> on a song, album or playlist, then paste it here.</p>
       <div class="row gap-s">
         <input
           class="input grow"

@@ -154,8 +154,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
                   : sp.offline ? 'The app’s server isn’t running, so only saved music shows.'
                   : sp.error ? sp.error
                   : !sp.configured ? 'Log in to search music and pick songs from your playlists. Pasting song links works without it.'
-                  : sp.connected ? 'Search songs and pick from your playlists while writing a note.'
-                  : 'Log in to search music and pick songs from your playlists.'}
+                  : sp.connected ? 'Add what you’re listening to, search songs, or pick from your playlists while writing a note.'
+                  : 'Log in to add what you’re listening to, search music and pick songs from your playlists.'}
               </div>
             </div>
             {sp && !sp.offline && (sp.connected ? (

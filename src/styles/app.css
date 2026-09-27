@@ -616,6 +616,14 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .img-pick[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--ink); }
 .img-pick[aria-pressed='true'] img { opacity: 0.82; }
 .img-pick[aria-pressed='true'] .img-check { background: var(--ink); color: var(--on-ink); }
+.board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.board { text-align: left; min-width: 0; }
+.board-cover { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 13px; overflow: hidden; background: var(--surface-2); color: var(--ink-3); }
+.board-cover img { width: 100%; height: 100%; object-fit: cover; }
+.board-name { display: block; font-weight: 600; font-size: 14px; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-count { display: block; font-size: 12.5px; color: var(--ink-3); }
+.section-label { font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.now-head { justify-content: space-between; align-items: center; }
 .back-link { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 14.5px; padding: 4px 0; justify-self: start; }
 
 /* spotify */

@@ -24,7 +24,7 @@ const SYNC_DIR = join(ROOT, 'data', 'sync');
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
-const SP_SCOPES = 'playlist-read-private playlist-read-collaborative';
+const SP_SCOPES = 'playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-recently-played';
 // Spotify only accepts https or a loopback IP as a redirect URI — never "localhost".
 const SP_REDIRECT = process.env.SPOTIFY_REDIRECT_URI || `${PUBLIC_URL.replace('://localhost', '://127.0.0.1')}/api/spotify/callback`;
 const SP_API = 'https://api.spotify.com/v1';
@@ -133,6 +133,7 @@ const toSession = (t, prevRefresh) => ({
   a: t.access_token,
   r: t.refresh_token || prevRefresh || null,
   e: Date.now() + (Number(t.expires_in) || 30 * 86400) * 1000 - 60_000,
+  ...(t.scope ? { sc: t.scope } : {}),
 });
 
 /** Returns a valid session (refreshing it if expired) or null. May queue a Set-Cookie. */
@@ -142,7 +143,7 @@ async function session(req, setCookies, name, path, refresh) {
   if (s.e > Date.now()) return s;
   if (!s.r) return null;
   try {
-    const next = { ...toSession(await refresh({ grant_type: 'refresh_token', refresh_token: s.r }), s.r), u: s.u };
+    const next = { sc: s.sc, ...toSession(await refresh({ grant_type: 'refresh_token', refresh_token: s.r }), s.r), u: s.u };
     setCookies.push(cookie(name, seal(next), 365 * 86400, path));
     return next;
   } catch {
@@ -331,6 +332,24 @@ async function spotify(req, res, url, p, setCookies, out) {
   if (pm) {
     const body = await spApi(await need(), `/playlists/${pm[1]}/items?limit=50&offset=${offset}&additional_types=track,episode`);
     return out({ items: (body.items || []).map((it) => musicOut(it?.item ?? it?.track)).filter(Boolean), next: nextOffset(body) });
+  }
+
+  if (p === '/api/spotify/now') {
+    const s = await need();
+    // Connected before listening history was asked for: Spotify needs a fresh sign-in to grant it.
+    if (!/user-read-currently-playing/.test(s.sc || '') || !/user-read-recently-played/.test(s.sc || '')) return out({ reconnect: true, recent: [] });
+    const [cur, rec] = await Promise.all([
+      spApi(s, '/me/player/currently-playing?additional_types=track,episode'),
+      spApi(s, '/me/player/recently-played?limit=30'),
+    ]);
+    const current = musicOut(cur?.item);
+    const seen = new Set(current ? [current.id] : []);
+    const recent = [];
+    for (const it of rec.items || []) {
+      const m = musicOut(it?.track);
+      if (m && !seen.has(m.id)) seen.add(m.id), recent.push(m);
+    }
+    return out({ current: current || undefined, playing: !!(current && cur.is_playing), recent });
   }
 
   if (p === '/api/spotify/search') {

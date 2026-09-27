@@ -12,6 +12,7 @@ export interface SpotifyStatus {
 }
 export interface Playlist { id: string; name: string; count: number; cover?: string }
 export interface Page<T> { items: T[]; next?: number }
+export interface NowPlaying { current?: Music; playing?: boolean; recent: Music[]; reconnect?: boolean }
 
 async function get<T>(path: string): Promise<T> {
   let res: Response;
@@ -32,6 +33,7 @@ export const spotifyStatus = () =>
 
 export const resolveSpotify = (url: string) => get<Music>('/resolve?url=' + encodeURIComponent(url.trim()));
 export const searchSpotify = (q: string, offset?: number) => get<Page<Music>>(`/search?q=${encodeURIComponent(q.trim())}&${at(offset)}`);
+export const nowPlaying = () => get<NowPlaying>('/now');
 export const listPlaylists = (offset?: number) => get<Page<Playlist>>('/playlists?' + at(offset));
 export const listPlaylistItems = (id: string, offset?: number) => get<Page<Music>>(`/playlists/${encodeURIComponent(id)}/items?${at(offset)}`);
 

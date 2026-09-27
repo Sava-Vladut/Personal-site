@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.0',
+    date: '2026-09-27',
+    changes: [
+      'Spotify: a new Listening tab adds the song you’re playing now, or one you played recently',
+      'Spotify: your playlists show as a grid of covers again',
+      'Spotify: paste a song link straight into Search (the separate Paste a link tab is gone)',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-09-27',
     changes: ['The + button opens a menu to add a note, a check-in or a person'],
