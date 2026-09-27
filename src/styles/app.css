@@ -276,6 +276,71 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 }
 @media (hover: hover) { .prompt-worlds button:hover { background: color-mix(in oklab, var(--c) 18%, var(--surface-2)); transform: translateY(-1px); } }
 
+/* Each feeling's sprite has its own little idle life; --d staggers them so they never move in step. */
+.prompt-worlds .sprite { overflow: visible; animation: var(--anim) var(--dur, 3s) var(--d, 0s) infinite both; transform-origin: 50% 60%; }
+[data-core='fear'] { --anim: emo-fear; --dur: 2.6s; }
+[data-core='sadness'] { --anim: emo-sadness; --dur: 3.4s; }
+[data-core='anger'] { --anim: emo-anger; --dur: 0.9s; }
+[data-core='shame-aversion'] { --anim: emo-shame; --dur: 4.2s; }
+[data-core='love-connection'] { --anim: emo-love; --dur: 1.3s; }
+[data-core='joy'] { --anim: emo-joy; --dur: 2.4s; }
+[data-core='calm-safety'] { --anim: emo-calm; --dur: 4.8s; }
+[data-core='hope-interest'] { --anim: emo-hope; --dur: 3.2s; }
+/* ghost drifts and wobbles, with a sudden shiver */
+@keyframes emo-fear {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-1.5px, -2px) rotate(-6deg); }
+  50% { transform: translate(0, -3px) rotate(0); }
+  75% { transform: translate(1.5px, -2px) rotate(6deg); }
+  86% { transform: translate(-1px, -1px); }
+  88% { transform: translate(1px, -1px); }
+  90% { transform: translate(-1px, -1px); }
+}
+/* rain cloud sinks slowly and sighs */
+@keyframes emo-sadness {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(2px) scale(1.06, 0.94); }
+}
+/* flame flickers */
+@keyframes emo-anger {
+  0%, 100% { transform: scale(1, 1) skewX(0); transform-origin: 50% 100%; }
+  25% { transform: scale(0.94, 1.1) skewX(-4deg); transform-origin: 50% 100%; }
+  50% { transform: scale(1.05, 0.96) skewX(2deg); transform-origin: 50% 100%; }
+  75% { transform: scale(0.97, 1.08) skewX(4deg); transform-origin: 50% 100%; }
+}
+/* face shrinks away and looks aside, then slowly comes back */
+@keyframes emo-shame {
+  0%, 55%, 100% { transform: translateX(0) scale(1) rotate(0); }
+  65%, 80% { transform: translateX(-2px) scale(0.86) rotate(-10deg); }
+}
+/* heartbeat: lub-dub */
+@keyframes emo-love {
+  0%, 40%, 100% { transform: scale(1); }
+  10% { transform: scale(1.2); }
+  20% { transform: scale(1.02); }
+  30% { transform: scale(1.14); }
+}
+/* star hops and spins on landing */
+@keyframes emo-joy {
+  0%, 60%, 100% { transform: translateY(0) rotate(0) scale(1, 1); }
+  15% { transform: translateY(1px) scale(1.12, 0.86); }
+  32% { transform: translateY(-6px) rotate(180deg) scale(0.95, 1.08); }
+  48% { transform: translateY(0) rotate(360deg) scale(1.1, 0.9); }
+}
+/* leaf sways in a breeze */
+@keyframes emo-calm {
+  0%, 100% { transform: rotate(-9deg) translateX(-1px); transform-origin: 20% 80%; }
+  50% { transform: rotate(9deg) translateX(1px); transform-origin: 20% 80%; }
+}
+/* sun turns slowly and glows */
+@keyframes emo-hope {
+  0% { transform: rotate(0) scale(1); filter: none; }
+  50% { transform: rotate(45deg) scale(1.1); filter: drop-shadow(0 0 3px var(--c)); }
+  100% { transform: rotate(90deg) scale(1); filter: none; }
+}
+@media (hover: hover) { .prompt-worlds button:hover .sprite { animation-duration: calc(var(--dur, 3s) / 1.8); } }
+@media (prefers-reduced-motion: reduce) { .prompt-worlds .sprite { animation: none; } }
+
 .day { margin-top: 22px; }
 .day-label { font-size: 13px; font-weight: 600; color: var(--ink-3); margin: 0 2px 8px; }
 .entries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }

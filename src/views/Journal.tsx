@@ -163,8 +163,8 @@ function CheckInPrompt({ entries }: { entries: Entry[] }) {
         )}
       </div>
       <div class="prompt-worlds">
-        {PICKER_ORDER.map((c) => (
-          <button style={{ '--c': `var(--emo-${c})` }} aria-label={CORE[c].name} title={CORE[c].name} onClick={() => navigate('tracker?world=' + c)}>
+        {PICKER_ORDER.map((c, i) => (
+          <button data-core={c} style={{ '--c': `var(--emo-${c})`, '--d': `${-i * 0.37}s` }} aria-label={CORE[c].name} title={CORE[c].name} onClick={() => navigate('tracker?world=' + c)}>
             <Sprite core={c} size={18} />
             <span>{shortName(c)}</span>
           </button>
