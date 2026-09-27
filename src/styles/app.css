@@ -773,3 +773,4 @@ span.inline-media { aspect-ratio: 4 / 3; }
 .person-actions .btn { min-width: 0; }
 .person-felt { padding: 14px 16px; display: grid; gap: 12px; margin-bottom: 4px; }
 .felt-item { display: inline-flex; align-items: center; gap: 4px; }
+.stats-back { margin: -4px 0 6px -4px; color: var(--ink-2); }

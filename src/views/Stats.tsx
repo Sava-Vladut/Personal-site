@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { CHART_ORDER, CORE, EMOTION, FEELINGS, PICKER_ORDER, shortName } from '../data/emotions';
 import { WEEKDAYS, shortDate } from '../lib/dates';
-import { navigate } from '../lib/router';
+import { goBack, navigate } from '../lib/router';
 import { RANGES, computeStats, dex, fmtMood, insights, pct, streaks, type RangeKey, type Stats as S } from '../lib/stats';
 import { useEntries, useSettings } from '../lib/store';
 import {
@@ -42,7 +42,7 @@ export function Stats({ query }: { query: URLSearchParams }) {
   return (
     <div class="page">
       <header class="page-head">
-        <div class="eyebrow">Stats</div>
+        <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> Back</button>
         <h1 class="title">Your patterns</h1>
       </header>
 

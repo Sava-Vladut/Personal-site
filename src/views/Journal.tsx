@@ -73,6 +73,9 @@ export function Journal() {
             <button class="icon-btn" aria-pressed={calOpen} aria-label="Calendar" onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
               <Icon name="calendar" />
             </button>
+            <button class="icon-btn" aria-label="Stats" title="Stats" onClick={() => navigate('stats')}>
+              <Icon name="chart-dots" />
+            </button>
           </div>
         </div>
       </header>
