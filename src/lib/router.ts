@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'books' | 'stats' | 'settings' | 'note' | 'person' | 'book';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'books' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'mind';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -17,12 +17,13 @@ function parse(): Route {
   if (head === 'note') return { name: 'note', id: id || 'new', query, visit };
   if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
   if (head === 'book' && id) return { name: 'book', id, query, visit };
+  if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
   if (head === 'tracker' || head === 'people' || head === 'books' || head === 'stats' || head === 'settings') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 
 /* ---------- page transitions ----------
-   Tabs slide sideways toward the tab you picked; opening a note, person or stats pushes the new page
+   Tabs slide sideways toward the tab you picked; opening a note, person, stats or the mind page pushes the new page
    in from the right, and going back pops it off again. The CSS lives under "Page transitions". */
 
 type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';

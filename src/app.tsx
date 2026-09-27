@@ -10,6 +10,7 @@ import { BookView } from './views/Book';
 import { Books } from './views/Books';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
+import { Mind } from './views/Mind';
 import { People } from './views/People';
 import { PersonView } from './views/Person';
 import { Settings } from './views/Settings';
@@ -40,6 +41,8 @@ export function App() {
           <PersonView key={route.id === 'new' ? `new-${route.visit}` : route.id} id={route.id!} />
         ) : route.name === 'people' ? (
           <People />
+        ) : route.name === 'mind' ? (
+          <Mind />
         ) : route.name === 'book' ? (
           <BookView key={route.id} id={route.id!} />
         ) : route.name === 'books' ? (
@@ -54,7 +57,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && <TabBar active={route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />

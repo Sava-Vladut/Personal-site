@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.6.0',
+    date: '2026-09-27',
+    changes: [
+      'People: a new “What’s on your mind” page, a wheel showing how much of your thoughts each person takes up',
+      'People: switch it between the last 30 days, 12 months and all time, and tap a slice to see who it is',
+      'People: a “Share of mind” list ranks everyone, coloured by the feeling they bring',
+    ],
+  },
+  {
     version: '1.5.2',
     date: '2026-09-27',
     changes: ['Books: person labels now say “Thinking of”, including linked books on person pages'],
