@@ -113,7 +113,7 @@ function dragToDismiss(el: HTMLElement, backdrop: HTMLElement, dismiss: (ms: num
     start = null;
     if (e.touches.length !== 1 || matchMedia('(min-width: 720px)').matches) return;
     const t = e.target as Element;
-    if (t.closest('input, textarea, select, [contenteditable]') || scrolled(t)) return;
+    if (t.closest('input, textarea, select, [contenteditable], [data-own-gestures]') || scrolled(t)) return;
     const { clientX: x, clientY: y } = e.touches[0];
     start = { x, y, dragging: false };
   };

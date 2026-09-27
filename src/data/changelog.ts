@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.8.0',
+    date: '2026-09-27',
+    changes: [
+      'Notes: adjust a note’s cover — drag it to move it and pinch (or scroll) to zoom, so the part you want fills the cover',
+      'Notes: the cover keeps your crop in the journal and at the top of the note',
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-09-27',
     changes: [

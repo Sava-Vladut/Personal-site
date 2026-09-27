@@ -5,6 +5,7 @@ import { imageSrc } from '../lib/images';
 import { pushBack } from '../lib/router';
 import { type Cover, type Entry } from '../lib/store';
 import { DateSheet } from './Calendar';
+import { CoverCropSheet } from './CoverCrop';
 import { EmotionChip, EmotionPicker, INTENSITY, IntensityPicker } from './emotion';
 import { Icon } from './icons';
 import { ImageSearchSheet } from './ImageSearchSheet';
@@ -12,12 +13,22 @@ import { PeopleChips, PeopleSheet, PersonChip, usePeopleById } from './people';
 import { PhotoImg } from './Photo';
 import { Sheet } from './Sheet';
 
-/** A note's cover picture, filling whatever box it's put in. */
+/**
+ * A note's cover picture, filling whatever box it's put in, cropped the way it was adjusted. The crop's point sits at the
+ * same place in the box (that's what object-position does with a covering picture) and the zoom grows around it.
+ */
 export function CoverImg({ cover, class: cls }: { cover: Cover; class?: string }) {
-  return 'photo' in cover ? (
-    <PhotoImg photo={cover.photo} class={cls} fit={false} alt="" />
-  ) : (
-    <img class={cls} src={imageSrc(cover.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" />
+  const c = cover.crop;
+  const at = c && `${c.x * 100}% ${c.y * 100}%`;
+  const style = c && { objectPosition: at, transformOrigin: at, transform: c.zoom > 1 ? `scale(${c.zoom})` : undefined };
+  return (
+    <span class={`cover-img ${cls ?? ''}`}>
+      {'photo' in cover ? (
+        <PhotoImg photo={cover.photo} fit={false} alt="" style={style} />
+      ) : (
+        <img src={imageSrc(cover.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" style={style} />
+      )}
+    </span>
   );
 }
 
@@ -47,7 +58,7 @@ function Bars({ n }: { n: number }) {
   );
 }
 
-type Open = null | 'date' | 'emotion' | 'people' | 'cover-search';
+type Open = null | 'date' | 'emotion' | 'people' | 'cover-search' | 'cover-crop';
 
 /**
  * The Feelings page: everything about a note apart from its words — how it felt and how strongly, who it's about,
@@ -161,8 +172,11 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
           <p class="details-hint">Shown faintly behind the note in your journal.</p>
           {draft.cover && (
             <div class="cover-preview">
-              <CoverImg cover={draft.cover} />
-              <button class="glass glass-btn round cover-remove" onClick={() => update({ cover: null })} aria-label="Remove cover"><Icon name="trash" size={18} /></button>
+              <button class="cover-open" onClick={() => setSheet('cover-crop')} aria-label="Adjust the cover"><CoverImg cover={draft.cover} /></button>
+              <div class="cover-tools">
+                <button class="glass glass-btn cover-adjust" onClick={() => setSheet('cover-crop')}><Icon name="crop" size={18} /> Adjust</button>
+                <button class="glass glass-btn round cover-remove" onClick={() => update({ cover: null })} aria-label="Remove cover"><Icon name="trash" size={18} /></button>
+              </div>
             </div>
           )}
           <div class="cover-picks">
@@ -187,6 +201,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
       <PeopleSheet open={sheet === 'people'} onClose={close} selected={draft.people} onChange={(people) => update({ people })} />
+      <CoverCropSheet open={sheet === 'cover-crop'} onClose={close} cover={draft.cover} onSave={(crop) => draft.cover && update({ cover: { ...draft.cover, crop } })} />
       <ImageSearchSheet open={sheet === 'cover-search'} onClose={close} single action="Use as cover" onAdd={([image]) => image && update({ cover: { image } })} />
     </div>
   );

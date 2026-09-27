@@ -28,7 +28,14 @@ export interface Music {
 const MUSIC_KINDS = ['track', 'album', 'playlist', 'episode', 'show', 'artist'];
 
 /** The picture a note is shown with: faintly behind its card in the journal, and at the top of the note. */
-export type Cover = { photo: Photo } | { image: WebImage };
+export type Cover = ({ photo: Photo } | { image: WebImage }) & { crop?: Crop };
+
+/**
+ * How a cover sits in its box: the picture's point (0–1 across and down) that stays at the same place in the box,
+ * and how far it's zoomed in (1 = just fills the box). Works for any box shape, so one crop fits every place it's shown.
+ */
+export interface Crop { x: number; y: number; zoom: number }
+export const MAX_ZOOM = 4;
 
 export interface Entry {
   id: string;
@@ -318,6 +325,10 @@ const webImage = (i: any): WebImage | null =>
 const photo = (p: any): Photo | null =>
   p && typeof p.id === 'string' && PHOTO_ID.test(p.id) ? { id: p.id, w: Math.max(1, +p.w || 1), h: Math.max(1, +p.h || 1) } : null;
 
+const unit = (v: unknown) => Math.min(1, Math.max(0, Number(v)));
+const crop = (c: any): Crop | null =>
+  c && [c.x, c.y, c.zoom].every(Number.isFinite) ? { x: unit(c.x), y: unit(c.y), zoom: Math.min(MAX_ZOOM, Math.max(1, +c.zoom)) } : null;
+
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !KEY.test(raw.date)) return null;
@@ -325,6 +336,8 @@ function normalize(raw: any): Entry | null {
   const images: WebImage[] = Array.isArray(raw.images) ? raw.images.map(webImage).filter(Boolean).slice(0, 12) : [];
   const coverPhoto = photo(raw.cover?.photo);
   const coverImage = webImage(raw.cover?.image);
+  const coverPic: Cover | null = coverPhoto ? { photo: coverPhoto } : coverImage ? { image: coverImage } : null;
+  const coverCrop = crop(raw.cover?.crop);
   return {
     id: str(raw.id, 40) || uid(),
     kind: raw.kind === 'checkin' ? 'checkin' : 'note',
@@ -348,7 +361,7 @@ function normalize(raw: any): Entry | null {
           .slice(0, 20)
       : [],
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
-    cover: coverPhoto ? { photo: coverPhoto } : coverImage ? { image: coverImage } : null,
+    cover: coverPic && (coverCrop ? { ...coverPic, crop: coverCrop } : coverPic),
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };

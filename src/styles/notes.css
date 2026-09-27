@@ -63,8 +63,10 @@
 .details-section .meta-row { background: var(--surface-2); border-color: transparent; }
 .details-hint { font-size: 13px; color: var(--ink-3); margin: 2px 2px 0; }
 .cover-preview { position: relative; margin-top: 10px; border-radius: 14px; overflow: hidden; aspect-ratio: 16 / 7; background: var(--surface-2); }
-.cover-preview img, .cover-preview .photo-ph { width: 100%; height: 100%; object-fit: cover; }
-.cover-remove { position: absolute; top: 8px; right: 8px; width: 36px !important; height: 36px; }
+.cover-open { display: block; width: 100%; height: 100%; }
+.cover-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+.glass-btn.cover-adjust { height: 36px; gap: 6px; padding: 0 12px; font-size: 13.5px; }
+.cover-remove { width: 36px !important; height: 36px; }
 .cover-picks { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .cover-picks::-webkit-scrollbar { display: none; }
 .cover-pick {
@@ -76,6 +78,32 @@
 .cover-pick:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
 .cover-pick.is-pic img, .cover-pick.is-pic .photo-ph { width: 100%; height: 100%; object-fit: cover; }
 .cover-pick[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+
+/* ---------- a cover picture, cropped (components/NoteDetails.tsx CoverImg) ---------- */
+
+.cover-img { display: block; width: 100%; height: 100%; overflow: hidden; }
+.cover-img > img, .cover-img > .photo-ph { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- adjusting a cover: drag and pinch it inside a frame ---------- */
+
+.crop-hint { margin: 0 2px 10px; }
+.crop-frame {
+  position: relative; aspect-ratio: 16 / 7; border-radius: 14px; overflow: hidden; background: var(--surface-2);
+  touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none;
+}
+.crop-frame.moving { cursor: grabbing; }
+.crop-frame:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+.crop-frame img { pointer-events: none; -webkit-user-drag: none; }
+/* thirds, while you move it */
+.crop-frame::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  background:
+    linear-gradient(90deg, transparent calc(100% / 3 - 0.5px), rgb(255 255 255 / 0.6) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgb(255 255 255 / 0.6) 0 calc(200% / 3 + 0.5px), transparent 0),
+    linear-gradient(transparent calc(100% / 3 - 0.5px), rgb(255 255 255 / 0.6) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgb(255 255 255 / 0.6) 0 calc(200% / 3 + 0.5px), transparent 0);
+}
+.crop-frame.moving::after { opacity: 1; }
+.crop-zoom { display: flex; align-items: center; gap: 10px; margin: 14px 2px 4px; color: var(--ink-3); }
+.crop-zoom input { flex: 1; min-width: 0; accent-color: var(--ink); }
 
 /* ---------- the toolbar: formatting, then pictures and music ---------- */
 
