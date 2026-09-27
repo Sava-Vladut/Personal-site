@@ -120,7 +120,8 @@ console.log(`curated: ${n} icons in ${out.length} categories · all: ${Object.ke
 const UI = `notebook chart-bar plus settings search x chevron-left chevron-right chevron-down calendar photo trash check
   arrow-left dots download upload photo-search sun moon device-desktop link table info-circle clock sparkles
   mood-smile mood-plus arrow-up-right refresh logout photo-plus calendar-event pencil list layout-grid chart-dots
-  lock alert-circle brand-spotify music playlist chart-donut-2 cloud copy key devices users user user-plus`.split(/\s+/);
+  lock alert-circle brand-spotify music playlist chart-donut-2 cloud copy key devices users user user-plus
+  arrow-up arrow-down float-left float-center float-right grip-vertical maximize`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

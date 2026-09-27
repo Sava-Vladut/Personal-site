@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION } from '../data/emotions';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
-import { bodyOf, insertMedia, removeMedia, serializeBody, type Body, type Media } from '../lib/body';
+import { bodyOf, canStep, insertMedia, mediaKey, moveMedia, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, type Body, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
@@ -12,6 +12,7 @@ import { EmotionChip, EmotionPicker, IntensityPicker } from '../components/emoti
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
+import { dropTargets, MediaBlock, type DropTarget } from '../components/NoteMedia';
 import { PhotoImg } from '../components/Photo';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { Sheet } from '../components/Sheet';
@@ -22,14 +23,21 @@ type Open = null | 'icon' | 'date' | 'emotion' | 'people' | 'images' | 'spotify'
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
 
-function useAutosize(value: string) {
+function fit(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+/** Keeps a text box as tall as its text — again when its class changes (a box that stops growing drops its min-height) or the window is resized. */
+function useAutosize(value: string, grow?: boolean) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
-  }, [value]);
+  useLayoutEffect(() => fit(ref.current), [value, grow]);
+  useEffect(() => {
+    const on = () => fit(ref.current);
+    addEventListener('resize', on);
+    return () => removeEventListener('resize', on);
+  }, []);
   return ref;
 }
 
@@ -40,13 +48,13 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
   onCaret: (pos: number) => void;
   placeholder?: string;
   grow?: boolean;
-  textRef?: { current: HTMLTextAreaElement | null };
+  textRef?: (el: HTMLTextAreaElement | null) => void;
 }) {
-  const ref = useAutosize(value);
+  const ref = useAutosize(value, grow);
   const caret = (e: Event) => onCaret((e.currentTarget as HTMLTextAreaElement).selectionStart ?? 0);
   return (
     <textarea
-      ref={(el) => { ref.current = el; if (textRef) textRef.current = el; }}
+      ref={(el) => { ref.current = el; textRef?.(el); }}
       class={`body-input${grow ? ' grow' : ''}`}
       rows={1}
       placeholder={placeholder}
@@ -70,6 +78,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [status, setStatus] = useState('');
   const [adding, setAdding] = useState(0);
   const [dropping, setDropping] = useState(false);
+  const [sel, setSel] = useState<string | null>(null); // the selected picture's mediaKey
+  const [moving, setMoving] = useState<{ key: string; y: number } | null>(null); // a picture being dragged, and where it would land
   const fileRef = useRef<HTMLInputElement>(null);
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
@@ -79,6 +89,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
 
   const titleRef = useAutosize(draft?.title ?? '');
   const textRef = useRef<HTMLTextAreaElement | null>(null);
+  const areas = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const alive = useRef(true);
   // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
   const where = useRef({ seg: -1, pos: 0 });
 
@@ -121,11 +134,29 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (sp === 'connected') setOpen('spotify');
     } else if (id === 'new') titleRef.current?.focus();
     return () => {
+      alive.current = false;
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
       flush();
     };
   }, []);
+
+  // A selected picture lets go when you tap anywhere else, or press Escape.
+  useEffect(() => {
+    if (!sel) return;
+    const down = (e: PointerEvent) => {
+      if (!(e.target as Element).closest?.('.media.is-selected, .sheet, .toast')) setSel(null);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.documentElement.classList.contains('sheet-open')) setSel(null);
+    };
+    document.addEventListener('pointerdown', down);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('pointerdown', down);
+      document.removeEventListener('keydown', key);
+    };
+  }, [sel]);
 
   if (!draft)
     return (
@@ -182,6 +213,106 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     update({ text: serializeBody(b) });
   };
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+
+  /** Rearranges the body's pictures. Carets from before the change no longer point anywhere useful. */
+  const setBody = (b: Body) => {
+    where.current = { seg: -1, pos: 0 };
+    update({ text: serializeBody(b) });
+  };
+
+  const removePicture = (m: Media) => {
+    const d = latest.current;
+    if (!d) return;
+    const b = bodyOf(d);
+    const i = b.media.findIndex((x) => sameMedia(x, m));
+    if (i < 0) return;
+    const at = b.media[i];
+    const pos = b.texts[i].length + (b.texts[i] && b.texts[i + 1] ? 1 : 0); // where it sat in the joined text
+    const photo = at.kind === 'photo' ? d.photos.find((p) => p.id === at.id) : undefined;
+    const image = at.kind === 'image' ? d.images.find((x) => x.url === at.url) : undefined;
+    where.current = { seg: -1, pos: 0 };
+    update({ photos: d.photos.filter((p) => p !== photo), images: d.images.filter((x) => x !== image), text: serializeBody(removeMedia(b, at)) });
+    setSel(null);
+    setOpen(null);
+    const restore = (e: Entry): Partial<Entry> => ({
+      photos: photo && !e.photos.some((p) => p.id === photo.id) ? [...e.photos, photo] : e.photos,
+      images: image && !e.images.some((x) => x.url === image.url) ? [...e.images, image] : e.images,
+      text: serializeBody(insertMedia(bodyOf(e), [at], i, pos)),
+    });
+    toast(photo ? 'Photo removed' : 'Image removed', {
+      label: 'Undo',
+      run: () => {
+        if (alive.current) return latest.current && update(restore(latest.current));
+        const e = getEntries().find((x) => x.id === d.id);
+        if (e) saveEntry({ ...e, ...restore(e) });
+      },
+    });
+  };
+
+  /** Follows the pointer and shows where the picture would land; drops it there on release. Escape cancels. */
+  const startMove = (i: number, e: PointerEvent) => {
+    const bodyEl = bodyRef.current;
+    const d = latest.current;
+    if (!bodyEl || !d) return;
+    const key = mediaKey(bodyOf(d).media[i]);
+    const targets = dropTargets(areas.current.slice(0, bodyOf(d).texts.length));
+    if (!targets.length) return;
+    const origin = bodyEl.getBoundingClientRect().top + scrollY;
+    let target: DropTarget | null = null;
+    let y = e.clientY;
+    let frame = 0;
+    const pick = () => {
+      const at = y + scrollY;
+      target = targets.reduce((a, b) => (Math.abs(b.y - at) < Math.abs(a.y - at) ? b : a));
+      setMoving({ key, y: target.y - origin });
+    };
+    // Near the top or bottom of the screen the page scrolls along.
+    const tick = () => {
+      const edge = 90;
+      const v = y < edge ? -(edge - y) / 4 : y > innerHeight - edge ? (y - innerHeight + edge) / 4 : 0;
+      if (v) {
+        scrollBy(0, v);
+        pick();
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    const move = (ev: PointerEvent) => {
+      ev.preventDefault();
+      y = ev.clientY;
+      pick();
+    };
+    const end = (drop: boolean) => {
+      cancelAnimationFrame(frame);
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      removeEventListener('pointercancel', cancel);
+      removeEventListener('keydown', esc, true);
+      document.documentElement.classList.remove('is-moving');
+      setMoving(null);
+      const now = latest.current;
+      if (!drop || !target || !now) return;
+      const b = bodyOf(now);
+      const j = b.media.findIndex((x) => mediaKey(x) === key);
+      if (j < 0) return;
+      const next = moveMedia(b, j, target.seg, target.pos);
+      if (next !== b) setBody(next);
+    };
+    const up = () => end(true);
+    const cancel = () => end(false);
+    const esc = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape') return;
+      ev.stopPropagation();
+      end(false);
+    };
+    addEventListener('pointermove', move, { passive: false });
+    addEventListener('pointerup', up);
+    addEventListener('pointercancel', cancel);
+    addEventListener('keydown', esc, true);
+    document.documentElement.classList.add('is-moving');
+    setSel(key);
+    pick();
+    frame = requestAnimationFrame(tick);
+  };
 
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
@@ -250,13 +381,35 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
       )}
 
-      <div class="note-body">
+      <div class="note-body" ref={bodyRef}>
         {body.texts.map((t, i) => (
           <>
-            {i > 0 && <InlineMedia m={body.media[i - 1]} draft={draft} onOpen={setOpen} />}
+            {i > 0 && (() => {
+              const m = body.media[i - 1];
+              const key = mediaKey(m);
+              const photo = m.kind === 'photo' ? draft.photos.find((p) => p.id === m.id) : undefined;
+              const image = m.kind === 'image' ? draft.images.find((x) => x.url === m.url) : undefined;
+              return (
+                <MediaBlock
+                  key={key}
+                  m={m}
+                  draft={draft}
+                  selected={sel === key}
+                  dragging={moving?.key === key}
+                  canUp={canStep(body, i - 1, -1)}
+                  canDown={canStep(body, i - 1, 1)}
+                  onSelect={() => setSel(key)}
+                  onOpen={() => photo ? setOpen({ photo }) : image && setOpen({ image })}
+                  onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, l)) })}
+                  onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), i - 1, dir))}
+                  onRemove={() => removePicture(m)}
+                  onDrag={(e) => startMove(i - 1, e)}
+                />
+              );
+            })()}
             <BodyText
               value={t}
-              textRef={i === 0 ? textRef : undefined}
+              textRef={(el) => { areas.current[i] = el; if (i === 0) textRef.current = el; }}
               grow={i === last}
               placeholder={i === 0 && !body.media.length ? 'What’s on your mind?' : i === last ? 'Keep writing…' : undefined}
               onChange={(v) => setText(i, v)}
@@ -265,6 +418,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </>
         ))}
         {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label="Adding photo" />)}
+        {moving && <span class="drop-line" style={{ top: moving.y + 'px' }} aria-hidden="true" />}
       </div>
 
       {draft.music.length > 0 && (
@@ -336,7 +490,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <PhotoView
             photo={open.photo}
             name={draft.title.trim() || 'photo'}
-            onRemove={() => { update({ photos: draft.photos.filter((x) => x.id !== open.photo.id), text: serializeBody(removeMedia(body, { kind: 'photo', id: open.photo.id })) }); close(); }}
+            onRemove={() => removePicture({ kind: 'photo', id: open.photo.id })}
           />
         )}
       </Sheet>
@@ -353,7 +507,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                   <Icon name="arrow-up-right" size={18} /> Open source
                 </a>
               )}
-              <button class="btn btn-quiet grow danger" onClick={() => { update({ images: draft.images.filter((x) => x.url !== open.image.url), text: serializeBody(removeMedia(body, { kind: 'image', url: open.image.url })) }); close(); }}>
+              <button class="btn btn-quiet grow danger" onClick={() => removePicture({ kind: 'image', url: open.image.url })}>
                 <Icon name="trash" size={18} /> Remove
               </button>
             </div>
@@ -381,22 +535,4 @@ function PhotoView({ photo, name, onRemove }: { photo: Photo; name: string; onRe
       </div>
     </div>
   );
-}
-
-/** A photo or web image sitting between paragraphs. Tap to view or remove it. */
-function InlineMedia({ m, draft, onOpen }: { m: Media; draft: Entry; onOpen: (o: Open) => void }) {
-  if (m.kind === 'photo') {
-    const photo = draft.photos.find((p) => p.id === m.id);
-    return photo ? (
-      <button class="inline-media" onClick={() => onOpen({ photo })} aria-label="Open photo">
-        <PhotoImg photo={photo} alt="Photo" />
-      </button>
-    ) : null;
-  }
-  const img = draft.images.find((i) => i.url === m.url);
-  return img ? (
-    <button class="inline-media" onClick={() => onOpen({ image: img })} aria-label={img.title ? `Open image: ${img.title}` : 'Open image'}>
-      <img src={imageSrc(img, 'thumb')} alt={img.title || 'Image'} loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
-    </button>
-  ) : null;
 }

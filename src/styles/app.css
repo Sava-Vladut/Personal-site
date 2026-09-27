@@ -398,15 +398,63 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .meta-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-top: 12px; padding: 8px 8px 8px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
 .meta-row .eyebrow { margin: 0; }
 .editor .definition { padding: 0 2px; }
-.note-body { margin-top: 18px; }
+.note-body { position: relative; margin-top: 18px; }
 .body-input {
   display: block; width: 100%; border: 0; background: none; resize: none; outline: none;
   font: 400 17.5px/1.65 var(--serif); color: var(--ink); overflow: hidden;
 }
 .body-input.grow { min-height: 38vh; }
 .inline-media { display: block; width: 100%; margin: 10px 0; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
-.inline-media img, .inline-media .photo-ph { display: block; width: 100%; height: auto; max-height: 70dvh; object-fit: cover; }
 span.inline-media { aspect-ratio: 4 / 3; }
+
+/* pictures in a note: tap to select, then resize from the side handles, move or remove from the toolbar */
+.media { position: relative; margin: 12px 0; }
+.media-frame { position: relative; width: 100%; margin: 0 auto; transition: width 0.18s var(--ease-out); }
+.media-pic { display: block; width: 100%; border-radius: 14px; overflow: hidden; background: var(--surface-2); touch-action: manipulation; }
+.media-pic img, .media-pic .photo-ph { display: block; width: 100%; height: auto; }
+.media.is-selected .media-pic { outline: 2px solid var(--ink); outline-offset: 3px; }
+.media.is-dragging .media-pic { opacity: 0.35; }
+@media (hover: hover) and (pointer: fine) { .media-pic { cursor: grab; } .media.is-selected .media-pic { cursor: zoom-in; } }
+.media-handle {
+  position: absolute; top: 50%; z-index: 2; width: 28px; height: 64px; margin-top: -32px;
+  display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none;
+}
+.media-handle.left { left: -14px; }
+.media-handle.right { right: -14px; }
+.media-handle::before {
+  content: ''; width: 6px; height: 44px; border-radius: 3px; background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line-2), 0 2px 8px rgb(0 0 0 / 0.28); transition: transform 0.15s var(--ease-out);
+}
+.media-handle:hover::before, .media-handle:active::before { transform: scaleX(1.35); }
+.media-badge {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 5px 11px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+}
+/* the toolbar stays in view while a tall picture scrolls under the editor bar */
+.media-bar { position: sticky; top: calc(var(--safe-t) + 66px); z-index: 4; height: 0; display: flex; justify-content: center; }
+.media-tools {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px; height: max-content;
+  max-width: 100%; margin-top: 10px; padding: 4px; border-radius: 22px;
+}
+.media-tools button {
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px;
+  color: var(--ink); transition: background 0.12s;
+}
+.media-tools button:hover:not(:disabled), .media-tools button[aria-pressed='true'] { background: var(--glass-pill); }
+.media-tools button:disabled { opacity: 0.3; }
+.media-tools .size { width: auto; min-width: 50px; padding: 0 9px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.media-tools .grip { cursor: grab; touch-action: none; }
+.media-tools .sep { width: 1px; height: 20px; margin: 0 3px; background: var(--line-2); }
+.drop-line {
+  position: absolute; left: -4px; right: -4px; z-index: 3; height: 3px; margin-top: -1.5px; border-radius: 2px;
+  background: var(--ink); pointer-events: none;
+}
+.drop-line::before, .drop-line::after { content: ''; position: absolute; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--ink); }
+.drop-line::before { left: -4px; }
+.drop-line::after { right: -4px; }
+html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.media.is-resizing .media-frame { transition: none; }
+@media (prefers-reduced-motion: reduce) { .media-frame { transition: none; } }
 .lightbox { width: 100%; max-height: 64dvh; object-fit: contain; border-radius: 14px; background: var(--surface-2); }
 .photo-ph { display: block; background: var(--surface-2); }
 .photo-ph.is-loading { animation: photo-pulse 1.2s ease-in-out infinite alternate; }
