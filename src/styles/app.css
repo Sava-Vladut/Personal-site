@@ -122,6 +122,13 @@ code { font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-
 .small { font-size: 13px; }
 .hint { color: var(--ink-3); font-size: 13.5px; margin: 4px 0 14px; }
 .error { color: var(--danger); font-size: 14px; margin-top: 10px; }
+.version { display: block; margin: 28px auto 0; padding: 6px 12px; border-radius: 99px; color: var(--ink-3); font-size: 12.5px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.version:hover { background: var(--surface-2); color: var(--ink-2); }
+.version + .credit { margin-top: 8px; }
+.release + .release { margin-top: 22px; }
+.release-head { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.release ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.release li + li { margin-top: 4px; }
 .credit { color: var(--ink-3); font-size: 12px; text-align: center; margin: 28px 8px 8px; line-height: 1.6; }
 .definition { font: 400 15.5px/1.5 var(--serif); color: var(--ink-2); margin-top: 12px; }
 .definition.big { font-size: 18px; margin: 4px 0 0; }

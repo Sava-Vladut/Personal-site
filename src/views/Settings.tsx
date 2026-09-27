@@ -3,10 +3,11 @@ import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } 
 import { navigate } from '../lib/router';
 import { deleteAll, exportJSON, importJSON, setSettings, toast, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
-import { todayKey } from '../lib/dates';
+import { shortDate, todayKey } from '../lib/dates';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
+import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -38,6 +39,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
   const [setup, setSetup] = useState(false);
+  const [changelog, setChangelog] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -223,12 +225,15 @@ export function Settings({ query }: { query: URLSearchParams }) {
         </section>
       )}
 
+      <button class="version" onClick={() => setChangelog(true)}>Version {VERSION}</button>
+
       <p class="credit">
         Emotion wheel from Mindful · Emotion Quest. Music, artwork and player from Spotify. Images from Openverse, each under its own open license. Icons: Tabler Icons and Microsoft Fluent Emoji (MIT). Type: Source Serif 4 and Instrument Sans (OFL).
       </p>
 
       <ConnectSetup redirect={sp?.redirect} open={setup} onClose={() => setSetup(false)} />
       <JoinSheet open={joining} onClose={() => setJoining(false)} />
+      <ChangelogSheet open={changelog} onClose={() => setChangelog(false)} />
     </div>
   );
 }
@@ -284,6 +289,20 @@ function JoinSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
         />
       </form>
       {error && <p class="hint danger" role="alert">{error}</p>}
+    </Sheet>
+  );
+}
+
+/** Every version, newest first, with what it changed. */
+function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name="sparkles" /> What’s new</span>} label="What’s new" tall>
+      {CHANGELOG.map((r) => (
+        <section class="release" key={r.version}>
+          <h3 class="release-head">{r.version} <span class="muted small">{shortDate(r.date)}</span></h3>
+          <ul>{r.changes.map((c) => <li>{c}</li>)}</ul>
+        </section>
+      ))}
     </Sheet>
   );
 }
