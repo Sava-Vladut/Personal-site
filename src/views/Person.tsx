@@ -37,7 +37,7 @@ export function PersonView({ id }: { id: string }) {
   const nameRef = useAutosize(draft?.name ?? '');
   const textRef = useAutosize(draft?.text ?? '');
   const moments = useMoments().get(draft?.id ?? '') ?? [];
-  const recommended = useBooks().filter((b) => b.from && b.from === draft?.id);
+  const books = useBooks().filter((b) => b.from && b.from === draft?.id);
 
   const syncUrl = () => {
     const d = latest.current;
@@ -243,10 +243,10 @@ export function PersonView({ id }: { id: string }) {
         )}
       </section>
 
-      {recommended.length > 0 && (
+      {books.length > 0 && (
         <section class="section">
-          <h2 class="section-title">Books {first} recommended</h2>
-          <div class="book-rows">{recommended.map((b) => <BookRow b={b} onClick={() => { flush(); navigate('book/' + b.id); }} />)}</div>
+          <h2 class="section-title">Books · thinking of {first}</h2>
+          <div class="book-rows">{books.map((b) => <BookRow b={b} onClick={() => { flush(); navigate('book/' + b.id); }} />)}</div>
         </section>
       )}
 

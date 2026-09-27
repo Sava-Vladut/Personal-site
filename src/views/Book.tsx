@@ -222,12 +222,12 @@ export function BookView({ id }: { id: string }) {
       </div>
       {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition">{EMOTION[draft.emotions[0]].def}</p>}
 
-      <div class="eyebrow person-label">Recommended by</div>
+      <div class="eyebrow person-label">Thinking of</div>
       <div class="meta person-meta">
         {from ? (
           <PersonChip p={from} onRemove={() => update({ from: null })} />
         ) : (
-          <button class="chip" onClick={() => setOpen('from')}><Icon name="user-plus" size={16} /> Someone who told you about it</button>
+          <button class="chip" onClick={() => setOpen('from')}><Icon name="user-plus" size={16} /> Add someone</button>
         )}
       </div>
 
@@ -275,7 +275,6 @@ export function BookView({ id }: { id: string }) {
       <PeopleSheet
         open={open === 'from'}
         onClose={() => setOpen(null)}
-        title="Who recommended it?"
         selected={draft.from ? [draft.from] : []}
         onChange={(ids) => { update({ from: ids.find((x) => x !== draft.from) ?? null }); setOpen(null); }}
       />

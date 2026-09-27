@@ -80,7 +80,7 @@ export interface Book {
   page: number | null;      // how far in, while reading
   text: string;             // your thoughts on it
   emotions: string[];       // how it made you feel, first one is the main feeling
-  from: string | null;      // the person who recommended it
+  from: string | null;      // the person you're thinking of
   created: number;
   updated: number;
 }
