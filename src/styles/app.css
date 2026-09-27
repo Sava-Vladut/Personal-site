@@ -112,7 +112,6 @@ code { font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-
   animation: page-in 0.3s var(--ease-emph);
 }
 .page-head { margin-bottom: 18px; }
-.brand { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--ink-3); margin-bottom: 10px; letter-spacing: 0.01em; }
 .title { font: 500 clamp(26px, 7.4vw, 34px)/1.12 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
 .title-s { font: 500 22px/1.25 var(--serif); letter-spacing: -0.01em; }
 .subtitle { color: var(--ink-3); margin-top: 6px; font-size: 14.5px; }

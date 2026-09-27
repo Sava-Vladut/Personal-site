@@ -13,7 +13,7 @@ import { Sky } from '../components/Sky';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
-import { AppMark, Icon, NoteIcon, Sprite } from '../components/icons';
+import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 
 export function Journal() {
@@ -70,7 +70,6 @@ export function Journal() {
       <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
       <Sky world={world} />
       <header class="page-head">
-        <div class="brand"><AppMark size={12} /> My Mind</div>
         <div class="row between">
           <h1 class="title">{longToday()}</h1>
           <div class="row">

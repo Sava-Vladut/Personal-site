@@ -190,7 +190,6 @@
   content: ''; position: absolute; inset: 0 0 auto; height: 150px; z-index: -1; pointer-events: none;
   background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 60%, transparent) 40%, transparent);
 }
-.journal-top .brand { color: color-mix(in oklab, var(--sky) 40%, var(--ink-2)); }
 .journal-top .icon-btn:hover, .journal-top .icon-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--surface) 70%, transparent); }
 .journal-top .page-head { margin-bottom: 30px; }
 .journal-top .filter-note { margin: 10px 0 0; }
