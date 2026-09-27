@@ -110,7 +110,7 @@ export function Journal() {
         </div>
       )}
 
-      {!filtering && <CheckInPrompt />}
+      {!filtering && <CheckInPrompt entries={entries} />}
 
       <div class="chips scroll-x filters" role="toolbar" aria-label="Filter">
         {([['all', 'All'], ['note', 'Notes'], ['checkin', 'Check-ins']] as const).map(([v, label]) => (
@@ -153,21 +153,32 @@ export function Journal() {
   );
 }
 
-function CheckInPrompt() {
+/** The nudge to check in: pick the world that feels closest. Once you have today, it shows how you last felt. */
+function CheckInPrompt({ entries }: { entries: Entry[] }) {
+  const today = todayKey();
+  const last = entries.find((e) => e.kind === 'checkin' && e.date === today && e.emotions.length);
+  const em = last ? EMOTION[last.emotions[0]] : null;
   return (
-    <div class="prompt card">
-      <div>
-        <div class="prompt-q">How are you feeling?</div>
-        <div class="prompt-sub">Name it to tame it.</div>
+    <section class="prompt card">
+      <div class="prompt-head">
+        <h2 class="prompt-q">How are you feeling?</h2>
+        {em ? (
+          <button class="prompt-last" onClick={() => navigate('note/' + last!.id)}>
+            <Sprite core={em.core} size={11} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}
+          </button>
+        ) : (
+          <span class="prompt-sub">Name it to tame it.</span>
+        )}
       </div>
       <div class="prompt-worlds">
         {PICKER_ORDER.map((c) => (
-          <button aria-label={CORE[c].name} title={CORE[c].name} onClick={() => navigate('tracker?world=' + c)}>
+          <button style={{ '--c': `var(--emo-${c})` }} aria-label={CORE[c].name} title={CORE[c].name} onClick={() => navigate('tracker?world=' + c)}>
             <Sprite core={c} size={18} />
+            <span>{shortName(c)}</span>
           </button>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
