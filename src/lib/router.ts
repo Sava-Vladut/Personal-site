@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'stats' | 'settings' | 'note';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'stats' | 'settings' | 'note' | 'person';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -15,7 +15,8 @@ function parse(): Route {
   const query = new URLSearchParams(qs);
   const visit = ++visits;
   if (head === 'note') return { name: 'note', id: id || 'new', query, visit };
-  if (head === 'tracker' || head === 'stats' || head === 'settings') return { name: head, query, visit };
+  if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'stats' || head === 'settings') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 

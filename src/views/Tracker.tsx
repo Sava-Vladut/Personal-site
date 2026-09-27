@@ -2,11 +2,12 @@ import { useMemo, useState } from 'preact/hooks';
 import { EMOTION, FEELINGS, shortName } from '../data/emotions';
 import { keyOf, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { blankEntry, deleteEntry, saveEntry, toast, useEntries, useSettings } from '../lib/store';
+import { blankEntry, deleteEntry, getPeople, saveEntry, toast, useEntries, useSettings } from '../lib/store';
 import { streaks } from '../lib/stats';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
 import { EmotionWheel } from '../components/EmotionWheel';
 import { Icon, Sprite } from '../components/icons';
+import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
 
 const localInput = (ms: number) => {
@@ -22,6 +23,10 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   const [intensity, setIntensity] = useState(3);
   const [note, setNote] = useState('');
   const [when, setWhen] = useState<string | null>(null);
+  // Checking in from a person's page tags them from the start.
+  const tagged = () => { const pid = query.get('person'); return pid && getPeople().some((p) => p.id === pid) ? [pid] : []; };
+  const [people, setPeople] = useState<string[]>(tagged);
+  const [picking, setPicking] = useState(false);
 
   const named = useMemo(() => new Set(entries.flatMap((e) => e.emotions).filter((id) => EMOTION[id]?.depth === 2)), [entries]);
   const today = todayKey();
@@ -34,12 +39,13 @@ export function Tracker({ query }: { query: URLSearchParams }) {
     setIntensity(3);
     setNote('');
     setWhen(null);
+    setPeople([]);
   };
 
   const log = async () => {
     if (!picked) return;
     const time = when ? new Date(when).getTime() : Date.now();
-    const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), time, date: keyOf(new Date(time)) };
+    const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), people, time, date: keyOf(new Date(time)) };
     const fresh = EMOTION[picked].depth === 2 && !named.has(picked);
     await saveEntry(e);
     const name = EMOTION[picked].depth === 0 ? shortName(picked) : EMOTION[picked].name;
@@ -77,6 +83,9 @@ export function Tracker({ query }: { query: URLSearchParams }) {
             <IntensityPicker value={intensity} onChange={setIntensity} />
           </div>
           <textarea class="input" rows={2} placeholder="What’s behind it? (optional)" value={note} onInput={(e) => setNote(e.currentTarget.value)} aria-label="Note" />
+          <div class="meta confirm-people">
+            <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} label="Who’s it about?" />
+          </div>
           <div class="row between">
             <span class="eyebrow">When</span>
             {when === null ? (
@@ -111,6 +120,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
           <p class="empty-note">No check-ins yet today.</p>
         )}
       </section>
+
+      <PeopleSheet open={picking} onClose={() => setPicking(false)} selected={people} onChange={setPeople} />
 
       <button class="card dex-link" onClick={() => navigate('stats?tab=dex')}>
         <div>

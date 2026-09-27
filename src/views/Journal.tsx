@@ -2,18 +2,20 @@ import { useMemo, useState } from 'preact/hooks';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
 import { dayLabel, longToday, rangeLabel, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { useEntries, useReady, type Entry } from '../lib/store';
+import { useEntries, usePeople, useReady, type Entry } from '../lib/store';
 import { plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { Calendar } from '../components/Calendar';
 import { EmotionChip } from '../components/emotion';
 import { PhotoImg } from '../components/Photo';
+import { PersonChip, usePeopleById } from '../components/people';
 import { AppMark, Icon, NoteIcon, Sprite } from '../components/icons';
 
 type Filter = 'all' | 'note' | 'checkin' | string; // string = core emotion id
 
 export function Journal() {
   const entries = useEntries();
+  const people = usePeople();
   const ready = useReady();
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
@@ -33,17 +35,18 @@ export function Journal() {
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const names = new Map(people.map((p) => [p.id, p.name]));
     return entries.filter((e) => {
       if (filter === 'note' || filter === 'checkin') { if (e.kind !== filter) return false; }
       else if (filter !== 'all' && !e.emotions.some((id) => id.startsWith(filter))) return false;
       if (day && !(e.date === day || (e.dateEnd && e.date <= day && day <= e.dateEnd))) return false;
       if (words.length) {
-        const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')}`.toLowerCase();
+        const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')}`.toLowerCase();
         if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;
     });
-  }, [entries, filter, q, day]);
+  }, [entries, people, filter, q, day]);
 
   const groups = useMemo(() => {
     const out: [string, Entry[]][] = [];
@@ -77,7 +80,7 @@ export function Journal() {
       {searching && (
         <label class="search">
           <Icon name="search" size={18} />
-          <input type="search" autoFocus placeholder="Search notes, feelings and songs" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search notes" />
+          <input type="search" autoFocus placeholder="Search notes, feelings, people and songs" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search notes" />
         </label>
       )}
 
@@ -162,9 +165,11 @@ function CheckInPrompt() {
   );
 }
 
-function NoteCard({ e }: { e: Entry }) {
+export function NoteCard({ e }: { e: Entry }) {
+  const byId = usePeopleById();
   const excerpt = plainText(e.text).trim().slice(0, 240);
   const pictures = e.photos.length + e.images.length;
+  const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   return (
     <button class="note card" onClick={() => navigate('note/' + e.id)}>
       <div class="note-top">
@@ -175,10 +180,11 @@ function NoteCard({ e }: { e: Entry }) {
         </div>
       </div>
       {excerpt && e.title.trim() && <p class="note-text">{excerpt}</p>}
-      {(e.emotions.length > 0 || pictures > 0 || e.music.length > 0) && (
+      {(e.emotions.length > 0 || pictures > 0 || e.music.length > 0 || people.length > 0) && (
         <div class="note-foot">
           <div class="note-emos">
             {e.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
+            {people.map((p) => <PersonChip p={p} size="sm" />)}
             {e.music.length > 0 && (
               <span class="note-music" title={e.music.map((m) => m.title).join(', ')}>
                 <Icon name="music" size={14} /> <span>{e.music[0].title}</span>{e.music.length > 1 && ` +${e.music.length - 1}`}
@@ -199,13 +205,15 @@ function NoteCard({ e }: { e: Entry }) {
 }
 
 export function CheckInRow({ e }: { e: Entry }) {
+  const byId = usePeopleById();
   const id = e.emotions[0];
   const em = id ? EMOTION[id] : null;
+  const with_ = e.people.map((pid) => byId.get(pid)?.name).filter(Boolean);
   return (
     <button class="checkin" onClick={() => navigate('note/' + e.id)}>
       {em ? <Sprite core={em.core} size={16} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
-      <span class="checkin-meta">{em && em.depth > 0 ? shortName(em.core) : ''}{e.text.trim() ? ` · ${plainText(e.text).trim().slice(0, 60)}` : ''}</span>
+      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', with_.length ? `with ${with_.join(', ')}` : '', plainText(e.text).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{timeLabel(e.time)}</span>
     </button>
   );

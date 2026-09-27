@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { navigate } from '../lib/router';
-import { deleteAll, exportJSON, importJSON, setSettings, toast, useEntries, useSettings, type Settings as S } from '../lib/store';
+import { deleteAll, exportJSON, importJSON, setSettings, toast, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { todayKey } from '../lib/dates';
 import { Icon, type UiName } from '../components/icons';
@@ -33,6 +33,7 @@ function ago(t: number) {
 export function Settings({ query }: { query: URLSearchParams }) {
   const settings = useSettings();
   const entries = useEntries();
+  const people = usePeople();
   const sync = useSync();
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
@@ -62,14 +63,16 @@ export function Settings({ query }: { query: URLSearchParams }) {
     try {
       const r = await importJSON(await f.text());
       r.icons.forEach((id) => resolveIcon(id));
-      toast(r.changed ? `Imported ${r.changed} ${r.changed === 1 ? 'entry' : 'entries'}` : 'Nothing new in that backup');
+      const parts = [r.changed ? `${r.changed} ${r.changed === 1 ? 'entry' : 'entries'}` : '', r.people ? `${r.people} ${r.people === 1 ? 'person' : 'people'}` : ''].filter(Boolean);
+      toast(parts.length ? `Imported ${parts.join(' and ')}` : 'Nothing new in that backup');
     } catch {
       toast('That file isn’t a My Mind backup');
     }
   };
   const wipe = async () => {
     const where = sync.on ? 'from this device and every device synced with it' : 'from this device';
-    if (!confirm(`Delete all ${entries.length} entries ${where}? This can’t be undone — export a backup first if you might want them.`)) return;
+    const them = people.length ? ` and ${people.length} ${people.length === 1 ? 'person' : 'people'}` : '';
+    if (!confirm(`Delete all ${entries.length} entries${them} ${where}? This can’t be undone — export a backup first if you might want them.`)) return;
     await deleteAll();
     toast('All entries deleted');
   };
@@ -165,7 +168,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <div>
               <div class="row gap-s"><Icon name={sync.on ? 'devices' : 'lock'} size={18} /> {sync.on ? 'Synced across your devices' : 'Stored on this device only'}</div>
               <div class="muted small">
-                {notes} notes · {entries.length - notes} check-ins.{' '}
+                {notes} notes · {entries.length - notes} check-ins · {people.length} {people.length === 1 ? 'person' : 'people'}.{' '}
                 {sync.on ? 'The server keeps an encrypted copy that only devices with your code can read.' : 'Nothing is uploaded unless you turn on saving to the server.'}
               </div>
             </div>
@@ -198,7 +201,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
           )}
           <button class="list-row action" onClick={download}><span class="row gap-s"><Icon name="download" size={18} /> Export backup</span><Icon name="chevron-right" size={18} /></button>
           <button class="list-row action" onClick={() => file.current?.click()}><span class="row gap-s"><Icon name="upload" size={18} /> Import backup</span><Icon name="chevron-right" size={18} /></button>
-          <button class="list-row action danger" onClick={wipe} disabled={!entries.length}><span class="row gap-s"><Icon name="trash" size={18} /> Delete all entries</span></button>
+          <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length}><span class="row gap-s"><Icon name="trash" size={18} /> Delete all entries</span></button>
           {sync.on && (
             <button class="list-row action danger" onClick={removeServer}><span class="row gap-s"><Icon name="cloud" size={18} /> Delete server copy</span></button>
           )}

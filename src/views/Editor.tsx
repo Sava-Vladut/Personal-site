@@ -6,17 +6,18 @@ import { bodyOf, insertMedia, removeMedia, serializeBody, type Body, type Media 
 import { imageSrc } from '../lib/images';
 import { addPhotos, usePhotoUrl, type Photo } from '../lib/photos';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getEntries, isEmpty, saveEntry, toast, type Entry, type Music, type WebImage } from '../lib/store';
+import { blankEntry, deleteEntry, getEntries, getPeople, isEmpty, saveEntry, toast, type Entry, type Music, type WebImage } from '../lib/store';
 import { DateSheet } from '../components/Calendar';
 import { EmotionChip, EmotionPicker, IntensityPicker } from '../components/emotion';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { PhotoImg } from '../components/Photo';
+import { PeopleChips, PeopleSheet } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
 
-type Open = null | 'icon' | 'date' | 'emotion' | 'images' | 'spotify' | { image: WebImage } | { photo: Photo } | { music: Music };
+type Open = null | 'icon' | 'date' | 'emotion' | 'people' | 'images' | 'spotify' | { image: WebImage } | { photo: Photo } | { music: Music };
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -59,7 +60,12 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
 }
 
 export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
-  const [draft, setDraft] = useState<Entry | null>(() => (id === 'new' ? blankEntry('note') : getEntries().find((e) => e.id === id) ?? null));
+  const [draft, setDraft] = useState<Entry | null>(() => {
+    if (id !== 'new') return getEntries().find((e) => e.id === id) ?? null;
+    // "Write about …" from a person's page starts the note already tagged with them.
+    const pid = query?.get('person');
+    return { ...blankEntry('note'), people: pid && getPeople().some((p) => p.id === pid) ? [pid] : [] };
+  });
   const [open, setOpen] = useState<Open>(null);
   const [status, setStatus] = useState('');
   const [adding, setAdding] = useState(0);
@@ -108,6 +114,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     addEventListener('popstate', syncUrl);
     // Back from logging in to Spotify (it returns to this note): say how it went and reopen the picker.
     const sp = query?.get('spotify');
+    if (query?.get('person')) history.replaceState(history.state, '', '#/note/new');
     if (sp) {
       history.replaceState(history.state, '', location.hash.split('?')[0]);
       toast(sp === 'connected' ? 'Spotify connected' : sp === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
@@ -228,6 +235,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </button>
         )}
       </div>
+      <div class="meta people-meta">
+        <PeopleChips ids={draft.people} onChange={(people) => update({ people })} onAdd={() => setOpen('people')} label="Who is it about?" />
+      </div>
 
       {draft.emotions.length > 0 && (
         <div class="meta-row">
@@ -291,6 +301,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <Sheet open={open === 'emotion'} onClose={close} title="How does it feel?">
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
+      <PeopleSheet open={open === 'people'} onClose={close} selected={draft.people} onChange={(people) => update({ people })} />
       <ImageSearchSheet
         open={open === 'images'}
         onClose={close}

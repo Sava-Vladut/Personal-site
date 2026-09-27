@@ -6,6 +6,8 @@ import { TooltipLayer } from './components/charts';
 import { Icon, type UiName } from './components/icons';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
+import { People } from './views/People';
+import { PersonView } from './views/Person';
 import { Settings } from './views/Settings';
 import { Stats } from './views/Stats';
 import { Tracker } from './views/Tracker';
@@ -13,6 +15,7 @@ import { Tracker } from './views/Tracker';
 const NAV: [RouteName, string, UiName, string][] = [
   ['journal', 'Journal', 'notebook', ''],
   ['tracker', 'Check in', 'mood-smile', 'tracker'],
+  ['people', 'People', 'users', 'people'],
   ['stats', 'Stats', 'chart-dots', 'stats'],
   ['settings', 'Settings', 'settings', 'settings'],
 ];
@@ -29,8 +32,12 @@ export function App() {
       <main class={`app route-${route.name}`}>
         {route.name === 'note' ? (
           <Editor key={route.id === 'new' ? `new-${route.visit}` : route.id} id={route.id!} query={route.query} />
+        ) : route.name === 'person' ? (
+          <PersonView key={route.id === 'new' ? `new-${route.visit}` : route.id} id={route.id!} />
+        ) : route.name === 'people' ? (
+          <People />
         ) : route.name === 'tracker' ? (
-          <Tracker key={route.query.get('world') ?? ''} query={route.query} />
+          <Tracker key={`${route.query.get('world') ?? ''}|${route.query.get('person') ?? ''}`} query={route.query} />
         ) : route.name === 'stats' ? (
           <Stats query={route.query} />
         ) : route.name === 'settings' ? (
@@ -39,7 +46,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && <TabBar active={route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && <TabBar active={route.name} />}
       <Toasts />
       <TooltipLayer />
     </>
@@ -62,7 +69,7 @@ function TabBar({ active }: { active: RouteName }) {
   }
   return (
     <nav class="nav" aria-label="Main">
-      <div ref={bar} class="tabbar glass" data-dir={dir.current}>
+      <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': NAV.length }}>
         {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
         {NAV.map(([name, label, icon, path]) => <NavItem active={active === name} label={label} icon={icon} path={path} />)}
       </div>
