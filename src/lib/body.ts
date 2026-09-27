@@ -1,6 +1,6 @@
 // A note's text can hold its pictures inline: a line of its own that reads [[photo:<id>]] or [[image:<url>]].
 // Split, the body is text, picture, text, picture, …, text — always one more text than pictures.
-import type { Entry } from './store';
+import type { Entry, WebImage } from './store';
 
 export type Media = { kind: 'photo'; id: string } | { kind: 'image'; url: string };
 export interface Body { texts: string[]; media: Media[] }
@@ -29,6 +29,16 @@ export function parseBody(text: string): Body {
 }
 
 export const serializeBody = ({ texts, media }: Body) => texts.reduce((s, t, i) => s + (i ? '\n' + marker(media[i - 1]) + '\n' : '') + t, '');
+
+// Dragging a picture onto the text used to drop its address in as words. Nobody writes these lines themselves.
+const OPENVERSE = /^https:\/\/api\.openverse\.org\/v1\/images\/[0-9a-f-]+\/(thumb\/)?$/;
+
+/** Takes out lines that are only the address of one of the note's images (or of any Openverse image). */
+export function dropImageLinks(text: string, images: WebImage[]) {
+  if (!text.includes('https://')) return text;
+  const known = new Set(images.flatMap((i) => [i.url, i.thumb]));
+  return text.split('\n').filter((l) => !(known.has(l.trim()) || OPENVERSE.test(l.trim()))).join('\n');
+}
 
 /** The words only, for excerpts, search and counts. */
 export const plainText = (text: string) => parseBody(text).texts.filter((t) => t.trim()).join('\n\n');

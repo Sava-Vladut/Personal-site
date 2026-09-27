@@ -81,7 +81,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 button:disabled { cursor: default; opacity: 0.45; }
 a { color: inherit; -webkit-tap-highlight-color: transparent; }
 input, textarea { font: inherit; color: inherit; }
-img { display: block; max-width: 100%; }
+img { display: block; max-width: 100%; -webkit-user-drag: none; }
 h1, h2, h3, p { margin: 0; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
 ::selection { background: color-mix(in oklab, var(--ink) 18%, transparent); }

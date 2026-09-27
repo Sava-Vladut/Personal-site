@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { db } from './db';
-import { plainText } from './body';
+import { dropImageLinks, plainText } from './body';
 import { todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
 import { PHOTO_ID, clearPhotos, exportPhotos, importPhotos, prunePhotos, type Photo } from './photos';
@@ -208,31 +208,32 @@ const str = (v: unknown, max = 100_000) => (typeof v === 'string' ? v.slice(0, m
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !KEY.test(raw.date)) return null;
   const now = Date.now();
+  const images: WebImage[] = Array.isArray(raw.images)
+    ? raw.images
+        .filter((i: any) => i && /^https:\/\//.test(i.url))
+        .map((i: any) => ({
+          url: str(i.url, 2000),
+          thumb: /^https:\/\//.test(i.thumb) ? str(i.thumb, 2000) : undefined,
+          w: +i.w || undefined,
+          h: +i.h || undefined,
+          link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined,
+          title: str(i.title, 300) || undefined,
+          credit: str(i.credit, 300) || undefined,
+        }))
+        .slice(0, 12)
+    : [];
   return {
     id: str(raw.id, 40) || uid(),
     kind: raw.kind === 'checkin' ? 'checkin' : 'note',
     title: str(raw.title, 300),
     icon: typeof raw.icon === 'string' && /^[te]:[a-z0-9-]+$/.test(raw.icon) ? raw.icon : null,
-    text: str(raw.text),
+    text: dropImageLinks(str(raw.text), images),
     emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, 3) : [],
     intensity: Math.min(5, Math.max(1, Math.round(Number(raw.intensity) || 3))),
     date: raw.date,
     dateEnd: KEY.test(raw.dateEnd) && raw.dateEnd > raw.date ? raw.dateEnd : null,
     time: Number.isFinite(raw.time) ? raw.time : now,
-    images: Array.isArray(raw.images)
-      ? raw.images
-          .filter((i: any) => i && /^https:\/\//.test(i.url))
-          .map((i: any) => ({
-            url: str(i.url, 2000),
-            thumb: /^https:\/\//.test(i.thumb) ? str(i.thumb, 2000) : undefined,
-            w: +i.w || undefined,
-            h: +i.h || undefined,
-            link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined,
-            title: str(i.title, 300) || undefined,
-            credit: str(i.credit, 300) || undefined,
-          }))
-          .slice(0, 12)
-      : [],
+    images,
     photos: Array.isArray(raw.photos)
       ? raw.photos
           .filter((p: any) => p && typeof p.id === 'string' && PHOTO_ID.test(p.id))

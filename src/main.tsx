@@ -9,6 +9,10 @@ import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
 
 applyTheme();
+// Pictures aren't meant to be dragged: dropped on a text box, the browser writes the image's address into the note.
+addEventListener('dragstart', (e) => {
+  if (e.target instanceof HTMLImageElement) e.preventDefault();
+});
 // Until the upgrade can finish, say why the journal isn't showing instead of leaving the page blank.
 onBlocked(() =>
   render(
