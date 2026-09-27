@@ -2,7 +2,7 @@
 // browser, with a key derived from that code, and the server keeps only the ciphertext, filed under an id that is
 // also derived from the code. So the server can't read the journal, and anyone with the code can.
 // Each device merges what's on the server with what it has (newest edit wins, deletions stick) and sends the result back.
-import { getDeleted, getEntries, getPeople, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
+import { getBooks, getDeleted, getEntries, getPeople, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
 import { photoBlob, photoIds, storePhotos, type Photo } from './photos';
 import { resolveIcon } from './icons';
 
@@ -113,6 +113,7 @@ async function failure(res: Response) {
 interface Doc {
   entries?: { id?: unknown; updated?: unknown }[];
   people?: { id?: unknown; updated?: unknown }[];
+  books?: { id?: unknown; updated?: unknown }[];
   deleted?: Record<string, number>;
 }
 
@@ -127,9 +128,10 @@ async function download(id: string, key: CryptoKey, rev: string | null) {
 
 /** Whether this device has something the server's copy lacks. */
 function aheadOf(doc: Doc) {
-  const there = new Map([...(Array.isArray(doc.entries) ? doc.entries : []), ...(Array.isArray(doc.people) ? doc.people : [])].map((e) => [e?.id, Number(e?.updated)]));
+  const list = (x: unknown) => (Array.isArray(x) ? (x as { id?: unknown; updated?: unknown }[]) : []);
+  const there = new Map([...list(doc.entries), ...list(doc.people), ...list(doc.books)].map((e) => [e?.id, Number(e?.updated)]));
   const gone = doc.deleted ?? {};
-  return [...getEntries(), ...getPeople()].some((e) => !(there.get(e.id)! >= e.updated)) || Object.entries(getDeleted()).some(([id, t]) => !(gone[id] >= t));
+  return [...getEntries(), ...getPeople(), ...getBooks()].some((e) => !(there.get(e.id)! >= e.updated)) || Object.entries(getDeleted()).some(([id, t]) => !(gone[id] >= t));
 }
 
 const photosInUse = () => {
@@ -199,7 +201,7 @@ async function pass(s: State) {
       s.dirty = false; // edits made while uploading set it again
       try {
         await sendPhotos(s, id, key);
-        const body = await encrypt(key, enc.encode(JSON.stringify({ app: 'my-mind', version: 1, entries: getEntries(), people: getPeople(), deleted: getDeleted() })));
+        const body = await encrypt(key, enc.encode(JSON.stringify({ app: 'my-mind', version: 1, entries: getEntries(), people: getPeople(), books: getBooks(), deleted: getDeleted() })));
         const res = await call(id, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'X-Sync-Rev': rev ?? 'new' }, body });
         if (res.status === 409) {
           s.dirty = true;

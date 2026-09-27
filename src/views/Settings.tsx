@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { goBack, navigate } from '../lib/router';
-import { deleteAll, exportJSON, importJSON, setSettings, toast, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
+import { deleteAll, exportJSON, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
 import { Icon, type UiName } from '../components/icons';
@@ -35,6 +35,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const settings = useSettings();
   const entries = useEntries();
   const people = usePeople();
+  const books = useBooks();
   const sync = useSync();
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
@@ -68,16 +69,18 @@ export function Settings({ query }: { query: URLSearchParams }) {
       const parts = [
         r.changed ? `${r.changed} ${r.changed === 1 ? 'entry' : 'entries'}` : '',
         r.people ? `${r.people} ${r.people === 1 ? 'person' : 'people'}` : '',
+        r.books ? `${r.books} ${r.books === 1 ? 'book' : 'books'}` : '',
         r.photos ? `${r.photos} ${r.photos === 1 ? 'photo' : 'photos'}` : '',
       ].filter(Boolean);
-      toast(parts.length ? `Imported ${parts.join(' and ')}` : 'Nothing new in that backup');
+      toast(parts.length ? `Imported ${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}` : 'Nothing new in that backup');
     } catch {
       toast('That file isn’t a My Mind backup');
     }
   };
   const wipe = async () => {
     const where = sync.on ? 'from this device and every device synced with it' : 'from this device';
-    const them = people.length ? ` and ${people.length} ${people.length === 1 ? 'person' : 'people'}` : '';
+    const them = [people.length ? `${people.length} ${people.length === 1 ? 'person' : 'people'}` : '', books.length ? `${books.length} ${books.length === 1 ? 'book' : 'books'}` : '']
+      .filter(Boolean).map((x) => ' and ' + x).join('');
     if (!confirm(`Delete all ${entries.length} entries${them} ${where}? This can’t be undone — export a backup first if you might want them.`)) return;
     await deleteAll();
     toast('All entries deleted');
@@ -174,7 +177,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <div>
               <div class="row gap-s"><Icon name={sync.on ? 'devices' : 'lock'} size={18} /> {sync.on ? 'Synced across your devices' : 'Stored on this device only'}</div>
               <div class="muted small">
-                {notes} notes · {entries.length - notes} check-ins · {people.length} {people.length === 1 ? 'person' : 'people'}.{' '}
+                {notes} notes · {entries.length - notes} check-ins · {people.length} {people.length === 1 ? 'person' : 'people'} · {books.length} {books.length === 1 ? 'book' : 'books'}.{' '}
                 {sync.on ? 'The server keeps an encrypted copy that only devices with your code can read.' : 'Nothing is uploaded unless you turn on saving to the server.'}
               </div>
             </div>
@@ -207,7 +210,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
           )}
           <button class="list-row action" onClick={download}><span class="row gap-s"><Icon name="download" size={18} /> Export backup</span><Icon name="chevron-right" size={18} /></button>
           <button class="list-row action" onClick={() => file.current?.click()}><span class="row gap-s"><Icon name="upload" size={18} /> Import backup</span><Icon name="chevron-right" size={18} /></button>
-          <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length}><span class="row gap-s"><Icon name="trash" size={18} /> Delete all entries</span></button>
+          <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length && !books.length}><span class="row gap-s"><Icon name="trash" size={18} /> Delete all entries</span></button>
           {sync.on && (
             <button class="list-row action danger" onClick={removeServer}><span class="row gap-s"><Icon name="cloud" size={18} /> Delete server copy</span></button>
           )}

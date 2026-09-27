@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getPeople, savePerson, toast, type Entry, type Person } from '../lib/store';
+import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getPeople, savePerson, toast, useBooks, type Entry, type Person } from '../lib/store';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
+import { BookRow } from '../components/books';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { initials } from '../components/people';
@@ -36,6 +37,7 @@ export function PersonView({ id }: { id: string }) {
   const nameRef = useAutosize(draft?.name ?? '');
   const textRef = useAutosize(draft?.text ?? '');
   const moments = useMoments().get(draft?.id ?? '') ?? [];
+  const recommended = useBooks().filter((b) => b.from && b.from === draft?.id);
 
   const syncUrl = () => {
     const d = latest.current;
@@ -240,6 +242,13 @@ export function PersonView({ id }: { id: string }) {
           <p class="empty-note">Tag {first} in a note or check-in and it shows up here.</p>
         )}
       </section>
+
+      {recommended.length > 0 && (
+        <section class="section">
+          <h2 class="section-title">Books {first} recommended</h2>
+          <div class="book-rows">{recommended.map((b) => <BookRow b={b} onClick={() => { flush(); navigate('book/' + b.id); }} />)}</div>
+        </section>
+      )}
 
       <IconSheet open={open === 'icon'} onClose={() => setOpen(null)} value={draft.icon} onChange={(icon) => update({ icon })} />
       <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={`How does ${first} make you feel?`}>

@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { BookMention } from './books';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
 // strings, so nothing written in a note can run as code.
@@ -65,14 +66,14 @@ function parse(text: string, offset = 0): Block[] {
 const INLINE = new RegExp(
   [
     /(`+)([^`\n]+?)\1/.source, //                                        1, 2 code
-    /\[\[(?:[^\]|\n]+\|)?([^\]\n]+)\]\]/.source, //                        3 internal link: shown as text
-    /\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/.source, //       4, 5 link
-    /\*\*(\S(?:[^\n]*?\S)?)\*\*/.source, //                               6 bold
-    /~~(\S(?:[^\n]*?\S)?)~~/.source, //                                   7 strike
-    /==(\S(?:[^\n]*?\S)?)==/.source, //                                   8 highlight
-    /\*(\S(?:[^*\n]*?\S)?)\*/.source, //                                  9 italic
-    /(https?:\/\/[^\s<>]*[^\s<>.,:;"'!?)\]])/.source, //                  10 bare address
-    /(^|[\s(])#([\p{L}_][\p{L}\p{N}_/-]*)/u.source, //                     11, 12 tag
+    /\[\[(?:([^\]|\n]+)\|)?([^\]\n]+)\]\]/.source, //                    3, 4 wiki link: a book on the shelf, else text
+    /\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/.source, //       5, 6 link
+    /\*\*(\S(?:[^\n]*?\S)?)\*\*/.source, //                               7 bold
+    /~~(\S(?:[^\n]*?\S)?)~~/.source, //                                   8 strike
+    /==(\S(?:[^\n]*?\S)?)==/.source, //                                   9 highlight
+    /\*(\S(?:[^*\n]*?\S)?)\*/.source, //                                  10 italic
+    /(https?:\/\/[^\s<>]*[^\s<>.,:;"'!?)\]])/.source, //                  11 bare address
+    /(^|[\s(])#([\p{L}_][\p{L}\p{N}_/-]*)/u.source, //                     12, 13 tag
   ].join('|'),
   'gu',
 );
@@ -85,14 +86,14 @@ function inline(text: string): ComponentChildren[] {
     if (i > at) out.push(text.slice(at, i));
     at = i + m[0].length;
     if (m[2] !== undefined) out.push(<code>{m[2]}</code>);
-    else if (m[3] !== undefined) out.push(<span class="md-wiki">{m[3]}</span>);
-    else if (m[4] !== undefined) out.push(<a href={m[5]} target="_blank" rel="noopener noreferrer">{inline(m[4])}</a>);
-    else if (m[6] !== undefined) out.push(<strong>{inline(m[6])}</strong>);
-    else if (m[7] !== undefined) out.push(<s>{inline(m[7])}</s>);
-    else if (m[8] !== undefined) out.push(<mark>{inline(m[8])}</mark>);
-    else if (m[9] !== undefined) out.push(<em>{inline(m[9])}</em>);
-    else if (m[10] !== undefined) out.push(<a href={m[10]} target="_blank" rel="noopener noreferrer">{m[10]}</a>);
-    else if (m[12] !== undefined) out.push(m[11], <span class="md-tag">#{m[12]}</span>);
+    else if (m[4] !== undefined) out.push(<BookMention target={m[3]} text={m[4]} />);
+    else if (m[5] !== undefined) out.push(<a href={m[6]} target="_blank" rel="noopener noreferrer">{inline(m[5])}</a>);
+    else if (m[7] !== undefined) out.push(<strong>{inline(m[7])}</strong>);
+    else if (m[8] !== undefined) out.push(<s>{inline(m[8])}</s>);
+    else if (m[9] !== undefined) out.push(<mark>{inline(m[9])}</mark>);
+    else if (m[10] !== undefined) out.push(<em>{inline(m[10])}</em>);
+    else if (m[11] !== undefined) out.push(<a href={m[11]} target="_blank" rel="noopener noreferrer">{m[11]}</a>);
+    else if (m[13] !== undefined) out.push(m[12], <span class="md-tag">#{m[13]}</span>);
   }
   if (at < text.length) out.push(text.slice(at));
   return out;

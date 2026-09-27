@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.5.0',
+    date: '2026-09-27',
+    changes: [
+      'Books: a new tab for your shelf, with books found through Open Library or added by hand',
+      'Books: rate them, and move them between Reading, Want to read, Read and Didn’t finish',
+      'Books: start and finish dates fill themselves in, and you can track your page while reading',
+      'Books: mention a book in a note with the books button (or type [[Title]]); it links to the book',
+      'Books: each book shows the notes that mention it, and how those notes felt',
+      'Books: note how a book made you feel and who recommended it; it shows on their page too',
+      'Books you’re reading appear on the journal’s front page, a tap away from writing about them',
+      'Add a book from the + button',
+      'Books are included in backups and sync',
+    ],
+  },
+  {
     version: '1.4.2',
     date: '2026-09-27',
     changes: ['Settings moved from the tab bar to the top of the journal, next to search, calendar and stats'],

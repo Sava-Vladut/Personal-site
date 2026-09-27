@@ -6,9 +6,11 @@ import { editable, messy, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
 import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
+import { findBook, mentionOf } from '../lib/books';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getEntries, getPeople, isEmpty, saveEntry, toast, type Entry, type Music } from '../lib/store';
+import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, isEmpty, saveEntry, toast, type Book, type Entry, type Music } from '../lib/store';
 import { openViewer } from '../lib/viewer';
+import { BookSheet } from '../components/books';
 import { FormatBar } from '../components/FormatBar';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
@@ -20,7 +22,7 @@ import { Sheet } from '../components/Sheet';
 import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 
-type Open = null | 'icon' | 'images' | 'spotify' | { music: Music };
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | { music: Music };
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -113,9 +115,10 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
 export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [draft, setDraft] = useState<Entry | null>(() => {
     if (id !== 'new') return getEntries().find((e) => e.id === id) ?? null;
-    // "Write about …" from a person's page starts the note already tagged with them.
+    // "Write about …" from a person's page starts the note already tagged with them; from a book's, mentioning it.
     const pid = query?.get('person');
-    return { ...blankEntry('note'), people: pid && getPeople().some((p) => p.id === pid) ? [pid] : [] };
+    const book = findBook(query?.get('book') ?? '');
+    return { ...blankEntry('note'), people: pid && getPeople().some((p) => p.id === pid) ? [pid] : [], text: book ? mentionOf(book, getBooks()) + ' ' : '' };
   });
   const [open, setOpen] = useState<Open>(null);
   const [status, setStatus] = useState('');
@@ -180,7 +183,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     addEventListener('popstate', syncUrl);
     // Back from logging in to Spotify (it returns to this note): say how it went and reopen the picker.
     const sp = query?.get('spotify');
-    if (query?.get('person')) history.replaceState(history.state, '', '#/note/new');
+    if (query?.get('person') || query?.get('book')) history.replaceState(history.state, '', '#/note/new');
     if (sp) {
       history.replaceState(history.state, '', location.hash.split('?')[0]);
       toast(sp === 'connected' ? 'Spotify connected' : sp === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
@@ -501,6 +504,22 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     return el ? editable(el) : null;
   };
 
+  /** Mentions a book where the caret was (or at the end of the note), as a link to it. */
+  const mentionBook = (b: Book) => {
+    const d = latest.current;
+    if (!d) return;
+    const bb = bodyOf(d);
+    const end = bb.texts.length - 1;
+    const { seg, pos } = reading || where.current.seg < 0 || where.current.seg > end ? { seg: end, pos: bb.texts[end].length } : where.current;
+    const t = bb.texts[seg];
+    const before = t.slice(0, pos), after = t.slice(pos);
+    const add = (before && !/\s$/.test(before) ? ' ' : '') + mentionOf(b, getBooks()) + (/^\s/.test(after) ? '' : ' ');
+    bb.texts[seg] = before + add + after;
+    where.current = { seg, pos: pos + add.length };
+    update({ text: serializeBody(bb) });
+    setOpen(null);
+  };
+
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
   const body = bodyOf(draft);
@@ -659,6 +678,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <button class="format-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
           <Icon name="brand-spotify" size={19} />
         </button>
+        <button class="format-btn" onClick={() => setOpen('book')} aria-label="Mention a book" title="Mention a book">
+          <Icon name="books" size={19} />
+        </button>
       </FormatBar>
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
 
@@ -672,6 +694,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           update({ images: [...draft.images, ...fresh], text: place(body, fresh.map((i) => ({ kind: 'image', url: i.url }))) });
         }}
       />
+      <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title="Mention a book" status="reading" />
       <SpotifySheet
         open={open === 'spotify'}
         onClose={close}

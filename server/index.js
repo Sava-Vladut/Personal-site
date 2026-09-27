@@ -59,7 +59,7 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Content-Security-Policy':
     "default-src 'self'; img-src 'self' data: blob: https:; " +
-    "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://api.openverse.org; font-src 'self'; manifest-src 'self'; " +
+    "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://api.openverse.org https://openlibrary.org; font-src 'self'; manifest-src 'self'; " +
     "worker-src 'self'; frame-src https://open.spotify.com; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };

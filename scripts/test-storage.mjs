@@ -99,6 +99,36 @@ test('an older synced deletion cannot remove a newer person saved by another tab
   assert.equal((await db.get('people'))[0].text, 'Newer edit in another tab');
 });
 
+test('books survive backup import and follow synced deletions', async () => {
+  const store = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+  await store.init();
+  const book = await store.saveBook(store.blankBook({ title: 'Dune', authors: 'Frank Herbert', status: 'read', rating: 9, finished: '2026-09-01' }));
+  assert.equal(book.rating, 9); // saved as given; clamped whenever it's read back
+  const copy = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+  await copy.init();
+  const result = await copy.importJSON(await store.exportJSON());
+  assert.equal(result.books, 1);
+  assert.deepEqual([copy.getBooks()[0].title, copy.getBooks()[0].rating, copy.getBooks()[0].finished], ['Dune', 5, '2026-09-01']);
+  await copy.mergeSynced({ deleted: { [book.id]: book.updated + 1 } });
+  assert.equal(copy.getBooks().length, 0);
+  // a newer edit elsewhere wins over an older deletion
+  await copy.mergeSynced({ books: [{ ...book, title: 'Dune (reread)', updated: book.updated + 5 }] });
+  assert.equal(copy.getBooks()[0].title, 'Dune (reread)');
+});
+
+test('book mentions resolve by title, disambiguate duplicates, and follow a rename', async () => {
+  const books = await loadModule('src/lib/books.ts', { './store': { getBooks: () => [] } });
+  const dune = { id: 'd1', title: 'Dune' }, hobbit = { id: 'h1', title: 'The Hobbit' }, dune2 = { id: 'd2', title: 'dune' };
+  assert.equal(books.mentionOf(dune, [dune, hobbit]), '[[Dune]]');
+  assert.equal(books.mentionOf(dune, [dune, dune2]), '[[book:d1|Dune]]');
+  const text = 'Loved [[dune]] and [[The Hobbit]], not [[Nothing]]. Also [[book:d2|dune]].';
+  assert.deepEqual([...books.booksIn(text, [dune, hobbit])], ['d1', 'h1']);
+  assert.deepEqual([...books.booksIn(text, [dune, hobbit, dune2])].sort(), ['d1', 'd2', 'h1']);
+  const note = { id: 'n', text: 'Reading [[Dune]] again' };
+  const renamed = books.renameMentions([note, { id: 'm', text: 'no books' }], [dune, hobbit], { ...dune, title: 'Dune (1965)' });
+  assert.deepEqual(Array.from(renamed, (e) => e.text), ['Reading [[Dune (1965)]] again']);
+});
+
 test('a matching backup repairs a missing photo without requiring a newer note', async () => {
   const note = entry({ photos: [{ id: 'p1234567', w: 1, h: 1 }] });
   let restored = [];
@@ -170,7 +200,7 @@ test('an unchanged sync document still retries a failed photo download', async (
   let documents = 0, attempts = 0;
   const sync = await loadModule('src/lib/sync.ts', {
     './store': {
-      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], mergeSynced: async () => ({ icons: [] }),
+      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], mergeSynced: async () => ({ icons: [] }),
       observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
       photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
     },

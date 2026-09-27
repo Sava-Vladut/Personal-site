@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'stats' | 'settings' | 'note' | 'person';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'books' | 'stats' | 'settings' | 'note' | 'person' | 'book';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -16,7 +16,8 @@ function parse(): Route {
   const visit = ++visits;
   if (head === 'note') return { name: 'note', id: id || 'new', query, visit };
   if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'stats' || head === 'settings') return { name: head, query, visit };
+  if (head === 'book' && id) return { name: 'book', id, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'books' || head === 'stats' || head === 'settings') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 
@@ -25,7 +26,7 @@ function parse(): Route {
    in from the right, and going back pops it off again. The CSS lives under "Page transitions". */
 
 type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';
-const TABS: RouteName[] = ['journal', 'tracker', 'people'];
+const TABS: RouteName[] = ['journal', 'tracker', 'people', 'books'];
 const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
 
 function motionFor(a: Route, b: Route): Motion | null {
@@ -94,6 +95,12 @@ export function navigate(to: string, replace = false) {
   if (replace) history.replaceState({ mmInApp: history.state?.mmInApp }, '', hash);
   else history.pushState({ mmInApp: 1 }, '', hash);
   dispatchEvent(new HashChangeEvent('hashchange'));
+}
+
+/** Navigates once an open sheet has finished closing — its history entry popping would otherwise undo it. */
+export function navigateAfterSheet(to: string) {
+  if (history.state?.mmSheet) addEventListener('popstate', () => navigate(to), { once: true });
+  else navigate(to);
 }
 
 export function goBack(fallback = '') {

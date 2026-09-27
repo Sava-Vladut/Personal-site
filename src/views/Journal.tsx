@@ -2,10 +2,12 @@ import { useMemo, useState } from 'preact/hooks';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
 import { dayLabel, longToday, rangeLabel, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { useEntries, usePeople, useReady, type Entry } from '../lib/store';
+import { useBooks, useEntries, usePeople, useReady, type Entry } from '../lib/store';
+import { booksIn } from '../lib/books';
 import { plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { stripMarkdown } from '../lib/markdown';
+import { BookChip, BookCover } from '../components/books';
 import { Calendar } from '../components/Calendar';
 import { useHold } from '../components/EntryMenu';
 import { EmotionChip } from '../components/emotion';
@@ -92,7 +94,7 @@ export function Journal() {
       {searching && (
         <label class="search">
           <Icon name="search" size={18} />
-          <input type="search" autoFocus placeholder="Search notes, feelings, people and songs" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search notes" />
+          <input type="search" autoFocus placeholder="Search notes, feelings, people, songs and books" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search notes" />
         </label>
       )}
 
@@ -117,6 +119,7 @@ export function Journal() {
       )}
 
       {!filtering && <CheckInPrompt entries={entries} />}
+      {!filtering && <ReadingNow />}
 
       {day && (
         <div class="row between filter-note">
@@ -177,8 +180,37 @@ function CheckInPrompt({ entries }: { entries: Entry[] }) {
   );
 }
 
+/** The books you're in the middle of, a tap away from their page or a note about them. */
+function ReadingNow() {
+  const reading = useBooks().filter((b) => b.status === 'reading');
+  if (!reading.length) return null;
+  return (
+    <div class="reading-strip" role="list" aria-label="Reading now">
+      {reading.map((b) => {
+        const pct = b.pages && b.page ? Math.min(100, Math.round((b.page / b.pages) * 100)) : null;
+        return (
+          <div class="reading-chip card" role="listitem">
+            <button class="reading-chip-main" onClick={() => navigate('book/' + b.id)}>
+              <BookCover b={b} width={30} />
+              <span class="book-row-main">
+                <span class="book-row-title">{b.title.trim() || 'Untitled'}</span>
+                <span class="book-row-sub">{pct !== null ? `${pct}% read` : 'Reading'}</span>
+              </span>
+            </button>
+            <button class="icon-btn small" onClick={() => navigate('note/new?book=' + b.id)} aria-label={`Write about ${b.title}`} title="Write about it">
+              <Icon name="pencil" size={16} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function NoteCard({ e }: { e: Entry }) {
   const byId = usePeopleById();
+  const shelf = useBooks();
+  const books = booksIn(e.text, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
   const excerpt = stripMarkdown(plainText(e.text)).trim().slice(0, 240);
   const pictures = e.photos.length + e.images.length;
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
@@ -194,11 +226,12 @@ export function NoteCard({ e }: { e: Entry }) {
         </div>
       </div>
       {excerpt && e.title.trim() && <p class="note-text">{excerpt}</p>}
-      {(e.emotions.length > 0 || pictures > 0 || e.music.length > 0 || people.length > 0) && (
+      {(e.emotions.length > 0 || pictures > 0 || e.music.length > 0 || people.length > 0 || books.length > 0) && (
         <div class="note-foot">
           <div class="note-emos">
             {e.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
             {people.map((p) => <PersonChip p={p} size="sm" />)}
+            {books.map((b) => <BookChip b={b} />)}
             {e.music.length > 0 && (
               <span class="note-music" title={e.music.map((m) => m.title).join(', ')}>
                 <Icon name="music" size={14} /> <span>{e.music[0].title}</span>{e.music.length > 1 && ` +${e.music.length - 1}`}

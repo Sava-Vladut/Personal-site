@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { navigate, useRoute, type RouteName } from './lib/router';
+import { navigate, navigateAfterSheet, useRoute, type RouteName } from './lib/router';
 import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
 import { EntryMenu } from './components/EntryMenu';
 import { Sheet } from './components/Sheet';
 import { Icon, type UiName } from './components/icons';
+import { BookView } from './views/Book';
+import { Books } from './views/Books';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
 import { People } from './views/People';
@@ -18,6 +20,7 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['journal', 'Journal', 'notebook', ''],
   ['tracker', 'Check in', 'mood-smile', 'tracker'],
   ['people', 'People', 'users', 'people'],
+  ['books', 'Books', 'books', 'books'],
 ];
 
 export function App() {
@@ -37,6 +40,10 @@ export function App() {
           <PersonView key={route.id === 'new' ? `new-${route.visit}` : route.id} id={route.id!} />
         ) : route.name === 'people' ? (
           <People />
+        ) : route.name === 'book' ? (
+          <BookView key={route.id} id={route.id!} />
+        ) : route.name === 'books' ? (
+          <Books query={route.query} />
         ) : route.name === 'tracker' ? (
           <Tracker key={`${route.query.get('world') ?? ''}|${route.query.get('person') ?? ''}`} query={route.query} />
         ) : route.name === 'stats' ? (
@@ -47,7 +54,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && <TabBar active={route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && <TabBar active={route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />
@@ -59,6 +66,7 @@ const ADD: [string, string, string, UiName][] = [
   ['note/new', 'Note', 'Write about your day', 'pencil'],
   ['tracker', 'Check-in', 'Log how you feel right now', 'mood-plus'],
   ['person/new', 'Person', 'Someone who matters to you', 'user-plus'],
+  ['books?add', 'Book', 'Something you’re reading or want to', 'books'],
 ];
 
 /** iOS-style floating glass tab bar, with the "add" menu as its own glass button. */
@@ -91,9 +99,8 @@ function TabBar({ active }: { active: RouteName }) {
 }
 
 function AddMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  // Closing the sheet pops its history entry; navigate once that's done so the pop doesn't undo it.
   const pick = (to: string) => {
-    addEventListener('popstate', () => navigate(to), { once: true });
+    navigateAfterSheet(to);
     onClose();
   };
   return (
