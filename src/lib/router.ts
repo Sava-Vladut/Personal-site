@@ -72,7 +72,14 @@ export function useRoute() {
           }),
       );
       t.finished.finally(() => {
-        if (n === transitions) delete root.dataset.nav;
+        if (n !== transitions) return;
+        delete root.dataset.nav;
+        // The page's own entrance animations were held off while it slid in. Letting them go now would
+        // play them a second time, like a refresh, so skip them to the end before the next paint.
+        for (const a of document.getAnimations()) {
+          const el = a.effect instanceof KeyframeEffect ? a.effect.target : null;
+          if (a instanceof CSSAnimation && el?.matches('.page, .page > *')) a.finish();
+        }
       });
     };
     addEventListener('hashchange', f);
