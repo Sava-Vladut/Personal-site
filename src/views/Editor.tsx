@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
-import { bodyOf, canStep, insertMedia, mediaKey, moveMedia, plainText, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, type Body, type Layout, type Media } from '../lib/body';
+import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { editable, messy, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
 import { listKey, toggleTask } from '../lib/markdown';
@@ -123,7 +123,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [dropping, setDropping] = useState(false);
   const [sel, setSel] = useState<string | null>(null); // the selected picture's mediaKey
   // a picture being dragged, and where it would land: how far down the note, on which side, and its size there
-  const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number } | null>(null);
+  // — or the picture it's over, to make an album with
+  const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number; onto: string | null } | null>(null);
   const [details, setDetails] = useState(false); // the Feelings page
   // Notes that already have words open formatted, to read; the pencil (or a tap on the words) switches to writing.
   const [reading, setReading] = useState(() => !!draft && id !== 'new' && !!plainText(draft.text).trim());
@@ -261,26 +262,33 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     update({ text: serializeBody(b) });
   };
 
-  const removePicture = (m: Media) => {
+  /** Removes a picture — on its own or from its album — or a whole album, with Undo. */
+  const removePicture = (target: Media | Item) => {
     const d = latest.current;
     if (!d) return;
     const b = bodyOf(d);
-    const i = b.media.findIndex((x) => sameMedia(x, m));
+    const whole = target.kind === 'album' ? b.media.findIndex((x) => sameMedia(x, target)) : -1;
+    const gone = itemsOf(target.kind === 'album' ? target : itemOf(target));
+    const { i } = findItem(b, gone[0]);
     if (i < 0) return;
     const at = b.media[i];
+    const alone = whole >= 0 || at.kind !== 'album'; // the picture's line goes with it
     const pos = b.texts[i].length + (b.texts[i] && b.texts[i + 1] ? 1 : 0); // where it sat in the joined text
-    const photo = at.kind === 'photo' ? d.photos.find((p) => p.id === at.id) : undefined;
-    const image = at.kind === 'image' ? d.images.find((x) => x.url === at.url) : undefined;
+    const isGone = (it: Item) => gone.some((g) => itemKey(g) === itemKey(it));
+    const photos = d.photos.filter((p) => isGone({ kind: 'photo', id: p.id }));
+    const images = d.images.filter((x) => isGone({ kind: 'image', url: x.url }));
+    const after = serializeBody(alone ? removeMedia(b, at) : removeItem(b, gone[0]));
     where.current = { seg: -1, pos: 0 };
-    update({ photos: d.photos.filter((p) => p !== photo), images: d.images.filter((x) => x !== image), text: serializeBody(removeMedia(b, at)) });
+    update({ photos: d.photos.filter((p) => !photos.includes(p)), images: d.images.filter((x) => !images.includes(x)), text: after });
     setSel(null);
     setOpen(null);
     const restore = (e: Entry): Partial<Entry> => ({
-      photos: photo && !e.photos.some((p) => p.id === photo.id) ? [...e.photos, photo] : e.photos,
-      images: image && !e.images.some((x) => x.url === image.url) ? [...e.images, image] : e.images,
-      text: serializeBody(insertMedia(bodyOf(e), [at], i, pos)),
+      photos: [...e.photos, ...photos.filter((p) => !e.photos.some((x) => x.id === p.id))],
+      images: [...e.images, ...images.filter((p) => !e.images.some((x) => x.url === p.url))],
+      // untouched since: as it was. Otherwise the picture goes back where it was, or (from an album) at the end.
+      text: e.text === after ? d.text : alone ? serializeBody(insertMedia(bodyOf(e), [at], i, pos)) : e.text,
     });
-    toast(photo ? 'Photo removed' : 'Image removed', {
+    toast(gone.length > 1 ? 'Album removed' : gone[0].kind === 'photo' ? 'Photo removed' : 'Image removed', {
       label: 'Undo',
       run: () => {
         if (alive.current) return latest.current && update(restore(latest.current));
@@ -293,7 +301,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   /**
    * Picks a picture up: a small copy of it follows the finger (or pointer), and an outline shows where it would land —
    * which paragraph it goes before, and on which side: over the left or right third of the note it sits on that side
-   * with the text wrapping around it, over the middle it's centred on its own. Drops it there on release; Escape cancels.
+   * with the text wrapping around it, over the middle it's centred on its own. Dropped on another picture, the two
+   * become an album (or it joins that album). Drops it on release; Escape cancels.
    */
   const startMove = (i: number, e: PointerEvent, el: HTMLElement) => {
     const bodyEl = bodyRef.current;
@@ -309,7 +318,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     // the copy under the finger, shrunk about the point that was grabbed
     const ghost = document.createElement('div');
     ghost.className = 'media-ghost';
-    const pic = el.querySelector('img');
+    const pic = el.querySelector('.media-pic');
     if (pic) ghost.append(pic.cloneNode(true));
     const scale = Math.min(1, 150 / r.width, 150 / r.height);
     const ox = e.clientX - r.left, oy = e.clientY - r.top;
@@ -318,6 +327,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
 
     let target: DropTarget | null = null;
     let side: Side = 'center';
+    let onto: string | null = null;
     let x = e.clientX, y = e.clientY;
     let frame = 0;
     const pick = () => {
@@ -325,8 +335,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const at = y + scrollY;
       target = targets.reduce((a, b) => (Math.abs(b.y - at) < Math.abs(a.y - at) ? b : a));
       side = sideAt(x, col);
+      // over another picture of this note (the copy under the finger lets touches through)
+      const over = document.elementFromPoint(x, y)?.closest<HTMLElement>('.media');
+      onto = over && over.parentElement === bodyEl && over.dataset.key !== key ? over.dataset.key! : null;
       ghost.style.transform = `translate(${x - e.clientX}px, ${y - e.clientY}px) scale(${scale})`;
-      setMoving({ key, y: target.y - (col.top + scrollY), side, layout: dropLayout(m, side), ratio });
+      ghost.classList.toggle('is-merging', !!onto);
+      setMoving({ key, y: target.y - (col.top + scrollY), side, layout: dropLayout(m, side), ratio, onto });
     };
     // Near the top or bottom of the screen the page scrolls along.
     const tick = () => {
@@ -358,6 +372,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const b = bodyOf(now);
       const j = b.media.findIndex((x) => mediaKey(x) === key);
       if (j < 0) return;
+      const into = onto ? b.media.findIndex((x) => mediaKey(x) === onto) : -1;
+      if (into >= 0) {
+        const merged = mergeMedia(b, j, into);
+        setBody(merged);
+        setSel(mediaKey(merged.media[into > j ? into - 1 : into]));
+        navigator.vibrate?.(10);
+        return;
+      }
       let next = moveMedia(b, j, target.seg, target.pos);
       const k = next.media.findIndex((x) => mediaKey(x) === key);
       const was = next.media[k];
@@ -383,34 +405,43 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     frame = requestAnimationFrame(tick);
   };
 
-  /** Opens the note's pictures full screen, at picture `i`. */
-  const view = async (i: number, el?: HTMLElement | null) => {
+  /** Opens the note's pictures full screen — every picture, albums opened out — at picture `k` of picture or album `i`. */
+  const view = async (i: number, k = 0, el?: HTMLElement | null) => {
     const d = latest.current;
     if (!d) return;
     const b = bodyOf(d);
-    const pics = bodyRef.current ? [...bodyRef.current.querySelectorAll<HTMLElement>(':scope > .media .media-pic')] : [];
+    const blocks = bodyRef.current ? [...bodyRef.current.querySelectorAll<HTMLElement>(':scope > .media')] : [];
     const name = d.title.trim().replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'photo';
+    const flat = b.media.flatMap((m, mi) => itemsOf(m).map((it, j) => ({ it, mi, j, album: m.kind === 'album' })));
     const items = await Promise.all(
-      b.media.map(async (m, j) => {
-        const at = j === i && el ? el : pics[j];
-        if (m.kind === 'photo') {
-          const p = d.photos.find((x) => x.id === m.id);
-          return { src: (await photoUrl(m.id)) ?? '', w: p?.w, h: p?.h, el: at, save: name, alt: 'Photo' };
+      flat.map(async ({ it, mi, j, album }) => {
+        // what it grows out of: the tile (an album's hidden pictures, its last tile), or the picture
+        const tiles = blocks[mi]?.querySelectorAll<HTMLElement>('.album-tile');
+        const at = mi === i && j === k && el ? el : tiles?.length ? tiles[Math.min(j, tiles.length - 1)] : blocks[mi]?.querySelector<HTMLElement>('.media-pic');
+        if (it.kind === 'photo') {
+          const p = d.photos.find((x) => x.id === it.id);
+          return { src: (await photoUrl(it.id)) ?? '', w: p?.w, h: p?.h, el: at, save: name, alt: 'Photo', album, it };
         }
-        const img = d.images.find((x) => x.url === m.url);
+        const img = d.images.find((x) => x.url === it.url);
         return {
-          src: img ? imageSrc(img, 'full') : m.url, w: img?.w, h: img?.h, el: at, link: img?.link, alt: img?.title || 'Image',
+          src: img ? imageSrc(img, 'full') : it.url, w: img?.w, h: img?.h, el: at, link: img?.link, alt: img?.title || 'Image', album, it,
           caption: img ? [img.title, img.credit].filter(Boolean).join(' — ') : undefined,
         };
       }),
     );
     const shown = items.filter((x) => x.src);
-    openViewer(shown, Math.max(0, shown.indexOf(items[i])), {
-      onRemove: reading ? undefined : (k) => {
-        const j = items.indexOf(shown[k]);
-        const now = latest.current;
-        const m = now && bodyOf(now).media[j];
-        if (m) removePicture(m);
+    const start = items[flat.findIndex((f) => f.mi === i && f.j === k)];
+    const now = () => latest.current && bodyOf(latest.current);
+    openViewer(shown, Math.max(0, shown.indexOf(start)), reading ? {} : {
+      onRemove: (n) => removePicture(shown[n].it),
+      onTakeOut: (n) => {
+        const b = now();
+        const it = shown[n].it;
+        const { i } = b ? findItem(b, it) : { i: -1 };
+        if (b && i >= 0) {
+          setBody(takeOut(b, i, it));
+          setSel(itemKey(it));
+        }
       },
     });
   };
@@ -502,8 +533,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                   editing={!reading}
                   selected={!reading && sel === key}
                   dragging={moving?.key === key}
+                  merging={moving?.onto === key}
                   onSelect={() => setSel(key)}
-                  onOpen={(el) => view(i - 1, el)}
+                  onOpen={(el, k) => view(i - 1, k, el)}
                   onResize={(size) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, { size, align: m.align })) })}
                   onDrag={(e, el) => !reading && startMove(i - 1, e, el)}
                 />
@@ -535,7 +567,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </>
         ))}
         {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label="Adding photo" />)}
-        {moving && (
+        {moving && !moving.onto && (
           <span
             class={`drop-slot is-${moving.side}`}
             style={{ top: moving.y + 'px', width: (moving.layout.size ?? 100) + '%', aspectRatio: String(moving.ratio) }}
@@ -577,6 +609,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), selIndex, dir))}
             onOpen={() => view(selIndex)}
             onRemove={() => removePicture(body.media[selIndex])}
+            onUngroup={() => {
+              const b = ungroup(bodyOf(latest.current!), selIndex);
+              setBody(b);
+              setSel(mediaKey(b.media[selIndex]));
+            }}
           />
         )}
       >

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { editable } from '../lib/editable';
-import { MIN_SIZE, type Layout, type Media } from '../lib/body';
+import { itemKey, itemsOf, mediaKey, MIN_SIZE, type Item, type Layout, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Entry } from '../lib/store';
 import { Icon } from './icons';
@@ -18,14 +18,31 @@ function pctOf(w: number, col: number) {
   return p >= 96 ? 100 : p;
 }
 
-const ratioOf = (m: Media, draft: Entry) => {
-  if (m.kind === 'photo') {
-    const p = draft.photos.find((x) => x.id === m.id);
+const itemRatio = (it: Item, draft: Entry) => {
+  if (it.kind === 'photo') {
+    const p = draft.photos.find((x) => x.id === it.id);
     return p ? p.w / p.h : 0;
   }
-  const i = draft.images.find((x) => x.url === m.url);
+  const i = draft.images.find((x) => x.url === it.url);
   return i?.w && i.h ? i.w / i.h : 0;
 };
+/** How many tiles an album shows; the last one says how many more there are. */
+const TILES = 5;
+/** An album's shape: two side by side, one big and two stacked, a 2×2 grid, or two over three. */
+const ALBUM_RATIO = [0, 0, 3 / 2, 4 / 3, 1, 1];
+const ratioOf = (m: Media, draft: Entry) => (m.kind === 'album' ? ALBUM_RATIO[Math.min(TILES, m.items.length)] : itemRatio(m, draft));
+
+/** One picture, filling its box. */
+function Pic({ it, draft, tile }: { it: Item; draft: Entry; tile?: boolean }) {
+  const photo = it.kind === 'photo' ? draft.photos.find((p) => p.id === it.id) : undefined;
+  const img = it.kind === 'image' ? draft.images.find((i) => i.url === it.url) : undefined;
+  if (photo) return <PhotoImg photo={photo} alt="Photo" fit={!tile} draggable={false} />;
+  if (!img) return null;
+  return (
+    <img src={imageSrc(img, 'thumb')} alt={img.title || 'Image'} loading="lazy" draggable={false} referrerpolicy="no-referrer"
+      style={!tile && img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
+  );
+}
 
 /** Where a picture lands when dropped: its size (a side picture is at most half the column) and side. */
 export function dropLayout(m: Media, side: Side): Layout {
@@ -51,14 +68,15 @@ interface Gesture {
  * it, or centred on its own. Tap to select it; then pinch it or pull a corner to resize, and drag it anywhere to move it.
  * On touch, holding a picture that isn't selected picks it up too. Selected, a tap opens it full screen.
  */
-export function MediaBlock({ m, draft, editing, selected, dragging, onSelect, onOpen, onResize, onDrag }: {
+export function MediaBlock({ m, draft, editing, selected, dragging, merging, onSelect, onOpen, onResize, onDrag }: {
   m: Media;
   draft: Entry;
   editing: boolean;
   selected: boolean;
   dragging: boolean;
+  merging: boolean;   // a picture is being dragged over this one, to make an album with it
   onSelect: () => void;
-  onOpen: (el: HTMLElement) => void;
+  onOpen: (el: HTMLElement, item: number) => void;
   onResize: (size: number) => void;
   onDrag: (e: PointerEvent, el: HTMLElement) => void;
 }) {
@@ -79,11 +97,13 @@ export function MediaBlock({ m, draft, editing, selected, dragging, onSelect, on
     return () => el.removeEventListener('touchmove', block);
   }, []);
 
-  const photo = m.kind === 'photo' ? draft.photos.find((p) => p.id === m.id) : undefined;
-  const img = m.kind === 'image' ? draft.images.find((i) => i.url === m.url) : undefined;
-  if (!photo && !img) return null;
+  const items = itemsOf(m);
+  const known = (it: Item) => (it.kind === 'photo' ? draft.photos.some((p) => p.id === it.id) : draft.images.some((i) => i.url === it.url));
+  if (!items.some(known)) return null;
+  const album = m.kind === 'album';
   const ratio = ratioOf(m, draft);
-  const label = photo ? 'Photo' : img!.title ? `Image: ${img!.title}` : 'Image';
+  const img = m.kind === 'image' ? draft.images.find((i) => i.url === m.url) : undefined;
+  const label = album ? `Album of ${items.length}` : m.kind === 'photo' ? 'Photo' : img?.title ? `Image: ${img.title}` : 'Image';
   const size = live ?? m.size ?? 100;
   const align = size < 100 ? m.align : undefined;
   const colWidth = () => box.current?.parentElement?.clientWidth ?? 0;
@@ -186,7 +206,8 @@ export function MediaBlock({ m, draft, editing, selected, dragging, onSelect, on
   return (
     <div
       ref={box}
-      class={`media${align ? ' is-' + align : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${live !== null ? ' is-resizing' : ''}`}
+      class={`media${album ? ' is-album' : ''}${align ? ' is-' + align : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${merging ? ' is-merging' : ''}${live !== null ? ' is-resizing' : ''}`}
+      data-key={mediaKey(m)}
       style={{ width: `${size}%`, maxWidth: ratio ? `calc(70dvh * ${ratio.toFixed(4)})` : undefined }}
       onContextMenu={(e) => editing && e.preventDefault()}
     >
@@ -195,18 +216,28 @@ export function MediaBlock({ m, draft, editing, selected, dragging, onSelect, on
         onPointerDown={down}
         onClick={(e) => {
           if (acted.current) return void (acted.current = false);
-          if (selected || !editing) onOpen(e.currentTarget);
+          // in an album, the tile that was tapped opens
+          const tile = (e.target as Element).closest<HTMLElement>('.album-tile');
+          if (selected || !editing) onOpen(tile ?? e.currentTarget, tile ? +tile.dataset.i! : 0);
           else onSelect();
         }}
         aria-label={selected || !editing ? `View ${label.toLowerCase()}` : `Select ${label.toLowerCase()}`}
         aria-pressed={editing ? selected : undefined}
       >
-        {photo ? (
-          <PhotoImg photo={photo} alt={label} draggable={false} />
+        {album ? (
+          <div class={`album n${Math.min(TILES, items.length)}`}>
+            {items.slice(0, TILES).map((it, k) => (
+              <span key={itemKey(it)} class="album-tile" data-i={k}>
+                <Pic it={it} draft={draft} tile />
+                {k === TILES - 1 && items.length > TILES && <span class="album-more">+{items.length - TILES + 1}</span>}
+              </span>
+            ))}
+          </div>
         ) : (
-          <img src={imageSrc(img!, 'thumb')} alt={img!.title || 'Image'} loading="lazy" draggable={false} referrerpolicy="no-referrer" style={ratio ? { aspectRatio: `${img!.w} / ${img!.h}` } : undefined} />
+          <Pic it={items[0]} draft={draft} />
         )}
       </button>
+      {merging && <span class="media-merge glass">{album ? 'Add to album' : 'Make an album'}</span>}
       {selected && !dragging &&
         corners
           // a picture on a side is pulled from its free side, the one the text is on
@@ -218,10 +249,11 @@ export function MediaBlock({ m, draft, editing, selected, dragging, onSelect, on
 }
 
 /** The toolbar for the selected picture, in place of the formatting buttons. */
-export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove }: {
+export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup }: {
   m: Media;
   canUp: boolean;
   canDown: boolean;
+  onUngroup: () => void;
   onLayout: (l: Layout) => void;
   onStep: (dir: -1 | 1) => void;
   onOpen: () => void;
@@ -253,10 +285,15 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
         <Icon name="arrow-down" size={19} />
       </button>
       <span class="format-sep" />
+      {m.kind === 'album' && (
+        <button class="format-btn" onClick={onUngroup} aria-label="Ungroup the album" title="Ungroup the album">
+          <Icon name="layout-grid-remove" size={19} />
+        </button>
+      )}
       <button class="format-btn" onClick={onOpen} aria-label="View" title="View">
         <Icon name="maximize" size={19} />
       </button>
-      <button class="format-btn danger" onClick={onRemove} aria-label="Remove" title="Remove">
+      <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? 'Remove the album' : 'Remove'} title={m.kind === 'album' ? 'Remove the album' : 'Remove'}>
         <Icon name="trash" size={19} />
       </button>
     </>

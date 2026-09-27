@@ -1,5 +1,6 @@
 // A note's text can hold its pictures inline: a line of its own that reads [[photo:<id>]] or [[image:<url>]].
 // A picture made smaller carries its width (in % of the column) and side: [[photo:<id> 50 left]].
+// Pictures dropped on each other make an album, one line listing them: [[album:photo:<id> image:<url> 50 left]].
 // Split, the body is text, picture, text, picture, …, text — always one more text than pictures.
 import type { Entry, WebImage } from './store';
 
@@ -7,11 +8,14 @@ export interface Layout {
   size?: number;              // % of the column's width, 100 when missing
   align?: 'left' | 'right';   // centred when missing; only matters below 100%
 }
-export type Media = ({ kind: 'photo'; id: string } | { kind: 'image'; url: string }) & Layout;
+/** One picture: a photo from the device, or an image from the web. */
+export type Item = { kind: 'photo'; id: string } | { kind: 'image'; url: string };
+export type Media = (Item | { kind: 'album'; items: Item[] }) & Layout;
 export interface Body { texts: string[]; media: Media[] }
 
 export const MIN_SIZE = 20;
 const MARKER = /^\[\[(photo|image):([^\]\s]+)((?: \w+)*)\]\]$/;
+const ALBUM = /^\[\[album:((?:photo|image):[^\]\s]+(?: (?:photo|image):[^\]\s]+)*)((?: \w+)*)\]\]$/;
 
 function layoutOf(opts: string): Layout {
   const out: Layout = {};
@@ -23,10 +27,23 @@ function layoutOf(opts: string): Layout {
   return out;
 }
 
+/** The layout part of a picture or album, without anything else. */
+const layoutPart = (m: Layout): Layout => ({ ...(m.size !== undefined && { size: m.size }), ...(m.align && { align: m.align }) });
+
+export const itemKey = (it: Item) => (it.kind === 'photo' ? 'photo:' + it.id : 'image:' + it.url);
+const itemFrom = (token: string): Item => (token.startsWith('photo:') ? { kind: 'photo', id: token.slice(6) } : { kind: 'image', url: token.slice(6) });
+/** The picture itself, without its layout. */
+export const itemOf = (m: Item & Layout): Item => (m.kind === 'photo' ? { kind: 'photo', id: m.id } : { kind: 'image', url: m.url });
+/** The pictures a picture or album holds. */
+export const itemsOf = (m: Media): Item[] => (m.kind === 'album' ? m.items : [itemOf(m)]);
+/** An album of `items` with `layout` — or just the picture, when there's only one. */
+const albumOf = (items: Item[], layout: Layout): Media => (items.length === 1 ? { ...items[0], ...layoutPart(layout) } : { kind: 'album', items, ...layoutPart(layout) });
+
 const marker = (m: Media) =>
-  `[[${m.kind}:${m.kind === 'photo' ? m.id : m.url}${m.size && m.size < 100 ? ` ${m.size}${m.align ? ' ' + m.align : ''}` : ''}]]`;
-export const mediaKey = (m: Media) => (m.kind === 'photo' ? 'photo:' + m.id : 'image:' + m.url);
-export const sameMedia = (a: Media, b: Media) => a.kind === b.kind && (a.kind === 'photo' ? a.id === (b as typeof a).id : a.url === (b as typeof a).url);
+  `[[${m.kind === 'album' ? 'album:' + m.items.map(itemKey).join(' ') : itemKey(m)}${m.size && m.size < 100 ? ` ${m.size}${m.align ? ' ' + m.align : ''}` : ''}]]`;
+/** Names a picture or album while it's in the note. An album goes by its first picture. */
+export const mediaKey = (m: Media) => (m.kind === 'album' ? 'album:' + itemKey(m.items[0]) : itemKey(m));
+export const sameMedia = (a: Media, b: Media) => mediaKey(a) === mediaKey(b);
 
 export function parseBody(text: string): Body {
   const texts: string[] = [];
@@ -34,13 +51,15 @@ export function parseBody(text: string): Body {
   let cur: string[] = [];
   for (const line of text.split('\n')) {
     const m = line.match(MARKER);
-    if (!m) {
+    const a = m ? null : line.match(ALBUM);
+    if (!m && !a) {
       cur.push(line);
       continue;
     }
     texts.push(cur.join('\n'));
     cur = [];
-    media.push({ ...(m[1] === 'photo' ? { kind: 'photo', id: m[2] } : { kind: 'image', url: m[2] }), ...layoutOf(m[3]) } as Media);
+    if (m) media.push({ ...itemFrom(m[1] + ':' + m[2]), ...layoutOf(m[3]) });
+    else media.push({ kind: 'album', items: a![1].split(' ').map(itemFrom), ...layoutOf(a![2]) });
   }
   texts.push(cur.join('\n'));
   return { texts, media };
@@ -61,14 +80,20 @@ export function dropImageLinks(text: string, images: WebImage[]) {
 /** The words only, for excerpts, search and counts. */
 export const plainText = (text: string) => parseBody(text).texts.filter((t) => t.trim()).join('\n\n');
 
-/** Drops markers whose picture is gone, and places pictures that aren't in the text yet at its end. */
+/**
+ * Drops markers whose picture is gone (an album keeps the pictures that are left), keeps each picture in one place
+ * only, and places pictures that aren't in the text yet at its end.
+ */
 export function bodyOf(e: Entry): Body {
   const b = parseBody(e.text);
-  const known = (m: Media) => (m.kind === 'photo' ? e.photos.some((p) => p.id === m.id) : e.images.some((i) => i.url === m.url));
+  const known = (it: Item) => (it.kind === 'photo' ? e.photos.some((p) => p.id === it.id) : e.images.some((i) => i.url === it.url));
+  const seen = new Set<string>();
   const out: Body = { texts: [b.texts[0]], media: [] };
   b.media.forEach((m, i) => {
-    if (known(m) && !out.media.some((x) => sameMedia(x, m))) {
-      out.media.push(m);
+    const items = itemsOf(m).filter((it) => known(it) && !seen.has(itemKey(it)));
+    items.forEach((it) => seen.add(itemKey(it)));
+    if (items.length) {
+      out.media.push(m.kind === 'album' || items.length > 1 ? albumOf(items, m) : m);
       out.texts.push(b.texts[i + 1]);
     } else {
       const t = out.texts.length - 1;
@@ -78,7 +103,7 @@ export function bodyOf(e: Entry): Body {
   const missing: Media[] = [
     ...e.photos.map((p) => ({ kind: 'photo' as const, id: p.id })),
     ...e.images.map((i) => ({ kind: 'image' as const, url: i.url })),
-  ].filter((m) => !out.media.some((x) => sameMedia(x, m)));
+  ].filter((m) => !seen.has(itemKey(m)));
   for (const m of missing) {
     out.media.push(m);
     out.texts.push('');
@@ -170,4 +195,57 @@ export function moveMedia(b: Body, i: number, seg: number, pos: number): Body {
     pos += b.texts[i].length + (b.texts[i] && b.texts[i + 1] ? 1 : 0);
   } else if (seg > i + 1) seg--;
   return insertMedia(out, [m], seg, pos);
+}
+
+/* ---------- albums ---------- */
+
+/** Drops picture (or album) `from` onto picture `onto`: they become one album, in `onto`'s place and layout. */
+export function mergeMedia(b: Body, from: number, onto: number): Body {
+  if (from === onto) return b;
+  const src = b.media[from], dst = b.media[onto];
+  const out = removeMedia(b, src);
+  const media = out.media.map((m) => (sameMedia(m, dst) ? albumOf([...itemsOf(dst), ...itemsOf(src)], dst) : m));
+  return { texts: out.texts, media };
+}
+
+/** Breaks album `i` back into its pictures, one after another, each with the album's layout. */
+export function ungroup(b: Body, i: number): Body {
+  const m = b.media[i];
+  if (m.kind !== 'album') return b;
+  const singles = m.items.map((it) => ({ ...it, ...layoutPart(m) }) as Media);
+  return {
+    texts: [...b.texts.slice(0, i + 1), ...singles.slice(1).map(() => ''), ...b.texts.slice(i + 1)],
+    media: [...b.media.slice(0, i), ...singles, ...b.media.slice(i + 1)],
+  };
+}
+
+/** Takes one picture out of album `i` and puts it on its own line just below the album. */
+export function takeOut(b: Body, i: number, it: Item): Body {
+  const m = b.media[i];
+  if (m.kind !== 'album') return b;
+  const rest = m.items.filter((x) => itemKey(x) !== itemKey(it));
+  return {
+    texts: [...b.texts.slice(0, i + 1), '', ...b.texts.slice(i + 1)],
+    media: [...b.media.slice(0, i), albumOf(rest, m), it, ...b.media.slice(i + 1)],
+  };
+}
+
+/** Where a picture is: its place in the body, and in its album (0 for a picture on its own). -1 when it isn't there. */
+export function findItem(b: Body, it: Item) {
+  const k = itemKey(it);
+  for (let i = 0; i < b.media.length; i++) {
+    const j = itemsOf(b.media[i]).findIndex((x) => itemKey(x) === k);
+    if (j >= 0) return { i, j };
+  }
+  return { i: -1, j: -1 };
+}
+
+/** Takes a picture out of the note: on its own, its line goes; in an album, the album keeps the others. */
+export function removeItem(b: Body, it: Item): Body {
+  const { i } = findItem(b, it);
+  if (i < 0) return b;
+  const m = b.media[i];
+  if (m.kind !== 'album') return removeMedia(b, m);
+  const rest = m.items.filter((x) => itemKey(x) !== itemKey(it));
+  return { texts: b.texts, media: b.media.map((x, k) => (k === i ? albumOf(rest, m) : x)) };
 }
