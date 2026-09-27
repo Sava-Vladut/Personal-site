@@ -4,6 +4,7 @@ import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
 import { EntryMenu } from './components/EntryMenu';
+import { Sheet } from './components/Sheet';
 import { Icon, type UiName } from './components/icons';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
@@ -55,12 +56,19 @@ export function App() {
   );
 }
 
-/** iOS-style floating glass tab bar, with the "new note" action as its own glass button. */
+const ADD: [string, string, string, UiName][] = [
+  ['note/new', 'Note', 'Write about your day', 'pencil'],
+  ['tracker', 'Check-in', 'Log how you feel right now', 'mood-plus'],
+  ['person/new', 'Person', 'Someone who matters to you', 'user-plus'],
+];
+
+/** iOS-style floating glass tab bar, with the "add" menu as its own glass button. */
 function TabBar({ active }: { active: RouteName }) {
   const bar = useRef<HTMLDivElement>(null);
   const plus = useRef<HTMLButtonElement>(null);
   useLens(bar);
   useLens(plus, { strength: 14 });
+  const [adding, setAdding] = useState(false);
   const i = NAV.findIndex(([name]) => name === active);
   // The pill's leading edge moves first and the trailing edge catches up, so it stretches like a drop.
   const prev = useRef(i);
@@ -75,10 +83,32 @@ function TabBar({ active }: { active: RouteName }) {
         {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
         {NAV.map(([name, label, icon, path]) => <NavItem active={active === name} label={label} icon={icon} path={path} />)}
       </div>
-      <button ref={plus} class="nav-new glass glass-btn tinted" onClick={() => navigate('note/new')} aria-label="New note">
+      <button ref={plus} class="nav-new glass glass-btn tinted" onClick={() => setAdding(true)} aria-label="Add" aria-haspopup="dialog">
         <Icon name="plus" size={26} stroke={2} />
       </button>
+      <AddMenu open={adding} onClose={() => setAdding(false)} />
     </nav>
+  );
+}
+
+function AddMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // Closing the sheet pops its history entry; navigate once that's done so the pop doesn't undo it.
+  const pick = (to: string) => {
+    addEventListener('popstate', () => navigate(to), { once: true });
+    onClose();
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title="Add">
+      <div class="card list menu-list">
+        {ADD.map(([to, label, sub, icon]) => (
+          <button class="list-row action add-row" onClick={() => pick(to)}>
+            <span class="add-icon"><Icon name={icon} size={20} /></span>
+            <span class="add-main"><span class="add-label">{label}</span><span class="muted small">{sub}</span></span>
+            <Icon name="chevron-right" size={18} class="muted" />
+          </button>
+        ))}
+      </div>
+    </Sheet>
   );
 }
 
