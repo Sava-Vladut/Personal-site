@@ -255,13 +255,13 @@ export function CheckInRow({ e }: { e: Entry }) {
   const byId = usePeopleById();
   const id = e.emotions[0];
   const em = id ? EMOTION[id] : null;
-  const with_ = e.people.map((pid) => byId.get(pid)?.name).filter(Boolean);
+  const people = e.people.map((pid) => byId.get(pid)?.name).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));
   return (
     <button class="checkin" {...hold}>
       {em ? <Sprite core={em.core} size={16} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
-      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', with_.length ? `with ${with_.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
+      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? `thinking of ${people.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{timeLabel(e.time)}</span>
     </button>
   );

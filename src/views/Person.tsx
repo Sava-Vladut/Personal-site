@@ -76,7 +76,7 @@ export function PersonView({ id }: { id: string }) {
     };
   }, []);
 
-  // How the moments with them felt: the worlds of every feeling logged in notes and check-ins they're tagged in.
+  // How thinking of them felt: the worlds of every feeling logged in notes and check-ins they're tagged in.
   const felt = useMemo(() => {
     const worlds = new Map<string, number>();
     const feelings = new Map<string, number>();
@@ -182,7 +182,7 @@ export function PersonView({ id }: { id: string }) {
         </div>
       </div>
 
-      <div class="eyebrow person-label">How {first} makes you feel</div>
+      <div class="eyebrow person-label">How thinking of {first} makes you feel</div>
       <div class="meta person-meta">
         {draft.emotions.map((eid) => (
           <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />
@@ -209,7 +209,7 @@ export function PersonView({ id }: { id: string }) {
 
       <section class="section">
         <div class="row between">
-          <h2 class="section-title">Moments with {first}</h2>
+          <h2 class="section-title">Thinking of {first}</h2>
           {moments.length > 0 && <span class="muted small">{moments.length} · since {lastSeen(moments[moments.length - 1].date)}</span>}
         </div>
         <div class="row gap-s person-actions">
@@ -219,7 +219,7 @@ export function PersonView({ id }: { id: string }) {
 
         {felt.total > 0 && (
           <div class="card person-felt">
-            <div class="chart-title">How moments with {first} felt</div>
+            <div class="chart-title">How thinking of {first} felt</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
@@ -239,7 +239,7 @@ export function PersonView({ id }: { id: string }) {
             </section>
           ))
         ) : (
-          <p class="empty-note">Tag {first} in a note or check-in and it shows up here.</p>
+          <p class="empty-note">Add {first} under “Thinking of” in a note or check-in and it shows up here.</p>
         )}
       </section>
 
@@ -251,7 +251,7 @@ export function PersonView({ id }: { id: string }) {
       )}
 
       <IconSheet open={open === 'icon'} onClose={() => setOpen(null)} value={draft.icon} onChange={(icon) => update({ icon })} />
-      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={`How does ${first} make you feel?`}>
+      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={`How does thinking of ${first} make you feel?`}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
     </div>

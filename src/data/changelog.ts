@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.5.1',
+    date: '2026-09-27',
+    changes: ['People: notes, check-ins and person pages now use “Thinking of” consistently'],
+  },
+  {
     version: '1.5.0',
     date: '2026-09-27',
     changes: [

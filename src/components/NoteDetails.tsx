@@ -141,7 +141,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
         </section>
 
         <section class="details-section">
-          <h2 class="eyebrow">Who is it about?</h2>
+          <h2 class="eyebrow">Thinking of</h2>
           <div class="meta">
             <PeopleChips ids={draft.people} onChange={(people) => update({ people })} onAdd={() => setSheet('people')} label="Add someone" />
           </div>

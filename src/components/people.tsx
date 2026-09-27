@@ -41,7 +41,7 @@ export function PersonChip({ p, onRemove, size = 'md' }: { p: Person; onRemove?:
 }
 
 /** Tagged people plus an "add" chip, for the note editor and check-ins. */
-export function PeopleChips({ ids, onChange, onAdd, label = 'Who was there?' }: {
+export function PeopleChips({ ids, onChange, onAdd, label = 'Thinking of' }: {
   ids: string[];
   onChange: (ids: string[]) => void;
   onAdd: () => void;
@@ -60,7 +60,7 @@ export function PeopleChips({ ids, onChange, onAdd, label = 'Who was there?' }: 
 }
 
 /** Pick people to tag, or add someone new by typing their name. */
-export function PeopleSheet({ open, onClose, selected, onChange, title = 'Who is it about?' }: {
+export function PeopleSheet({ open, onClose, selected, onChange, title = 'Thinking of' }: {
   open: boolean;
   onClose: () => void;
   selected: string[];

@@ -88,7 +88,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
             <span class="field-label">Add context <span class="muted">· optional</span></span>
             <textarea class="input confirm-note" rows={2} placeholder="What’s behind it?" value={note} onInput={(e) => setNote(e.currentTarget.value)} aria-label="Note" />
             <div class="meta confirm-people">
-              <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} label="Who’s it about?" />
+              <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} />
               {when === null ? (
                 <button class="chip" onClick={() => setWhen(localInput(Date.now()))} aria-label="When: now. Change time">
                   <Icon name="clock" size={16} /> Now <Icon name="chevron-down" size={14} />
