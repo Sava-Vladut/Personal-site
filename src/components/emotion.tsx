@@ -64,12 +64,12 @@ export function WorldGrid({ onSelect, active }: { onSelect: (core: string) => vo
   ];
   return (
     <div class="worlds">
-      {groups.map(([label, ids]) => (
+      {groups.map(([label, ids], g) => (
         <div class="worlds-group">
           <div class="eyebrow">{label}</div>
           <div class="worlds-row">
-            {ids.map((id) => (
-              <button class="world" aria-pressed={active === id} onClick={() => onSelect(id)} style={{ '--c': `var(--emo-${id})` }}>
+            {ids.map((id, i) => (
+              <button class="world" aria-pressed={active === id} onClick={() => onSelect(id)} style={{ '--c': `var(--emo-${id})`, '--i': g * 4 + i }}>
                 <Sprite core={id} size={28} />
                 <span>{shortName(id)}</span>
               </button>

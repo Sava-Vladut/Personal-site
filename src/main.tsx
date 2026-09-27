@@ -9,6 +9,10 @@ import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
 
 applyTheme();
+// iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
+addEventListener('touchstart', () => {}, { passive: true });
+// The first page to show rises in piece by piece; later pages use the route transitions instead.
+document.documentElement.classList.add('booting');
 // Pictures aren't meant to be dragged: dropped on a text box, the browser writes the image's address into the note.
 addEventListener('dragstart', (e) => {
   if (e.target instanceof HTMLImageElement) e.preventDefault();
@@ -28,7 +32,10 @@ onBlocked(() =>
 init()
   .then(initSync)
   .catch((e) => console.error('Could not open the journal database', e))
-  .finally(() => render(<App />, document.getElementById('app')!));
+  .finally(() => {
+    render(<App />, document.getElementById('app')!);
+    setTimeout(() => document.documentElement.classList.remove('booting'), 1000);
+  });
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
-import { dismissToast, useToasts } from './lib/store';
+import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
 import { Icon, type UiName } from './components/icons';
@@ -22,7 +22,8 @@ const NAV: [RouteName, string, UiName, string][] = [
 export function App() {
   const route = useRoute();
 
-  useEffect(() => {
+  // before paint, so a page transition captures the new page from its top
+  useLayoutEffect(() => {
     if (!history.state?.mmSheet) scrollTo(0, 0);
   }, [route.name, route.id]);
 
@@ -96,10 +97,25 @@ function NavItem({ active, label, icon, path }: { active: boolean; label: string
   );
 }
 
+/** Toasts rise in and, once dismissed, stay a moment longer to fade away. */
 function Toasts() {
   const toasts = useToasts();
+  const [leaving, setLeaving] = useState<Toast[]>([]);
+  const prev = useRef(toasts);
+  useEffect(() => {
+    const gone = prev.current.filter((t) => !toasts.some((x) => x.id === t.id));
+    prev.current = toasts;
+    if (!gone.length) return;
+    setLeaving((l) => [...l, ...gone]);
+    setTimeout(() => setLeaving((l) => l.filter((t) => !gone.includes(t))), 220);
+  }, [toasts]);
   return (
     <div class="toasts" aria-live="polite">
+      {leaving.map((t) => (
+        <div class="toast glass leaving" key={t.id} aria-hidden="true">
+          <span>{t.text}</span>
+        </div>
+      ))}
       {toasts.map((t) => (
         <div class="toast glass" key={t.id}>
           <span>{t.text}</span>

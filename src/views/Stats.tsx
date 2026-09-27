@@ -6,7 +6,7 @@ import { RANGES, computeStats, dex, fmtMood, insights, pct, streaks, type RangeK
 import { useEntries, useSettings } from '../lib/store';
 import {
   BalanceChart, ChartCard, HBars, HeatLegend, IntensityChart, LegendItem, MixChart, MoodBars, MoodCalendar, MoodChart,
-  RhythmHeatmap, Wheel, WorldLegend, bucketLabel,
+  CountUp, RhythmHeatmap, Wheel, WorldLegend, bucketLabel,
 } from '../components/charts';
 import { INTENSITY, trail } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
@@ -61,23 +61,25 @@ export function Stats({ query }: { query: URLSearchParams }) {
         </div>
       )}
 
-      {!entries.length ? (
-        <div class="empty">
-          <h2 class="title-s">No stats yet</h2>
-          <p>Check in or write a note with a feeling attached, and your patterns will start to show here.</p>
-          <button class="btn btn-primary" onClick={() => navigate('tracker')}>Check in now</button>
-        </div>
-      ) : tab === 'dex' ? (
-        <Dex />
-      ) : !s.k.entries ? (
-        <p class="empty-note center">Nothing logged in this range. Try a longer one.</p>
-      ) : tab === 'overview' ? (
-        <Overview s={s} range={range} />
-      ) : tab === 'emotions' ? (
-        <Emotions s={s} />
-      ) : (
-        <Patterns s={s} weekStart={weekStart} />
-      )}
+      <div class="tab-panel" key={tab === 'dex' ? tab : tab + range}>
+        {!entries.length ? (
+          <div class="empty">
+            <h2 class="title-s">No stats yet</h2>
+            <p>Check in or write a note with a feeling attached, and your patterns will start to show here.</p>
+            <button class="btn btn-primary" onClick={() => navigate('tracker')}>Check in now</button>
+          </div>
+        ) : tab === 'dex' ? (
+          <Dex />
+        ) : !s.k.entries ? (
+          <p class="empty-note center">Nothing logged in this range. Try a longer one.</p>
+        ) : tab === 'overview' ? (
+          <Overview s={s} range={range} />
+        ) : tab === 'emotions' ? (
+          <Emotions s={s} />
+        ) : (
+          <Patterns s={s} weekStart={weekStart} />
+        )}
+      </div>
     </div>
   );
 }
@@ -99,7 +101,7 @@ function Tile({ label: l, value, sub, delta }: { label: string; value: string | 
   return (
     <div class="tile">
       <div class="tile-label">{l}</div>
-      <div class="tile-value">{value}</div>
+      <div class="tile-value"><CountUp value={value} /></div>
       <div class="tile-sub">{sub}{delta && sub ? ' · ' : ''}{delta}</div>
     </div>
   );
@@ -117,7 +119,7 @@ function Overview({ s, range }: { s: S; range: RangeKey }) {
       <section class="card hero">
         <div class="tile-label">Average mood</div>
         <div class="hero-row">
-          <span class="hero-num">{fmtMood(k.mood)}</span>
+          <span class="hero-num"><CountUp value={fmtMood(k.mood)} /></span>
           <span class="hero-scale">on a scale from −5 to +5</span>
         </div>
         {prev && (
@@ -339,7 +341,7 @@ function Dex() {
       <section class="card hero">
         <div class="tile-label">Feelings named · all time</div>
         <div class="hero-row">
-          <span class="hero-num">{found.size}</span>
+          <span class="hero-num"><CountUp value={found.size} /></span>
           <span class="hero-scale">of {FEELINGS.length}</span>
         </div>
         <div class="meter"><i style={{ width: `${(found.size / FEELINGS.length) * 100}%` }} /></div>

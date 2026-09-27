@@ -8,6 +8,41 @@ import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWe
 import { fmtMood, pct, type Bucket } from '../lib/stats';
 import { Icon, Sprite } from './icons';
 
+/* ---------- count-up ---------- */
+
+/** A figure like "+1.4", "63%" or "12" that counts up from zero when it first appears. */
+export function CountUp({ value }: { value: string | number }) {
+  const text = String(value);
+  const ref = useRef<HTMLSpanElement>(null);
+  const shown = useRef(false);
+  useLayoutEffect(() => {
+    const el = ref.current!;
+    const m = /^(\D*?)(\d[\d,]*(?:\.(\d+))?)(.*)$/.exec(text);
+    // only the first time: later changes (a new range) just swap the number
+    if (shown.current || !m || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = text;
+      return;
+    }
+    shown.current = true;
+    const [, pre, num, dec, post] = m;
+    const to = parseFloat(num.replace(/,/g, '')), dp = dec?.length ?? 0, t0 = performance.now();
+    const fmt = (n: number) => (num.includes(',') ? n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : n.toFixed(dp));
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, Math.max(0, (now - t0) / 900)); // a frame's time can be a touch before t0
+      el.textContent = p < 1 ? pre + fmt(to * (1 - Math.pow(1 - p, 4))) + post : text;
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    tick(t0);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.textContent = text;
+    };
+  }, [text]);
+  // the text is written by the effect, so Preact never holds a stale text node here
+  return <span ref={ref} />;
+}
+
 /* ---------- shared tooltip ---------- */
 
 type Tip = { x: number; y: number; content: ComponentChildren } | null;

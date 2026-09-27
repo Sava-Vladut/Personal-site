@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { WEEKDAYS, addDays, keyOf, monthLabel, parseKey, rangeLabel, startOfWeek, todayKey } from '../lib/dates';
 import { useSettings } from '../lib/store';
 import { Icon } from './icons';
@@ -26,10 +26,16 @@ export function Calendar({ focus, isSelected, inRange, onPick, mark }: CalendarP
   // always 6 weeks so the calendar keeps the same height from month to month
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
   const labels = weekStart === 1 ? WEEKDAYS : [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)];
-  const shift = (n: number) => setYm(([yy, mm]) => {
-    const d = new Date(yy, mm + n, 1);
-    return [d.getFullYear(), d.getMonth()];
-  });
+  const [dir, setDir] = useState<'next' | 'prev' | null>(null);
+  const shift = (n: number) => {
+    setDir(n > 0 ? 'next' : 'prev');
+    setYm(([yy, mm]) => {
+      const d = new Date(yy, mm + n, 1);
+      return [d.getFullYear(), d.getMonth()];
+    });
+  };
+  // a sideways swipe across the days turns the month
+  const swipe = useRef<{ x: number; y: number } | null>(null);
 
   return (
     <div class="cal">
@@ -38,8 +44,22 @@ export function Calendar({ focus, isSelected, inRange, onPick, mark }: CalendarP
         <span class="cal-month">{monthLabel(y, m)}</span>
         <button class="icon-btn" onClick={() => shift(1)} aria-label="Next month"><Icon name="chevron-right" /></button>
       </div>
-      <div class="cal-grid" role="grid">
+      <div class="cal-grid" aria-hidden="true">
         {labels.map((l) => <span class="cal-dow">{l.slice(0, 2)}</span>)}
+      </div>
+      <div
+        key={`${y}-${m}`}
+        class={`cal-grid cal-days${dir ? ' from-' + dir : ''}`}
+        role="grid"
+        onTouchStart={(e) => { const t = e.touches[0]; swipe.current = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null; }}
+        onTouchEnd={(e) => {
+          const s = swipe.current, t = e.changedTouches[0];
+          swipe.current = null;
+          if (!s) return;
+          const dx = t.clientX - s.x, dy = t.clientY - s.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) shift(dx < 0 ? 1 : -1);
+        }}
+      >
         {days.map((k) => {
           const out = parseKey(k).getMonth() !== m;
           const sel = isSelected?.(k);

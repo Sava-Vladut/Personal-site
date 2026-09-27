@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 export type RouteName = 'journal' | 'tracker' | 'people' | 'stats' | 'settings' | 'note' | 'person';
 export interface Route {
@@ -20,10 +20,61 @@ function parse(): Route {
   return { name: 'journal', query, visit };
 }
 
+/* ---------- page transitions ----------
+   Tabs slide sideways toward the tab you picked; opening a note, person or stats pushes the new page
+   in from the right, and going back pops it off again. The CSS lives under "Page transitions". */
+
+type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';
+const TABS: RouteName[] = ['journal', 'tracker', 'people', 'settings'];
+const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
+
+function motionFor(a: Route, b: Route): Motion | null {
+  if (a.name === b.name) return a.id !== b.id ? 'fade' : null; // same page, new query: the page animates itself
+  const da = depth(a.name), db = depth(b.name);
+  if (da !== db) return db > da ? 'push' : 'pop';
+  if (da === 0) return TABS.indexOf(b.name) > TABS.indexOf(a.name) ? 'tab-right' : 'tab-left';
+  return 'fade';
+}
+
+// Safari's swipe-back gesture already slid the page; animating again would play it twice.
+let uaAnimated = false;
+addEventListener('popstate', (e) => {
+  uaAnimated = !!(e as PopStateEvent & { hasUAVisualTransition?: boolean }).hasUAVisualTransition;
+});
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let transitions = 0;
+
 export function useRoute() {
   const [route, setRoute] = useState(parse);
+  const current = useRef(route);
+  current.current = route;
+  const rendered = useRef<(() => void) | null>(null);
+  // The transition snapshots the new page as soon as it has rendered.
+  useLayoutEffect(() => {
+    rendered.current?.();
+    rendered.current = null;
+  }, [route]);
   useEffect(() => {
-    const f = () => setRoute(parse());
+    const f = () => {
+      const next = parse();
+      const motion = uaAnimated || reduced.matches || !document.startViewTransition ? null : motionFor(current.current, next);
+      uaAnimated = false;
+      if (!motion) return setRoute(next);
+      const root = document.documentElement;
+      const n = ++transitions;
+      root.dataset.nav = motion;
+      const t = document.startViewTransition(
+        () =>
+          new Promise<void>((done) => {
+            rendered.current = done;
+            setRoute(next);
+            setTimeout(done, 300); // never hold the page frozen if the render is slow
+          }),
+      );
+      t.finished.finally(() => {
+        if (n === transitions) delete root.dataset.nav;
+      });
+    };
     addEventListener('hashchange', f);
     return () => removeEventListener('hashchange', f);
   }, []);
