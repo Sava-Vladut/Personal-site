@@ -166,7 +166,7 @@
 .note.has-cover { position: relative; isolation: isolate; overflow: hidden; }
 .note-cover { border-radius: inherit; }
 
-/* ---------- journal: the top panel (date, check-in, filters), apart from the notes ---------- */
+/* ---------- journal: the top panel (date, check-in), apart from the notes ---------- */
 
 .journal-top {
   /* full width, from the top of the screen */
@@ -176,7 +176,6 @@
   border-bottom: 1px solid var(--line);
   border-radius: 0 0 28px 28px;
 }
-.journal-top .filters { margin-bottom: 0; }
 .journal-top .filter-note { margin: 10px 0 0; }
 .journal-top .prompt { background: var(--bg); }
 .journal-top > .card:not(.prompt) { background: var(--bg); }

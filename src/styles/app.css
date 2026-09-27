@@ -180,9 +180,6 @@ code { font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-
 }
 .chip:hover { background: var(--surface-3); color: var(--ink); }
 .chip[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
-.chip-icon { width: 34px; padding: 0; justify-content: center; }
-.chip-icon[aria-pressed='true'] { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--ink); }
-.chip-sep { flex: none; width: 1px; height: 20px; background: var(--line-2); align-self: center; margin: 0 2px; }
 .filters { margin: 14px 0 6px; }
 .range-note { align-self: center; margin-left: auto; padding-left: 6px; white-space: nowrap; }
 

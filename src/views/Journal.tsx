@@ -15,13 +15,10 @@ import { PersonChip, usePeopleById } from '../components/people';
 import { AppMark, Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 
-type Filter = 'all' | 'note' | 'checkin' | string; // string = core emotion id
-
 export function Journal() {
   const entries = useEntries();
   const people = usePeople();
   const ready = useReady();
-  const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
@@ -41,8 +38,6 @@ export function Journal() {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const names = new Map(people.map((p) => [p.id, p.name]));
     return entries.filter((e) => {
-      if (filter === 'note' || filter === 'checkin') { if (e.kind !== filter) return false; }
-      else if (filter !== 'all' && !e.emotions.some((id) => id.startsWith(filter))) return false;
       if (day && !(e.date === day || (e.dateEnd && e.date <= day && day <= e.dateEnd))) return false;
       if (words.length) {
         const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')}`.toLowerCase();
@@ -50,7 +45,7 @@ export function Journal() {
       }
       return true;
     });
-  }, [entries, people, filter, q, day]);
+  }, [entries, people, q, day]);
 
   const groups = useMemo(() => {
     const out: [string, Entry[]][] = [];
@@ -62,11 +57,11 @@ export function Journal() {
     return out;
   }, [shown]);
 
-  const filtering = filter !== 'all' || !!q.trim() || !!day;
+  const filtering = !!q.trim() || !!day;
 
   return (
     <div class="page">
-      {/* the day, the check-in and the filters, set apart from the notes below on a panel of their own */}
+      {/* the day and the check-in, set apart from the notes below on a panel of their own */}
       <div class="journal-top">
       <header class="page-head">
         <div class="brand"><AppMark size={12} /> My Mind</div>
@@ -114,18 +109,6 @@ export function Journal() {
       )}
 
       {!filtering && <CheckInPrompt entries={entries} />}
-
-      <div class="chips scroll-x filters" role="toolbar" aria-label="Filter">
-        {([['all', 'All'], ['note', 'Notes'], ['checkin', 'Check-ins']] as const).map(([v, label]) => (
-          <button class="chip" aria-pressed={filter === v} onClick={() => setFilter(v)}>{label}</button>
-        ))}
-        <span class="chip-sep" />
-        {PICKER_ORDER.map((c) => (
-          <button class="chip chip-icon" aria-pressed={filter === c} aria-label={shortName(c)} title={CORE[c].name} onClick={() => setFilter(filter === c ? 'all' : c)}>
-            <Sprite core={c} size={14} />
-          </button>
-        ))}
-      </div>
 
       {day && (
         <div class="row between filter-note">
