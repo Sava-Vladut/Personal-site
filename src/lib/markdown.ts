@@ -195,6 +195,42 @@ export function toggleTask(text: string, line: number) {
   return lines.join('\n');
 }
 
+const cut = (s: string, max: number) => {
+  const chars = Array.from(s);
+  if (chars.length <= max) return s;
+  const head = chars.slice(0, max).join('');
+  const at = head.search(/\s\S*$/);
+  return (at > max * 0.6 ? head.slice(0, at) : head).replace(/[\s,;:.\-–—]+$/, '') + '…';
+};
+
+/**
+ * A card's heading and preview from a note's plain words. A note without a title borrows its first line
+ * (cut at a word if it's long); the preview is what follows, whole lines while they fit and the last one cut at a word.
+ */
+export function previewOf(text: string, title: string, max = 240) {
+  const lines = stripMarkdown(text).split('\n').map((l) => l.trim());
+  while (lines.length && !lines[0]) lines.shift();
+  let heading = title.trim();
+  if (!heading && lines.length) {
+    const first = lines.shift()!;
+    heading = cut(first, 70);
+    const rest = heading.endsWith('…') ? first.slice(heading.length - 1).trim() : '';
+    if (rest) lines.unshift(rest);
+  }
+  let out = '';
+  for (const line of lines.filter(Boolean)) {
+    const next = out ? `${out}\n${line}` : line;
+    if (Array.from(next).length <= max) {
+      out = next;
+      continue;
+    }
+    const room = max - Array.from(out).length - 1;
+    out = out && room < 30 ? out + '…' : (out ? out + '\n' : '') + cut(line, out ? room : max);
+    break;
+  }
+  return { heading, preview: out };
+}
+
 /** The words without the Markdown around them, for excerpts on cards. */
 export function stripMarkdown(text: string) {
   return text

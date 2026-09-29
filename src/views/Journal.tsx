@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'preact/hooks';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
-import { dayLabel, longToday, rangeLabel, timeLabel, todayKey } from '../lib/dates';
+import { dayLabel, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { useBooks, useEntries, usePeople, useReady, type Entry } from '../lib/store';
+import { useBooks, useEntries, usePeople, useReady, useSettings, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
-import { plainText } from '../lib/body';
+import { bodyOf, itemsOf, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
-import { stripMarkdown } from '../lib/markdown';
+import type { Photo } from '../lib/photos';
+import { previewOf, stripMarkdown } from '../lib/markdown';
 import { BookChip, BookCover } from '../components/books';
 import { Calendar } from '../components/Calendar';
 import { useHold } from '../components/EntryMenu';
+import { Swipe } from '../components/Swipe';
 import { EmotionChip } from '../components/emotion';
 import { Sky } from '../components/Sky';
 import { CoverImg } from '../components/NoteDetails';
@@ -26,6 +28,7 @@ export function Journal() {
   const [searching, setSearching] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [day, setDay] = useState<string | null>(null);
+  const compact = useSettings().density === 'compact';
 
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>();
@@ -50,9 +53,11 @@ export function Journal() {
     });
   }, [entries, people, q, day]);
 
+  const pinned = useMemo(() => shown.filter((e) => e.pinned), [shown]);
   const groups = useMemo(() => {
     const out: [string, Entry[]][] = [];
     for (const e of shown) {
+      if (e.pinned) continue;
       const last = out[out.length - 1];
       if (last && last[0] === e.date) last[1].push(e);
       else out.push([e.date, [e]]);
@@ -141,11 +146,29 @@ export function Journal() {
       )}
       {ready && !!entries.length && !shown.length && <p class="empty-note center">Nothing matches these filters.</p>}
 
+      {pinned.length > 0 && (
+        <section class="day pinned">
+          <h2 class="day-label"><Icon name="pin" size={13} /> Pinned</h2>
+          <Entries list={pinned} compact={compact} dated />
+        </section>
+      )}
       {groups.map(([date, list]) => (
         <section class="day">
           <h2 class="day-label">{dayLabel(date)}</h2>
-          <div class="entries">{list.map((e) => (e.kind === 'checkin' ? <CheckInRow e={e} /> : <NoteCard e={e} />))}</div>
+          <Entries list={list} compact={compact} />
         </section>
+      ))}
+    </div>
+  );
+}
+
+function Entries({ list, compact, dated }: { list: Entry[]; compact: boolean; dated?: boolean }) {
+  return (
+    <div class={compact ? 'entries compact card' : 'entries'}>
+      {list.map((e) => (
+        <Swipe e={e}>
+          {e.kind === 'checkin' ? <CheckInRow e={e} /> : compact ? <NoteRow e={e} dated={dated} /> : <NoteCard e={e} dated={dated} />}
+        </Swipe>
       ))}
     </div>
   );
@@ -207,26 +230,48 @@ function ReadingNow() {
   );
 }
 
-export function NoteCard({ e }: { e: Entry }) {
+/** The first picture in a note's text, big enough to see on its card. */
+function heroOf(e: Entry): { photo: Photo } | { image: WebImage } | null {
+  const first = bodyOf(e).media.flatMap(itemsOf)[0];
+  if (!first) return null;
+  if (first.kind === 'photo') {
+    const photo = e.photos.find((p) => p.id === first.id);
+    return photo ? { photo } : null;
+  }
+  const image = e.images.find((i) => i.url === first.url);
+  return image ? { image } : null;
+}
+
+export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const byId = usePeopleById();
   const shelf = useBooks();
   const books = booksIn(e.text, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
-  const excerpt = stripMarkdown(plainText(e.text)).trim().slice(0, 240);
+  const { heading, preview } = previewOf(plainText(e.text), e.title);
+  const hero = e.cover ? null : heroOf(e);
   const pictures = e.photos.length + e.images.length;
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));
+  const strip = hero ? pictures - 1 : pictures;
+  const skip = hero && 'photo' in hero ? hero.photo.id : null;
+  const photos = e.photos.filter((p) => p.id !== skip);
+  const images = e.images.filter((i) => !(hero && 'image' in hero && hero.image.url === i.url));
   return (
     <button class={`note card${e.cover ? ' has-cover' : ''}`} {...hold}>
       {e.cover && <CoverImg cover={e.cover} class="note-cover" />}
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
         <div class="note-main">
-          <div class="note-title">{e.title.trim() || (excerpt ? excerpt.split('\n')[0].slice(0, 60) : 'Untitled')}</div>
-          <div class="note-when">{e.dateEnd ? rangeLabel(e.date, e.dateEnd) : timeLabel(e.time)}</div>
+          <div class="note-title">{heading || 'Untitled'}</div>
+          <div class="note-when">{e.dateEnd ? rangeLabel(e.date, e.dateEnd) : dated ? `${shortDate(e.date)} · ${timeLabel(e.time)}` : timeLabel(e.time)}</div>
         </div>
       </div>
-      {excerpt && e.title.trim() && <p class="note-text">{excerpt}</p>}
-      {(e.emotions.length > 0 || pictures > 0 || e.music.length > 0 || people.length > 0 || books.length > 0) && (
+      {preview && <p class="note-text">{preview}</p>}
+      {hero && (
+        <div class="note-hero">
+          {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" />}
+        </div>
+      )}
+      {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0) && (
         <div class="note-foot">
           <div class="note-emos">
             {e.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
@@ -238,15 +283,36 @@ export function NoteCard({ e }: { e: Entry }) {
               </span>
             )}
           </div>
-          {pictures > 0 && (
+          {strip > 0 && (
             <div class="note-imgs">
-              {e.photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} />)}
-              {e.images.slice(0, Math.max(0, 3 - e.photos.length)).map((img) => <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
-              {pictures > 3 && <span class="more">+{pictures - 3}</span>}
+              {photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} />)}
+              {images.slice(0, Math.max(0, 3 - photos.length)).map((img) => <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
+              {strip > 3 && <span class="more">+{strip - 3}</span>}
             </div>
           )}
         </div>
       )}
+    </button>
+  );
+}
+
+/** A note as one line, for the compact journal. */
+export function NoteRow({ e, dated }: { e: Entry; dated?: boolean }) {
+  const { heading, preview } = previewOf(plainText(e.text), e.title, 120);
+  const worlds = [...new Set(e.emotions.map((id) => coreOf(id).id))].slice(0, 3);
+  const pictures = e.photos.length + e.images.length;
+  const hold = useHold(e, () => navigate('note/' + e.id));
+  return (
+    <button class="note-row" {...hold}>
+      <span class="row-icon">{e.icon ? <NoteIcon id={e.icon} size={18} /> : <Icon name="notebook" size={18} />}</span>
+      <span class="row-title">{heading || 'Untitled'}</span>
+      <span class="row-text">{preview.replace(/\n+/g, ' · ')}</span>
+      <span class="row-marks">
+        {worlds.map((c) => <Sprite core={c} size={12} />)}
+        {pictures > 0 && <Icon name="photo" size={14} />}
+        {e.music.length > 0 && <Icon name="music" size={14} />}
+      </span>
+      <span class="checkin-time">{dated ? shortDate(e.date) : timeLabel(e.time)}</span>
     </button>
   );
 }

@@ -123,7 +123,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   lock alert-circle brand-spotify music playlist chart-donut-2 cloud copy key devices users user user-plus
   arrow-up arrow-down float-left float-center float-right grip-vertical maximize
   bold italic strikethrough highlight heading list-numbers list-check blockquote code separator-horizontal book
-  share copy-plus library-photo layout-grid-remove stack-pop books star bookmark quote chart-pie crop zoom-in zoom-out`.split(/\s+/);
+  share copy-plus library-photo layout-grid-remove stack-pop books star bookmark quote chart-pie crop zoom-in zoom-out pin pinned-off layout-list`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

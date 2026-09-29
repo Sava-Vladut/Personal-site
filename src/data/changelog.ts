@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.15.0',
+    date: '2026-09-29',
+    changes: [
+      'Journal cards show a note\u2019s first picture large when it has no cover',
+      'A note without a title now uses its first line as the heading, and previews are cut at whole lines or words instead of mid-word',
+      'New Journal layout in Settings: Cards or Compact, a one-line-per-entry list that fits many days on screen',
+      'Swipe a journal entry right to pin a note to the top, or left to delete it (with Undo); Pin and Unpin are also in the long-press menu',
+    ],
+  },
+  {
     version: '1.14.1',
     date: '2026-09-29',
     changes: [

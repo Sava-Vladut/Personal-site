@@ -113,6 +113,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const notes = entries.filter((e) => e.kind === 'note').length;
   const themes: [S['theme'], string, UiName][] = [['system', 'System', 'device-desktop'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']];
   const pickers: [S['picker'], string, UiName][] = [['grid', 'Grid', 'layout-grid'], ['wheel', 'Wheel', 'chart-donut-2']];
+  const densities: [S['density'], string, UiName][] = [['cards', 'Cards', 'layout-list'], ['compact', 'Compact', 'list']];
 
   return (
     <div class="page">
@@ -147,6 +148,16 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <div class="seg compact" role="radiogroup" aria-label="Emotion picker">
               {pickers.map(([v, l, icon]) => (
                 <button role="radio" aria-checked={settings.picker === v} aria-selected={settings.picker === v} onClick={() => setSettings({ picker: v })}>
+                  <Icon name={icon} size={16} /> {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div class="list-row">
+            <span>Journal layout</span>
+            <div class="seg compact" role="radiogroup" aria-label="Journal layout">
+              {densities.map(([v, l, icon]) => (
+                <button role="radio" aria-checked={settings.density === v} aria-selected={settings.density === v} onClick={() => setSettings({ density: v })}>
                   <Icon name={icon} size={16} /> {l}
                 </button>
               ))}

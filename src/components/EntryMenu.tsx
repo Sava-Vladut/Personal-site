@@ -75,6 +75,19 @@ function swallowLiftClick() {
   addEventListener('pointercancel', lifted, true);
 }
 
+/** Deletes an entry, with a toast to bring it back. */
+export async function removeEntry(e: Entry) {
+  const removed = await deleteEntry(e.id);
+  if (removed) toast(e.kind === 'note' ? 'Note deleted' : 'Check-in deleted', { label: 'Undo', run: () => saveEntry(removed) });
+}
+
+/** Pins a note to the top of the journal, or lets it go back to its day. */
+export async function togglePin(e: Entry) {
+  const pinned = !e.pinned;
+  const saved = await saveEntry({ ...e, pinned });
+  toast(pinned ? 'Pinned to the top' : 'Unpinned', { label: 'Undo', run: () => saveEntry({ ...saved, pinned: !pinned }) });
+}
+
 /** The options for the entry that was held. Rendered once, by the app. */
 export function EntryMenu() {
   const e = menu$.use();
@@ -113,10 +126,6 @@ export function EntryMenu() {
     }
   };
   const share = () => navigator.share({ title: shown.title.trim() || undefined, text: shareText }).catch(() => {});
-  const remove = async () => {
-    const removed = await deleteEntry(shown.id);
-    if (removed) toast(isNote ? 'Note deleted' : 'Check-in deleted', { label: 'Undo', run: () => saveEntry(removed) });
-  };
 
   return (
     <Sheet
@@ -132,6 +141,11 @@ export function EntryMenu() {
     >
       <div class="card list menu-list">
         {isNote && (
+          <button class="list-row action" onClick={run(() => togglePin(shown))}>
+            <span class="row gap-s"><Icon name={shown.pinned ? 'pinned-off' : 'pin'} size={18} /> {shown.pinned ? 'Unpin' : 'Pin to the top'}</span>
+          </button>
+        )}
+        {isNote && (
           <button class="list-row action" onClick={run(duplicate)}><span class="row gap-s"><Icon name="copy-plus" size={18} /> Duplicate</span></button>
         )}
         {shareText && (
@@ -140,7 +154,7 @@ export function EntryMenu() {
         {shareText && 'share' in navigator && (
           <button class="list-row action" onClick={run(share)}><span class="row gap-s"><Icon name="share" size={18} /> Share</span></button>
         )}
-        <button class="list-row action danger" onClick={run(remove)}>
+        <button class="list-row action danger" onClick={run(() => removeEntry(shown))}>
           <span class="row gap-s"><Icon name="trash" size={18} /> {isNote ? 'Delete note' : 'Delete check-in'}</span>
         </button>
       </div>

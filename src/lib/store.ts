@@ -53,6 +53,7 @@ export interface Entry {
   music: Music[];
   people: string[];         // ids of the people it's about or who were there
   cover: Cover | null;
+  pinned: boolean;          // kept at the top of the journal
   created: number;
   updated: number;
 }
@@ -133,7 +134,7 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   const now = Date.now();
   return {
     id: uid(), kind, title: '', icon: null, text: '', emotions: [], intensity: 3,
-    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, created: now, updated: now,
+    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, created: now, updated: now,
   };
 }
 
@@ -362,6 +363,7 @@ function normalize(raw: any): Entry | null {
       : [],
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
     cover: coverPic && (coverCrop ? { ...coverPic, crop: coverCrop } : coverPic),
+    pinned: raw.kind !== 'checkin' && raw.pinned === true,
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };
@@ -491,6 +493,7 @@ export interface Settings {
   theme: 'system' | 'light' | 'dark';
   weekStart: 0 | 1;
   picker: 'grid' | 'wheel';
+  density: 'cards' | 'compact';
 }
 const SETTINGS_KEY = 'mm-settings';
 function loadSettings(): Settings {
@@ -498,7 +501,7 @@ function loadSettings(): Settings {
   try {
     s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   } catch {}
-  return { theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid' };
+  return { theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards' };
 }
 const settings$ = observable<Settings>(loadSettings());
 export const useSettings = settings$.use;
