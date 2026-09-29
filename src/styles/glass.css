@@ -157,10 +157,8 @@
 
 .nav-new { flex: none; width: 62px; height: 62px; padding: 0; }
 
-/* ---------- add menu: a slanted ribbon of tiles unfolding from the + button ---------- */
+/* ---------- add menu: a stack of tiles unfolding from the + button ---------- */
 
-/* Every tile leans the same 14°, and each row up steps left by pitch × tan 14° (64 × 0.25 = 16px),
-   so the edges of the whole stack line up into one continuous diagonal. */
 .nav-plus { display: grid; transition: rotate 0.55s var(--spring); }
 .nav-new[aria-expanded='true'] .nav-plus { rotate: 135deg; }
 
@@ -176,9 +174,8 @@
 .add-scrim.closing { animation: fade-out 0.3s ease-in forwards; pointer-events: none; }
 
 .add-menu {
-  --slant: 14deg;
   position: absolute;
-  right: 9px;
+  right: 0;
   bottom: calc(100% + 12px);
   display: flex;
   flex-direction: column-reverse; /* the first item is the one nearest the thumb */
@@ -189,7 +186,6 @@
 .add-menu.closing { pointer-events: none; }
 .add-item {
   pointer-events: auto;
-  translate: calc(var(--k) * -16px) 0;
   transform-origin: right bottom;
   animation: add-in 0.62s var(--spring) backwards;
   animation-delay: calc(var(--k) * 55ms);
@@ -208,11 +204,8 @@
   padding: 0 14px 0 9px;
   border-radius: 17px;
   text-align: left;
-  transform: skewX(var(--slant));
   --glass-blur: 26px;
-  background:
-    linear-gradient(105deg, color-mix(in oklab, var(--c) 17%, transparent), transparent 64%),
-    var(--glass-fill-strong);
+  background: var(--glass-fill-strong);
   transition: translate 0.4s var(--spring), scale 0.4s var(--spring);
 }
 .add-tile:active { scale: 0.96; transition-duration: 0.12s; }
@@ -225,11 +218,10 @@
   width: 40px;
   height: 40px;
   border-radius: 13px;
-  color: color-mix(in oklab, var(--c) 80%, var(--ink));
-  background: color-mix(in oklab, var(--c) 20%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 32%, transparent);
+  color: var(--ink);
+  background: color-mix(in oklab, var(--ink) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 10%, transparent);
 }
-.add-icon svg, .add-text, .add-go { transform: skewX(calc(var(--slant) * -1)); } /* stand upright inside the lean */
 .add-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
 .add-text b { font-size: 15.5px; font-weight: 620; color: var(--ink); }
 .add-text small { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -240,10 +232,10 @@
 }
 
 @keyframes add-in {
-  from { opacity: 0; transform: translate(calc(var(--k) * 16px), calc(var(--k) * 64px + 28px)) rotate(14deg) scale(0.55); }
+  from { opacity: 0; transform: translate(0, calc(var(--k) * 64px + 28px)) rotate(14deg) scale(0.55); }
 }
 @keyframes add-out {
-  to { opacity: 0; transform: translate(calc(var(--k) * 16px), calc(var(--k) * 64px + 28px)) rotate(8deg) scale(0.55); }
+  to { opacity: 0; transform: translate(0, calc(var(--k) * 64px + 28px)) rotate(8deg) scale(0.55); }
 }
 @media (prefers-reduced-motion: reduce) {
   .nav-plus, .add-tile, .add-go { transition: none; }

@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.12.1',
+    date: '2026-09-29',
+    changes: [
+      'The + menu tiles are now straight and neutral: no slant and no colour tints',
+    ],
+  },
+  {
     version: '1.12.0',
     date: '2026-09-29',
     changes: [
