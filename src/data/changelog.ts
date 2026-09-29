@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.9.0',
+    date: '2026-09-29',
+    changes: [
+      'Journal sky: two layers of clouds — small, faint ones far away and larger, faster ones in front that lean harder toward your finger or cursor',
+      'Journal sky: clouds now breathe, and slowly stretch apart and draw back together as they drift',
+      'Journal sky: a low sun lights the upper-left edges of the clouds and their letters, with a quieter shaded side',
+      'Journal sky: each feeling has its own letters — soft waves for calm, rain for sadness, sharp slashes for fear, and more',
+      'Journal sky: smoother on large screens',
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-09-27',
     changes: [
