@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'books' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'mind';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'books' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'mind' | 'brain';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -18,6 +18,7 @@ function parse(): Route {
   if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
   if (head === 'book' && id) return { name: 'book', id, query, visit };
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
+  if (head === 'brain') return { name: 'brain', query, visit };
   if (head === 'tracker' || head === 'people' || head === 'books' || head === 'stats' || head === 'settings') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
@@ -28,7 +29,7 @@ function parse(): Route {
 
 type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';
 const TABS: RouteName[] = ['journal', 'tracker', 'people', 'books'];
-const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
+const depth = (n: RouteName) => (n === 'note' || n === 'brain' ? 2 : TABS.includes(n) ? 0 : 1);
 
 function motionFor(a: Route, b: Route): Motion | null {
   if (a.name === b.name) return a.id !== b.id ? 'fade' : null; // same page, new query: the page animates itself

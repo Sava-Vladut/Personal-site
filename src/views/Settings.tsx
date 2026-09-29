@@ -156,6 +156,19 @@ export function Settings({ query }: { query: URLSearchParams }) {
       </section>
 
       <section class="section">
+        <h2 class="section-title">Explore</h2>
+        <div class="card list">
+          <button class="list-row action" onClick={() => navigate('brain')}>
+            <span class="grow">
+              <span class="row gap-s"><Icon name="brain" size={18} /> ASCII brain</span>
+              <div class="muted small">A 3D brain drawn in letters. Scroll to fly through its lobes, drag to turn it, tap to send a pulse across it.</div>
+            </span>
+            <Icon name="chevron-right" size={18} />
+          </button>
+        </div>
+      </section>
+
+      <section class="section">
         <h2 class="section-title">Spotify</h2>
         <div class="card list">
           <div class="list-row">

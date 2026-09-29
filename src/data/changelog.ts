@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.14.0',
+    date: '2026-09-29',
+    changes: [
+      'New in Settings: an ASCII brain, a detailed 3D brain drawn entirely in letters, with folds, lobes, cerebellum and brainstem',
+      'Scroll to fly from lobe to lobe with a note on what each one does; the lobe you are on lights up in its own colour',
+      'Drag to turn the brain, tap it to send a pulse rippling across the cortex',
+    ],
+  },
+  {
     version: '1.13.0',
     date: '2026-09-29',
     changes: [
