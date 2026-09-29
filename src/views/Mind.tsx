@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { plainText } from '../lib/body';
 import { DAY } from '../lib/dates';
@@ -239,43 +239,58 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
   }, [shares]);
   const hero = shares.find((x) => x.p.id === focus) ?? shares[0];
   const toggle = (id: string) => onPick(picked === id ? null : id);
+  const box = useRef<HTMLElement>(null);
+  const [swept, setSwept] = useState(false);
+
+  // the intro sweep is the only thing that needs the mask; once it is done the ring is painted without it
+  useEffect(() => {
+    const t = setTimeout(() => setSwept(true), 1300);
+    return () => clearTimeout(t);
+  }, []);
+
+  // the slow motion rests while the wheel is scrolled out of sight
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(([e]) => el.toggleAttribute('data-idle', !e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <figure class="wheel" data-focus={focus ? '' : undefined} style={{ '--aura': hero ? colorOf(hero) : 'var(--ink-3)' }}>
+    <figure class="wheel" ref={box} data-focus={focus ? '' : undefined} style={{ '--aura': hero ? colorOf(hero) : 'var(--ink-3)' }}>
       <svg class="wheel-art" viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label="Share of your thoughts, by person">
         <defs>
           <mask id="wheel-sweep" maskUnits="userSpaceOnUse" x="0" y="0" width={SIZE} height={SIZE}>
             <circle class="wheel-sweep" cx={C} cy={C} r={(R + HOLE) / 2} pathLength={1} transform={`rotate(-90 ${C} ${C})`} />
           </mask>
-          {/* the same low sun as the sky: lit toward the upper left, a little shaded toward the lower right */}
-          <linearGradient id="wheel-sheen" x1="0.1" y1="0" x2="0.9" y2="1">
-            <stop offset="0" stop-color="#fff" stop-opacity="0.26" />
-            <stop offset="0.5" stop-color="#fff" stop-opacity="0" />
-            <stop offset="1" stop-color="#000" stop-opacity="0.2" />
-          </linearGradient>
         </defs>
-        <circle class="wheel-track" cx={C} cy={C} r={(R + HOLE) / 2} />
-        <g mask="url(#wheel-sweep)">
-          {slices.map(({ x, d, mid }) => (
-            <path
-              class={`wheel-slice${focus === x.p.id ? ' on' : ''}`}
-              d={d}
-              style={{ '--c': colorOf(x), '--dx': `${f(Math.sin(mid) * POP)}px`, '--dy': `${f(-Math.cos(mid) * POP)}px` }}
-              role="button"
-              tabIndex={0}
-              aria-label={`${x.p.name || 'Unnamed'}: ${pctOf(x.share)}, ${x.count} ${x.count === 1 ? 'moment' : 'moments'}`}
-              aria-pressed={picked === x.p.id}
-              onClick={() => toggle(x.p.id)}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toggle(x.p.id))}
-              onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(x.p.id)}
-              onPointerLeave={() => onHover(null)}
-              onFocus={() => onHover(x.p.id)}
-              onBlur={() => onHover(null)}
-            />
+        {!slices.length && <circle class="wheel-track" cx={C} cy={C} r={(R + HOLE) / 2} />}
+        <g mask={swept ? undefined : 'url(#wheel-sweep)'}>
+          {slices.map(({ x, d, mid }, i) => (
+            // the group carries the heartbeat and the path the slow breathing, so the two never fight over one property
+            <g key={x.p.id} class={hero?.p.id === x.p.id ? 'wheel-beat' : undefined}>
+              <path
+                class={`wheel-slice${focus === x.p.id ? ' on' : ''}`}
+                d={d}
+                style={{ '--c': colorOf(x), '--i': i, '--dx': `${f(Math.sin(mid) * POP)}px`, '--dy': `${f(-Math.cos(mid) * POP)}px` }}
+                role="button"
+                tabIndex={0}
+                aria-label={`${x.p.name || 'Unnamed'}: ${pctOf(x.share)}, ${x.count} ${x.count === 1 ? 'moment' : 'moments'}`}
+                aria-pressed={picked === x.p.id}
+                onClick={() => toggle(x.p.id)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toggle(x.p.id))}
+                onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(x.p.id)}
+                onPointerLeave={() => onHover(null)}
+                onFocus={() => onHover(x.p.id)}
+                onBlur={() => onHover(null)}
+              />
+            </g>
           ))}
-          <circle class="wheel-sheen" cx={C} cy={C} r={(R + HOLE) / 2} stroke="url(#wheel-sheen)" stroke-width={R - HOLE} />
         </g>
       </svg>
+      {/* a soft light drifting around the ring, lit on one side and shaded on the other, on the compositor alone */}
+      <div class="wheel-shine" aria-hidden="true" />
 
       {/* the people with the biggest slices sit just outside the wheel, next to their slice */}
       {slices.map(({ x, mid, big }, i) => {

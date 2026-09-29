@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.11.0',
+    date: '2026-09-29',
+    changes: [
+      'What’s on your mind: the coloured ring is alive — each slice slowly swells and settles, out of step with the others',
+      'What’s on your mind: the person you’re looking at has a soft heartbeat',
+      'What’s on your mind: a gentle light drifts around the ring, brightening each colour as it passes',
+      'What’s on your mind: the motion pauses while the wheel is scrolled out of view, and it stays light on battery',
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-09-29',
     changes: [
