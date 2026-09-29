@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.11.1',
+    date: '2026-09-29',
+    changes: [
+      'Faster app delivery with assets compressed ahead of time',
+      'Smoother server sync with streamed transfers and safer handling of simultaneous saves',
+      'More reliable Spotify connections and server restarts',
+    ],
+  },
+  {
     version: '1.11.0',
     date: '2026-09-29',
     changes: [

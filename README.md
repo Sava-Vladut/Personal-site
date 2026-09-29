@@ -71,9 +71,20 @@ Spotify settings are described in `.env.example`.
 
 ## Deploying
 
-Any host that runs Node 20+: `npm ci && npm run build && npm start`, behind HTTPS. Set `PUBLIC_URL` to the public address
+Any host that runs Node 20 (20.19+) or Node 22.12+: `npm ci && npm run build && npm start`, behind HTTPS. Set `PUBLIC_URL` to the public address
 (the OAuth redirects use it) and `SESSION_SECRET` to a long random string. The server has no dependencies, serves
-compressed, cache-busted assets, and sends a strict Content-Security-Policy.
+compressed, cache-busted assets, and sends a strict Content-Security-Policy. The build writes Brotli and gzip sidecars
+for static hosting after generating the offline cache, so compression never blocks live requests.
+
+Run one server process per sync data directory: document conflict checks are serialized within that process.
+Sync uploads and downloads stream to/from disk. Fingerprinted static assets use a bounded 16 MiB cache.
+Up to four uploads, 128 total sync requests and 128 static handler operations run concurrently, with a
+retryable 503 when capacity is exhausted. Each encrypted document or photo retains its 16 MiB limit. Store
+`data/` on persistent storage and back it up separately; atomic file replacement is not a backup.
+Spotify upstream calls have a 15-second deadline. SIGTERM/SIGINT drains HTTP requests for up to eight seconds.
+
+See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
+and remaining browser-side and infrastructure scaling limits.
 
 ## Design notes
 

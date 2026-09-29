@@ -7,10 +7,12 @@
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 import http from 'node:http';
 import crypto from 'node:crypto';
-import zlib from 'node:zlib';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, extname, join, normalize, sep } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { HttpError } from './http-error.js';
+import { createSyncHandler } from './sync.js';
+import { createStaticHandler } from './static.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -64,12 +66,6 @@ const SECURITY_HEADERS = {
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
 
-class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
 
 function json(res, status, body, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
@@ -82,10 +78,13 @@ function redirect(res, location, cookies = []) {
 }
 
 function cookies(req) {
-  const out = {};
+  const out = Object.create(null);
   for (const part of (req.headers.cookie || '').split(';')) {
     const i = part.indexOf('=');
-    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    if (i > 0) {
+      try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); }
+      catch { /* Ignore malformed cookies without breaking other valid sessions. */ }
+    }
   }
   return out;
 }
@@ -115,8 +114,40 @@ function unseal(str) {
 
 /* ---------------- OAuth ---------------- */
 
+// Keep the deadline active until the response body has been consumed, not just its headers.
+async function spotifyRequest(url, options = {}, format = 'json') {
+  const controller = new AbortController();
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new HttpError(504, 'Spotify took too long to respond. Try again.'));
+      controller.abort();
+    }, 15_000);
+  });
+  try {
+    return await Promise.race([deadline, (async () => {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      let body;
+      if (format === 'redirect' && res.headers.get('location')) {
+        await res.body?.cancel();
+        body = '';
+      } else if (format === 'redirect') body = await res.text();
+      else body = await res.json().catch((error) => {
+        if (controller.signal.aborted) throw error;
+        return {};
+      });
+      return { res, body };
+    })()]);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(502, 'Could not reach Spotify. Try again.');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function tokenRequest(params, url, id, secret) {
-  const res = await fetch(url, {
+  const { res, body } = await spotifyRequest(url, {
     method: 'POST',
     headers: {
       Authorization: 'Basic ' + Buffer.from(`${id}:${secret}`).toString('base64'),
@@ -124,8 +155,8 @@ async function tokenRequest(params, url, id, secret) {
     },
     body: new URLSearchParams(params),
   });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new HttpError(502, body.message || body.error_description || `Token request failed (${res.status})`);
+  if (!res.ok) throw new HttpError(body.error === 'invalid_grant' ? 401 : 502, body.message || body.error_description || `Token request failed (${res.status})`);
+  if (typeof body.access_token !== 'string' || !body.access_token) throw new HttpError(502, 'Spotify returned an invalid session. Try again.');
   return body;
 }
 
@@ -136,6 +167,9 @@ const toSession = (t, prevRefresh) => ({
   ...(t.scope ? { sc: t.scope } : {}),
 });
 
+const pendingRefreshes = new Map();
+const MAX_PENDING_REFRESHES = 128;
+
 /** Returns a valid session (refreshing it if expired) or null. May queue a Set-Cookie. */
 async function session(req, setCookies, name, path, refresh) {
   const s = unseal(cookies(req)[name] || '');
@@ -143,10 +177,20 @@ async function session(req, setCookies, name, path, refresh) {
   if (s.e > Date.now()) return s;
   if (!s.r) return null;
   try {
-    const next = { sc: s.sc, ...toSession(await refresh({ grant_type: 'refresh_token', refresh_token: s.r }), s.r), u: s.u };
+    const refreshKey = crypto.createHash('sha256').update(name + '\0' + s.r).digest('hex');
+    let pending = pendingRefreshes.get(refreshKey);
+    if (!pending) {
+      if (pendingRefreshes.size >= MAX_PENDING_REFRESHES) throw new HttpError(503, 'Spotify is busy. Try again shortly.');
+      pending = Promise.resolve().then(() => refresh({ grant_type: 'refresh_token', refresh_token: s.r }))
+        .finally(() => pendingRefreshes.delete(refreshKey));
+      pendingRefreshes.set(refreshKey, pending);
+    }
+    const next = { sc: s.sc, ...toSession(await pending, s.r), u: s.u };
     setCookies.push(cookie(name, seal(next), 365 * 86400, path));
     return next;
-  } catch {
+  } catch (error) {
+    // A transient upstream failure must not look like a disconnected Spotify account.
+    if (error instanceof HttpError && error.status >= 500) throw error;
     return null;
   }
 }
@@ -161,8 +205,7 @@ const SP_KINDS = new Set(['track', 'album', 'playlist', 'episode', 'show', 'arti
 const SP_SHORT = /^(spotify\.link|spotify\.app\.link)$/;
 
 async function spApi(s, path) {
-  const res = await fetch(SP_API + path, { headers: { Authorization: `Bearer ${s.a}` } });
-  const body = await res.json().catch(() => ({}));
+  const { res, body } = await spotifyRequest(SP_API + path, { headers: { Authorization: `Bearer ${s.a}` } });
   if (res.status === 401) throw new HttpError(401, 'Your Spotify connection expired. Connect again in Settings.');
   if (res.status === 429)
     throw new HttpError(429, `Spotify asked us to slow down — try again in ${Number(res.headers.get('retry-after')) || 30} seconds.`);
@@ -219,8 +262,8 @@ async function resolveSpotify(raw, s) {
     // Short links (spotify.link/…) redirect a couple of times; follow them, but only through Spotify hosts.
     for (let hop = 0; SP_SHORT.test(u.hostname); hop++) {
       if (hop > 4) throw new HttpError(400, 'Couldn’t follow that spotify.link link.');
-      const r = await fetch(u.href, { redirect: 'manual', headers: { 'User-Agent': UA } });
-      const loc = r.headers.get('location') || (await r.text().catch(() => '')).match(/https:\/\/open\.spotify\.com\/[^"'\s<>\\]+/)?.[0];
+      const { res: r, body } = await spotifyRequest(u.href, { redirect: 'manual', headers: { 'User-Agent': UA } }, 'redirect');
+      const loc = r.headers.get('location') || body.match(/https:\/\/open\.spotify\.com\/[^"'\s<>\\]+/)?.[0];
       if (!loc) throw new HttpError(400, 'Couldn’t follow that spotify.link link.');
       u = new URL(loc, u);
       if (!(SP_SHORT.test(u.hostname) || u.hostname === 'open.spotify.com')) throw new HttpError(400, 'That link doesn’t lead to Spotify.');
@@ -237,8 +280,8 @@ async function resolveSpotify(raw, s) {
     } catch {}
   }
   const link = `https://open.spotify.com/${kind}/${id}`;
-  const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(link)}`, { headers: { 'User-Agent': UA } });
-  const o = res.ok ? await res.json().catch(() => null) : null;
+  const { res, body } = await spotifyRequest(`https://open.spotify.com/oembed?url=${encodeURIComponent(link)}`, { headers: { 'User-Agent': UA } });
+  const o = res.ok ? body : null;
   if (!o?.title) throw new HttpError(404, 'Spotify didn’t return that — it may be private or unavailable.');
   return { kind, id, title: String(o.title).slice(0, 300), image: /^https:\/\//.test(o.thumbnail_url) ? o.thumbnail_url : undefined, link };
 }
@@ -364,177 +407,31 @@ async function spotify(req, res, url, p, setCookies, out) {
 
 /* ---------------- sync ---------------- */
 
-// A synced journal is a folder: 'doc' holds the encrypted entries, every other file is one encrypted photo.
-// Photos never change once added, so they upload once each instead of riding along with every edit.
-const SYNC_DOC_MAX = 16 * 1024 * 1024;
-const SYNC_PHOTO_MAX = 16 * 1024 * 1024;
-const revs = new Map(); // doc path → { mtime, rev }
-
-function readBody(req, max) {
-  return new Promise((resolve, reject) => {
-    if (Number(req.headers['content-length']) > max) return reject(new HttpError(413, 'That’s too big to sync.'));
-    const chunks = [];
-    let size = 0;
-    req.on('data', (c) => {
-      size += c.length;
-      if (size > max) {
-        reject(new HttpError(413, 'That’s too big to sync.'));
-        req.destroy();
-      } else chunks.push(c);
-    });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
-  });
-}
-
-/** The doc's revision: a hash of its bytes, so any write gives a new one. Null when there's no doc. */
-function revOf(file) {
-  if (!existsSync(file)) return null;
-  const mtime = statSync(file).mtimeMs;
-  const hit = revs.get(file);
-  if (hit?.mtime === mtime) return hit.rev;
-  const rev = crypto.createHash('sha256').update(readFileSync(file)).digest('base64url').slice(0, 22);
-  revs.set(file, { mtime, rev });
-  return rev;
-}
-
-function writeAtomic(file, data) {
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.${crypto.randomBytes(6).toString('hex')}.tmp`;
-  writeFileSync(tmp, data, { mode: 0o600 });
-  renameSync(tmp, file);
-}
-
-function sendBytes(res, data, headers = {}) {
-  res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': data.length, 'Cache-Control': 'no-store', ...headers });
-  res.end(data);
-}
-
-async function sync(req, res, p) {
-  const m = p.match(/^\/api\/sync\/([a-f0-9]{64})(?:\/(p[a-z0-9]{6,40}))?$/);
-  if (!m) throw new HttpError(404, 'Not found');
-  const dir = join(SYNC_DIR, m[1]);
-
-  if (m[2]) {
-    const file = join(dir, m[2]);
-    if (req.method === 'GET') {
-      if (!existsSync(file)) throw new HttpError(404, 'No such photo.');
-      return sendBytes(res, readFileSync(file));
-    }
-    if (req.method === 'PUT') {
-      const body = await readBody(req, SYNC_PHOTO_MAX);
-      if (!body.length) throw new HttpError(400, 'Empty photo.');
-      if (!existsSync(file)) writeAtomic(file, body);
-      res.writeHead(204);
-      return res.end();
-    }
-    throw new HttpError(405, 'Method not allowed');
-  }
-
-  const doc = join(dir, 'doc');
-  if (req.method === 'GET') {
-    const rev = revOf(doc);
-    if (!rev) throw new HttpError(404, 'Nothing is saved under that code.');
-    if (req.headers['x-sync-rev'] === rev) {
-      res.writeHead(304, { 'X-Sync-Rev': rev, 'Cache-Control': 'no-store' });
-      return res.end();
-    }
-    return sendBytes(res, readFileSync(doc), { 'X-Sync-Rev': rev });
-  }
-  if (req.method === 'PUT') {
-    const body = await readBody(req, SYNC_DOC_MAX);
-    if (!body.length) throw new HttpError(400, 'Empty upload.');
-    // Only replace the revision the device last saw ('new' when it expects there to be none), so edits from
-    // two devices can't silently overwrite each other; on a conflict the device merges and tries again.
-    // Everything from here to the rename is synchronous, so the check and the write can't interleave.
-    const current = revOf(doc);
-    const expected = req.headers['x-sync-rev'];
-    if ((current ?? 'new') !== expected) return json(res, 409, { error: 'Changed on another device.', rev: current });
-    writeAtomic(doc, body);
-    return json(res, 200, { rev: revOf(doc) });
-  }
-  if (req.method === 'DELETE') {
-    rmSync(dir, { recursive: true, force: true });
-    res.writeHead(204);
-    return res.end();
-  }
-  throw new HttpError(405, 'Method not allowed');
-}
+const sync = createSyncHandler({ directory: SYNC_DIR });
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
   const setCookies = [];
   const out = (body) => json(res, 200, body, setCookies.length ? { 'Set-Cookie': setCookies } : {});
 
-  if (p === '/api/health') return json(res, 200, { ok: true });
-  if (p.startsWith('/api/spotify/')) return spotify(req, res, url, p, setCookies, out);
-  if (p.startsWith('/api/sync/')) return sync(req, res, p);
-  throw new HttpError(404, 'Not found');
+  try {
+    if (p === '/api/health') return json(res, 200, { ok: true });
+    if (p.startsWith('/api/spotify/')) return await spotify(req, res, url, p, setCookies, out);
+    if (p.startsWith('/api/sync/')) return await sync(req, res, p);
+    throw new HttpError(404, 'Not found');
+  } finally {
+    // A refresh can rotate its token even when the following API call fails.
+    if (setCookies.length && !res.headersSent) res.setHeader('Set-Cookie', setCookies);
+  }
 }
 
 /* ---------------- static files ---------------- */
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8',
-};
-const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.webmanifest', '.svg', '.txt']);
-const cache = new Map();
-
-function load(file) {
-  const mtime = statSync(file).mtimeMs;
-  const hit = cache.get(file);
-  if (hit && hit.mtime === mtime) return hit;
-  const raw = readFileSync(file);
-  const entry = { mtime, raw, etag: '"' + crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 16) + '"' };
-  if (COMPRESSIBLE.has(extname(file)) && raw.length > 1024) {
-    entry.br = zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 10 } });
-    entry.gz = zlib.gzipSync(raw, { level: 9 });
-  }
-  cache.set(file, entry);
-  return entry;
-}
-
-function serveStatic(req, res, pathname) {
-  if (!existsSync(join(DIST, 'index.html')))
-    return json(res, 503, { error: 'App not built yet. Run "npm run build" (or use "npm run dev" while developing).' });
-  let file;
-  try {
-    file = normalize(join(DIST, decodeURIComponent(pathname)));
-  } catch {
-    return json(res, 400, { error: 'Bad path' });
-  }
-  if (file !== DIST && !file.startsWith(DIST + sep)) return json(res, 404, { error: 'Not found' });
-  if (!existsSync(file) || statSync(file).isDirectory()) {
-    if (extname(pathname)) return json(res, 404, { error: 'Not found' });
-    file = join(DIST, 'index.html'); // app routes live in the hash, so any other path gets the app
-  }
-  const f = load(file);
-  const immutable = pathname.startsWith('/assets/');
-  const headers = {
-    'Content-Type': TYPES[extname(file)] || 'application/octet-stream',
-    'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
-    ETag: f.etag,
-    Vary: 'Accept-Encoding',
-  };
-  if (!immutable && req.headers['if-none-match'] === f.etag) {
-    res.writeHead(304, headers);
-    return res.end();
-  }
-  const accept = String(req.headers['accept-encoding'] || '');
-  let body = f.raw;
-  if (f.br && /\bbr\b/.test(accept)) (body = f.br), (headers['Content-Encoding'] = 'br');
-  else if (f.gz && /\bgzip\b/.test(accept)) (body = f.gz), (headers['Content-Encoding'] = 'gzip');
-  headers['Content-Length'] = body.length;
-  res.writeHead(200, headers);
-  res.end(req.method === 'HEAD' ? undefined : body);
-}
+const serveStatic = createStaticHandler(DIST);
 
 /* ---------------- server ---------------- */
 
-http
-  .createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
     try {
       let url;
@@ -545,13 +442,36 @@ http
       }
       if (url.pathname.startsWith('/api/')) return await api(req, res, url);
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
-      return serveStatic(req, res, url.pathname);
+      return await serveStatic(req, res, url.pathname);
     } catch (e) {
+      if (req.aborted || res.destroyed) return;
+      if (e.code === 'ERR_STREAM_PREMATURE_CLOSE' || e.code === 'ECONNRESET') return res.destroy();
       if (!(e instanceof HttpError)) console.error(e);
+      if (res.headersSent) return res.destroy();
       if (!res.headersSent) json(res, e instanceof HttpError ? e.status : 500, { error: e instanceof HttpError ? e.message : 'Something went wrong on the server.' });
     }
-  })
-  .listen(PORT, () => {
+  });
+server.listen(PORT, () => {
     console.log(`My Mind → ${PUBLIC_URL}  (listening on :${PORT})`);
     console.log(spConfigured() ? `Spotify: configured · redirect URI ${SP_REDIRECT}` : 'Spotify: links only (set SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in .env to search and browse playlists)');
   });
+
+// Let in-flight uploads finish during deployment, within Docker's default stop grace period.
+if (typeof server.close === 'function') {
+  let stopping = false;
+  const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
+    const timer = setTimeout(() => {
+      server.closeAllConnections();
+      process.exit(0);
+    }, 8_000);
+    timer.unref();
+    server.close(() => {
+      clearTimeout(timer);
+      process.exit(0);
+    });
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}
