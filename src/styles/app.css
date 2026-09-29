@@ -436,19 +436,25 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 
 /* wheel variant (Settings → Emotion picker) */
 .ew { container-type: inline-size; }
-.ew-svg { display: block; width: 100%; max-width: 540px; margin: 0 auto; overflow: visible; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ew-stage { position: relative; max-width: 540px; margin: 0 auto; }
+.ew-svg {
+  display: block; width: 100%; overflow: visible; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
 .ew-seg {
   --m: 20%;
   fill: color-mix(in oklab, var(--c) var(--m), var(--surface));
   stroke: color-mix(in oklab, var(--c) var(--m), var(--surface));
   stroke-width: 3; stroke-linejoin: round; cursor: pointer; outline: none;
-  transition: fill 0.15s, stroke 0.15s;
+  transition: fill 0.15s, stroke 0.15s, opacity 0.25s;
 }
 .ew-seg.d1 { --m: 12%; }
 .ew-seg.d2 { --m: 7%; }
 .ew-seg.has { --m: 28%; }
 .ew-seg.hot, .ew-seg:active { --m: 34%; }
 .ew-seg.on { --m: 46%; }
+.ew-seg.held { --m: 54%; filter: drop-shadow(0 0 9px color-mix(in oklab, var(--c) 65%, transparent)); }
+.ew.holding .ew-seg:not(.held) { opacity: 0.5; }
 .ew-seg:focus-visible { stroke: var(--ink); }
 .ew-hub { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
 .ew-svg text { text-anchor: middle; fill: var(--ink-2); font-family: var(--sans); }
@@ -468,6 +474,63 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .ew-cap-name { font: 500 19px/1.25 var(--serif); }
 .ew-cap-path { font-size: 12.5px; color: var(--ink-3); }
 .ew-caption .world-def { text-wrap: balance; }
+
+/* the card that opens when an emotion is held */
+.ew-tip {
+  position: absolute; z-index: 5; pointer-events: none;
+  left: var(--l); top: var(--t); width: var(--w);
+  transform: translateY(calc(-100% - 16px)); transform-origin: var(--ax) 100%;
+  padding: 13px 14px 11px; border-radius: 20px; display: grid; gap: 9px;
+  background:
+    radial-gradient(90% 70% at 0% 0%, color-mix(in oklab, var(--c) 20%, transparent), transparent 75%),
+    color-mix(in oklab, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid color-mix(in oklab, var(--c) 42%, var(--line));
+  box-shadow: 0 22px 44px -16px color-mix(in oklab, var(--c) 60%, rgb(0 0 0 / 0.4)), 0 2px 8px -2px rgb(0 0 0 / 0.14), inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
+  animation: tip-in 0.34s var(--spring);
+}
+.ew-tip.below { transform: translateY(16px); transform-origin: var(--ax) 0; }
+.ew-tip.out { animation: tip-out 0.22s var(--ease) forwards; }
+.ew-tip::after {
+  content: ''; position: absolute; left: var(--ax); bottom: -7px; width: 12px; height: 12px; margin-left: -6px;
+  transform: rotate(45deg); border-radius: 0 0 3px 0;
+  background: color-mix(in oklab, var(--c) 6%, var(--surface));
+  border: solid color-mix(in oklab, var(--c) 42%, var(--line)); border-width: 0 1px 1px 0;
+}
+.ew-tip.below::after { bottom: auto; top: -7px; border-width: 1px 0 0 1px; border-radius: 3px 0 0 0; background: color-mix(in oklab, var(--c) 14%, var(--surface)); }
+.ew-tip-head { display: flex; align-items: center; gap: 11px; }
+.ew-tip-sprite {
+  width: 40px; height: 40px; flex: none; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--c) 20%, var(--surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 30%, transparent);
+}
+.ew-tip-title { min-width: 0; display: grid; gap: 2px; }
+.ew-tip-name { font: 500 19px/1.15 var(--serif); letter-spacing: -0.01em; color: var(--ink); overflow-wrap: anywhere; }
+.ew-tip-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 11.5px; color: var(--ink-3); }
+.ew-tip-trail { font-size: 11.5px; color: var(--ink-3); }
+.ew-tip-level { font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; font-size: 10.5px; color: color-mix(in oklab, var(--c) 65%, var(--ink)); }
+.ew-tip-dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.5; }
+.ew-tip-def { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); text-wrap: pretty; }
+.ew-tip-near { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ew-tip-label { font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); margin-right: 2px; }
+.ew-tip-chip {
+  font-size: 12px; font-weight: 550; padding: 3px 9px; border-radius: 999px; color: var(--ink);
+  background: color-mix(in oklab, var(--c) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 28%, transparent);
+}
+.ew-tip-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 8px;
+  border-top: 1px solid color-mix(in oklab, var(--c) 18%, var(--line)); font-size: 11.5px; color: var(--ink-3);
+}
+.ew-tip-count { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ew-tip-hint { margin-left: auto; }
+@keyframes tip-in { from { opacity: 0; transform: translateY(calc(-100% - 6px)) scale(0.86); } }
+@keyframes tip-out { to { opacity: 0; transform: translateY(calc(-100% - 8px)) scale(0.94); } }
+.ew-tip.below { animation-name: tip-in-below; }
+.ew-tip.below.out { animation-name: tip-out-below; }
+@keyframes tip-in-below { from { opacity: 0; transform: translateY(6px) scale(0.86); } }
+@keyframes tip-out-below { to { opacity: 0; transform: translateY(8px) scale(0.94); } }
+@media (prefers-reduced-motion: reduce) { .ew-tip, .ew-tip.below { animation: none; } .ew-tip.out { opacity: 0; } }
 .ew-actions { max-width: 540px; margin: 12px auto 0; }
 .ew-actions .btn { font-weight: 500; color: var(--ink-2); }
 
@@ -1216,6 +1279,19 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 /* the mind page sits under the journal's sky; only what differs is here */
 .journal-top.mind-top { --gap: color-mix(in oklab, var(--sky) 7%, var(--surface)); padding-bottom: 24px; margin-bottom: 6px; }
 .journal-top.mind-top .page-head { margin-bottom: 14px; }
+
+/* check-in: the same sky, a frosted disc and a soft glow under the wheel so its gaps stay calm */
+.journal-top.track-top { padding-bottom: 24px; margin-bottom: 6px; }
+.journal-top.track-top .page-head { margin-bottom: 18px; }
+.journal-top .ew-stage::before {
+  content: ''; position: absolute; inset: -1.5%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--bg) 62%, transparent) 88%, color-mix(in oklab, var(--sky) 10%, transparent));
+  -webkit-backdrop-filter: blur(10px) saturate(1.3); backdrop-filter: blur(10px) saturate(1.3);
+  box-shadow: 0 24px 60px -24px color-mix(in oklab, var(--sky) 70%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--line) 60%, transparent);
+  transition: box-shadow 0.6s;
+}
+.journal-top .ew-stage > * { position: relative; }
+.journal-top .ew-stage > .ew-tip { position: absolute; }
 .journal-top.mind-top .wheel { margin-top: 14px; }
 
 .mind-summary { font: 400 18px/1.45 var(--serif); color: var(--ink-2); text-align: center; max-width: 32ch; margin: 8px auto 0; text-wrap: balance; animation: rise-in 0.5s var(--ease-emph) backwards; }

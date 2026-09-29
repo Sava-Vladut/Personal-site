@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
-import { CORE, EMOTION, type EmotionDef } from '../data/emotions';
+import { CORE, EMOTION, type EmotionDef, type FamilyDef } from '../data/emotions';
 import { Icon, Sprite, spritePath } from './icons';
 import { trail } from './emotion';
 
@@ -14,6 +14,12 @@ const ORDER = ['love-connection', 'joy', 'calm-safety', 'hope-interest', 'fear',
 const C = 200;
 const GAP = 3;       // half the gap between neighbouring segments
 const MS = 480;
+const HOLD_MS = 380;   // how long a press must last to open the tooltip
+const SLOP = 10;       // a finger that moves further than this is scrolling, not holding
+const LINGER = 1700;   // the tooltip stays a moment after letting go, so it can be read
+const TIP_W = 272;
+const TIP_H = 176;     // roughly; decides whether the tooltip opens above or below
+const LEVEL = ['World', 'Zone', 'Feeling'];
 
 interface Seg { e: EmotionDef; a0: number; a1: number }
 const SEGS: Seg[] = ORDER.flatMap((id, i) => {
@@ -89,11 +95,67 @@ function PixelSprite({ core, x, y, size }: { core: string; x: number; y: number;
   );
 }
 
-export function EmotionWheel({ focus, onFocus, onPick, selected = [] }: {
+interface Tip { id: string; x: number; y: number; live: boolean }
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** The card that opens when an emotion is held: what it is, what it holds, where it sits. */
+function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: number; zoomed: boolean; selected: boolean; times?: number }) {
+  const e = EMOTION[tip.id];
+  const c = CORE[e.core];
+  const fam = e.depth === 1 ? c.families.find((f) => f.id === e.id) : null;
+  const near: { id: string; name: string }[] =
+    e.depth === 0 ? c.families
+    : e.depth === 1 ? (fam as FamilyDef).feelings
+    : (c.families.find((f) => f.id === e.parent)?.feelings ?? []).filter((x) => x.id !== e.id);
+  const nearLabel = ['Zones', 'Feelings', 'Nearby'][e.depth];
+  const w = Math.min(TIP_W, width - 8);
+  const px = (tip.x / 400) * width, py = (tip.y / 400) * width;
+  const left = clamp(px - w / 2, 0, Math.max(0, width - w));
+  const ax = clamp(px - left, 22, w - 22);
+  const below = py < TIP_H + 24;
+  const hint = zoomed && e.depth === 0 ? 'Tap to go back' : selected ? 'Selected · tap to undo' : e.depth === 0 && !zoomed ? 'Tap to open this world' : 'Tap to choose';
+
+  return (
+    <div
+      class={`ew-tip${below ? ' below' : ''}${tip.live ? '' : ' out'}`}
+      role="tooltip"
+      style={{ '--c': `var(--emo-${e.core})`, '--w': `${w}px`, '--l': `${left}px`, '--t': `${py}px`, '--ax': `${ax}px` }}
+    >
+      <div class="ew-tip-head">
+        <span class="ew-tip-sprite"><Sprite core={e.core} size={22} /></span>
+        <div class="ew-tip-title">
+          <div class="ew-tip-name">{e.name}</div>
+          <div class="ew-tip-meta">
+            <span class="ew-tip-level">{LEVEL[e.depth]}</span>
+            <span class="ew-tip-dot" aria-hidden="true" />
+            <span>{c.valence === 'pleasant' ? 'Pleasant' : 'Unpleasant'}</span>
+          </div>
+          {e.depth > 0 && <div class="ew-tip-trail">{trail(e.id)}</div>}
+        </div>
+      </div>
+      <p class="ew-tip-def">{e.def}</p>
+      {near.length > 0 && (
+        <div class="ew-tip-near">
+          <span class="ew-tip-label">{nearLabel}</span>
+          {near.map((x) => <span class="ew-tip-chip">{x.name}</span>)}
+        </div>
+      )}
+      <div class="ew-tip-foot">
+        {times !== undefined && <span class="ew-tip-count">{times ? `Felt ${times} ${times === 1 ? 'time' : 'times'}` : 'Not felt yet'}</span>}
+        <span class="ew-tip-hint">{hint}</span>
+      </div>
+    </div>
+  );
+}
+
+export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: {
   focus: string | null;
   onFocus: (core: string | null) => void;
   onPick: (id: string) => void;
   selected?: string[];
+  /** How many check-ins and notes touch each emotion, shown in the hold tooltip. */
+  counts?: Record<string, number>;
 }) {
   const uid = useId();
   const [view, setView] = useState<View>(() => viewOf(focus));
@@ -101,10 +163,85 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [] }: {
   const cur = useRef(view);
   cur.current = view;
 
+  // Holding an emotion opens a tooltip; sliding a held finger across the wheel moves it along.
+  const [tip, setTip] = useState<Tip | null>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const anchors = useRef(new Map<string, [number, number]>());
+  const press = useRef<{ id: string; x: number; y: number; held: boolean } | null>(null);
+  const suppress = useRef(false);
+  const timers = useRef<{ hold?: number; linger?: number; gone?: number }>({});
+  const width = stage.current?.clientWidth ?? 320;
+
+  const clearTimers = () => {
+    clearTimeout(timers.current.hold);
+    clearTimeout(timers.current.linger);
+    clearTimeout(timers.current.gone);
+  };
+  const showTip = (id: string) => {
+    const a = anchors.current.get(id);
+    if (a) setTip({ id, x: a[0], y: a[1], live: true });
+  };
+  const endPress = () => {
+    clearTimeout(timers.current.hold);
+    const p = press.current;
+    press.current = null;
+    if (p?.held) {
+      // the click that follows a hold is not a choice
+      setTimeout(() => (suppress.current = false), 60);
+      timers.current.linger = window.setTimeout(() => {
+        setTip((t) => t && { ...t, live: false });
+        timers.current.gone = window.setTimeout(() => setTip(null), 220);
+      }, LINGER);
+    }
+  };
+  const beginPress = (ev: PointerEvent, id: string) => {
+    if (ev.button > 0) return;
+    clearTimers();
+    setTip(null);
+    suppress.current = false;
+    const p = { id, x: ev.clientX, y: ev.clientY, held: false };
+    press.current = p;
+    timers.current.hold = window.setTimeout(() => {
+      p.held = true;
+      suppress.current = true;
+      showTip(p.id);
+      navigator.vibrate?.(10);
+    }, HOLD_MS);
+  };
+  const movePress = (ev: PointerEvent) => {
+    const p = press.current;
+    if (!p) return;
+    if (!p.held) {
+      if (Math.hypot(ev.clientX - p.x, ev.clientY - p.y) > SLOP) {
+        clearTimeout(timers.current.hold);
+        press.current = null;
+      }
+      return;
+    }
+    const id = document.elementFromPoint(ev.clientX, ev.clientY)?.getAttribute('data-eid');
+    if (id && id !== p.id) {
+      p.id = id;
+      showTip(id);
+    }
+  };
+
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    // once a hold has begun the finger explores the wheel instead of scrolling the page
+    const block = (ev: TouchEvent) => press.current?.held && ev.cancelable && ev.preventDefault();
+    el.addEventListener('touchmove', block, { passive: false });
+    return () => el.removeEventListener('touchmove', block);
+  }, []);
+  useEffect(() => () => clearTimers(), []);
+
   // Tween between overview and zoomed views.
   useEffect(() => {
     const from = cur.current, to = viewOf(focus);
     setHot(null);
+    clearTimers();
+    press.current = null;
+    setTip(null);
     if (from.z === to.z && from.d0 === to.d0 && from.d1 === to.d1) return;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return setView(to);
     const start = performance.now();
@@ -125,7 +262,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [] }: {
   const outer = (1 - z) ** 2; // overview labels
   const inner = z ** 2;       // zoomed labels
 
-  const act = (e: EmotionDef) => (zoomed ? (e.depth === 0 ? onFocus(null) : onPick(e.id)) : onFocus(e.core));
+  const act = (e: EmotionDef) => (suppress.current ? void 0 : zoomed ? (e.depth === 0 ? onFocus(null) : onPick(e.id)) : onFocus(e.core));
   const key = (ev: KeyboardEvent, e: EmotionDef) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
@@ -134,26 +271,30 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [] }: {
   };
 
   const shapes = [], labels = [];
+  const anchorMap = new Map<string, [number, number]>();
   for (const [n, s] of SEGS.entries()) {
     const { e } = s;
     const a0 = map(s.a0), a1 = map(s.a1);
     const [r0, r1] = radii(e.depth, z);
     const d = sector(r0, r1, a0, a1);
     if (!d) continue;
+    anchorMap.set(e.id, xy((r0 + r1) / 2, (a0 + a1) / 2) as [number, number]);
     const isFocus = zoomed && e.depth === 0;
     const tabbable = settled && (zoomed ? e.core === focus : e.depth === 0);
-    const cls = `ew-seg d${e.depth}${hot === e.id ? ' hot' : ''}${selected.includes(e.id) ? ' on' : ''}${
+    const cls = `ew-seg d${e.depth}${hot === e.id ? ' hot' : ''}${selected.includes(e.id) ? ' on' : ''}${tip?.id === e.id ? ' held' : ''}${
       selected.some((x) => x.startsWith(e.id + '/')) ? ' has' : ''}`;
     shapes.push(
       <path
         d={d}
         class={cls}
         style={{ '--c': `var(--emo-${e.core})` }}
+        data-eid={e.id}
         role="button"
         tabIndex={tabbable ? 0 : -1}
         aria-label={isFocus ? 'Back to all worlds' : e.name}
         aria-pressed={selected.includes(e.id)}
         onClick={() => act(e)}
+        onPointerDown={(ev) => beginPress(ev as PointerEvent, e.id)}
         onKeyDown={(ev) => key(ev as KeyboardEvent, e)}
         onPointerEnter={(ev) => ev.pointerType === 'mouse' && setHot(e.id)}
         onPointerLeave={() => setHot((h) => (h === e.id ? null : h))}
@@ -192,12 +333,21 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [] }: {
     }
   }
 
+  anchors.current = anchorMap;
   const info = hot ? EMOTION[hot] : zoomed ? CORE[focus] : null;
   const core = focus ? CORE[focus] : null;
 
   return (
-    <div class="ew" onKeyDown={(ev) => ev.key === 'Escape' && zoomed && onFocus(null)}>
-      <svg class="ew-svg" viewBox="0 0 400 400" role="group" aria-label={core ? `${core.name}: zones and feelings` : 'Emotion wheel'}>
+    <div class={`ew${tip?.live ? ' holding' : ''}`} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
+      <div class="ew-stage" ref={stage}>
+      <svg
+        class="ew-svg" viewBox="0 0 400 400" role="group" aria-label={core ? `${core.name}: zones and feelings` : 'Emotion wheel'}
+        onPointerMove={(ev) => movePress(ev as PointerEvent)}
+        onPointerUp={endPress}
+        onPointerCancel={endPress}
+        onPointerLeave={(ev) => ev.pointerType === 'mouse' && endPress()}
+        onContextMenu={(ev) => press.current && ev.preventDefault()}
+      >
         {z < 1 && <circle cx={C} cy={C} r={lerp(52, 0, z)} class="ew-hub" />}
         {shapes}
         <g class="ew-labels">
@@ -220,6 +370,8 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [] }: {
         )}
         </g>
       </svg>
+      {tip && <HoldTip tip={tip} width={width} zoomed={zoomed} selected={selected.includes(tip.id)} times={counts ? counts[tip.id] ?? 0 : undefined} />}
+      </div>
 
       <div class="ew-caption">
         {info ? (

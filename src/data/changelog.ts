@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.13.0',
+    date: '2026-09-29',
+    changes: [
+      'Hold any emotion on the wheel to open a tooltip with its name, level, definition, the zones or feelings it holds and how often you have felt it',
+      'Keep holding and slide across the wheel to read the next emotion; the rest of the wheel dims while you look',
+      'The check-in page now sits under the same drifting cloud sky as the journal and mind page, tinted by the world you are exploring',
+      'The wheel gets a frosted disc and a soft glow so it stands out clearly against the clouds',
+    ],
+  },
+  {
     version: '1.12.1',
     date: '2026-09-29',
     changes: [

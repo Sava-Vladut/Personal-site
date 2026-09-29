@@ -6,6 +6,7 @@ import { blankEntry, deleteEntry, getPeople, saveEntry, toast, useEntries, useSe
 import { streaks } from '../lib/stats';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
 import { EmotionWheel } from '../components/EmotionWheel';
+import { Sky } from '../components/Sky';
 import { Icon, Sprite } from '../components/icons';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
@@ -31,6 +32,19 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   const named = useMemo(() => new Set(entries.flatMap((e) => e.emotions).filter((id) => EMOTION[id]?.depth === 2)), [entries]);
   const today = todayKey();
   const todays = entries.filter((e) => e.kind === 'checkin' && e.date === today);
+  // how many entries touch each emotion, counting a feeling toward its zone and world too
+  const counts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const e of entries) {
+      const ids = new Set<string>();
+      for (const id of e.emotions) {
+        const parts = id.split('/');
+        for (let i = 1; i <= parts.length; i++) ids.add(parts.slice(0, i).join('/'));
+      }
+      for (const id of ids) out[id] = (out[id] ?? 0) + 1;
+    }
+    return out;
+  }, [entries]);
   const streak = useMemo(() => streaks(entries).current, [entries]);
 
   const reset = () => {
@@ -58,9 +72,14 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   };
 
   const p = picked ? EMOTION[picked] : null;
+  // the sky takes the colour of the world you're in, else the one you last checked in with today
+  const mood = todays.find((e) => e.emotions.length);
+  const world = p?.core ?? core ?? (mood ? EMOTION[mood.emotions[0]]?.core : null) ?? null;
 
   return (
     <div class="page">
+      <div class="journal-top track-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
+      <Sky world={world} />
       <header class="page-head">
         <div class="eyebrow">Check in</div>
         <h1 class="title">How are you feeling?</h1>
@@ -102,7 +121,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
           <button class="btn btn-primary block confirm-log" onClick={log}>Log feeling</button>
         </div>
       ) : picker === 'wheel' ? (
-        <EmotionWheel focus={core} onFocus={setCore} onPick={setPicked} />
+        <EmotionWheel focus={core} onFocus={setCore} onPick={setPicked} counts={counts} />
       ) : core ? (
         <div class="card pad-s">
           <WorldDetail core={core} onBack={() => setCore(null)} onPick={setPicked} />
@@ -110,6 +129,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
       ) : (
         <WorldGrid onSelect={setCore} />
       )}
+      </div>
 
       <section class="section">
         <div class="row between">
