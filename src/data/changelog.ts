@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.12.0',
+    date: '2026-09-29',
+    changes: [
+      'The + button no longer opens a full panel: a small ribbon of slanted glass tiles unfolds from the corner instead',
+      'Note, Check-in, Person and Book each get a coloured tile that fans out one after another from the button',
+      'The + turns into a × as it opens; tap outside, press Escape or use Back to close',
+    ],
+  },
+  {
     version: '1.11.1',
     date: '2026-09-29',
     changes: [

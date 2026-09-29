@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { navigate, navigateAfterSheet, useRoute, type RouteName } from './lib/router';
+import { navigate, useRoute, type RouteName } from './lib/router';
 import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
+import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
-import { Sheet } from './components/Sheet';
 import { Icon, type UiName } from './components/icons';
 import { BookView } from './views/Book';
 import { Books } from './views/Books';
@@ -65,19 +65,10 @@ export function App() {
   );
 }
 
-const ADD: [string, string, string, UiName][] = [
-  ['note/new', 'Note', 'Write about your day', 'pencil'],
-  ['tracker', 'Check-in', 'Log how you feel right now', 'mood-plus'],
-  ['person/new', 'Person', 'Someone who matters to you', 'user-plus'],
-  ['books?add', 'Book', 'Something you’re reading or want to', 'books'],
-];
-
 /** iOS-style floating glass tab bar, with the "add" menu as its own glass button. */
 function TabBar({ active }: { active: RouteName }) {
   const bar = useRef<HTMLDivElement>(null);
-  const plus = useRef<HTMLButtonElement>(null);
   useLens(bar);
-  useLens(plus, { strength: 14 });
   const [adding, setAdding] = useState(false);
   const i = NAV.findIndex(([name]) => name === active);
   // The pill's leading edge moves first and the trailing edge catches up, so it stretches like a drop.
@@ -89,35 +80,12 @@ function TabBar({ active }: { active: RouteName }) {
   }
   return (
     <nav class="nav" aria-label="Main">
-      <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': NAV.length }}>
+      <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': NAV.length }} inert={adding}>
         {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
         {NAV.map(([name, label, icon, path]) => <NavItem active={active === name} label={label} icon={icon} path={path} />)}
       </div>
-      <button ref={plus} class="nav-new glass glass-btn tinted" onClick={() => setAdding(true)} aria-label="Add" aria-haspopup="dialog">
-        <Icon name="plus" size={26} stroke={2} />
-      </button>
-      <AddMenu open={adding} onClose={() => setAdding(false)} />
+      <AddMenu open={adding} onOpenChange={setAdding} />
     </nav>
-  );
-}
-
-function AddMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const pick = (to: string) => {
-    navigateAfterSheet(to);
-    onClose();
-  };
-  return (
-    <Sheet open={open} onClose={onClose} title="Add">
-      <div class="card list menu-list">
-        {ADD.map(([to, label, sub, icon]) => (
-          <button class="list-row action add-row" onClick={() => pick(to)}>
-            <span class="add-icon"><Icon name={icon} size={20} /></span>
-            <span class="add-main"><span class="add-label">{label}</span><span class="muted small">{sub}</span></span>
-            <Icon name="chevron-right" size={18} class="muted" />
-          </button>
-        ))}
-      </div>
-    </Sheet>
   );
 }
 
