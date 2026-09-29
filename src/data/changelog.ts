@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.14.1',
+    date: '2026-09-29',
+    changes: [
+      'Removed the ASCII brain from Settings',
+    ],
+  },
+  {
     version: '1.14.0',
     date: '2026-09-29',
     changes: [

@@ -8,7 +8,6 @@ import { EntryMenu } from './components/EntryMenu';
 import { Icon, type UiName } from './components/icons';
 import { BookView } from './views/Book';
 import { Books } from './views/Books';
-import { Brain } from './views/Brain';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
 import { Mind } from './views/Mind';
@@ -44,8 +43,6 @@ export function App() {
           <People />
         ) : route.name === 'mind' ? (
           <Mind />
-        ) : route.name === 'brain' ? (
-          <Brain />
         ) : route.name === 'book' ? (
           <BookView key={route.id} id={route.id!} />
         ) : route.name === 'books' ? (
@@ -60,7 +57,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'brain' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />
