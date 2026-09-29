@@ -1149,25 +1149,31 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 
 .wheel { position: relative; width: min(100%, 380px); aspect-ratio: 1; margin: 8px auto 0; }
 .wheel::before {
-  content: ''; position: absolute; inset: 12%; border-radius: 50%; pointer-events: none; filter: blur(22px);
-  background: radial-gradient(closest-side, color-mix(in oklab, var(--glow) 26%, transparent), transparent);
-  animation: fade-in 1.4s ease backwards;
+  content: ''; position: absolute; inset: 4%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--aura) 36%, transparent), color-mix(in oklab, var(--aura) 11%, transparent) 62%, transparent);
+  animation: fade-in 1.4s ease backwards, wheel-breathe 7s ease-in-out 1.4s infinite alternate;
 }
+/* the glow takes the colour of whoever you are looking at, and breathes slowly, on the compositor alone */
+@property --aura { syntax: '<color>'; inherits: true; initial-value: transparent; }
+.wheel { transition: --aura 0.6s ease; }
+@keyframes wheel-breathe { from { transform: scale(0.93); } to { transform: scale(1.07); } }
 .wheel-art { position: relative; display: block; width: 100%; height: 100%; overflow: visible; animation: wheel-turn 1.1s var(--ease-emph) backwards; }
 @keyframes wheel-turn { from { transform: rotate(-35deg) scale(0.92); } }
 .wheel-track { fill: none; stroke: var(--surface-2); stroke-width: 38; }
 .wheel-sweep { fill: none; stroke: #fff; stroke-width: 70; stroke-dasharray: 1; animation: wheel-sweep 1.1s var(--ease-emph) backwards; }
 @keyframes wheel-sweep { from { stroke-dashoffset: 1; } }
 .wheel-slice {
-  fill: color-mix(in oklab, var(--c) 78%, var(--surface)); stroke: var(--bg); stroke-width: 2.5; stroke-linejoin: round;
+  fill: color-mix(in oklab, var(--c) 78%, var(--surface)); stroke: var(--gap, var(--bg)); stroke-width: 2.5; stroke-linejoin: round;
   cursor: pointer; outline: none; transition: transform 0.45s var(--spring), opacity 0.3s var(--ease), fill 0.25s;
 }
 .wheel-slice.on { fill: var(--c); transform: translate(var(--dx), var(--dy)); }
 .wheel-slice:focus-visible { stroke: var(--ink); }
+.wheel-sheen { fill: none; pointer-events: none; }
 .wheel[data-focus] .wheel-slice:not(.on) { opacity: 0.35; }
 
 .wheel-face {
-  position: absolute; translate: -50% -50%; border-radius: 999px; display: flex; box-shadow: 0 0 0 2.5px var(--bg), var(--shadow);
+  position: absolute; translate: -50% -50%; border-radius: 999px; display: flex;
+  box-shadow: 0 0 0 2.5px var(--gap, var(--bg)), 0 0 16px color-mix(in oklab, var(--c) 60%, transparent);
   transition: scale 0.35s var(--spring), opacity 0.3s var(--ease);
   animation: pop-face 0.6s var(--spring-bouncy) backwards; animation-delay: calc(0.6s + var(--i) * 60ms);
 }
@@ -1177,7 +1183,14 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 
 .wheel-hub {
   position: absolute; inset: 29%; border-radius: 50%; display: grid; place-content: center; justify-items: center; gap: 1px;
-  text-align: center; pointer-events: none; animation: fade-in 0.35s ease;
+  text-align: center; pointer-events: none; animation: fade-in 0.5s ease 0.2s backwards;
+}
+.wheel-name, .wheel-sub { animation: fade-in 0.35s ease; }
+/* a calm disc under the numbers, so the sky's letters drifting behind the wheel don't fight them */
+.wheel-hub { isolation: isolate; }
+.wheel-hub::before {
+  content: ''; position: absolute; inset: -8%; z-index: -1; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, color-mix(in oklab, var(--aura) 20%, var(--surface)) 90%, transparent), color-mix(in oklab, color-mix(in oklab, var(--aura) 7%, var(--surface)) 90%, transparent));
 }
 .wheel-pct { font: 500 clamp(32px, 11vw, 42px)/1 var(--serif); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--ink); }
 .wheel-name { max-width: 100%; margin-top: 4px; font: 550 16px/1.25 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1185,7 +1198,13 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 
 @media (prefers-reduced-motion: reduce) {
   .wheel-art, .wheel-sweep, .wheel-face { animation: none; }
+  .wheel::before { animation: none; }
 }
+
+/* the mind page sits under the journal's sky; only what differs is here */
+.journal-top.mind-top { --gap: color-mix(in oklab, var(--sky) 7%, var(--surface)); padding-bottom: 24px; margin-bottom: 6px; }
+.journal-top.mind-top .page-head { margin-bottom: 14px; }
+.journal-top.mind-top .wheel { margin-top: 14px; }
 
 .mind-summary { font: 400 18px/1.45 var(--serif); color: var(--ink-2); text-align: center; max-width: 32ch; margin: 8px auto 0; text-wrap: balance; animation: rise-in 0.5s var(--ease-emph) backwards; }
 .mind-summary b { font-weight: 600; color: var(--ink); }
@@ -1198,6 +1217,10 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .mind-card-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .mind-card-name { font: 550 18px/1.3 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mind-card-sub { font-size: 13px; color: var(--ink-3); }
+.mind-card-quote {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px;
+  font: italic 400 15px/1.4 var(--serif); color: var(--ink-2); quotes: '“' '”';
+}
 .mind-card-pct { font: 500 28px/1 var(--serif); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: color-mix(in oklab, var(--c) 60%, var(--ink)); }
 
 .mind-row { justify-content: flex-start; min-height: 60px; }

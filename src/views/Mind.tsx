@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
+import { plainText } from '../lib/body';
 import { DAY } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
 import { usePeople, useReady, type Entry, type Person } from '../lib/store';
 import { Icon } from '../components/icons';
 import { Avatar } from '../components/people';
+import { CountUp } from '../components/charts';
+import { Sky } from '../components/Sky';
 import { lastSeen, useMoments } from './People';
 
 type Range = 'month' | 'year' | 'all';
@@ -44,6 +47,45 @@ function portion(x: number) {
   return `${pctOf(x)} of your thoughts`;
 }
 
+/** How a feeling world sounds when it's about someone you keep thinking of. */
+const HOLD: Record<string, string> = {
+  joy: 'and they bring you joy',
+  'hope-interest': 'and they give you hope',
+  'love-connection': 'and you hold them with love',
+  'calm-safety': 'and they feel like home',
+  sadness: 'and they weigh on your heart',
+  fear: 'and they bring some worry with them',
+  anger: 'and it stirs up frustration',
+  'shame-aversion': 'and it comes with mixed feelings',
+};
+
+/** The last thing written in a moment, trimmed to a line or two. */
+function snippet(e: Entry) {
+  const t = (plainText(e.text) || e.title).replace(/\s+/g, ' ').trim();
+  return t.length > 110 ? t.slice(0, 107).replace(/\s+\S*$/, '') + '…' : t;
+}
+
+/**
+ * The colours of a sky, in proportion to how much of your mind each feeling world holds. Eight slots, biggest
+ * first and spread out, so that any few clouds picked from the front still look like the whole.
+ */
+function skyMix(shares: Share[]) {
+  const by = new Map<string, number>();
+  for (const x of shares) if (x.core && x.count) by.set(x.core, (by.get(x.core) ?? 0) + x.share);
+  const seats = new Map<string, number>();
+  const out: string[] = [];
+  for (let i = 0; i < 8 && by.size; i++) {
+    let best = '', score = -1;
+    for (const [core, share] of by) {
+      const v = share / ((seats.get(core) ?? 0) + 1);
+      if (v > score) { score = v; best = core; }
+    }
+    seats.set(best, (seats.get(best) ?? 0) + 1);
+    out.push(best);
+  }
+  return out;
+}
+
 export function Mind() {
   const people = usePeople();
   const ready = useReady();
@@ -66,6 +108,9 @@ export function Mind() {
   }, [people, moments, range]);
 
   const total = shares.reduce((s, x) => s + x.count, 0);
+  // the sky above the wheel is made of the people below it
+  const worlds = useMemo(() => skyMix(shares), [shares]);
+  const topWorld = worlds[0] ?? null;
 
   const byId = new Map(shares.map((x) => [x.p.id, x]));
   const sel = picked ? byId.get(picked) : undefined;
@@ -74,21 +119,25 @@ export function Mind() {
 
   return (
     <div class="page mind-page">
-      <header class="page-head">
-        <button class="back-link stats-back" onClick={() => goBack('people')}><Icon name="chevron-left" size={18} /> People</button>
-        <h1 class="title">What’s on your mind</h1>
-        <p class="subtitle">Who takes up your thoughts, by how often you tag them in notes and check-ins.</p>
-      </header>
+      {/* the same sky as the journal, its clouds coloured by the people you think of most */}
+      <div class="journal-top mind-top" style={topWorld ? { '--sky': `var(--emo-${topWorld})` } : undefined}>
+        <Sky world={topWorld} worlds={worlds} />
+        <header class="page-head">
+          <button class="back-link stats-back" onClick={() => goBack('people')}><Icon name="chevron-left" size={18} /> People</button>
+          <h1 class="title">What’s on your mind</h1>
+          <p class="subtitle">Who takes up your thoughts, by how often you tag them in notes and check-ins.</p>
+        </header>
 
-      {people.length > 0 && (
-        <div class="chips filters" role="toolbar" aria-label="Time range">
-          {RANGES.map(([id, name]) => (
-            <button class="chip" aria-pressed={range === id} onClick={() => { setRange(id); setPicked(null); }}>{name}</button>
-          ))}
-        </div>
-      )}
+        {people.length > 0 && (
+          <div class="chips filters" role="toolbar" aria-label="Time range">
+            {RANGES.map(([id, name]) => (
+              <button class="chip" aria-pressed={range === id} onClick={() => { setRange(id); setPicked(null); }}>{name}</button>
+            ))}
+          </div>
+        )}
 
-      {people.length > 0 && <Wheel key={range} shares={shares.filter((x) => x.count)} focus={focus} picked={picked} onPick={setPicked} onHover={setHover} />}
+        {people.length > 0 && <Wheel key={range} shares={shares.filter((x) => x.count)} focus={focus} picked={picked} onPick={setPicked} onHover={setHover} />}
+      </div>
 
       {ready && !people.length && (
         <div class="empty">
@@ -107,6 +156,7 @@ export function Mind() {
               <div class="mind-card-sub">
                 {sel.count ? `${sel.count} ${sel.count === 1 ? 'moment' : 'moments'} · last ${lastSeen(sel.last!.date)}` : 'Not in your notes lately'}
               </div>
+              {sel.last && snippet(sel.last) && <q class="mind-card-quote">{snippet(sel.last)}</q>}
             </div>
             <div class="mind-card-pct">{pctOf(sel.share)}</div>
             <button class="icon-btn" onClick={() => navigate('person/' + sel.p.id)} aria-label={`Open ${sel.p.name}`} title="Open"><Icon name="chevron-right" /></button>
@@ -114,7 +164,10 @@ export function Mind() {
         ) : (
           <p class="mind-summary">
             {total && top ? (
-              <><b>{top.p.name || 'Unnamed'}</b> takes up {portion(top.share)}{range === 'all' ? '' : range === 'month' ? ' this past month' : ' this past year'}.</>
+              <>
+                <b>{top.p.name || 'Unnamed'}</b> takes up {portion(top.share)}{range === 'all' ? '' : range === 'month' ? ' this past month' : ' this past year'}
+                {top.core ? `, ${HOLD[top.core]}` : ''}.
+              </>
             ) : range === 'all' ? (
               'Tag people in notes and check-ins, and the ones you think of most will fill the wheel.'
             ) : (
@@ -188,12 +241,18 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
   const toggle = (id: string) => onPick(picked === id ? null : id);
 
   return (
-    <figure class="wheel" data-focus={focus ? '' : undefined} style={{ '--glow': shares[0] ? colorOf(shares[0]) : 'var(--ink-3)' }}>
+    <figure class="wheel" data-focus={focus ? '' : undefined} style={{ '--aura': hero ? colorOf(hero) : 'var(--ink-3)' }}>
       <svg class="wheel-art" viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label="Share of your thoughts, by person">
         <defs>
           <mask id="wheel-sweep" maskUnits="userSpaceOnUse" x="0" y="0" width={SIZE} height={SIZE}>
             <circle class="wheel-sweep" cx={C} cy={C} r={(R + HOLE) / 2} pathLength={1} transform={`rotate(-90 ${C} ${C})`} />
           </mask>
+          {/* the same low sun as the sky: lit toward the upper left, a little shaded toward the lower right */}
+          <linearGradient id="wheel-sheen" x1="0.1" y1="0" x2="0.9" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity="0.26" />
+            <stop offset="0.5" stop-color="#fff" stop-opacity="0" />
+            <stop offset="1" stop-color="#000" stop-opacity="0.2" />
+          </linearGradient>
         </defs>
         <circle class="wheel-track" cx={C} cy={C} r={(R + HOLE) / 2} />
         <g mask="url(#wheel-sweep)">
@@ -214,6 +273,7 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
               onBlur={() => onHover(null)}
             />
           ))}
+          <circle class="wheel-sheen" cx={C} cy={C} r={(R + HOLE) / 2} stroke="url(#wheel-sheen)" stroke-width={R - HOLE} />
         </g>
       </svg>
 
@@ -224,7 +284,7 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
         return (
           <button
             class={`wheel-face${focus === x.p.id ? ' on' : ''}`}
-            style={{ left: `${(lx / SIZE) * 100}%`, top: `${(ly / SIZE) * 100}%`, '--i': i }}
+            style={{ left: `${(lx / SIZE) * 100}%`, top: `${(ly / SIZE) * 100}%`, '--i': i, '--c': colorOf(x) }}
             onClick={() => toggle(x.p.id)}
             onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(x.p.id)}
             onPointerLeave={() => onHover(null)}
@@ -237,10 +297,10 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
       })}
 
       {hero ? (
-        <div class="wheel-hub" key={hero.p.id} aria-live="polite">
-          <span class="wheel-pct">{pctOf(hero.share)}</span>
-          <span class="wheel-name">{hero.p.name || 'Unnamed'}</span>
-          <span class="wheel-sub">{hero.count} {hero.count === 1 ? 'moment' : 'moments'}</span>
+        <div class="wheel-hub" aria-live="polite">
+          <span class="wheel-pct"><CountUp value={pctOf(hero.share)} /></span>
+          <span class="wheel-name" key={hero.p.id}>{hero.p.name || 'Unnamed'}</span>
+          <span class="wheel-sub" key={`${hero.p.id}:n`}>{hero.count} {hero.count === 1 ? 'moment' : 'moments'}</span>
         </div>
       ) : (
         <div class="wheel-hub"><span class="wheel-sub">No one yet</span></div>

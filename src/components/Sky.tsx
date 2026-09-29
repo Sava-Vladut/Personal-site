@@ -3,7 +3,9 @@
 // ones that lean harder toward a finger or cursor. Each layer is two stacked canvases: the clouds,
 // painted small and stretched up by CSS so they stay soft, and the letters, which thicken where the
 // clouds are and thin to dust between. Clouds breathe, stretch and pinch as they drift, and a low sun
-// from the upper left lights their edges. Each emotion world has its own letter ramp.
+// from the upper left lights their edges. Each emotion world has its own letter ramp. The sky can take
+// one world (the journal) or a mix (the mind page, where each cloud belongs to someone you think about),
+// and changes colour in place when they change, without the clouds starting over.
 import { useEffect, useRef } from 'preact/hooks';
 
 const SCALE = 4; // cloud canvases are drawn at 1/4 size
@@ -59,6 +61,7 @@ interface Spec {
   ink: number;              // opacity of the letters
   spacing: [number, number]; // letter grid, small screen / large
   font: [number, number];
+  res: number;              // sharpest the letters are drawn, in pixels per px: faint far letters can be softer
   pull: number;             // how strongly the pointer moves this layer
   reach: number;
   waveRate: number;
@@ -67,12 +70,12 @@ interface Spec {
 }
 const FAR: Spec = {
   seed: 23, size: [0.42, 0.7], perPx: 115, minCount: 4, speed: [2, 4.5], yFrom: 0.06, yRange: 0.84,
-  toneShift: 1, haze: 0.3, fill: 0.65, ink: 0.85, spacing: [11, 13], font: [8, 9], pull: 0.3, reach: 0.75,
+  toneShift: 1, haze: 0.3, fill: 0.65, ink: 0.85, spacing: [11, 13], font: [8, 9], res: 1.5, pull: 0.3, reach: 0.75,
   waveRate: 0.55, active: 48, idle: 64,
 };
 const NEAR: Spec = {
   seed: 7, size: [0.85, 1.45], perPx: 210, minCount: 3, speed: [7, 15], yFrom: 0.14, yRange: 0.62,
-  toneShift: 0, haze: 0, fill: 1, ink: 1, spacing: [17, 21], font: [12, 13], pull: 1.4, reach: 1.15,
+  toneShift: 0, haze: 0, fill: 1, ink: 1, spacing: [17, 21], font: [12, 13], res: 2, pull: 1.4, reach: 1.15,
   waveRate: 1, active: 16, idle: 30,
 };
 /** If the screen can't keep up, layers redraw this much less often. */
@@ -87,7 +90,7 @@ interface Layer {
   tones: RGB[]; shadow: RGB[]; light: RGB[]; shades: string[];
   sprites: HTMLCanvasElement[][]; // per tone: body, shade, light
   atlas: HTMLCanvasElement; tile: number; atlasDirty: boolean;
-  spacing: number; font: number; cols: number; rows: number;
+  spacing: number; font: number; dpr: number; cols: number; rows: number;
   cells: Float32Array; // per letter cell: x, y, then sine and cosine of four fixed phases
   dens: Float32Array; dens2: Float32Array; // how clear the sky is at each cell, and a step toward the sun
   drawn: number;
@@ -177,21 +180,31 @@ function blob(col: RGB, stops: [number, number][], radius: number): HTMLCanvasEl
   return c;
 }
 
-export function Sky({ world }: { world?: string | null }) {
+/** worlds: the emotion worlds the clouds take their colours from, in order of how much sky each gets. */
+export function Sky({ world, worlds }: { world?: string | null; worlds?: string[] }) {
   const els = useRef<(HTMLCanvasElement | null)[]>([]);
+  const latest = useRef({ world, worlds });
+  const retune = useRef<() => void>();
+  const applied = useRef('');
+  latest.current = { world, worlds };
+  const key = `${world ?? ''}|${(worlds ?? []).join()}`;
 
   useEffect(() => {
     const [farCloud, farGlyph, nearCloud, nearGlyph] = els.current as HTMLCanvasElement[];
     const host = nearGlyph.parentElement!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const darkQuery = matchMedia('(prefers-color-scheme: dark)');
-    const ramp = RAMPS[world ?? ''] ?? RAMPS.default;
-
+    let ramp = RAMPS.default;
+    let glyphs: string[] = [];
+    let glyphIdx: number[][] = [];
     // every character the ramp uses, once, and which of them each density level picks from
-    const glyphs: string[] = [];
-    const glyphIdx = ramp.map((level) =>
-      level.trim() === '' ? [] : [...level].map((ch) => (glyphs.includes(ch) ? glyphs.indexOf(ch) : glyphs.push(ch) - 1)),
-    );
+    const tuneRamp = () => {
+      ramp = RAMPS[latest.current.world ?? ''] ?? RAMPS.default;
+      glyphs = [];
+      glyphIdx = ramp.map((level) =>
+        level.trim() === '' ? [] : [...level].map((ch) => (glyphs.includes(ch) ? glyphs.indexOf(ch) : glyphs.push(ch) - 1)),
+      );
+    };
 
     const layer = (spec: Spec, cloudCv: HTMLCanvasElement, glyphCv: HTMLCanvasElement): Layer => {
       if (spec.fill < 1) cloudCv.style.opacity = String(spec.fill);
@@ -201,13 +214,13 @@ export function Sky({ world }: { world?: string | null }) {
         clouds: [], maxSpan: spanOf(spec.size[1]), now: new Float32Array(0),
         tones: [], shadow: [], light: [], shades: [], sprites: [],
         atlas: document.createElement('canvas'), tile: 0, atlasDirty: true,
-        spacing: 18, font: 12, cols: 0, rows: 0,
+        spacing: 18, font: 12, dpr: 1, cols: 0, rows: 0,
         cells: new Float32Array(0), dens: new Float32Array(0), dens2: new Float32Array(0), drawn: 0,
       };
     };
     const layers = [layer(FAR, farCloud, farGlyph), layer(NEAR, nearCloud, nearGlyph)]; // far first, so the near clouds pass in front
 
-    let w = 0, h = 0, dpr = 1;
+    let w = 0, h = 0;
     let dark = false, norm = 1 / 0.62;
     const lut = new Float32Array(LUT_N + 1); // how solid a puff is, by squared distance from its centre
     let raf = 0, visible = true, last = 0, clock = 0;
@@ -219,13 +232,15 @@ export function Sky({ world }: { world?: string | null }) {
     const seen: number[] = [];
 
     const palette = () => {
+      tuneRamp();
+      const { world, worlds } = latest.current;
       const css = getComputedStyle(host);
       const v = (name: string) => hex(css.getPropertyValue(name));
       dark = document.documentElement.dataset.theme === 'dark';
       norm = 1 / (dark ? 0.5 : 0.62);
       const ink = v('--ink'), surface = v('--surface');
-      const worlds = world ? [world, COMPANION[world] ?? 'sadness', world] : DAWN;
-      const raw = worlds.map((c) => v(`--emo-${c}`));
+      const named = worlds?.length ? worlds : world ? [world, COMPANION[world] ?? 'sadness', world] : DAWN;
+      const raw = named.map((c) => v(`--emo-${c}`));
       const accent = raw[0];
       const glyph = mix(accent, ink, dark ? 0.55 : 0.6);
       // the lit side glows warm; the shaded side just quiets down
@@ -262,11 +277,11 @@ export function Sky({ world }: { world?: string | null }) {
 
     /** Every letter in every shade, painted once; drawing a letter is then a small copy. */
     const buildAtlas = (L: Layer) => {
-      const tile = (L.tile = Math.ceil(L.font * 1.6 * dpr));
+      const tile = (L.tile = Math.ceil(L.font * 1.6 * L.dpr));
       L.atlas.width = glyphs.length * tile;
       L.atlas.height = SHADES * tile;
       const a = L.atlas.getContext('2d')!;
-      a.font = `${L.font * dpr}px ${FONT}`;
+      a.font = `${L.font * L.dpr}px ${FONT}`;
       a.textAlign = 'center';
       a.textBaseline = 'middle';
       L.shades.forEach((shade, si) => {
@@ -300,10 +315,10 @@ export function Sky({ world }: { world?: string | null }) {
       rect = r;
       const first = !w;
       w = r.width; h = r.height;
-      dpr = Math.min(devicePixelRatio || 1, 2);
       const small = w < 720 ? 0 : 1;
       for (const L of layers) {
-        L.glyphCv.width = Math.round(w * dpr); L.glyphCv.height = Math.round(h * dpr);
+        L.dpr = Math.min(devicePixelRatio || 1, L.spec.res);
+        L.glyphCv.width = Math.round(w * L.dpr); L.glyphCv.height = Math.round(h * L.dpr);
         L.cloudCv.width = Math.ceil(w / SCALE); L.cloudCv.height = Math.ceil(h / SCALE);
         L.spacing = L.spec.spacing[small];
         L.font = L.spec.font[small];
@@ -372,7 +387,7 @@ export function Sky({ world }: { world?: string | null }) {
 
     const drawLayer = (L: Layer, t: number, s: number) => {
       if (L.atlasDirty) buildAtlas(L);
-      const { spec, cells, dens, dens2, cols, rows, tile } = L;
+      const { spec, cells, dens, dens2, cols, rows, tile, dpr } = L;
       paintClouds(L, s);
       density(L);
 
@@ -526,6 +541,8 @@ export function Sky({ world }: { world?: string | null }) {
     const mo = new MutationObserver(retheme);
 
     palette();
+    applied.current = key;
+    retune.current = () => { palette(); draw(); };
     resize();
     ro.observe(host);
     io.observe(host);
@@ -555,7 +572,14 @@ export function Sky({ world }: { world?: string | null }) {
       host.removeEventListener('pointerup', up);
       host.removeEventListener('pointercancel', leave);
     };
-  }, [world]);
+  }, []);
+
+  // a new mix of worlds recolours the clouds where they are
+  useEffect(() => {
+    if (applied.current === key) return;
+    applied.current = key;
+    retune.current?.();
+  }, [key]);
 
   const at = (i: number) => (el: HTMLCanvasElement | null) => void (els.current[i] = el);
   return (

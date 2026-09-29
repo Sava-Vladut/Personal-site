@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.10.0',
+    date: '2026-09-29',
+    changes: [
+      'What’s on your mind: the page now has the journal’s drifting-letter sky, coloured by the feelings of the people you think about most',
+      'What’s on your mind: the wheel glows and slowly breathes in the colour of whoever you’re looking at',
+      'What’s on your mind: the ring catches the sunlight, and each person’s face glows in their own colour',
+      'What’s on your mind: the percentage in the middle counts up as you switch between people',
+      'What’s on your mind: the summary says how you hold the person closest to your mind, and their card shows the last thing you wrote about them',
+    ],
+  },
+  {
     version: '1.9.1',
     date: '2026-09-29',
     changes: [
