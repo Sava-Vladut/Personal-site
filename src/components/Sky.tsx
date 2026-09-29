@@ -1,12 +1,16 @@
 // The journal's sky: two layers of soft clouds drifting behind the top panel, partly drawn in letters.
 // A far layer of small, faint clouds and finer letters sits behind a near layer of larger, faster
-// ones that lean harder toward a finger or cursor. Clouds are painted small on a buffer and stretched
-// up, so they stay soft; that buffer says how much cloud sits under each letter, so glyphs thicken
-// where the clouds are and thin to dust between. Clouds breathe, stretch and pinch as they drift,
-// and a low sun from the upper left lights their edges. Each emotion world has its own letter ramp.
+// ones that lean harder toward a finger or cursor. Each layer is two stacked canvases: the clouds,
+// painted small and stretched up by CSS so they stay soft, and the letters, which thicken where the
+// clouds are and thin to dust between. Clouds breathe, stretch and pinch as they drift, and a low sun
+// from the upper left lights their edges. Each emotion world has its own letter ramp.
 import { useEffect, useRef } from 'preact/hooks';
 
-const SCALE = 4; // cloud buffers are drawn at 1/4 size
+const SCALE = 4; // cloud canvases are drawn at 1/4 size
+const SPRITE = 64; // a soft puff, painted once per colour and stamped for every puff
+const LUT_N = 256;
+const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+const MIN_FRAME = 15; // never step faster than ~60fps, even on 120Hz screens
 
 /** Letters from empty to dense. A level with several characters picks one per cell, for texture. */
 const RAMPS: Record<string, string[]> = {
@@ -51,38 +55,51 @@ interface Spec {
   yFrom: number; yRange: number;
   toneShift: number;        // far clouds lean toward the second colour
   haze: number;             // how far the layer fades toward the background
-  fill: number;             // opacity of the cloud image
+  fill: number;             // opacity of the clouds
   ink: number;              // opacity of the letters
   spacing: [number, number]; // letter grid, small screen / large
   font: [number, number];
   pull: number;             // how strongly the pointer moves this layer
   reach: number;
   waveRate: number;
-  every: number;            // redraw on every nth frame; slow, faint layers can rest between
+  /** Shortest time between redraws (ms) while a finger is on the sky, and while it is left alone. */
+  active: number; idle: number;
 }
 const FAR: Spec = {
   seed: 23, size: [0.42, 0.7], perPx: 115, minCount: 4, speed: [2, 4.5], yFrom: 0.06, yRange: 0.84,
-  toneShift: 1, haze: 0.3, fill: 0.65, ink: 0.85, spacing: [11, 13], font: [8, 9], pull: 0.3, reach: 0.75, waveRate: 0.55, every: 3,
+  toneShift: 1, haze: 0.3, fill: 0.65, ink: 0.85, spacing: [11, 13], font: [8, 9], pull: 0.3, reach: 0.75,
+  waveRate: 0.55, active: 48, idle: 64,
 };
 const NEAR: Spec = {
   seed: 7, size: [0.85, 1.45], perPx: 210, minCount: 3, speed: [7, 15], yFrom: 0.14, yRange: 0.62,
-  toneShift: 0, haze: 0, fill: 1, ink: 1, spacing: [17, 21], font: [12, 13], pull: 1.4, reach: 1.15, waveRate: 1, every: 1,
+  toneShift: 0, haze: 0, fill: 1, ink: 1, spacing: [17, 21], font: [12, 13], pull: 1.4, reach: 1.15,
+  waveRate: 1, active: 16, idle: 30,
 };
+/** If the screen can't keep up, layers redraw this much less often. */
+const EASE = [1, 1.7, 2.6];
 
 interface Layer {
-  spec: Spec; clouds: Cloud[]; maxSpan: number;
-  buf: HTMLCanvasElement; bctx: CanvasRenderingContext2D;
-  out: HTMLCanvasElement; octx: CanvasRenderingContext2D;
+  spec: Spec;
+  cloudCv: HTMLCanvasElement; cloudCtx: CanvasRenderingContext2D;
+  glyphCv: HTMLCanvasElement; glyphCtx: CanvasRenderingContext2D;
+  clouds: Cloud[]; maxSpan: number;
+  now: Float32Array; // x, y, r of every puff, this frame
   tones: RGB[]; shadow: RGB[]; light: RGB[]; shades: string[];
-  spacing: number; font: number;
+  sprites: HTMLCanvasElement[][]; // per tone: body, shade, light
+  atlas: HTMLCanvasElement; tile: number; atlasDirty: boolean;
+  spacing: number; font: number; cols: number; rows: number;
+  cells: Float32Array; // per letter cell: x, y, then sine and cosine of four fixed phases
+  dens: Float32Array; dens2: Float32Array; // how clear the sky is at each cell, and a step toward the sun
+  drawn: number;
 }
 
-// the sun: low, from the upper left; the step is in buffer pixels
+// the sun: low, from the upper left
 const SUN = { x: -0.55, y: -0.83 };
-const SUN_STEP = { x: -2, y: -3 };
+const SUN_PX = { x: -8, y: -12 };
 const WARM: RGB = [255, 200, 120];
 const SHADES = 9;       // colours between shaded and sunlit
 const SHADE_LOW = -0.6; // the lowest light value: a little shaded, never black
+const STRIDE = 10;
 
 function hex(s: string): RGB {
   const m = s.trim().match(/^#?([0-9a-f]{6})$/i);
@@ -137,49 +154,75 @@ function makeClouds(spec: Spec, w: number, h: number, tones: number): { clouds: 
   return { clouds, maxSpan };
 }
 
-/** Where a puff is and how big, right now: it breathes, and its cloud slowly stretches and pinches. */
-function puffNow(c: Cloud, p: Puff, s: number) {
+/** Writes where a puff is and how big, right now, into out[k…]: it breathes, and its cloud slowly stretches and pinches. */
+function puffNow(out: Float32Array, k: number, c: Cloud, p: Puff, s: number) {
   const spread = 1 + 0.4 * Math.sin(s * c.spreadRate + c.spreadPhase);
   const pinch = clamp((spread - 1) / 0.4, 0, 1) * 0.3 * (1 - Math.abs(p.u) * 2); // the middle thins as it stretches
   const breath = 1 + 0.13 * Math.sin(s * p.rate + p.phase);
-  return {
-    x: c.x + p.dx * spread + Math.sin(s * p.rate * 0.7 + p.phase * 1.7) * 3,
-    y: c.y + p.dy * (0.9 + 0.1 * breath) + Math.sin(s * p.rate + p.phase * 0.6) * 2,
-    r: p.r * breath * (1 - pinch),
-  };
+  out[k] = c.x + p.dx * spread + Math.sin(s * p.rate * 0.7 + p.phase * 1.7) * 3;
+  out[k + 1] = c.y + p.dy * (0.9 + 0.1 * breath) + Math.sin(s * p.rate + p.phase * 0.6) * 2;
+  out[k + 2] = p.r * breath * (1 - pinch);
+}
+
+/** One soft round puff, painted once so it can be stamped instead of drawn as a gradient every frame. */
+function blob(col: RGB, stops: [number, number][], radius: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = SPRITE;
+  const g = c.getContext('2d')!;
+  const half = SPRITE / 2;
+  const grad = g.createRadialGradient(half, half, 0, half, half, half * radius);
+  for (const [at, a] of stops) grad.addColorStop(at, rgba(col, a));
+  g.fillStyle = grad;
+  g.fillRect(0, 0, SPRITE, SPRITE);
+  return c;
 }
 
 export function Sky({ world }: { world?: string | null }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const els = useRef<(HTMLCanvasElement | null)[]>([]);
 
   useEffect(() => {
-    const cv = canvas.current!;
-    const host = cv.parentElement!;
-    const ctx = cv.getContext('2d')!;
+    const [farCloud, farGlyph, nearCloud, nearGlyph] = els.current as HTMLCanvasElement[];
+    const host = nearGlyph.parentElement!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const darkQuery = matchMedia('(prefers-color-scheme: dark)');
     const ramp = RAMPS[world ?? ''] ?? RAMPS.default;
 
-    const layer = (spec: Spec): Layer => {
-      const buf = document.createElement('canvas'), out = document.createElement('canvas');
+    // every character the ramp uses, once, and which of them each density level picks from
+    const glyphs: string[] = [];
+    const glyphIdx = ramp.map((level) =>
+      level.trim() === '' ? [] : [...level].map((ch) => (glyphs.includes(ch) ? glyphs.indexOf(ch) : glyphs.push(ch) - 1)),
+    );
+
+    const layer = (spec: Spec, cloudCv: HTMLCanvasElement, glyphCv: HTMLCanvasElement): Layer => {
+      if (spec.fill < 1) cloudCv.style.opacity = String(spec.fill);
       return {
-        spec, clouds: [], maxSpan: spanOf(spec.size[1]),
-        buf, bctx: buf.getContext('2d', { willReadFrequently: true })!,
-        out, octx: out.getContext('2d')!,
-        tones: [], shadow: [], light: [], shades: [], spacing: 18, font: 12,
+        spec, cloudCv, glyphCv,
+        cloudCtx: cloudCv.getContext('2d')!, glyphCtx: glyphCv.getContext('2d')!,
+        clouds: [], maxSpan: spanOf(spec.size[1]), now: new Float32Array(0),
+        tones: [], shadow: [], light: [], shades: [], sprites: [],
+        atlas: document.createElement('canvas'), tile: 0, atlasDirty: true,
+        spacing: 18, font: 12, cols: 0, rows: 0,
+        cells: new Float32Array(0), dens: new Float32Array(0), dens2: new Float32Array(0), drawn: 0,
       };
     };
-    const layers = [layer(FAR), layer(NEAR)]; // far first, so the near clouds pass in front
+    const layers = [layer(FAR, farCloud, farGlyph), layer(NEAR, nearCloud, nearGlyph)]; // far first, so the near clouds pass in front
 
     let w = 0, h = 0, dpr = 1;
-    let dark = false;
-    let raf = 0, visible = true, last = 0, clock = 0, tick = 0;
+    let dark = false, norm = 1 / 0.62;
+    const lut = new Float32Array(LUT_N + 1); // how solid a puff is, by squared distance from its centre
+    let raf = 0, visible = true, last = 0, clock = 0;
+    let rect: DOMRect | null = null;
     const pointer = { x: 0, y: 0, tx: 0, ty: 0, pull: 0, target: 0 };
+
+    // if frames keep arriving late, the layers ease off
+    let ease = 0, late = 0, frameMs = 0, calm = 0, eased = 0, strikes = 0;
+    const seen: number[] = [];
 
     const palette = () => {
       const css = getComputedStyle(host);
       const v = (name: string) => hex(css.getPropertyValue(name));
       dark = document.documentElement.dataset.theme === 'dark';
+      norm = 1 / (dark ? 0.5 : 0.62);
       const ink = v('--ink'), surface = v('--surface');
       const worlds = world ? [world, COMPANION[world] ?? 'sadness', world] : DAWN;
       const raw = worlds.map((c) => v(`--emo-${c}`));
@@ -189,6 +232,11 @@ export function Sky({ world }: { world?: string | null }) {
       const sun = dark
         ? mix(mix(accent, WARM, 0.35), [255, 255, 255], 0.5)
         : mix(mix(accent, WARM, 0.4), [0, 0, 0], 0.12);
+      const body = dark ? [0.42, 0.2] : [0.6, 0.3];
+      for (let k = 0; k <= LUT_N; k++) {
+        const t = Math.sqrt(k / LUT_N);
+        lut[k] = t < 0.55 ? body[0] + (body[1] - body[0]) * (t / 0.55) : body[1] * (1 - (t - 0.55) / 0.45);
+      }
       for (const L of layers) {
         const haze = L.spec.haze;
         // pastel in the light, deep glows in the dark; the far layer fades toward the background
@@ -196,151 +244,205 @@ export function Sky({ world }: { world?: string | null }) {
         L.tones = tones.map((c) => mix(c, surface, haze));
         L.shadow = L.tones.map((c) => (dark ? mix(c, [0, 0, 0], 0.4) : mix(c, [60, 70, 120], 0.3)));
         L.light = L.tones.map((c) => (dark ? mix(c, [255, 255, 255], 0.3) : mix(c, [255, 246, 225], 0.65)));
+        L.sprites = L.tones.map((tone, i) => [
+          blob(tone, [[0, body[0]], [0.55, body[1]], [1, 0]], 1),
+          blob(L.shadow[i], [[0, dark ? 0.32 : 0.26], [1, 0]], 0.75),
+          blob(L.light[i], [[0, dark ? 0.4 : 0.6], [1, 0]], 0.75),
+        ]);
         const g = mix(glyph, surface, haze * 0.75);
         const quiet = mix(g, surface, 0.4);
         L.shades = Array.from({ length: SHADES }, (_, j) => {
           const l = SHADE_LOW + ((1 - SHADE_LOW) * j) / (SHADES - 1);
           return rgba(l < 0 ? mix(g, quiet, l / SHADE_LOW) : mix(g, sun, l), 1);
         });
+        L.atlasDirty = true;
         L.clouds.forEach((c, i) => (c.tone = (i + L.spec.toneShift) % tones.length));
+      }
+    };
+
+    /** Every letter in every shade, painted once; drawing a letter is then a small copy. */
+    const buildAtlas = (L: Layer) => {
+      const tile = (L.tile = Math.ceil(L.font * 1.6 * dpr));
+      L.atlas.width = glyphs.length * tile;
+      L.atlas.height = SHADES * tile;
+      const a = L.atlas.getContext('2d')!;
+      a.font = `${L.font * dpr}px ${FONT}`;
+      a.textAlign = 'center';
+      a.textBaseline = 'middle';
+      L.shades.forEach((shade, si) => {
+        a.fillStyle = shade;
+        glyphs.forEach((ch, gi) => a.fillText(ch, gi * tile + tile / 2, si * tile + tile / 2));
+      });
+      L.atlasDirty = false;
+    };
+
+    /** The letter grid, with each cell's slow wobble split into fixed and moving parts so a frame needs almost no trig. */
+    const layout = (L: Layer) => {
+      const sp = L.spacing;
+      const cols = (L.cols = Math.ceil(w / sp) + 1), rows = (L.rows = Math.ceil(h / sp) + 1);
+      L.cells = new Float32Array(cols * rows * STRIDE);
+      L.dens = new Float32Array(cols * rows);
+      L.dens2 = new Float32Array(cols * rows);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const o = (row * cols + col) * STRIDE;
+          const bx = col * sp + (row % 2) * (sp / 3), by = row * sp + sp / 2;
+          const a = bx * 0.018 + row * 0.14, b = by * 0.015 + col * 0.11;
+          const c = row * 0.37 + col * 0.13, d = row * 0.18 - col * 0.17;
+          L.cells.set([bx, by, Math.sin(a), Math.cos(a), Math.sin(b), Math.cos(b), Math.sin(c), Math.cos(c), Math.sin(d), Math.cos(d)], o);
+        }
       }
     };
 
     const resize = () => {
       const r = host.getBoundingClientRect();
       if (!r.width || !r.height) return;
+      rect = r;
       const first = !w;
       w = r.width; h = r.height;
       dpr = Math.min(devicePixelRatio || 1, 2);
-      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       const small = w < 720 ? 0 : 1;
       for (const L of layers) {
-        L.out.width = cv.width; L.out.height = cv.height;
-        L.buf.width = Math.ceil(w / SCALE); L.buf.height = Math.ceil(h / SCALE);
+        L.glyphCv.width = Math.round(w * dpr); L.glyphCv.height = Math.round(h * dpr);
+        L.cloudCv.width = Math.ceil(w / SCALE); L.cloudCv.height = Math.ceil(h / SCALE);
         L.spacing = L.spec.spacing[small];
         L.font = L.spec.font[small];
         if (first || !L.clouds.length) {
           const made = makeClouds(L.spec, w, h, L.tones.length);
           L.clouds = made.clouds; L.maxSpan = made.maxSpan;
+          L.now = new Float32Array(L.clouds.reduce((n, c) => n + c.puffs.length, 0) * 3);
         } else L.clouds.forEach((c) => (c.y = Math.min(c.y, h * 0.92)));
+        layout(L);
+        L.atlasDirty = true;
       }
       draw();
     };
 
     const paintClouds = (L: Layer, s: number) => {
-      const bctx = L.bctx;
-      bctx.setTransform(1 / SCALE, 0, 0, 1 / SCALE, 0, 0);
-      bctx.globalCompositeOperation = 'source-over';
-      bctx.clearRect(0, 0, w, h);
-      const now = L.clouds.map((c) => c.puffs.map((p) => puffNow(c, p, s)));
-      const body = dark ? [0.42, 0.2] : [0.6, 0.3];
+      const b = L.cloudCtx, now = L.now;
+      let k = 0;
+      for (const c of L.clouds) for (const p of c.puffs) { puffNow(now, k, c, p, s); k += 3; }
+      b.setTransform(1 / SCALE, 0, 0, 1 / SCALE, 0, 0);
+      b.globalCompositeOperation = 'source-over';
+      b.clearRect(0, 0, w, h);
       // the body of every cloud first, then shade and light laid over it without changing its shape
-      L.clouds.forEach((c, ci) => {
-        const col = L.tones[c.tone];
-        for (const p of now[ci]) {
-          const g = bctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-          g.addColorStop(0, rgba(col, body[0]));
-          g.addColorStop(0.55, rgba(col, body[1]));
-          g.addColorStop(1, rgba(col, 0));
-          bctx.fillStyle = g;
-          bctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
-        }
-      });
-      bctx.globalCompositeOperation = 'source-atop';
-      const wash = (tones: RGB[], away: number, alpha: number) => {
-        L.clouds.forEach((c, ci) => {
-          const col = tones[c.tone];
-          for (const p of now[ci]) {
-            const x = p.x + SUN.x * p.r * away, y = p.y + SUN.y * p.r * away;
-            const g = bctx.createRadialGradient(x, y, 0, x, y, p.r * 0.75);
-            g.addColorStop(0, rgba(col, alpha));
-            g.addColorStop(1, rgba(col, 0));
-            bctx.fillStyle = g;
-            bctx.fillRect(x - p.r, y - p.r, p.r * 2, p.r * 2);
+      const pass = (which: number, away: number) => {
+        let j = 0;
+        for (const c of L.clouds) {
+          const img = L.sprites[c.tone][which];
+          for (let n = c.puffs.length; n > 0; n--, j += 3) {
+            const r = now[j + 2];
+            b.drawImage(img, now[j] + SUN.x * r * away - r, now[j + 1] + SUN.y * r * away - r, r * 2, r * 2);
           }
-        });
+        }
       };
-      wash(L.shadow, -0.4, dark ? 0.32 : 0.26);
-      wash(L.light, 0.4, dark ? 0.4 : 0.6);
-      bctx.globalCompositeOperation = 'source-over';
+      pass(0, 0);
+      b.globalCompositeOperation = 'source-atop';
+      pass(1, -0.4);
+      pass(2, 0.4);
+      b.globalCompositeOperation = 'source-over';
+    };
+
+    /** Adds one puff's cover to a grid of how clear the sky is, looking only at the cells it can reach. */
+    const splat = (L: Layer, grid: Float32Array, cx: number, cy: number, r: number) => {
+      const { spacing: sp, cols, rows } = L;
+      const r0 = Math.max(0, Math.ceil((cy - r - sp / 2) / sp)), r1 = Math.min(rows - 1, Math.floor((cy + r - sp / 2) / sp));
+      const inv = 1 / (r * r);
+      for (let row = r0; row <= r1; row++) {
+        const shift = (row & 1) * (sp / 3);
+        const c0 = Math.max(0, Math.ceil((cx - r - shift) / sp)), c1 = Math.min(cols - 1, Math.floor((cx + r - shift) / sp));
+        const dy = row * sp + sp / 2 - cy, dy2 = dy * dy;
+        for (let col = c0; col <= c1; col++) {
+          const dx = col * sp + shift - cx;
+          const u = (dx * dx + dy2) * inv;
+          if (u < 1) grid[row * cols + col] *= 1 - lut[(u * LUT_N) | 0];
+        }
+      }
+    };
+
+    const density = (L: Layer) => {
+      L.dens.fill(1);
+      L.dens2.fill(1);
+      const now = L.now;
+      for (let k = 0; k < now.length; k += 3) {
+        splat(L, L.dens, now[k], now[k + 1], now[k + 2]);
+        splat(L, L.dens2, now[k] - SUN_PX.x, now[k + 1] - SUN_PX.y, now[k + 2]);
+      }
     };
 
     const drawLayer = (L: Layer, t: number, s: number) => {
-      const { spec, buf, bctx, spacing, octx: ctx } = L;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'low';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      if (L.atlasDirty) buildAtlas(L);
+      const { spec, cells, dens, dens2, cols, rows, tile } = L;
       paintClouds(L, s);
-      ctx.globalAlpha = spec.fill;
-      ctx.drawImage(buf, 0, 0, w, h);
+      density(L);
 
-      const data = bctx.getImageData(0, 0, buf.width, buf.height).data;
-      const bw = buf.width, bh = buf.height;
-      const norm = 1 / (255 * (dark ? 0.5 : 0.62));
+      const ctx = L.glyphCtx;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, L.glyphCv.width, L.glyphCv.height);
+      ctx.imageSmoothingEnabled = false;
+
+      const px = pointer.x, py = pointer.y;
       const radius = Math.min(Math.max(w, h) * 0.3, 150) * spec.reach;
-      const pull = pointer.pull;
+      const reach = pointer.pull * spec.pull;
+      const pulling = pointer.pull > 0.01;
       const wt = t * spec.waveRate;
-      const top = ramp.length - 1;
-      const shadeTop = SHADES - 1;
-      ctx.font = `${L.font}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      const sw = Math.sin(wt), cw = Math.cos(wt), sw9 = Math.sin(wt * 0.9), cw9 = Math.cos(wt * 0.9);
+      const st = Math.sin(t), ct = Math.cos(t), st11 = Math.sin(t * 1.1), ct11 = Math.cos(t * 1.1);
+      const wobbleX = 1.4 * spec.pull, wobbleY = 1.2 * spec.pull;
+      const top = ramp.length - 1, shadeTop = SHADES - 1;
+      const half = tile / 2;
 
-      const cols = Math.ceil(w / spacing) + 1, rows = Math.ceil(h / spacing) + 1;
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const bx = col * spacing + (row % 2) * (spacing / 3);
-          const by = row * spacing + spacing / 2;
-          const sx = Math.min(bw - 1, (bx / SCALE) | 0), sy = Math.min(bh - 1, (by / SCALE) | 0);
-          const cloud = Math.min(1, data[(sy * bw + sx) * 4 + 3] * norm);
-          const dx = pointer.x - bx, dy = pointer.y - by;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const near = pull > 0.01 ? Math.max(0, 1 - dist / radius) * pull * spec.pull : 0;
-          const wave = (Math.sin(bx * 0.018 + wt + row * 0.14) + Math.cos(by * 0.015 - wt * 0.9 + col * 0.11) + 2) / 4;
+      for (let row = 0, c = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++, c++) {
+          const o = c * STRIDE;
+          const bx = cells[o], by = cells[o + 1];
+          const cloud = Math.min(1, (1 - dens[c]) * norm);
+          let near = 0, dx = 0, dy = 0, dist = 0;
+          if (pulling) {
+            dx = px - bx; dy = py - by;
+            if (dx < radius && dx > -radius && dy < radius && dy > -radius) {
+              dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < radius) near = (1 - dist / radius) * reach;
+            }
+          }
+          const wave = (sw * cells[o + 3] + cw * cells[o + 2] + cw9 * cells[o + 5] + sw9 * cells[o + 4] + 2) / 4;
           const level = cloud * 0.78 + wave * 0.3 - 0.1 + near * 0.55;
           const i = Math.min(top, Math.max(0, Math.floor(level * top)));
           if (i === 0) continue;
 
           // sunlit where the cloud thins out toward the sun, quiet on the far side, bright along thin edges
-          const qx = clamp(sx + SUN_STEP.x, 0, bw - 1), qy = clamp(sy + SUN_STEP.y, 0, bh - 1);
-          const toward = Math.min(1, data[(qy * bw + qx) * 4 + 3] * norm);
+          const toward = Math.min(1, (1 - dens2[c]) * norm);
           const light = clamp((cloud - toward) * 2.6 + 4 * cloud * (1 - cloud) * 0.3 + near * 0.8, SHADE_LOW, 1);
 
-          const driftX = Math.sin(t + row * 0.37 + col * 0.13) * 1.4 * spec.pull;
-          const driftY = Math.cos(t * 1.1 - row * 0.18 + col * 0.17) * 1.2 * spec.pull;
-          const pullX = dist > 0 ? (dx / dist) * near * 8 : 0;
-          const pullY = dist > 0 ? (dy / dist) * near * 8 : 0;
-          const chars = ramp[i];
-          ctx.fillStyle = L.shades[Math.round(((light - SHADE_LOW) / (1 - SHADE_LOW)) * shadeTop)];
+          let x = bx + (st * cells[o + 7] + ct * cells[o + 6]) * wobbleX;
+          let y = by + (ct11 * cells[o + 9] + st11 * cells[o + 8]) * wobbleY;
+          if (near > 0 && dist > 0) { x += (dx / dist) * near * 8; y += (dy / dist) * near * 8; }
+
+          const variants = glyphIdx[i];
+          const glyph = variants[variants.length === 1 ? 0 : (col * 3 + row * 5) % variants.length];
+          const shade = Math.round(((light - SHADE_LOW) / (1 - SHADE_LOW)) * shadeTop);
           ctx.globalAlpha =
             Math.min(0.7, (0.07 + cloud * 0.2 + (i / top) * 0.175 + near * 0.35) * (1 + light * 0.5)) *
             (dark ? 0.85 : 1) * spec.ink;
-          ctx.fillText(
-            chars.length === 1 ? chars : chars[(col * 3 + row * 5) % chars.length],
-            bx + driftX + pullX,
-            by + driftY + pullY,
+          ctx.drawImage(
+            L.atlas, glyph * tile, shade * tile, tile, tile,
+            Math.round(x * dpr - half), Math.round(y * dpr - half), tile, tile,
           );
         }
       }
       ctx.globalAlpha = 1;
     };
 
-    const draw = (all = true) => {
+    const draw = () => {
       if (!w) return;
       const t = clock * 0.0011, s = clock / 1000;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, cv.width, cv.height);
       for (const L of layers) {
-        if (all || tick % L.spec.every === 0) drawLayer(L, t, s);
-        ctx.drawImage(L.out, 0, 0);
+        L.drawn = clock;
+        drawLayer(L, t, s);
       }
     };
 
-    const frame = (now: number) => {
-      raf = 0;
-      const dt = last ? Math.min(64, now - last) : 16;
-      last = now;
+    const update = (dt: number) => {
       clock += dt;
       for (const L of layers) {
         for (const c of L.clouds) {
@@ -351,8 +453,45 @@ export function Sky({ world }: { world?: string | null }) {
       pointer.x += (pointer.tx - pointer.x) * 0.12;
       pointer.y += (pointer.ty - pointer.y) * 0.12;
       pointer.pull += (pointer.target - pointer.pull) * 0.06;
-      draw(false);
-      tick++;
+      const active = pointer.target > 0 || pointer.pull > 0.01;
+      const t = clock * 0.0011, s = clock / 1000;
+      for (const L of layers) {
+        // slow, quiet skies only need redrawing now and then; the canvases keep what was last drawn
+        if (clock - L.drawn >= (active ? L.spec.active : L.spec.idle) * EASE[ease] - 5) {
+          L.drawn = clock;
+          drawLayer(L, t, s);
+        }
+      }
+    };
+
+    const govern = (now: number, dt: number) => {
+      if (seen.length < 30) {
+        seen.push(dt);
+        frameMs = clamp(Math.min(...seen), 16, 34); // 16 on most screens, 33 where the phone caps itself to 30fps
+        return;
+      }
+      if (dt > frameMs * 1.5) late++;
+      else if (late) late--;
+      if (late > 24 && ease < EASE.length - 1) {
+        if (now - eased < 6000) strikes = Math.min(strikes + 1, 4);
+        ease++;
+        late = 0;
+        calm = now + 20000 * 2 ** strikes;
+      } else if (ease > 0 && now > calm) {
+        ease--;
+        eased = now;
+        late = 0;
+        calm = now + 20000;
+      }
+    };
+
+    const frame = (now: number) => {
+      raf = 0;
+      if (last && now - last < MIN_FRAME) { schedule(); return; }
+      const dt = last ? Math.min(64, now - last) : 16;
+      if (last) govern(now, dt);
+      last = now;
+      update(dt);
       schedule();
     };
     const schedule = () => {
@@ -365,14 +504,16 @@ export function Sky({ world }: { world?: string | null }) {
     };
 
     const move = (e: PointerEvent) => {
-      const r = host.getBoundingClientRect();
+      const r = rect ?? (rect = host.getBoundingClientRect());
       pointer.tx = e.clientX - r.left;
       pointer.ty = e.clientY - r.top;
       if (pointer.target === 0 && pointer.pull < 0.05) { pointer.x = pointer.tx; pointer.y = pointer.ty; }
       pointer.target = 1;
     };
+    const down = (e: PointerEvent) => { rect = null; move(e); };
     const leave = () => { pointer.target = 0; };
     const up = (e: PointerEvent) => { if (e.pointerType !== 'mouse') leave(); }; // a lifted finger lets go
+    const scrolled = () => { rect = null; };
 
     const retheme = () => { palette(); draw(); };
     const onVisibility = () => (document.hidden ? stop() : schedule());
@@ -392,7 +533,8 @@ export function Sky({ world }: { world?: string | null }) {
     darkQuery.addEventListener('change', retheme);
     reduced.addEventListener('change', onMotion);
     document.addEventListener('visibilitychange', onVisibility);
-    host.addEventListener('pointerdown', move);
+    addEventListener('scroll', scrolled, { passive: true, capture: true });
+    host.addEventListener('pointerdown', down);
     host.addEventListener('pointermove', move);
     host.addEventListener('pointerleave', leave);
     host.addEventListener('pointerup', up);
@@ -406,7 +548,8 @@ export function Sky({ world }: { world?: string | null }) {
       darkQuery.removeEventListener('change', retheme);
       reduced.removeEventListener('change', onMotion);
       document.removeEventListener('visibilitychange', onVisibility);
-      host.removeEventListener('pointerdown', move);
+      removeEventListener('scroll', scrolled, { capture: true });
+      host.removeEventListener('pointerdown', down);
       host.removeEventListener('pointermove', move);
       host.removeEventListener('pointerleave', leave);
       host.removeEventListener('pointerup', up);
@@ -414,5 +557,13 @@ export function Sky({ world }: { world?: string | null }) {
     };
   }, [world]);
 
-  return <canvas ref={canvas} class="sky" aria-hidden="true" />;
+  const at = (i: number) => (el: HTMLCanvasElement | null) => void (els.current[i] = el);
+  return (
+    <>
+      <canvas ref={at(0)} class="sky" aria-hidden="true" />
+      <canvas ref={at(1)} class="sky" aria-hidden="true" />
+      <canvas ref={at(2)} class="sky" aria-hidden="true" />
+      <canvas ref={at(3)} class="sky" aria-hidden="true" />
+    </>
+  );
 }

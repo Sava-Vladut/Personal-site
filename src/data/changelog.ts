@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.9.1',
+    date: '2026-09-29',
+    changes: [
+      'Journal sky: much smoother on phones — about ten times less work per frame, so scrolling and touch stay fluid and the battery lasts longer',
+      'Journal sky: redraws less often when nothing is touching it, and eases off by itself if a device struggles to keep up',
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-09-29',
     changes: [
