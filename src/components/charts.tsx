@@ -8,6 +8,39 @@ import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWe
 import { fmtMood, pct, type Bucket } from '../lib/stats';
 import { Icon, Sprite } from './icons';
 
+/* ---------- scroll reveal ---------- */
+
+/** A stack of cards whose entrance waits until each one scrolls into view (the CSS holds its animations until data-seen is set). */
+export function RevealStack({ children }: { children: ComponentChildren }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current!;
+    const kids = [...el.children] as HTMLElement[];
+    if (typeof IntersectionObserver === 'undefined') {
+      kids.forEach((k) => (k.dataset.seen = ''));
+      return;
+    }
+    const io = new IntersectionObserver((rows) => {
+      for (const r of rows)
+        if (r.isIntersecting) {
+          (r.target as HTMLElement).dataset.seen = '';
+          io.unobserve(r.target);
+        }
+    }, { rootMargin: '0px 0px -6% 0px' });
+    kids.forEach((k) => io.observe(k));
+    return () => io.disconnect();
+  }, []);
+  return <div ref={ref} class="stack-l reveal">{children}</div>;
+}
+
+/** The world felt most in a bucket or day, if any. */
+function dominant(cores: Record<string, number>) {
+  let best: string | null = null, top = 0;
+  for (const id of CHART_ORDER) if ((cores[id] ?? 0) > top) [best, top] = [id, cores[id]];
+  return best;
+}
+const stagger = (i: number, n: number) => ({ '--t': (n > 1 ? i / (n - 1) : 0).toFixed(3) });
+
 /* ---------- count-up ---------- */
 
 /** A figure like "+1.4", "63%" or "12" that counts up from zero when it first appears. */
@@ -181,8 +214,9 @@ function barPath(x: number, w: number, base: number, tip: number) {
   return `M${x},${base}V${t + s * r}Q${x},${t} ${x + r},${t}H${x + w - r}Q${x + w},${t} ${x + w},${t + s * r}V${base}Z`;
 }
 
-const PLEASANT = 'var(--pos)';
-const UNPLEASANT = 'var(--neg)';
+/** Pleasant is the deep shade of the page's accent colour, unpleasant its pale tint (see stats.css), so they still differ by lightness alone. */
+export const PLEASANT = 'var(--pos-a)';
+export const UNPLEASANT = 'var(--neg-a)';
 
 /* ---------- mood over time ---------- */
 
@@ -194,9 +228,16 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
   const pw = Math.max(0, W - L - R), ph = H - T - B;
   const x = (i: number) => L + (n === 1 ? pw / 2 : (i / (n - 1)) * pw);
   const y = (m: number) => T + ((5 - m) / 10) * ph;
-  const line = buckets
-    .map((b, i) => (b.rolling === null ? null : [x(i), y(b.rolling)]))
-    .reduce((acc, p, i, arr) => (p ? acc + `${arr[i - 1] ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}` : acc), '');
+  const pts = buckets.map((b, i) => (b.rolling === null ? null : [x(i), y(b.rolling)]));
+  const line = pts.reduce((acc, p, i, arr) => (p ? acc + `${arr[i - 1] ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}` : acc), '');
+  // the same line closed down to the zero axis, so the mood pools above and below it in the accent colour
+  const zero = y(0).toFixed(1);
+  const area = pts.reduce((acc, p, i, arr) => {
+    if (!p) return acc;
+    const open = !arr[i - 1];
+    const closes = !arr[i + 1];
+    return acc + `${open ? `M${p[0].toFixed(1)},${zero}L` : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}${closes ? `L${p[0].toFixed(1)},${zero}Z` : ''}`;
+  }, '');
   const bigDots = n <= 45;
   const ticks = n > 1 ? [0, Math.floor((n - 1) / 2), n - 1] : [0];
 
@@ -225,7 +266,7 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
   };
 
   return (
-    <div ref={ref} class="chart">
+    <div ref={ref} class="chart drawn">
       {W > 0 && (
         <svg width={W} height={H} role="img" aria-label="Mood over time, from −5 unpleasant to +5 pleasant">
           <defs>
@@ -233,6 +274,11 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
               <stop offset="0" stop-color="var(--ink)" stop-opacity="0.05" />
               <stop offset="0.5" stop-color="var(--ink)" stop-opacity="0" />
               <stop offset="1" stop-color="var(--ink)" stop-opacity="0.05" />
+            </linearGradient>
+            <linearGradient id="moodpool" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1={T} y2={T + ph}>
+              <stop offset="0" stop-color="var(--accent)" stop-opacity="0.34" />
+              <stop offset="0.5" stop-color="var(--accent)" stop-opacity="0.04" />
+              <stop offset="1" stop-color="var(--accent)" stop-opacity="0.34" />
             </linearGradient>
           </defs>
           <rect x={L} y={T} width={pw} height={ph} fill="url(#moodwash)" />
@@ -245,12 +291,18 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
           {ticks.map((i) => (
             <text x={x(i)} y={H - 6} class="tick" text-anchor={n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}>{shortDate(buckets[i].key)}</text>
           ))}
-          {buckets.map((b, i) =>
-            b.mood === null ? null : (
-              <circle cx={x(i)} cy={y(b.mood)} r={bigDots ? 4 : 2.5} class={bigDots ? 'dot' : 'dot faint'} />
-            ),
-          )}
-          {line && <path d={line} class="series-line" />}
+          {area && <path d={area} class="area" fill="url(#moodpool)" />}
+          {buckets.map((b, i) => {
+            if (b.mood === null) return null;
+            const world = dominant(b.cores);
+            return (
+              <circle
+                cx={x(i)} cy={y(b.mood)} r={bigDots ? 4 : 2.5} class={bigDots ? 'dot' : 'dot faint'}
+                style={{ ...stagger(i, n), ...(world ? { fill: `var(--emo-${world})`, opacity: bigDots ? 1 : 0.85 } : {}) }}
+              />
+            );
+          })}
+          {line && <path d={line} class="series-line" pathLength={1} />}
           {hover !== null && (
             <g>
               <line x1={x(hover)} x2={x(hover)} y1={T} y2={T + ph} class="crosshair" />
@@ -314,8 +366,8 @@ export function BalanceChart({ buckets, step }: { buckets: Bucket[]; step: numbe
                 </>
               ), `${bucketLabel(b, step)}: ${b.pleasant} pleasant, ${b.unpleasant} unpleasant`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
-                {b.pleasant > 0 && <path d={barPath(bx, bw, mid - 1, mid - 1 - s(b.pleasant))} fill={PLEASANT} />}
-                {b.unpleasant > 0 && <path d={barPath(bx, bw, mid + 1, mid + 1 + s(b.unpleasant))} fill={UNPLEASANT} />}
+                {b.pleasant > 0 && <path d={barPath(bx, bw, mid - 1, mid - 1 - s(b.pleasant))} fill={PLEASANT} class="bar up" style={stagger(i, n)} />}
+                {b.unpleasant > 0 && <path d={barPath(bx, bw, mid + 1, mid + 1 + s(b.unpleasant))} fill={UNPLEASANT} class="bar down" style={stagger(i, n)} />}
               </g>
             );
           })}
@@ -366,15 +418,17 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
               ), label(c))}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
                 {c.total === 0 && <rect x={x} y={T + ph - 2} width={bw} height={2} rx={1} fill="var(--line-2)" />}
-                {present.map((id, k) => {
-                  const h = (c.cores[id] / c.total) * ph;
-                  y -= h;
-                  const last = k === present.length - 1;
-                  const segH = Math.max(0, h - (last ? 0 : 2)); // 2px surface gap between segments
-                  return last
-                    ? <path d={barPath(x, bw, y + h, y)} fill={`var(--emo-${id})`} />
-                    : <rect x={x} y={y + 2} width={bw} height={segH} fill={`var(--emo-${id})`} />;
-                })}
+                <g class="bar up" style={stagger(i, cols.length)}>
+                  {present.map((id, k) => {
+                    const h = (c.cores[id] / c.total) * ph;
+                    y -= h;
+                    const last = k === present.length - 1;
+                    const segH = Math.max(0, h - (last ? 0 : 2)); // 2px surface gap between segments
+                    return last
+                      ? <path d={barPath(x, bw, y + h, y)} fill={`var(--emo-${id})`} />
+                      : <rect x={x} y={y + 2} width={bw} height={segH} fill={`var(--emo-${id})`} />;
+                  })}
+                </g>
               </g>
             );
           })}
@@ -387,6 +441,23 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
   );
 }
 
+/* ---------- one bar split by world: unpleasant worlds on the left, pleasant on the right ---------- */
+
+export function WorldSplit({ cores, total }: { cores: { id: string; count: number }[]; total: number }) {
+  const by = new Map(cores.map((c) => [c.id, c.count]));
+  const segs = PICKER_ORDER.map((id) => ({ id, count: by.get(id) ?? 0 })).filter((x) => x.count > 0);
+  return (
+    <div class="split-bar worlds">
+      {segs.map((x, i) => (
+        <i
+          style={{ flexGrow: x.count, background: `var(--emo-${x.id})`, '--k': i }}
+          {...tipProps(() => <TipRow value={`${x.count} · ${pct(total ? x.count / total : 0)}`} label={shortName(x.id)} color={`var(--emo-${x.id})`} />, `${shortName(x.id)}: ${x.count}`)}
+        />
+      ))}
+    </div>
+  );
+}
+
 export const WorldLegend = () => <>{CHART_ORDER.map((id) => <LegendItem core={id} label={shortName(id)} />)}</>;
 
 /* ---------- horizontal bars (worlds, feelings) ---------- */
@@ -395,8 +466,8 @@ export function HBars({ rows, total }: { rows: { id: string; label: string; coun
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
     <ul class="hbars">
-      {rows.map((r) => (
-        <li {...tipProps(() => <TipRow value={`${r.count} · ${pct(total ? r.count / total : 0)}`} label={r.label} color={`var(--emo-${r.core})`} />, `${r.label}: ${r.count}`)}>
+      {rows.map((r, i) => (
+        <li style={{ '--k': i }} {...tipProps(() => <TipRow value={`${r.count} · ${pct(total ? r.count / total : 0)}`} label={r.label} color={`var(--emo-${r.core})`} />, `${r.label}: ${r.count}`)}>
           <span class="hbar-label"><Sprite core={r.core} size={12} />{r.label}</span>
           <span class="hbar-track">{r.count > 0 && <i style={{ width: `${(r.count / max) * 100}%`, background: `var(--emo-${r.core})` }} />}</span>
           <span class="hbar-value">{r.count}</span>
@@ -437,7 +508,7 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
               ), `${r.label}: ${fmtMood(m)}`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
                 {m !== null && Math.abs(m) > 0.02 && (
-                  <path d={m > 0 ? barPath(x, bw, mid - 1, mid - 1 - s(m)) : barPath(x, bw, mid + 1, mid + 1 + s(m))} fill={m > 0 ? PLEASANT : UNPLEASANT} />
+                  <path d={m > 0 ? barPath(x, bw, mid - 1, mid - 1 - s(m)) : barPath(x, bw, mid + 1, mid + 1 + s(m))} fill={m > 0 ? PLEASANT : UNPLEASANT} class={`bar ${m > 0 ? 'up' : 'down'}`} style={stagger(i, rows.length)} />
                 )}
                 <text x={L + i * band + band / 2} y={H - 6} class="tick" text-anchor="middle">{r.label}</text>
               </g>
@@ -458,7 +529,7 @@ export function IntensityChart({ rows }: { rows: { level: number; pleasant: numb
   return (
     <div class="intensity-chart">
       {rows.map((r) => (
-        <div class="ic-col" {...tipProps(() => (
+        <div class="ic-col" style={{ '--k': r.level }} {...tipProps(() => (
           <>
             <div class="tip-title">{r.level} · {NAMES[r.level - 1]}</div>
             <TipRow value={r.pleasant} label="pleasant" color={PLEASANT} />
@@ -489,7 +560,7 @@ export function RhythmHeatmap({ heat, max }: { heat: number[][]; max: number }) 
         <>
           <span class="tick-html left">{WEEKDAYS[d].slice(0, 2)}</span>
           {row.map((v, b) => (
-            <span class={`heat-cell s${step(v)}`} {...tipProps(() => <TipRow value={v} label={`${WEEKDAYS[d]} · ${BLOCKS[b]}h`} />, `${WEEKDAYS[d]} ${BLOCKS[b]}: ${v}`)} />
+            <span class={`heat-cell s${step(v)}`} style={stagger(d * 8 + b, 56)} {...tipProps(() => <TipRow value={v} label={`${WEEKDAYS[d]} · ${BLOCKS[b]}h`} />, `${WEEKDAYS[d]} ${BLOCKS[b]}: ${v}`)} />
           ))}
         </>
       ))}
@@ -510,10 +581,11 @@ export function MoodCalendar({ calendar, start, end, weekStart }: { calendar: Ma
   const cell = (k: string, inRange: boolean) => {
     const d = calendar.get(k);
     const cls = !inRange ? 'px out' : d ? 'px on' : 'px';
+    const t = Math.min(1, Math.max(0, diffDays(start, k)) / Math.max(1, span - 1));
     return (
       <span
         class={cls}
-        style={d?.core ? { background: `var(--emo-${d.core})` } : undefined}
+        style={{ '--t': t.toFixed(3), ...(d?.core ? { background: `var(--emo-${d.core})` } : {}) }}
         {...(inRange ? tipProps(() => (
           <>
             <div class="tip-title">{shortDate(k)}</div>
@@ -604,7 +676,7 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
   const sel = selected ? EMOTION[selected] : null;
 
   return (
-    <div ref={ref} class="wheel">
+    <div ref={ref} class="wheel-chart">
       {W > 0 && (
         <svg width={size} height={size} role="group" aria-label="Emotion wheel — darker means felt more often">
           {wedges.map((w) => {
@@ -615,6 +687,7 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
               <path
                 d={w.d}
                 class={`wedge${selected === w.id ? ' sel' : ''}`}
+                style={{ '--depth': w.depth }}
                 fill={v ? `var(--emo-${core})` : 'var(--surface-2)'}
                 fill-opacity={op}
                 role="button"

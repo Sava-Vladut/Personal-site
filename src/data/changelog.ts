@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.17.0',
+    date: '2026-09-30',
+    changes: [
+      'Redesigned the Stats page with a drifting sky header in the colour of the feeling you had most, like the Journal',
+      'The whole page now takes that colour: tabs slide between each other, and the calendar, heatmap and bars follow it',
+      'Overview has a new summary card with a mascot for your leading feeling and a split bar showing your feelings by world',
+      'Stat tiles gained icons, progress meters and streak pips, and insights are tinted with the world they are about',
+      'Charts draw themselves in as you scroll to them: the mood line traces across, dots pop in in the colour of each day\u2019s world, and bars grow from their base',
+      'The emotion wheel turns in over a soft breathing glow',
+      'Feelings that show up together, or come next, are shown as coloured world chips',
+      'The Dex has a row of world progress badges with animated feelings, and found feelings pop in',
+    ],
+  },
+  {
     version: '1.16.4',
     date: '2026-09-30',
     changes: [

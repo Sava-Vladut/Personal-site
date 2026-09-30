@@ -205,6 +205,30 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
 }
 export type Stats = ReturnType<typeof computeStats>;
 
+/** How often each world was felt across some entries, in chart order. */
+export function coreCounts(list: Entry[]) {
+  const by = new Map<string, number>();
+  for (const e of list) for (const id of e.emotions) inc(by, coreOf(id).id);
+  return CHART_ORDER.map((id) => ({ id, count: by.get(id) ?? 0 }));
+}
+
+/** Eight sky seats shared out by how much each world was felt: biggest first and spread out, so any few picked from the front still look like the whole. */
+export function skyWorlds(counts: { id: string; count: number }[]): string[] {
+  const live = counts.filter((c) => c.count > 0);
+  const seats = new Map<string, number>();
+  const out: string[] = [];
+  for (let i = 0; i < 8 && live.length; i++) {
+    let best = '', score = -1;
+    for (const c of live) {
+      const v = c.count / ((seats.get(c.id) ?? 0) + 1);
+      if (v > score) { score = v; best = c.id; }
+    }
+    seats.set(best, (seats.get(best) ?? 0) + 1);
+    out.push(best);
+  }
+  return out;
+}
+
 /** Every feeling ever named, for the collection ("dex"). */
 export function dex(entries: Entry[]) {
   const found = new Map<string, { count: number; first: string }>();
@@ -227,37 +251,42 @@ export const fmtMood = (m: number | null) => (m === null ? '—' : `${m > 0.05 ?
 export const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 const label = (id: string) => (EMOTION[id].depth === 0 ? shortName(id) : EMOTION[id].name);
 
-export function insights(s: Stats, rangeName: string, entries: Entry[]): string[] {
-  const out: string[] = [];
+/** One sentence about the period, with the world it's about (drawn as its sprite) when it has one. */
+export interface Insight { text: string; core?: string }
+
+export function insights(s: Stats, rangeName: string, entries: Entry[]): Insight[] {
+  const out: Insight[] = [];
+  const lead = s.cores.reduce((a, c) => (c.count > a.count ? c : a), s.cores[0]);
   const { k, prev } = s;
   if (!k.entries) return out;
 
   if (k.pleasantShare !== null) {
     const p = k.pleasantShare;
-    out.push(
-      p >= 0.6 ? `Mostly pleasant — ${pct(p)} of the feelings you named felt good.`
+    out.push({
+      text: p >= 0.6 ? `Mostly pleasant — ${pct(p)} of the feelings you named felt good.`
       : p <= 0.4 ? `A heavier stretch — ${pct(1 - p)} of the feelings you named were unpleasant.`
       : `A mixed stretch — pleasant and unpleasant feelings were close to even (${pct(p)} pleasant).`,
-    );
+      core: lead?.count ? lead.id : undefined,
+    });
   }
   if (prev && prev.mood !== null && k.mood !== null && Math.abs(k.mood - prev.mood) >= 0.3)
-    out.push(`Your average mood is ${k.mood > prev.mood ? 'up' : 'down'} ${Math.abs(k.mood - prev.mood).toFixed(1)} compared with the ${rangeName} before.`);
+    out.push({ text: `Your average mood is ${k.mood > prev.mood ? 'up' : 'down'} ${Math.abs(k.mood - prev.mood).toFixed(1)} compared with the ${rangeName} before.` });
   const top = s.exact[0];
-  if (top && top.count > 1) out.push(`${label(top.id)} came up most often (${top.count}×).`);
+  if (top && top.count > 1) out.push({ text: `${label(top.id)} came up most often (${top.count}×).`, core: EMOTION[top.id].core });
 
   const wd = s.weekdays.filter((w) => w.mood !== null && w.n >= 2).sort((a, b) => b.mood! - a.mood!);
   if (wd.length >= 3 && wd[0].mood! - wd[wd.length - 1].mood! >= 1)
-    out.push(`${full(wd[0].day)} tend to feel best (${fmtMood(wd[0].mood)}); ${full(wd[wd.length - 1].day)} are the hardest (${fmtMood(wd[wd.length - 1].mood)}).`);
+    out.push({ text: `${full(wd[0].day)} tend to feel best (${fmtMood(wd[0].mood)}); ${full(wd[wd.length - 1].day)} are the hardest (${fmtMood(wd[wd.length - 1].mood)}).` });
 
   const dp = [...s.dayparts].sort((a, b) => b.n - a.n)[0];
-  if (dp.n >= 3) out.push(`You check in most in the ${dp.name.toLowerCase()}.`);
+  if (dp.n >= 3) out.push({ text: `You check in most in the ${dp.name.toLowerCase()}.` });
 
   const t = s.transitions[0];
-  if (t && t.count >= 2) out.push(`After ${shortName(t.from)}, the next thing you felt was most often ${shortName(t.to)}.`);
+  if (t && t.count >= 2) out.push({ text: `After ${shortName(t.from)}, the next thing you felt was most often ${shortName(t.to)}.`, core: t.to });
 
   const before = dex(entries.filter((e) => e.date < s.start));
   const fresh = [...dex(s.list).keys()].filter((id) => !before.has(id));
-  if (fresh.length) out.push(`You named ${fresh.length} new feeling${fresh.length > 1 ? 's' : ''} in this period: ${fresh.slice(0, 3).map(label).join(', ')}${fresh.length > 3 ? '…' : ''}.`);
+  if (fresh.length) out.push({ text: `You named ${fresh.length} new feeling${fresh.length > 1 ? 's' : ''} in this period: ${fresh.slice(0, 3).map(label).join(', ')}${fresh.length > 3 ? '…' : ''}.`, core: EMOTION[fresh[0]].core });
   return out;
 }
 const full = (d: string) => ({ Mon: 'Mondays', Tue: 'Tuesdays', Wed: 'Wednesdays', Thu: 'Thursdays', Fri: 'Fridays', Sat: 'Saturdays', Sun: 'Sundays' })[d];

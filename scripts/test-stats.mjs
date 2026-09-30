@@ -65,7 +65,7 @@ test('mood chart pointer selects first, middle and last dates at different displ
   globalThis.innerWidth = 1000;
   const buckets = Array.from({ length: 30 }, (_, i) => ({
     key: `2026-09-${String(i + 1).padStart(2, '0')}`, mood: i / 10,
-    rolling: 0, entries: [{}],
+    rolling: 0, entries: [{}], cores: {},
   }));
   const chart = MoodChart({ buckets, step: 1 });
   const target = findNode(chart, (node) => typeof node.props?.onPointerMove === 'function');
