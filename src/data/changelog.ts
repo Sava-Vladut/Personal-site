@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.16.4',
+    date: '2026-09-30',
+    changes: [
+      'Fixed the Back, Delete and Done buttons disappearing on a person\u2019s page while scrolling',
+    ],
+  },
+  {
     version: '1.16.3',
     date: '2026-09-30',
     changes: [

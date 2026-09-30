@@ -347,6 +347,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   font-size: 13px; font-weight: 600; color: var(--ink-3); margin: 0 -2px 8px; padding: 8px 2px 6px;
   background: var(--bg);
 }
+.editor .day-label { position: static; background: none; padding-inline: 0; margin-inline: 2px; }
 .entries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 
 .note { display: block; width: 100%; text-align: left; padding: 14px 16px; transition: border-color 0.15s; }
@@ -612,7 +613,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
    ============================================================ */
 
 .editor-bar {
-  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px;
   margin: calc(-1 * var(--safe-t) - 18px) calc(-1 * var(--gutter)) 6px; padding: calc(var(--safe-t) + 10px) 12px 8px;
   pointer-events: none; /* content scrolls under the floating buttons */
 }
