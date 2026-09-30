@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.17.1',
+    date: '2026-09-30',
+    changes: [
+      'Fixed a stray text highlight and Copy / Look Up bubble appearing on the note options sheet after holding a note to pin or unpin it',
+    ],
+  },
+  {
     version: '1.17.0',
     date: '2026-09-30',
     changes: [

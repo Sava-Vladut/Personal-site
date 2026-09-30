@@ -32,6 +32,7 @@ export function useHold(e: Entry, onTap: () => void) {
     held.current = true;
     if (touch) swallowLiftClick();
     navigator.vibrate?.(10);
+    getSelection()?.removeAllRanges();
     menu$.set(e);
   };
   return {
@@ -95,7 +96,10 @@ export function EntryMenu() {
   const last = useRef(e);
   if (e) last.current = e;
   const shown = e ?? last.current;
-  const close = () => menu$.set(null);
+  const close = () => {
+    getSelection()?.removeAllRanges();
+    menu$.set(null);
+  };
   if (!shown) return null;
 
   const isNote = shown.kind === 'note';

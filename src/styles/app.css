@@ -422,6 +422,8 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .swipe[data-side='del'][data-ready] .swipe-bg { background: var(--danger); color: var(--on-ink); }
 /* holding one brings up its options: no text selection or image callout while the finger rests on it */
 .note, .checkin, .note-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* the options sheet opens under the finger that is still holding: iOS must not start selecting text on it */
+.sheet-backdrop, .sheet-grip, .sheet-head, .menu-list { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
 /* calendar */
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
