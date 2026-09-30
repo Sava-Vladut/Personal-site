@@ -76,23 +76,21 @@ export function PersonView({ id }: { id: string }) {
     };
   }, []);
 
-  // How thinking of them felt: the worlds (weighted by how strong each feeling was) of every feeling logged in notes and check-ins they're tagged in.
+  // How thinking of them felt: the worlds of every feeling logged in notes and check-ins they're tagged in.
   const felt = useMemo(() => {
     const worlds = new Map<string, number>();
     const feelings = new Map<string, number>();
-    const counts = new Map<string, number>();
     for (const e of moments)
       for (const eid of e.emotions) {
         const c = coreOf(eid).id;
-        worlds.set(c, (worlds.get(c) ?? 0) + e.intensity);
-        feelings.set(eid, (feelings.get(eid) ?? 0) + e.intensity);
-        counts.set(eid, (counts.get(eid) ?? 0) + 1);
+        worlds.set(c, (worlds.get(c) ?? 0) + 1);
+        feelings.set(eid, (feelings.get(eid) ?? 0) + 1);
       }
     const total = [...worlds.values()].reduce((a, b) => a + b, 0);
     return {
       total,
       worlds: [...worlds].sort((a, b) => b[1] - a[1]),
-      top: [...feelings].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => [id, counts.get(id)!] as [string, number]),
+      top: [...feelings].sort((a, b) => b[1] - a[1]).slice(0, 5),
     };
   }, [moments]);
 
@@ -223,7 +221,7 @@ export function PersonView({ id }: { id: string }) {
           <div class="card person-felt">
             <div class="chart-title">How thinking of {first} felt</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
-              {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${Math.round((n / felt.total) * 100)}%`} />)}
+              {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
             <div class="note-emos">
               {felt.top.map(([eid, n]) => (
