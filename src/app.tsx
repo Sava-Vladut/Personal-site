@@ -12,6 +12,7 @@ import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
 import { Mind } from './views/Mind';
 import { People } from './views/People';
+import { MapView } from './views/Places';
 import { PersonView } from './views/Person';
 import { Settings } from './views/Settings';
 import { Stats } from './views/Stats';
@@ -53,11 +54,13 @@ export function App() {
           <Stats query={route.query} />
         ) : route.name === 'settings' ? (
           <Settings query={route.query} />
+        ) : route.name === 'map' ? (
+          <MapView key={route.query.get('focus') ?? ''} query={route.query} />
         ) : (
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'map' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />

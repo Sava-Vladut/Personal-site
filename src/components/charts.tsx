@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CHART_ORDER, CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emotions';
 import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWeek } from '../lib/dates';
 import { fmtMood, pct, type Bucket } from '../lib/stats';
-import { Icon, Sprite } from './icons';
+import { Icon, Sprite, type UiName } from './icons';
 
 /* ---------- scroll reveal ---------- */
 
@@ -518,6 +518,39 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
         </svg>
       )}
     </div>
+  );
+}
+
+/* ---------- mood rows: average mood per group, as bars left (unpleasant) or right (pleasant) of zero ---------- */
+
+export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?: string | null; mood: number | null; n: number }[] }) {
+  // the longest bar reaches the end of its half, but ±2.5 at least, so small differences don't look dramatic
+  const scale = Math.max(2.5, ...rows.map((r) => Math.abs(r.mood ?? 0)));
+  return (
+    <ul class="mood-rows">
+      {rows.map((r, i) => {
+        const m = r.mood;
+        const w = m === null ? 0 : (Math.abs(m) / scale) * 100;
+        return (
+          <li style={{ '--k': i }} {...tipProps(() => (
+            <>
+              <div class="tip-title">{r.label}</div>
+              <TipRow value={fmtMood(m)} label={`average mood · ${r.n} ${r.n === 1 ? 'entry' : 'entries'}`} />
+            </>
+          ), `${r.label}: ${fmtMood(m)}, ${r.n} ${r.n === 1 ? 'entry' : 'entries'}`)}>
+            <span class="mr-label">
+              {r.icon ? <Icon name={r.icon} size={15} /> : r.core ? <Sprite core={r.core} size={12} /> : null}
+              <span>{r.label}</span>
+            </span>
+            <span class="mr-track">
+              <span class="mr-half neg">{m !== null && m < -0.02 && <i style={{ width: `${w}%`, background: UNPLEASANT }} />}</span>
+              <span class="mr-half pos">{m !== null && m > 0.02 && <i style={{ width: `${w}%`, background: PLEASANT }} />}</span>
+            </span>
+            <span class="mr-value">{fmtMood(m)}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

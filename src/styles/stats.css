@@ -257,3 +257,33 @@ html { transition: --accent 0.6s ease; }
   animation: pop-in 0.45s var(--spring) calc(0.05s + var(--k, 0) * 40ms) backwards;
 }
 .dex-count { font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+
+/* ---------- mood rows: bars left or right of zero ---------- */
+.mood-rows { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 2px; }
+.mood-rows li { display: grid; grid-template-columns: minmax(96px, 38%) 1fr 34px; align-items: center; gap: 10px; padding: 5px 0; border-radius: 6px; outline: none; }
+.mood-rows li:hover .mr-half i, .mood-rows li:focus-visible .mr-half i { opacity: 0.78; }
+.mr-label { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 13.5px; color: var(--ink-2); }
+.mr-label > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.mr-label > svg { flex: none; color: var(--ink-3); }
+.mr-label > svg.sprite { color: inherit; }
+.mr-track { position: relative; display: grid; grid-template-columns: 1fr 1fr; height: 14px; }
+.mr-track::after { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line-2); }
+.mr-half { display: flex; background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
+.mr-half.neg { justify-content: flex-end; border-radius: 5px 0 0 5px; }
+.mr-half.pos { border-radius: 0 5px 5px 0; }
+.mr-half i { display: block; height: 100%; min-width: 3px; animation: grow-x 0.8s var(--ease-emph) calc(0.1s + min(var(--k, 0), 12) * 35ms) backwards; }
+.mr-half.neg i { border-radius: 4px 0 0 4px; transform-origin: right; }
+.mr-half.pos i { border-radius: 0 4px 4px 0; transform-origin: left; }
+.mr-value { text-align: right; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* ---------- weather tab ---------- */
+.tile-value.small { font-size: 21px; line-height: 1.55; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weather-empty { padding: 28px 18px; display: grid; gap: 10px; justify-items: center; text-align: center; }
+.weather-empty p { color: var(--ink-3); max-width: 36ch; }
+.weather-empty-ico {
+  width: 52px; height: 52px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface)); color: color-mix(in oklab, var(--accent) 80%, var(--ink));
+}
+.map-open { margin-top: 12px; }
+.weather-hint { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; text-align: left; font-size: 14px; color: var(--ink-2); }
+.weather-hint > svg { flex: none; color: var(--ink-3); }

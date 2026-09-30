@@ -4,6 +4,7 @@ import { keyOf, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { blankEntry, deleteEntry, getPeople, saveEntry, toast, useEntries, useSettings } from '../lib/store';
 import { streaks } from '../lib/stats';
+import { addContext } from '../lib/weather';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
 import { EmotionWheel } from '../components/EmotionWheel';
 import { Sky } from '../components/Sky';
@@ -62,6 +63,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
     const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), people, time, date: keyOf(new Date(time)) };
     const fresh = EMOTION[picked].depth === 2 && !named.has(picked);
     await saveEntry(e);
+    addContext(e);
     const name = EMOTION[picked].depth === 0 ? shortName(picked) : EMOTION[picked].name;
     toast(fresh ? `New feeling named: ${name} · ${named.size + 1} of ${FEELINGS.length}` : `Logged: ${name}`, {
       label: 'Undo',

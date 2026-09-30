@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.18.0',
+    date: '2026-09-30',
+    changes: [
+      'Weather: turn it on in Settings, and each note and check-in gets the weather, the temperature and the hours of daylight, from Open-Meteo',
+      'Your older entries get their weather too, filled in for your home town',
+      'Places: turn them on, and entries remember where you wrote them, with the neighbourhood’s name from OpenStreetMap',
+      'Notes and check-ins show their weather in the journal, and a note’s Feelings page has a new Where section to add or remove its place',
+      'Stats has a Weather tab: your mood by sky, temperature, daylight and whether it was dark out, with what stands out',
+      'A map of your entries, in the colour of what you felt: pinch, drag and tap a spot to see what you wrote there',
+      'Search finds entries by place name',
+    ],
+  },
+  {
     version: '1.17.1',
     date: '2026-09-30',
     changes: [

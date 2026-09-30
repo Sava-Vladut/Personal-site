@@ -1316,3 +1316,11 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .book-dates .list-row { min-height: 50px; padding-block: 8px; }
 .page-input { width: 84px; text-align: center; }
 .reading-now { margin-bottom: 14px; }
+
+/* ---------- weather and places ---------- */
+.wx { display: inline-flex; align-items: center; gap: 3px; vertical-align: bottom; font-variant-numeric: tabular-nums; }
+.wx svg { flex: none; }
+.checkin-time .wx { margin-right: 8px; }
+.note-when { overflow: hidden; text-overflow: ellipsis; }
+.list-value { font-weight: 400; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-search { margin: 12px 0 4px; }

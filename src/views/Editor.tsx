@@ -10,6 +10,7 @@ import { findBook, mentionOf } from '../lib/books';
 import { connectSpotify } from '../lib/spotify';
 import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, isEmpty, saveEntry, toast, type Book, type Entry, type Music } from '../lib/store';
 import { openViewer } from '../lib/viewer';
+import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
 import { FormatBar } from '../components/FormatBar';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
@@ -162,9 +163,23 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     dirty.current = false;
     if (!saved.current && isEmpty(d)) return; // don't keep blank notes
     saveEntry(d);
+    if (!saved.current) addPlaceAndWeather(d);
     saved.current = true;
     syncUrl();
     setStatus('Saved');
+  };
+
+  /** Where you are and the weather, looked up once a new note is kept. Joins the draft if it's still open. */
+  const addPlaceAndWeather = async (d: Entry) => {
+    const patch = await contextNow(d).catch(() => null);
+    if (!patch || removing.current) return;
+    if (alive.current && latest.current) {
+      const now = latest.current;
+      update({ ...(patch.place && !now.place ? { place: patch.place } : {}), ...(patch.weather && !now.weather ? { weather: patch.weather } : {}) });
+    } else {
+      const cur = getEntries().find((x) => x.id === d.id);
+      if (cur) saveEntry({ ...cur, place: cur.place ?? patch.place ?? null, weather: cur.weather ?? patch.weather ?? null });
+    }
   };
 
   const update = (patch: Partial<Entry>) => {
@@ -195,6 +210,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
       flush();
+      // moved to another day, or written offline: that day's weather
+      if (saved.current && !removing.current && latest.current && needsWeather(latest.current)) fillWeather();
     };
   }, []);
 

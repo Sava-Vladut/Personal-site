@@ -1,6 +1,7 @@
 // A plain-text copy of everything written in the app, for reading or for handing to an AI chat.
 // Only reads what's already loaded: it never writes to the database, and it isn't a backup (Import can't read it).
 import { EMOTION, type EmotionDef } from '../data/emotions';
+import { weatherName } from '../data/weather';
 import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
 import { getBooks, getEntries, getPeople, type Book, type Entry, type Person } from './store';
@@ -51,6 +52,9 @@ function entry(e: Entry, people: Map<string, Person>, books: Book[]) {
   if (e.emotions.length) lines.push(`- Feelings: ${feelings(e.emotions)}${e.kind === 'checkin' ? ` (intensity ${e.intensity}/5)` : ''}`);
   const who = e.people.map((id) => people.get(id)?.name).filter(Boolean);
   if (who.length) lines.push(`- Thinking of: ${who.join(', ')}`);
+  if (e.place?.name) lines.push(`- Place: ${e.place.name}`);
+  if (e.weather && e.weather.day === e.date)
+    lines.push(`- Weather: ${weatherName(e.weather.code)}, ${Math.round(e.weather.temp)}°C, ${e.weather.daylight.toFixed(1)} h of daylight${e.weather.dark ? ', after dark' : ''}`);
   if (e.cover) lines.push(`- Cover: ${'photo' in e.cover ? '[Photo]' : `[${e.cover.image.title ? `Image: ${e.cover.image.title}` : 'Image'}]`}`);
   const text = body(e, books);
   if (text) lines.push('', text);

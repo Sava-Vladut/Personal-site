@@ -7,6 +7,7 @@ import { App } from './app';
 import { applyTheme, init } from './lib/store';
 import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
+import { startWeather } from './lib/weather';
 
 applyTheme();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
@@ -30,7 +31,10 @@ onBlocked(() =>
   ),
 );
 init()
-  .then(initSync)
+  .then(() => {
+    startWeather();
+    return initSync();
+  })
   .catch((e) => console.error('Could not open the journal database', e))
   .finally(() => {
     render(<App />, document.getElementById('app')!);

@@ -219,3 +219,30 @@ test('an unchanged sync document still retries a failed photo download', async (
   assert.ok(have.has('p1234567'));
   assert.equal(sync.useSync().error, undefined);
 });
+
+test('places and weather are cleaned on load, survive a backup, and filled-in weather is not an edit', async () => {
+  const weather = { day: '2026-09-27', code: 2, temp: 18.43, daylight: 11.904, dark: false };
+  const db = memoryDB([
+    entry({ place: { lat: 46.76912, lon: 23.58999, name: 'Centru, Cluj-Napoca' }, weather }),
+    entry({ id: 'bad', place: { lat: 200, lon: 0, name: 'Nowhere' }, weather: { ...weather, day: 'soon' } }),
+    entry({ id: 'old' }),
+  ]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  // the store runs in its own realm: compare plain copies
+  const byId = (id) => JSON.parse(JSON.stringify(store.getEntries().find((e) => e.id === id)));
+  assert.deepEqual(byId('note').place, { lat: 46.769, lon: 23.59, name: 'Centru, Cluj-Napoca' });
+  assert.deepEqual(byId('note').weather, { day: '2026-09-27', code: 2, temp: 18.4, daylight: 11.9, dark: false });
+  assert.deepEqual([byId('bad').place, byId('bad').weather, byId('old').place, byId('old').weather], [null, null, null, null]);
+
+  await store.annotateEntries(new Map([['old', { weather: { ...weather, code: 61, temp: 9.5, daylight: 11.5 } }]]));
+  assert.equal(byId('old').weather.code, 61);
+  assert.equal(byId('old').updated, 1, 'filling in weather keeps the edit time');
+  assert.equal((await db.all()).find((e) => e.id === 'old').weather.code, 61);
+
+  const copy = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+  await copy.importJSON(await store.exportJSON());
+  const copied = (id) => JSON.parse(JSON.stringify(copy.getEntries().find((e) => e.id === id)));
+  assert.deepEqual(copied('note').place, byId('note').place);
+  assert.deepEqual(copied('old').weather, byId('old').weather);
+});

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION } from '../data/emotions';
+import { weatherIcon } from '../data/weather';
 import { rangeLabel } from '../lib/dates';
 import { imageSrc } from '../lib/images';
-import { pushBack } from '../lib/router';
-import { type Cover, type Entry } from '../lib/store';
+import { navigateAfterSheet, pushBack } from '../lib/router';
+import { toast, type Cover, type Entry } from '../lib/store';
+import { here, locationError } from '../lib/weather';
 import { DateSheet } from './Calendar';
 import { CoverCropSheet } from './CoverCrop';
 import { EmotionChip, EmotionPicker, INTENSITY, IntensityPicker } from './emotion';
@@ -12,6 +14,7 @@ import { ImageSearchSheet } from './ImageSearchSheet';
 import { PeopleChips, PeopleSheet, PersonChip, usePeopleById } from './people';
 import { PhotoImg } from './Photo';
 import { Sheet } from './Sheet';
+import { WeatherMark, placeLabel, weatherLine, weatherOf } from './weather';
 
 /**
  * A note's cover picture, filling whatever box it's put in, cropped the way it was adjusted. The crop's point sits at the
@@ -36,10 +39,13 @@ export function CoverImg({ cover, class: cls }: { cover: Cover; class?: string }
 export function DetailsSummary({ draft, onOpen }: { draft: Entry; onOpen: () => void }) {
   const byId = usePeopleById();
   const people = draft.people.map((id) => byId.get(id)!).filter(Boolean);
+  const w = weatherOf(draft);
   return (
-    <button class="details-summary" onClick={onOpen} aria-label="Feelings, people, date and cover">
+    <button class="details-summary" onClick={onOpen} aria-label="Feelings, people, date, place and cover">
       <span class="details-chips">
         <span class="details-date"><Icon name="calendar-event" size={15} /> {rangeLabel(draft.date, draft.dateEnd)}</span>
+        {w && <span class="details-date"><WeatherMark w={w} size={15} /></span>}
+        {draft.place?.name && <span class="details-date details-place"><Icon name="map-pin" size={15} /> <span>{draft.place.name}</span></span>}
         {draft.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
         {draft.emotions.length > 0 && <Bars n={draft.intensity} />}
         {people.map((p) => <PersonChip p={p} size="sm" />)}
@@ -75,6 +81,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const [sheet, setSheet] = useState<Open>(null);
+  const [locating, setLocating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -110,6 +117,17 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
   const pictures: Cover[] = [...draft.photos.map((photo) => ({ photo })), ...draft.images.map((image) => ({ image }))];
   const same = (a: Cover | null, b: Cover) => !!a && ('photo' in a ? 'photo' in b && a.photo.id === b.photo.id : 'image' in b && a.image.url === b.image.url);
   const only = draft.emotions.length === 1 ? EMOTION[draft.emotions[0]] : null;
+  const weather = weatherOf(draft);
+  const addHere = async () => {
+    setLocating(true);
+    try {
+      update({ place: await here() });
+    } catch (e) {
+      toast(locationError(e));
+    } finally {
+      setLocating(false);
+    }
+  };
 
   return (
     <div
@@ -165,6 +183,26 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
               <Icon name="calendar-event" size={16} /> {rangeLabel(draft.date, draft.dateEnd)}
             </button>
           </div>
+        </section>
+
+        <section class="details-section">
+          <h2 class="eyebrow">Where</h2>
+          {draft.place ? (
+            <div class="meta-row place-row">
+              <span class="row gap-s grow"><Icon name="map-pin" size={16} /> <span class="place-name">{placeLabel(draft.place)}</span></span>
+              <span class="row">
+                <button class="btn btn-quiet btn-s" onClick={() => { navigateAfterSheet('map?focus=' + draft.id); onClose(); }}>Map</button>
+                <button class="icon-btn small" onClick={() => update({ place: null })} aria-label="Remove the place" title="Remove the place"><Icon name="trash" size={16} /></button>
+              </span>
+            </div>
+          ) : (
+            <div class="meta">
+              <button class="chip" onClick={addHere} disabled={locating}>
+                <Icon name="current-location" size={16} /> {locating ? 'Finding you…' : 'Add where I am'}
+              </button>
+            </div>
+          )}
+          {weather && <p class="details-hint wx-line"><Icon name={weatherIcon(weather.code, weather.dark)} size={15} /> {weatherLine(weather)}</p>}
         </section>
 
         <section class="details-section">

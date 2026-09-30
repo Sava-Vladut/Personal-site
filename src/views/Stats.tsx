@@ -10,10 +10,11 @@ import { Dex } from './stats/Dex';
 import { Emotions } from './stats/Emotions';
 import { Overview } from './stats/Overview';
 import { Patterns } from './stats/Patterns';
+import { Weather } from './stats/Weather';
 import { RANGE_PHRASE } from './stats/parts';
 import '../styles/stats.css';
 
-const TABS = [['overview', 'Overview'], ['emotions', 'Emotions'], ['patterns', 'Patterns'], ['dex', 'Dex']] as const;
+const TABS = [['overview', 'Overview'], ['emotions', 'Emotions'], ['patterns', 'Patterns'], ['weather', 'Weather'], ['dex', 'Dex']] as const;
 type Tab = (typeof TABS)[number][0];
 
 function loadRange(): RangeKey {
@@ -95,6 +96,8 @@ export function Stats({ query }: { query: URLSearchParams }) {
           <Overview s={s} range={range} />
         ) : tab === 'emotions' ? (
           <Emotions s={s} />
+        ) : tab === 'weather' ? (
+          <Weather s={s} />
         ) : (
           <Patterns s={s} weekStart={weekStart} />
         )}

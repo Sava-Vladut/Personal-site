@@ -21,10 +21,12 @@ export function Delta({ cur, prev, digits = 0, unit = '' }: { cur: number | null
   );
 }
 
-export function Tile({ icon, label: l, value, sub, delta, meter, pips, k = 0 }: {
+export function Tile({ icon, label: l, value, small, sub, delta, meter, pips, k = 0 }: {
   icon: UiName;
   label: string;
   value: string | number;
+  /** a word rather than a figure: set smaller so it fits */
+  small?: boolean;
   sub?: string;
   delta?: preact.ComponentChildren;
   /** 0–1: a thin bar under the figure */
@@ -40,7 +42,7 @@ export function Tile({ icon, label: l, value, sub, delta, meter, pips, k = 0 }: 
         <span class="tile-ico"><Icon name={icon} size={14} stroke={2} /></span>
         <span class="tile-label">{l}</span>
       </div>
-      <div class="tile-value"><CountUp value={value} /></div>
+      <div class={small ? 'tile-value small' : 'tile-value'}><CountUp value={value} /></div>
       <div class="tile-sub">{sub}{delta && sub ? ' · ' : ''}{delta}</div>
       {meter !== undefined && <div class="tile-meter"><i style={{ width: `${Math.max(0, Math.min(1, meter)) * 100}%` }} /></div>}
       {pips && <div class="pips">{pips.map((on, i) => <i class={on ? 'on' : ''} style={{ '--k': i }} />)}</div>}

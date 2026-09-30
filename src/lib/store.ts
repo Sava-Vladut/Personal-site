@@ -37,6 +37,18 @@ export type Cover = ({ photo: Photo } | { image: WebImage }) & { crop?: Crop };
 export interface Crop { x: number; y: number; zoom: number }
 export const MAX_ZOOM = 4;
 
+/** Where you were: rounded to about 100 m, with a short name like "Centru, Cluj-Napoca" ('' until it's looked up). */
+export interface Place { lat: number; lon: number; name: string }
+
+/** The weather on an entry's day, from Open-Meteo. */
+export interface Weather {
+  day: string;              // the day it describes; an entry moved to another day waits for that day's weather
+  code: number;             // WMO weather code
+  temp: number;             // °C at the time, or the day's high
+  daylight: number;         // hours between sunrise and sunset
+  dark?: boolean;           // whether it was dark out at the time, when that's known
+}
+
 export interface Entry {
   id: string;
   kind: 'note' | 'checkin';
@@ -54,6 +66,8 @@ export interface Entry {
   people: string[];         // ids of the people it's about or who were there
   cover: Cover | null;
   pinned: boolean;          // kept at the top of the journal
+  place: Place | null;
+  weather: Weather | null;
   created: number;
   updated: number;
 }
@@ -134,7 +148,8 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   const now = Date.now();
   return {
     id: uid(), kind, title: '', icon: null, text: '', emotions: [], intensity: 3,
-    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, created: now, updated: now,
+    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, place: null, weather: null,
+    created: now, updated: now,
   };
 }
 
@@ -160,6 +175,24 @@ export async function saveEntry(e: Entry) {
     navigator.storage?.persist?.().catch(() => {});
   }
   return next;
+}
+
+/**
+ * Adds details worked out afterwards (a day's weather) without counting as an edit: `updated` stays, so this can never
+ * win over an edit made on another device, and other devices fill in their own copy the same way.
+ */
+export async function annotateEntries(patches: Map<string, Partial<Entry>>) {
+  const changed: Entry[] = [];
+  const list = entries$.get().map((e) => {
+    const p = patches.get(e.id);
+    if (!p) return e;
+    const next = { ...e, ...p, updated: e.updated };
+    changed.push(next);
+    return next;
+  });
+  if (!changed.length) return;
+  entries$.set(list);
+  await db.putMany(changed);
 }
 
 export async function deleteEntry(id: string) {
@@ -330,6 +363,19 @@ const unit = (v: unknown) => Math.min(1, Math.max(0, Number(v)));
 const crop = (c: any): Crop | null =>
   c && [c.x, c.y, c.zoom].every(Number.isFinite) ? { x: unit(c.x), y: unit(c.y), zoom: Math.min(MAX_ZOOM, Math.max(1, +c.zoom)) } : null;
 
+const num = (v: unknown, min: number, max: number) => (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null);
+
+export function normalizePlace(p: any): Place | null {
+  const lat = num(p?.lat, -90, 90), lon = num(p?.lon, -180, 180);
+  return lat === null || lon === null ? null : { lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000, name: str(p.name, 120) };
+}
+
+export function normalizeWeather(w: any): Weather | null {
+  const code = num(w?.code, 0, 99), temp = num(w?.temp, -90, 60), daylight = num(w?.daylight, 0, 24);
+  if (!w || !KEY.test(w.day) || code === null || temp === null || daylight === null) return null;
+  return { day: w.day, code: Math.round(code), temp: Math.round(temp * 10) / 10, daylight: Math.round(daylight * 100) / 100, ...(typeof w.dark === 'boolean' ? { dark: w.dark } : {}) };
+}
+
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !KEY.test(raw.date)) return null;
@@ -364,6 +410,8 @@ function normalize(raw: any): Entry | null {
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
     cover: coverPic && (coverCrop ? { ...coverPic, crop: coverCrop } : coverPic),
     pinned: raw.kind !== 'checkin' && raw.pinned === true,
+    place: normalizePlace(raw.place),
+    weather: normalizeWeather(raw.weather),
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };
@@ -494,6 +542,9 @@ export interface Settings {
   weekStart: 0 | 1;
   picker: 'grid' | 'wheel';
   density: 'cards' | 'compact';
+  weather: boolean;         // add the weather to entries
+  places: boolean;          // save where you are with new entries
+  home: Place | null;       // the weather's place when yours isn't saved, and for older entries
 }
 const SETTINGS_KEY = 'mm-settings';
 function loadSettings(): Settings {
@@ -501,7 +552,10 @@ function loadSettings(): Settings {
   try {
     s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   } catch {}
-  return { theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards' };
+  return {
+    theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards',
+    weather: s.weather === true, places: s.places === true, home: normalizePlace(s.home),
+  };
 }
 const settings$ = observable<Settings>(loadSettings());
 export const useSettings = settings$.use;

@@ -1,0 +1,76 @@
+/* ============================================================
+   Map (PlaceMap) and the map page
+   ============================================================ */
+
+.map {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: #eceae6; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  outline: none; cursor: grab;
+}
+:root[data-theme='dark'] .map { background: #262626; }
+.map:active { cursor: grabbing; }
+.map:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); }
+.map.is-still { cursor: pointer; touch-action: auto; }
+.map-tiles { position: absolute; inset: 0; pointer-events: none; }
+.map-tile { position: absolute; left: 0; top: 0; max-width: none; opacity: 0; transition: opacity 0.25s; }
+.map-tile.is-in { opacity: 1; }
+/* OpenStreetMap's colours, quietened to the app's white and graphite (and turned over for the dark theme) */
+.map-tiles { filter: grayscale(0.9) contrast(0.88) brightness(1.04); }
+:root[data-theme='dark'] .map-tiles { filter: invert(1) hue-rotate(180deg) grayscale(0.9) brightness(0.82) contrast(0.92); }
+
+.map-pin {
+  position: absolute; left: 0; top: 0; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--c); color: #fff;
+  border: 2px solid #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 4px 12px -4px rgb(0 0 0 / 0.35);
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  animation: pin-in 0.35s var(--spring-bouncy) both;
+}
+:root[data-theme='dark'] .map-pin { border-color: #1c1c1b; }
+.map-pin.many { font-size: 12.5px; }
+button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.map.is-still .map-pin { pointer-events: none; }
+@keyframes pin-in { from { scale: 0.4; opacity: 0; } }
+
+.map-tools { position: absolute; top: 12px; right: 12px; z-index: 2; display: grid; gap: 8px; }
+.map-credit {
+  position: absolute; right: 0; bottom: 0; z-index: 2; padding: 2px 7px; border-top-left-radius: 8px;
+  font-size: 10.5px; color: var(--ink-2); background: color-mix(in oklab, var(--surface) 78%, transparent);
+}
+.map-credit a { color: inherit; }
+
+/* the stats preview */
+.map-preview { height: 220px; margin-top: 12px; border-radius: 12px; }
+
+/* the map page: the map fills the screen, with a bar over its top */
+.app.route-map { padding-bottom: 0; }
+.map-page { position: fixed; inset: 0; animation: page-in 0.3s var(--ease-emph); }
+.map-page .map { position: absolute; inset: 0; }
+.map-page .map-tools { top: calc(var(--safe-t) + 70px); }
+.map-page .map-credit { bottom: var(--safe-b); }
+.map-bar {
+  position: absolute; z-index: 3; left: 0; right: 0; top: 0;
+  display: flex; align-items: center; gap: 10px; padding: calc(var(--safe-t) + 12px) 12px 0; pointer-events: none;
+}
+.map-bar > * { pointer-events: auto; }
+.map-title { display: grid; padding: 6px 16px; border-radius: 999px; line-height: 1.25; }
+.map-title b { font: 500 17px/1.2 var(--serif); }
+.map-title span { font-size: 12px; color: var(--ink-3); }
+.map-empty {
+  position: absolute; z-index: 3; left: 16px; right: 16px; bottom: calc(var(--safe-b) + 28px);
+  max-width: 420px; margin: 0 auto; padding: 16px; display: grid; gap: 10px; box-shadow: var(--shadow);
+}
+.map-empty p { color: var(--ink-2); font-size: 14px; }
+
+/* entries at a spot, in the sheet */
+.spot-list { display: grid; gap: 2px; }
+.spot-row {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  width: 100%; text-align: left; padding: 9px 8px; border-radius: 12px; transition: background-color 0.12s;
+}
+.spot-row:hover { background: var(--surface-2); }
+.spot-ico { display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+.spot-main { display: grid; min-width: 0; }
+.spot-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-sub { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-when { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { goBack, navigate } from '../lib/router';
 import { exportText } from '../lib/exportText';
-import { deleteAll, exportJSON, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, type Settings as S } from '../lib/store';
+import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
+import { fillWeather, here, locationError } from '../lib/weather';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
+import { HomeSheet, placeLabel } from '../components/weather';
 import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
 
@@ -42,6 +44,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
   const [setup, setSetup] = useState(false);
   const [changelog, setChangelog] = useState(false);
+  const [homeOpen, setHomeOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -110,6 +114,39 @@ export function Settings({ query }: { query: URLSearchParams }) {
     }
   };
 
+  /** Fills in the weather for older entries, and says how many got it. */
+  const fill = () =>
+    fillWeather().then((n) => n && toast(`Weather added to ${n} ${n === 1 ? 'entry' : 'entries'}`));
+  const toggleWeather = () => {
+    if (settings.weather) return setSettings({ weather: false });
+    setSettings({ weather: true });
+    if (settings.home) fill();
+    else setHomeOpen(true);
+  };
+  const setHome = (home: Place) => {
+    setSettings({ home });
+    toast(`Home set to ${placeLabel(home)}`);
+    fill();
+  };
+  // Turning places on asks for your location there and then, so the browser's question comes with a reason.
+  const togglePlaces = async () => {
+    if (settings.places) return setSettings({ places: false });
+    setLocating(true);
+    try {
+      const p = await here();
+      setSettings({ places: true });
+      if (!getSettings().home) {
+        setSettings({ home: p });
+        toast(p.name ? `Places are on · home set to ${p.name}` : 'Places are on');
+      } else toast('Places are on');
+      fill();
+    } catch (e) {
+      toast(locationError(e));
+    } finally {
+      setLocating(false);
+    }
+  };
+
   const notes = entries.filter((e) => e.kind === 'note').length;
   const themes: [S['theme'], string, UiName][] = [['system', 'System', 'device-desktop'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']];
   const pickers: [S['picker'], string, UiName][] = [['grid', 'Grid', 'layout-grid'], ['wheel', 'Wheel', 'chart-donut-2']];
@@ -163,6 +200,41 @@ export function Settings({ query }: { query: URLSearchParams }) {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Weather & places</h2>
+        <div class="card list">
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="haze" size={18} /> Weather</div>
+              <div class="muted small">Adds the weather and hours of daylight to your entries, so Stats can show how they go with your mood. Open-Meteo is only sent a location, never what you write.</div>
+            </div>
+            <button class="switch" role="switch" aria-checked={settings.weather} aria-label="Weather" onClick={toggleWeather} />
+          </div>
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="map-pin" size={18} /> Places</div>
+              <div class="muted small">{locating ? 'Finding you…' : 'Saves where you are when you write, and puts your entries on a map. Uses your location, with names from OpenStreetMap.'}</div>
+            </div>
+            <button class="switch" role="switch" aria-checked={settings.places} aria-label="Places" onClick={togglePlaces} disabled={locating} />
+          </div>
+          {(settings.weather || settings.home) && (
+            <button class="list-row action" onClick={() => setHomeOpen(true)}>
+              <span class="grow">
+                <span class="row gap-s"><Icon name="home" size={18} /> Home <span class="muted list-value">{settings.home ? placeLabel(settings.home) : 'Not set'}</span></span>
+                <div class="muted small">{settings.home ? 'For the weather when an entry has no place, and for older entries.' : 'Set it to fill in the weather for entries without a place.'}</div>
+              </span>
+              <Icon name="chevron-right" size={18} />
+            </button>
+          )}
+          {entries.some((e) => e.place) && (
+            <button class="list-row action" onClick={() => navigate('map')}>
+              <span class="row gap-s"><Icon name="map" size={18} /> Map of your entries</span>
+              <Icon name="chevron-right" size={18} />
+            </button>
+          )}
         </div>
       </section>
 
@@ -262,10 +334,12 @@ export function Settings({ query }: { query: URLSearchParams }) {
       <button class="version" onClick={() => setChangelog(true)}>Version {VERSION}</button>
 
       <p class="credit">
-        Emotion wheel from Mindful · Emotion Quest. Music, artwork and player from Spotify. Images from Openverse, each under its own open license. Icons: Tabler Icons and Microsoft Fluent Emoji (MIT). Type: Source Serif 4 and Instrument Sans (OFL).
+        Emotion wheel from Mindful · Emotion Quest. Music, artwork and player from Spotify. Images from Openverse, each under its own open license.
+        Weather and place search from Open-Meteo. Place names and maps © OpenStreetMap contributors. Icons: Tabler Icons and Microsoft Fluent Emoji (MIT). Type: Source Serif 4 and Instrument Sans (OFL).
       </p>
 
       <ConnectSetup redirect={sp?.redirect} open={setup} onClose={() => setSetup(false)} />
+      <HomeSheet open={homeOpen} onClose={() => setHomeOpen(false)} onPick={setHome} />
       <JoinSheet open={joining} onClose={() => setJoining(false)} />
       <ChangelogSheet open={changelog} onClose={() => setChangelog(false)} />
     </div>

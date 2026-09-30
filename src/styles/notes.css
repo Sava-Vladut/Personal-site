@@ -229,3 +229,11 @@
   border-color: color-mix(in oklab, var(--line) 70%, transparent);
 }
 .journal-top .prompt { box-shadow: 0 10px 30px -18px color-mix(in oklab, var(--sky) 60%, transparent); }
+
+/* where a note was written, and its weather */
+.details-place { min-width: 0; max-width: 100%; }
+.details-place > span { overflow: hidden; text-overflow: ellipsis; }
+.place-row { margin-top: 10px; padding: 6px 6px 6px 12px; flex-wrap: nowrap; }
+.place-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.wx-line { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.wx-line svg { flex: none; }

@@ -32,7 +32,8 @@ Things to know:
   tab. To move entries across, use **Settings → Export backup** in one, then **Import backup** in the other.
 - Safari can clear a website's storage after about 7 days without a visit. Installed Home Screen / Dock apps aren't
   affected, which is another reason to use the installed app. Export a backup now and then anyway.
-- Offline you can write notes, check in and see stats. Image search and Spotify need a connection. Images
+- Offline you can write notes, check in and see stats. Image search, Spotify, the weather and the map need a connection
+  (the weather is filled in once you're back online). Images
   you've already viewed stay cached.
 - To get a new version, open the app while online. It picks up the new build and caches it.
 
@@ -43,14 +44,15 @@ Things to know:
 | **Journal** | Notes and check-ins grouped by day. Search, filter by type or by emotion world, or open the calendar to see one day. |
 | **Check in** | "Name it to tame it": pick a world → a zone → the exact feeling (48 of them, each with a definition), set intensity 1–5, optionally add a line. |
 | **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), photos from your gallery (or, on desktop, a file browser, drag and drop, or paste), images from a web search (Openverse), and music from Spotify. Saves automatically. |
-| **Stats** | A sky header and colour theme taken from the feeling you had most, with charts that animate in as you scroll to them. Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Dex**: every feeling you've named so far. Every chart has a table view. |
-| **Settings** | Light / dark / system theme, week start, emotion picker style, Spotify connection, backup export/import, delete everything. |
+| **Map** | Every entry saved with a place, as pins in the colour of what you felt. Pinch, drag or scroll to zoom; tap a spot for what you wrote there. From Settings, the Weather tab in Stats, or a note's Feelings page. |
+| **Stats** | A sky header and colour theme taken from the feeling you had most, with charts that animate in as you scroll to them. Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Weather**: mood by sky, temperature, hours of daylight and daylight vs dark, and by place, with a map. **Dex**: every feeling you've named so far. Every chart has a table view. |
+| **Settings** | Light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, backup export/import, delete everything. |
 
 Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant −1), from −5 to +5.
 
 ## Your data
 
-Everything is stored in the browser (IndexedDB) on the device you use. Nothing is uploaded unless you turn on sync.
+Everything is stored in the browser (IndexedDB) on the device you use. Nothing is uploaded unless you turn on sync. (Weather and places, when on, send only coordinates to look things up: see below.)
 Photos are resized on the device (longest side 2048px) and stored there too; backups include them.
 Use **Settings → Export backup** to keep a copy or move it to another device (**Import backup** merges; newer copies win).
 
@@ -59,6 +61,21 @@ under **Load with a code**. The browser encrypts everything (AES-GCM, key derive
 the server stores only ciphertext in `data/sync/`, filed under an id also derived from the code, so it can't read the
 journal. Anyone with the code can, so keep it private. Devices merge on every sync: the newest edit of an entry wins and
 deletions carry over. Photos upload once each.
+
+## Weather and places
+
+Both are off until you turn them on in **Settings → Weather & places**.
+
+- **Weather** adds the weather code, temperature and hours of daylight (and whether it was dark out) to each entry, from
+  [Open-Meteo](https://open-meteo.com) (free, no key). An entry written now gets the weather as it is; older entries,
+  entries moved to another day and ones written offline get that day's weather, filled in the background for the place
+  saved with them, else your **home** (a town you pick, or where you are when you pick it). Filled-in weather doesn't
+  count as an edit, so it never wins over a change made on another device; each device fills in its own copy.
+- **Places** saves where you are (rounded to about 100 m) with each new entry, named after the neighbourhood by
+  OpenStreetMap's [Nominatim](https://nominatim.org), at most one lookup a second. A note's place can be removed or added
+  on its Feelings page.
+- Only coordinates are sent to Open-Meteo and Nominatim, never anything you write. The map shows
+  [OpenStreetMap](https://www.openstreetmap.org/copyright)'s tiles, greyed by CSS to fit the app.
 
 ## Image search
 

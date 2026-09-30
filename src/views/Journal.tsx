@@ -17,6 +17,7 @@ import { Sky } from '../components/Sky';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
+import { WeatherMark, weatherOf } from '../components/weather';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 
@@ -46,7 +47,7 @@ export function Journal() {
     return entries.filter((e) => {
       if (day && !(e.date === day || (e.dateEnd && e.date <= day && day <= e.dateEnd))) return false;
       if (words.length) {
-        const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')}`.toLowerCase();
+        const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
         if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;
@@ -289,6 +290,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const skip = hero && 'photo' in hero ? hero.photo.id : null;
   const photos = e.photos.filter((p) => p.id !== skip);
   const images = e.images.filter((i) => !(hero && 'image' in hero && hero.image.url === i.url));
+  const w = weatherOf(e);
   return (
     <button class={`note card${e.cover ? ' has-cover' : ''}`} {...hold}>
       {e.cover && <CoverImg cover={e.cover} class="note-cover" />}
@@ -296,7 +298,10 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
         <div class="note-main">
           <div class="note-title">{heading || 'Untitled'}</div>
-          <div class="note-when">{e.dateEnd ? rangeLabel(e.date, e.dateEnd) : dated ? `${shortDate(e.date)} · ${timeLabel(e.time)}` : timeLabel(e.time)}</div>
+          <div class="note-when">
+            {e.dateEnd ? rangeLabel(e.date, e.dateEnd) : dated ? `${shortDate(e.date)} · ${timeLabel(e.time)}` : timeLabel(e.time)}
+            {w && <> · <WeatherMark w={w} /></>}
+          </div>
         </div>
       </div>
       {preview && <p class="note-text">{preview}</p>}
@@ -305,7 +310,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
           {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" />}
         </div>
       )}
-      {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0) && (
+      {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0 || !!e.place?.name) && (
         <div class="note-foot">
           <div class="note-emos">
             {e.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
@@ -314,6 +319,11 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
             {e.music.length > 0 && (
               <span class="note-music" title={e.music.map((m) => m.title).join(', ')}>
                 <Icon name="music" size={14} /> <span>{e.music[0].title}</span>{e.music.length > 1 && ` +${e.music.length - 1}`}
+              </span>
+            )}
+            {e.place?.name && (
+              <span class="note-music" title={e.place.name}>
+                <Icon name="map-pin" size={14} /> <span>{e.place.name}</span>
               </span>
             )}
           </div>
@@ -357,12 +367,13 @@ export function CheckInRow({ e }: { e: Entry }) {
   const em = id ? EMOTION[id] : null;
   const people = e.people.map((pid) => byId.get(pid)?.name).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));
+  const w = weatherOf(e);
   return (
     <button class="checkin" {...hold}>
       {em ? <Sprite core={em.core} size={16} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
       <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? `thinking of ${people.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
-      <span class="checkin-time">{timeLabel(e.time)}</span>
+      <span class="checkin-time">{w && <WeatherMark w={w} />}{timeLabel(e.time)}</span>
     </button>
   );
 }
