@@ -162,14 +162,48 @@ export function Journal() {
   );
 }
 
+type Item = { run: Entry[] } | { one: Entry };
+
 function Entries({ list, compact, dated }: { list: Entry[]; compact: boolean; dated?: boolean }) {
+  const items: Item[] = [];
+  for (const e of list) {
+    const last = items[items.length - 1];
+    if (e.kind !== 'checkin') items.push({ one: e });
+    else if (last && 'run' in last) last.run.push(e);
+    else if (last && 'one' in last && last.one.kind === 'checkin') items[items.length - 1] = { run: [last.one, e] };
+    else items.push({ one: e });
+  }
   return (
     <div class={compact ? 'entries compact card' : 'entries'}>
-      {list.map((e) => (
-        <Swipe e={e}>
-          {e.kind === 'checkin' ? <CheckInRow e={e} /> : compact ? <NoteRow e={e} dated={dated} /> : <NoteCard e={e} dated={dated} />}
-        </Swipe>
-      ))}
+      {items.map((it) =>
+        'run' in it ? (
+          <CheckInRun list={it.run} />
+        ) : (
+          <Swipe e={it.one}>
+            {it.one.kind === 'checkin' ? <CheckInRow e={it.one} /> : compact ? <NoteRow e={it.one} dated={dated} /> : <NoteCard e={it.one} dated={dated} />}
+          </Swipe>
+        ),
+      )}
+    </div>
+  );
+}
+
+/** Back-to-back check-ins folded into one line; tap to unfold them. */
+function CheckInRun({ list }: { list: Entry[] }) {
+  const [open, setOpen] = useState(false);
+  const worlds = [...new Set(list.flatMap((e) => e.emotions.slice(0, 1).map((id) => coreOf(id).id)))].slice(0, 4);
+  const times = list.map((e) => e.time).sort();
+  const span = times[0] === times[times.length - 1] ? timeLabel(times[0]) : `${timeLabel(times[0])} – ${timeLabel(times[times.length - 1])}`;
+  return (
+    <div class={open ? 'checkin-run open' : 'checkin-run'}>
+      <button class="checkin checkin-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span class="fold-sprites">{worlds.map((c) => <Sprite core={c} size={14} />)}</span>
+        <span class="checkin-name">{list.length} check-ins</span>
+        <span class="checkin-meta">{worlds.map((c) => shortName(c)).join(', ')}</span>
+        <span class="checkin-time">{span}</span>
+        <Icon name="chevron-down" size={14} />
+      </button>
+      {open && list.map((e) => <Swipe e={e}><CheckInRow e={e} /></Swipe>)}
     </div>
   );
 }

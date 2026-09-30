@@ -341,8 +341,12 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 @media (hover: hover) { .prompt-worlds button:hover .sprite { animation-duration: calc(var(--dur, 3s) / 1.8); } }
 @media (prefers-reduced-motion: reduce) { .prompt-worlds .sprite { animation: none; } }
 
-.day { margin-top: 22px; }
-.day-label { font-size: 13px; font-weight: 600; color: var(--ink-3); margin: 0 2px 8px; }
+.day { margin-top: 28px; }
+.day-label {
+  position: sticky; top: var(--safe-t); z-index: 5;
+  font-size: 13px; font-weight: 600; color: var(--ink-3); margin: 0 -2px 8px; padding: 8px 2px 6px;
+  background: var(--bg);
+}
 .entries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 
 .note { display: block; width: 100%; text-align: left; padding: 14px 16px; transition: border-color 0.15s; }
@@ -361,14 +365,19 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .note-imgs .more { font-size: 12px; color: var(--ink-3); padding-left: 2px; }
 
 .checkin {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 11px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
-  transition: border-color 0.15s;
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 6px 14px; background: none; border: 0; border-radius: 10px;
+  transition: background 0.15s;
 }
-.checkin:hover { border-color: var(--line-2); }
-.checkin-name { font-weight: 600; font-size: 14.5px; white-space: nowrap; }
-.checkin-meta { flex: 1; min-width: 0; color: var(--ink-3); font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.checkin-time { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.checkin:hover { background: var(--surface-2); }
+.checkin-name { font-weight: 500; font-size: 13.5px; white-space: nowrap; }
+.checkin-meta { flex: 1; min-width: 0; color: var(--ink-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checkin-time { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.fold-sprites { display: flex; gap: 3px; }
+.checkin-fold > svg { flex: none; color: var(--ink-3); transition: transform 0.2s; }
+.checkin-run.open .checkin-fold > svg { transform: rotate(180deg); }
+.checkin-run .swipe .checkin { padding-left: 26px; }
+.entries.compact .checkin-run > .swipe { border-top: 1px solid var(--line); }
 
 /* the first picture of a note without a cover, shown large on its card */
 .note-hero { margin-top: 10px; aspect-ratio: 16 / 9; border-radius: 11px; overflow: hidden; background: var(--surface-2); }
@@ -380,10 +389,10 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 
 /* compact journal: a day is one card, each entry a single line */
 .entries.compact { gap: 0; overflow: hidden; }
-.entries.compact > .swipe + .swipe { border-top: 1px solid var(--line); }
+.entries.compact > * + * { border-top: 1px solid var(--line); }
 .entries.compact .swipe-face { background: var(--surface); }
 .entries.compact .swipe-bg { border-radius: 0; }
-.entries.compact .checkin { border: 0; border-radius: 0; padding: 10px 14px; }
+.entries.compact .checkin { border-radius: 0; padding: 10px 14px; }
 .note-row {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   padding: 10px 14px; background: none; border: 0;

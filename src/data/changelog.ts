@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.16.0',
+    date: '2026-09-30',
+    changes: [
+      'Back-to-back check-ins fold into one line (\u201c3 check-ins\u201d); tap it to unfold them',
+      'Check-ins are lighter and smaller than notes, which keep their full cards',
+      'More space between days than between entries, so each day reads as a group',
+      'Day headings stay pinned at the top while you scroll through that day',
+    ],
+  },
+  {
     version: '1.15.0',
     date: '2026-09-29',
     changes: [
