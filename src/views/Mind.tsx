@@ -19,6 +19,7 @@ const RANGES: [Range, string, number][] = [
 
 interface Share {
   p: Person;
+  weight: number;         // moments, each counted by how strong its feeling was (1–5; 3 when no feeling is logged)
   count: number;          // moments they're tagged in, within the range
   share: number;          // 0–1 of all tagged moments in the range
   core: string | null;    // the colour: the main feeling they bring, else the one felt most with them
@@ -100,11 +101,12 @@ export function Mind() {
     const list = people.map((p) => {
       const all = moments.get(p.id) ?? [];
       const inRange = all.filter((e) => e.time >= since);
-      return { p, count: inRange.length, share: 0, core: coreFor(p, all), last: inRange[0] };
+      const weight = inRange.reduce((n, e) => n + (e.emotions.length ? e.intensity : 3), 0);
+      return { p, count: inRange.length, weight, share: 0, core: coreFor(p, all), last: inRange[0] };
     });
-    const total = list.reduce((s, x) => s + x.count, 0);
-    for (const x of list) x.share = total ? x.count / total : 0;
-    return list.sort((a, b) => b.count - a.count || (b.last?.time ?? 0) - (a.last?.time ?? 0) || a.p.name.localeCompare(b.p.name));
+    const total = list.reduce((s, x) => s + x.weight, 0);
+    for (const x of list) x.share = total ? x.weight / total : 0;
+    return list.sort((a, b) => b.weight - a.weight || (b.last?.time ?? 0) - (a.last?.time ?? 0) || a.p.name.localeCompare(b.p.name));
   }, [people, moments, range]);
 
   const total = shares.reduce((s, x) => s + x.count, 0);
@@ -125,7 +127,7 @@ export function Mind() {
         <header class="page-head">
           <button class="back-link stats-back" onClick={() => goBack('people')}><Icon name="chevron-left" size={18} /> People</button>
           <h1 class="title">What’s on your mind</h1>
-          <p class="subtitle">Who takes up your thoughts, by how often you tag them in notes and check-ins.</p>
+          <p class="subtitle">Who takes up your thoughts, by how often you tag them in notes and check-ins, and how strongly you feel it.</p>
         </header>
 
         {people.length > 0 && (
