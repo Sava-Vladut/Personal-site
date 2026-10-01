@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'connections';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -8,6 +8,13 @@ export interface Route {
   visit: number; // increments on every navigation, so "new note" twice gives two fresh editors
 }
 let visits = 0;
+const safeDecode = (s: string) => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+};
 
 function parse(): Route {
   const [path, qs = ''] = location.hash.replace(/^#\/?/, '').split('?');
@@ -20,6 +27,7 @@ function parse(): Route {
   if (head === 'song' && id) return { name: 'song', id, query, visit };
   if (head === 'books') return { name: 'media', query, visit }; // where the shelf used to live
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
+  if (head === 'connections') return { name: 'connections', id: id ? safeDecode(id) : undefined, query, visit };
   if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }

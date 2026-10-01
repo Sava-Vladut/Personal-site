@@ -285,6 +285,17 @@ export function PersonView({ id }: { id: string }) {
           </div>
         )}
 
+        {moments.length > 1 && (
+          <button class="mind-link cx-link card" onClick={() => { flush(); navigate('connections/' + encodeURIComponent('person:' + draft.id)); }}>
+            <span class="mind-link-icon"><Icon name="affiliate" size={22} stroke={1.6} /></span>
+            <span class="mind-link-main">
+              <span class="mind-link-title">Connections</span>
+              <span class="mind-link-sub">Where, when, what you felt and what was playing around {first}, and how it changed</span>
+            </span>
+            <Icon name="chevron-right" size={18} />
+          </button>
+        )}
+
         {groups.length ? (
           groups.map(([date, list]) => (
             <section class="day">

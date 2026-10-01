@@ -8,6 +8,7 @@ import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
 import { Icon, type UiName } from './components/icons';
 import { BookView } from './views/Book';
+import { Connections } from './views/Connections';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
 import { Media } from './views/Media';
@@ -46,6 +47,8 @@ export function App() {
           <People />
         ) : route.name === 'mind' ? (
           <Mind />
+        ) : route.name === 'connections' ? (
+          <Connections key={route.id ?? ''} id={route.id} />
         ) : route.name === 'book' ? (
           <BookView key={route.id} id={route.id!} />
         ) : route.name === 'media' ? (
@@ -64,7 +67,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar active={route.name === 'mind' || route.name === 'connections' ? 'people' : route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />

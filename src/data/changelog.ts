@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.24.0',
+    date: '2026-10-01',
+    changes: [
+      'New Connections page, under People: the threads your notes already hold, from who to where, when, what you felt and what was playing',
+      'Each thread ends in the note that holds most of it together',
+      'How it changed: the feelings around someone (or a place, a song…) over time, and whether the notes are drifting apart or have gone quiet',
+      'Tap any person, place, month, feeling, song or book to follow its own thread',
+      'A person’s page links to their connections',
+    ],
+  },
+  {
     version: '1.23.0',
     date: '2026-10-01',
     changes: [
