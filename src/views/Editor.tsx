@@ -3,7 +3,7 @@ import { flushSync } from 'preact/compat';
 import { timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
-import { editable, messy, PLAIN } from '../lib/editable';
+import { editable, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
 import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
@@ -60,8 +60,8 @@ function useAutosize(value: string) {
 
 /**
  * One stretch of the note's text, between pictures. A plain-text editable block, not a textarea, so that its lines
- * wrap around a picture floated beside it. The browser owns what's in it; it's only rewritten when the text changes
- * from outside (a picture moved, a formatting command that fell back to rewriting).
+ * wrap around a picture floated beside it. Its Markdown shows styled as it's typed: after each change, the pieces
+ * whose styling changed are laid out again (lib/editable.ts); the rest stays the browser's own.
  */
 function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, grow, textRef, suggestionsOpen, activeSuggestion }: {
   value: string;
@@ -141,14 +141,15 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       spellcheck
       onInput={(e) => {
         const el = e.currentTarget;
-        if (!composing.current && !(e as InputEvent).isComposing && messy(el)) editable(el).tidy();
+        // restyles the Markdown as it's typed (and tidies away whatever line markup the browser added)
+        if (!composing.current && !(e as InputEvent).isComposing) editable(el).tidy();
         onChange(editable(el).value);
         caret(e);
       }}
       onCompositionStart={() => { composing.current = true; onMention(null); }}
       onCompositionEnd={(e) => {
         composing.current = false;
-        if (messy(e.currentTarget)) editable(e.currentTarget).tidy();
+        editable(e.currentTarget).tidy();
         onChange(editable(e.currentTarget).value);
         caret(e);
       }}

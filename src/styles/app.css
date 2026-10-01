@@ -810,6 +810,8 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 /* spotify */
 .tracks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .editor .tracks { margin-top: 10px; }
+/* out of the way while writing (a player that's on keeps playing); back when the keyboard goes */
+.editor:has(:is(.body-input, .title-input):focus) .tracks { display: none; }
 .track {
   display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; text-align: left;
   padding: 6px 12px 6px 6px; border-radius: 13px; background: var(--surface); border: 1px solid var(--line);

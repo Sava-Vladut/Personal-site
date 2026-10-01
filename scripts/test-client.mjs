@@ -65,7 +65,8 @@ test('the editor toolbar follows the visible keyboard viewport and releases its 
   let portalTarget;
   const jsx = (type, props) => ({ type, props });
   const { FormatBar } = await load('src/components/FormatBar.tsx', {
-    'preact/hooks': { useRef: () => ({ current: el }), useLayoutEffect: (fn) => effects.push(fn) },
+    // only the keyboard placement (the layout effects) is under test here
+    'preact/hooks': { useRef: () => ({ current: el }), useLayoutEffect: (fn) => effects.push(fn), useEffect: () => {}, useState: (v) => [v, () => {}] },
     'preact/compat': { createPortal: (node, target) => { portalTarget = target; return node; } },
     'preact/jsx-runtime': { jsx, jsxs: jsx },
   }, {

@@ -1,6 +1,8 @@
 // The note's words are written in plain-text editable blocks rather than textareas: a textarea is a box of its own,
 // so text in it can never wrap around a picture beside it. This gives such a block the bits of the textarea API the
-// Markdown commands use (value, selection, replacing text), so they work on either.
+// Markdown commands use (value, selection, replacing text), so they work on either. Its text is laid out in spans
+// that style the Markdown as it's written (lib/liveMarkdown.ts); reading it back only ever sees the characters.
+import { decorate, type Deco } from './liveMarkdown';
 import type { TextBox } from './markdown';
 
 /** Browsers without plain-text editing (Firefox before 136) get rich editing, kept to plain text by the editor. */
@@ -77,9 +79,42 @@ function locate(el: HTMLElement, pos: number): [Node, number] {
   return [el, el.childNodes.length - (last?.nodeName === 'BR' ? 1 : 0)];
 }
 
-/** Puts `text` in a block, with the line break that makes the last line show (see `read`). */
+/** Whether a node already shows a piece of the styled text. */
+const same = (n: Node | undefined, d: Deco): boolean =>
+  !!n && (typeof d === 'string'
+    ? n.nodeType === Node.TEXT_NODE && (n as Text).data === d
+    : n.nodeName === 'SPAN' && (n as HTMLElement).className === d.c && n.childNodes.length === d.k.length && d.k.every((x, i) => same(n.childNodes[i], x)));
+
+function build(d: Deco): Node {
+  if (typeof d === 'string') return document.createTextNode(d);
+  const el = document.createElement('span');
+  el.className = d.c;
+  for (const k of d.k) el.append(build(k));
+  return el;
+}
+
+/**
+ * Puts `text` in a block, styled as Markdown, with the line break that makes the last line show (see `read`). Only
+ * the pieces that differ are replaced, so typing inside a word leaves the browser's own nodes (and its undo, and the
+ * phone's autocorrect) alone. Returns whether anything changed.
+ */
 function fill(el: HTMLElement, text: string) {
-  el.textContent = text && text + '\n';
+  const want = decorate(text);
+  const kids = [...el.childNodes];
+  if (want.length < 2 && typeof want[0] !== 'object') {
+    if (kids.length === want.length && (!want.length || same(kids[0], want[0]))) return false;
+    el.textContent = want[0] ?? '';
+    return true;
+  }
+  let a = 0;
+  while (a < kids.length && a < want.length && same(kids[a], want[a])) a++;
+  if (a === kids.length && a === want.length) return false;
+  let z = 0;
+  while (z < kids.length - a && z < want.length - a && same(kids[kids.length - 1 - z], want[want.length - 1 - z])) z++;
+  const before = z ? kids[kids.length - z] : null;
+  for (const n of kids.slice(a, kids.length - z)) el.removeChild(n);
+  for (const d of want.slice(a, want.length - z)) el.insertBefore(build(d), before);
+  return true;
 }
 
 /** Whether the block holds anything but text and a closing <br> — what a browser's own line handling can leave. */
@@ -149,12 +184,11 @@ export class Editable implements TextBox {
     return r;
   }
 
-  /** Rewrites the block as plain text, keeping the caret. */
+  /** Lays the block out again as its styled text (whatever the browser's editing left in it), keeping the caret. */
   tidy() {
     const focused = document.activeElement === this.el;
     const at = this.sel();
-    fill(this.el, this.value);
-    if (focused) this.setSelectionRange(at.start, at.end, at.direction);
+    if (fill(this.el, this.value) && focused) this.setSelectionRange(at.start, at.end, at.direction);
   }
 
   focus(o?: FocusOptions) {

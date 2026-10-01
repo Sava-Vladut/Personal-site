@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.23.0',
+    date: '2026-10-01',
+    changes: [
+      'Formatting shows while you write: bold, italics, headings, lists, quotes, highlights and code look the part, their markers faded back',
+      'Music in a note steps aside while you type and comes back when you’re done; anything playing keeps playing',
+      'The note toolbar is a small pill: the Aa button swaps the add buttons for the formatting tools',
+      'Selecting text brings up the formatting tools by themselves',
+      'Formatting buttons light up for the style the caret is in',
+      'The toolbar tucks away while you scroll down a note and comes back when you scroll up',
+    ],
+  },
+  {
     version: '1.22.0',
     date: '2026-10-01',
     changes: [
