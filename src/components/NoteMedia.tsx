@@ -84,6 +84,12 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
   const [live, setLive] = useState<number | null>(null); // size while pinching or pulling a corner
   const gesture = useRef<Gesture | null>(null);
   const acted = useRef(false); // the press moved, resized or picked up the picture: it isn't a tap
+  const cancelGesture = useRef<(() => void) | null>(null);
+  const cancelCorner = useRef<(() => void) | null>(null);
+  useEffect(() => () => {
+    cancelGesture.current?.();
+    cancelCorner.current?.();
+  }, []);
 
   // A picture held on touch has to stop the page scrolling under the finger. That only works from a listener that
   // was already there when the touch began, and isn't passive.
@@ -139,16 +145,21 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
           }
         }
       };
-      const up = (ev: PointerEvent) => {
-        if (!cur.pts.delete(ev.pointerId) || cur.pts.size) return;
+      const cleanup = () => {
         clearTimeout(cur.timer);
         removeEventListener('pointermove', move);
         removeEventListener('pointerup', up);
         removeEventListener('pointercancel', up);
         gesture.current = null;
+        cancelGesture.current = null;
+      };
+      cancelGesture.current = cleanup;
+      const up = (ev: PointerEvent) => {
+        if (!cur.pts.delete(ev.pointerId) || cur.pts.size) return;
+        cleanup();
         if (cur.kind !== 'pinch') return;
         setLive(null);
-        if (cur.pct !== undefined && cur.pct !== (m.size ?? 100)) onResize(cur.pct);
+        if (ev.type !== 'pointercancel' && cur.pct !== undefined && cur.pct !== (m.size ?? 100)) onResize(cur.pct);
       };
       addEventListener('pointermove', move, { passive: false });
       addEventListener('pointerup', up);
@@ -173,6 +184,8 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
 
   // Pulling a corner away from the picture makes it bigger. A centred picture grows on both sides, so twice as fast.
   const corner = (sx: -1 | 1, sy: -1 | 1) => (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    cancelCorner.current?.();
     const el = box.current;
     const col = colWidth();
     if (!el || !col) return;
@@ -190,10 +203,15 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
       pct = pctOf(r.width + out * (r.width / len) * factor, col);
       setLive(pct);
     };
-    const end = (ev: PointerEvent) => {
+    const cleanup = () => {
       t.removeEventListener('pointermove', move);
       t.removeEventListener('pointerup', end);
       t.removeEventListener('pointercancel', end);
+      cancelCorner.current = null;
+    };
+    cancelCorner.current = cleanup;
+    const end = (ev: PointerEvent) => {
+      cleanup();
       setLive(null);
       if (ev.type === 'pointerup' && pct !== size) onResize(pct);
     };

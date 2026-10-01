@@ -30,17 +30,29 @@ onBlocked(() =>
     document.getElementById('app')!,
   ),
 );
-init()
-  .then(() => {
-    startWeather();
-    return initSync();
-  })
-  .catch((e) => console.error('Could not open the journal database', e))
-  .finally(() => {
+init().then(
+  () => {
     render(<App />, document.getElementById('app')!);
     setTimeout(() => document.documentElement.classList.remove('booting'), 1000);
-  });
+    startWeather();
+    initSync();
+  },
+  (e) => {
+    console.error('Could not open the journal database', e);
+    document.documentElement.classList.remove('booting');
+    render(
+      <div class="page"><div class="empty">
+        <h2 class="title-s">Couldn’t open your journal</h2>
+        <p>Your browser’s storage is unavailable. Try reopening the app or reloading this page.</p>
+        <button class="btn" onClick={() => location.reload()}>Try again</button>
+      </div></div>,
+      document.getElementById('app')!,
+    );
+  },
+);
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  const register = () => navigator.serviceWorker.register('/sw.js').catch((e) => console.error('Could not enable offline access', e));
+  if (document.readyState === 'complete') void register();
+  else addEventListener('load', register, { once: true });
 }

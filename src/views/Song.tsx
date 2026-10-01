@@ -32,6 +32,11 @@ export function SongView({ id }: { id: string }) {
   const [on, setOn] = useState(false);
   const [status, setStatus] = useState('');
   const dirty = useRef(false);
+  const alive = useRef(true);
+  const removing = useRef(false);
+  const saveRequest = useRef(0);
+  const pendingSave = useRef<Promise<boolean> | null>(null);
+  const leaving = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
@@ -46,13 +51,28 @@ export function SongView({ id }: { id: string }) {
   const flush = () => {
     clearTimeout(timer.current);
     const d = latest.current;
-    if (!d || !dirty.current) return;
+    if (removing.current || !d) return Promise.resolve(false);
+    if (!dirty.current) return pendingSave.current ?? Promise.resolve(true);
     dirty.current = false;
-    saveSong(d);
-    setStatus('Saved');
+    const request = ++saveRequest.current;
+    const saving = saveSong(d).then(() => {
+      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus('Saved');
+      return true;
+    }).catch(() => {
+      if (!removing.current && request === saveRequest.current) {
+        dirty.current = true;
+        setStatus('Couldn’t save');
+        toast('Couldn’t save this music. Try again.');
+      }
+      return false;
+    }).finally(() => {
+      if (pendingSave.current === saving) pendingSave.current = null;
+    });
+    pendingSave.current = saving;
+    return saving;
   };
   const update = (patch: Partial<Song>) => {
-    if (!latest.current) return;
+    if (removing.current || !latest.current) return;
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
@@ -65,6 +85,7 @@ export function SongView({ id }: { id: string }) {
     const hide = () => document.visibilityState === 'hidden' && flush();
     document.addEventListener('visibilitychange', hide);
     return () => {
+      alive.current = false;
       document.removeEventListener('visibilitychange', hide);
       flush();
     };
@@ -100,21 +121,40 @@ export function SongView({ id }: { id: string }) {
   const m = draft.music;
   const tape = isTape(m);
   const remove = async () => {
+    if (removing.current) return;
     if (!confirm(`Remove “${m.title}” from your records? Notes it’s in keep it.`)) return;
     clearTimeout(timer.current);
+    removing.current = true;
     dirty.current = false;
-    const removed = await deleteSong(draft.id);
-    goBack('media');
-    if (removed) toast('Removed from your records', { label: 'Undo', run: () => saveSong(removed) });
+    await pendingSave.current;
+    try {
+      const removed = await deleteSong(draft.id);
+      if (alive.current) goBack('media');
+      if (removed) toast('Removed from your records', { label: 'Undo', run: () => saveSong(removed) });
+    } catch {
+      removing.current = false;
+      dirty.current = true;
+      toast('Couldn’t remove this music. Try again.');
+    }
+  };
+  const done = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    await flush();
+    if (!dirty.current && alive.current && !removing.current) goBack('media');
+    else leaving.current = false;
   };
   const addEmotion = (eid: string) => {
     const list = draft.emotions.filter((x) => x !== eid && !eid.startsWith(x + '/') && !x.startsWith(eid + '/'));
     update({ emotions: [...list, eid].slice(-MAX_PERSON_EMOTIONS) });
     setOpen(null);
   };
-  const write = () => {
-    flush();
-    navigate(`note/new?song=${draft.id}`);
+  const write = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    await flush();
+    if (!dirty.current && alive.current && !removing.current) navigate(`note/new?song=${draft.id}`);
+    else leaving.current = false;
   };
   const from = draft.from ? byId.get(draft.from) : undefined;
   const main = draft.emotions[0] ? coreOf(draft.emotions[0]).id : null;
@@ -122,10 +162,10 @@ export function SongView({ id }: { id: string }) {
   return (
     <div class="page editor song-page">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={() => { flush(); goBack('media'); }} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button class="glass glass-btn round" onClick={remove} aria-label="Remove from your records"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack('media'); }}>Done</button>
+        <button class="glass glass-btn tinted" onClick={done}>Done</button>
       </div>
 
       <div class={`song-head${on ? ' is-on' : ''}${draft.repeat && !on ? ' is-repeat' : ''}`} style={{ '--c': main ? `var(--emo-${main})` : undefined }}>

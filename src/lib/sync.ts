@@ -30,7 +30,14 @@ export interface SyncStatus {
 function loadState(): State | null {
   try {
     const s = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
-    return s && typeof s.code === 'string' ? { rev: null, dirty: false, last: 0, sent: [], ...s } : null;
+    const code = typeof s?.code === 'string' ? parseCode(s.code) : null;
+    return code ? {
+      code,
+      rev: typeof s.rev === 'string' && s.rev ? s.rev : null,
+      dirty: s.dirty === true,
+      last: Number.isFinite(s.last) && s.last >= 0 ? s.last : 0,
+      sent: Array.isArray(s.sent) ? s.sent.filter((id: unknown) => typeof id === 'string' && /^p[a-z0-9]{6,40}$/.test(id)) : [],
+    } : null;
   } catch {
     return null;
   }
@@ -49,7 +56,7 @@ const publish = (patch: Partial<SyncStatus>) => status$.set({ ...status$.get(), 
 
 /* ---------- codes and keys ---------- */
 
-export const formatCode = (c: string) => c.match(/.{1,4}/g)!.join('-');
+export const formatCode = (c: string) => c.match(/.{1,4}/g)?.join('-') ?? '';
 
 export function parseCode(input: string) {
   const c = input.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -124,6 +131,7 @@ async function download(id: string, key: CryptoKey, rev: string | null) {
   if (res.status === 404) return { rev: null, doc: null };
   if (!res.ok) throw await failure(res);
   const doc: Doc = JSON.parse(dec.decode(await decrypt(key, await res.arrayBuffer())));
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error('The saved sync journal is invalid.');
   return { rev: res.headers.get('X-Sync-Rev'), doc };
 }
 
@@ -145,14 +153,18 @@ async function sendPhotos(s: State, id: string, key: CryptoKey) {
   const sent = new Set(s.sent);
   const have = await photoIds();
   for (const pid of photosInUse().keys()) {
+    if (state !== s) return;
     if (sent.has(pid) || !have.has(pid)) continue;
     const blob = await photoBlob(pid);
+    if (state !== s) return;
     if (!blob) continue;
     const head = enc.encode(blob.type + '\n');
     const bytes = new Uint8Array(head.length + blob.size);
     bytes.set(head);
     bytes.set(new Uint8Array(await blob.arrayBuffer()), head.length);
-    const res = await call(`${id}/${pid}`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: await encrypt(key, bytes) });
+    const body = await encrypt(key, bytes);
+    if (state !== s) return;
+    const res = await call(`${id}/${pid}`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body });
     if (!res.ok) throw await failure(res);
     sent.add(pid);
   }
@@ -164,8 +176,10 @@ async function fetchPhotos(s: State, id: string, key: CryptoKey) {
   const have = await photoIds();
   const got: (Photo & { blob: Blob })[] = [];
   for (const p of photosInUse().values()) {
+    if (state !== s) return;
     if (have.has(p.id)) continue;
     const res = await call(`${id}/${p.id}`);
+    if (state !== s) return;
     if (!res.ok) continue; // not uploaded yet; tried again next time
     const bytes = await decrypt(key, await res.arrayBuffer());
     const nl = bytes.indexOf(10);
@@ -173,6 +187,7 @@ async function fetchPhotos(s: State, id: string, key: CryptoKey) {
     if (nl < 0 || !IMAGE.test(type)) continue;
     got.push({ ...p, blob: new Blob([bytes.subarray(nl + 1)], { type }) });
   }
+  if (state !== s) return;
   await storePhotos(got);
   s.sent = [...new Set([...s.sent, ...got.map((p) => p.id)])];
 }
@@ -181,6 +196,7 @@ async function fetchPhotos(s: State, id: string, key: CryptoKey) {
 async function pass(s: State) {
   const { id, key } = await keys(s.code);
   for (let tries = 0; tries < 5; tries++) {
+    if (state !== s) return;
     const { rev, doc } = await download(id, key, s.rev);
     if (state !== s) return;
     if (!rev && s.rev) {
@@ -191,10 +207,12 @@ async function pass(s: State) {
     }
     if (doc) {
       const r = await mergeSynced(doc);
+      if (state !== s) return;
       r.icons.forEach((i) => resolveIcon(i));
     }
     // Photos may have failed on an earlier pass even when the document is unchanged.
     await fetchPhotos(s, id, key);
+    if (state !== s) return;
     if (!(rev ? (doc ? aheadOf(doc) : s.dirty) : true)) {
       s.rev = rev;
       s.dirty = false;
@@ -202,9 +220,12 @@ async function pass(s: State) {
       s.dirty = false; // edits made while uploading set it again
       try {
         await sendPhotos(s, id, key);
+        if (state !== s) return;
         const body = await encrypt(key, enc.encode(JSON.stringify({ app: 'my-mind', version: 1, entries: getEntries(), people: getPeople(), books: getBooks(), songs: getSongs(), deleted: getDeleted() })));
+        if (state !== s) return;
         const res = await call(id, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'X-Sync-Rev': rev ?? 'new' }, body });
         if (res.status === 409) {
+          s.rev = rev;
           s.dirty = true;
           continue; // another device got there first: merge its copy and try again
         }
@@ -238,7 +259,15 @@ export function syncNow(): Promise<void> {
     try {
       do {
         again = false;
-        if (state) await pass(state);
+        const session: State | null = state;
+        if (session) {
+          try {
+            await pass(session);
+          } catch (error) {
+            // Failures from a stopped or replaced session cannot become the new session's error.
+            if (state === session) throw error;
+          }
+        }
       } while (again && state);
       publish({ busy: false, error: undefined, last: state?.last ?? 0 });
     } catch (e) {
@@ -287,10 +316,12 @@ export function stopSync() {
 /** Deletes the server copy (every synced device stops syncing) and stops here. Entries on devices stay. */
 export async function removeServerCopy() {
   if (!state) return;
-  const { id } = await keys(state.code);
+  const session = state;
+  const { id } = await keys(session.code);
+  if (state !== session) return;
   const res = await call(id, { method: 'DELETE' });
   if (!res.ok) throw await failure(res);
-  stopSync();
+  if (state === session) stopSync();
 }
 
 /* ---------- when to sync ---------- */

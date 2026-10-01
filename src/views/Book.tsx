@@ -139,6 +139,11 @@ export function BookView({ id }: { id: string }) {
   const [open, setOpen] = useState<Open>(null);
   const [status, setStatus] = useState('');
   const dirty = useRef(false);
+  const alive = useRef(true);
+  const removing = useRef(false);
+  const saveRequest = useRef(0);
+  const pendingSave = useRef<Promise<boolean> | null>(null);
+  const leaving = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
@@ -152,14 +157,29 @@ export function BookView({ id }: { id: string }) {
   const flush = () => {
     clearTimeout(timer.current);
     const d = latest.current;
-    if (!d || !dirty.current) return;
+    if (removing.current || !d) return Promise.resolve(false);
+    if (!dirty.current) return pendingSave.current ?? Promise.resolve(true);
     dirty.current = false;
-    saveBook(d);
-    setStatus('Saved');
+    const request = ++saveRequest.current;
+    const saving = saveBook(d).then(() => {
+      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus('Saved');
+      return true;
+    }).catch(() => {
+      if (!removing.current && request === saveRequest.current) {
+        dirty.current = true;
+        setStatus('Couldn’t save');
+        toast('Couldn’t save this book. Try again.');
+      }
+      return false;
+    }).finally(() => {
+      if (pendingSave.current === saving) pendingSave.current = null;
+    });
+    pendingSave.current = saving;
+    return saving;
   };
 
   const update = (patch: Partial<Book>) => {
-    if (!latest.current) return;
+    if (removing.current || !latest.current) return;
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
@@ -174,12 +194,14 @@ export function BookView({ id }: { id: string }) {
     const hide = () => document.visibilityState === 'hidden' && flush();
     document.addEventListener('visibilitychange', hide);
     return () => {
+      alive.current = false;
       document.removeEventListener('visibilitychange', hide);
-      flush();
-      const d = latest.current;
-      const was = shelfBefore.current.find((b) => b.id === id);
-      if (d && was && was.title.trim() !== d.title.trim() && d.title.trim())
-        renameMentions(getEntries(), shelfBefore.current, d).forEach((e) => saveEntry(e));
+      flush().then((kept) => {
+        const d = latest.current;
+        const was = shelfBefore.current.find((b) => b.id === id);
+        if (kept && !removing.current && d && was && was.title.trim() !== d.title.trim() && d.title.trim())
+          return Promise.all(renameMentions(getEntries(), shelfBefore.current, d).map((e) => saveEntry(e)));
+      }).catch(() => toast('Couldn’t update the notes mentioning this book.'));
     };
   }, []);
 
@@ -212,12 +234,29 @@ export function BookView({ id }: { id: string }) {
     );
 
   const remove = async () => {
+    if (removing.current) return;
     if (!confirm(`Remove “${draft.title.trim() || 'this book'}” from your shelf? Notes that mention it keep its title.`)) return;
     clearTimeout(timer.current);
+    removing.current = true;
     dirty.current = false;
-    const removed = await deleteBook(draft.id);
-    goBack('media');
-    if (removed) toast('Book removed', { label: 'Undo', run: () => saveBook(removed) });
+    await pendingSave.current;
+    try {
+      const removed = await deleteBook(draft.id);
+      if (alive.current) goBack('media');
+      if (removed) toast('Book removed', { label: 'Undo', run: () => saveBook(removed) });
+    } catch {
+      removing.current = false;
+      dirty.current = true;
+      toast('Couldn’t remove this book. Try again.');
+    }
+  };
+
+  const done = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    await flush();
+    if (!dirty.current && alive.current && !removing.current) goBack('media');
+    else leaving.current = false;
   };
 
   /** Moving between shelves fills in the dates you'd otherwise have to: started when you begin, finished when you're done. */
@@ -241,9 +280,12 @@ export function BookView({ id }: { id: string }) {
   };
 
   /** Starts a note that already mentions the book. */
-  const write = () => {
-    flush();
-    navigate(`note/new?book=${draft.id}`);
+  const write = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    await flush();
+    if (!dirty.current && alive.current && !removing.current) navigate(`note/new?book=${draft.id}`);
+    else leaving.current = false;
   };
 
   const from = draft.from ? byId.get(draft.from) : undefined;
@@ -252,10 +294,10 @@ export function BookView({ id }: { id: string }) {
   return (
     <div class="page editor book-page">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={() => { flush(); goBack('media'); }} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button class="glass glass-btn round" onClick={remove} aria-label="Remove book"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack('media'); }}>Done</button>
+        <button class="glass glass-btn tinted" onClick={done}>Done</button>
       </div>
 
       <div class="book-head" style={{ '--c': main ? `var(--emo-${main})` : undefined }}>

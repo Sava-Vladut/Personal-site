@@ -90,8 +90,12 @@ export function bodyOf(e: Entry): Body {
   const seen = new Set<string>();
   const out: Body = { texts: [b.texts[0]], media: [] };
   b.media.forEach((m, i) => {
-    const items = itemsOf(m).filter((it) => known(it) && !seen.has(itemKey(it)));
-    items.forEach((it) => seen.add(itemKey(it)));
+    const items = itemsOf(m).filter((it) => {
+      const key = itemKey(it);
+      if (!known(it) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     if (items.length) {
       out.media.push(m.kind === 'album' || items.length > 1 ? albumOf(items, m) : m);
       out.texts.push(b.texts[i + 1]);
@@ -103,7 +107,12 @@ export function bodyOf(e: Entry): Body {
   const missing: Media[] = [
     ...e.photos.map((p) => ({ kind: 'photo' as const, id: p.id })),
     ...e.images.map((i) => ({ kind: 'image' as const, url: i.url })),
-  ].filter((m) => !seen.has(itemKey(m)));
+  ].filter((m) => {
+    const key = itemKey(m);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   for (const m of missing) {
     out.media.push(m);
     out.texts.push('');
@@ -222,8 +231,9 @@ export function ungroup(b: Body, i: number): Body {
 /** Takes one picture out of album `i` and puts it on its own line just below the album. */
 export function takeOut(b: Body, i: number, it: Item): Body {
   const m = b.media[i];
-  if (m.kind !== 'album') return b;
+  if (m.kind !== 'album' || !m.items.some((x) => itemKey(x) === itemKey(it))) return b;
   const rest = m.items.filter((x) => itemKey(x) !== itemKey(it));
+  if (!rest.length) return { texts: b.texts, media: b.media.map((x, j) => j === i ? { ...it, ...layoutPart(m) } : x) };
   return {
     texts: [...b.texts.slice(0, i + 1), '', ...b.texts.slice(i + 1)],
     media: [...b.media.slice(0, i), albumOf(rest, m), it, ...b.media.slice(i + 1)],
@@ -247,5 +257,6 @@ export function removeItem(b: Body, it: Item): Body {
   const m = b.media[i];
   if (m.kind !== 'album') return removeMedia(b, m);
   const rest = m.items.filter((x) => itemKey(x) !== itemKey(it));
+  if (!rest.length) return removeMedia(b, m);
   return { texts: b.texts, media: b.media.map((x, k) => (k === i ? albumOf(rest, m) : x)) };
 }

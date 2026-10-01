@@ -10,7 +10,18 @@ export const keyOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-$
 export const todayKey = () => keyOf(new Date());
 export const parseKey = (k: string) => {
   const [y, m, d] = k.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  const date = new Date(0);
+  date.setFullYear(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+/** A real calendar day, including leap-year checks; malformed backup dates never enter the journal. */
+export const isDateKey = (v: unknown): v is string => {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [year, month, day] = v.split('-').map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 };
 export const addDays = (k: string, n: number) => {
   const d = parseKey(k);

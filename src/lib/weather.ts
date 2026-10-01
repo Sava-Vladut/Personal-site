@@ -9,6 +9,8 @@ const GEOCODE = 'https://geocoding-api.open-meteo.com/v1/search';
 const REVERSE = 'https://nominatim.openstreetmap.org/reverse';
 const PAST_DAYS = 60; // the forecast keeps about two months of past days; older ones come from the archive
 const NOW_WINDOW = 2 * 3600_000; // an entry this close to now gets the weather as it is now
+const samePlace = (a: Place | null | undefined, b: Place | null | undefined) =>
+  a?.lat === b?.lat && a?.lon === b?.lon;
 
 async function getJSON(url: string, init: RequestInit = {}) {
   const ctl = new AbortController();
@@ -145,6 +147,9 @@ export async function contextNow(e: Entry): Promise<Partial<Entry> | null> {
   if (s.places && !e.place) patch.place = await here().catch(() => undefined);
   const spot = patch.place ?? e.place ?? s.home;
   if (s.weather && spot) patch.weather = await weatherNow(spot, e).catch(() => undefined);
+  const current = getSettings();
+  if (!current.places) delete patch.place;
+  if (!current.weather || !samePlace(spot, patch.place ?? e.place ?? current.home)) delete patch.weather;
   if (!patch.place) delete patch.place;
   if (!patch.weather) delete patch.weather;
   return Object.keys(patch).length ? patch : null;
@@ -154,7 +159,12 @@ export async function contextNow(e: Entry): Promise<Partial<Entry> | null> {
 export async function addContext(e: Entry) {
   const patch = await contextNow(e).catch(() => null);
   const cur = getEntries().find((x) => x.id === e.id);
-  if (patch && cur) await saveEntry({ ...cur, ...patch });
+  if (patch && cur && cur.date === e.date && cur.time === e.time && samePlace(cur.place, e.place)) {
+    if (!patch.place && cur.weather && !needsWeather(cur)) delete patch.weather;
+    // Weather by itself is an annotation, so a lookup cannot outrank a real edit during sync.
+    if (patch.place) await saveEntry({ ...cur, ...patch });
+    else if (patch.weather) await annotateEntries(new Map([[cur.id, patch]]));
+  }
   if (!patch?.weather) fillWeather();
 }
 
@@ -197,20 +207,26 @@ async function fill() {
         if (weather) patches.set(e.id, { weather });
       }
       // only entries still waiting on the same day: one written, synced or moved meanwhile keeps its own
+      const current = new Map(getEntries().map((e) => [e.id, e]));
+      const original = new Map(g.list.map((e) => [e.id, e]));
+      const settings = getSettings();
       for (const [id, p] of [...patches]) {
-        const cur = getEntries().find((x) => x.id === id);
-        if (!cur || !needsWeather(cur) || cur.date !== p.weather!.day) patches.delete(id);
+        const cur = current.get(id);
+        const before = original.get(id)!;
+        if (!settings.weather || !cur || !needsWeather(cur) || cur.date !== p.weather!.day || cur.time !== before.time ||
+          !samePlace(cur.place ?? settings.home, before.place ?? s.home)) patches.delete(id);
       }
       await annotateEntries(patches);
       filled += patches.size;
     }
   }
 
-  const unnamed = getEntries().filter((e) => e.place && !e.place.name).slice(0, 5);
+  const unnamed = getSettings().places ? getEntries().filter((e) => e.place && !e.place.name).slice(0, 5) : [];
   for (const e of unnamed) {
     const name = await placeName(e.place!.lat, e.place!.lon).catch(() => '');
     const cur = getEntries().find((x) => x.id === e.id);
-    if (name && cur?.place && !cur.place.name) await annotateEntries(new Map([[e.id, { place: { ...cur.place, name } }]]));
+    if (getSettings().places && name && cur?.place && !cur.place.name && samePlace(cur.place, e.place))
+      await annotateEntries(new Map([[e.id, { place: { ...cur.place, name } }]]));
   }
   return filled;
 }

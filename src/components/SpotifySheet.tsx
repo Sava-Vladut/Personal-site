@@ -41,7 +41,9 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
   useEffect(() => {
     if (!open) return;
     setSelected([]);
-    spotifyStatus().then(setStatus);
+    let active = true;
+    spotifyStatus().then((next) => { if (active) setStatus(next); });
+    return () => { active = false; };
   }, [open]);
 
   const toggle = (m: Music) => setSelected((s) => (s.some((x) => same(x, m)) ? s.filter((x) => !same(x, m)) : [...s, m]));
@@ -117,11 +119,15 @@ function usePaged<T>() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const req = useRef(0);
+  useEffect(() => () => { req.current++; }, []);
   const load = async (fetchPage: (offset?: number) => Promise<{ items: T[]; next?: number }>, more = false) => {
     const n = ++req.current;
     setBusy(true);
     setError('');
-    if (!more) setItems([]);
+    if (!more) {
+      setItems([]);
+      setNext(undefined);
+    }
     try {
       const page = await fetchPage(more ? next : undefined);
       if (n !== req.current) return; // a newer search replaced this one
@@ -139,7 +145,8 @@ function usePaged<T>() {
     setBusy(false);
     setError('');
   };
-  return { items, next, busy, error, load, reset };
+  const cancel = () => { req.current++; };
+  return { items, next, busy, error, load, reset, cancel };
 }
 
 function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
@@ -148,9 +155,13 @@ function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
   const fetchPage = (offset?: number) => (isLink(q) ? resolveSpotify(q).then((m) => ({ items: [m] })) : searchSpotify(q, offset));
 
   useEffect(() => {
-    if (!q.trim()) return res.reset();
+    res.reset();
+    if (!q.trim()) return;
     const t = setTimeout(() => res.load(fetchPage), 350);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      res.cancel();
+    };
   }, [q]);
 
   return (
@@ -174,22 +185,29 @@ function NowTab({ row, active, onConnect }: { row: (m: Music) => preact.JSX.Elem
   const [now, setNow] = useState<NowPlaying | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const req = useRef(0);
   const refresh = async () => {
+    const n = ++req.current;
     setBusy(true);
     setError('');
     try {
-      setNow(await nowPlaying());
+      const next = await nowPlaying();
+      if (n === req.current) setNow(next);
     } catch (e) {
-      setError((e as Error).message);
+      if (n === req.current) setError((e as Error).message);
     }
-    setBusy(false);
+    if (n === req.current) setBusy(false);
   };
   // Refresh on showing the tab, and every 20 seconds while it's open, so a new song shows up.
   useEffect(() => {
     if (!active) return;
     refresh();
     const t = setInterval(refresh, 20_000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      req.current++;
+      setBusy(false);
+    };
   }, [active]);
 
   if (now?.reconnect)
@@ -274,24 +292,35 @@ function LinkTab({ onAdd, label }: { onAdd: (m: Music) => void; label: string })
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<Music | null>(null);
+  const req = useRef(0);
+  useEffect(() => () => { req.current++; }, []);
+  const changeUrl = (value: string) => {
+    req.current++;
+    setUrl(value);
+    setPreview(null);
+    setBusy(false);
+    setError('');
+  };
 
   const fetchLink = async (e?: Event) => {
     e?.preventDefault();
     if (!url.trim()) return;
+    const n = ++req.current;
     setBusy(true);
     setError('');
     setPreview(null);
     try {
-      setPreview(await resolveSpotify(url));
+      const next = await resolveSpotify(url);
+      if (n === req.current) setPreview(next);
     } catch (err) {
-      setError((err as Error).message);
+      if (n === req.current) setError((err as Error).message);
     }
-    setBusy(false);
+    if (n === req.current) setBusy(false);
   };
   const paste = async () => {
     try {
       const t = await navigator.clipboard.readText();
-      if (t) setUrl(t.trim());
+      if (t) changeUrl(t.trim());
     } catch {}
   };
 
@@ -305,7 +334,7 @@ function LinkTab({ onAdd, label }: { onAdd: (m: Music) => void; label: string })
           inputMode="url"
           placeholder="open.spotify.com/track/…"
           value={url}
-          onInput={(e) => setUrl(e.currentTarget.value)}
+          onInput={(e) => changeUrl(e.currentTarget.value)}
           aria-label="Spotify link"
         />
         {'clipboard' in navigator && !url && <button type="button" class="btn btn-quiet" onClick={paste}>Paste</button>}

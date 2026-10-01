@@ -167,6 +167,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
+  const saveRequest = useRef(0);
+  const pendingSave = useRef<Promise<boolean> | null>(null);
+  const leaving = useRef(false);
+  const contextStarted = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
@@ -178,6 +182,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const alive = useRef(true);
   const removing = useRef(false);
   const pendingImports = useRef(0);
+  const cancelMove = useRef<(() => void) | null>(null);
   // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
   const where = useRef({ seg: -1, pos: 0 });
 
@@ -190,26 +195,52 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const flush = () => {
     clearTimeout(timer.current);
     const d = latest.current;
-    if (!d || !dirty.current) return;
+    if (removing.current || !d) return Promise.resolve(false);
+    if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
     dirty.current = false;
-    if (!saved.current && isEmpty(d)) return; // don't keep blank notes
-    saveEntry(d);
-    if (!saved.current) addPlaceAndWeather(d);
-    saved.current = true;
-    syncUrl();
-    setStatus('Saved');
+    if (!saved.current && isEmpty(d)) return Promise.resolve(false); // don't keep blank notes
+    const request = ++saveRequest.current;
+    const saving = saveEntry(d).then(() => {
+      if (removing.current) return false;
+      if (!saved.current && !contextStarted.current) {
+        contextStarted.current = true;
+        addPlaceAndWeather(d);
+      }
+      saved.current = true;
+      if (alive.current) {
+        syncUrl();
+        if (request === saveRequest.current && !dirty.current) setStatus('Saved');
+      }
+      return true;
+    }).catch(() => {
+      if (removing.current || request !== saveRequest.current) return false;
+      dirty.current = true;
+      if (alive.current) setStatus('Couldn’t save');
+      toast('Couldn’t save this note. Try again.');
+      return false;
+    }).finally(() => {
+      if (pendingSave.current === saving) pendingSave.current = null;
+    });
+    pendingSave.current = saving;
+    return saving;
   };
 
   /** Where you are and the weather, looked up once a new note is kept. Joins the draft if it's still open. */
   const addPlaceAndWeather = async (d: Entry) => {
     const patch = await contextNow(d).catch(() => null);
     if (!patch || removing.current) return;
+    const unchanged = (cur: Entry) => cur.date === d.date && cur.time === d.time && cur.place?.lat === d.place?.lat && cur.place?.lon === d.place?.lon;
     if (alive.current && latest.current) {
       const now = latest.current;
-      update({ ...(patch.place && !now.place ? { place: patch.place } : {}), ...(patch.weather && !now.weather ? { weather: patch.weather } : {}) });
+      if (!unchanged(now)) return;
+      update(patch.place && !now.place
+        ? { place: patch.place, weather: patch.weather ?? null }
+        : patch.weather && !now.weather ? { weather: patch.weather } : {});
     } else {
       const cur = getEntries().find((x) => x.id === d.id);
-      if (cur) saveEntry({ ...cur, place: cur.place ?? patch.place ?? null, weather: cur.weather ?? patch.weather ?? null });
+      if (cur && unchanged(cur)) saveEntry({ ...cur, place: cur.place ?? patch.place ?? null,
+        weather: patch.place && !cur.place ? patch.weather ?? null : cur.weather ?? patch.weather ?? null,
+      }).catch(() => toast('Couldn’t save the note’s weather.'));
     }
   };
 
@@ -237,6 +268,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     } else if (id === 'new') titleRef.current?.focus();
     return () => {
       alive.current = false;
+      cancelMove.current?.();
       if (pendingImports.current && !removing.current) toast('Photo import cancelled because you left the note');
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
@@ -304,12 +336,29 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     );
 
   const remove = async () => {
+    if (removing.current) return;
     removing.current = true;
     clearTimeout(timer.current);
     dirty.current = false;
-    const removed = saved.current ? await deleteEntry(draft.id) : null;
-    goBack();
-    if (removed) toast(removed.kind === 'checkin' ? 'Check-in deleted' : 'Note deleted', { label: 'Undo', run: () => saveEntry(removed) });
+    const pending = pendingSave.current;
+    await pending;
+    try {
+      const removed = saved.current || pending ? await deleteEntry(draft.id) : null;
+      if (alive.current) goBack();
+      if (removed) toast(removed.kind === 'checkin' ? 'Check-in deleted' : 'Note deleted', { label: 'Undo', run: () => saveEntry(removed) });
+    } catch {
+      removing.current = false;
+      dirty.current = true;
+      toast('Couldn’t delete this note. Try again.');
+    }
+  };
+
+  const done = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    await flush();
+    if (!dirty.current && alive.current && !removing.current) goBack();
+    else leaving.current = false;
   };
 
   const addFiles = async (all: File[]) => {
@@ -418,6 +467,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
    * become an album (or it joins that album). Drops it on release; Escape cancels.
    */
   const startMove = (i: number, e: PointerEvent, el: HTMLElement) => {
+    cancelMove.current?.();
     const bodyEl = bodyRef.current;
     const d = latest.current;
     if (!bodyEl || !d) return;
@@ -472,6 +522,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       pick();
     };
     const end = (drop: boolean) => {
+      cancelMove.current = null;
       cancelAnimationFrame(frame);
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
@@ -502,6 +553,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
     const up = () => end(true);
     const cancel = () => end(false);
+    cancelMove.current = cancel;
     const esc = (ev: KeyboardEvent) => {
       if (ev.key !== 'Escape') return;
       ev.stopPropagation();
@@ -718,7 +770,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       onPaste={(e) => { const files = [...(e.clipboardData?.files ?? [])].filter(isImageFile); if (files.length) { e.preventDefault(); addFiles(files); } }}
     >
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={() => { flush(); goBack(); }} disabled={adding > 0 || coverAdding} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} disabled={adding > 0 || coverAdding} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button
           class="glass glass-btn round"
@@ -729,7 +781,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <Icon name={reading ? 'pencil' : 'book'} />
         </button>
         <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? 'Delete check-in' : 'Delete note'}><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack(); }} disabled={adding > 0 || coverAdding}>Done</button>
+        <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>Done</button>
       </div>
 
       <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
@@ -896,7 +948,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <SpotifySheet
         open={open === 'spotify'}
         onClose={close}
-        onConnect={() => { flush(); connectSpotify(saved.current ? '#/note/' + draft.id : '#/note/new'); }}
+        onConnect={async () => { await flush(); if (!dirty.current && alive.current && !removing.current) connectSpotify(saved.current ? '#/note/' + draft.id : '#/note/new'); }}
         onAdd={(list) => update({ music: [...draft.music, ...list.filter((m) => !draft.music.some((x) => x.kind === m.kind && x.id === m.id))].slice(0, 20) })}
       />
     </div>

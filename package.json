@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "tsc --noEmit && vite build && node scripts/compress-assets.mjs",
-    "test": "node scripts/test-server.mjs && node scripts/test-sync.mjs && node scripts/test-static.mjs && node scripts/test-stats.mjs && node scripts/test-storage.mjs && node scripts/test-editor.mjs",
+    "test": "node scripts/test-server.mjs && node scripts/test-sync.mjs && node scripts/test-static.mjs && node scripts/test-stats.mjs && node scripts/test-storage.mjs && node scripts/test-editor.mjs && node scripts/test-sw.mjs && node scripts/test-client.mjs",
     "start": "node server/index.js",
     "icons": "node scripts/build-icons.mjs && node scripts/make-app-icons.mjs"
   },

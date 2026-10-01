@@ -84,7 +84,7 @@ export function createStaticHandler(directory, { maxConcurrent = 128, maxCacheBy
       }
       let source = await fileStat(file);
       if (!source?.isFile()) {
-        if (extname(pathname)) throw new HttpError(404, 'Not found');
+        if (extname(file)) throw new HttpError(404, 'Not found');
         file = join(directory, 'index.html');
         source = await fileStat(file);
       }
@@ -110,7 +110,7 @@ export function createStaticHandler(directory, { maxConcurrent = 128, maxCacheBy
       const etag = `W/"${source.ino.toString(16)}-${source.size.toString(16)}-${source.mtimeMs.toString(16)}-${source.ctimeMs.toString(16)}"`;
       const headers = {
         'Content-Type': TYPES[extname(file)] || 'application/octet-stream',
-        'Cache-Control': file.startsWith(join(directory, 'assets') + sep) ? 'public, max-age=31536000, immutable' : 'no-cache',
+        'Cache-Control': fingerprinted ? 'public, max-age=31536000, immutable' : 'no-cache',
         ETag: etag,
         Vary: 'Accept-Encoding',
         'Content-Length': length,

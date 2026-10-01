@@ -37,15 +37,18 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
   const asked = useRef(0);
+  const located = useRef(0);
 
   useEffect(() => {
     if (open) setQ(''), setFound([]), setError('');
+    setLocating(false);
+    return () => { located.current++; };
   }, [open]);
 
   useEffect(() => {
     const term = q.trim();
     const n = ++asked.current;
-    if (term.length < 2) return setFound([]), setBusy(false);
+    if (!open || term.length < 2) return setFound([]), setBusy(false);
     setBusy(true);
     const t = setTimeout(() => {
       searchPlaces(term)
@@ -53,19 +56,22 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
         .catch(() => n === asked.current && setError('Couldn’t search right now. Check your connection.'))
         .finally(() => n === asked.current && setBusy(false));
     }, 300);
-    return () => clearTimeout(t);
-  }, [q]);
+    return () => { clearTimeout(t); asked.current++; };
+  }, [q, open]);
 
   const useHere = async () => {
+    const n = ++located.current;
     setLocating(true);
     setError('');
     try {
-      onPick(await here());
+      const place = await here();
+      if (n !== located.current) return;
+      onPick(place);
       onClose();
     } catch (e) {
-      setError(locationError(e));
+      if (n === located.current) setError(locationError(e));
     } finally {
-      setLocating(false);
+      if (n === located.current) setLocating(false);
     }
   };
 

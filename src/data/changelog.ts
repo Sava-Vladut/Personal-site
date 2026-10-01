@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.21.1',
+    date: '2026-10-01',
+    changes: [
+      'More reliable saving: keep your latest edits and explain when storage is unavailable',
+      'Safer backup imports and sync: newer edits win, damaged photos are skipped, and canceled syncs stop sending',
+      'Prevent duplicate check-ins and keep person and book tags correct when saving or deleting',
+      'Keep image, music and place searches from showing outdated results',
+      'Keep weather and place details matched to the entry after its date or location changes',
+      'Improve offline updates, photo viewing and formatting at the start or end of a line',
+      'Clean up unused background work and interrupted uploads without removing features',
+    ],
+  },
+  {
     version: '1.21.0',
     date: '2026-10-01',
     changes: [

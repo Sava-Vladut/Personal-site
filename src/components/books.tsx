@@ -11,12 +11,12 @@ import '../styles/objects.css';
 
 /** The book's cover, or a plain one with its title, tinted with the main feeling it left you with. */
 export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> & { emotions?: string[] }; width?: number }) {
-  const [broken, setBroken] = useState(false);
+  const [broken, setBroken] = useState<string | null>(null);
   const main = b.emotions?.[0] ? coreOf(b.emotions[0]).id : null;
   return (
     <span class={`book-cover${main ? ' tinted' : ''}`} style={{ width, '--c': main ? `var(--emo-${main})` : undefined }} aria-hidden="true">
-      {b.cover && !broken ? (
-        <img src={b.cover} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => setBroken(true)} />
+      {b.cover && b.cover !== broken ? (
+        <img src={b.cover} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => setBroken(b.cover)} />
       ) : (
         <span class="book-cover-title" style={{ fontSize: Math.max(8, Math.round(width / 7)) }}>{b.title.trim() || 'Untitled'}</span>
       )}
@@ -161,10 +161,13 @@ export function BookSheet({ open, onClose, onPick, title = 'Add a book', status 
     setMore(false);
     setError('');
     setBusy(false);
-    if (needle.length < 2) return;
+    if (!open || needle.length < 2) return;
     const t = setTimeout(() => load(1), 400);
-    return () => clearTimeout(t);
-  }, [needle]);
+    return () => {
+      clearTimeout(t);
+      req.current++;
+    };
+  }, [needle, open]);
 
   const words = needle.toLowerCase().split(/\s+/).filter(Boolean);
   const mine = useMemo(

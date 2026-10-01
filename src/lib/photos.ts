@@ -36,9 +36,13 @@ async function shrink(file: Blob): Promise<PhotoRecord> {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bmp, 0, 0, w, h);
-  bmp.close();
+  const ctx = canvas.getContext('2d');
+  try {
+    if (!ctx) throw new Error('Could not create image canvas');
+    ctx.drawImage(bmp, 0, 0, w, h);
+  } finally {
+    bmp.close();
+  }
   let blob = await encode(canvas, 'image/webp');
   if (!blob || blob.type !== 'image/webp') {
     // No WebP encoder (older Safari): JPEG, with transparent areas on white instead of black.
@@ -168,6 +172,7 @@ const toDataUrl = (blob: Blob) =>
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
     r.onerror = () => reject(r.error);
+    r.onabort = () => reject(new Error('Photo export cancelled'));
     r.readAsDataURL(blob);
   });
 
@@ -185,15 +190,19 @@ const DATA_URL = /^data:(image\/(?:jpeg|png|webp|gif|avif));base64,([A-Za-z0-9+/
 export async function importPhotos(raw: unknown, ids: Set<string>) {
   if (!raw || typeof raw !== 'object') return 0;
   const have = await photoIds();
-  const records: PhotoRecord[] = [];
+  const records: (Photo & { blob: Blob })[] = [];
   for (const [id, p] of Object.entries(raw as Record<string, any>)) {
     if (have.has(id)) continue;
     const m = ids.has(id) && PHOTO_ID.test(id) && typeof p?.data === 'string' ? DATA_URL.exec(p.data) : null;
     if (!m) continue;
-    const bin = atob(m[2]);
+    // A damaged photo should not stop the remaining pictures and entries importing.
+    let bin: string;
+    try { bin = atob(m[2]); } catch { continue; }
+    if (!bin.length) continue;
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    records.push({ id, w: +p.w || 1, h: +p.h || 1, blob: new Blob([bytes], { type: m[1] }), created: Date.now() });
+    const dimension = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 1;
+    records.push({ id, w: dimension(p.w), h: dimension(p.h), blob: new Blob([bytes], { type: m[1] }) });
   }
   await storePhotos(records);
   return records.length;

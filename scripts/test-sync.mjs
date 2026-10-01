@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import http from 'node:http';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -11,9 +11,12 @@ import { HttpError } from '../server/http-error.js';
 
 let directory, server, base;
 const id = 'a'.repeat(64);
+const orphan = `.upload-${'a'.repeat(32)}.tmp`;
 const hash = (body) => crypto.createHash('sha256').update(body).digest('base64url').slice(0, 22);
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'my-mind-sync-test-'));
+  await writeFile(join(directory, orphan), 'interrupted upload');
+  await writeFile(join(directory, 'unrelated-file'), 'preserved');
   const sync = createSyncHandler({ directory, maxConcurrentUploads: 2, revisionCacheEntries: 2 });
   server = http.createServer(async (req, res) => {
     try {
@@ -38,6 +41,15 @@ after(async () => {
 });
 
 const put = (key, body, rev = 'new') => fetch(base + key, { method: 'PUT', headers: { 'X-Sync-Rev': rev }, body });
+
+test('the first upload removes temporary files abandoned by a previous process', async () => {
+  assert.ok((await readdir(directory)).includes(orphan));
+  const key = '9'.repeat(64);
+  assert.equal((await put(key, 'new upload')).status, 200);
+  assert.equal((await readdir(directory)).includes(orphan), false);
+  assert.equal(await readFile(join(directory, 'unrelated-file'), 'utf8'), 'preserved');
+  assert.equal(await (await fetch(base + key)).text(), 'new upload');
+});
 
 test('document revisions, conflict responses, conditional downloads, and deletion preserve the protocol', async () => {
   assert.equal((await fetch(base + id)).status, 404);

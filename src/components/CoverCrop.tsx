@@ -48,7 +48,9 @@ export function CoverCropSheet({ open, onClose, cover, onSave }: {
   const pointers = useRef(new Map<number, Point>());
 
   useEffect(() => {
-    if (open) setCrop(cover?.crop ?? CENTRED);
+    pointers.current.clear();
+    setMoving(false);
+    if (open) setCrop((cur.current = cover?.crop ?? CENTRED));
   }, [open]);
 
   /** Applies a move/zoom given in page pixels; ignored until the picture has loaded. */
@@ -109,7 +111,7 @@ export function CoverCropSheet({ open, onClose, cover, onSave }: {
       title="Adjust cover"
       footer={
         <>
-          <button class="btn btn-quiet" onClick={() => setCrop(CENTRED)} disabled={centred}>Reset</button>
+          <button class="btn btn-quiet" onClick={() => setCrop((cur.current = CENTRED))} disabled={centred}>Reset</button>
           <button class="btn btn-primary" onClick={() => { onSave(centred ? undefined : crop); onClose(); }}>Done</button>
         </>
       }

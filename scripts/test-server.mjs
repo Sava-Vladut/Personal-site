@@ -220,6 +220,31 @@ test('Spotify short-link redirects cancel unused bodies and preserve public reso
   assert.equal(response.body.title, 'Test track');
 });
 
+test('malformed successful Spotify responses fail cleanly instead of returning empty results or server errors', async () => {
+  for (const body of ['null', '[]', '"unexpected"', '<html>upstream failure</html>']) {
+    globalThis.fetch = async () => new Response(body);
+    assert.equal((await request('/api/spotify/search?q=test')).status, 502, body);
+    const cookie = sealedCookie({ a: 'expired', r: 'invalid-response-refresh', e: 1 });
+    assert.equal((await request('/api/spotify/search?q=test', cookie)).status, 502, body);
+  }
+  globalThis.fetch = async () => new Response('Service unavailable', { status: 503 });
+  assert.equal((await request('/api/spotify/search?q=test')).status, 502);
+});
+
+test('an invalid Spotify short-link redirect returns a client error', async () => {
+  globalThis.fetch = async () => ({ headers: new Headers({ location: 'http://[' }), body: { cancel: async () => {} } });
+  assert.equal((await request('/api/spotify/resolve?url=https://spotify.link/example', '')).status, 400);
+});
+
+test('a Spotify 204 response still represents no currently playing item', async () => {
+  globalThis.fetch = async (url) => String(url).includes('/currently-playing')
+    ? new Response(null, { status: 204 }) : Response.json({ items: [] });
+  const cookie = sealedCookie({ a: 'test-token', e: Date.now() + 3600_000, sc: 'user-read-currently-playing user-read-recently-played' });
+  const response = await request('/api/spotify/now', cookie);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { playing: false, recent: [] });
+});
+
 test('SIGTERM lets an in-flight API response finish before exiting', { timeout: 10_000 }, async (t) => {
   const child = spawn(process.execPath, ['--input-type=module', '-e', `
     import http from 'node:http';

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { db } from './db';
 import { dropImageLinks, plainText } from './body';
-import { todayKey } from './dates';
+import { isDateKey, todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
 import { PHOTO_ID, clearPhotos, exportPhotos, importPhotos, prunePhotos, type Photo } from './photos';
 
@@ -125,18 +125,23 @@ export interface Song {
 
 export function observable<T>(initial: T) {
   let value = initial;
+  let revision = 0;
   const subs = new Set<() => void>();
   return {
     get: () => value,
     set(next: T) {
       value = next;
+      revision++;
       subs.forEach((f) => f());
     },
     use(): T {
+      const renderedRevision = revision;
       const [, force] = useState(0);
       useEffect(() => {
         const f = () => force((n) => n + 1);
         subs.add(f);
+        // Updates between render and this effect would otherwise be missed until a later change.
+        if (revision !== renderedRevision) f();
         return () => void subs.delete(f);
       }, []);
       return value;
@@ -176,12 +181,30 @@ let changeHandler = () => {};
 export const onLocalChange = (f: () => void) => void (changeHandler = f);
 
 let persistAsked = false;
+const pendingPrevious = new WeakMap<Entry, Entry | undefined>();
+const failedWrites = new WeakSet<Entry>();
 export async function saveEntry(e: Entry) {
-  const next = { ...e, updated: Date.now() };
+  const previous = entries$.get().find((x) => x.id === e.id);
+  const next = { ...e, updated: Math.max(Date.now(), e.updated + 1, (previous?.updated ?? 0) + 1, (deleted[e.id] ?? 0) + 1) };
   const list = entries$.get().filter((x) => x.id !== e.id);
   list.push(next);
   entries$.set(list.sort(byNewest));
-  await db.put(next);
+  pendingPrevious.set(next, previous);
+  try {
+    await db.put(next);
+  } catch (error) {
+    failedWrites.add(next);
+    // Only roll back this edit: a later edit of the same note may already be visible.
+    if (entries$.get().find((x) => x.id === e.id) === next) {
+      const remaining = entries$.get().filter((x) => x.id !== e.id);
+      let restored = previous;
+      while (restored && failedWrites.has(restored)) restored = pendingPrevious.get(restored);
+      if (restored) remaining.push(restored);
+      entries$.set(remaining.sort(byNewest));
+    }
+    throw error;
+  }
+  pendingPrevious.delete(next);
   changeHandler();
   if (!persistAsked) {
     persistAsked = true;
@@ -211,7 +234,7 @@ export async function annotateEntries(patches: Map<string, Partial<Entry>>) {
 export async function deleteEntry(id: string) {
   const removed = entries$.get().find((x) => x.id === id);
   entries$.set(entries$.get().filter((x) => x.id !== id));
-  await Promise.all([db.del(id), forget([id])]);
+  await Promise.all([db.del(id), forget([id], Math.max(Date.now(), removed?.updated ?? 0))]);
   changeHandler();
   return removed;
 }
@@ -222,7 +245,7 @@ export async function deleteEntry(id: string) {
 
 function collection<T extends { id: string; updated: number }>(key: string, normalizeOne: (raw: any) => T | null, order: (a: T, b: T) => number) {
   const list$ = observable<T[]>([]);
-  const normalizeAll = (raw: unknown) => (Array.isArray(raw) ? (raw.map(normalizeOne).filter(Boolean) as T[]).sort(order) : []);
+  const normalizeAll = (raw: unknown) => newestById(Array.isArray(raw) ? raw.map(normalizeOne).filter((x): x is T => !!x) : []).sort(order);
   const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('my-mind-' + key);
   channel?.addEventListener('message', () => {
     Promise.all([db.get(key), db.get<Record<string, number>>('deleted')]).then(([saved, gone]) => {
@@ -231,7 +254,7 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
       changeHandler();
     }).catch(() => {}); // A later notification or reload can retry a failed read.
   });
-  const write = async (changes: T[], removed: Record<string, number> = {}, clear = false, broadcast = true) => {
+  const write = async (changes: T[], removed: Record<string, number> = {}, clear = false, broadcast = true, fresh = false) => {
     const list = await db.update<T[]>(key, (saved) => {
       const current = new Map((clear ? [] : normalizeAll(saved)).map((x) => [x.id, x]));
       for (const [id, time] of Object.entries(removed)) {
@@ -239,23 +262,33 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
         if (item && item.updated <= time) current.delete(id);
       }
       changes.forEach((x) => {
-        if (!current.has(x.id) || current.get(x.id)!.updated <= x.updated) current.set(x.id, x);
+        const next = fresh ? { ...x, updated: Math.max(Date.now(), x.updated + 1, (current.get(x.id)?.updated ?? 0) + 1, (deleted[x.id] ?? 0) + 1) } : x;
+        if (!current.has(next.id) || current.get(next.id)!.updated <= next.updated) current.set(next.id, next);
       });
       return [...current.values()].sort(order);
     });
     list$.set(list);
     if (broadcast) channel?.postMessage(null);
+    return list;
   };
   const save = async (x: T) => {
-    const next = { ...x, updated: Date.now() };
-    await write([next]);
+    const list = await write([x], {}, false, true, true);
     changeHandler();
-    return next;
+    return list.find((item) => item.id === x.id)!;
   };
   const remove = async (id: string) => {
-    const removed = list$.get().find((x) => x.id === id);
-    const time = Date.now();
-    await Promise.all([write([], { [id]: time }, false, false), forget([id], time)]);
+    let removed = list$.get().find((x) => x.id === id);
+    let time = Math.max(Date.now(), removed?.updated ?? 0);
+    // Include pending saves and edits from other tabs in the deletion's timestamp. Unlike
+    // a remote deletion, this is a fresh local action and must remove the currently stored copy.
+    const list = await db.update<T[]>(key, (saved) => normalizeAll(saved).filter((item) => {
+      if (item.id !== id) return true;
+      time = Math.max(time, item.updated);
+      removed = item;
+      return false;
+    }));
+    list$.set(list);
+    await forget([id], time);
     channel?.postMessage(null);
     changeHandler();
     return removed;
@@ -268,7 +301,7 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
     const stamp = Date.now();
     const changed = normalizeAll(raw)
       .filter((x) => (restore || !(gone[x.id] >= x.updated)) && (!now.has(x.id) || now.get(x.id)!.updated < x.updated))
-      .map((x) => (restore && gone[x.id] >= x.updated ? { ...x, updated: stamp } : x));
+      .map((x) => (restore && gone[x.id] >= x.updated ? { ...x, updated: Math.max(stamp, gone[x.id] + 1) } : x));
     return { changed, removed };
   };
   return { key, list$, normalizeAll, write, save, remove, merge, channel };
@@ -323,12 +356,14 @@ const COLLECTIONS: Collection[] = [people, books, songs];
 
 /* ---------- deletions: remembered (id → when) so a synced device doesn't bring the entry back ---------- */
 
-let deleted: Record<string, number> = {};
+let deleted: Record<string, number> = Object.create(null);
 export const getDeleted = () => deleted;
 
 function combineDeleted(a: Record<string, number>, b: Record<string, number>) {
-  const merged = { ...a };
-  for (const [id, time] of Object.entries(b)) if (!(merged[id] >= time)) merged[id] = time;
+  const merged: Record<string, number> = Object.assign(Object.create(null), a);
+  if (b && typeof b === 'object' && !Array.isArray(b))
+    for (const [id, time] of Object.entries(b))
+      if (id.length <= 40 && Number.isFinite(time) && time >= 0 && !(merged[id] >= time)) merged[id] = time;
   return merged;
 }
 
@@ -338,8 +373,8 @@ async function persistDeleted() {
 }
 
 async function forget(ids: string[], now = Date.now()) {
-  deleted = { ...deleted };
-  ids.forEach((id) => (deleted[id] = now));
+  deleted = Object.assign(Object.create(null), deleted);
+  ids.forEach((id) => (deleted[id] = Math.max(deleted[id] ?? 0, now)));
   await persistDeleted();
 }
 
@@ -358,33 +393,43 @@ export async function init() {
   const [list, icons, gone, ...saved] = await Promise.all([
     db.all<Entry>(), db.get<Record<string, string>>('icons'), db.get<Record<string, number>>('deleted'), ...COLLECTIONS.map((c) => db.get<unknown[]>(c.key)),
   ]);
-  entries$.set((list.map(normalize).filter(Boolean) as Entry[]).sort(byNewest));
+  entries$.set(newestById(list.map(normalize).filter(Boolean) as Entry[]).sort(byNewest));
   COLLECTIONS.forEach((c, i) => c.list$.set(c.normalizeAll(saved[i])));
   icons$.set(icons ?? {});
-  deleted = gone ?? {};
+  deleted = combineDeleted(Object.create(null), gone ?? {});
   ready$.set(true);
   prunePhotos(new Set(entries$.get().flatMap((e) => photosOf(e).map((p) => p.id)))).catch(() => {});
 }
 
 /* ---------- backup ---------- */
 
-const KEY = /^\d{4}-\d{2}-\d{2}$/;
 const str = (v: unknown, max = 100_000) => (typeof v === 'string' ? v.slice(0, max) : '');
+const dimension = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined;
+const normalizeEmotions = (raw: unknown, max: number) => Array.isArray(raw)
+  ? [...new Set(raw.filter((id): id is string => typeof id === 'string' && Object.hasOwn(EMOTION, id)))].slice(0, max)
+  : [];
+
+/** Duplicate records in a backup or remote copy must never let an older edit win. */
+function newestById<T extends { id: string; updated: number }>(list: T[]): T[] {
+  const newest = new Map<string, T>();
+  for (const item of list) if (!newest.has(item.id) || newest.get(item.id)!.updated <= item.updated) newest.set(item.id, item);
+  return [...newest.values()];
+}
 
 const webImage = (i: any): WebImage | null =>
   i && /^https:\/\//.test(i.url)
     ? {
         url: str(i.url, 2000),
         thumb: /^https:\/\//.test(i.thumb) ? str(i.thumb, 2000) : undefined,
-        w: +i.w || undefined,
-        h: +i.h || undefined,
+        w: dimension(i.w),
+        h: dimension(i.h),
         link: /^https:\/\//.test(i.link) ? str(i.link, 2000) : undefined,
         title: str(i.title, 300) || undefined,
         credit: str(i.credit, 300) || undefined,
       }
     : null;
 const photo = (p: any): Photo | null =>
-  p && typeof p.id === 'string' && PHOTO_ID.test(p.id) ? { id: p.id, w: Math.max(1, +p.w || 1), h: Math.max(1, +p.h || 1) } : null;
+  p && typeof p.id === 'string' && PHOTO_ID.test(p.id) ? { id: p.id, w: dimension(p.w) ?? 1, h: dimension(p.h) ?? 1 } : null;
 
 const unit = (v: unknown) => Math.min(1, Math.max(0, Number(v)));
 const crop = (c: any): Crop | null =>
@@ -399,7 +444,7 @@ export function normalizePlace(p: any): Place | null {
 
 export function normalizeWeather(w: any): Weather | null {
   const code = num(w?.code, 0, 99), temp = num(w?.temp, -90, 60), daylight = num(w?.daylight, 0, 24);
-  if (!w || !KEY.test(w.day) || code === null || temp === null || daylight === null) return null;
+  if (!w || !isDateKey(w.day) || code === null || temp === null || daylight === null) return null;
   return { day: w.day, code: Math.round(code), temp: Math.round(temp * 10) / 10, daylight: Math.round(daylight * 100) / 100, ...(typeof w.dark === 'boolean' ? { dark: w.dark } : {}) };
 }
 
@@ -413,7 +458,7 @@ function normalizeMusic(m: any): Music | null {
 
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
-  if (!raw || typeof raw !== 'object' || !KEY.test(raw.date)) return null;
+  if (!raw || typeof raw !== 'object' || !isDateKey(raw.date)) return null;
   const now = Date.now();
   const images: WebImage[] = Array.isArray(raw.images) ? raw.images.map(webImage).filter(Boolean).slice(0, 12) : [];
   const coverPhoto = photo(raw.cover?.photo);
@@ -426,10 +471,10 @@ function normalize(raw: any): Entry | null {
     title: str(raw.title, 300),
     icon: typeof raw.icon === 'string' && /^[te]:[a-z0-9-]+$/.test(raw.icon) ? raw.icon : null,
     text: dropImageLinks(typeof raw.text === 'string' ? raw.text : '', images),
-    emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, 3) : [],
+    emotions: normalizeEmotions(raw.emotions, 3),
     intensity: Math.min(5, Math.max(1, Math.round(Number(raw.intensity) || 3))),
     date: raw.date,
-    dateEnd: KEY.test(raw.dateEnd) && raw.dateEnd > raw.date ? raw.dateEnd : null,
+    dateEnd: isDateKey(raw.dateEnd) && raw.dateEnd > raw.date ? raw.dateEnd : null,
     time: Number.isFinite(raw.time) ? raw.time : now,
     images,
     photos: Array.isArray(raw.photos) ? raw.photos.map(photo).filter(Boolean).slice(0, 20) : [],
@@ -454,14 +499,14 @@ function normalizePerson(raw: any): Person | null {
     icon: typeof raw.icon === 'string' && /^[te]:[a-z0-9-]+$/.test(raw.icon) ? raw.icon : null,
     relation: str(raw.relation, 60),
     text: typeof raw.text === 'string' ? raw.text : '',
-    emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, MAX_PERSON_EMOTIONS) : [],
+    emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };
 }
 
 const httpsUrl = (v: unknown) => (typeof v === 'string' && /^https:\/\//.test(v) ? v.slice(0, 2000) : null);
-const dayOrNull = (v: unknown) => (typeof v === 'string' && KEY.test(v) ? v : null);
+const dayOrNull = (v: unknown) => (isDateKey(v) ? v : null);
 const intOrNull = (v: unknown, max: number) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max ? (v as number) : null);
 
 /** Coerces untrusted input into a valid Book, or null. */
@@ -482,7 +527,7 @@ function normalizeBook(raw: any): Book | null {
     finished: dayOrNull(raw.finished),
     page: intOrNull(raw.page, 100_000),
     text: typeof raw.text === 'string' ? raw.text : '',
-    emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, MAX_PERSON_EMOTIONS) : [],
+    emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     from: typeof raw.from === 'string' && raw.from.length <= 40 ? raw.from : null,
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
@@ -501,7 +546,7 @@ function normalizeSong(raw: any): Song | null {
     repeat: raw.repeat === true,
     rating: Math.min(5, Math.max(0, Math.round(Number(raw.rating) || 0))),
     text: typeof raw.text === 'string' ? raw.text : '',
-    emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, MAX_PERSON_EMOTIONS) : [],
+    emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     from: typeof raw.from === 'string' && raw.from.length <= 40 ? raw.from : null,
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
@@ -517,15 +562,18 @@ export async function exportJSON() {
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
 export async function importJSON(text: string) {
   const data = JSON.parse(text);
-  const incoming = (Array.isArray(data) ? data : data?.entries ?? []).map(normalize).filter(Boolean) as Entry[];
+  if (!data || typeof data !== 'object' || (!Array.isArray(data) && data.entries !== undefined && !Array.isArray(data.entries)))
+    throw new Error('This backup does not contain a valid journal.');
+  const incoming = newestById((Array.isArray(data) ? data : data.entries ?? []).map(normalize).filter(Boolean) as Entry[]);
+  // Photos can be missing even when the note itself is already up to date. Read the current
+  // journal afterwards, so edits made while those photos are loading are kept.
+  const restoredPhotos = await importPhotos(data?.photos, new Set(incoming.flatMap((e) => photosOf(e).map((p) => p.id))));
   const current = new Map(entries$.get().map((e) => [e.id, e]));
   // Restoring an entry deleted here counts as a fresh edit, so it also comes back on synced devices.
   const now = Date.now();
   const changed = incoming
     .filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated)
-    .map((e) => (deleted[e.id] >= e.updated ? { ...e, updated: now } : e));
-  // Photos can be missing even when the note itself is already up to date.
-  const restoredPhotos = await importPhotos(data?.photos, new Set(incoming.flatMap((e) => photosOf(e).map((p) => p.id))));
+    .map((e) => (deleted[e.id] >= e.updated ? { ...e, updated: Math.max(now, deleted[e.id] + 1) } : e));
   changed.forEach((e) => current.set(e.id, e));
   entries$.set([...current.values()].sort(byNewest));
   await db.putMany(changed);
@@ -548,13 +596,8 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
 export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; deleted?: unknown }) {
-  const incoming = (Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[];
-  const gone: Record<string, number> = {};
-  if (raw.deleted && typeof raw.deleted === 'object')
-    for (const [id, t] of Object.entries(raw.deleted)) if (Number.isFinite(t) && id.length <= 40) gone[id] = t as number;
-
-  const nextDeleted = { ...deleted };
-  for (const [id, t] of Object.entries(gone)) if (!(nextDeleted[id] >= t)) nextDeleted[id] = t;
+  const incoming = newestById((Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[]);
+  const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
   const current = new Map(entries$.get().map((e) => [e.id, e]));
   const removed = [...current.values()].filter((e) => nextDeleted[e.id] >= e.updated).map((e) => e.id);
   removed.forEach((id) => current.delete(id));
@@ -575,9 +618,11 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
 }
 
 export async function deleteAll() {
-  const ids = [...entries$.get().map((e) => e.id), ...COLLECTIONS.flatMap((c) => c.list$.get().map((x: { id: string }) => x.id))];
+  const records: { id: string; updated: number }[] = [...entries$.get(), ...COLLECTIONS.flatMap((c) => c.list$.get())];
+  const ids = records.map((record) => record.id);
+  const stamp = records.reduce((latest, record) => Math.max(latest, record.updated), Date.now());
   entries$.set([]);
-  await Promise.all([db.clear(), clearPhotos(), ...COLLECTIONS.map((c) => c.write([], {}, true, false)), forget(ids)]);
+  await Promise.all([db.clear(), clearPhotos(), ...COLLECTIONS.map((c) => c.write([], {}, true, false)), forget(ids, stamp)]);
   COLLECTIONS.forEach((c) => c.channel?.postMessage(null));
   changeHandler();
 }
@@ -597,10 +642,11 @@ const SETTINGS_KEY = 'mm-settings';
 function loadSettings(): Settings {
   let s: Partial<Settings> = {};
   try {
-    s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) s = parsed;
   } catch {}
   return {
-    theme: s.theme ?? 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards',
+    theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards',
     weather: s.weather === true, places: s.places === true, home: normalizePlace(s.home),
   };
 }

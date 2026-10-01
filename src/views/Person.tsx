@@ -33,6 +33,11 @@ export function PersonView({ id }: { id: string }) {
   const [status, setStatus] = useState('');
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
+  const alive = useRef(true);
+  const removing = useRef(false);
+  const pendingSave = useRef<Promise<boolean> | null>(null);
+  const leaving = useRef(false);
+  const saveRequest = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
@@ -50,17 +55,36 @@ export function PersonView({ id }: { id: string }) {
   const flush = () => {
     clearTimeout(timer.current);
     const d = latest.current;
-    if (!d || !dirty.current) return;
+    if (removing.current || !d) return Promise.resolve(false);
+    if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
     dirty.current = false;
-    if (!saved.current && !d.name.trim()) return; // a person needs a name before they're kept
-    savePerson({ ...d, name: d.name.trim() || d.name });
-    saved.current = true;
-    syncUrl();
-    setStatus('Saved');
+    if (!saved.current && !d.name.trim()) return Promise.resolve(false); // a person needs a name before they're kept
+    const request = ++saveRequest.current;
+    const saving = savePerson({ ...d, name: d.name.trim() || d.name }).then(() => {
+      saved.current = true;
+      if (alive.current && !removing.current) {
+        syncUrl();
+        if (request === saveRequest.current && !dirty.current) setStatus('Saved');
+      }
+      return true;
+    }).catch(() => {
+      if (!removing.current && request === saveRequest.current) {
+        dirty.current = true;
+        setStatus('Couldn’t save');
+        toast('Couldn’t save this person. Try again.');
+      }
+      return false;
+    }).finally(() => {
+      if (pendingSave.current === saving) pendingSave.current = null;
+    });
+    pendingSave.current = saving;
+    return saving;
   };
 
   const update = (patch: Partial<Person>) => {
-    setDraft((d) => (d ? { ...d, ...patch } : d));
+    if (removing.current || !latest.current) return;
+    latest.current = { ...latest.current, ...patch };
+    setDraft(latest.current);
     dirty.current = true;
     setStatus('');
     clearTimeout(timer.current);
@@ -75,13 +99,15 @@ export function PersonView({ id }: { id: string }) {
     addEventListener('popstate', syncUrl);
     if (id === 'new') nameRef.current?.focus();
     return () => {
+      alive.current = false;
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
-      flush();
-      const d = latest.current;
-      const was = d && peopleBefore.current.find((p) => p.id === d.id);
-      if (d && was && d.name.trim() && was.name.trim() !== d.name.trim())
-        renamePersonMentions(getEntries(), peopleBefore.current, { ...d, name: d.name.trim() }).forEach((e) => saveEntry(e));
+      flush().then((kept) => {
+        const d = latest.current;
+        const was = d && peopleBefore.current.find((p) => p.id === d.id);
+        if (kept && !removing.current && d && was && d.name.trim() && was.name.trim() !== d.name.trim())
+          return Promise.all(renamePersonMentions(getEntries(), peopleBefore.current, { ...d, name: d.name.trim() }).map((e) => saveEntry(e)));
+      }).catch(() => toast('Couldn’t update the notes mentioning this person.'));
     };
   }, []);
 
@@ -125,12 +151,28 @@ export function PersonView({ id }: { id: string }) {
     );
 
   const remove = async () => {
+    if (removing.current) return;
     if (saved.current && !confirm(`Delete ${draft.name.trim() || 'this person'}? Notes they’re tagged in stay in your journal.`)) return;
     clearTimeout(timer.current);
+    removing.current = true;
     dirty.current = false;
-    const removed = saved.current ? await deletePerson(draft.id) : null;
-    goBack('people');
-    if (removed) toast(`${removed.name || 'Person'} deleted`, { label: 'Undo', run: () => savePerson(removed) });
+    await pendingSave.current;
+    try {
+      const removed = saved.current ? await deletePerson(draft.id) : null;
+      if (alive.current) goBack('people');
+      if (removed) toast(`${removed.name || 'Person'} deleted`, { label: 'Undo', run: () => savePerson(removed) });
+    } catch {
+      removing.current = false;
+      dirty.current = true;
+      toast('Couldn’t delete this person. Try again.');
+    }
+  };
+  const done = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    await flush();
+    if (!dirty.current && alive.current && !removing.current) goBack('people');
+    else leaving.current = false;
   };
 
   const addEmotion = (eid: string) => {
@@ -140,11 +182,14 @@ export function PersonView({ id }: { id: string }) {
   };
 
   /** Starts a note (or check-in) already tagged with them. They're saved first so the tag has someone to point to. */
-  const write = (to: 'note' | 'tracker') => {
-    if (!draft.name.trim()) return nameRef.current?.focus();
+  const write = async (to: 'note' | 'tracker') => {
+    if (leaving.current) return;
+    const d = latest.current;
+    if (!d?.name.trim()) return nameRef.current?.focus();
+    leaving.current = true;
     if (!saved.current) dirty.current = true;
-    flush();
-    navigate(to === 'note' ? `note/new?person=${draft.id}` : `tracker?person=${draft.id}`);
+    if (!await flush() || dirty.current || !alive.current || removing.current) { leaving.current = false; return; }
+    navigate(to === 'note' ? `note/new?person=${d.id}` : `tracker?person=${d.id}`);
   };
 
   const first = draft.name.trim().split(/\s+/)[0] || 'them';
@@ -153,10 +198,10 @@ export function PersonView({ id }: { id: string }) {
   return (
     <div class="page editor person">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={() => { flush(); goBack('people'); }} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button class="glass glass-btn round" onClick={remove} aria-label="Delete person"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack('people'); }}>Done</button>
+        <button class="glass glass-btn tinted" onClick={done}>Done</button>
       </div>
 
       <div class="editor-top">

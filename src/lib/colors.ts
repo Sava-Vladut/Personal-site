@@ -5,9 +5,14 @@ import { useEffect, useState } from 'preact/hooks';
 const KEY = 'mm-colors';
 const MAX = 600;
 
-let saved: Record<string, string> = {};
+let saved: Record<string, string> = Object.create(null);
 try {
-  saved = JSON.parse(localStorage.getItem(KEY) || '{}') ?? {};
+  const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [url, value] of Object.entries(raw).slice(-MAX)) {
+      if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) saved[url] = value;
+    }
+  }
 } catch {}
 const pending = new Map<string, Promise<string | null>>();
 let writeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -105,6 +110,7 @@ export function useColor(url: string | null | undefined) {
   useEffect(() => {
     if (!url) return setC(null);
     if (saved[url]) return setC(saved[url]);
+    setC(null);
     let live = true;
     colorOf(url).then((x) => live && setC(x));
     return () => void (live = false);

@@ -20,6 +20,7 @@ before(async () => {
   await writeFile(join(directory, 'assets', 'app-fixture123.js'), javascript);
   await writeFile(join(directory, 'assets', 'app-fixture123.js.br'), representations.br);
   await writeFile(join(directory, 'assets', 'app-fixture123.js.gz'), representations.gzip);
+  await writeFile(join(directory, 'assets', 'unhashed.js'), '/* unversioned asset */');
   await writeFile(join(directory, 'theme.js'), '/* fresh theme */');
   await writeFile(join(directory, 'theme.js.br'), brotliCompressSync(Buffer.from('/* stale theme */')));
   await utimes(join(directory, 'theme.js.br'), new Date(0), new Date(0));
@@ -216,6 +217,18 @@ test('SPA navigation falls back to revalidated HTML while absent asset paths ret
   }
   assert.equal((await request('/assets/missing.js')).status, 404);
   assert.equal((await request('/missing.png')).status, 404);
+  assert.equal((await request('/missing%2Epng')).status, 404);
+  assert.equal((await request('/assets/missing%2Ejs')).status, 404);
+});
+
+test('unfingerprinted assets revalidate so updates remain visible', async () => {
+  const response = await request('/assets/unhashed.js');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['cache-control'], 'no-cache');
+  await writeFile(join(directory, 'assets', 'unhashed.js'), '/* updated unversioned asset */');
+  const updated = await request('/assets/unhashed.js', { 'If-None-Match': response.headers.etag });
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.toString(), '/* updated unversioned asset */');
 });
 
 test('traversal, malformed paths and direct compression sidecar requests are rejected', async () => {

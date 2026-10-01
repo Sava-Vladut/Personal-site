@@ -13,25 +13,38 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== APP && k !== IMG).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => (k.startsWith('mm-app-') || k.startsWith('mm-img-')) && k !== APP && k !== IMG).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
   );
 });
 
+// Cache storage can fail when a device is full or private browsing blocks it.
+// It must never prevent a successful network response from reaching the app.
+async function cached(req, name) {
+  try { return await (await caches.open(name)).match(req); }
+  catch { return undefined; }
+}
+
+async function remember(req, res, name) {
+  try { await (await caches.open(name)).put(req, res.clone()); }
+  catch { /* Keep the network response usable when offline storage is unavailable. */ }
+}
+
 async function cacheFirst(req, name) {
-  const hit = await caches.match(req);
+  const hit = await cached(req, name);
   if (hit) return hit;
   const res = await fetch(req);
-  if (res.ok || res.type === 'opaque') (await caches.open(name)).put(req, res.clone());
+  if (res.ok || res.type === 'opaque') await remember(req, res, name);
   return res;
 }
 
 async function networkFirst(req, fallback) {
   try {
     const res = await fetch(req);
-    if (res.ok) (await caches.open(APP)).put(fallback ?? req, res.clone());
+    if (res.ok) await remember(fallback ?? req, res, APP);
+    else if (res.status >= 500) return (await cached(fallback ?? req, APP)) || res;
     return res;
   } catch {
-    return (await caches.match(fallback ?? req)) || Response.error();
+    return (await cached(fallback ?? req, APP)) || Response.error();
   }
 }
 

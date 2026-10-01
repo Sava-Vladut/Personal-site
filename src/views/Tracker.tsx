@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION, FEELINGS, shortName } from '../data/emotions';
 import { keyOf, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
@@ -20,7 +20,10 @@ const localInput = (ms: number) => {
 export function Tracker({ query }: { query: URLSearchParams }) {
   const entries = useEntries();
   const { picker } = useSettings();
-  const [core, setCore] = useState<string | null>(query.get('world'));
+  const [core, setCore] = useState<string | null>(() => {
+    const world = query.get('world');
+    return world && EMOTION[world]?.depth === 0 ? world : null;
+  });
   const [picked, setPicked] = useState<string | null>(null);
   const [intensity, setIntensity] = useState(3);
   const [note, setNote] = useState('');
@@ -29,6 +32,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   const tagged = () => { const pid = query.get('person'); return pid && getPeople().some((p) => p.id === pid) ? [pid] : []; };
   const [people, setPeople] = useState<string[]>(tagged);
   const [picking, setPicking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const submitting = useRef(false);
 
   const named = useMemo(() => new Set(entries.flatMap((e) => e.emotions).filter((id) => EMOTION[id]?.depth === 2)), [entries]);
   const today = todayKey();
@@ -58,11 +63,22 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   };
 
   const log = async () => {
-    if (!picked) return;
+    if (!picked || !EMOTION[picked] || submitting.current) return;
     const time = when ? new Date(when).getTime() : Date.now();
+    if (!Number.isFinite(time) || time > Date.now()) return toast('Choose a valid time that isn’t in the future.');
     const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), people, time, date: keyOf(new Date(time)) };
     const fresh = EMOTION[picked].depth === 2 && !named.has(picked);
-    await saveEntry(e);
+    submitting.current = true;
+    setSaving(true);
+    try {
+      await saveEntry(e);
+    } catch {
+      toast('Couldn’t save this check-in. Try again.');
+      return;
+    } finally {
+      submitting.current = false;
+      setSaving(false);
+    }
     addContext(e);
     const name = EMOTION[picked].depth === 0 ? shortName(picked) : EMOTION[picked].name;
     toast(fresh ? `New feeling named: ${name} · ${named.size + 1} of ${FEELINGS.length}` : `Logged: ${name}`, {
@@ -120,7 +136,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
             </div>
           </div>
 
-          <button class="btn btn-primary block confirm-log" onClick={log}>Log feeling</button>
+          <button class="btn btn-primary block confirm-log" onClick={log} disabled={saving}>{saving ? 'Saving…' : 'Log feeling'}</button>
         </div>
       ) : picker === 'wheel' ? (
         <EmotionWheel focus={core} onFocus={setCore} onPick={setPicked} counts={counts} />

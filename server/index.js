@@ -136,8 +136,13 @@ async function spotifyRequest(url, options = {}, format = 'json') {
       } else if (format === 'redirect') body = await res.text();
       else body = await res.json().catch((error) => {
         if (controller.signal.aborted) throw error;
+        if (res.ok && res.status !== 204) throw new HttpError(502, 'Spotify returned an invalid response. Try again.');
         return {};
       });
+      if (format === 'json' && (!body || typeof body !== 'object' || Array.isArray(body))) {
+        if (res.ok) throw new HttpError(502, 'Spotify returned an invalid response. Try again.');
+        body = {};
+      }
       return { res, body };
     })()]);
   } catch (error) {
@@ -267,7 +272,8 @@ async function resolveSpotify(raw, s) {
       const { res: r, body } = await spotifyRequest(u.href, { redirect: 'manual', headers: { 'User-Agent': UA } }, 'redirect');
       const loc = r.headers.get('location') || body.match(/https:\/\/open\.spotify\.com\/[^"'\s<>\\]+/)?.[0];
       if (!loc) throw new HttpError(400, 'Couldn’t follow that spotify.link link.');
-      u = new URL(loc, u);
+      try { u = new URL(loc, u); }
+      catch { throw new HttpError(400, 'Couldn’t follow that spotify.link link.'); }
       if (!(SP_SHORT.test(u.hostname) || u.hostname === 'open.spotify.com')) throw new HttpError(400, 'That link doesn’t lead to Spotify.');
     }
     if (u.hostname !== 'open.spotify.com') throw new HttpError(400, 'Paste a link from open.spotify.com or spotify.link.');
@@ -450,7 +456,7 @@ const server = http.createServer(async (req, res) => {
       if (e.code === 'ERR_STREAM_PREMATURE_CLOSE' || e.code === 'ECONNRESET') return res.destroy();
       if (!(e instanceof HttpError)) console.error(e);
       if (res.headersSent) return res.destroy();
-      if (!res.headersSent) json(res, e instanceof HttpError ? e.status : 500, { error: e instanceof HttpError ? e.message : 'Something went wrong on the server.' });
+      json(res, e instanceof HttpError ? e.status : 500, { error: e instanceof HttpError ? e.message : 'Something went wrong on the server.' });
     }
   });
 server.listen(PORT, () => {

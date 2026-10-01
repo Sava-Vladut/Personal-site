@@ -75,16 +75,19 @@ export function useRoute() {
             setTimeout(done, 300); // never hold the page frozen if the render is slow
           }),
       );
-      t.finished.finally(() => {
+      const finish = () => {
         if (n !== transitions) return;
         delete root.dataset.nav;
         // The page's own entrance animations were held off while it slid in. Letting them go now would
         // play them a second time, like a refresh, so skip them to the end before the next paint.
         for (const a of document.getAnimations()) {
           const el = a.effect instanceof KeyframeEffect ? a.effect.target : null;
-          if (a instanceof CSSAnimation && el?.matches('.page, .page > *')) a.finish();
+          if (a instanceof CSSAnimation && el?.matches('.page, .page > *')) {
+            try { a.finish(); } catch {} // Infinite or canceled animations cannot be finished.
+          }
         }
-      });
+      };
+      void t.finished.then(finish, finish);
     };
     addEventListener('hashchange', f);
     return () => removeEventListener('hashchange', f);

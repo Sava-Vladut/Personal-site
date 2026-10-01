@@ -39,6 +39,8 @@ function memoryDB(initialEntries = []) {
     all: async () => [...entries.values()],
     put: async (e) => { entries.set(e.id, e); },
     putMany: async (list) => { list.forEach((e) => entries.set(e.id, e)); },
+    del: async (id) => { entries.delete(id); },
+    clear: async () => { entries.clear(); },
     get: async (key) => kv.get(key),
     set: async (key, value) => { kv.set(key, value); },
     update(key, change) {
@@ -54,7 +56,6 @@ function storeMocks(db, importPhotos = async () => 0) {
     './db': { db },
     'preact/hooks': { useState() {}, useEffect() {} },
     './body': { plainText: (s) => s, dropImageLinks: (s) => s },
-    './dates': { todayKey: () => '2026-09-27' },
     '../data/emotions': { EMOTION: {} },
     './photos': { PHOTO_ID: /^p[a-z0-9]{6,40}$/, clearPhotos: async () => {}, exportPhotos: async () => ({}), importPhotos, prunePhotos: async () => {} },
   };
@@ -72,6 +73,298 @@ test('independent tabs preserve both people when saving concurrently', async () 
   await Promise.all([a.init(), b.init()]);
   await Promise.all([a.savePerson(a.blankPerson('Alice')), b.savePerson(b.blankPerson('Bob'))]);
   assert.deepEqual(Array.from(await db.get('people'), (p) => p.name), ['Alice', 'Bob']);
+});
+
+test('invalid saved settings fall back to safe defaults', async () => {
+  for (const saved of ['null', '[]', '3', '{"theme":"unknown"}']) {
+    const store = await loadModule('src/lib/store.ts', storeMocks(memoryDB()), {
+      localStorage: { getItem: () => saved },
+    });
+    assert.equal(store.getSettings().theme, 'system');
+  }
+});
+
+test('observable hooks catch changes made before their subscription effect runs', async () => {
+  const effects = [];
+  let updates = 0;
+  const mocks = storeMocks(memoryDB());
+  mocks['preact/hooks'] = {
+    useState: () => [0, () => updates++],
+    useEffect: (effect) => effects.push(effect),
+  };
+  const store = await loadModule('src/lib/store.ts', mocks);
+  const state = store.observable('Before');
+  assert.equal(state.use(), 'Before');
+  state.set('Changed before effects');
+  const cleanup = effects[0]();
+  assert.equal(updates, 1);
+  state.set('Next change');
+  assert.equal(updates, 2);
+  cleanup();
+});
+
+test('backups and synced documents keep the newest duplicate record', async () => {
+  for (const method of ['importJSON', 'mergeSynced']) {
+    const store = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+    const data = {
+      entries: [entry({ title: 'Newer', updated: 20 }), entry({ title: 'Older', updated: 10 })],
+      people: [{ id: 'p', name: 'Newer', updated: 20 }, { id: 'p', name: 'Older', updated: 10 }],
+    };
+    await store[method](method === 'importJSON' ? JSON.stringify(data) : data);
+    assert.equal(store.getEntries()[0].title, 'Newer');
+    assert.equal(store.getPeople().length, 1);
+    assert.equal(store.getPeople()[0].name, 'Newer');
+  }
+});
+
+test('edits made while backup photos load survive the import', async () => {
+  let finishPhotos;
+  const db = memoryDB([entry()]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db, () => new Promise((resolve) => { finishPhotos = resolve; })));
+  await store.init();
+  const importing = store.importJSON(JSON.stringify({ entries: [entry({ title: 'Backup', updated: 10 })] }));
+  await store.saveEntry({ ...store.getEntries()[0], title: 'Edited during import' });
+  finishPhotos(0);
+  await importing;
+  assert.equal(store.getEntries()[0].title, 'Edited during import');
+  assert.equal((await db.all())[0].title, 'Edited during import');
+});
+
+test('restoring deleted records beats future deletion timestamps and hostile dictionary keys are safe', async () => {
+  const db = memoryDB();
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  const future = Date.now() + 100_000;
+  await store.mergeSynced({ deleted: JSON.parse(`{"note":${future},"person":${future},"__proto__":${future}}`) });
+  await store.importJSON(JSON.stringify({ entries: [entry()], people: [{ id: 'person', name: 'Restored', updated: 1 }] }));
+  assert.ok(store.getEntries()[0].updated > future);
+  assert.ok(store.getPeople()[0].updated > future);
+  assert.equal(store.getDeleted().__proto__, future);
+  const saved = await store.saveEntry(entry({ id: 'constructor' }));
+  assert.ok(Number.isFinite(saved.updated));
+  await store.mergeSynced({});
+  assert.equal(store.getEntries().length, 2);
+});
+
+test('a failed note write rolls back only that note and does not announce a saved change', async () => {
+  const db = memoryDB([entry()]);
+  db.put = async () => { throw new Error('Storage full'); };
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  let changes = 0;
+  store.onLocalChange(() => changes++);
+  await assert.rejects(store.saveEntry({ ...store.getEntries()[0], title: 'Not saved' }), /Storage full/);
+  assert.equal(store.getEntries()[0].title, '');
+  assert.equal(changes, 0);
+});
+
+test('concurrent failed saves restore the last persisted note rather than another failed edit', async () => {
+  const db = memoryDB([entry()]);
+  const rejectWrites = [];
+  db.put = () => new Promise((_resolve, reject) => rejectWrites.push(reject));
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  const first = store.saveEntry({ ...store.getEntries()[0], title: 'First failed edit' });
+  const second = store.saveEntry({ ...store.getEntries()[0], title: 'Second failed edit' });
+  const failures = Promise.allSettled([first, second]);
+  rejectWrites[0](new Error('Storage full'));
+  await new Promise((resolve) => setImmediate(resolve));
+  rejectWrites[1](new Error('Storage full'));
+  await failures;
+  assert.equal(store.getEntries()[0].title, '');
+});
+
+test('collection saves always increase the stored timestamp across stale drafts and tabs', async () => {
+  const future = Date.now() + 100_000;
+  const db = memoryDB();
+  await db.set('people', [{ id: 'person', name: 'Before', updated: future }]);
+  const a = await loadModule('src/lib/store.ts', storeMocks(db));
+  const b = await loadModule('src/lib/store.ts', storeMocks(db));
+  await Promise.all([a.init(), b.init()]);
+  const [first, second] = await Promise.all([
+    a.savePerson({ ...a.getPeople()[0], name: 'First edit' }),
+    b.savePerson({ ...b.getPeople()[0], name: 'Second edit' }),
+  ]);
+  assert.ok(first.updated > future);
+  assert.ok(second.updated > first.updated);
+  assert.equal((await db.get('people'))[0].name, 'Second edit');
+});
+
+test('deleting a collection item includes an earlier save still waiting to publish', async () => {
+  const future = Date.now() + 100_000;
+  const db = memoryDB();
+  await db.set('people', [{ id: 'person', name: 'Before', updated: future }]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  const saving = store.savePerson({ ...store.getPeople()[0], name: 'Pending edit' });
+  const deleting = store.deletePerson('person');
+  const [saved] = await Promise.all([saving, deleting]);
+  assert.equal(store.getPeople().length, 0);
+  assert.equal((await db.get('people')).length, 0);
+  assert.ok(store.getDeleted().person >= saved.updated);
+  await store.mergeSynced({ people: [saved] });
+  assert.equal(store.getPeople().length, 0);
+});
+
+test('delete all remembers timestamps newer than the local clock', async () => {
+  const future = Date.now() + 100_000;
+  const note = entry({ updated: future });
+  const store = await loadModule('src/lib/store.ts', storeMocks(memoryDB([note])));
+  await store.init();
+  await store.deleteAll();
+  await store.mergeSynced({ entries: [note] });
+  assert.equal(store.getEntries().length, 0);
+});
+
+test('calendar validation handles leap days and years below 100 without century coercion', async () => {
+  const dates = await loadModule('src/lib/dates.ts', {});
+  assert.equal(dates.isDateKey('2024-02-29'), true);
+  assert.equal(dates.isDateKey('2026-02-29'), false);
+  assert.equal(dates.parseKey('0099-03-01').getFullYear(), 99);
+  assert.equal(dates.isDateKey('0099-03-01'), true);
+});
+
+test('malformed backup dates, inherited emotion names and invalid image dimensions are cleaned', async () => {
+  const store = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+  await store.importJSON(JSON.stringify({ entries: [
+    entry({ id: 'bad-day', date: '2026-02-30' }),
+    entry({ id: 'bad-month', date: '2026-00-01' }),
+    entry({ photos: [{ id: 'p1234567', w: -5, h: null }], images: [{ url: 'https://example.com/photo', w: -4, h: 0 }], emotions: ['constructor', '__proto__'] }),
+  ] }));
+  assert.equal(store.getEntries().length, 1);
+  assert.equal(store.getEntries()[0].emotions.length, 0);
+  assert.equal(store.getEntries()[0].photos[0].w, 1);
+  assert.equal(store.getEntries()[0].images[0].w, undefined);
+  await assert.rejects(store.importJSON('{"entries":{}}'), /valid journal/);
+});
+
+test('album cleanup removes repeated pictures and removing its final item keeps valid body structure', async () => {
+  const body = await loadModule('src/lib/body.ts', {});
+  const picture = { kind: 'photo', id: 'p1234567' };
+  const note = entry({ text: 'Before\n[[album:photo:p1234567 photo:p1234567]]\nAfter', photos: [{ id: picture.id, w: 1, h: 1 }] });
+  const cleaned = body.bodyOf(note);
+  assert.equal(cleaned.media[0].kind, 'photo');
+  const singleton = body.parseBody('Before\n[[album:photo:p1234567]]\nAfter');
+  assert.equal(body.serializeBody(body.removeItem(singleton, picture)), 'Before\nAfter');
+  assert.equal(body.serializeBody(body.takeOut(singleton, 0, picture)), 'Before\n[[photo:p1234567]]\nAfter');
+  const missing = body.bodyOf(entry({ photos: [note.photos[0], note.photos[0]] }));
+  assert.equal(missing.media.length, 1);
+});
+
+test('IndexedDB opens can retry and failed batches abort their earlier writes', async () => {
+  let opens = 0;
+  const saved = [];
+  const database = {
+    transaction() {
+      const pending = [];
+      let aborted = false;
+      const tx = {
+        error: null,
+        abort() { aborted = true; queueMicrotask(() => tx.onabort?.()); },
+        objectStore: () => ({
+          put(value) {
+            if (value.invalid) throw new Error('Data cannot be cloned');
+            pending.push(value);
+          },
+          getAll: () => ({ result: saved }),
+        }),
+      };
+      queueMicrotask(() => {
+        if (aborted) return;
+        saved.push(...pending);
+        tx.oncomplete?.();
+      });
+      return tx;
+    },
+  };
+  const { db } = await loadModule('src/lib/db.ts', {}, {
+    indexedDB: {
+      open() {
+        const request = { result: database, error: new Error('Temporary storage failure') };
+        const first = ++opens === 1;
+        queueMicrotask(() => first ? request.onerror() : request.onsuccess());
+        return request;
+      },
+    },
+  });
+  await assert.rejects(db.all(), /Temporary storage failure/);
+  assert.equal((await db.all()).length, 0);
+  assert.equal(opens, 2);
+  await assert.rejects(db.putMany([{ id: 'first' }, { id: 'second', invalid: true }]), /cannot be cloned/);
+  assert.equal(saved.length, 0);
+});
+
+function syncMocks() {
+  return {
+    './store': {
+      getDeleted: () => ({}), getEntries: () => [], getPeople: () => [], getBooks: () => [], getSongs: () => [], mergeSynced: async () => ({ icons: [] }),
+      observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
+      photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
+    },
+    './photos': { photoIds: async () => new Set(), photoBlob: async () => null, storePhotos: async () => {} },
+    './icons': { resolveIcon() {} },
+  };
+}
+
+test('stopping sync during a pending photo read prevents a document upload', async () => {
+  const mocks = syncMocks();
+  let readPhotos, finishPhotos;
+  const reachedPhotos = new Promise((resolve) => { readPhotos = resolve; });
+  mocks['./photos'].photoIds = () => new Promise((resolve) => { finishPhotos = resolve; readPhotos(); });
+  let uploads = 0;
+  const sync = await loadModule('src/lib/sync.ts', mocks, {
+    fetch: async (_url, init) => {
+      if (init?.method === 'PUT') uploads++;
+      return new Response(null, { status: 404 });
+    },
+  });
+  const running = sync.startSync();
+  await reachedPhotos;
+  sync.stopSync();
+  finishPhotos(new Set());
+  await running;
+  assert.equal(uploads, 0);
+  assert.equal(sync.useSync().on, false);
+  assert.equal(sync.useSync().error, undefined);
+});
+
+test('replacing a sync session continues even if the stopped session fails', async () => {
+  let reachedDownload, failDownload;
+  const firstDownload = new Promise((resolve) => { reachedDownload = resolve; });
+  let downloads = 0, uploads = 0;
+  const sync = await loadModule('src/lib/sync.ts', syncMocks(), {
+    fetch: async (_url, init) => {
+      if (init?.method === 'PUT') {
+        uploads++;
+        return Response.json({ rev: 'new-revision' });
+      }
+      if (++downloads === 1) return new Promise((_resolve, reject) => { failDownload = reject; reachedDownload(); });
+      return new Response(null, { status: 404 });
+    },
+  });
+  const running = sync.startSync();
+  await firstDownload;
+  sync.stopSync();
+  const replacement = sync.startSync();
+  failDownload(new Error('Old request failed'));
+  await Promise.all([running, replacement]);
+  assert.equal(downloads, 2);
+  assert.equal(uploads, 1);
+  assert.equal(sync.useSync().on, true);
+  assert.equal(sync.useSync().error, undefined);
+});
+
+test('invalid saved sync state is discarded and incomplete legacy state is repaired', async () => {
+  const invalid = await loadModule('src/lib/sync.ts', syncMocks(), {
+    localStorage: { getItem: () => '{"code":"wrong"}' },
+  });
+  assert.equal(invalid.useSync().on, false);
+  const repaired = await loadModule('src/lib/sync.ts', syncMocks(), {
+    localStorage: { getItem: () => '{"code":"abcd-efgh-jklm","sent":null,"last":"never","rev":"revision"}', setItem() {} },
+    fetch: async () => new Response(null, { status: 304 }),
+  });
+  await repaired.syncNow();
+  assert.equal(repaired.useSync().code, 'ABCDEFGHJKLM');
+  assert.equal(repaired.useSync().error, undefined);
 });
 
 test('long note and person bodies survive reload and backup import', async () => {

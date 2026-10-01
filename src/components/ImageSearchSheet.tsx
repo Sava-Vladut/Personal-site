@@ -17,6 +17,7 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
 
   useEffect(() => {
     if (open) setSelected([]);
+    return () => { req.current++; setBusy(false); };
   }, [open]);
 
   // Searches run on submit, not while typing: Openverse allows 20 a minute without a key.
@@ -24,7 +25,10 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
     const n = ++req.current;
     setBusy(true);
     setError('');
-    if (!page) setItems([]);
+    if (!page) {
+      setItems([]);
+      setNext(undefined);
+    }
     try {
       const res = await searchImages(query, page);
       if (n !== req.current) return;

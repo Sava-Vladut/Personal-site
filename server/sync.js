@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, open, rename, rm, stat, unlink } from 'node:fs/promises';
+import { mkdir, open, readdir, rename, rm, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -16,6 +16,20 @@ export function createSyncHandler({ directory, maxConcurrentUploads = 4, maxConc
   const revisions = new Map();
   let activeUploads = 0;
   let activeRequests = 0;
+  let prepared;
+
+  async function prepareUploads() {
+    if (!prepared) {
+      prepared = (async () => {
+        await mkdir(directory, { recursive: true });
+        // A forced shutdown cannot run upload cleanup. Remove only our abandoned
+        // temporary files before any upload in this process creates a new one.
+        const files = await readdir(directory, { withFileTypes: true });
+        await Promise.all(files.filter((file) => file.isFile() && /^\.upload-[a-f0-9]{32}\.tmp$/.test(file.name)).map((file) => unlink(join(directory, file.name))));
+      })().catch((error) => { prepared = undefined; throw error; });
+    }
+    return prepared;
+  }
 
   async function locked(key, work) {
     const previous = locks.get(key) || Promise.resolve();
@@ -63,7 +77,7 @@ export function createSyncHandler({ directory, maxConcurrentUploads = 4, maxConc
       req.resume();
       throw new HttpError(413, 'That’s too big to sync.');
     }
-    await mkdir(directory, { recursive: true });
+    await prepareUploads();
     const temporary = join(directory, `.upload-${crypto.randomBytes(16).toString('hex')}.tmp`);
     const hash = crypto.createHash('sha256');
     let bytes = 0;

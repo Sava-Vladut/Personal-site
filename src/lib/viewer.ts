@@ -39,109 +39,126 @@ function measure(src: string) {
 }
 
 let current: PhotoSwipe | null = null;
+let opening = false;
 
 export async function openViewer(items: ViewItem[], index: number, opts: ViewOptions = {}) {
-  if (current || !items.length) return;
-  const data: (SlideData & { item: ViewItem })[] = await Promise.all(
-    items.map(async (item) => {
-      let { w, h } = item;
-      if (!w || !h) {
+  if (current || opening || !items.length) return;
+  opening = true;
+  try {
+    const data: (SlideData & { item: ViewItem })[] = await Promise.all(
+      items.map(async (item) => {
+        let { w, h } = item;
+        if (!w || !h) {
+          const thumb = item.el?.querySelector('img');
+          const s = thumb?.naturalWidth ? { w: thumb.naturalWidth, h: thumb.naturalHeight } : await measure(item.src);
+          w = s?.w ?? 1200;
+          h = s?.h ?? 900;
+        }
         const thumb = item.el?.querySelector('img');
-        const s = thumb?.naturalWidth ? { w: thumb.naturalWidth, h: thumb.naturalHeight } : await measure(item.src);
-        w = s?.w ?? 1200;
-        h = s?.h ?? 900;
-      }
-      const thumb = item.el?.querySelector('img');
-      return { src: item.src, msrc: thumb?.currentSrc || undefined, width: w, height: h, alt: item.alt, element: item.el ?? undefined, item };
-    }),
-  );
+        return { src: item.src, msrc: thumb?.currentSrc || undefined, width: w, height: h, alt: item.alt, element: item.el ?? undefined, item };
+      }),
+    );
 
-  const pswp = new PhotoSwipe({
-    dataSource: data,
-    index,
-    bgOpacity: 1,
-    showHideAnimationType: 'zoom',
-    zoom: false,           // the zoom is in the fingers (and a double tap)
-    imageClickAction: 'zoom',
-    tapAction: 'toggle-controls',
-    doubleTapAction: 'zoom',
-    secondaryZoomLevel: 2.5,
-    maxZoomLevel: 6,
-    wheelToZoom: true,
-    closeTitle: 'Close',
-    closeSVG: icon('x'),
-    arrowPrevTitle: 'Previous',
-    arrowNextTitle: 'Next',
-    errorMsg: 'This picture couldn’t be loaded',
-    mainClass: 'viewer',
-    paddingFn: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
-  });
-  const slide = () => (pswp.currSlide?.data as (typeof data)[number] | undefined)?.item;
+    const pswp = new PhotoSwipe({
+      dataSource: data,
+      index,
+      bgOpacity: 1,
+      showHideAnimationType: 'zoom',
+      zoom: false,           // the zoom is in the fingers (and a double tap)
+      imageClickAction: 'zoom',
+      tapAction: 'toggle-controls',
+      doubleTapAction: 'zoom',
+      secondaryZoomLevel: 2.5,
+      maxZoomLevel: 6,
+      wheelToZoom: true,
+      closeTitle: 'Close',
+      closeSVG: icon('x'),
+      arrowPrevTitle: 'Previous',
+      arrowNextTitle: 'Next',
+      errorMsg: 'This picture couldn’t be loaded',
+      mainClass: 'viewer',
+      paddingFn: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+    });
+    const slide = () => (pswp.currSlide?.data as (typeof data)[number] | undefined)?.item;
 
-  pswp.on('uiRegister', () => {
-    const button = (name: string, order: number, title: string, svg: string, show: (i: ViewItem) => boolean, click: (i: ViewItem) => void) =>
+    pswp.on('uiRegister', () => {
+      const button = (name: string, order: number, title: string, svg: string, show: (i: ViewItem) => boolean, click: (i: ViewItem) => void) =>
+        pswp.ui!.registerElement({
+          name,
+          order,
+          isButton: true,
+          title,
+          html: svg,
+          onInit: (el) => {
+            const sync = () => {
+              const i = slide();
+              (el as HTMLElement).hidden = !i || !show(i);
+            };
+            pswp.on('change', sync);
+            sync();
+          },
+          onClick: () => {
+            const i = slide();
+            if (i) click(i);
+          },
+        });
+      button('save', 8, 'Save', icon('download'), (i) => !!i.save, (i) => {
+        const a = document.createElement('a');
+        a.href = i.src;
+        a.download = i.save!;
+        a.click();
+      });
+      button('source', 8, 'Open source', icon('arrow-up-right'), (i) => !!i.link, (i) => open(i.link, '_blank', 'noopener,noreferrer'));
+      if (opts.onTakeOut)
+        button('takeout', 8, 'Take out of the album', icon('stack-pop'), (i) => !!i.album, () => {
+          const at = pswp.currIndex;
+          pswp.close();
+          opts.onTakeOut!(at);
+        });
+      if (opts.onRemove)
+        button('remove', 9, 'Remove', icon('trash'), () => true, () => {
+          const at = pswp.currIndex;
+          pswp.close();
+          opts.onRemove!(at);
+        });
       pswp.ui!.registerElement({
-        name,
-        order,
-        isButton: true,
-        title,
-        html: svg,
+        name: 'caption',
+        order: 9,
+        isButton: false,
+        appendTo: 'root',
         onInit: (el) => {
           const sync = () => {
-            const i = slide();
-            (el as HTMLElement).hidden = !i || !show(i);
+            const c = slide()?.caption ?? '';
+            el.textContent = c;
+            el.hidden = !c;
           };
           pswp.on('change', sync);
           sync();
         },
-        onClick: () => {
-          const i = slide();
-          if (i) click(i);
-        },
       });
-    button('save', 8, 'Save', icon('download'), (i) => !!i.save, (i) => {
-      const a = document.createElement('a');
-      a.href = i.src;
-      a.download = i.save!;
-      a.click();
     });
-    button('source', 8, 'Open source', icon('arrow-up-right'), (i) => !!i.link, (i) => open(i.link, '_blank', 'noopener,noreferrer'));
-    if (opts.onTakeOut)
-      button('takeout', 8, 'Take out of the album', icon('stack-pop'), (i) => !!i.album, () => {
-        const at = pswp.currIndex;
-        pswp.close();
-        opts.onTakeOut!(at);
-      });
-    if (opts.onRemove)
-      button('remove', 9, 'Remove', icon('trash'), () => true, () => {
-        const at = pswp.currIndex;
-        pswp.close();
-        opts.onRemove!(at);
-      });
-    pswp.ui!.registerElement({
-      name: 'caption',
-      order: 9,
-      isButton: false,
-      appendTo: 'root',
-      onInit: (el) => {
-        const sync = () => {
-          const c = slide()?.caption ?? '';
-          el.textContent = c;
-          el.hidden = !c;
-        };
-        pswp.on('change', sync);
-        sync();
-      },
-    });
-  });
 
-  // The back button closes the viewer, as it does a sheet.
-  let release: (() => void) | null = null;
-  pswp.on('beforeOpen', () => (release = pushBack(() => pswp.close())));
-  pswp.on('destroy', () => {
-    current = null;
-    release?.();
-  });
-  current = pswp;
-  pswp.init();
+    // The back button closes the viewer, as it does a sheet.
+    let release: (() => void) | null = null;
+    pswp.on('beforeOpen', () => (release = pushBack(() => pswp.close())));
+    pswp.on('destroy', () => {
+      current = null;
+      release?.();
+    });
+    current = pswp;
+    try {
+      if (!pswp.init()) {
+        pswp.isDestroying = true;
+        pswp.destroy();
+      }
+    } catch (e) {
+      current = null;
+      // Partial initialization cannot use PhotoSwipe's normal animated close path.
+      pswp.isDestroying = true;
+      pswp.destroy();
+      throw e;
+    }
+  } finally {
+    opening = false;
+  }
 }

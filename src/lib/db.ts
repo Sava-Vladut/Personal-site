@@ -8,7 +8,7 @@ let blockedHandler = () => {};
 export const onBlocked = (f: () => void) => void (blockedHandler = f);
 
 function open() {
-  dbp ??= new Promise((resolve, reject) => {
+  dbp ??= new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(NAME, 2);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -22,11 +22,16 @@ function open() {
       // A newer version of the app wants to upgrade: let go and reload into it instead of blocking it.
       db.onversionchange = () => {
         db.close();
+        dbp = null;
         location.reload();
       };
       resolve(db);
     };
     req.onerror = () => reject(req.error);
+  }).catch((error) => {
+    // A temporary failure (for example, unavailable browser storage) must be retryable.
+    dbp = null;
+    throw error;
   });
   return dbp;
 }
@@ -35,9 +40,16 @@ async function run<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObject
   const db = await open();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, mode);
-    const req = fn(tx.objectStore(store));
+    let req: IDBRequest<T> | void;
     tx.oncomplete = () => resolve(req ? req.result : (undefined as T));
     tx.onerror = tx.onabort = () => reject(tx.error);
+    try {
+      req = fn(tx.objectStore(store));
+    } catch (error) {
+      // A synchronous put failure halfway through a batch must roll back its earlier writes.
+      tx.abort();
+      reject(error);
+    }
   });
 }
 

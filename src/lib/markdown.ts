@@ -52,7 +52,7 @@ export function replace(el: TextBox, start: number, end: number, text: string, s
   el.setSelectionRange(selStart, selEnd);
 }
 
-const lineStart = (v: string, i: number) => v.lastIndexOf('\n', i - 1) + 1;
+const lineStart = (v: string, i: number) => i <= 0 ? 0 : v.lastIndexOf('\n', i - 1) + 1;
 const lineEnd = (v: string, i: number) => {
   const n = v.indexOf('\n', i);
   return n < 0 ? v.length : n;
@@ -92,7 +92,7 @@ export function toggleWrap(el: TextBox, mark: string) {
 export function toggleLines(el: TextBox, kind: LineKind | 'heading') {
   const v = el.value;
   const s = lineStart(v, el.selectionStart);
-  const e = lineEnd(v, el.selectionEnd);
+  const e = lineEnd(v, el.selectionEnd > el.selectionStart && v[el.selectionEnd - 1] === '\n' ? el.selectionEnd - 1 : el.selectionEnd);
   const lines = v.slice(s, e).split('\n');
   const parsed = lines.map((l) => {
     const m = l.match(PREFIX)!;
@@ -146,7 +146,7 @@ export function insertLink(el: TextBox) {
 export function indentLines(el: TextBox, out: boolean) {
   const v = el.value;
   const s = lineStart(v, el.selectionStart);
-  const e = lineEnd(v, el.selectionEnd);
+  const e = lineEnd(v, el.selectionEnd > el.selectionStart && v[el.selectionEnd - 1] === '\n' ? el.selectionEnd - 1 : el.selectionEnd);
   const lines = v.slice(s, e).split('\n');
   const next = lines.map((l) => (out ? l.replace(/^(\t| {1,4})/, '') : '\t' + l));
   const text = next.join('\n');
@@ -191,6 +191,7 @@ export function listKey(el: TextBox, e: KeyboardEvent) {
 /** Ticks or unticks the task on line `line` of a text. */
 export function toggleTask(text: string, line: number) {
   const lines = text.split('\n');
+  if (!Number.isInteger(line) || line < 0 || line >= lines.length) return text;
   lines[line] = lines[line].replace(/^((?:[ \t]*>[ \t]?)*[ \t]*[-*+][ \t]+\[)([ xX])\]/, (_, a, c) => a + (c === ' ' ? 'x' : ' ') + ']');
   return lines.join('\n');
 }
