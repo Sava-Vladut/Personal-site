@@ -5,16 +5,28 @@ import { BOOK_STATUSES, useBooks, useEntries, useReady, type Book, type BookStat
 import { BookCover, Shelf } from '../components/books';
 import { Icon } from '../components/icons';
 
-type Sort = 'recent' | 'title' | 'rating';
+export type Sort = 'recent' | 'title' | 'rating';
+const SORTS: [Sort, string][] = [['recent', 'Recent'], ['title', 'A–Z'], ['rating', 'Top rated']];
+
+/** One chip for the order: each tap moves to the next. */
+export function SortChip({ sort, onSort }: { sort: Sort; onSort: (s: Sort) => void }) {
+  const at = SORTS.findIndex(([s]) => s === sort);
+  const next = SORTS[(at + 1) % SORTS.length];
+  return (
+    <button class="chip sort-chip" onClick={() => onSort(next[0])} aria-label={`Order: ${SORTS[at][1]}. Change to ${next[1]}`} title={`Order by ${next[1]}`}>
+      <Icon name="arrow-down" size={15} />
+      <span key={sort}>{SORTS[at][1]}</span>
+    </button>
+  );
+}
 
 /** The Media page's books: what you're reading, then a shelf for each status. */
-export function BooksTab({ onAdd }: { onAdd: () => void }) {
+export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const books = useBooks();
   const entries = useEntries();
   const ready = useReady();
   const [shelf, setShelf] = useState<BookStatus | 'all'>('all');
   const [sort, setSort] = useState<Sort>('recent');
-  const [q, setQ] = useState('');
   const mentions = useMemo(() => mentionsByBook(entries, books), [entries, books]);
 
   const reading = books.filter((b) => b.status === 'reading');
@@ -39,14 +51,14 @@ export function BooksTab({ onAdd }: { onAdd: () => void }) {
     <>
       {showReading && (
         <section class="section reading-now">
-          <h2 class="section-title">Reading now</h2>
+          <h2 class="section-title"><Icon name="bookmark" size={16} /> Reading now</h2>
           <div class="reading-list">
             {reading.map((b) => {
               const pct = progressOf(b);
               const notes = mentions.get(b.id)?.length ?? 0;
               return (
                 <button class="reading-card card" onClick={() => navigate('book/' + b.id)}>
-                  <BookCover b={b} width={52} />
+                  <BookCover b={b} width={40} />
                   <span class="book-row-main">
                     <span class="book-row-title">{b.title.trim() || 'Untitled'}</span>
                     <span class="book-row-sub">{[b.authors, notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : ''].filter(Boolean).join(' · ')}</span>
@@ -63,23 +75,13 @@ export function BooksTab({ onAdd }: { onAdd: () => void }) {
       )}
 
       {books.length > 0 && (
-        <>
-          <label class="search">
-            <Icon name="search" size={18} />
-            <input type="search" placeholder="Search your books" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search your books" />
-          </label>
-          <div class="chips filters" role="toolbar" aria-label="Shelf">
-            <button class="chip" aria-pressed={shelf === 'all'} onClick={() => setShelf('all')}>All {books.length}</button>
-            {BOOK_STATUSES.map((s) => count(s) > 0 && (
-              <button class="chip" aria-pressed={shelf === s} onClick={() => setShelf(s)}>{STATUS_LABEL[s]} {count(s)}</button>
-            ))}
-          </div>
-          <div class="chips filters" role="toolbar" aria-label="Sort">
-            <button class="chip" aria-pressed={sort === 'recent'} onClick={() => setSort('recent')}>Recent</button>
-            <button class="chip" aria-pressed={sort === 'title'} onClick={() => setSort('title')}>A–Z</button>
-            <button class="chip" aria-pressed={sort === 'rating'} onClick={() => setSort('rating')}>Top rated</button>
-          </div>
-        </>
+        <div class="chips scroll-x filters media-filters" role="toolbar" aria-label="Shelf and order">
+          <SortChip sort={sort} onSort={setSort} />
+          <button class="chip" aria-pressed={shelf === 'all'} onClick={() => setShelf('all')}>All {books.length}</button>
+          {BOOK_STATUSES.map((s) => count(s) > 0 && (
+            <button class="chip" aria-pressed={shelf === s} onClick={() => setShelf(s)}>{STATUS_LABEL[s]} {count(s)}</button>
+          ))}
+        </div>
       )}
 
       {ready && !books.length && (
@@ -101,11 +103,16 @@ export function BooksTab({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-/** "5 read in 2026 · average 3.8 ★" */
-export function booksLine(books: Book[]) {
-  if (!books.length) return 'Keep the books you read, rate them, and mention them in your notes.';
+/** The numbers over the shelf: reading, read this year, still to read, and the average rating. */
+export function bookStats(books: Book[]): [string, string][] {
   const year = new Date().getFullYear();
-  const read = books.filter((b) => b.status === 'read' && b.finished?.startsWith(String(year)));
-  const rated = read.filter((b) => b.rating);
-  return `${read.length} read in ${year}${rated.length ? ` · average ${(rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1)} ★` : ''}`;
+  const read = books.filter((b) => b.status === 'read' && b.finished?.startsWith(String(year))).length;
+  const rated = books.filter((b) => b.rating);
+  const out: [string, string][] = [
+    [String(books.filter((b) => b.status === 'reading').length), 'reading'],
+    [String(read), `read in ${year}`],
+    [String(books.filter((b) => b.status === 'want').length), 'to read'],
+  ];
+  if (rated.length) out.push([(rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1), 'average ★']);
+  return out.filter(([v]) => v !== '0');
 }

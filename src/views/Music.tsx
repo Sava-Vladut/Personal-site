@@ -2,23 +2,22 @@ import { useMemo, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
 import { blankSong, findSong, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
 import { Stars } from '../components/books';
+import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
 import { isTape, MusicThing, musicSub } from '../components/music';
 
 type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
-type Sort = 'recent' | 'title' | 'rating';
 
 const KINDS: [Kind, string][] = [['track', 'Songs'], ['album', 'Albums'], ['playlist', 'Playlists'], ['podcast', 'Podcasts']];
 const kindOf = (m: Music): Kind => (m.kind === 'show' || m.kind === 'episode' ? 'podcast' : m.kind === 'artist' ? 'album' : m.kind);
 
 /** The Media page's music: what's on repeat, your records, your tapes, and what's waiting in your notes. */
-export function MusicTab({ onAdd }: { onAdd: () => void }) {
+export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const songs = useSongs();
   const entries = useEntries();
   const ready = useReady();
   const [kind, setKind] = useState<Kind>('all');
   const [sort, setSort] = useState<Sort>('recent');
-  const [q, setQ] = useState('');
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -57,23 +56,13 @@ export function MusicTab({ onAdd }: { onAdd: () => void }) {
   return (
     <>
       {songs.length > 0 && (
-        <>
-          <label class="search">
-            <Icon name="search" size={18} />
-            <input type="search" placeholder="Search your music" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search your music" />
-          </label>
-          <div class="chips filters" role="toolbar" aria-label="Kind">
-            <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>All {songs.length}</button>
-            {KINDS.map(([k, name]) => count(k) > 0 && (
-              <button class="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>{name} {count(k)}</button>
-            ))}
-          </div>
-          <div class="chips filters" role="toolbar" aria-label="Sort">
-            <button class="chip" aria-pressed={sort === 'recent'} onClick={() => setSort('recent')}>Recent</button>
-            <button class="chip" aria-pressed={sort === 'title'} onClick={() => setSort('title')}>A–Z</button>
-            <button class="chip" aria-pressed={sort === 'rating'} onClick={() => setSort('rating')}>Top rated</button>
-          </div>
-        </>
+        <div class="chips scroll-x filters media-filters" role="toolbar" aria-label="Kind and order">
+          <SortChip sort={sort} onSort={setSort} />
+          <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>All {songs.length}</button>
+          {KINDS.map(([k, name]) => count(k) > 0 && (
+            <button class="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>{name} {count(k)}</button>
+          ))}
+        </div>
       )}
 
       {ready && !songs.length && (
@@ -91,7 +80,7 @@ export function MusicTab({ onAdd }: { onAdd: () => void }) {
           <div class="repeat-list">
             {repeat.map((s) => (
               <button class="repeat-row card is-repeat" onClick={() => navigate('song/' + s.id)}>
-                <MusicThing m={s.music} size={56} />
+                <MusicThing m={s.music} size={44} />
                 <span class="book-row-main">
                   <span class="book-row-title">{s.music.title}</span>
                   <span class="book-row-sub">{musicSub(s.music)}</span>
@@ -113,7 +102,7 @@ export function MusicTab({ onAdd }: { onAdd: () => void }) {
           <div class="tracks">
             {waiting.map((m) => (
               <div class={`track waiting${isTape(m) ? ' is-tape' : ''}`}>
-                <span class="track-thing"><MusicThing m={m} size={46} /></span>
+                <span class="track-thing"><MusicThing m={m} size={38} /></span>
                 <span class="track-main">
                   <span class="track-title">{m.title}</span>
                   <span class="track-sub">{musicSub(m)}</span>
@@ -146,10 +135,16 @@ function Crate({ title, list, tapes }: { title: string; list: Song[]; tapes?: bo
   );
 }
 
-/** "12 records · 3 tapes" */
-export function musicLine(songs: Song[]) {
-  if (!songs.length) return 'Keep the songs, albums and playlists that mean something to you.';
+/** The numbers over the records: records, tapes, what's on repeat, and the average rating. */
+export function musicStats(songs: Song[]): [string, string][] {
   const tapes = songs.filter((s) => isTape(s.music)).length;
   const records = songs.length - tapes;
-  return [records && `${records} ${records === 1 ? 'record' : 'records'}`, tapes && `${tapes} ${tapes === 1 ? 'tape' : 'tapes'}`].filter(Boolean).join(' · ');
+  const rated = songs.filter((s) => s.rating);
+  const out: [string, string][] = [
+    [String(records), records === 1 ? 'record' : 'records'],
+    [String(tapes), tapes === 1 ? 'tape' : 'tapes'],
+    [String(songs.filter((s) => s.repeat).length), 'on repeat'],
+  ];
+  if (rated.length) out.push([(rated.reduce((n, s) => n + s.rating, 0) / rated.length).toFixed(1), 'average ★']);
+  return out.filter(([v]) => v !== '0');
 }

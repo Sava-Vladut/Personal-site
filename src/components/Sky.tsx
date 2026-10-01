@@ -25,6 +25,9 @@ const RAMPS: Record<string, string[]> = {
   fear: [' ', '.', "'", '/\\', 'x', 'X', '%'],
   anger: [' ', '.', ':', '+', '%', '#', '@', 'M'],
   'shame-aversion': [' ', '.', ':', '-', '()', '[]', '{}'],
+  // the media page: a sky of pages, and one of notes
+  books: [' ', '.', ',', ';', 'ilt', 'aeo', 'bdhk', '¶§'],
+  music: [' ', '.', '·', '-', '♩', '♪', '♫', '♬'],
 };
 
 /** The world a sky leans toward; the second colour keeps it from going flat. */
@@ -180,14 +183,17 @@ function blob(col: RGB, stops: [number, number][], radius: number): HTMLCanvasEl
   return c;
 }
 
-/** worlds: the emotion worlds the clouds take their colours from, in order of how much sky each gets. */
-export function Sky({ world, worlds }: { world?: string | null; worlds?: string[] }) {
+/**
+ * worlds: the emotion worlds the clouds take their colours from, in order of how much sky each gets.
+ * letters: a ramp of its own (RAMPS) instead of the world's.
+ */
+export function Sky({ world, worlds, letters }: { world?: string | null; worlds?: string[]; letters?: string }) {
   const els = useRef<(HTMLCanvasElement | null)[]>([]);
-  const latest = useRef({ world, worlds });
+  const latest = useRef({ world, worlds, letters });
   const retune = useRef<() => void>();
   const applied = useRef('');
-  latest.current = { world, worlds };
-  const key = `${world ?? ''}|${(worlds ?? []).join()}`;
+  latest.current = { world, worlds, letters };
+  const key = `${world ?? ''}|${(worlds ?? []).join()}|${letters ?? ''}`;
 
   useEffect(() => {
     const [farCloud, farGlyph, nearCloud, nearGlyph] = els.current as HTMLCanvasElement[];
@@ -199,7 +205,7 @@ export function Sky({ world, worlds }: { world?: string | null; worlds?: string[
     let glyphIdx: number[][] = [];
     // every character the ramp uses, once, and which of them each density level picks from
     const tuneRamp = () => {
-      ramp = RAMPS[latest.current.world ?? ''] ?? RAMPS.default;
+      ramp = RAMPS[latest.current.letters ?? latest.current.world ?? ''] ?? RAMPS.default;
       glyphs = [];
       glyphIdx = ramp.map((level) =>
         level.trim() === '' ? [] : [...level].map((ch) => (glyphs.includes(ch) ? glyphs.indexOf(ch) : glyphs.push(ch) - 1)),
@@ -574,7 +580,7 @@ export function Sky({ world, worlds }: { world?: string | null; worlds?: string[
     };
   }, []);
 
-  // a new mix of worlds recolours the clouds where they are
+  // a new mix of worlds (or new letters) recolours the clouds where they are
   useEffect(() => {
     if (applied.current === key) return;
     applied.current = key;

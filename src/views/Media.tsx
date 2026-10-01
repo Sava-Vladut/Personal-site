@@ -1,15 +1,26 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import { coreOf } from '../data/emotions';
 import { navigateAfterSheet } from '../lib/router';
 import { connectSpotify } from '../lib/spotify';
+import { skyWorlds } from '../lib/stats';
 import { blankSong, findSong, getSongs, saveSong, toast, useBooks, useSongs, type Music } from '../lib/store';
 import { BookSheet } from '../components/books';
+import { CountUp } from '../components/charts';
 import { Icon } from '../components/icons';
+import { Sky } from '../components/Sky';
 import { SpotifySheet } from '../components/SpotifySheet';
-import { BooksTab, booksLine } from './Books';
-import { MusicTab, musicLine } from './Music';
+import { BooksTab, bookStats } from './Books';
+import { MusicTab, musicStats } from './Music';
 
 type Tab = 'books' | 'music';
 const TAB_KEY = 'mm-media-tab';
+const TABS: Tab[] = ['books', 'music'];
+
+// with nothing felt yet: warm paper for the shelf, a late-night glow for the records
+const QUIET: Record<Tab, string[]> = {
+  books: ['hope-interest', 'calm-safety', 'joy'],
+  music: ['love-connection', 'sadness', 'hope-interest'],
+};
 
 function lastTab(): Tab {
   try {
@@ -19,6 +30,28 @@ function lastTab(): Tab {
   }
 }
 
+/** The sky's colours, from how the books or music on this tab make you feel. */
+function feltWorlds(list: { emotions: string[] }[], tab: Tab) {
+  const counts = new Map<string, number>();
+  for (const x of list) {
+    const core = x.emotions[0] && coreOf(x.emotions[0])?.id;
+    if (core) counts.set(core, (counts.get(core) ?? 0) + 1);
+  }
+  const worlds = skyWorlds([...counts].map(([id, count]) => ({ id, count })));
+  return worlds.length ? worlds : QUIET[tab];
+}
+
+/** A title that rises out of the clouds a letter at a time. */
+function CloudTitle({ text }: { text: string }) {
+  return (
+    <h1 class="title cloud-title" aria-label={text}>
+      {[...text].map((ch, i) => (
+        <span aria-hidden="true" style={{ '--i': i }}>{ch === ' ' ? ' ' : ch}</span>
+      ))}
+    </h1>
+  );
+}
+
 /** Your books and your music: a shelf and a record collection. `?tab=books|music`, and `?add` opens its picker. */
 export function Media({ query }: { query: URLSearchParams }) {
   const books = useBooks();
@@ -26,9 +59,12 @@ export function Media({ query }: { query: URLSearchParams }) {
   const asked = query.get('tab');
   const [tab, setTabState] = useState<Tab>(asked === 'music' || asked === 'books' ? asked : lastTab);
   const [adding, setAdding] = useState<Tab | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [q, setQ] = useState('');
 
   const setTab = (t: Tab) => {
     setTabState(t);
+    setQ('');
     try {
       localStorage.setItem(TAB_KEY, t);
     } catch {}
@@ -54,26 +90,62 @@ export function Media({ query }: { query: URLSearchParams }) {
     toast(fresh.length ? `Added ${fresh.length} to your records` : 'Those are already in your records');
   };
 
+  const isBooks = tab === 'books';
+  const worlds = useMemo(() => (isBooks ? feltWorlds(books, 'books') : feltWorlds(songs, 'music')), [isBooks, books, songs]);
+  const stats = isBooks ? bookStats(books) : musicStats(songs);
+  const has = isBooks ? books.length > 0 : songs.length > 0;
+  const noun = isBooks ? 'books' : 'music';
+
   return (
     <div class="page media-page">
-      <header class="page-head">
-        <div class="eyebrow">Media</div>
-        <div class="row between">
-          <h1 class="title">{tab === 'books' ? 'Your shelf' : 'Your records'}</h1>
-          <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={tab === 'books' ? 'Add a book' : 'Add music'} title={tab === 'books' ? 'Add a book' : 'Add music'}>
-            <Icon name="plus" />
-          </button>
-        </div>
-        <p class="subtitle">{tab === 'books' ? booksLine(books) : musicLine(songs)}</p>
-      </header>
+      {/* the shelf and the records under a sky of their own: letters over the books, notes over the music */}
+      <div class="journal-top media-top" style={{ '--sky': `var(--emo-${worlds[0]})` }}>
+        <Sky world={worlds[0]} worlds={worlds} letters={tab} />
+        <header class="page-head">
+          <div class="row between">
+            <CloudTitle key={tab} text={isBooks ? 'Your shelf' : 'Your records'} />
+            <div class="row">
+              {has && (
+                <button class="icon-btn" aria-pressed={searching} aria-label={`Search your ${noun}`} title="Search" onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+                  <Icon name="search" />
+                </button>
+              )}
+              <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? 'Add a book' : 'Add music'} title={isBooks ? 'Add a book' : 'Add music'}>
+                <Icon name="plus" />
+              </button>
+            </div>
+          </div>
+          {!has && (
+            <p class="subtitle">{isBooks ? 'Keep the books you read, rate them, and mention them in your notes.' : 'Keep the songs, albums and playlists that mean something to you.'}</p>
+          )}
+        </header>
 
-      <div class="seg media-tabs" role="tablist" aria-label="Media">
-        <button role="tab" aria-selected={tab === 'books'} onClick={() => setTab('books')}><Icon name="books" size={17} /> Books</button>
-        <button role="tab" aria-selected={tab === 'music'} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> Music</button>
+        {stats.length > 0 && (
+          <div class="media-stats" key={tab}>
+            {stats.map(([value, label], i) => (
+              <span class="media-stat" style={{ '--i': i }}>
+                <b><CountUp value={value} /></b>
+                <small>{label}</small>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div class="seg tabs media-tabs" role="tablist" aria-label="Media" style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
+          <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> Books</button>
+          <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> Music</button>
+        </div>
+
+        {searching && has && (
+          <label class="search">
+            <Icon name="search" size={18} />
+            <input type="search" autoFocus placeholder={`Search your ${noun}`} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={`Search your ${noun}`} />
+          </label>
+        )}
       </div>
 
       <div class="media-panel" key={tab}>
-        {tab === 'books' ? <BooksTab onAdd={() => setAdding('books')} /> : <MusicTab onAdd={() => setAdding('music')} />}
+        {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} />}
       </div>
 
       <BookSheet open={adding === 'books'} onClose={() => setAdding(null)} onPick={(b) => { setAdding(null); navigateAfterSheet('book/' + b.id); }} />

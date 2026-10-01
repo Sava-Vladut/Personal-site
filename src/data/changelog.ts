@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.22.0',
+    date: '2026-10-01',
+    changes: [
+      'Media now sits under its own drifting sky: letters over your books, music notes over your records',
+      'The sky takes its colours from how your books and music make you feel, and changes with the tab',
+      'Titles rise out of the clouds a letter at a time, and your shelf and record numbers count up in small frosted tiles',
+      'The Books / Music switch slides between tabs',
+      'Search moves behind a button, and filters and sort order share one row that scrolls sideways',
+      'Reading now and On repeat become rows of cards you swipe through',
+      'Smaller records, tapes and book spines, so more of your collection fits on screen',
+    ],
+  },
+  {
     version: '1.21.3',
     date: '2026-10-01',
     changes: [
