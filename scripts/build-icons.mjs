@@ -124,7 +124,8 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   arrow-up arrow-down float-left float-center float-right grip-vertical maximize
   bold italic strikethrough highlight heading list-numbers list-check blockquote code separator-horizontal book
   share copy-plus library-photo layout-grid-remove stack-pop books star bookmark quote chart-pie crop zoom-in zoom-out pin pinned-off layout-list
-  haze mist cloud-rain cloud-snow cloud-storm temperature sunrise map map-pin map-pins current-location home minus`.split(/\s+/);
+  haze mist cloud-rain cloud-snow cloud-storm temperature sunrise map map-pin map-pins current-location home minus
+  player-play player-pause external-link`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

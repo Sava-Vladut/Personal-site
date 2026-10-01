@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.19.0',
+    date: '2026-10-01',
+    changes: [
+      'Books stand on wooden shelves as spines, one shelf for each: in the colour of their cover, as thick as they are long, with the title down the spine',
+      'Each spine has a library sticker with its author’s first letters, gold dots for its rating, and a bookmark poking out of the ones you’re reading',
+      'A book’s page has a library card in its pocket: the day it joined your shelf, when you started and finished, and every note about it, stamped in ink',
+      'Tap a stamp to change its date, and write in the page you’re on',
+      'Songs and albums in a note are records in their sleeves, and playlists and podcasts are cassettes',
+      'Tap one to put it on: the record slides out and spins, or the tape’s reels turn, and Spotify’s player opens right there',
+      'Picking music shows the same records and tapes, and notes in the journal show a tiny record next to their song',
+    ],
+  },
+  {
     version: '1.18.0',
     date: '2026-09-30',
     changes: [

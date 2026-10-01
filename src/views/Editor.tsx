@@ -8,7 +8,7 @@ import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, isEmpty, saveEntry, toast, type Book, type Entry, type Music } from '../lib/store';
+import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, isEmpty, saveEntry, toast, type Book, type Entry } from '../lib/store';
 import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
@@ -19,11 +19,11 @@ import { Icon, NoteIcon } from '../components/icons';
 import { Markdown } from '../components/Markdown';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
 import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarget, type Side } from '../components/NoteMedia';
-import { Sheet } from '../components/Sheet';
-import { MusicEmbed, MusicRow, SpotifySheet } from '../components/SpotifySheet';
+import { MusicDeck } from '../components/music';
+import { SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | { music: Music };
+type Open = null | 'icon' | 'images' | 'spotify' | 'book';
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -654,7 +654,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       {draft.music.length > 0 && (
         <div class="tracks">
           {draft.music.map((m) => (
-            <MusicRow m={m} onClick={() => setOpen({ music: m })} end={<Icon name="brand-spotify" size={18} />} />
+            <MusicDeck key={m.kind + m.id} m={m} onRemove={() => update({ music: (latest.current ?? draft).music.filter((x) => !(x.kind === m.kind && x.id === m.id)) })} />
           ))}
         </div>
       )}
@@ -718,21 +718,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         onConnect={() => { flush(); connectSpotify(saved.current ? '#/note/' + draft.id : '#/note/new'); }}
         onAdd={(list) => update({ music: [...draft.music, ...list.filter((m) => !draft.music.some((x) => x.kind === m.kind && x.id === m.id))].slice(0, 20) })}
       />
-      <Sheet open={typeof open === 'object' && open !== null && 'music' in open} onClose={close} title="Music">
-        {typeof open === 'object' && open && 'music' in open && (
-          <div class="stack">
-            <MusicEmbed m={open.music} />
-            <div class="row gap-s">
-              <a class="btn btn-quiet grow" href={open.music.link} target="_blank" rel="noopener noreferrer">
-                <Icon name="brand-spotify" size={18} /> Open in Spotify
-              </a>
-              <button class="btn btn-quiet grow danger" onClick={() => { update({ music: draft.music.filter((x) => !(x.kind === open.music.kind && x.id === open.music.id)) }); close(); }}>
-                <Icon name="trash" size={18} /> Remove
-              </button>
-            </div>
-          </div>
-        )}
-      </Sheet>
     </div>
   );
 }

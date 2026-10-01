@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { byline, mentionsByBook, STATUS_LABEL } from '../lib/books';
+import { mentionsByBook, progressOf, STATUS_LABEL } from '../lib/books';
 import { navigate, navigateAfterSheet } from '../lib/router';
 import { BOOK_STATUSES, useBooks, useEntries, useReady, type Book, type BookStatus } from '../lib/store';
-import { BookCover, BookSheet, Stars } from '../components/books';
+import { BookCover, BookSheet, Shelf } from '../components/books';
 import { Icon } from '../components/icons';
 
 type Sort = 'recent' | 'title' | 'rating';
-
-/** Percent read, when the book's length and your page are both known. */
-export const progressOf = (b: Book) => (b.pages && b.page ? Math.min(100, Math.round((b.page / b.pages) * 100)) : null);
 
 export function Books({ query }: { query: URLSearchParams }) {
   const books = useBooks();
@@ -41,6 +38,13 @@ export function Books({ query }: { query: URLSearchParams }) {
     return list;
   }, [books, shelf, sort, q]);
 
+  // Everything at once stands on one shelf per status; books you're reading are already up top.
+  const grouped = shelf === 'all' && !q.trim();
+  const showReading = grouped && reading.length > 0;
+  const shelves: [BookStatus | 'all', Book[]][] = grouped
+    ? BOOK_STATUSES.filter((s) => !(s === 'reading' && showReading)).map((s): [BookStatus, Book[]] => [s, shown.filter((b) => b.status === s)]).filter(([, l]) => l.length > 0)
+    : shown.length ? [[shelf, shown]] : [];
+
   return (
     <div class="page">
       <header class="page-head">
@@ -58,7 +62,7 @@ export function Books({ query }: { query: URLSearchParams }) {
         </p>
       </header>
 
-      {reading.length > 0 && shelf === 'all' && !q.trim() && (
+      {showReading && (
         <section class="section reading-now">
           <h2 class="section-title">Reading now</h2>
           <div class="reading-list">
@@ -112,15 +116,12 @@ export function Books({ query }: { query: URLSearchParams }) {
       )}
       {!!books.length && !shown.length && <p class="empty-note center">No books match.</p>}
 
-      <div class="book-grid">
-        {shown.map((b) => (
-          <button class="book-tile" onClick={() => navigate('book/' + b.id)} title={[b.title, byline(b)].filter(Boolean).join(' — ')}>
-            <BookCover b={b} width={200} />
-            <span class="book-tile-title">{b.title.trim() || 'Untitled'}</span>
-            {b.rating > 0 ? <Stars value={b.rating} size={11} /> : <span class="book-tile-sub">{shelf === 'all' ? STATUS_LABEL[b.status] : b.authors}</span>}
-          </button>
-        ))}
-      </div>
+      {shelves.map(([s, list]) => (
+        <section class="shelf-group" key={s}>
+          {grouped && <h2 class="shelf-name">{STATUS_LABEL[s as BookStatus]} <span class="muted">{list.length}</span></h2>}
+          <Shelf books={list} />
+        </section>
+      ))}
 
       <BookSheet open={adding} onClose={() => setAdding(false)} onPick={(b) => { setAdding(false); navigateAfterSheet('book/' + b.id); }} />
     </div>

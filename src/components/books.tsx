@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
-import { byline, resolveMention, searchBooks, STATUS_LABEL, type FoundBook } from '../lib/books';
+import { byline, progressOf, resolveMention, searchBooks, STATUS_LABEL, type FoundBook } from '../lib/books';
+import { hashOf, isLight, useColor } from '../lib/colors';
 import { todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { blankBook, getBooks, saveBook, useBooks, type Book, type BookStatus } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import '../styles/objects.css';
 
 /** The book's cover, or a plain one with its title, tinted with the main feeling it left you with. */
 export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> & { emotions?: string[] }; width?: number }) {
@@ -79,6 +81,54 @@ export function BookRow({ b, onClick, end }: { b: Book; onClick: () => void; end
       </span>
       <span class="track-end">{end}</span>
     </button>
+  );
+}
+
+/* ---------- the shelf: books stand as spines ---------- */
+
+// cloth for books without a cover to take a colour from
+const CLOTH = ['#7a2e2e', '#1f3a5f', '#2f5d46', '#b8862b', '#e6dbc2', '#3a3836', '#2d6a6a', '#5b3a63', '#8a5a3c', '#a3473a'];
+
+/** "Ursula K. Le Guin, …" → "GUI": the first three letters of the first author's surname, like a library's call number. */
+const callNumber = (authors: string) =>
+  (authors.split(',')[0].trim().split(/\s+/).pop() ?? '').normalize('NFD').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+
+/** A book standing on the shelf: its spine in the cover's colour, as wide as it's long, with its title down it. */
+export function BookSpine({ b, k = 0 }: { b: Book; k?: number }) {
+  const h = hashOf(b.id);
+  const cloth = useColor(b.cover) ?? CLOTH[h % CLOTH.length];
+  const width = b.pages ? Math.min(42, Math.max(24, Math.round(15 + b.pages / 20))) : 26 + ((h >> 5) % 10);
+  const height = 158 + ((h >> 9) % 38);
+  const code = callNumber(b.authors);
+  const pct = progressOf(b);
+  const label = [b.title.trim() || 'Untitled', b.authors && `by ${b.authors}`, STATUS_LABEL[b.status], pct !== null && `${pct}% read`, b.rating && `${b.rating} of 5 stars`]
+    .filter(Boolean).join(', ');
+  return (
+    <button
+      class={`spine is-${b.status}${isLight(cloth) ? ' on-light' : ''}`}
+      style={{ '--w': `${width}px`, '--h': `${height}px`, '--cloth': cloth, '--k': k }}
+      onClick={() => navigate('book/' + b.id)}
+      aria-label={label}
+      title={[b.title, byline(b)].filter(Boolean).join(' — ')}
+    >
+      <span class="spine-band" />
+      {b.rating > 0 && <span class="spine-dots" aria-hidden="true">{Array.from({ length: b.rating }, () => <i />)}</span>}
+      <span class="spine-title" aria-hidden="true">{b.title.trim() || 'Untitled'}</span>
+      <span class="spine-band" />
+      {code && <span class="spine-label" aria-hidden="true">{code}</span>}
+      {b.status === 'reading' && <span class="spine-mark" aria-hidden="true" />}
+    </button>
+  );
+}
+
+/** One shelf of books, as many planks as it takes. */
+export function Shelf({ books }: { books: Book[] }) {
+  return (
+    <div class="shelf">
+      {books.map((b, i) => (
+        <span class="shelf-slot" key={b.id}><BookSpine b={b} k={i} /></span>
+      ))}
+    </div>
   );
 }
 

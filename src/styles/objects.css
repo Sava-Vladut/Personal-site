@@ -1,0 +1,228 @@
+/* ============================================================
+   Things: books on a shelf, the library card in the back of one, records and tapes
+   ============================================================ */
+
+/* ---------- the shelf: a bookcase of wooden planks, each book a spine in its cover's colour ---------- */
+
+.shelf-group { margin-top: 24px; }
+.shelf-name { font-size: 15px; font-weight: 600; margin: 0 2px 10px; }
+.shelf-name .muted { font-weight: 500; margin-left: 4px; }
+
+.shelf {
+  --row: 226px;      /* a book's room plus the plank under it */
+  --plank: 13px;
+  --wood: #b78857; --wood-top: #d4a876; --wood-edge: #8b6239;
+  --wall: color-mix(in oklab, var(--surface-2) 88%, #b78857);
+  display: flex; flex-wrap: wrap; align-items: flex-end; align-content: flex-start;
+  padding: 0 24px 0 10px;
+  border: 9px solid var(--wood); border-bottom: 0; border-radius: 7px 7px 4px 4px;
+  /* each row ends on a plank: a lit top edge, its face, a dark lip; the plank above casts a little shadow on the wall */
+  background:
+    repeating-linear-gradient(to bottom,
+      rgb(0 0 0 / 0.09) 0, transparent 12px, transparent calc(var(--row) - var(--plank)),
+      var(--wood-top) calc(var(--row) - var(--plank)), var(--wood-top) calc(var(--row) - var(--plank) + 3px),
+      var(--wood) calc(var(--row) - var(--plank) + 3px), var(--wood) calc(var(--row) - 2px),
+      var(--wood-edge) calc(var(--row) - 2px), var(--wood-edge) var(--row)),
+    var(--wall);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.08), 0 10px 22px -16px rgb(0 0 0 / 0.5);
+}
+:root[data-theme='dark'] .shelf { --wood: #6a4c33; --wood-top: #81603f; --wood-edge: #4d3524; --wall: #232220; }
+.shelf-slot { height: var(--row); padding-bottom: var(--plank); display: flex; align-items: flex-end; margin-right: 1px; }
+
+.spine {
+  --gold: #e6c67f;
+  position: relative; width: var(--w); height: var(--h);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 6px;
+  border-radius: 3px 3px 1px 1px; color: #f6eedd;
+  /* a rounded spine: shadowed at both edges, catching the light just left of centre */
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.32), rgb(255 255 255 / 0.05) 14%, rgb(255 255 255 / 0.17) 28%, rgb(255 255 255 / 0) 54%, rgb(0 0 0 / 0.1) 80%, rgb(0 0 0 / 0.36)),
+    var(--cloth);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 1px 0 0 rgb(0 0 0 / 0.22);
+  transition: translate 0.35s var(--spring), filter 0.2s;
+  animation: spine-in 0.55s var(--spring) calc(min(var(--k), 30) * 20ms) backwards;
+}
+.spine.on-light { --gold: #8d6b2c; color: #2b241b; }
+.spine.is-dnf { filter: saturate(0.5) brightness(0.94); } /* left in the sun */
+@media (hover: hover) { .spine:hover { translate: 0 -8px; } }
+.spine:active { translate: 0 -14px; transition-duration: 0.12s; }
+.spine:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@keyframes spine-in { from { translate: 0 16px; opacity: 0; } }
+
+.spine-band { flex: none; width: 100%; height: 6px; border-block: 1.5px solid var(--gold); opacity: 0.8; }
+.spine-title {
+  flex: 1; min-height: 0; max-width: 100%; writing-mode: vertical-rl;
+  font: 600 12px/1.1 var(--serif); letter-spacing: 0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.spine-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: calc(100% - 6px); }
+.spine-dots i { display: block; width: 3px; height: 3px; border-radius: 99px; background: var(--gold); }
+/* the library's call-number sticker */
+.spine-label {
+  flex: none; width: calc(100% - 8px); max-width: 30px; padding: 3px 0 2px; border-radius: 2px;
+  background: #fbf7ec; color: #2b251d; box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.25);
+  font: 700 7.5px/1 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.03em; text-align: center; overflow: hidden;
+}
+/* a paper bookmark sticking out of the top of the book you're reading */
+.spine-mark {
+  position: absolute; top: -10px; right: 18%; width: 7px; height: 11px; border-radius: 1px 1px 0 0;
+  background: var(--accent, var(--emo-anger)); box-shadow: inset -1px 0 0 rgb(0 0 0 / 0.15);
+}
+
+/* ---------- the library card, tucked into its pocket ---------- */
+
+.due { position: relative; margin-top: 20px; isolation: isolate; }
+.due-card {
+  --ink-blue: #36428c; --rule: rgb(70 100 165 / 0.32); --margin: rgb(196 60 50 / 0.55);
+  position: relative; z-index: 1; margin: 0 16px; padding: 14px 16px 62px; border-radius: 3px;
+  background: #f7f0dc; color: #2b2620;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 10px 24px -14px rgb(0 0 0 / 0.4);
+  font-family: 'Courier New', Courier, ui-monospace, monospace;
+  animation: card-out 0.8s var(--spring) 0.15s backwards;
+}
+@keyframes card-out { from { translate: 0 54px; } }
+.due-head { display: flex; justify-content: space-between; gap: 10px; font: 700 10.5px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: #9a3127; }
+.due-book { display: grid; gap: 3px; margin: 12px 0 10px; padding-bottom: 8px; border-bottom: 1.5px solid #2b2620; }
+.due-title { font-weight: 700; font-size: 15.5px; line-height: 1.25; }
+.due-author { font-size: 13px; color: #5c5349; }
+.due-cols, .due-rows li { display: grid; grid-template-columns: 124px minmax(0, 1fr); align-items: center; }
+.due-cols { padding-bottom: 5px; border-bottom: 1px solid var(--rule); font: 700 9.5px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: #6b6156; }
+.due-cols span + span, .due-what { padding-left: 10px; }
+.due-rows { list-style: none; margin: 0; padding: 0; }
+.due-rows li { min-height: 36px; border-bottom: 1px solid var(--rule); }
+.due-rows li > :first-child { align-self: stretch; display: flex; align-items: center; border-right: 1px solid var(--margin); }
+.due-date { min-width: 0; }
+.due-rows li.due-pages { grid-template-columns: minmax(0, 1fr) auto; }
+.due-rows li.due-pages > :first-child { border-right: 0; padding-left: 0; }
+.due-what { min-width: 0; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.due-note { color: inherit; text-decoration: underline dotted 1px; text-underline-offset: 3px; }
+.due-hint .due-what { font-weight: 400; font-style: italic; font-size: 12.5px; color: #6b6156; white-space: normal; line-height: 1.3; padding-block: 6px; }
+.due-input {
+  width: 54px; margin: 0 6px; padding: 0 2px; border: 0; border-bottom: 1.5px dotted #5c5349; border-radius: 0;
+  background: none; font: inherit; color: var(--ink-blue); text-align: center; -moz-appearance: textfield; appearance: textfield;
+}
+.due-input::-webkit-inner-spin-button, .due-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.due-input:focus { outline: none; border-bottom-style: solid; }
+
+.stamp {
+  display: inline-block; padding: 2px 5px 1px; border: 1.5px solid currentColor; border-radius: 3px;
+  color: var(--ink-blue); opacity: 0.86; mix-blend-mode: multiply;
+  font: 700 12px/1.15 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.05em; white-space: nowrap;
+}
+.stamp.red { color: #b3342a; }
+.stamp.faint { opacity: 0.62; }
+.stamp-field { position: relative; cursor: pointer; }
+.stamp-field input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.stamp-field.is-empty .stamp { border-style: dashed; opacity: 0.45; }
+.stamp-field:focus-within .stamp { outline: 2px solid var(--ink-blue); outline-offset: 2px; }
+
+.due-pocket {
+  position: relative; z-index: 2; margin-top: -60px; height: 76px; border-radius: 3px 3px 5px 5px;
+  display: grid; align-content: center; justify-items: center; gap: 4px; padding-top: 8px;
+  background: linear-gradient(#e6cf9f, #dcc28e); color: #6b4f2a;
+  /* the thumb cut at the top of the pocket */
+  -webkit-mask: radial-gradient(34px 18px at 50% 0, transparent 97%, #000 100%);
+  mask: radial-gradient(34px 18px at 50% 0, transparent 97%, #000 100%);
+  font: 700 11px/1 var(--sans); letter-spacing: 0.24em; text-transform: uppercase;
+}
+.due-pocket small { font: 600 11.5px/1.2 'Courier New', Courier, monospace; letter-spacing: 0.02em; text-transform: none; }
+:root[data-theme='dark'] :is(.due-card, .due-pocket) { filter: brightness(0.8); }
+
+/* ---------- a record in its sleeve ---------- */
+
+.record { --s: 64px; position: relative; flex: none; display: block; width: calc(var(--s) * 1.4); height: var(--s); }
+.record-sleeve {
+  position: absolute; z-index: 1; left: 0; top: 0; width: var(--s); height: var(--s); border-radius: 3px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; background: var(--surface-3); color: var(--ink-3);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 3px 0 7px -3px rgb(0 0 0 / 0.4);
+}
+.record-cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+.record-disc {
+  position: absolute; left: calc(var(--s) * 0.03); top: calc(var(--s) * 0.03); width: calc(var(--s) * 0.94); height: calc(var(--s) * 0.94);
+  border-radius: 50%; background: #121212; box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+  translate: calc(var(--s) * 0.3) 0; transition: translate 0.7s var(--spring);
+}
+/* the light on the vinyl stays put while it turns */
+.record-disc::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 25deg, transparent 0 7%, rgb(255 255 255 / 0.16) 12%, transparent 18% 50%, rgb(255 255 255 / 0.12) 57%, transparent 63%);
+}
+.record-spin {
+  position: absolute; inset: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle, transparent 0 40%, rgb(255 255 255 / 0.06) 41%, transparent 43%), repeating-radial-gradient(circle, #141414 0 1px, #252525 1.4px 2.1px);
+}
+.record-label { position: relative; width: 38%; height: 38%; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5); }
+.record-label::after { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; translate: -50% -50%; border-radius: 50%; background: #0c0c0c; }
+.record-art { display: block; width: 100%; height: 100%; object-fit: cover; }
+.no-art { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, #e0634a, #f0b04c); }
+
+/* ---------- a cassette ---------- */
+
+.cassette {
+  --s: 64px; position: relative; flex: none; display: block;
+  width: calc(var(--s) * 1.4); height: calc(var(--s) * 0.9); margin-block: calc(var(--s) * 0.05);
+  padding: calc(var(--s) * 0.07) calc(var(--s) * 0.08) 0; border-radius: calc(var(--s) * 0.08);
+  background:
+    radial-gradient(circle at 5% 9%, #8d8b93 0 1.2px, transparent 1.8px), radial-gradient(circle at 95% 9%, #8d8b93 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 5% 91%, #8d8b93 0 1.2px, transparent 1.8px), radial-gradient(circle at 95% 91%, #8d8b93 0 1.2px, transparent 1.8px),
+    linear-gradient(180deg, #47464d, #2a292e);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 3px rgb(0 0 0 / 0.35);
+}
+.cassette-label {
+  position: relative; display: block; height: 68%; border-radius: calc(var(--s) * 0.04); overflow: hidden;
+  background: linear-gradient(to bottom, #f4ecd8 0 33%, #e8623f 33% 40%, #f4ecd8 40% 44%, #2e8b8b 44% 51%, #f4ecd8 51%);
+}
+.cassette-art { position: absolute; left: 5%; top: 6%; width: calc(var(--s) * 0.17); height: calc(var(--s) * 0.17); border-radius: 2px; object-fit: cover; }
+.cassette-lines { position: absolute; left: calc(5% + var(--s) * 0.22); right: 7%; top: 8%; height: 20%; background: repeating-linear-gradient(to bottom, transparent 0 38%, rgb(0 0 0 / 0.2) 38% 52%); }
+.cassette-window {
+  position: absolute; left: 50%; bottom: 9%; translate: -50% 0; width: 64%; height: 32%;
+  display: flex; align-items: center; justify-content: space-between; gap: 3%; padding: 0 6%;
+  border-radius: 999px; background: #1d1c20; box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.7);
+}
+.cassette-tape { flex: 1; height: 42%; border-radius: 2px; background: linear-gradient(#5d3e2c, #392418); }
+.reel {
+  flex: none; width: calc(var(--s) * 0.17); height: calc(var(--s) * 0.17); border-radius: 50%;
+  background: radial-gradient(circle, #1d1c20 0 24%, transparent 26%), conic-gradient(#f1ece2 0 12%, #98938a 12% 33%, #f1ece2 33% 45%, #98938a 45% 66%, #f1ece2 66% 78%, #98938a 78%);
+}
+.cassette-foot {
+  position: absolute; left: 24%; right: 24%; bottom: 0; height: 18%;
+  background: #222126; clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%);
+}
+
+/* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind */
+.record { transition: width 0.7s var(--spring); }
+.deck.is-on .record, .track[aria-pressed='true'] .record { width: calc(var(--s) * 1.74); }
+.deck.is-on .record-disc, .track[aria-pressed='true'] .record-disc { translate: calc(var(--s) * 0.76) 0; }
+.deck.is-on :is(.record-spin, .reel), .track[aria-pressed='true'] :is(.record-spin, .reel) { animation: turn 1.8s linear infinite; }
+.deck.is-on .reel, .track[aria-pressed='true'] .reel { animation-duration: 1.3s; }
+@media (hover: hover) { .deck-main:hover .record-disc, .track:hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
+@keyframes turn { to { rotate: 360deg; } }
+
+/* ---------- music in a note ---------- */
+
+.deck { border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.deck-main { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 12px 10px 10px; text-align: left; border-radius: inherit; }
+.deck-main .track-title { font: 600 16px/1.3 var(--serif); }
+.deck-button {
+  flex: none; width: 38px; height: 38px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--ink); transition: background-color 0.2s, color 0.2s;
+}
+.deck.is-on .deck-button { background: var(--ink); color: var(--on-ink); }
+.deck-player { display: grid; gap: 10px; padding: 0 10px 10px; animation: fade-in 0.3s ease-out; }
+
+/* in the music picker */
+.track-thing { flex: none; display: flex; align-items: center; }
+
+/* tiny ones, in a line of text */
+.mini-record {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%;
+  background: repeating-radial-gradient(circle, #151515 0 0.7px, #2c2c2c 1px 1.5px);
+}
+.mini-record img { width: 6px; height: 6px; border-radius: 50%; object-fit: cover; }
+.mini-tape { flex: none; display: inline-flex; align-items: center; justify-content: space-around; width: 18px; height: 12px; padding: 0 2px; border-radius: 2px; background: #3d3c42; }
+.mini-tape i { width: 4px; height: 4px; border-radius: 50%; background: #efe9dc; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spine, .due-card { animation: none; }
+  .record-spin, .reel { animation: none !important; }
+}

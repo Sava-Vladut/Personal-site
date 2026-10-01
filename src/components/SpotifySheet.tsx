@@ -1,43 +1,29 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
-  embedHeight, embedUrl, KIND_LABEL, listPlaylistItems, listPlaylists, nowPlaying, resolveSpotify, searchSpotify, spotifyStatus,
-  type NowPlaying, type Playlist, type SpotifyStatus,
+  listPlaylistItems, listPlaylists, nowPlaying, resolveSpotify, searchSpotify, spotifyStatus, type NowPlaying, type Playlist, type SpotifyStatus,
 } from '../lib/spotify';
 import type { Music } from '../lib/store';
 import { ConnectSetup } from './ConnectSetup';
 import { Icon } from './icons';
+import { isTape, MusicEmbed, MusicThing, musicSub } from './music';
 import { Sheet } from './Sheet';
 
 type Tab = 'now' | 'search' | 'playlists';
 const isLink = (q: string) => /^\s*(https?:\/\/|spotify:|(open\.)?spotify\.(com|link|app\.link)\/)/i.test(q);
 const same = (a: Music, b: Music) => a.kind === b.kind && a.id === b.id;
 
-/** One song/album/playlist row: cover, title, artists. */
+/** One song/album/playlist row: the record or cassette it comes on, title, artists. Picked, the record slides out and spins. */
 export function MusicRow({ m, pressed, onClick, end }: { m: Music; pressed?: boolean; onClick: () => void; end?: ComponentChildren }) {
   return (
-    <button class="track" aria-pressed={pressed} onClick={onClick}>
-      <span class="track-art">{m.image ? <img src={m.image} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <Icon name="music" size={20} />}</span>
+    <button class={`track${isTape(m) ? ' is-tape' : ''}`} aria-pressed={pressed} onClick={onClick}>
+      <span class="track-thing"><MusicThing m={m} size={46} /></span>
       <span class="track-main">
         <span class="track-title">{m.title}</span>
-        <span class="track-sub">{m.kind === 'track' ? m.sub ?? 'Song' : KIND_LABEL[m.kind] + (m.sub ? ` · ${m.sub}` : '')}</span>
+        <span class="track-sub">{musicSub(m)}</span>
       </span>
       <span class="track-end">{end}</span>
     </button>
-  );
-}
-
-/** Spotify's own player for a song, album, playlist or podcast. */
-export function MusicEmbed({ m }: { m: Music }) {
-  return (
-    <iframe
-      class="embed"
-      src={embedUrl(m)}
-      height={embedHeight(m)}
-      title={`${m.title} on Spotify`}
-      loading="lazy"
-      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-    />
   );
 }
 

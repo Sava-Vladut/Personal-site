@@ -18,6 +18,7 @@ import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
 import { WeatherMark, weatherOf } from '../components/weather';
+import { MiniMusic } from '../components/music';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 
@@ -318,7 +319,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
             {books.map((b) => <BookChip b={b} />)}
             {e.music.length > 0 && (
               <span class="note-music" title={e.music.map((m) => m.title).join(', ')}>
-                <Icon name="music" size={14} /> <span>{e.music[0].title}</span>{e.music.length > 1 && ` +${e.music.length - 1}`}
+                <MiniMusic m={e.music[0]} /> <span>{e.music[0].title}</span>{e.music.length > 1 && ` +${e.music.length - 1}`}
               </span>
             )}
             {e.place?.name && (

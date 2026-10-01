@@ -1,7 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
-import { mentionsByBook, renameMentions, STATUS_LABEL } from '../lib/books';
-import { dayLabel, todayKey } from '../lib/dates';
+import { mentionsByBook, progressOf, renameMentions, STATUS_LABEL } from '../lib/books';
+import { plainText } from '../lib/body';
+import { hashOf } from '../lib/colors';
+import { dayLabel, keyOf, todayKey } from '../lib/dates';
+import { previewOf } from '../lib/markdown';
 import { goBack, navigate } from '../lib/router';
 import { BOOK_STATUSES, MAX_PERSON_EMOTIONS, deleteBook, getBooks, getEntries, saveBook, saveEntry, toast, useBooks, useEntries, type Book, type BookStatus, type Entry } from '../lib/store';
 import { BookCover, Stars } from '../components/books';
@@ -10,7 +13,6 @@ import { Icon } from '../components/icons';
 import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
-import { progressOf } from './Books';
 
 type Open = null | 'emotion' | 'from';
 
@@ -23,6 +25,108 @@ function useAutosize(value: string) {
     el.style.height = el.scrollHeight + 'px';
   }, [value]);
   return ref;
+}
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+/** '2026-09-30' → '30 SEP 2026', as a date stamp prints it */
+const stamped = (k: string) => `${k.slice(8)} ${MONTHS[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
+
+/** A date stamped on the card. Tapping it opens the browser's own date picker, which sits invisibly on top. */
+function Stamp({ value, onChange, label, min, red, tilt }: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  label: string;
+  min?: string | null;
+  red?: boolean;
+  tilt: number;
+}) {
+  return (
+    <label class={`stamp-field${value ? '' : ' is-empty'}`}>
+      <span class={`stamp${red ? ' red' : ''}`} style={{ rotate: `${tilt}deg` }}>{value ? stamped(value) : 'Stamp it'}</span>
+      <input
+        type="date"
+        value={value ?? ''}
+        min={min ?? undefined}
+        max={todayKey()}
+        aria-label={label}
+        onClick={(e) => { try { e.currentTarget.showPicker(); } catch {} }}
+        onInput={(e) => onChange(e.currentTarget.value || null)}
+      />
+    </label>
+  );
+}
+
+/**
+ * The library card in the back of the book: when it joined your shelf, when you started and finished it, and the day
+ * of every note about it, stamped in ink. A book you're reading has its page written in.
+ */
+function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch: Partial<Book>) => void }) {
+  const tilt = (n: number) => ((hashOf(b.id + n) % 9) - 4) * 0.45;
+  const done = b.status === 'read' || b.status === 'dnf';
+  const pct = progressOf(b);
+  const written = [...notes].sort((x, y) => (x.date === y.date ? x.time - y.time : x.date < y.date ? -1 : 1));
+  const rows: preact.JSX.Element[] = [
+    <li>
+      <span class="due-date"><span class="stamp faint" style={{ rotate: `${tilt(0)}deg` }}>{stamped(keyOf(new Date(b.created)))}</span></span>
+      <span class="due-what">On your shelf</span>
+    </li>,
+  ];
+  if (b.status !== 'want')
+    rows.push(
+      <li>
+        <Stamp value={b.started} label="Started" tilt={tilt(1)} onChange={(started) => update({ started })} />
+        <span class="due-what">Started</span>
+      </li>,
+    );
+  written.forEach((e, i) => {
+    const name = previewOf(plainText(e.text), e.title, 60).heading || (e.kind === 'checkin' ? 'Check-in' : 'A note');
+    rows.push(
+      <li>
+        <span class="due-date"><span class="stamp faint" style={{ rotate: `${tilt(i + 2)}deg` }}>{stamped(e.date)}</span></span>
+        <a class="due-what due-note" href={'#/note/' + e.id} onClick={(ev) => { ev.preventDefault(); navigate('note/' + e.id); }}>{name}</a>
+      </li>,
+    );
+  });
+  if (done)
+    rows.push(
+      <li>
+        <Stamp red value={b.finished} min={b.started} label={b.status === 'dnf' ? 'Stopped' : 'Finished'} tilt={tilt(99)} onChange={(finished) => update({ finished })} />
+        <span class="due-what">{b.status === 'dnf' ? 'Put down' : 'Finished'}</span>
+      </li>,
+    );
+  if (b.status === 'reading')
+    rows.push(
+      <li class="due-pages">
+        <span class="due-what">
+          On page
+          <input class="due-input" type="number" inputMode="numeric" min={0} value={b.page ?? ''} onInput={(e) => update({ page: num(e.currentTarget.value, 100_000) })} aria-label="Current page" />
+          of
+          <input class="due-input" type="number" inputMode="numeric" min={1} value={b.pages ?? ''} onInput={(e) => update({ pages: num(e.currentTarget.value, 100_000) })} aria-label="Pages" />
+        </span>
+        {pct !== null && <span class="stamp" style={{ rotate: `${tilt(98)}deg` }}>{pct}%</span>}
+      </li>,
+    );
+  return (
+    <div class="due">
+      <div class="due-card">
+        <div class="due-head"><span>My Mind Library</span><span>{STATUS_LABEL[b.status]}</span></div>
+        <div class="due-book">
+          <span class="due-title">{b.title.trim() || 'Untitled'}</span>
+          {b.authors && <span class="due-author">{b.authors}</span>}
+        </div>
+        <div class="due-cols" aria-hidden="true"><span>Date</span><span>{b.status === 'want' ? 'Wanted' : 'Read'}</span></div>
+        <ol class="due-rows">
+          {rows}
+          {b.status === 'want' && <li class="due-hint"><span /><span class="due-what">Move it to Reading to stamp the day you start.</span></li>}
+          {Array.from({ length: Math.max(2, 6 - rows.length - (b.status === 'want' ? 1 : 0)) }, () => <li class="blank" aria-hidden="true" />)}
+        </ol>
+      </div>
+      <div class="due-pocket" aria-hidden="true">
+        <span>Date due</span>
+        <small>Yours to keep · no fines</small>
+      </div>
+    </div>
+  );
 }
 
 const num = (v: string, max: number) => {
@@ -143,7 +247,6 @@ export function BookView({ id }: { id: string }) {
   };
 
   const from = draft.from ? byId.get(draft.from) : undefined;
-  const pct = progressOf(draft);
   const main = draft.emotions[0] ? coreOf(draft.emotions[0]).id : null;
 
   return (
@@ -183,33 +286,7 @@ export function BookView({ id }: { id: string }) {
         ))}
       </div>
 
-      {draft.status !== 'want' && (
-        <div class="card list book-dates">
-          <label class="list-row">
-            <span>Started</span>
-            <input class="input input-s" type="date" value={draft.started ?? ''} max={todayKey()} onInput={(e) => update({ started: e.currentTarget.value || null })} />
-          </label>
-          {draft.status !== 'reading' && (
-            <label class="list-row">
-              <span>{draft.status === 'dnf' ? 'Stopped' : 'Finished'}</span>
-              <input class="input input-s" type="date" value={draft.finished ?? ''} min={draft.started ?? undefined} max={todayKey()} onInput={(e) => update({ finished: e.currentTarget.value || null })} />
-            </label>
-          )}
-          {draft.status === 'reading' && (
-            <div class="list-row book-progress">
-              <span>Page</span>
-              <span class="row gap-s">
-                <input class="input input-s page-input" type="number" inputMode="numeric" min={0} value={draft.page ?? ''} onInput={(e) => update({ page: num(e.currentTarget.value, 100_000) })} aria-label="Current page" />
-                <span class="muted">of</span>
-                <input class="input input-s page-input" type="number" inputMode="numeric" min={1} value={draft.pages ?? ''} onInput={(e) => update({ pages: num(e.currentTarget.value, 100_000) })} aria-label="Pages" />
-              </span>
-            </div>
-          )}
-          {draft.status === 'reading' && pct !== null && (
-            <div class="progress big" role="img" aria-label={`${pct}% read`}><i style={{ width: pct + '%' }} /></div>
-          )}
-        </div>
-      )}
+      <DueCard b={draft} notes={notes} update={update} />
 
       <div class="eyebrow person-label">How it made you feel</div>
       <div class="meta person-meta">
