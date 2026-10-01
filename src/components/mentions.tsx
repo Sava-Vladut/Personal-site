@@ -297,21 +297,31 @@ export function MentionStrip({ items, active, q, canAdd, onPick, onAdd, listId =
   );
 }
 
-/** A little burst of colour where a new tag lands. */
-export function burst(rect: DOMRect, color = 'var(--ink)') {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !rect.width || !rect.height || ![rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)) return;
-  const viewport = visibleViewport();
-  const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
-  if (x < viewport.left || x > viewport.left + viewport.width || y < viewport.top || y > viewport.top + viewport.height) return;
-  const el = document.createElement('span');
-  el.className = 'mention-burst';
-  el.style.cssText = `left:${rect.left + rect.width / 2}px;top:${rect.top + rect.height / 2}px;--c:${color};--w:${rect.width}px;--h:${rect.height}px`;
-  for (let i = 0; i < 10; i++) {
-    const dot = document.createElement('i');
-    dot.style.setProperty('--a', `${i * 36 + Math.random() * 20}deg`);
-    dot.style.setProperty('--d', `${18 + Math.random() * 16}px`);
-    el.append(dot);
+/** Keep the burst in the note's coordinate space, including during iOS keyboard panning. */
+export function burst(range: Range, host: HTMLElement, color = 'var(--ink)') {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !host.isConnected) return;
+  const origin = host.getBoundingClientRect();
+  if (![origin.left, origin.top].every(Number.isFinite)) return;
+  // A union box can span empty space between wrapped lines. Animate each text
+  // fragment, subtracting the host measured in the same frame and coordinate space.
+  // Let the browser clip it with the note instead of mixing visual-viewport
+  // offsets into these measurements (Safari can report a different origin).
+  for (const rect of range.getClientRects()) {
+    if (rect.width <= 0 || rect.height <= 0 || ![rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)) continue;
+    const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+    const el = document.createElement('span');
+    el.className = 'mention-burst';
+    el.setAttribute('aria-hidden', 'true');
+    const left = x - origin.left - host.clientLeft + host.scrollLeft;
+    const top = y - origin.top - host.clientTop + host.scrollTop;
+    el.style.cssText = `left:${left}px;top:${top}px;--c:${color};--w:${rect.width}px;--h:${rect.height}px`;
+    for (let i = 0; i < 10; i++) {
+      const dot = document.createElement('i');
+      dot.style.setProperty('--a', `${i * 36 + Math.random() * 20}deg`);
+      dot.style.setProperty('--d', `${18 + Math.random() * 16}px`);
+      el.append(dot);
+    }
+    host.append(el);
+    setTimeout(() => el.remove(), 900);
   }
-  document.body.append(el);
-  setTimeout(() => el.remove(), 900);
 }

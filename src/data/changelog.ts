@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.21.3',
+    date: '2026-10-01',
+    changes: [
+      'Keep tag animations aligned with the text on iOS when the keyboard shifts the page',
+      'Place tag bursts on each line when a tag wraps, instead of between the lines',
+    ],
+  },
+  {
     version: '1.21.2',
     date: '2026-10-01',
     changes: [

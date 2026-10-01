@@ -102,7 +102,8 @@
 
 /* ---------- writing: a new tag lands with a ring and a burst of dots ---------- */
 
-.mention-burst { position: fixed; z-index: 90; width: 0; height: 0; pointer-events: none; }
+/* The positioned note body is the anchor; page and keyboard scrolling move both together. */
+.mention-burst { position: absolute; z-index: 90; width: 0; height: 0; pointer-events: none; }
 .mention-burst::before {
   content: ''; position: absolute; left: calc(var(--w) / -2 - 5px); top: calc(var(--h) / -2 - 3px);
   width: calc(var(--w) + 10px); height: calc(var(--h) + 6px); border-radius: 999px; border: 2px solid var(--c);

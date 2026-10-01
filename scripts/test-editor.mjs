@@ -597,6 +597,44 @@ test('tagging: selecting a person restores focus, inserts once, and attaches the
   assert.deepEqual(Array.from(h.entries.get('checkin-new').people), [p.id]);
 });
 
+test('tagging: the animation measures the inserted text after rendering and anchors to the note body', async () => {
+  const calls = [], measured = [];
+  const range = { getClientRects: () => [] };
+  const p = { ...person, emotions: [] };
+  const { h, box, tree, strip } = mentionEditor('@An', { people: [p], modules: {
+    '/components/mentions': { MentionStrip() {}, burst: (...args) => calls.push(args) },
+  } });
+  const host = { isConnected: true };
+  find(tree, n => n.props?.class?.startsWith('note-body')).props.ref.current = host;
+  box.el.isConnected = true;
+  box.range = (start, end) => { measured.push([start, end]); return range; };
+  await strip.props.onPick({ kind: 'person', item: p });
+  assert.equal(calls.length, 0, 'measure after the inserted text has rendered');
+  h.frames();
+  assert.deepEqual(measured, [[0, 6]]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], range, 'pass the range rather than its union box');
+  assert.equal(calls[0][1], host);
+});
+
+test('tagging: a pending animation does not run after the note leaves or its inserted text changes', async () => {
+  for (const reason of ['detached', 'unmounted', 'changed']) {
+    const calls = [];
+    const p = { ...person, emotions: [] };
+    const { h, box, tree, strip } = mentionEditor('@An', { people: [p], modules: {
+      '/components/mentions': { MentionStrip() {}, burst: (...args) => calls.push(args) },
+    } });
+    find(tree, n => n.props?.class?.startsWith('note-body')).props.ref.current = { isConnected: true };
+    box.el.isConnected = true;
+    await strip.props.onPick({ kind: 'person', item: p });
+    if (reason === 'detached') box.el.isConnected = false;
+    if (reason === 'unmounted') h.unmount();
+    if (reason === 'changed') box.value = 'Replaced before paint';
+    h.frames();
+    assert.equal(calls.length, 0, reason);
+  }
+});
+
 test('tagging: a deleted suggestion never creates an attachment to a missing person', async () => {
   const p = { ...person, emotions: [] };
   const { h, box, strip } = mentionEditor('@An', { people: [p] });

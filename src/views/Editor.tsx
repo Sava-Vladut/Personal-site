@@ -778,8 +778,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     update({ text: serializeBody(b), ...(person && !d.people.includes(person.id) ? { people: [...d.people, person.id] } : {}) });
     setMentionState(null);
     requestAnimationFrame(() => {
-      if (alive.current && areas.current[m.seg] === el && box.value.slice(m.start, m.start + token.length) === token)
-        burst(box.range(m.start, m.start + token.length).getBoundingClientRect(), color);
+      const host = bodyRef.current;
+      if (alive.current && host && el.isConnected && areas.current[m.seg] === el && box.value.slice(m.start, m.start + token.length) === token)
+        burst(box.range(m.start, m.start + token.length), host, color);
     });
   };
 
