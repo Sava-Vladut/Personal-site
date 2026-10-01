@@ -189,13 +189,15 @@
   background: #222126; clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%);
 }
 
-/* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind */
+/* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind; on repeat, slowly */
 .record { transition: width 0.7s var(--spring); }
-.deck.is-on .record, .track[aria-pressed='true'] .record { width: calc(var(--s) * 1.74); }
-.deck.is-on .record-disc, .track[aria-pressed='true'] .record-disc { translate: calc(var(--s) * 0.76) 0; }
-.deck.is-on :is(.record-spin, .reel), .track[aria-pressed='true'] :is(.record-spin, .reel) { animation: turn 1.8s linear infinite; }
-.deck.is-on .reel, .track[aria-pressed='true'] .reel { animation-duration: 1.3s; }
-@media (hover: hover) { .deck-main:hover .record-disc, .track:hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
+/* a hover pulls the record out a little; once it's on, it's all the way out */
+@media (hover: hover) { :is(.deck-main, .track, .crate-item, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
+:is(.is-on, .is-repeat, .track[aria-pressed='true']) .record { width: calc(var(--s) * 1.74); }
+:is(.is-on, .is-repeat, .track[aria-pressed='true']) .record-disc { translate: calc(var(--s) * 0.76) 0; }
+:is(.is-on, .track[aria-pressed='true']) :is(.record-spin, .reel) { animation: turn 1.8s linear infinite; }
+:is(.is-on, .track[aria-pressed='true']) .reel { animation-duration: 1.3s; }
+.is-repeat :is(.record-spin, .reel) { animation: turn 6s linear infinite; }
 @keyframes turn { to { rotate: 360deg; } }
 
 /* ---------- music in a note ---------- */
@@ -222,7 +224,53 @@
 .mini-tape { flex: none; display: inline-flex; align-items: center; justify-content: space-around; width: 18px; height: 12px; padding: 0 2px; border-radius: 2px; background: #3d3c42; }
 .mini-tape i { width: 4px; height: 4px; border-radius: 50%; background: #efe9dc; }
 
+/* ---------- the record collection: cubbies in a wooden shelf, a record or tape standing face out in each ---------- */
+
+.media-tabs { margin-bottom: 4px; }
+.media-panel { animation: fade-in 0.25s ease-out; }
+
+.crate {
+  --wood: #b78857; --wall: color-mix(in oklab, var(--surface-2) 88%, #b78857);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; padding: 8px;
+  border-radius: 8px; background: linear-gradient(180deg, #c49566, var(--wood));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 10px 22px -16px rgb(0 0 0 / 0.5);
+}
+:root[data-theme='dark'] .crate { --wood: #6a4c33; --wall: #232220; background: linear-gradient(180deg, #7a5a3e, var(--wood)); }
+.crate-item {
+  display: grid; justify-items: start; align-content: start; gap: 3px; min-width: 0; padding: 14px 10px 10px;
+  text-align: left; border-radius: 3px; background: var(--wall); box-shadow: inset 0 3px 8px rgb(0 0 0 / 0.14);
+  animation: spine-in 0.5s var(--spring) calc(min(var(--k), 20) * 30ms) backwards;
+}
+.crate-item :is(.record, .cassette) { --s: 96px; margin-bottom: 8px; }
+.crate.is-tapes .crate-item { justify-items: center; text-align: center; }
+.crate-title { max-width: 100%; font: 600 14.5px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.crate-sub { max-width: 100%; font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crate-item:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+.repeat-list { display: grid; gap: 8px; }
+.repeat-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 14px 10px 10px; text-align: left; color: var(--ink-3); }
+.repeat-row .book-row-title { font: 550 16px/1.3 var(--serif); color: var(--ink); }
+.section-title > svg { vertical-align: -3px; margin-right: 4px; }
+
+.track.waiting { cursor: default; }
+.song-row .record, .song-row .cassette { flex: none; }
+
+/* ---------- a song's page: the record in the middle, ready to put on ---------- */
+
+.song-head { display: grid; justify-items: center; text-align: center; margin-top: 8px; }
+.song-thing { display: flex; justify-content: center; padding: 6px; border-radius: 12px; }
+.song-thing :is(.record, .cassette) { --s: 150px; }
+.song-thing:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.song-title { margin-top: 16px; font: 500 clamp(24px, 6.6vw, 30px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
+.song-sub { margin-top: 4px; color: var(--ink-3); font-size: 14.5px; }
+.song-head .stars.is-input { margin-left: 0; }
+.song-actions { margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+.song-actions .btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
+.song-player { margin-top: 16px; animation: fade-in 0.3s ease-out; }
+
 @media (prefers-reduced-motion: reduce) {
+  .crate-item { animation: none; }
   .spine, .due-card { animation: none; }
   .record-spin, .reel { animation: none !important; }
 }
+.media-panel > .search:first-child { margin-top: 14px; }

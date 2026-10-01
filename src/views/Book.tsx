@@ -206,7 +206,7 @@ export function BookView({ id }: { id: string }) {
         <div class="empty">
           <h2 class="title-s">This book isn’t on your shelf</h2>
           <p>It may have been deleted.</p>
-          <button class="btn btn-primary" onClick={() => goBack('books')}>Back to books</button>
+          <button class="btn btn-primary" onClick={() => goBack('media')}>Back to media</button>
         </div>
       </div>
     );
@@ -216,7 +216,7 @@ export function BookView({ id }: { id: string }) {
     clearTimeout(timer.current);
     dirty.current = false;
     const removed = await deleteBook(draft.id);
-    goBack('books');
+    goBack('media');
     if (removed) toast('Book removed', { label: 'Undo', run: () => saveBook(removed) });
   };
 
@@ -252,10 +252,10 @@ export function BookView({ id }: { id: string }) {
   return (
     <div class="page editor book-page">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={() => { flush(); goBack('books'); }} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={() => { flush(); goBack('media'); }} aria-label="Back"><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button class="glass glass-btn round" onClick={remove} aria-label="Remove book"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack('books'); }}>Done</button>
+        <button class="glass glass-btn tinted" onClick={() => { flush(); goBack('media'); }}>Done</button>
       </div>
 
       <div class="book-head" style={{ '--c': main ? `var(--emo-${main})` : undefined }}>

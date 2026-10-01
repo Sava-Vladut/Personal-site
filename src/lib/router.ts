@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'books' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'mind' | 'map';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -17,8 +17,10 @@ function parse(): Route {
   if (head === 'note') return { name: 'note', id: id || 'new', query, visit };
   if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
   if (head === 'book' && id) return { name: 'book', id, query, visit };
+  if (head === 'song' && id) return { name: 'song', id, query, visit };
+  if (head === 'books') return { name: 'media', query, visit }; // where the shelf used to live
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'books' || head === 'stats' || head === 'settings' || head === 'map') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 
@@ -27,7 +29,7 @@ function parse(): Route {
    in from the right, and going back pops it off again. The CSS lives under "Page transitions". */
 
 type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';
-const TABS: RouteName[] = ['journal', 'tracker', 'people', 'books'];
+const TABS: RouteName[] = ['journal', 'tracker', 'people', 'media'];
 const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
 
 function motionFor(a: Route, b: Route): Motion | null {

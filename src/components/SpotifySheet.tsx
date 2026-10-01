@@ -27,7 +27,13 @@ export function MusicRow({ m, pressed, onClick, end }: { m: Music; pressed?: boo
   );
 }
 
-export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolean; onClose: () => void; onAdd: (m: Music[]) => void; onConnect: () => void }) {
+export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) => (n === 1 ? 'Add to note' : `Add ${n} to note`) }: {
+  open: boolean;
+  onClose: () => void;
+  onAdd: (m: Music[]) => void;
+  onConnect: () => void;
+  addLabel?: (n: number) => string;
+}) {
   const [tab, setTab] = useState<Tab>('now');
   const [status, setStatus] = useState<SpotifyStatus | null>(null);
   const [selected, setSelected] = useState<Music[]>([]);
@@ -60,7 +66,7 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolea
         selected.length ? (
           <>
             <span class="foot-note">{selected.length} selected</span>
-            <button class="btn btn-primary" onClick={() => add(selected)}>Add {selected.length === 1 ? 'to note' : `${selected.length} to note`}</button>
+            <button class="btn btn-primary" onClick={() => add(selected)}>{addLabel(selected.length)}</button>
           </>
         ) : undefined
       }
@@ -76,7 +82,7 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect }: { open: boolea
       ) : gate ? (
         <>
           {gate}
-          <LinkTab onAdd={(m) => add([m])} />
+          <LinkTab onAdd={(m) => add([m])} label={addLabel(1)} />
         </>
       ) : (
         <>
@@ -263,7 +269,7 @@ function PlaylistsTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
   );
 }
 
-function LinkTab({ onAdd }: { onAdd: (m: Music) => void }) {
+function LinkTab({ onAdd, label }: { onAdd: (m: Music) => void; label: string }) {
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -309,7 +315,7 @@ function LinkTab({ onAdd }: { onAdd: (m: Music) => void }) {
       {preview && (
         <div class="stack">
           <MusicEmbed m={preview} />
-          <button type="button" class="btn btn-primary block" onClick={() => onAdd(preview)}>Add to note</button>
+          <button type="button" class="btn btn-primary block" onClick={() => onAdd(preview)}>{label}</button>
         </div>
       )}
     </form>

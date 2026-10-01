@@ -108,6 +108,19 @@ export interface Book {
 }
 export const BOOK_STATUSES: BookStatus[] = ['reading', 'want', 'read', 'dnf'];
 
+/** Music you keep: a song, album, playlist or podcast from Spotify, rated and written about like a book. */
+export interface Song {
+  id: string;
+  music: Music;             // what it is on Spotify
+  repeat: boolean;          // on repeat lately
+  rating: number;           // 0 (not rated) to 5
+  text: string;             // what it means to you
+  emotions: string[];       // how it makes you feel, first one is the main feeling
+  from: string | null;      // the person it brings to mind
+  created: number;
+  updated: number;
+}
+
 /* ---------- tiny observable ---------- */
 
 export function observable<T>(initial: T) {
@@ -258,7 +271,7 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
       .map((x) => (restore && gone[x.id] >= x.updated ? { ...x, updated: stamp } : x));
     return { changed, removed };
   };
-  return { list$, normalizeAll, write, save, remove, merge, channel };
+  return { key, list$, normalizeAll, write, save, remove, merge, channel };
 }
 
 const byName = (a: Person, b: Person) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
@@ -290,8 +303,23 @@ export const saveBook = books.save;
 /** Deletes a book. Notes that mention it keep the mention's title. */
 export const deleteBook = books.remove;
 
+const byAdded = (a: Song, b: Song) => b.created - a.created;
+const songs = collection<Song>('songs', (raw) => normalizeSong(raw), byAdded);
+export const useSongs = songs.list$.use;
+export const getSongs = songs.list$.get;
+
+export function blankSong(music: Music, patch: Partial<Song> = {}): Song {
+  const now = Date.now();
+  return { id: uid(), music, repeat: false, rating: 0, text: '', emotions: [], from: null, created: now, updated: now, ...patch };
+}
+export const saveSong = songs.save;
+/** Takes music out of your collection. Notes it's attached to keep it. */
+export const deleteSong = songs.remove;
+/** The kept copy of a piece of music, if it's in your collection. */
+export const findSong = (list: Song[], m: Pick<Music, 'kind' | 'id'>) => list.find((x) => x.music.kind === m.kind && x.music.id === m.id);
+
 type Collection = ReturnType<typeof collection<any>>;
-const COLLECTIONS: Collection[] = [people, books];
+const COLLECTIONS: Collection[] = [people, books, songs];
 
 /* ---------- deletions: remembered (id → when) so a synced device doesn't bring the entry back ---------- */
 
@@ -327,12 +355,11 @@ export async function rememberIcon(id: string, body: string) {
 }
 
 export async function init() {
-  const [list, icons, gone, savedPeople, savedBooks] = await Promise.all([
-    db.all<Entry>(), db.get<Record<string, string>>('icons'), db.get<Record<string, number>>('deleted'), db.get<unknown[]>('people'), db.get<unknown[]>('books'),
+  const [list, icons, gone, ...saved] = await Promise.all([
+    db.all<Entry>(), db.get<Record<string, string>>('icons'), db.get<Record<string, number>>('deleted'), ...COLLECTIONS.map((c) => db.get<unknown[]>(c.key)),
   ]);
   entries$.set((list.map(normalize).filter(Boolean) as Entry[]).sort(byNewest));
-  people.list$.set(people.normalizeAll(savedPeople));
-  books.list$.set(books.normalizeAll(savedBooks));
+  COLLECTIONS.forEach((c, i) => c.list$.set(c.normalizeAll(saved[i])));
   icons$.set(icons ?? {});
   deleted = gone ?? {};
   ready$.set(true);
@@ -376,6 +403,14 @@ export function normalizeWeather(w: any): Weather | null {
   return { day: w.day, code: Math.round(code), temp: Math.round(temp * 10) / 10, daylight: Math.round(daylight * 100) / 100, ...(typeof w.dark === 'boolean' ? { dark: w.dark } : {}) };
 }
 
+function normalizeMusic(m: any): Music | null {
+  if (!m || !MUSIC_KINDS.includes(m.kind) || !/^[A-Za-z0-9]{10,40}$/.test(m.id)) return null;
+  return {
+    kind: m.kind, id: m.id, title: str(m.title, 300) || 'Untitled', sub: str(m.sub, 300) || undefined,
+    image: /^https:\/\//.test(m.image) ? str(m.image, 2000) : undefined, link: `https://open.spotify.com/${m.kind}/${m.id}`,
+  };
+}
+
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !KEY.test(raw.date)) return null;
@@ -398,15 +433,7 @@ function normalize(raw: any): Entry | null {
     time: Number.isFinite(raw.time) ? raw.time : now,
     images,
     photos: Array.isArray(raw.photos) ? raw.photos.map(photo).filter(Boolean).slice(0, 20) : [],
-    music: Array.isArray(raw.music)
-      ? raw.music
-          .filter((m: any) => m && MUSIC_KINDS.includes(m.kind) && /^[A-Za-z0-9]{10,40}$/.test(m.id))
-          .map((m: any) => ({
-            kind: m.kind, id: m.id, title: str(m.title, 300) || 'Untitled', sub: str(m.sub, 300) || undefined,
-            image: /^https:\/\//.test(m.image) ? str(m.image, 2000) : undefined, link: `https://open.spotify.com/${m.kind}/${m.id}`,
-          }))
-          .slice(0, 20)
-      : [],
+    music: Array.isArray(raw.music) ? (raw.music.map(normalizeMusic).filter(Boolean) as Music[]).slice(0, 20) : [],
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
     cover: coverPic && (coverCrop ? { ...coverPic, crop: coverCrop } : coverPic),
     pinned: raw.kind !== 'checkin' && raw.pinned === true,
@@ -462,10 +489,29 @@ function normalizeBook(raw: any): Book | null {
   };
 }
 
+/** Coerces untrusted input into a valid Song, or null. */
+function normalizeSong(raw: any): Song | null {
+  if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id || raw.id.length > 40) return null;
+  const music = normalizeMusic(raw.music);
+  if (!music) return null;
+  const now = Date.now();
+  return {
+    id: raw.id,
+    music,
+    repeat: raw.repeat === true,
+    rating: Math.min(5, Math.max(0, Math.round(Number(raw.rating) || 0))),
+    text: typeof raw.text === 'string' ? raw.text : '',
+    emotions: Array.isArray(raw.emotions) ? raw.emotions.filter((x: unknown) => typeof x === 'string' && EMOTION[x]).slice(0, MAX_PERSON_EMOTIONS) : [],
+    from: typeof raw.from === 'string' && raw.from.length <= 40 ? raw.from : null,
+    created: Number.isFinite(raw.created) ? raw.created : now,
+    updated: Number.isFinite(raw.updated) ? raw.updated : now,
+  };
+}
+
 export async function exportJSON() {
   const entries = entries$.get();
   const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
-  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), photos }, null, 1);
+  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), photos }, null, 1);
 }
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
@@ -484,13 +530,14 @@ export async function importJSON(text: string) {
   entries$.set([...current.values()].sort(byNewest));
   await db.putMany(changed);
 
-  const pChanged = people.merge(data?.people, deleted, true).changed;
-  const bChanged = books.merge(data?.books, deleted, true).changed;
-  await Promise.all([pChanged.length && people.write(pChanged), bChanged.length && books.write(bChanged)]);
+  const merged = COLLECTIONS.map((c) => c.merge(data?.[c.key], deleted, true).changed);
+  await Promise.all(COLLECTIONS.map((c, i) => merged[i].length && c.write(merged[i])));
+  const [pChanged, bChanged, sChanged] = merged;
 
-  if (changed.length || pChanged.length || bChanged.length || restoredPhotos) changeHandler();
+  if (changed.length || pChanged.length || bChanged.length || sChanged.length || restoredPhotos) changeHandler();
   return {
-    changed: changed.length, people: pChanged.length, books: bChanged.length, photos: restoredPhotos, total: incoming.length, icons: iconsOf([...changed, ...pChanged]),
+    changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, photos: restoredPhotos, total: incoming.length,
+    icons: iconsOf([...changed, ...pChanged]),
   };
 }
 
@@ -500,7 +547,7 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Merges another device's copy: the newest edit of each entry wins, and a deletion wins over edits made before it.
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
-export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; deleted?: unknown }) {
+export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; deleted?: unknown }) {
   const incoming = (Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[];
   const gone: Record<string, number> = {};
   if (raw.deleted && typeof raw.deleted === 'object')
@@ -514,8 +561,8 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   const changed = incoming.filter((e) => !(nextDeleted[e.id] >= e.updated) && (!current.has(e.id) || current.get(e.id)!.updated < e.updated));
   changed.forEach((e) => current.set(e.id, e));
 
-  // People and books follow the same rules. Older app versions don't send them: then nothing changes here.
-  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(c === people ? raw.people : raw.books, nextDeleted, false) }));
+  // People, books and songs follow the same rules. Older app versions don't send them: then nothing changes here.
+  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs'], nextDeleted, false) }));
 
   deleted = nextDeleted;
   if (changed.length || removed.length) entries$.set([...current.values()].sort(byNewest));
@@ -528,7 +575,7 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
 }
 
 export async function deleteAll() {
-  const ids = [...entries$.get().map((e) => e.id), ...getPeople().map((p) => p.id), ...getBooks().map((b) => b.id)];
+  const ids = [...entries$.get().map((e) => e.id), ...COLLECTIONS.flatMap((c) => c.list$.get().map((x: { id: string }) => x.id))];
   entries$.set([]);
   await Promise.all([db.clear(), clearPhotos(), ...COLLECTIONS.map((c) => c.write([], {}, true, false)), forget(ids)]);
   COLLECTIONS.forEach((c) => c.channel?.postMessage(null));

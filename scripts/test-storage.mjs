@@ -200,7 +200,7 @@ test('an unchanged sync document still retries a failed photo download', async (
   let documents = 0, attempts = 0;
   const sync = await loadModule('src/lib/sync.ts', {
     './store': {
-      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], mergeSynced: async () => ({ icons: [] }),
+      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], getSongs: () => [], mergeSynced: async () => ({ icons: [] }),
       observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
       photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
     },
@@ -245,4 +245,28 @@ test('places and weather are cleaned on load, survive a backup, and filled-in we
   const copied = (id) => JSON.parse(JSON.stringify(copy.getEntries().find((e) => e.id === id)));
   assert.deepEqual(copied('note').place, byId('note').place);
   assert.deepEqual(copied('old').weather, byId('old').weather);
+});
+
+test('kept music is cleaned on load, survives a backup, and follows synced deletions', async () => {
+  const music = { kind: 'track', id: '4cOdK2wGLETKBW3PvgPWqT', title: 'Never Gonna Give You Up', sub: 'Rick Astley', image: 'https://i.scdn.co/image/x', link: 'https://evil.example' };
+  const db = memoryDB();
+  await db.set('songs', [
+    { id: 'song', music, repeat: true, rating: 9, text: 'Every time.', emotions: [], from: 'p1', updated: 5, created: 5 },
+    { id: 'bad', music: { kind: 'track', id: 'nope' }, updated: 5, created: 5 },
+  ]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  const kept = JSON.parse(JSON.stringify(store.getSongs()));
+  assert.equal(kept.length, 1, 'music with an invalid Spotify id is dropped');
+  assert.equal(kept[0].music.link, 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT', 'links are rebuilt from the id');
+  assert.deepEqual([kept[0].rating, kept[0].repeat, kept[0].from], [5, true, 'p1']);
+  assert.ok(store.findSong(store.getSongs(), music));
+
+  const copy = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+  const result = await copy.importJSON(await store.exportJSON());
+  assert.equal(result.songs, 1);
+  assert.equal(copy.getSongs()[0].text, 'Every time.');
+
+  await copy.mergeSynced({ deleted: { song: 10 } });
+  assert.equal(copy.getSongs().length, 0, 'a newer deletion from another device removes it');
 });

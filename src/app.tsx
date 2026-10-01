@@ -7,14 +7,15 @@ import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
 import { Icon, type UiName } from './components/icons';
 import { BookView } from './views/Book';
-import { Books } from './views/Books';
 import { Editor } from './views/Editor';
 import { Journal } from './views/Journal';
+import { Media } from './views/Media';
 import { Mind } from './views/Mind';
 import { People } from './views/People';
 import { MapView } from './views/Places';
 import { PersonView } from './views/Person';
 import { Settings } from './views/Settings';
+import { SongView } from './views/Song';
 import { Stats } from './views/Stats';
 import { Tracker } from './views/Tracker';
 
@@ -22,7 +23,7 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['journal', 'Journal', 'notebook', ''],
   ['tracker', 'Check in', 'mood-smile', 'tracker'],
   ['people', 'People', 'users', 'people'],
-  ['books', 'Books', 'books', 'books'],
+  ['media', 'Media', 'library', 'media'],
 ];
 
 export function App() {
@@ -46,8 +47,10 @@ export function App() {
           <Mind />
         ) : route.name === 'book' ? (
           <BookView key={route.id} id={route.id!} />
-        ) : route.name === 'books' ? (
-          <Books query={route.query} />
+        ) : route.name === 'media' ? (
+          <Media key={route.query.has('add') ? route.visit : 'media'} query={route.query} />
+        ) : route.name === 'song' ? (
+          <SongView key={route.id} id={route.id!} />
         ) : route.name === 'tracker' ? (
           <Tracker key={`${route.query.get('world') ?? ''}|${route.query.get('person') ?? ''}`} query={route.query} />
         ) : route.name === 'stats' ? (
@@ -60,7 +63,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'map' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />

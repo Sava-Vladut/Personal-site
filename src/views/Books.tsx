@@ -1,32 +1,22 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { mentionsByBook, progressOf, STATUS_LABEL } from '../lib/books';
-import { navigate, navigateAfterSheet } from '../lib/router';
+import { navigate } from '../lib/router';
 import { BOOK_STATUSES, useBooks, useEntries, useReady, type Book, type BookStatus } from '../lib/store';
-import { BookCover, BookSheet, Shelf } from '../components/books';
+import { BookCover, Shelf } from '../components/books';
 import { Icon } from '../components/icons';
 
 type Sort = 'recent' | 'title' | 'rating';
 
-export function Books({ query }: { query: URLSearchParams }) {
+/** The Media page's books: what you're reading, then a shelf for each status. */
+export function BooksTab({ onAdd }: { onAdd: () => void }) {
   const books = useBooks();
   const entries = useEntries();
   const ready = useReady();
-  const [adding, setAdding] = useState(false);
   const [shelf, setShelf] = useState<BookStatus | 'all'>('all');
   const [sort, setSort] = useState<Sort>('recent');
   const [q, setQ] = useState('');
   const mentions = useMemo(() => mentionsByBook(entries, books), [entries, books]);
 
-  // "+ → Book" lands here with ?add
-  useEffect(() => {
-    if (!query.has('add')) return;
-    history.replaceState(history.state, '', '#/books');
-    setAdding(true);
-  }, []);
-
-  const year = new Date().getFullYear();
-  const readThisYear = books.filter((b) => b.status === 'read' && b.finished?.startsWith(String(year)));
-  const rated = readThisYear.filter((b) => b.rating);
   const reading = books.filter((b) => b.status === 'reading');
   const count = (s: BookStatus) => books.filter((b) => b.status === s).length;
 
@@ -46,22 +36,7 @@ export function Books({ query }: { query: URLSearchParams }) {
     : shown.length ? [[shelf, shown]] : [];
 
   return (
-    <div class="page">
-      <header class="page-head">
-        <div class="eyebrow">Books</div>
-        <div class="row between">
-          <h1 class="title">Your shelf</h1>
-          <button class="icon-btn" onClick={() => setAdding(true)} aria-label="Add a book" title="Add a book">
-            <Icon name="plus" />
-          </button>
-        </div>
-        <p class="subtitle">
-          {books.length
-            ? `${readThisYear.length} read in ${year}${rated.length ? ` · average ${(rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1)} ★` : ''}`
-            : 'Keep the books you read, rate them, and mention them in your notes.'}
-        </p>
-      </header>
-
+    <>
       {showReading && (
         <section class="section reading-now">
           <h2 class="section-title">Reading now</h2>
@@ -111,7 +86,7 @@ export function Books({ query }: { query: URLSearchParams }) {
         <div class="empty">
           <h2 class="title-s">No books yet</h2>
           <p>Add what you’re reading, what you’ve loved, and what you want to read next. Mention them in notes to keep a reading journal.</p>
-          <button class="btn btn-primary" onClick={() => setAdding(true)}><Icon name="books" size={18} /> Add a book</button>
+          <button class="btn btn-primary" onClick={onAdd}><Icon name="books" size={18} /> Add a book</button>
         </div>
       )}
       {!!books.length && !shown.length && <p class="empty-note center">No books match.</p>}
@@ -122,8 +97,15 @@ export function Books({ query }: { query: URLSearchParams }) {
           <Shelf books={list} />
         </section>
       ))}
-
-      <BookSheet open={adding} onClose={() => setAdding(false)} onPick={(b) => { setAdding(false); navigateAfterSheet('book/' + b.id); }} />
-    </div>
+    </>
   );
+}
+
+/** "5 read in 2026 · average 3.8 ★" */
+export function booksLine(books: Book[]) {
+  if (!books.length) return 'Keep the books you read, rate them, and mention them in your notes.';
+  const year = new Date().getFullYear();
+  const read = books.filter((b) => b.status === 'read' && b.finished?.startsWith(String(year)));
+  const rated = read.filter((b) => b.rating);
+  return `${read.length} read in ${year}${rated.length ? ` · average ${(rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1)} ★` : ''}`;
 }

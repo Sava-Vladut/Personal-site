@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getPeople, savePerson, toast, useBooks, type Entry, type Person } from '../lib/store';
+import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getPeople, savePerson, toast, useBooks, useSongs, type Entry, type Person } from '../lib/store';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
 import { BookRow } from '../components/books';
+import { SongRow } from '../components/music';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { initials } from '../components/people';
@@ -38,6 +39,7 @@ export function PersonView({ id }: { id: string }) {
   const textRef = useAutosize(draft?.text ?? '');
   const moments = useMoments().get(draft?.id ?? '') ?? [];
   const books = useBooks().filter((b) => b.from && b.from === draft?.id);
+  const songs = useSongs().filter((s) => s.from && s.from === draft?.id);
 
   const syncUrl = () => {
     const d = latest.current;
@@ -247,6 +249,13 @@ export function PersonView({ id }: { id: string }) {
         <section class="section">
           <h2 class="section-title">Books · thinking of {first}</h2>
           <div class="book-rows">{books.map((b) => <BookRow b={b} onClick={() => { flush(); navigate('book/' + b.id); }} />)}</div>
+        </section>
+      )}
+
+      {songs.length > 0 && (
+        <section class="section">
+          <h2 class="section-title">Music · thinking of {first}</h2>
+          <div class="book-rows">{songs.map((s) => <SongRow s={s} onClick={() => { flush(); navigate('song/' + s.id); }} />)}</div>
         </section>
       )}
 

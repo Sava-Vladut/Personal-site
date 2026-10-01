@@ -7,7 +7,8 @@ const ADD: [to: string, label: string, sub: string, icon: UiName][] = [
   ['note/new', 'Note', 'Write about your day', 'pencil'],
   ['tracker', 'Check-in', 'How you feel right now', 'mood-plus'],
   ['person/new', 'Person', 'Someone who matters', 'user-plus'],
-  ['books?add', 'Book', 'Read, reading or wanted', 'books'],
+  ['media?tab=books&add', 'Book', 'Read, reading or wanted', 'books'],
+  ['media?tab=music&add', 'Music', 'A song, album or playlist', 'vinyl'],
 ];
 
 const CLOSE_MS = 340;

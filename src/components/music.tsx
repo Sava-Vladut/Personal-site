@@ -1,8 +1,9 @@
 // Music as things: a song or an album is a record in its sleeve, a playlist or a podcast is a cassette. Putting one on
 // (a tap) slides the record out and spins it, or turns the tape's reels, and opens Spotify's own player beneath.
 import { useState } from 'preact/hooks';
+import { navigate } from '../lib/router';
 import { embedHeight, embedUrl, KIND_LABEL } from '../lib/spotify';
-import type { Music } from '../lib/store';
+import { blankSong, findSong, saveSong, toast, useSongs, type Music, type Song } from '../lib/store';
 import { Icon } from './icons';
 import '../styles/objects.css';
 
@@ -15,24 +16,26 @@ export const musicSub = (m: Music) => (m.kind === 'track' ? m.sub ?? 'Song' : KI
 const Art = ({ m, class: cls }: { m: Music; class: string }) =>
   m.image ? <img class={cls} src={m.image} alt="" loading="lazy" referrerpolicy="no-referrer" draggable={false} /> : <span class={`${cls} no-art`} />;
 
-/** A record half out of its sleeve, the cover art on both. `size` is the sleeve's side in px. */
-export function Record({ m, size = 64 }: { m: Music; size?: number }) {
+const sized = (size?: number) => (size ? { '--s': `${size}px` } : undefined);
+
+/** A record half out of its sleeve, the cover art on both. `size` is the sleeve's side in px (else the CSS decides). */
+export function Record({ m, size }: { m: Music; size?: number }) {
   return (
-    <span class="record" style={{ '--s': `${size}px` }} aria-hidden="true">
+    <span class="record" style={sized(size)} aria-hidden="true">
       <span class="record-disc">
         <span class="record-spin">
           <span class="record-label"><Art m={m} class="record-art" /></span>
         </span>
       </span>
-      <span class="record-sleeve">{m.image ? <Art m={m} class="record-cover" /> : <Icon name="music" size={Math.round(size / 3)} />}</span>
+      <span class="record-sleeve">{m.image ? <Art m={m} class="record-cover" /> : <Icon name="music" size={22} />}</span>
     </span>
   );
 }
 
 /** A cassette with the cover stuck on its label and two reels showing through the window. */
-export function Cassette({ m, size = 64 }: { m: Music; size?: number }) {
+export function Cassette({ m, size }: { m: Music; size?: number }) {
   return (
-    <span class="cassette" style={{ '--s': `${size}px` }} aria-hidden="true">
+    <span class="cassette" style={sized(size)} aria-hidden="true">
       <span class="cassette-label">
         <Art m={m} class="cassette-art" />
         <span class="cassette-lines" />
@@ -63,6 +66,11 @@ export function MusicEmbed({ m }: { m: Music }) {
 /** Music in a note: tap to put it on (the player opens beneath), again to take it off. */
 export function MusicDeck({ m, onRemove }: { m: Music; onRemove?: () => void }) {
   const [on, setOn] = useState(false);
+  const kept = findSong(useSongs(), m);
+  const keep = async () => {
+    const s = await saveSong(blankSong(m));
+    toast(`${m.title} is in your records`, { label: 'Open', run: () => navigate('song/' + s.id) });
+  };
   return (
     <div class={`deck${on ? ' is-on' : ''}${isTape(m) ? ' is-tape' : ''}`}>
       <button class="deck-main" aria-expanded={on} onClick={() => setOn(!on)} aria-label={`${on ? 'Close the player for' : 'Play'} ${m.title}`}>
@@ -77,12 +85,30 @@ export function MusicDeck({ m, onRemove }: { m: Music; onRemove?: () => void }) 
         <div class="deck-player">
           <MusicEmbed m={m} />
           <div class="row gap-s">
-            <a class="btn btn-quiet btn-s grow" href={m.link} target="_blank" rel="noopener noreferrer"><Icon name="brand-spotify" size={16} /> Open in Spotify</a>
-            {onRemove && <button class="btn btn-quiet btn-s grow danger" onClick={onRemove}><Icon name="trash" size={16} /> Remove</button>}
+            <a class="btn btn-quiet btn-s grow" href={m.link} target="_blank" rel="noopener noreferrer"><Icon name="brand-spotify" size={16} /> Spotify</a>
+            {kept ? (
+              <button class="btn btn-quiet btn-s grow" onClick={() => navigate('song/' + kept.id)}><Icon name="vinyl" size={16} /> In Media</button>
+            ) : (
+              <button class="btn btn-quiet btn-s grow" onClick={keep}><Icon name="plus" size={16} /> Keep in Media</button>
+            )}
+            {onRemove && <button class="btn btn-quiet btn-s grow danger" onClick={onRemove} aria-label="Remove from the note"><Icon name="trash" size={16} /> Remove</button>}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Kept music in a list: the record or tape, its title and what it is. */
+export function SongRow({ s, onClick }: { s: Song; onClick: () => void }) {
+  return (
+    <button class="book-row song-row" onClick={onClick}>
+      <MusicThing m={s.music} size={40} />
+      <span class="book-row-main">
+        <span class="book-row-title">{s.music.title}</span>
+        <span class="book-row-sub">{musicSub(s.music)}</span>
+      </span>
+    </button>
   );
 }
 

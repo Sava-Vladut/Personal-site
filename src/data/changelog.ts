@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.20.0',
+    date: '2026-10-01',
+    changes: [
+      'Books is now Media, with your bookshelf on one side and a record collection on the other',
+      'Add songs, albums, playlists and podcasts from Spotify: from what you’re listening to, a search, your playlists or a link',
+      'Records stand in a wooden shelf and tapes in a rack; songs you mark On repeat spin slowly at the top',
+      'Each one has its own page: put the record on, rate it, say how it makes you feel and who it reminds you of, and see the notes it’s in',
+      'Music you’ve added to notes waits under In your notes, a tap away from your collection, and a note’s player can keep it in Media too',
+      'Write about a song from its page, and the new note starts with it',
+      'A person’s page lists the music that reminds you of them, and the + menu can add music',
+      'Your music is synced, backed up, and included in Export as text',
+    ],
+  },
+  {
     version: '1.19.0',
     date: '2026-10-01',
     changes: [

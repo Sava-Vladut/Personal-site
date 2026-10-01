@@ -8,7 +8,7 @@ import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, isEmpty, saveEntry, toast, type Book, type Entry } from '../lib/store';
+import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, toast, type Book, type Entry } from '../lib/store';
 import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
@@ -116,10 +116,15 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
 export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [draft, setDraft] = useState<Entry | null>(() => {
     if (id !== 'new') return getEntries().find((e) => e.id === id) ?? null;
-    // "Write about …" from a person's page starts the note already tagged with them; from a book's, mentioning it.
+    // "Write about …" from a person's page starts the note already tagged with them; from a book's, mentioning it;
+    // from a song's, with the song in it.
     const pid = query?.get('person');
     const book = findBook(query?.get('book') ?? '');
-    return { ...blankEntry('note'), people: pid && getPeople().some((p) => p.id === pid) ? [pid] : [], text: book ? mentionOf(book, getBooks()) + ' ' : '' };
+    const song = getSongs().find((s) => s.id === query?.get('song'));
+    return {
+      ...blankEntry('note'), people: pid && getPeople().some((p) => p.id === pid) ? [pid] : [], text: book ? mentionOf(book, getBooks()) + ' ' : '',
+      music: song ? [song.music] : [],
+    };
   });
   const [open, setOpen] = useState<Open>(null);
   const [status, setStatus] = useState('');
@@ -198,7 +203,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     addEventListener('popstate', syncUrl);
     // Back from logging in to Spotify (it returns to this note): say how it went and reopen the picker.
     const sp = query?.get('spotify');
-    if (query?.get('person') || query?.get('book')) history.replaceState(history.state, '', '#/note/new');
+    if (query?.get('person') || query?.get('book') || query?.get('song')) history.replaceState(history.state, '', '#/note/new');
     if (sp) {
       history.replaceState(history.state, '', location.hash.split('?')[0]);
       toast(sp === 'connected' ? 'Spotify connected' : sp === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
