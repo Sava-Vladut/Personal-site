@@ -65,7 +65,6 @@ export function People() {
       {people.length > 0 && (
         <>
           <MindLink />
-          <ConnectionsLink />
           <label class="search">
             <Icon name="search" size={18} />
             <input type="search" placeholder="Search people" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search people" />
@@ -125,20 +124,6 @@ function MindLink() {
         <span class="mind-link-sub">How much of your thoughts each person takes up</span>
       </span>
       {top.length > 0 && <span class="avatar-stack">{top.map((p) => <Avatar p={p} size={26} />)}</span>}
-      <Icon name="chevron-right" size={18} />
-    </button>
-  );
-}
-
-/** The way into connections: the threads the journal already holds. */
-function ConnectionsLink() {
-  return (
-    <button class="mind-link cx-link card" onClick={() => navigate('connections')}>
-      <span class="mind-link-icon"><Icon name="affiliate" size={24} stroke={1.6} /></span>
-      <span class="mind-link-main">
-        <span class="mind-link-title">Connections</span>
-        <span class="mind-link-sub">Who, where, when, what you felt and what was playing — the threads in your notes</span>
-      </span>
       <Icon name="chevron-right" size={18} />
     </button>
   );

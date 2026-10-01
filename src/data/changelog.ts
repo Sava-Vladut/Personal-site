@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.24.1',
+    date: '2026-10-01',
+    changes: [
+      'Removed the Connections page, and its links from People and a person’s page',
+    ],
+  },
+  {
     version: '1.24.0',
     date: '2026-10-01',
     changes: [
