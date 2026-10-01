@@ -17,6 +17,15 @@
 
 - Run `npm run build` (type check + production build) and make sure it passes.
 
+## Server load and test cleanup
+
+- This workspace is on the production host, which has limited RAM. Do not run Playwright, WebKit, or other headless browser tests here, or install their browser runtimes. Run browser checks on a separate development machine or CI runner. Use lightweight regression tests and builds here.
+- Run test suites and builds sequentially. Coordinate subagents so they do not run resource-intensive checks at the same time or start overlapping development servers.
+- Stop temporary development servers and test processes you started when finished or when they stall. Use cleanup handlers for browser contexts and child processes; do not leave them running after failed tests.
+- If server load spikes, stop your own browser tests and Vite servers first. Check `uptime`, `free -m`, `vmstat 1 3`, and `docker stats --no-stream`. Identify processes before stopping them; do not terminate unrelated user processes or live application containers.
+- Confirm recovery with current CPU usage, memory pressure, container usage, and the public site and `/api/health`. The five- and fifteen-minute load averages take time to fall after the active load ends.
+- On 2026-10-01, stopping the WebKit checks and temporary Vite server relieved the overload: one-minute load fell from 19.5 to 0.66, CPU settled at 5–7% used, and the live app container was effectively idle. Keep browser verification off this host to avoid repeating that resource pressure.
+
 ## After pushing
 
 - Always redeploy the live site (https://grimnetwork.srvp.ro) after every pushed change:
