@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
-import { byline, progressOf, resolveMention, searchBooks, STATUS_LABEL, type FoundBook } from '../lib/books';
+import { byline, progressOf, searchBooks, STATUS_LABEL, type FoundBook } from '../lib/books';
 import { hashOf, isLight, useColor } from '../lib/colors';
 import { todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
@@ -40,22 +40,6 @@ export function Stars({ value, onChange, size = 16 }: { value: number; onChange?
         </button>
       ))}
     </span>
-  );
-}
-
-/** A [[wiki link]] in a note: a book on the shelf shows its cover and links to its page, anything else is just text. */
-export function BookMention({ target, text }: { target?: string; text: string }) {
-  const b = resolveMention(target, text, useBooks());
-  if (!b) return <span class="md-wiki">{text}</span>;
-  return (
-    <a
-      class="book-mention"
-      href={'#/book/' + b.id}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('book/' + b.id); }}
-    >
-      <BookCover b={b} width={14} />
-      <span>{text}</span>
-    </a>
   );
 }
 

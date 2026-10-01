@@ -1,0 +1,142 @@
+/* ============================================================
+   Tags: people, books and music named in a note
+   ============================================================ */
+
+/* ---------- in a note being read: a chip in the colour of the feeling it brings ---------- */
+
+.mention {
+  --tone: var(--c, var(--ink-3));
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  margin: 0 1px; padding: 1px 9px 1px 3px; border-radius: 999px; vertical-align: baseline; translate: 0 -1px;
+  font: 600 0.84em/1.55 var(--sans); color: var(--ink); text-decoration: none;
+  background: color-mix(in oklab, var(--tone) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 32%, transparent);
+  transition: scale 0.3s var(--spring-bouncy), box-shadow 0.2s, background-color 0.2s;
+}
+.mention > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention .avatar { flex: none; font-size: 8px !important; }
+.mention.is-book { border-radius: 7px; padding-left: 4px; }
+.mention.is-book .book-cover { border-radius: 2px; box-shadow: none; }
+.mention.is-book .book-cover-title { display: none; }
+/* a sheen runs across each tag as the note opens */
+.mention::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; translate: -110% 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.55) 50%, transparent 80%);
+  animation: tag-sheen 1.1s ease-out 0.35s;
+}
+:root[data-theme='dark'] .mention::after { background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.16) 50%, transparent 80%); }
+@keyframes tag-sheen { from { translate: -110% 0; } to { translate: 110% 0; } }
+@media (hover: hover) {
+  .mention:hover { background: color-mix(in oklab, var(--tone) 22%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 45%, transparent), 0 5px 14px -6px color-mix(in oklab, var(--tone) 70%, transparent); }
+  .mention.is-song:hover .mini-record { animation: turn 1.8s linear infinite; }
+}
+.mention:active { scale: 0.95; }
+.mention:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.mention.is-missing { overflow: visible; padding: 0; background: none; box-shadow: none; color: var(--ink-3); font-weight: 500; }
+.mention.is-missing::after { display: none; }
+
+/* ---------- the card a tag opens ---------- */
+
+.peek {
+  position: fixed; z-index: 75; display: grid; gap: 12px; padding: 14px; isolation: isolate;
+  border-radius: 20px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 22px 48px -18px rgb(0 0 0 / 0.45);
+  transform-origin: var(--tail) 0; animation: peek-in 0.42s var(--spring) both;
+}
+.peek.is-above { transform-origin: var(--tail) 100%; animation-name: peek-in-up; }
+/* a wash of the feeling's colour, strongest where the tail is */
+.peek::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(130% 80% at var(--tail) 0%, color-mix(in oklab, var(--c, var(--ink-3)) 20%, transparent), transparent 72%);
+}
+.peek.is-above::before { background: radial-gradient(130% 80% at var(--tail) 100%, color-mix(in oklab, var(--c, var(--ink-3)) 20%, transparent), transparent 72%); }
+.peek::after {
+  content: ''; position: absolute; top: -7px; left: calc(var(--tail) - 7px); width: 13px; height: 13px; rotate: 45deg; border-radius: 3px 0 0 0;
+  background: color-mix(in oklab, var(--c, var(--ink-3)) 12%, var(--surface)); border-left: 1px solid var(--line); border-top: 1px solid var(--line);
+}
+.peek.is-above::after { top: auto; bottom: -7px; border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0 0 3px 0; background: var(--surface); }
+@keyframes peek-in { from { opacity: 0; scale: 0.88; translate: 0 -8px; } }
+@keyframes peek-in-up { from { opacity: 0; scale: 0.88; translate: 0 8px; } }
+.peek-head { display: flex; align-items: center; gap: 13px; }
+.peek-who { display: grid; gap: 2px; min-width: 0; }
+.peek-name { font: 600 17.5px/1.25 var(--serif); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.peek-sub { font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peek-head > .avatar { flex: none; box-shadow: 0 0 0 4px color-mix(in oklab, var(--c, transparent) 22%, transparent); }
+.peek-head > :is(.record, .cassette, .book-cover) { flex: none; }
+.peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
+.peek-actions { display: flex; gap: 8px; }
+.peek .progress { margin: -4px 0 0; }
+
+/* ---------- writing: what an @ suggests, in place of the toolbar ---------- */
+
+.mention-strip { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 2px 4px; }
+.mention-at {
+  flex: none; width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  font: 700 15px/1 var(--sans); color: var(--on-ink); background: var(--ink); animation: at-pop 0.45s var(--spring-bouncy);
+}
+@keyframes at-pop { from { scale: 0.3; rotate: -90deg; } }
+.mention-pick {
+  --tone: var(--c, var(--ink-3));
+  flex: none; display: inline-flex; align-items: center; gap: 8px; max-width: 220px; height: 40px; padding: 0 13px 0 6px;
+  border-radius: 999px; text-align: left;
+  background: color-mix(in oklab, var(--tone) 12%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 24%, transparent);
+  transition: background-color 0.15s, box-shadow 0.2s, scale 0.25s var(--spring);
+  animation: pick-in 0.4s var(--spring) calc(min(var(--k), 8) * 35ms) backwards;
+}
+.mention-pick[aria-selected='true'] {
+  scale: 1.04;
+  background: color-mix(in oklab, var(--tone) 20%, var(--surface));
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--tone) 75%, var(--ink)), 0 6px 18px -8px color-mix(in oklab, var(--tone) 80%, transparent);
+}
+@keyframes pick-in { from { opacity: 0; translate: 0 10px; scale: 0.85; } }
+.mention-thumb { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; }
+.mention-thumb .mini-record { width: 25px; height: 25px; }
+.mention-thumb .mini-record img { width: 10px; height: 10px; }
+.mention-thumb .mini-tape { width: 26px; height: 17px; }
+.mention-thumb .book-cover { border-radius: 2px 3px 3px 2px; }
+.mention-thumb .book-cover-title { display: none; }
+.mention-pick.is-song[aria-selected='true'] .mini-record { animation: turn 1.8s linear infinite; }
+.mention-text { display: grid; min-width: 0; line-height: 1.15; }
+.mention-text b { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-text small { font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-pick.is-new { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); }
+.mention-pick.is-new[aria-selected='true'] { box-shadow: inset 0 0 0 2px var(--ink); }
+.mention-empty { padding: 0 6px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+
+/* ---------- writing: a new tag lands with a ring and a burst of dots ---------- */
+
+.mention-burst { position: fixed; z-index: 90; width: 0; height: 0; pointer-events: none; }
+.mention-burst::before {
+  content: ''; position: absolute; left: calc(var(--w) / -2 - 5px); top: calc(var(--h) / -2 - 3px);
+  width: calc(var(--w) + 10px); height: calc(var(--h) + 6px); border-radius: 999px; border: 2px solid var(--c);
+  animation: burst-ring 0.6s ease-out forwards;
+}
+.mention-burst i {
+  position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 99px; background: var(--c);
+  animation: burst-dot 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes burst-ring { from { opacity: 0.9; scale: 0.85; } to { opacity: 0; scale: 1.2; } }
+@keyframes burst-dot {
+  from { opacity: 1; scale: 1; translate: calc(cos(var(--a)) * var(--w) / 2) calc(sin(var(--a)) * var(--h) / 2); }
+  to { opacity: 0; scale: 0.2; translate: calc(cos(var(--a)) * (var(--w) / 2 + var(--d))) calc(sin(var(--a)) * (var(--h) / 2 + var(--d))); }
+}
+
+/* ---------- writing: tags glow in the text (CSS Custom Highlights; colours spelled out, as variables don't reach them) ---------- */
+
+::highlight(mm-at-none) { background-color: rgb(120 118 112 / 0.18); }
+::highlight(mm-at-sadness) { background-color: rgb(42 120 214 / 0.2); }
+::highlight(mm-at-hope-interest) { background-color: rgb(235 104 52 / 0.2); }
+::highlight(mm-at-calm-safety) { background-color: rgb(27 175 122 / 0.2); }
+::highlight(mm-at-joy) { background-color: rgb(237 161 0 / 0.24); }
+::highlight(mm-at-love-connection) { background-color: rgb(232 123 164 / 0.24); }
+::highlight(mm-at-shame-aversion) { background-color: rgb(0 131 0 / 0.18); }
+::highlight(mm-at-fear) { background-color: rgb(74 58 167 / 0.2); }
+::highlight(mm-at-anger) { background-color: rgb(227 73 72 / 0.2); }
+::highlight(mm-at-book) { background-color: rgb(192 138 82 / 0.26); }
+::highlight(mm-at-song) { background-color: rgb(138 108 240 / 0.22); }
+
+@media (prefers-reduced-motion: reduce) {
+  .peek, .mention-pick, .mention-at { animation: none; }
+  .mention::after { display: none; }
+}

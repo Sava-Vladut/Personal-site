@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { MAX_PERSON_EMOTIONS, deleteSong, getSongs, saveSong, toast, useEntries, type Entry, type Song } from '../lib/store';
+import { MAX_PERSON_EMOTIONS, deleteSong, getSongs, saveSong, toast, useEntries, useSongs, type Entry, type Song } from '../lib/store';
+import { songsIn } from '../lib/mentions';
 import { Stars } from '../components/books';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
 import { Icon } from '../components/icons';
@@ -38,7 +39,9 @@ export function SongView({ id }: { id: string }) {
   const entries = useEntries();
   const byId = usePeopleById();
   const kind = draft?.music.kind, mid = draft?.music.id;
-  const notes = useMemo(() => entries.filter((e) => e.music.some((m) => m.kind === kind && m.id === mid)), [entries, kind, mid]);
+  const songs = useSongs();
+  // notes it's added to, and notes that tag it in their words
+  const notes = useMemo(() => entries.filter((e) => e.music.some((m) => m.kind === kind && m.id === mid) || songsIn(e.text, songs).includes(id)), [entries, songs, kind, mid]);
 
   const flush = () => {
     clearTimeout(timer.current);

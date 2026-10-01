@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.21.0',
+    date: '2026-10-01',
+    changes: [
+      'Tag people, books and music in a note: type @ (or tap the new @ button) and pick from the strip above the keyboard',
+      'With nothing typed yet, @ suggests the people you’ve tagged lately, the books you’re reading and the music on repeat',
+      'Arrow keys and Enter pick a tag, Escape puts the strip away, and a name nobody has yet can be added as someone new',
+      'A tagged person is added to the note’s Thinking of, so it shows on their page and in your stats',
+      'Tags land with a little burst of colour, and glow while you write: people in the colour of the feeling they bring',
+      'Reading a note, tags are chips with a face, a cover or a tiny record; tap one for a card about it, with Write and Open',
+      'A song’s card plays it right there, and its page lists the notes that tag it',
+      'Renaming someone updates the notes that tag them, and Export as text writes tags as names',
+    ],
+  },
+  {
     version: '1.20.0',
     date: '2026-10-01',
     changes: [

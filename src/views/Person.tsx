@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getPeople, savePerson, toast, useBooks, useSongs, type Entry, type Person } from '../lib/store';
+import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getEntries, getPeople, saveEntry, savePerson, toast, useBooks, useSongs, type Entry, type Person } from '../lib/store';
+import { renamePersonMentions } from '../lib/mentions';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
 import { BookRow } from '../components/books';
 import { SongRow } from '../components/music';
@@ -66,6 +67,8 @@ export function PersonView({ id }: { id: string }) {
     timer.current = setTimeout(flush, 500);
   };
 
+  // Renamed? Once you leave, the notes tagging them by their old name are updated to the new one.
+  const peopleBefore = useRef(getPeople());
   useEffect(() => {
     const hide = () => document.visibilityState === 'hidden' && flush();
     document.addEventListener('visibilitychange', hide);
@@ -75,6 +78,10 @@ export function PersonView({ id }: { id: string }) {
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
       flush();
+      const d = latest.current;
+      const was = d && peopleBefore.current.find((p) => p.id === d.id);
+      if (d && was && d.name.trim() && was.name.trim() !== d.name.trim())
+        renamePersonMentions(getEntries(), peopleBefore.current, { ...d, name: d.name.trim() }).forEach((e) => saveEntry(e));
     };
   }, []);
 

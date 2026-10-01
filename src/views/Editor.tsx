@@ -8,7 +8,12 @@ import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { connectSpotify } from '../lib/spotify';
-import { blankEntry, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, toast, type Book, type Entry } from '../lib/store';
+import {
+  blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
+  type Book, type Entry, type Person,
+} from '../lib/store';
+import { mentionOfPerson, mentionOfSong, mentionsIn, suggest, typedMention, type Suggestion } from '../lib/mentions';
+import { CHART_ORDER, coreOf } from '../data/emotions';
 import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
@@ -20,10 +25,15 @@ import { Markdown } from '../components/Markdown';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
 import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarget, type Side } from '../components/NoteMedia';
 import { MusicDeck } from '../components/music';
+import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 
 type Open = null | 'icon' | 'images' | 'spotify' | 'book';
+
+/** The highlight each kind of tag is coloured with while writing: people in the colour of the feeling they bring. */
+const highlights = () => ['mm-at-book', 'mm-at-song', 'mm-at-none', ...CHART_ORDER.map((id) => `mm-at-${id}`)];
+const highlightRegistry = () => (typeof CSS === 'undefined' ? undefined : (CSS as unknown as { highlights?: Map<string, unknown> }).highlights);
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -51,10 +61,14 @@ function useAutosize(value: string) {
  * wrap around a picture floated beside it. The browser owns what's in it; it's only rewritten when the text changes
  * from outside (a picture moved, a formatting command that fell back to rewriting).
  */
-function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
+function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, grow, textRef }: {
   value: string;
   onChange: (v: string) => void;
   onCaret: (pos: number) => void;
+  /** an @tag being typed before the caret, or null */
+  onMention: (m: { start: number; end: number; q: string } | null) => void;
+  /** keys go here first; true means it was handled */
+  onKey: (e: KeyboardEvent) => boolean;
   placeholder?: string;
   grow?: boolean;
   textRef?: (el: HTMLDivElement | null) => void;
@@ -72,7 +86,11 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
   }, [value]);
   const caret = (e: Event) => {
     const el = e.currentTarget as HTMLDivElement;
-    if (document.activeElement === el || e.type === 'blur') onCaret(editable(el).selectionStart);
+    if (e.type === 'blur') onMention(null);
+    if (document.activeElement !== el && e.type !== 'blur') return;
+    const box = editable(el);
+    onCaret(box.selectionStart);
+    if (e.type !== 'blur') onMention(box.selectionStart === box.selectionEnd ? typedMention(box.value, box.selectionStart) : null);
   };
   return (
     <div
@@ -104,8 +122,8 @@ function BodyText({ value, onChange, onCaret, placeholder, grow, textRef }: {
         e.preventDefault();
         document.execCommand('insertText', false, e.clipboardData?.getData('text/plain') ?? '');
       }}
-      onKeyDown={(e) => listKey(editable(e.currentTarget), e) && e.preventDefault()}
-      onKeyUp={caret}
+      onKeyDown={(e) => (onKey(e) || listKey(editable(e.currentTarget), e)) && e.preventDefault()}
+      onKeyUp={(e) => !['Enter', 'Tab', 'Escape'].includes(e.key) && caret(e)}
       onPointerUp={caret}
       onFocus={caret}
       onBlur={caret}
@@ -136,6 +154,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // — or the picture it's over, to make an album with
   const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number; onto: string | null } | null>(null);
   const [details, setDetails] = useState(false); // the Feelings page
+  // an @tag being typed: in which text block, where its @ is and what follows it; and which suggestion is picked
+  const [mention, setMentionState] = useState<{ seg: number; start: number; end: number; q: string } | null>(null);
+  const [pickAt, setPickAt] = useState(0);
+  const dismissed = useRef(''); // which @ Escape put away, as block:position
+  const people = usePeople();
+  const shelf = useBooks();
+  const songs = useSongs();
+  const allEntries = useEntries();
   // Notes that already have words open formatted, to read; the pencil (or a tap on the words) switches to writing.
   const [reading, setReading] = useState(() => !!draft && id !== 'new' && !!plainText(draft.text).trim());
   const fileRef = useRef<HTMLInputElement>(null);
@@ -236,6 +262,35 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       document.removeEventListener('keydown', key);
     };
   }, [sel]);
+
+  useEffect(() => setPickAt(0), [mention?.seg, mention?.start, mention?.q]);
+
+  // Tags glow in their own colours while writing. These are CSS Custom Highlights: the text itself stays plain.
+  useEffect(() => {
+    const reg = highlightRegistry();
+    const Make = (globalThis as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
+    if (!reg || !Make) return;
+    const groups = new Map<string, Range[]>();
+    if (!reading && draft)
+      areas.current.slice(0, bodyOf(draft).texts.length).forEach((el) => {
+        if (!el?.isConnected) return;
+        const box = editable(el);
+        for (const f of mentionsIn(box.value, people, shelf, songs)) {
+          const name = f.kind === 'person' ? `mm-at-${f.core ?? 'none'}` : `mm-at-${f.kind}`;
+          if (!groups.has(name)) groups.set(name, []);
+          groups.get(name)!.push(box.range(f.start, f.end));
+        }
+      });
+    for (const name of highlights()) {
+      const ranges = groups.get(name);
+      if (ranges) reg.set(name, new Make(...ranges));
+      else reg.delete(name);
+    }
+  }, [draft?.text, reading, people, shelf, songs]);
+  useEffect(() => () => {
+    const reg = highlightRegistry();
+    if (reg) highlights().forEach((n) => reg.delete(n));
+  }, []);
 
   if (!draft)
     return (
@@ -542,6 +597,112 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     setOpen(null);
   };
 
+  /* ---------- @tags ---------- */
+
+  const setMention = (seg: number, m: { start: number; end: number; q: string } | null) => {
+    if (!m) dismissed.current = '';
+    else if (dismissed.current === `${seg}:${m.start}`) m = null;
+    setMentionState((cur) =>
+      !m ? (cur?.seg === seg ? null : cur)
+      : cur && cur.seg === seg && cur.start === m.start && cur.end === m.end && cur.q === m.q ? cur
+      : { seg, ...m });
+  };
+  const found = mention ? suggest(mention.q, people, shelf, songs, allEntries) : [];
+  // a second word that matches nothing means it was never a tag
+  const typing = mention && (found.length || !/\s/.test(mention.q.trim())) ? mention : null;
+  const suggestions = typing ? found : [];
+  const canAdd = !!typing && typing.q.trim().length > 1 && !people.some((p) => p.name.trim().toLowerCase() === typing.q.trim().toLowerCase());
+  const choices = suggestions.length + (canAdd ? 1 : 0);
+
+  /** Swaps the typed @query for the tag, tags a person in the note too, and lets it land with a little burst. */
+  const pickMention = (s: Suggestion | 'new') => {
+    const m = mention;
+    const el = m && areas.current[m.seg];
+    const d = latest.current;
+    if (!m || !el || !d) return;
+    let person: Person | null = null;
+    let token: string;
+    let color = 'var(--ink)';
+    if (s === 'new') {
+      person = blankPerson(m.q.trim());
+      savePerson(person);
+      token = mentionOfPerson(person, [...getPeople(), person]);
+      toast(`${person.name} added to People`);
+    } else if (s.kind === 'person') {
+      person = s.item;
+      token = mentionOfPerson(s.item, getPeople());
+    } else if (s.kind === 'book') {
+      token = mentionOf(s.item, getBooks());
+      color = '#c08a52';
+    } else {
+      token = mentionOfSong(s.item, getSongs());
+      color = '#8a6cf0';
+    }
+    if (person?.emotions[0]) color = `var(--emo-${coreOf(person.emotions[0]).id})`;
+    const box = editable(el);
+    const v = box.value;
+    const after = v.slice(m.end);
+    const insert = token + (/^\s/.test(after) ? '' : ' ');
+    box.value = v.slice(0, m.start) + insert + after;
+    box.setSelectionRange(m.start + insert.length, m.start + insert.length);
+    where.current = { seg: m.seg, pos: m.start + insert.length };
+    const b = bodyOf(d);
+    b.texts[m.seg] = box.value;
+    update({ text: serializeBody(b), ...(person && !d.people.includes(person.id) ? { people: [...d.people, person.id] } : {}) });
+    setMentionState(null);
+    requestAnimationFrame(() => burst(box.range(m.start, m.start + token.length).getBoundingClientRect(), color));
+  };
+
+  const mentionKey = (e: KeyboardEvent) => {
+    if (e.isComposing) return false;
+    if (!typing) return tidyAfterTag(e);
+    if (e.key === 'Escape') {
+      dismissed.current = `${typing.seg}:${typing.start}`;
+      setMentionState(null);
+      return true;
+    }
+    if (!choices) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      setPickAt((i) => (i + (e.key === 'ArrowDown' ? 1 : -1) + choices) % choices);
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      pickMention(pickAt < suggestions.length ? suggestions[pickAt] : 'new');
+      return true;
+    }
+    return false;
+  };
+
+  /** A full stop, comma… typed just after a tag takes the place of the space the tag came with. */
+  const tidyAfterTag = (e: KeyboardEvent) => {
+    if (!/^[.,!?;:)]$/.test(e.key) || e.metaKey || e.ctrlKey || e.altKey) return false;
+    const el = e.currentTarget as HTMLDivElement;
+    const box = editable(el);
+    const at = box.selectionStart;
+    const i = areas.current.indexOf(el);
+    if (i < 0 || at !== box.selectionEnd || !/(@\[[^\]\n]+\]|♪\[[^\]\n]+\]|\]\]) $/.test(box.value.slice(0, at))) return false;
+    box.setRangeText(e.key, at - 1, at);
+    box.setSelectionRange(at, at);
+    setText(i, box.value);
+    return true;
+  };
+
+  /** The @ button: types an @ where the caret is (writing first, if reading), which brings up the suggestions. */
+  const startMention = () => {
+    const go = () => {
+      const box = target();
+      if (!box) return;
+      const { selectionStart: a, selectionEnd: z } = box;
+      box.focus();
+      box.setSelectionRange(a, z);
+      const before = box.value.slice(0, a);
+      document.execCommand('insertText', false, (before && !/\s$/.test(before) ? ' ' : '') + '@');
+    };
+    if (!reading) return go();
+    setReading(false);
+    requestAnimationFrame(() => requestAnimationFrame(go));
+  };
+
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
   const body = bodyOf(draft);
@@ -636,6 +797,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               placeholder={i === 0 && !body.media.length ? 'What’s on your mind?' : i === last ? 'Keep writing…' : undefined}
               onChange={(v) => setText(i, v)}
               onCaret={(pos) => (where.current = { seg: i, pos })}
+              onMention={(m) => setMention(i, m)}
+              onKey={mentionKey}
             />
             )}
           </>
@@ -674,7 +837,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <FormatBar
         target={target}
         format={!reading}
-        swap={selIndex >= 0 && (
+        swapLabel={typing ? 'Tag someone, a book or music' : 'Picture'}
+        swap={typing ? (
+          <MentionStrip items={suggestions} active={pickAt} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} />
+        ) : selIndex >= 0 && (
           <MediaTools
             m={body.media[selIndex]}
             canUp={canStep(body, selIndex, -1)}
@@ -699,6 +865,16 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         </button>
         <button class="format-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
           <Icon name="brand-spotify" size={19} />
+        </button>
+        <button
+          class="format-btn"
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={startMention}
+          aria-label="Tag someone, a book or music"
+          title="Tag someone, a book or music"
+        >
+          <Icon name="at" size={19} />
         </button>
         <button class="format-btn" onClick={() => setOpen('book')} aria-label="Mention a book" title="Mention a book">
           <Icon name="books" size={19} />

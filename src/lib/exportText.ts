@@ -5,6 +5,7 @@ import { weatherName } from '../data/weather';
 import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
 import { KIND_LABEL } from './spotify';
+import { PERSON, SONG, resolvePerson, resolveSong } from './mentions';
 import { getBooks, getEntries, getPeople, getSongs, type Book, type Entry, type Person, type Song } from './store';
 
 const LOCALE = 'en-GB';
@@ -20,12 +21,21 @@ function feeling(id: string) {
 }
 const feelings = (ids: string[]) => ids.map(feeling).join('; ');
 
-/** Book mentions read as their title; anything else in [[…]] keeps its words. */
-const mentions = (text: string, books: Book[]) =>
-  text.replace(MENTION, (_, target: string | undefined, label: string) => {
-    const b = resolveMention(target, label, books);
-    return b ? `“${b.title}” (book)` : label;
-  });
+/** Tags read as words: a book as its title, someone as their name, music as its title and who it's by. */
+function mentions(text: string, books: Book[]) {
+  const people = getPeople();
+  const songs = getSongs();
+  return text
+    .replace(MENTION, (_, target: string | undefined, label: string) => {
+      const b = resolveMention(target, label, books);
+      return b ? `“${b.title}” (book)` : label;
+    })
+    .replace(PERSON, (_, target: string | undefined, name: string) => resolvePerson(target, name, people)?.name || name)
+    .replace(SONG, (_, target: string | undefined, title: string) => {
+      const s = resolveSong(target, title, songs);
+      return s ? `“${s.music.title}”${s.music.sub ? ` by ${s.music.sub}` : ''} (${s.music.kind === 'track' ? 'song' : s.music.kind})` : title;
+    });
+}
 
 function picture(it: Item, e: Entry) {
   if (it.kind === 'photo') return 'Photo';

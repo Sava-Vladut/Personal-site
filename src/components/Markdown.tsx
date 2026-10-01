@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { BookMention } from './books';
+import { BookMention, PersonMention, SongMention } from './mentions';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
 // strings, so nothing written in a note can run as code.
@@ -74,6 +74,8 @@ const INLINE = new RegExp(
     /\*(\S(?:[^*\n]*?\S)?)\*/.source, //                                  10 italic
     /(https?:\/\/[^\s<>]*[^\s<>.,:;"'!?)\]])/.source, //                  11 bare address
     /(^|[\s(])#([\p{L}_][\p{L}\p{N}_/-]*)/u.source, //                     12, 13 tag
+    /@\[(?:person:([^\]|\n]+)\|)?([^\]\n]+)\]/.source, //                       14, 15 someone in People
+    /♪\[(?:song:([^\]|\n]+)\|)?([^\]\n]+)\]/.source, //                         16, 17 music in your records
   ].join('|'),
   'gu',
 );
@@ -94,6 +96,8 @@ function inline(text: string): ComponentChildren[] {
     else if (m[10] !== undefined) out.push(<em>{inline(m[10])}</em>);
     else if (m[11] !== undefined) out.push(<a href={m[11]} target="_blank" rel="noopener noreferrer">{m[11]}</a>);
     else if (m[13] !== undefined) out.push(m[12], <span class="md-tag">#{m[13]}</span>);
+    else if (m[15] !== undefined) out.push(<PersonMention target={m[14]} text={m[15]} />);
+    else if (m[17] !== undefined) out.push(<SongMention target={m[16]} text={m[17]} />);
   }
   if (at < text.length) out.push(text.slice(at));
   return out;

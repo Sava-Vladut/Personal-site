@@ -72,7 +72,7 @@ function harness(code, initial = {}) {
     saveEntry: async (e) => { entries.set(e.id, e); return e; },
     deleteEntry: async (id) => { const old = entries.get(id); entries.delete(id); return old; },
     toast: (message) => messages.push(message), isEmpty: () => false,
-    usePeople: () => initial.people ?? [], useEntries: () => initial.entries ?? [],
+    usePeople: () => initial.people ?? [], useEntries: () => initial.entries ?? [], useBooks: () => [], useSongs: () => [],
   };
   const context = {
     exports: {},

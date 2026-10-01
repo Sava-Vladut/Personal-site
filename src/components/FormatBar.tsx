@@ -26,7 +26,13 @@ const TOOLS: [UiName, string, Action][] = [
  * buttons that add photos, images and music. It floats at the bottom and rides up on top of a phone's keyboard.
  * With `swap` (a selected picture's tools), it shows those instead.
  */
-export function FormatBar({ target, format = true, swap, children }: { target: () => TextBox | null; format?: boolean; swap?: ComponentChildren; children?: ComponentChildren }) {
+export function FormatBar({ target, format = true, swap, swapLabel = 'Picture', children }: {
+  target: () => TextBox | null;
+  format?: boolean;
+  swap?: ComponentChildren;
+  swapLabel?: string;
+  children?: ComponentChildren;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,7 +56,7 @@ export function FormatBar({ target, format = true, swap, children }: { target: (
 
   if (swap)
     return (
-      <div ref={ref} class="format-bar glass is-swapped" role="toolbar" aria-label="Picture">
+      <div ref={ref} class="format-bar glass is-swapped" role="toolbar" aria-label={swapLabel}>
         <div class="format-scroll">{swap}</div>
       </div>
     );

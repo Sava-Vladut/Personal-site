@@ -270,3 +270,24 @@ test('kept music is cleaned on load, survives a backup, and follows synced delet
   await copy.mergeSynced({ deleted: { song: 10 } });
   assert.equal(copy.getSongs().length, 0, 'a newer deletion from another device removes it');
 });
+
+test('@tags are spotted while typing, suggested across people, books and music, and follow a rename', async () => {
+  const m = await loadModule('src/lib/mentions.ts', { './store': { getBooks: () => [] } });
+  const plain = (x) => JSON.parse(JSON.stringify(x));
+  assert.deepEqual(plain(m.typedMention('Coffee with @an', 15)), { start: 12, end: 15, q: 'an' });
+  assert.equal(m.typedMention('write to x@an', 13), null, 'an @ inside a word is not a tag');
+  assert.equal(m.typedMention('@ana went  ', 11), null, 'two spaces end it');
+
+  const people = [{ id: 'p1', name: 'Ana', relation: 'Friend', emotions: ['joy'] }, { id: 'p2', name: 'Andrei', relation: '', emotions: [] }];
+  const books = [{ id: 'b1', title: 'Anna Karenina', authors: 'Leo Tolstoy', status: 'want', emotions: [] }];
+  const songs = [{ id: 's1', music: { kind: 'track', id: 'x', title: 'Angel', sub: 'Massive Attack' }, repeat: false, emotions: [] }];
+  const found = m.suggest('an', people, books, songs, []).map((s) => `${s.kind}:${s.item.name ?? s.item.title ?? s.item.music.title}`);
+  assert.equal(found[0], 'person:Ana');
+  assert.ok(found.includes('book:Anna Karenina') && found.includes('song:Angel'));
+
+  const text = `Met ${m.mentionOfPerson(people[0], people)} and played ${m.mentionOfSong(songs[0], songs)}`;
+  assert.equal(text, 'Met @[Ana] and played ♪[Angel]');
+  assert.deepEqual(plain(m.mentionsIn(text, people, books, songs).map((f) => [f.kind, f.core, text.slice(f.start, f.end)])), [['person', 'joy', '@[Ana]'], ['song', null, '♪[Angel]']]);
+  assert.deepEqual(plain(m.songsIn(text, songs)), ['s1']);
+  assert.equal(m.renamePersonMentions([{ id: 'e', text }], people, { ...people[0], name: 'Ana Maria' })[0].text, 'Met @[Ana Maria] and played ♪[Angel]');
+});

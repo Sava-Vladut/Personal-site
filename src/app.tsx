@@ -3,6 +3,7 @@ import { navigate, useRoute, type RouteName } from './lib/router';
 import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
+import { PeekLayer } from './components/mentions';
 import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
 import { Icon, type UiName } from './components/icons';
@@ -67,6 +68,7 @@ export function App() {
       <EntryMenu />
       <Toasts />
       <TooltipLayer />
+      <PeekLayer />
     </>
   );
 }
