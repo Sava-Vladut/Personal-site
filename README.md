@@ -14,6 +14,9 @@ npm start            # → http://localhost:8085
 
 While developing, `npm run dev` runs the API server and Vite (hot reload) together; open http://localhost:5173.
 
+Run `npm test` for storage, sync, server and editor regression checks, including tag suggestions, touch selection,
+composition and keyboard viewport positioning. Check the software keyboard on a physical iPhone as well.
+
 Install it on a phone: open the site, then **Share → Add to Home Screen** (iOS) or **Install app** (Android/Chrome).
 It works offline after the first visit: the service worker caches the whole build when it installs.
 

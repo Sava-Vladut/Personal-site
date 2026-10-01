@@ -53,15 +53,24 @@ function read(el: HTMLElement, at?: { node: Node; offset: number }) {
 /** The DOM point at character `pos` of a block. */
 function locate(el: HTMLElement, pos: number): [Node, number] {
   let at = 0;
+  let newline = false;
   const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   for (let n = tw.nextNode(); n; n = tw.nextNode()) {
     if (n.nodeType === Node.TEXT_NODE) {
       const len = (n as Text).data.length;
       if (pos <= at + len) return [n, pos - at];
       at += len;
+      if (len) newline = (n as Text).data.endsWith('\n');
     } else if (n.nodeName === 'BR') {
       if (pos <= at) return [n.parentNode!, [...n.parentNode!.childNodes].indexOf(n as ChildNode)];
       at += 1;
+      newline = true;
+    } else if (isBlock(n) && at && !newline) {
+      // Safari can create nested line blocks. Match the implicit newline that read() adds
+      // before each block, so selections and tag highlight ranges use the same offsets.
+      if (pos <= at) return [n.parentNode!, [...n.parentNode!.childNodes].indexOf(n as ChildNode)];
+      at++;
+      newline = true;
     }
   }
   const last = el.lastChild;
@@ -77,7 +86,7 @@ function fill(el: HTMLElement, text: string) {
 export const messy = (el: HTMLElement) => [...el.childNodes].some((c, i, all) => c.nodeType !== Node.TEXT_NODE && !(c.nodeName === 'BR' && i === all.length - 1));
 
 export class Editable implements TextBox {
-  private last = { start: 0, end: 0 };
+  private last: { start: number; end: number; direction: 'forward' | 'backward' | 'none' } = { start: 0, end: 0, direction: 'none' };
   constructor(readonly el: HTMLElement) {}
 
   get value() {
@@ -85,7 +94,7 @@ export class Editable implements TextBox {
   }
   set value(v: string) {
     fill(this.el, v);
-    this.last = { start: Math.min(this.last.start, v.length), end: Math.min(this.last.end, v.length) };
+    this.last = { ...this.last, start: Math.min(this.last.start, v.length), end: Math.min(this.last.end, v.length) };
   }
 
   /** The selection, when it's in this block; otherwise where it was when it last was. */
@@ -97,6 +106,7 @@ export class Editable implements TextBox {
         this.last = {
           start: read(this.el, { node: r.startContainer, offset: r.startOffset }).found,
           end: read(this.el, { node: r.endContainer, offset: r.endOffset }).found,
+          direction: r.collapsed ? 'none' : s.anchorNode === r.endContainer && s.anchorOffset === r.endOffset ? 'backward' : 'forward',
         };
       }
     }
@@ -109,17 +119,18 @@ export class Editable implements TextBox {
     return this.sel().end;
   }
 
-  setSelectionRange(start: number, end: number) {
+  setSelectionRange(start: number, end: number, direction: 'forward' | 'backward' | 'none' = 'none') {
     const len = this.value.length;
-    start = Math.max(0, Math.min(start, len));
-    end = Math.max(start, Math.min(end, len));
+    start = Number.isFinite(start) ? Math.max(0, Math.min(Math.trunc(start), len)) : 0;
+    end = Number.isFinite(end) ? Math.max(start, Math.min(Math.trunc(end), len)) : start;
     const r = document.createRange();
     r.setStart(...locate(this.el, start));
     r.setEnd(...locate(this.el, end));
     const s = getSelection();
     s?.removeAllRanges();
     s?.addRange(r);
-    this.last = { start, end };
+    if (direction === 'backward' && s?.setBaseAndExtent) s.setBaseAndExtent(r.endContainer, r.endOffset, r.startContainer, r.startOffset);
+    this.last = { start, end, direction };
   }
 
   setRangeText(text: string, start = this.selectionStart, end = this.selectionEnd) {
@@ -129,6 +140,9 @@ export class Editable implements TextBox {
 
   /** A range over characters [start, end), to measure where they sit on screen. */
   range(start: number, end: number) {
+    const len = this.value.length;
+    start = Number.isFinite(start) ? Math.max(0, Math.min(Math.trunc(start), len)) : 0;
+    end = Number.isFinite(end) ? Math.max(start, Math.min(Math.trunc(end), len)) : start;
     const r = document.createRange();
     r.setStart(...locate(this.el, start));
     r.setEnd(...locate(this.el, end));
@@ -140,7 +154,7 @@ export class Editable implements TextBox {
     const focused = document.activeElement === this.el;
     const at = this.sel();
     fill(this.el, this.value);
-    if (focused) this.setSelectionRange(at.start, at.end);
+    if (focused) this.setSelectionRange(at.start, at.end, at.direction);
   }
 
   focus(o?: FocusOptions) {

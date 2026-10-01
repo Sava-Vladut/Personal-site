@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.21.2',
+    date: '2026-10-01',
+    changes: [
+      'Show tag suggestions reliably from the first letters, including accented names and names with spaces',
+      'Keep the tag toolbar above the iOS keyboard without jumping the note or hiding the first matches',
+      'Keep your typing and caret safe when picking or creating a tag, including during keyboard composition',
+      'Make tag animations steadier and keep tag cards within the visible screen',
+    ],
+  },
+  {
     version: '1.21.1',
     date: '2026-10-01',
     changes: [

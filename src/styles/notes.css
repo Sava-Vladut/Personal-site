@@ -110,9 +110,9 @@
 .editor { padding-bottom: 76px; }
 .app.route-note ~ .toasts { bottom: calc(var(--safe-b) + 78px); }
 .format-bar {
-  position: fixed; z-index: 30; left: 50%; translate: -50% 0;
+  position: fixed; z-index: 30; left: var(--toolbar-left, 50%); translate: -50% 0;
   bottom: max(calc(var(--safe-b) + 10px), calc(var(--kb, 0px) + 6px));
-  display: flex; align-items: center; width: min(calc(100% - 20px), 680px); border-radius: 999px; padding: 4px;
+  display: flex; align-items: center; width: min(calc(var(--toolbar-width, 100%) - 20px), 680px); border-radius: 999px; padding: 4px;
   animation: rise-in 0.4s var(--ease-emph);
 }
 .format-scroll, .format-fixed { display: flex; align-items: center; gap: 1px; }

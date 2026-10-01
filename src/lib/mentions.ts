@@ -9,7 +9,9 @@ import type { Book, Entry, Person, Song } from './store';
 export const PERSON = /@\[(?:person:([^\]|\n]+)\|)?([^\]\n]+)\]/g;
 export const SONG = /♪\[(?:song:([^\]|\n]+)\|)?([^\]\n]+)\]/g;
 
-const key = (t: string) => t.trim().toLowerCase();
+const key = (t: string) => t.trim().normalize('NFC').toLowerCase();
+/** Keyboard composition and iOS spaces should not change which names suggestions find. */
+const searchKey = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim().replace(/\s+/g, ' ');
 const clean = (t: string) => (t.trim() || 'Untitled').replace(/[\]|\n]/g, ' ').slice(0, 120);
 
 export function resolvePerson(target: string | undefined, text: string, people: Person[]) {
@@ -47,7 +49,7 @@ export function mentionsIn(text: string, people: Person[], books: Book[], songs:
   if (!/@\[|\[\[|♪\[/.test(text)) return out;
   for (const m of text.matchAll(PERSON)) {
     const p = resolvePerson(m[1], m[2], people);
-    if (p) out.push({ start: m.index!, end: m.index! + m[0].length, kind: 'person', core: p.emotions[0] ? coreOf(p.emotions[0]).id : null });
+    if (p) out.push({ start: m.index!, end: m.index! + m[0].length, kind: 'person', core: p.emotions[0] ? coreOf(p.emotions[0])?.id ?? null : null });
   }
   for (const m of text.matchAll(MENTION)) {
     if (resolveMention(m[1], m[2], books)) out.push({ start: m.index!, end: m.index! + m[0].length, kind: 'book', core: null });
@@ -55,7 +57,7 @@ export function mentionsIn(text: string, people: Person[], books: Book[], songs:
   for (const m of text.matchAll(SONG)) {
     if (resolveSong(m[1], m[2], songs)) out.push({ start: m.index!, end: m.index! + m[0].length, kind: 'song', core: null });
   }
-  return out;
+  return out.sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
 /** After someone is renamed: their @[Old name] tags become @[New name], so the notes still point to them. */
@@ -72,9 +74,16 @@ export function renamePersonMentions(entries: Entry[], before: Person[], person:
 
 /** The @query being typed just before the caret, if any: where its @ is and what follows it. */
 export function typedMention(text: string, caret: number) {
-  const m = /(?:^|[\s(])@([^\n@[\].,!?;:]{0,40})$/.exec(text.slice(0, caret)); // the end of a sentence ends it too
-  if (!m || /\s{2}$/.test(m[1]) || m[1].trim().split(/\s+/).length > 3) return null;
-  return { start: caret - m[1].length - 1, end: caret, q: m[1] };
+  if (!Number.isFinite(caret)) return null;
+  caret = Math.max(0, Math.min(Math.trunc(caret), text.length));
+  const before = text.slice(0, caret);
+  const m = /(?:^|[\s([{"'“‘])@([^\r\n\t@[\].,!?;:]{0,120})$/.exec(before); // sentence endings end the query too
+  // JavaScript's $ also matches before a final newline, which must actually end a tag.
+  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1])) return null;
+  const start = caret - m[1].length - 1;
+  // Moving the caret into an existing tag's label must not offer a nested tag.
+  if (/(?:@\[|♪\[|\[\[)[^\]\r\n]*$/.test(before.slice(0, start))) return null;
+  return { start, end: caret, q: m[1] };
 }
 
 /* ---------- what an @ can find ---------- */
@@ -88,7 +97,7 @@ export type Suggestion =
 function score(q: string, ...texts: string[]) {
   let best = 0;
   for (const t of texts) {
-    const s = t.toLowerCase();
+    const s = searchKey(t);
     if (!s) continue;
     if (s.startsWith(q)) return 3;
     if (s.split(/[\s\-–—,.'’()]+/).some((w) => w.startsWith(q))) best = Math.max(best, 2);
@@ -102,7 +111,7 @@ function score(q: string, ...texts: string[]) {
  * on repeat; otherwise the best matches across all three, people first when they match as well.
  */
 export function suggest(q: string, people: Person[], books: Book[], songs: Song[], entries: Entry[], max = 8): Suggestion[] {
-  const needle = q.trim().toLowerCase();
+  const needle = searchKey(q);
   if (!needle) {
     const recent: string[] = [];
     for (const e of entries) for (const id of e.people) if (!recent.includes(id)) recent.push(id);

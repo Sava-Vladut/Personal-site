@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { flushSync } from 'preact/compat';
 import { timeLabel } from '../lib/dates';
 import { goBack } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
@@ -30,6 +31,7 @@ import { SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 
 type Open = null | 'icon' | 'images' | 'spotify' | 'book';
+const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 /** The highlight each kind of tag is coloured with while writing: people in the colour of the feeling they bring. */
 const highlights = () => ['mm-at-book', 'mm-at-song', 'mm-at-none', ...CHART_ORDER.map((id) => `mm-at-${id}`)];
@@ -61,7 +63,7 @@ function useAutosize(value: string) {
  * wrap around a picture floated beside it. The browser owns what's in it; it's only rewritten when the text changes
  * from outside (a picture moved, a formatting command that fell back to rewriting).
  */
-function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, grow, textRef }: {
+function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, grow, textRef, suggestionsOpen, activeSuggestion }: {
   value: string;
   onChange: (v: string) => void;
   onCaret: (pos: number) => void;
@@ -72,25 +74,56 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
   placeholder?: string;
   grow?: boolean;
   textRef?: (el: HTMLDivElement | null) => void;
+  suggestionsOpen?: boolean;
+  activeSuggestion?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const composing = useRef(false);
+  const frame = useRef(0);
+  const handlers = useRef({ onCaret, onMention });
+  handlers.current = { onCaret, onMention };
+  const readCaret = () => {
+    const el = ref.current;
+    if (!el || document.activeElement !== el) return;
+    const box = editable(el);
+    const start = box.selectionStart;
+    handlers.current.onCaret(start);
+    handlers.current.onMention(!composing.current && getSelection()?.isCollapsed !== false && start === box.selectionEnd ? typedMention(box.value, start) : null);
+  };
+  const queueCaret = () => {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(readCaret);
+  };
+  useEffect(() => {
+    // On iOS the selection can move after `input`, without a keyup event.
+    document.addEventListener('selectionchange', readCaret);
+    return () => {
+      document.removeEventListener('selectionchange', readCaret);
+      cancelAnimationFrame(frame.current);
+    };
+  }, []);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || composing.current) return;
     const box = editable(el);
     if (box.value === value) return;
     const focused = document.activeElement === el;
-    const at = box.selectionStart;
+    const start = box.selectionStart, end = box.selectionEnd;
     box.value = value;
-    if (focused) box.setSelectionRange(at, at);
+    if (focused) box.setSelectionRange(start, end);
   }, [value]);
   const caret = (e: Event) => {
     const el = e.currentTarget as HTMLDivElement;
-    if (e.type === 'blur') onMention(null);
+    if (e.type === 'blur') {
+      onMention(null);
+      cancelAnimationFrame(frame.current);
+    }
     if (document.activeElement !== el && e.type !== 'blur') return;
-    const box = editable(el);
-    onCaret(box.selectionStart);
-    if (e.type !== 'blur') onMention(box.selectionStart === box.selectionEnd ? typedMention(box.value, box.selectionStart) : null);
+    if (e.type === 'blur') onCaret(editable(el).selectionStart);
+    else {
+      readCaret();
+      queueCaret();
+    }
   };
   return (
     <div
@@ -100,17 +133,28 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       role="textbox"
       aria-multiline="true"
       aria-label="Note"
+      aria-autocomplete="list"
+      aria-controls={suggestionsOpen ? 'mention-suggestions' : undefined}
+      aria-expanded={!!suggestionsOpen}
+      aria-activedescendant={suggestionsOpen ? activeSuggestion : undefined}
       data-placeholder={placeholder}
       spellcheck
       onInput={(e) => {
         const el = e.currentTarget;
-        if (!(e as InputEvent).isComposing && messy(el)) editable(el).tidy();
+        if (!composing.current && !(e as InputEvent).isComposing && messy(el)) editable(el).tidy();
         onChange(editable(el).value);
+        caret(e);
+      }}
+      onCompositionStart={() => { composing.current = true; onMention(null); }}
+      onCompositionEnd={(e) => {
+        composing.current = false;
+        if (messy(e.currentTarget)) editable(e.currentTarget).tidy();
+        onChange(editable(e.currentTarget).value);
         caret(e);
       }}
       onBeforeInput={(e) => {
         // browsers without plain-text editing: no bold, lists or pasted formatting, and Enter makes a line break
-        if (PLAIN) return;
+        if (PLAIN || composing.current || e.isComposing) return;
         if (e.inputType.startsWith('format')) e.preventDefault();
         else if (e.inputType === 'insertParagraph') {
           e.preventDefault();
@@ -122,7 +166,7 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
         e.preventDefault();
         document.execCommand('insertText', false, e.clipboardData?.getData('text/plain') ?? '');
       }}
-      onKeyDown={(e) => (onKey(e) || listKey(editable(e.currentTarget), e)) && e.preventDefault()}
+      onKeyDown={(e) => !composing.current && !e.isComposing && e.keyCode !== 229 && (onKey(e) || listKey(editable(e.currentTarget), e)) && e.preventDefault()}
       onKeyUp={(e) => !['Enter', 'Tab', 'Escape'].includes(e.key) && caret(e)}
       onPointerUp={caret}
       onFocus={caret}
@@ -158,6 +202,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [mention, setMentionState] = useState<{ seg: number; start: number; end: number; q: string } | null>(null);
   const [pickAt, setPickAt] = useState(0);
   const dismissed = useRef(''); // which @ Escape put away, as block:position
+  const pickingMention = useRef(false);
   const people = usePeople();
   const shelf = useBooks();
   const songs = useSongs();
@@ -412,7 +457,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     return serializeBody(insertMedia(b, add, seg, pos));
   };
   const setText = (i: number, v: string) => {
-    const b = bodyOf(draft);
+    const d = latest.current;
+    if (!d) return;
+    const b = bodyOf(d);
+    if (i < 0 || i >= b.texts.length || b.texts[i] === v) return;
     b.texts[i] = v;
     update({ text: serializeBody(b) });
   };
@@ -623,8 +671,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       }
     };
     if (!reading) return go();
-    setReading(false);
-    requestAnimationFrame(go); // once the text boxes are back
+    // Render the editable before this touch ends: iOS only opens its keyboard for synchronous focus.
+    flushSync(() => setReading(false));
+    go();
   };
   /** The text box the toolbar formats: the one being written in, or the last one that was. */
   const target = () => {
@@ -660,49 +709,78 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       : { seg, ...m });
   };
   const found = mention ? suggest(mention.q, people, shelf, songs, allEntries) : [];
-  // a second word that matches nothing means it was never a tag
-  const typing = mention && (found.length || !/\s/.test(mention.q.trim())) ? mention : null;
+  const typing = mention;
   const suggestions = typing ? found : [];
-  const canAdd = !!typing && typing.q.trim().length > 1 && !people.some((p) => p.name.trim().toLowerCase() === typing.q.trim().toLowerCase());
+  const canAdd = !!typing && typing.q.trim().length > 1 && !people.some((p) => personNameKey(p.name) === personNameKey(typing.q));
   const choices = suggestions.length + (canAdd ? 1 : 0);
+  const activeChoice = Math.min(pickAt, Math.max(0, choices - 1));
 
   /** Swaps the typed @query for the tag, tags a person in the note too, and lets it land with a little burst. */
-  const pickMention = (s: Suggestion | 'new') => {
+  const pickMention = async (s: Suggestion | 'new') => {
     const m = mention;
     const el = m && areas.current[m.seg];
-    const d = latest.current;
-    if (!m || !el || !d) return;
+    if (!m || !el || !latest.current || !alive.current || removing.current || pickingMention.current) return;
+    const box = editable(el);
+    const source = box.value;
+    if (source.slice(m.start, m.end) !== '@' + m.q) return setMentionState(null);
+    // Keep the keyboard open in the original touch event; a later asynchronous focus cannot open it on iOS.
+    box.focus({ preventScroll: true });
+    const selection = { start: box.selectionStart, end: box.selectionEnd };
+    let awaitedCreation = false;
     let person: Person | null = null;
     let token: string;
     let color = 'var(--ink)';
     if (s === 'new') {
-      person = blankPerson(m.q.trim());
-      savePerson(person);
-      token = mentionOfPerson(person, [...getPeople(), person]);
-      toast(`${person.name} added to People`);
+      if (!canAdd) return;
+      person = getPeople().find((p) => personNameKey(p.name) === personNameKey(m.q)) ?? null;
+      if (!person) {
+        pickingMention.current = true;
+        awaitedCreation = true;
+        try {
+          person = await savePerson(blankPerson(m.q.trim()));
+          toast(`${person.name} added to People`);
+        } catch {
+          toast('Couldn’t save this person. Try again.');
+          return;
+        } finally {
+          pickingMention.current = false;
+        }
+      }
+      token = mentionOfPerson(person, getPeople());
     } else if (s.kind === 'person') {
-      person = s.item;
-      token = mentionOfPerson(s.item, getPeople());
+      person = getPeople().find((p) => p.id === s.item.id) ?? null;
+      if (!person) return setMentionState(null);
+      token = mentionOfPerson(person, getPeople());
     } else if (s.kind === 'book') {
-      token = mentionOf(s.item, getBooks());
+      const current = getBooks().find((b) => b.id === s.item.id);
+      if (!current) return setMentionState(null);
+      token = mentionOf(current, getBooks());
       color = '#c08a52';
     } else {
-      token = mentionOfSong(s.item, getSongs());
+      const current = getSongs().find((song) => song.id === s.item.id);
+      if (!current) return setMentionState(null);
+      token = mentionOfSong(current, getSongs());
       color = '#8a6cf0';
     }
     if (person?.emotions[0]) color = `var(--emo-${coreOf(person.emotions[0]).id})`;
-    const box = editable(el);
-    const v = box.value;
+    const d = latest.current;
+    if (!alive.current || removing.current || !d || areas.current[m.seg] !== el || box.value !== source) return;
+    if (awaitedCreation && (document.activeElement !== el || box.selectionStart !== selection.start || box.selectionEnd !== selection.end)) return;
+    const b = bodyOf(d);
+    if (b.texts[m.seg] !== source) return;
+    const v = source;
     const after = v.slice(m.end);
     const insert = token + (/^\s/.test(after) ? '' : ' ');
     box.value = v.slice(0, m.start) + insert + after;
     box.setSelectionRange(m.start + insert.length, m.start + insert.length);
     where.current = { seg: m.seg, pos: m.start + insert.length };
-    const b = bodyOf(d);
     b.texts[m.seg] = box.value;
     update({ text: serializeBody(b), ...(person && !d.people.includes(person.id) ? { people: [...d.people, person.id] } : {}) });
     setMentionState(null);
-    requestAnimationFrame(() => burst(box.range(m.start, m.start + token.length).getBoundingClientRect(), color));
+    requestAnimationFrame(() => {
+      if (alive.current && areas.current[m.seg] === el && box.value.slice(m.start, m.start + token.length) === token)
+        burst(box.range(m.start, m.start + token.length).getBoundingClientRect(), color);
+    });
   };
 
   const mentionKey = (e: KeyboardEvent) => {
@@ -719,7 +797,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       return true;
     }
     if (e.key === 'Enter' || e.key === 'Tab') {
-      pickMention(pickAt < suggestions.length ? suggestions[pickAt] : 'new');
+      pickMention(activeChoice < suggestions.length ? suggestions[activeChoice] : 'new');
       return true;
     }
     return false;
@@ -747,12 +825,23 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const { selectionStart: a, selectionEnd: z } = box;
       box.focus();
       box.setSelectionRange(a, z);
-      const before = box.value.slice(0, a);
-      document.execCommand('insertText', false, (before && !/\s$/.test(before) ? ' ' : '') + '@');
+      const original = box.value;
+      const before = original.slice(0, a);
+      const insert = (before && !/[\s([{]$/.test(before) ? ' ' : '') + '@';
+      try { document.execCommand('insertText', false, insert); } catch {}
+      if (box.value === original) box.setRangeText(insert, a, z);
+      const pos = a + insert.length;
+      box.setSelectionRange(pos, pos);
+      const seg = areas.current.findIndex((el) => el === box.el);
+      if (seg >= 0) {
+        setText(seg, box.value);
+        where.current = { seg, pos };
+        setMention(seg, typedMention(box.value, pos));
+      }
     };
     if (!reading) return go();
-    setReading(false);
-    requestAnimationFrame(() => requestAnimationFrame(go));
+    flushSync(() => setReading(false));
+    go();
   };
 
   const close = () => setOpen(null);
@@ -851,6 +940,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               onCaret={(pos) => (where.current = { seg: i, pos })}
               onMention={(m) => setMention(i, m)}
               onKey={mentionKey}
+              suggestionsOpen={typing?.seg === i}
+              activeSuggestion={typing?.seg === i && choices ? `mention-suggestions-option-${activeChoice}` : undefined}
             />
             )}
           </>
@@ -891,7 +982,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         format={!reading}
         swapLabel={typing ? 'Tag someone, a book or music' : 'Picture'}
         swap={typing ? (
-          <MentionStrip items={suggestions} active={pickAt} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} />
+          <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} />
         ) : selIndex >= 0 && (
           <MediaTools
             m={body.media[selIndex]}

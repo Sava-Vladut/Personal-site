@@ -20,6 +20,11 @@ const tint = (emotions: string[]) => (emotions[0] ? `var(--emo-${coreOf(emotions
 
 interface Target { kind: MentionKind; id: string; x: number; top: number; bottom: number }
 const peek$ = observable<Target | null>(null);
+const visibleViewport = () => {
+  const v = window.visualViewport;
+  return { left: v?.offsetLeft ?? 0, top: v?.offsetTop ?? 0, width: v?.width ?? innerWidth, height: v?.height ?? innerHeight };
+};
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
 export function openPeek(kind: MentionKind, id: string, el: Element) {
   const r = el.getBoundingClientRect();
@@ -31,6 +36,7 @@ export const closePeek = () => void (peek$.get() && peek$.set(null));
 function Chip({ kind, id, c, children }: { kind: MentionKind; id: string; c?: string; children: ComponentChildren }) {
   return (
     <button
+      type="button"
       class={`mention is-${kind}`}
       style={c ? { '--c': c } : undefined}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPeek(kind, id, e.currentTarget); }}
@@ -73,7 +79,8 @@ export function PeekLayer() {
   const entries = useEntries();
   const [playing, setPlaying] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [above, setAbove] = useState(false);
+  const [viewport, setViewport] = useState(visibleViewport);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => setPlaying(false), [t?.kind, t?.id]);
   useEffect(() => {
@@ -81,28 +88,43 @@ export function PeekLayer() {
     const away = (e: PointerEvent) => !(e.target as Element).closest?.('.peek, .mention') && closePeek();
     const key = (e: KeyboardEvent) => e.key === 'Escape' && closePeek();
     const scroll = (e: Event) => !(e.target instanceof Element && e.target.closest('.peek')) && closePeek();
+    const resize = () => setViewport(visibleViewport());
     addEventListener('pointerdown', away, true);
     addEventListener('keydown', key);
     addEventListener('scroll', scroll, { capture: true, passive: true });
     addEventListener('hashchange', closePeek);
+    addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('scroll', resize);
+    resize();
     return () => {
       removeEventListener('pointerdown', away, true);
       removeEventListener('keydown', key);
       removeEventListener('scroll', scroll, { capture: true });
       removeEventListener('hashchange', closePeek);
+      removeEventListener('resize', resize);
+      window.visualViewport?.removeEventListener('resize', resize);
+      window.visualViewport?.removeEventListener('scroll', resize);
     };
   }, [t]);
-  // below the tag, unless it won't fit there and fits better above
   useLayoutEffect(() => {
     if (!t || !ref.current) return;
-    const h = ref.current.offsetHeight;
-    setAbove(t.bottom + 12 + h > innerHeight - 12 && t.top - 12 - h > 12);
-  }, [t, playing]);
+    setHeight(ref.current.offsetHeight);
+  }, [t, playing, viewport, people, books, songs, entries]);
+  useEffect(() => {
+    if (!t || !ref.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => ref.current && setHeight(ref.current.offsetHeight));
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [t]);
 
   if (!t) return null;
-  const W = Math.min(320, innerWidth - 24);
-  const left = Math.min(Math.max(12, t.x - W / 2), innerWidth - W - 12);
-  const place = above ? { bottom: `${innerHeight - t.top + 10}px` } : { top: `${t.bottom + 10}px` };
+  const W = Math.max(0, Math.min(320, viewport.width - 24));
+  const left = clamp(t.x - W / 2, viewport.left + 12, viewport.left + viewport.width - W - 12);
+  const availableHeight = Math.max(0, viewport.height - 24);
+  const h = Math.min(height, availableHeight);
+  const above = t.bottom + 10 + h > viewport.top + viewport.height - 12 && t.top - viewport.top > viewport.top + viewport.height - t.bottom;
+  const top = clamp(above ? t.top - 10 - h : t.bottom + 10, viewport.top + 12, viewport.top + viewport.height - h - 12);
   let c: string | undefined;
   let body: ComponentChildren = null;
 
@@ -165,9 +187,9 @@ export function PeekLayer() {
       class={`peek${above ? ' is-above' : ''}`}
       role="dialog"
       aria-label="About this tag"
-      style={{ left: `${left}px`, width: `${W}px`, ...place, '--tail': `${t.x - left}px`, ...(c ? { '--c': c } : {}) }}
+      style={{ left: `${left}px`, top: `${top}px`, width: `${W}px`, maxHeight: `${availableHeight}px`, '--peek-height': `${availableHeight}px`, '--tail': `${clamp(t.x - left, 20, W - 20)}px`, ...(c ? { '--c': c } : {}) }}
     >
-      {body}
+      <div class="peek-content">{body}</div>
     </div>
   );
 }
@@ -195,21 +217,62 @@ function PersonPeek({ p, moments, last }: { p: Person; moments: number; last?: s
 /* ---------- while writing: what an @ suggests ---------- */
 
 /** The strip that takes the toolbar's place while an @ is being typed. Arrow keys move through it, Enter picks. */
-export function MentionStrip({ items, active, q, canAdd, onPick, onAdd }: {
+export function MentionStrip({ items, active, q, canAdd, onPick, onAdd, listId = 'mention-suggestions' }: {
   items: Suggestion[];
   active: number;
   q: string;
   canAdd: boolean;
   onPick: (s: Suggestion) => void;
   onAdd: () => void;
+  listId?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [active, items]);
-  const keep = { onPointerDown: (e: Event) => e.preventDefault(), onMouseDown: (e: Event) => e.preventDefault() };
+  const touch = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  const handledTouch = useRef(false);
+  const activeKey = active < items.length ? `${items[active]?.kind}:${items[active]?.item.id}` : canAdd ? 'new' : '';
+  useLayoutEffect(() => {
+    const strip = ref.current;
+    const scroller = strip?.closest<HTMLElement>('.format-scroll') ?? strip;
+    const selected = strip?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!scroller || !selected) return;
+    const bounds = scroller.getBoundingClientRect(), item = selected.getBoundingClientRect();
+    // scrollIntoView can move the whole editor behind iOS's keyboard. Move only the strip.
+    if (item.left < bounds.left + 8) scroller.scrollLeft += item.left - bounds.left - 8;
+    else if (item.right > bounds.right - 24) scroller.scrollLeft += item.right - bounds.right + 24;
+  }, [activeKey, q]);
+  const pick = (onSelect: () => void) => ({
+    onPointerDown: (e: PointerEvent) => {
+      e.preventDefault(); // Keep the editor caret and keyboard in place.
+      handledTouch.current = false;
+      touch.current = e.pointerType !== 'mouse' ? { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false } : null;
+    },
+    onPointerMove: (e: PointerEvent) => {
+      const t = touch.current;
+      if (t && t.id === e.pointerId && Math.hypot(e.clientX - t.x, e.clientY - t.y) > 8) t.moved = true;
+    },
+    onPointerCancel: () => { touch.current = null; },
+    onPointerUp: (e: PointerEvent) => {
+      const t = touch.current;
+      touch.current = null;
+      if (!t || t.id !== e.pointerId) return;
+      handledTouch.current = true;
+      if (!t.moved && Math.hypot(e.clientX - t.x, e.clientY - t.y) <= 8) {
+        e.preventDefault();
+        onSelect();
+      }
+    },
+    onMouseDown: (e: MouseEvent) => e.preventDefault(),
+    onClick: (e: MouseEvent) => {
+      if (handledTouch.current && e.detail !== 0) {
+        handledTouch.current = false;
+        e.preventDefault();
+        return;
+      }
+      onSelect();
+    },
+  });
   return (
-    <div ref={ref} class="mention-strip" role="listbox" aria-label="Tag someone, a book or music">
+    <div id={listId} ref={ref} class="mention-strip" role="listbox" aria-label="Tag someone, a book or music">
       <span class="mention-at" aria-hidden="true">@</span>
       {items.map((s, i) => {
         const [label, sub, thumb, c] =
@@ -217,14 +280,14 @@ export function MentionStrip({ items, active, q, canAdd, onPick, onAdd }: {
           : s.kind === 'book' ? [s.item.title.trim() || 'Untitled', s.item.authors || 'Book', <BookCover b={s.item} width={19} />, tint(s.item.emotions)]
           : [s.item.music.title, s.item.music.sub ?? 'Music', <MiniMusic m={s.item.music} />, tint(s.item.emotions)];
         return (
-          <button role="option" aria-selected={i === active} class={`mention-pick is-${s.kind}`} style={{ '--k': i, ...(c ? { '--c': c } : {}) }} onClick={() => onPick(s)} {...keep}>
+          <button key={`${s.kind}:${s.item.id}`} id={`${listId}-option-${i}`} type="button" role="option" tabIndex={-1} aria-selected={i === active} class={`mention-pick is-${s.kind}`} style={c ? { '--c': c } : undefined} {...pick(() => onPick(s))}>
             <span class="mention-thumb">{thumb}</span>
             <span class="mention-text"><b>{label}</b><small>{sub}</small></span>
           </button>
         );
       })}
       {canAdd && (
-        <button role="option" aria-selected={active === items.length} class="mention-pick is-new" style={{ '--k': items.length }} onClick={onAdd} {...keep}>
+        <button key="new" id={`${listId}-option-${items.length}`} type="button" role="option" tabIndex={-1} aria-selected={active === items.length} class="mention-pick is-new" {...pick(onAdd)}>
           <span class="mention-thumb"><Icon name="user-plus" size={16} /></span>
           <span class="mention-text"><b>{q.trim()}</b><small>New person</small></span>
         </button>
@@ -236,7 +299,10 @@ export function MentionStrip({ items, active, q, canAdd, onPick, onAdd }: {
 
 /** A little burst of colour where a new tag lands. */
 export function burst(rect: DOMRect, color = 'var(--ink)') {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !rect.width) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !rect.width || !rect.height || ![rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)) return;
+  const viewport = visibleViewport();
+  const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+  if (x < viewport.left || x > viewport.left + viewport.width || y < viewport.top || y > viewport.top + viewport.height) return;
   const el = document.createElement('span');
   el.className = 'mention-burst';
   el.style.cssText = `left:${rect.left + rect.width / 2}px;top:${rect.top + rect.height / 2}px;--c:${color};--w:${rect.width}px;--h:${rect.height}px`;

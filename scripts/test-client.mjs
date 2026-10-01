@@ -52,6 +52,48 @@ test('formatting a selection ending at the next line start only affects selected
   assert.equal(md.toggleTask('Words', 20), 'Words');
 });
 
+test('the editor toolbar follows the visible keyboard viewport and releases its listeners', async () => {
+  const styles = {}, effects = [], cleanups = [], listeners = new Map(), frames = new Map();
+  const scroll = { scrollLeft: 240 };
+  const el = { style: { setProperty: (key, value) => { styles[key] = value; } }, querySelector: () => scroll };
+  const body = {};
+  const events = (prefix) => ({
+    addEventListener: (name, fn) => listeners.set(prefix + name, fn),
+    removeEventListener: (name, fn) => { if (listeners.get(prefix + name) === fn) listeners.delete(prefix + name); },
+  });
+  const viewport = { width: 390, height: 380, offsetTop: 80, offsetLeft: 12, ...events('viewport:') };
+  let portalTarget;
+  const jsx = (type, props) => ({ type, props });
+  const { FormatBar } = await load('src/components/FormatBar.tsx', {
+    'preact/hooks': { useRef: () => ({ current: el }), useLayoutEffect: (fn) => effects.push(fn) },
+    'preact/compat': { createPortal: (node, target) => { portalTarget = target; return node; } },
+    'preact/jsx-runtime': { jsx, jsxs: jsx },
+  }, {
+    innerHeight: 844,
+    window: { visualViewport: viewport },
+    document: { body, documentElement: { clientHeight: 844 }, ...events('document:') },
+    ...events('window:'),
+    requestAnimationFrame: (fn) => { frames.set(1, fn); return 1; },
+    cancelAnimationFrame: (id) => frames.delete(id),
+  });
+  FormatBar({ target: () => null, swap: 'Suggestions', swapLabel: 'Tag' });
+  for (const effect of effects) { const cleanup = effect(); if (cleanup) cleanups.push(cleanup); }
+  assert.equal(portalTarget, body, 'toolbar must be outside the animated page');
+  assert.deepEqual(styles, { '--kb': '384px', '--toolbar-left': '207px', '--toolbar-width': '390px' });
+  assert.equal(scroll.scrollLeft, 0, 'old formatting scroll must not hide first matches');
+  viewport.height = 844;
+  viewport.offsetTop = 0;
+  viewport.offsetLeft = 0;
+  listeners.get('viewport:resize')();
+  assert.equal(styles['--kb'], '0px');
+  assert.equal(styles['--toolbar-left'], '195px');
+  listeners.get('document:focusin')();
+  assert.equal(frames.size, 1);
+  for (const cleanup of cleanups) cleanup();
+  assert.equal(frames.size, 0);
+  assert.equal(listeners.size, 0);
+});
+
 test('photo backup import skips damaged base64 and cleans invalid dimensions', async () => {
   const stored = [];
   const photos = await load('src/lib/photos.ts', {

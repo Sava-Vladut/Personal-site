@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import { insertBlock, insertLink, toggleLines, toggleWrap, type TextBox } from '../lib/markdown';
 import { Icon, type UiName } from './icons';
 
@@ -35,32 +36,57 @@ export function FormatBar({ target, format = true, swap, swapLabel = 'Picture', 
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const vv = window.visualViewport;
     const el = ref.current;
     if (!vv || !el) return;
-    const place = () => el.style.setProperty('--kb', Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) + 'px');
+    let frame = 0;
+    const place = () => {
+      if (!vv.width || !vv.height) return;
+      const layoutHeight = Math.max(innerHeight, document.documentElement.clientHeight);
+      el.style.setProperty('--kb', Math.max(0, Math.round(layoutHeight - vv.height - vv.offsetTop)) + 'px');
+      el.style.setProperty('--toolbar-left', vv.offsetLeft + vv.width / 2 + 'px');
+      el.style.setProperty('--toolbar-width', vv.width + 'px');
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(place);
+    };
     vv.addEventListener('resize', place);
     vv.addEventListener('scroll', place);
+    addEventListener('resize', schedule);
+    document.addEventListener('focusin', schedule);
+    document.addEventListener('focusout', schedule);
     place();
     return () => {
+      cancelAnimationFrame(frame);
       vv.removeEventListener('resize', place);
       vv.removeEventListener('scroll', place);
+      removeEventListener('resize', schedule);
+      document.removeEventListener('focusin', schedule);
+      document.removeEventListener('focusout', schedule);
     };
   }, []);
+
+  // Formatting and suggestions share a scroller. An old formatting offset must
+  // not hide the first matches when the strip switches to tagging.
+  useLayoutEffect(() => {
+    const scroll = ref.current?.querySelector('.format-scroll');
+    if (scroll) scroll.scrollLeft = 0;
+  }, [!!swap, swapLabel]);
 
   const run = (f: Action) => {
     const el = target();
     if (el) f(el);
   };
 
-  if (swap)
-    return (
+  // Page entrance transforms temporarily turn fixed descendants into page-relative
+  // elements. Keep this keyboard accessory at the document level throughout editing.
+  const bar = swap ? (
       <div ref={ref} class="format-bar glass is-swapped" role="toolbar" aria-label={swapLabel}>
         <div class="format-scroll">{swap}</div>
       </div>
-    );
-  return (
+    ) : (
     <div ref={ref} class="format-bar glass" role="toolbar" aria-label="Formatting">
       {format && (
       <div class="format-scroll">
@@ -83,4 +109,5 @@ export function FormatBar({ target, format = true, swap, swapLabel = 'Picture', 
       {children && <div class="format-fixed">{children}</div>}
     </div>
   );
+  return createPortal(bar, document.body);
 }

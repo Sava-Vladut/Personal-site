@@ -9,10 +9,11 @@ async function compile(input) {
   const bundle = await rolldown({
     input,
     external: (id, importer) => Boolean(importer) && !/(?:^|\/)lib\/body(?:\.ts)?$/.test(id),
-    plugins: input.endsWith('SpotifySheet.tsx') ? [{
-      name: 'expose-search-handler',
+    plugins: /(?:SpotifySheet|Editor)\.tsx$/.test(input) ? [{
+      name: 'expose-component-handlers',
       transform(source, id) {
         if (id.endsWith('/SpotifySheet.tsx')) return source + '\nexport { SearchTab };';
+        if (id.endsWith('/Editor.tsx')) return source + '\nexport { BodyText };';
       },
     }] : [],
   });
@@ -41,9 +42,11 @@ function harness(code, initial = {}) {
   const slots = [];
   const effects = [];
   const timers = new Map();
+  const frames = new Map();
   const messages = [];
   const navigations = [];
   const listeners = new Map();
+  const documentListeners = new Map();
   const entries = new Map();
   const entry = {
     id: 'note-1', kind: 'note', title: 'Before', text: 'Existing words',
@@ -92,7 +95,7 @@ function harness(code, initial = {}) {
     deletePerson: async (id) => { const p = people.get(id); people.delete(id); return p; },
     deleteBook: async (id) => { const b = books.get(id); books.delete(id); return b; },
     deleteSong: async (id) => { const s = songs.get(id); songs.delete(id); return s; },
-    blankPerson: () => ({ id: 'person-new', name: '', text: '', emotions: [], relation: '' }),
+    blankPerson: (name = '') => ({ id: 'person-new', name, text: '', emotions: [], relation: '' }),
     blankEntry: (kind) => ({ ...entry, id: 'checkin-new', kind }),
     deleteEntry: async (id) => { const old = entries.get(id); entries.delete(id); return old; },
     toast: (message) => messages.push(message), isEmpty: () => false,
@@ -104,6 +107,7 @@ function harness(code, initial = {}) {
     exports: {},
     require(id) {
       if (id === 'preact/hooks') return hooks;
+      if (id === 'preact/compat') return { flushSync(fn) { fn(); initial.onFlush?.(); } };
       if (id === 'preact/jsx-runtime') return { jsx: vnode, jsxs: vnode, Fragment: 'fragment' };
       const override = Object.entries(initial.modules ?? {}).find(([suffix]) => id.endsWith(suffix));
       if (override) return override[1];
@@ -117,14 +121,22 @@ function harness(code, initial = {}) {
     clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn); },
     removeEventListener(type, fn) { listeners.get(type)?.delete(fn); },
-    document: { addEventListener() {}, removeEventListener() {}, activeElement: null },
+    document: {
+      addEventListener(type, fn) { if (!documentListeners.has(type)) documentListeners.set(type, new Set()); documentListeners.get(type).add(fn); },
+      removeEventListener(type, fn) { documentListeners.get(type)?.delete(fn); },
+      activeElement: null,
+      execCommand: initial.execCommand ?? (() => false),
+    },
+    requestAnimationFrame(fn) { const id = {}; frames.set(id, fn); return id; },
+    cancelAnimationFrame(id) { frames.delete(id); },
+    getSelection: () => ({ isCollapsed: true }), HTMLDivElement: class {},
     history: { state: {}, replaceState() {} }, location: { hash: '#/note/note-1' },
     confirm: () => true, scrollTo() {}, navigator: {},
   };
   vm.runInNewContext(code, context);
   function vnode(type, props) { return { type, props }; }
   return {
-    entries, people, books, songs, messages, navigations, listeners, resolveImport, rejectImport,
+    entries, people, books, songs, messages, navigations, listeners, documentListeners, document: context.document, resolveImport, rejectImport,
     render(name = 'Editor', props = { id: entry.id, query: new URLSearchParams() }) {
       cursor = 0;
       const tree = context.exports[name](props);
@@ -137,6 +149,9 @@ function harness(code, initial = {}) {
     },
     timers() {
       for (const [id, fn] of [...timers]) { timers.delete(id); fn(); }
+    },
+    frames() {
+      for (const [id, fn] of [...frames]) { frames.delete(id); fn(); }
     },
   };
 }
@@ -479,5 +494,252 @@ for (const leave of [false, true]) {
     h.timers();
     assert.equal(h.entries.get('checkin-new').weather.temp, 25);
     assert.equal(h.entries.get('checkin-new').place.name, 'Here');
+  });
+}
+
+function mockEditable(value) {
+  const el = {};
+  return {
+    el, value, selectionStart: value.length, selectionEnd: value.length,
+    focus() {}, tidy() {},
+    setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
+    setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); },
+    range() { return { getBoundingClientRect: () => ({ width: 0 }) }; },
+  };
+}
+const tagModules = (box) => ({
+  '/lib/editable': { editable: () => box, messy: () => false, PLAIN: true },
+  '/lib/weather': { contextNow: async () => null, needsWeather: () => false },
+  '/lib/mentions': {
+    typedMention(text, caret) {
+      const m = /@([^\n@\[\]]*)$/.exec(text.slice(0, caret));
+      return m ? { start: caret - m[1].length - 1, end: caret, q: m[1] } : null;
+    },
+    suggest: (q, people) => people.filter((p) => p.name.toLowerCase().startsWith(q.trim().toLowerCase())).map((item) => ({ kind: 'person', item })),
+    mentionOfPerson: (p) => `@[${p.name}]`,
+    mentionsIn: () => [],
+  },
+});
+
+test('iOS tagging: selectionchange finds first letters when input precedes the caret update', () => {
+  const box = mockEditable('@A');
+  box.selectionStart = box.selectionEnd = 1;
+  const h = harness(editorCode, { modules: tagModules(box) });
+  let mention;
+  const props = { value: '@A', onChange() {}, onCaret() {}, onMention(m) { mention = m; }, onKey: () => false };
+  const tree = h.render('BodyText', props);
+  tree.props.ref(box.el);
+  h.document.activeElement = box.el;
+  tree.props.onInput({ currentTarget: box.el, type: 'input' });
+  assert.equal(mention.q, '');
+  box.selectionStart = box.selectionEnd = 2;
+  for (const fn of h.documentListeners.get('selectionchange')) fn();
+  assert.equal(mention.q, 'A');
+  assert.equal(mention.start, 0);
+});
+
+test('iOS tagging: next-frame caret check works without keyboard keyup events', () => {
+  const box = mockEditable('@An');
+  box.selectionStart = box.selectionEnd = 1;
+  const h = harness(editorCode, { modules: tagModules(box) });
+  let mention;
+  const tree = h.render('BodyText', { value: '@An', onChange() {}, onCaret() {}, onMention(m) { mention = m; }, onKey: () => false });
+  tree.props.ref(box.el);
+  h.document.activeElement = box.el;
+  tree.props.onInput({ currentTarget: box.el, type: 'input' });
+  box.selectionStart = box.selectionEnd = 3;
+  h.frames();
+  assert.equal(mention.q, 'An');
+  h.unmount();
+  assert.equal(h.documentListeners.get('selectionchange').size, 0);
+});
+
+test('tagging: IME Enter cannot accept a suggestion or run a list command', () => {
+  const box = mockEditable('@An');
+  const h = harness(editorCode, { modules: tagModules(box) });
+  let keys = 0, prevented = 0, mention;
+  const tree = h.render('BodyText', { value: '@An', onChange() {}, onCaret() {}, onMention(m) { mention = m; }, onKey: () => { keys++; return true; } });
+  tree.props.ref(box.el);
+  h.document.activeElement = box.el;
+  tree.props.onCompositionStart();
+  tree.props.onKeyDown({ key: 'Enter', currentTarget: box.el, preventDefault() { prevented++; } });
+  assert.equal(keys, 0);
+  assert.equal(prevented, 0);
+  assert.equal(mention, null);
+  tree.props.onCompositionEnd({ type: 'compositionend', currentTarget: box.el });
+  assert.equal(mention.q, 'An');
+});
+
+function mentionEditor(source, initial = {}) {
+  const box = mockEditable(source);
+  const h = harness(editorCode, { ...initial, entry: { text: source }, modules: { ...tagModules(box), ...initial.modules } });
+  box.focus = () => { h.document.activeElement = box.el; };
+  const props = { id: 'new', query: new URLSearchParams() };
+  let tree = h.render('Editor', props);
+  let body = find(tree, (n) => n.type.name === 'BodyText');
+  body.props.textRef(box.el);
+  body.props.onChange(source);
+  body.props.onMention({ start: 0, end: source.length, q: source.slice(1) });
+  tree = h.render('Editor', props);
+  body = find(tree, (n) => n.type.name === 'BodyText');
+  const strip = find(tree, (n) => n.type.name === 'FormatBar').props.swap;
+  return { h, box, props, tree, body, strip };
+}
+
+test('tagging: selecting a person restores focus, inserts once, and attaches their ID', async () => {
+  const p = { ...person, emotions: [] };
+  const { h, box, strip } = mentionEditor('@An', { people: [p] });
+  await strip.props.onPick({ kind: 'person', item: p });
+  await strip.props.onPick({ kind: 'person', item: p });
+  h.timers();
+  assert.equal(box.value, '@[Ann] ');
+  assert.equal(h.document.activeElement, box.el);
+  assert.deepEqual(Array.from(h.entries.get('checkin-new').people), [p.id]);
+});
+
+test('tagging: a deleted suggestion never creates an attachment to a missing person', async () => {
+  const p = { ...person, emotions: [] };
+  const { h, box, strip } = mentionEditor('@An', { people: [p] });
+  h.people.delete(p.id);
+  await strip.props.onPick({ kind: 'person', item: p });
+  assert.equal(box.value, '@An');
+  assert.deepEqual(Array.from(h.entries.get('note-1').people), []);
+});
+
+test('tagging: a renamed suggestion uses the latest saved name', async () => {
+  const p = { ...person, emotions: [] };
+  const { h, box, strip } = mentionEditor('@An', { people: [p] });
+  h.people.set(p.id, { ...p, name: 'Anne' });
+  await strip.props.onPick({ kind: 'person', item: p });
+  assert.equal(box.value, '@[Anne] ');
+});
+
+test('tagging: an unmatched multiword name can be created and is saved before attachment', async () => {
+  const saving = deferred();
+  let calls = 0;
+  const { h, box, strip } = mentionEditor('@Ana Maria', { savePerson: async (p) => { calls++; await saving.promise; h.people.set(p.id, p); return p; } });
+  assert.equal(strip.type.name, 'MentionStrip');
+  assert.equal(strip.props.canAdd, true);
+  const picking = strip.props.onAdd();
+  await strip.props.onAdd();
+  assert.equal(calls, 1);
+  assert.equal(box.value, '@Ana Maria');
+  saving.resolve();
+  await picking;
+  h.timers();
+  assert.equal(box.value, '@[Ana Maria] ');
+  assert.deepEqual(Array.from(h.entries.get('checkin-new').people), ['person-new']);
+});
+
+test('tagging: failed person creation preserves the query and note draft', async () => {
+  const { h, box, strip } = mentionEditor('@Ana', { savePerson: async () => { throw new Error('Storage full'); } });
+  await strip.props.onAdd();
+  assert.equal(box.value, '@Ana');
+  assert.match(h.messages[0], /Couldn’t save/);
+  assert.equal(h.people.size, 0);
+});
+
+test('tagging: typing during person creation never overwrites later words', async () => {
+  const saving = deferred();
+  const { h, box, strip, body } = mentionEditor('@Ana', { savePerson: async (p) => { await saving.promise; h.people.set(p.id, p); return p; } });
+  const picking = strip.props.onAdd();
+  box.value = '@Ana is here';
+  body.props.onChange(box.value);
+  saving.resolve();
+  await picking;
+  h.timers();
+  assert.equal(h.entries.get('checkin-new').text, '@Ana is here');
+  assert.deepEqual(Array.from(h.entries.get('checkin-new').people), []);
+});
+
+test('tagging: @ button falls back when insertText is unsupported and immediately opens suggestions', () => {
+  const box = mockEditable('Words');
+  const h = harness(editorCode, { entry: { text: '' }, modules: tagModules(box) });
+  box.focus = () => { h.document.activeElement = box.el; };
+  const props = { id: 'new', query: new URLSearchParams() };
+  let tree = h.render('Editor', props);
+  const body = find(tree, (n) => n.type.name === 'BodyText');
+  body.props.textRef(box.el);
+  body.props.onChange('Words');
+  tree = h.render('Editor', props);
+  button(tree, 'Tag someone, a book or music').props.onClick();
+  assert.equal(box.value, 'Words @');
+  assert.equal(box.selectionStart, 7);
+  tree = h.render('Editor', props);
+  assert.equal(find(tree, (n) => n.type.name === 'FormatBar').props.swap.type.name, 'MentionStrip');
+  h.timers();
+  assert.equal(h.entries.get('checkin-new').text, 'Words @');
+});
+
+test('iOS tagging: @ from reading view renders and focuses editing within the same touch', () => {
+  const box = mockEditable('Words');
+  let h, focusCalls = 0;
+  const initial = { entry: { text: 'Words' }, modules: tagModules(box), onFlush() {
+    const tree = h.render();
+    find(tree, (n) => n.type.name === 'BodyText').props.textRef(box.el);
+  } };
+  h = harness(editorCode, initial);
+  box.focus = () => { focusCalls++; h.document.activeElement = box.el; };
+  const tree = h.render();
+  assert.equal(find(tree, (n) => n.type.name === 'BodyText'), undefined);
+  button(tree, 'Tag someone, a book or music').props.onClick();
+  assert.equal(focusCalls, 1, 'Focus happens before any animation frame runs');
+  assert.equal(box.value, 'Words @');
+});
+
+test('tagging: outside text updates preserve a selected range instead of collapsing it', () => {
+  const box = mockEditable('Original');
+  const h = harness(editorCode, { modules: tagModules(box) });
+  const props = { value: 'Original', onChange() {}, onCaret() {}, onMention() {}, onKey: () => false };
+  const tree = h.render('BodyText', props);
+  tree.props.ref(box.el);
+  h.document.activeElement = box.el;
+  box.selectionStart = 1;
+  box.selectionEnd = 4;
+  h.render('BodyText', { ...props, value: 'Updated words' });
+  assert.equal(box.selectionStart, 1);
+  assert.equal(box.selectionEnd, 4);
+});
+
+test('tagging: a decomposed name never offers creation of an existing composed name', async () => {
+  const p = { ...person, name: 'Ána' };
+  let saves = 0;
+  const { h, strip } = mentionEditor('@A\u0301na', { people: [p], savePerson: async () => { saves++; } });
+  assert.equal(strip.props.canAdd, false);
+  await strip.props.onAdd();
+  assert.equal(saves, 0);
+  assert.equal(h.people.size, 1);
+});
+
+test('tagging: a stale new-person option reuses a canonically equivalent saved person', async () => {
+  const p = { ...person, name: 'Ána' };
+  let saves = 0;
+  const { h, box, strip } = mentionEditor('@A\u0301na', { savePerson: async () => { saves++; } });
+  assert.equal(strip.props.canAdd, true);
+  h.people.set(p.id, p);
+  await strip.props.onAdd();
+  h.timers();
+  assert.equal(saves, 0);
+  assert.equal(h.people.size, 1);
+  assert.equal(box.value, '@[Ána] ');
+  assert.deepEqual(Array.from(h.entries.get('checkin-new').people), [p.id]);
+});
+
+for (const movement of ['caret', 'focus']) {
+  test(`tagging: pending person creation preserves a moved ${movement} even when text is unchanged`, async () => {
+    const saving = deferred();
+    const { h, box, strip } = mentionEditor('@Ana', { savePerson: async (p) => { await saving.promise; h.people.set(p.id, p); return p; } });
+    const picking = strip.props.onAdd();
+    const otherBlock = {};
+    if (movement === 'caret') box.setSelectionRange(0, 0);
+    else h.document.activeElement = otherBlock;
+    saving.resolve();
+    await picking;
+    h.timers();
+    assert.equal(h.entries.get('checkin-new').text, '@Ana');
+    assert.deepEqual(Array.from(h.entries.get('checkin-new').people), []);
+    assert.equal(h.people.size, 1, 'The selected person is still saved');
+    if (movement === 'caret') assert.equal(box.selectionStart, 0);
+    else assert.equal(h.document.activeElement, otherBlock);
   });
 }

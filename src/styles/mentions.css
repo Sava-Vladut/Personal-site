@@ -41,9 +41,10 @@
   position: fixed; z-index: 75; display: grid; gap: 12px; padding: 14px; isolation: isolate;
   border-radius: 20px; background: var(--surface); border: 1px solid var(--line);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 22px 48px -18px rgb(0 0 0 / 0.45);
-  transform-origin: var(--tail) 0; animation: peek-in 0.42s var(--spring) both;
+  transform-origin: var(--tail) 0; animation: peek-in 0.24s var(--ease-emph);
 }
-.peek.is-above { transform-origin: var(--tail) 100%; animation-name: peek-in-up; }
+.peek.is-above { transform-origin: var(--tail) 100%; }
+.peek-content { display: grid; gap: 12px; max-height: max(0px, calc(var(--peek-height) - 30px)); overflow-y: auto; overscroll-behavior: contain; }
 /* a wash of the feeling's colour, strongest where the tail is */
 .peek::before {
   content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
@@ -55,8 +56,7 @@
   background: color-mix(in oklab, var(--c, var(--ink-3)) 12%, var(--surface)); border-left: 1px solid var(--line); border-top: 1px solid var(--line);
 }
 .peek.is-above::after { top: auto; bottom: -7px; border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0 0 3px 0; background: var(--surface); }
-@keyframes peek-in { from { opacity: 0; scale: 0.88; translate: 0 -8px; } }
-@keyframes peek-in-up { from { opacity: 0; scale: 0.88; translate: 0 8px; } }
+@keyframes peek-in { from { opacity: 0.6; scale: 0.96; } }
 .peek-head { display: flex; align-items: center; gap: 13px; }
 .peek-who { display: grid; gap: 2px; min-width: 0; }
 .peek-name { font: 600 17.5px/1.25 var(--serif); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -69,27 +69,23 @@
 
 /* ---------- writing: what an @ suggests, in place of the toolbar ---------- */
 
-.mention-strip { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 2px 4px; }
+.mention-strip { flex: none; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 2px 4px; touch-action: pan-x; }
 .mention-at {
   flex: none; width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  font: 700 15px/1 var(--sans); color: var(--on-ink); background: var(--ink); animation: at-pop 0.45s var(--spring-bouncy);
+  font: 700 15px/1 var(--sans); color: var(--on-ink); background: var(--ink);
 }
-@keyframes at-pop { from { scale: 0.3; rotate: -90deg; } }
 .mention-pick {
   --tone: var(--c, var(--ink-3));
   flex: none; display: inline-flex; align-items: center; gap: 8px; max-width: 220px; height: 40px; padding: 0 13px 0 6px;
   border-radius: 999px; text-align: left;
   background: color-mix(in oklab, var(--tone) 12%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 24%, transparent);
-  transition: background-color 0.15s, box-shadow 0.2s, scale 0.25s var(--spring);
-  animation: pick-in 0.4s var(--spring) calc(min(var(--k), 8) * 35ms) backwards;
+  transition: background-color 0.15s, box-shadow 0.2s;
 }
 .mention-pick[aria-selected='true'] {
-  scale: 1.04;
   background: color-mix(in oklab, var(--tone) 20%, var(--surface));
   box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--tone) 75%, var(--ink)), 0 6px 18px -8px color-mix(in oklab, var(--tone) 80%, transparent);
 }
-@keyframes pick-in { from { opacity: 0; translate: 0 10px; scale: 0.85; } }
 .mention-thumb { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; }
 .mention-thumb .mini-record { width: 25px; height: 25px; }
 .mention-thumb .mini-record img { width: 10px; height: 10px; }
@@ -137,6 +133,8 @@
 ::highlight(mm-at-song) { background-color: rgb(138 108 240 / 0.22); }
 
 @media (prefers-reduced-motion: reduce) {
-  .peek, .mention-pick, .mention-at { animation: none; }
+  .peek, .mention-pick, .mention-at, .mention .mini-record, .mention-pick .mini-record { animation: none !important; }
+  .mention, .mention-pick { transition: none; }
+  .mention:active { scale: 1; }
   .mention::after { display: none; }
 }
