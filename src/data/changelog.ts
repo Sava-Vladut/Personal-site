@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.27.0',
+    date: '2026-10-02',
+    changes: [
+      'Key dates on a person’s page: birthdays, anniversaries or any day worth remembering, with how old they’re turning or how many years it’s been',
+      'A gentle note on your journal in the two weeks before one comes round; put it away and it waits until next year',
+      'People count every place you tag them: notes where they’re only tagged in the words, and the pages of other people, books and songs',
+      'A person’s page lists the pages that mention them, under “Mentioned on”',
+      'Renaming someone now updates their tags on book, song and person pages too',
+      '“Haven’t thought of in a while” on People: the people you haven’t tagged in a month or more, with a quick check-in or note',
+      'How thinking of someone is changing: a month-by-month strip of feelings over the last year, and whether it feels warmer or heavier lately',
+    ],
+  },
+  {
     version: '1.26.0',
     date: '2026-10-02',
     changes: [

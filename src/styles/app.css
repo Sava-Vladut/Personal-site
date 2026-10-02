@@ -1249,3 +1249,40 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .note-when { overflow: hidden; text-overflow: ellipsis; }
 .list-value { font-weight: 400; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-search { margin: 12px 0 4px; }
+
+/* ---------- key dates: on a person's page, and coming up on the journal ---------- */
+
+.key-date { gap: 6px; }
+.key-date.is-soon { background: color-mix(in oklab, var(--emo-love-connection) 16%, var(--surface-2)); }
+.key-date-when { font-size: 12.5px; color: var(--ink-3); }
+.key-date-form { display: grid; gap: 12px; }
+.key-date-form .chips { margin: 0; }
+.key-date-day { display: grid; grid-template-columns: 74px minmax(0, 1fr) 92px; gap: 8px; }
+.key-date-form .muted { margin: 0; }
+
+.coming-up { display: grid; gap: 8px; margin-top: 10px; }
+.coming-chip { display: flex; align-items: center; gap: 4px; padding: 8px 6px 8px 10px; }
+.coming-chip.is-today { border-color: color-mix(in oklab, var(--emo-love-connection) 45%, var(--line)); }
+.coming-main { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; text-align: left; }
+.coming-icon {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px;
+  background: color-mix(in oklab, var(--emo-love-connection) 18%, var(--surface-2)); color: var(--emo-love-connection);
+}
+
+/* ---------- people you haven't thought of in a while ---------- */
+
+.not-lately { margin-top: 18px; }
+.not-lately .section-title { margin-bottom: 0; }
+.quiet-chip .book-row-title { font: 550 15px/1.3 var(--serif); }
+
+/* ---------- how thinking of someone is changing, month by month ---------- */
+
+.month-strip-wrap { display: grid; gap: 6px; }
+.month-strip { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end; }
+.month-col { display: grid; gap: 4px; justify-items: center; outline: none; border-radius: 6px; }
+.month-col:focus-visible { box-shadow: 0 0 0 2px var(--ink); }
+.month-bar { display: flex; flex-direction: column-reverse; width: 100%; height: 34px; border-radius: 5px; overflow: hidden; gap: 1px; }
+.month-bar i { display: block; min-height: 3px; }
+.month-col.is-empty .month-bar { background: var(--surface-2); }
+.month-name { font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; }
+.month-trend { margin: 0; }

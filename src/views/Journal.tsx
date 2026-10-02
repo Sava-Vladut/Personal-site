@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'preact/hooks';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
-import { dayLabel, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
+import { dayLabel, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { useBooks, useEntries, usePeople, useReady, useSettings, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
+import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
 import { bodyOf, itemsOf, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Photo } from '../lib/photos';
@@ -126,6 +127,7 @@ export function Journal() {
       )}
 
       {!filtering && <CheckInPrompt entries={entries} />}
+      {!filtering && <ComingUp />}
       {!filtering && <ReadingNow />}
 
       {day && (
@@ -240,6 +242,51 @@ function CheckInPrompt({ entries }: { entries: Entry[] }) {
 }
 
 /** The books you're in the middle of, a tap away from their page or a note about them. */
+const DISMISSED = 'mm-dates-seen';
+const occurrence = (u: Upcoming) => `${u.person.id}:${u.date.id}:${keyOf(u.on)}`;
+function seen(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(DISMISSED) ?? '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+/**
+ * A gentle note about the birthdays and anniversaries of the next two weeks. Putting one away hides it until it
+ * comes round again next year.
+ */
+function ComingUp() {
+  const people = usePeople();
+  const [hidden, setHidden] = useState(seen);
+  const list = upcoming(people, 14).filter((u) => !hidden.includes(occurrence(u))).slice(0, 3);
+  if (!list.length) return null;
+  const hide = (u: Upcoming) => {
+    const keep = new Set(list.map(occurrence));
+    // only this year's ones are worth remembering; older ones have passed
+    const next = [...hidden.filter((k) => keep.has(k) || k.slice(-10) >= todayKey()), occurrence(u)];
+    try { localStorage.setItem(DISMISSED, JSON.stringify(next)); } catch {}
+    setHidden(next);
+  };
+  return (
+    <div class="coming-up" role="list" aria-label="Coming up">
+      {list.map((u) => {
+        const { what, years } = whatsComing(u);
+        return (
+          <div class={`coming-chip card${u.days === 0 ? ' is-today' : ''}`} role="listitem">
+            <button class="coming-main" onClick={() => navigate('person/' + u.person.id)}>
+              <span class="coming-icon"><Icon name={u.date.kind === 'birthday' ? 'cake' : u.date.kind === 'anniversary' ? 'heart' : 'calendar-event'} size={18} /></span>
+              <span class="book-row-main">
+                <span class="book-row-title">{what}</span>
+                <span class="book-row-sub">{[whenLabel(u.days), u.days > 1 ? u.on.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : '', years].filter(Boolean).join(' · ')}</span>
+              </span>
+            </button>
+            <button class="icon-btn small" onClick={() => hide(u)} aria-label="Put away until next time" title="Put away">
+              <Icon name="x" size={16} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ReadingNow() {
   const reading = useBooks().filter((b) => b.status === 'reading');
   if (!reading.length) return null;

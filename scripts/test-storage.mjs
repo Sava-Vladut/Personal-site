@@ -584,3 +584,34 @@ test('@tags are spotted while typing, suggested across people, books and music, 
   assert.deepEqual(plain(m.songsIn(text, songs)), ['s1']);
   assert.equal(m.renamePersonMentions([{ id: 'e', text }], people, { ...people[0], name: 'Ana Maria' })[0].text, 'Met @[Ana Maria] and played ♪[Angel]');
 });
+
+test('key dates come round each year, tags on pages count, and months show how it felt', async () => {
+  const m = await loadModule('src/lib/people.ts', { './store': { getBooks: () => [] } });
+  const plain = (v) => JSON.parse(JSON.stringify(v));
+  const ana = { id: 'p1', name: 'Ana Pop', relation: '', text: '', emotions: [], updated: 5, dates: [
+    { id: 'd1', kind: 'birthday', label: '', md: '10-05', year: 1996 },
+    { id: 'd2', kind: 'other', label: 'Name day', md: '02-29', year: null },
+  ] };
+  const now = new Date(2026, 9, 2);
+  const soon = m.upcoming([ana], 14, now);
+  assert.equal(soon.length, 1);
+  assert.deepEqual([soon[0].days, soon[0].years], [3, 30]);
+  assert.deepEqual(plain(m.whatsComing(soon[0])), { what: 'Ana’s birthday', years: 'turning 30' });
+  assert.equal(m.nextOf(ana, ana.dates[1], now).on.getDate(), 28, '29 February falls on the 28th in other years');
+  assert.equal(m.nextOf(ana, ana.dates[0], new Date(2026, 9, 5)).days, 0, 'today counts');
+
+  const bo = { id: 'p2', name: 'Bo', text: 'Lunch with @[Ana Pop] and @[Bo]', updated: 9 };
+  const book = { id: 'b1', title: 'Dune', text: 'Ana lent me this. @[Ana Pop]', updated: 7 };
+  const pages = m.pagesByPerson([ana, bo], [book], []);
+  assert.deepEqual(plain(pages.get('p1').map((p) => p.kind)), ['person', 'book']);
+  assert.equal(pages.has('p2'), false, 'a page tagging itself does not count');
+
+  const entries = [{ id: 'e1', people: [], text: 'Saw @[Ana Pop]', emotions: [], time: 1 }, { id: 'e2', people: ['p1'], text: '', emotions: [], time: 2 }];
+  assert.equal(m.momentsByPerson(entries, [ana, bo]).get('p1').length, 2, 'tags in the words count as moments');
+
+  const at = (month, emotions) => ({ time: new Date(2026, month, 3).getTime(), emotions });
+  const months = m.monthsOf([at(9, ['joy']), at(8, ['joy']), at(2, ['sadness']), at(1, ['fear'])], 12, now);
+  assert.equal(months.length, 12);
+  assert.deepEqual([months.at(-1).m, months.at(-1).total, months.at(-1).warmth], [9, 1, 1]);
+  assert.equal(m.trendOf(months), 'warmer');
+});

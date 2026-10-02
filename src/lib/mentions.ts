@@ -60,13 +60,18 @@ export function mentionsIn(text: string, people: Person[], books: Book[], songs:
   return out.sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
-/** After someone is renamed: their @[Old name] tags become @[New name], so the notes still point to them. */
-export function renamePersonMentions(entries: Entry[], before: Person[], person: Person): Entry[] {
+/** After someone is renamed: their @[Old name] tags become @[New name], so the words still point to them. */
+export function retagPerson(text: string, before: Person[], person: Person) {
+  if (!text.includes('@[')) return text;
   const after = [...before.filter((p) => p.id !== person.id), person];
-  const out: Entry[] = [];
-  for (const e of entries) {
-    if (!e.text.includes('@[')) continue;
-    const text = e.text.replace(PERSON, (all, target, name) => (resolvePerson(target, name, before)?.id === person.id ? mentionOfPerson(person, after) : all));
+  return text.replace(PERSON, (all, target, name) => (resolvePerson(target, name, before)?.id === person.id ? mentionOfPerson(person, after) : all));
+}
+
+/** The notes (or pages) whose tags change after someone is renamed, changed. */
+export function renamePersonMentions<T extends { text: string }>(items: T[], before: Person[], person: Person): T[] {
+  const out: T[] = [];
+  for (const e of items) {
+    const text = retagPerson(e.text, before, person);
     if (text !== e.text) out.push({ ...e, text });
   }
   return out;

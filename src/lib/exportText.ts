@@ -6,6 +6,7 @@ import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
 import { KIND_LABEL } from './spotify';
 import { PERSON, SONG, resolvePerson, resolveSong } from './mentions';
+import { dateName } from './people';
 import { getBooks, getEntries, getPeople, getSongs, type Book, type Entry, type Person, type Song } from './store';
 
 const LOCALE = 'en-GB';
@@ -75,6 +76,10 @@ function entry(e: Entry, people: Map<string, Person>, books: Book[]) {
 function person(p: Person, moments: number, books: Book[]) {
   const lines = [`### ${p.name || 'Unnamed'}${p.relation.trim() ? ` · ${p.relation.trim()}` : ''}`];
   if (p.emotions.length) lines.push(`- How they make me feel: ${feelings(p.emotions)}`);
+  for (const d of p.dates) {
+    const [m, day] = d.md.split('-').map(Number);
+    lines.push(`- ${dateName(d)}: ${new Date(2000, m - 1, day).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}${d.year ? ' ' + d.year : ''}`);
+  }
   lines.push(`- Tagged in ${moments} ${moments === 1 ? 'entry' : 'entries'}`);
   if (p.text.trim()) lines.push('', mentions(p.text.trim(), books));
   return lines.join('\n');

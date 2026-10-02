@@ -80,10 +80,22 @@ export interface Person {
   relation: string;         // 'Friend', 'Mum', 'Coworker'…
   text: string;             // what you write about them
   emotions: string[];       // how they make you feel, first one is the main feeling
+  dates: KeyDate[];         // birthdays, anniversaries…
   created: number;
   updated: number;
 }
 export const MAX_PERSON_EMOTIONS = 5;
+export const MAX_KEY_DATES = 8;
+
+export type KeyDateKind = 'birthday' | 'anniversary' | 'other';
+/** A day in someone's year: their birthday, an anniversary, or anything else worth remembering. */
+export interface KeyDate {
+  id: string;
+  kind: KeyDateKind;
+  label: string;            // what an 'other' date is called
+  md: string;               // 'MM-DD'
+  year: number | null;      // when it first happened, if you know: for ages and years together
+}
 
 export type BookStatus = 'want' | 'reading' | 'read' | 'dnf';
 /** A book on your shelf: found through Open Library (or typed in), rated, and mentioned in notes as [[book:id|Title]]. */
@@ -314,7 +326,7 @@ export const getPeople = people.list$.get;
 
 export function blankPerson(name = ''): Person {
   const now = Date.now();
-  return { id: uid(), name, icon: null, relation: '', text: '', emotions: [], created: now, updated: now };
+  return { id: uid(), name, icon: null, relation: '', text: '', emotions: [], dates: [], created: now, updated: now };
 }
 export const savePerson = people.save;
 /** Deletes a person. Notes they were tagged in stay; the tag just stops showing. */
@@ -500,9 +512,20 @@ function normalizePerson(raw: any): Person | null {
     relation: str(raw.relation, 60),
     text: typeof raw.text === 'string' ? raw.text : '',
     emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
+    dates: Array.isArray(raw.dates) ? (raw.dates.map(normalizeKeyDate).filter(Boolean) as KeyDate[]).slice(0, MAX_KEY_DATES) : [],
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };
+}
+
+const DAYS_IN = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+function normalizeKeyDate(raw: any): KeyDate | null {
+  if (!raw || typeof raw !== 'object' || typeof raw.md !== 'string') return null;
+  const m = /^(\d\d)-(\d\d)$/.exec(raw.md);
+  if (!m || +m[1] < 1 || +m[1] > 12 || +m[2] < 1 || +m[2] > DAYS_IN[+m[1] - 1]) return null;
+  const kind: KeyDateKind = raw.kind === 'birthday' || raw.kind === 'anniversary' ? raw.kind : 'other';
+  const year = Number.isInteger(raw.year) && raw.year >= 1800 && raw.year <= 9999 ? raw.year : null;
+  return { id: typeof raw.id === 'string' && raw.id && raw.id.length <= 40 ? raw.id : uid(), kind, label: str(raw.label, 60), md: raw.md, year };
 }
 
 const httpsUrl = (v: unknown) => (typeof v === 'string' && /^https:\/\//.test(v) ? v.slice(0, 2000) : null);

@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
-import { dayLabel } from '../lib/dates';
+import { dayLabel, monthLabel, monthShort } from '../lib/dates';
+import { monthsOf, trendOf } from '../lib/people';
 import { goBack, navigate } from '../lib/router';
-import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getEntries, getPeople, saveEntry, savePerson, toast, useBooks, useSongs, type Entry, type Person } from '../lib/store';
+import { MAX_PERSON_EMOTIONS, blankPerson, deletePerson, getBooks, getEntries, getPeople, getSongs, saveBook, saveEntry, savePerson, saveSong, toast, useBooks, useSongs, type Entry, type Person } from '../lib/store';
 import { renamePersonMentions } from '../lib/mentions';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
 import { BookRow } from '../components/books';
@@ -10,10 +11,12 @@ import { SongRow } from '../components/music';
 import { MentionText } from '../components/MentionText';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
-import { initials } from '../components/people';
+import { Avatar, initials } from '../components/people';
+import { KeyDates } from '../components/KeyDates';
+import { tipProps } from '../components/charts';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
-import { lastSeen, useMoments } from './People';
+import { lastSeen, useMoments, usePages } from './People';
 
 type Open = null | 'icon' | 'emotion';
 
@@ -45,6 +48,7 @@ export function PersonView({ id }: { id: string }) {
   const nameRef = useAutosize(draft?.name ?? '');
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const moments = useMoments().get(draft?.id ?? '') ?? [];
+  const pages = usePages().get(draft?.id ?? '') ?? [];
   const books = useBooks().filter((b) => b.from && b.from === draft?.id);
   const songs = useSongs().filter((s) => s.from && s.from === draft?.id);
 
@@ -107,8 +111,17 @@ export function PersonView({ id }: { id: string }) {
         const d = latest.current;
         const was = d && peopleBefore.current.find((p) => p.id === d.id);
         if (kept && !removing.current && d && was && d.name.trim() && was.name.trim() !== d.name.trim())
-          return Promise.all(renamePersonMentions(getEntries(), peopleBefore.current, { ...d, name: d.name.trim() }).map((e) => saveEntry(e)));
-      }).catch(() => toast('Couldn’t update the notes mentioning this person.'));
+        {
+          const renamed = { ...d, name: d.name.trim() };
+          const before = peopleBefore.current;
+          return Promise.all([
+            ...renamePersonMentions(getEntries(), before, renamed).map((e) => saveEntry(e)),
+            ...renamePersonMentions(getBooks(), before, renamed).map((b) => saveBook(b)),
+            ...renamePersonMentions(getSongs(), before, renamed).map((x) => saveSong(x)),
+            ...renamePersonMentions(getPeople().filter((p) => p.id !== d.id), before, renamed).map((p) => savePerson(p)),
+          ]);
+        }
+      }).catch(() => toast('Couldn’t update the notes and pages mentioning this person.'));
     };
   }, []);
 
@@ -129,6 +142,10 @@ export function PersonView({ id }: { id: string }) {
       top: [...feelings].sort((a, b) => b[1] - a[1]).slice(0, 5),
     };
   }, [moments]);
+
+  // How it's changing: the last twelve months of those feelings, and whether lately they lean warmer or heavier.
+  const months = useMemo(() => monthsOf(moments), [moments]);
+  const trend = trendOf(months);
 
   const groups = useMemo(() => {
     const out: [string, Entry[]][] = [];
@@ -252,6 +269,9 @@ export function PersonView({ id }: { id: string }) {
         <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
       )}
 
+      <div class="eyebrow person-label">Key dates</div>
+      <KeyDates p={draft} onChange={(dates) => update({ dates })} />
+
       <MentionText
         inputRef={textRef}
         class="body-input person-text"
@@ -264,7 +284,7 @@ export function PersonView({ id }: { id: string }) {
       <section class="section">
         <div class="row between">
           <h2 class="section-title">Thinking of {first}</h2>
-          {moments.length > 0 && <span class="muted small">{moments.length} · since {lastSeen(moments[moments.length - 1].date)}</span>}
+          {moments.length + pages.length > 0 && <span class="muted small">{moments.length + pages.length}{moments.length ? ` · since ${lastSeen(moments[moments.length - 1].date)}` : ''}</span>}
         </div>
         <div class="row gap-s person-actions">
           <button class="btn btn-quiet grow" onClick={() => write('note')} disabled={!draft.name.trim()}><Icon name="pencil" size={18} /> Write about {first}</button>
@@ -277,6 +297,26 @@ export function PersonView({ id }: { id: string }) {
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
+            {months.some((m, i) => m.total && i < months.length - 1) && (
+              <div class="month-strip-wrap">
+                <div class="month-strip" role="img" aria-label={`Feelings month by month over the last year${trend ? `: lately ${trend === 'steady' ? 'about the same' : trend}` : ''}`}>
+                  {months.map((m) => (
+                    <span
+                      class={`month-col${m.total ? '' : ' is-empty'}`}
+                      {...(m.total ? tipProps(() => <><b>{monthLabel(m.y, m.m)}</b><br />{m.worlds.map(([c, n]) => `${shortName(c)} ${n}`).join(' · ')}</>, monthLabel(m.y, m.m)) : {})}
+                    >
+                      <span class="month-bar">{m.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} />)}</span>
+                      <span class="month-name">{monthShort(m.y, m.m).slice(0, 1)}</span>
+                    </span>
+                  ))}
+                </div>
+                {trend && (
+                  <p class="muted small month-trend">
+                    {trend === 'warmer' ? `Lately, thinking of ${first} has felt warmer than before.` : trend === 'heavier' ? `Lately, thinking of ${first} has felt heavier than before.` : `Lately it feels much as it did before.`}
+                  </p>
+                )}
+              </div>
+            )}
             <div class="note-emos">
               {felt.top.map(([eid, n]) => (
                 <span class="felt-item"><EmotionChip id={eid} size="sm" />{n > 1 && <span class="muted small">×{n}</span>}</span>
@@ -296,6 +336,28 @@ export function PersonView({ id }: { id: string }) {
           <p class="empty-note">Add {first} under “Thinking of” in a note or check-in and it shows up here.</p>
         )}
       </section>
+
+      {pages.length > 0 && (
+        <section class="section">
+          <h2 class="section-title">Mentioned on</h2>
+          <div class="book-rows">
+            {pages.map((pg) =>
+              pg.kind === 'book' ? <BookRow b={pg.item} onClick={() => { flush(); navigate('book/' + pg.item.id); }} />
+              : pg.kind === 'song' ? <SongRow s={pg.item} onClick={() => { flush(); navigate('song/' + pg.item.id); }} />
+              : (
+                <button class="person-card card" onClick={() => { flush(); navigate('person/' + pg.item.id); }}>
+                  <Avatar p={pg.item} size={40} />
+                  <div class="person-card-main">
+                    <div class="person-card-name">{pg.item.name || 'Unnamed'}</div>
+                    {pg.item.relation && <div class="person-card-sub">{pg.item.relation}</div>}
+                  </div>
+                  <Icon name="chevron-right" size={18} />
+                </button>
+              ),
+            )}
+          </div>
+        </section>
+      )}
 
       {books.length > 0 && (
         <section class="section">

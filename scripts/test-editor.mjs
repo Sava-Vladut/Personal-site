@@ -241,7 +241,7 @@ test('submitting an exact name chooses that person rather than a recent partial 
 const person = { id: 'ann', name: 'Ann', relation: '', text: '', emotions: [], icon: null };
 const book = { id: 'book-1', title: 'Before', authors: '', text: '', emotions: [], from: null, status: 'want', pages: null, page: null, rating: 0, started: null, finished: null, year: null };
 const song = { id: 'song-1', text: '', emotions: [], from: null, music: { kind: 'track', id: 'track-1', title: 'Song' } };
-const personModules = { '/People': { useMoments: () => new Map() }, '/mentions': { renamePersonMentions: () => [] } };
+const personModules = { '/People': { useMoments: () => new Map(), usePages: () => new Map() }, '/lib/people': { monthsOf: () => [], trendOf: () => null }, '/mentions': { renamePersonMentions: () => [] } };
 const bookModules = { '/books': { mentionsByBook: () => new Map(), STATUS_LABEL: {}, progressOf: () => null, renameMentions: () => [] } };
 function deferred() {
   let resolve, reject;
@@ -282,9 +282,11 @@ for (const [name, code, initial, props, label] of [
     const save = async () => { if (!calls++) throw new Error('Storage full'); return {}; };
     const h = harness(code(), { ...initial, saveEntry: save, savePerson: save, saveBook: save, saveSong: save });
     let tree = h.render(name === 'note' ? 'Editor' : name === 'music' ? 'SongView' : name === 'person' ? 'PersonView' : 'BookView', props);
-    const area = find(tree, (n) => n.type === 'textarea' && n.props['aria-label'] === label);
+    // a plain textarea, or the tag-aware text box on a song's page
+    const area = find(tree, (n) => (n.type === 'textarea' && n.props['aria-label'] === label) || n.props?.label === label);
     assert.ok(area, `Missing ${label} textarea`);
-    area.props.onInput({ currentTarget: { value: 'Changed' } });
+    if (area.props.onInput) area.props.onInput({ currentTarget: { value: 'Changed' } });
+    else area.props.onChange('Changed');
     await button(tree, 'Done').props.onClick();
     assert.deepEqual(h.navigations, []);
     assert.match(h.messages[0], /Couldn’t save/);
