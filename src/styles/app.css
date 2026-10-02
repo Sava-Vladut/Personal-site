@@ -276,8 +276,9 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 }
 @media (hover: hover) { .prompt-worlds button:hover { background: color-mix(in oklab, var(--c) 18%, var(--surface-2)); transform: translateY(-1px); } }
 
-/* Each feeling's sprite has its own little idle life (in the picker, and wherever a parent is marked .alive); --d staggers them so they never move in step. */
-:is(.prompt-worlds, .alive) .sprite { overflow: visible; animation: var(--anim) var(--dur, 3s) var(--d, 0s) infinite both; transform-origin: 50% 60%; }
+/* Wherever a parent is marked .alive, each feeling's sprite has its own little idle life; --d staggers them so they never move in step.
+   (The check-in prompt plays the sprites' pixel frames instead — see SPRITE_IDLE.) */
+.alive .sprite { overflow: visible; animation: var(--anim) var(--dur, 3s) var(--d, 0s) infinite both; transform-origin: 50% 60%; }
 [data-core='fear'] { --anim: emo-fear; --dur: 2.6s; }
 [data-core='sadness'] { --anim: emo-sadness; --dur: 3.4s; }
 [data-core='anger'] { --anim: emo-anger; --dur: 0.9s; }
@@ -338,8 +339,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   50% { transform: rotate(45deg) scale(1.1); filter: drop-shadow(0 0 3px var(--c)); }
   100% { transform: rotate(90deg) scale(1); filter: none; }
 }
-@media (hover: hover) { .prompt-worlds button:hover .sprite { animation-duration: calc(var(--dur, 3s) / 1.8); } }
-@media (prefers-reduced-motion: reduce) { :is(.prompt-worlds, .alive) .sprite { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .alive .sprite { animation: none; } }
 
 .day { margin-top: 28px; }
 .day-label {

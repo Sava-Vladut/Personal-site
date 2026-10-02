@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.25.1',
+    date: '2026-10-02',
+    changes: [
+      'The eight worlds under “How are you feeling?” on the main screen now play the same pixel animations as the emotion wheel, each starting a beat after the last',
+    ],
+  },
+  {
     version: '1.25.0',
     date: '2026-10-02',
     changes: [

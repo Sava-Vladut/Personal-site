@@ -46,30 +46,33 @@ export function spritePath(core: string, frame = 0) {
   return spritePaths[key];
 }
 
-/** A world's sprite path, stepping through its idle loop while `on` (and never under reduced motion). */
-export function useSpriteIdle(core: string, on: boolean) {
+/**
+ * A world's sprite path, stepping through its idle loop while `on` (and never under reduced motion).
+ * `delay` holds the first frame a little longer, so sprites side by side don't move in step.
+ */
+export function useSpriteIdle(core: string, on: boolean, delay = 0) {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     setFrame(0);
     const loop = SPRITE_IDLE[core]?.loop;
     if (!on || !loop || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let n = 0, t = 0;
-    const next = () => {
+    const next = (wait: number) => {
       t = window.setTimeout(() => {
         n = (n + 1) % loop.length;
         setFrame(loop[n][0]);
-        next();
-      }, loop[n][1]);
+        next(loop[n][1]);
+      }, wait);
     };
-    next();
+    next(loop[0][1] + delay);
     return () => clearTimeout(t);
-  }, [core, on]);
+  }, [core, on, delay]);
   return spritePath(core, frame);
 }
 
 /** 8×8 pixel sprite for a core emotion — the "worlds" of Emotion Quest. `idle` plays its idle loop. */
-export function Sprite({ core, size = 16, color, idle = false }: { core: string; size?: number; color?: string; idle?: boolean }) {
-  const d = useSpriteIdle(core, idle);
+export function Sprite({ core, size = 16, color, idle = false, delay }: { core: string; size?: number; color?: string; idle?: boolean; delay?: number }) {
+  const d = useSpriteIdle(core, idle, delay);
   return (
     <svg class="sprite" width={size} height={size} viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
       <path d={d} fill={color ?? `var(--emo-${core})`} />
