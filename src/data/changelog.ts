@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.25.2',
+    date: '2026-10-02',
+    changes: [
+      'The world sprites in the Dex, on the Stats overview and in the emotion wheel details now play the pixel animations too, in place of the old spinning and squashing',
+    ],
+  },
+  {
     version: '1.25.1',
     date: '2026-10-02',
     changes: [

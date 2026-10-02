@@ -35,7 +35,7 @@ export function Dex() {
                 class="dex-mini" data-core={c} style={{ '--c': `var(--emo-${c})`, '--k': i }} aria-label={`${CORE[c].name}: ${n} of ${all.length} found`}
                 onClick={() => document.getElementById('dex-' + c)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
-                <span class={n ? 'alive' : ''}><Sprite core={c} size={18} /></span>
+                <Sprite core={c} size={18} idle={n > 0} delay={i * 370} />
                 <span class="dex-mini-n">{n}<small>/{all.length}</small></span>
                 <span class="dex-mini-bar"><i style={{ width: `${(n / all.length) * 100}%` }} /></span>
               </button>
@@ -44,12 +44,12 @@ export function Dex() {
         </div>
         <p class="muted small">Each specific feeling you log fills a slot. Tap one to read it again.</p>
       </section>
-      {PICKER_ORDER.map((c) => {
+      {PICKER_ORDER.map((c, i) => {
         const all = feelingsOf(c), n = all.filter((x) => found.has(x.id)).length;
         return (
           <section class="dex-world" id={'dex-' + c} data-core={c} style={{ '--c': `var(--emo-${c})` }}>
             <h3 class="dex-title">
-              <span class="alive"><Sprite core={c} size={14} /></span> {CORE[c].name}
+              <Sprite core={c} size={14} idle delay={i * 370} /> {CORE[c].name}
               <span class="dex-tally">{n}/{all.length}</span>
             </h3>
             <div class="dex-slots">

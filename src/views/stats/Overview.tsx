@@ -35,8 +35,8 @@ export function Overview({ s, range }: { s: S; range: RangeKey }) {
             )}
           </div>
           {lead && (
-            <div class="mascot alive" title={`Felt most: ${shortName(lead)}`}>
-              <Sprite core={lead} size={38} />
+            <div class="mascot" title={`Felt most: ${shortName(lead)}`}>
+              <Sprite core={lead} size={38} idle />
               <span>{shortName(lead)}</span>
             </div>
           )}
