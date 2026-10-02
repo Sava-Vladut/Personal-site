@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { CORE, EMOTION, type EmotionDef, type FamilyDef } from '../data/emotions';
-import { Icon, Sprite, spritePath } from './icons';
+import { Icon, Sprite, useSpriteIdle } from './icons';
+import { haptic } from '../lib/haptics';
 import { trail } from './emotion';
 
 /*
@@ -19,6 +20,7 @@ const SLOP = 10;       // a finger that moves further than this is scrolling, no
 const LINGER = 1700;   // the tooltip stays a moment after letting go, so it can be read
 const TIP_W = 272;
 const TIP_H = 176;     // roughly; decides whether the tooltip opens above or below
+const PINCH = 0.7;     // fingers closing to this share of where they started zoom back out
 const LEVEL = ['World', 'Zone', 'Feeling'];
 
 interface Seg { e: EmotionDef; a0: number; a1: number }
@@ -84,10 +86,12 @@ function labelArc(r: number, a0: number, a1: number) {
     : `M${pt(r, a0)}A${r} ${r} 0 ${big} 1 ${pt(r, a1)}`;
 }
 
-function PixelSprite({ core, x, y, size }: { core: string; x: number; y: number; size: number }) {
+/** A world's sprite drawn inside the wheel; `idle` plays its idle loop. */
+function PixelSprite({ core, x, y, size, idle = false }: { core: string; x: number; y: number; size: number; idle?: boolean }) {
+  const d = useSpriteIdle(core, idle);
   return (
     <path
-      d={spritePath(core)}
+      d={d}
       transform={`translate(${(x - size / 2).toFixed(2)} ${(y - size / 2).toFixed(2)}) scale(${size / 8})`}
       style={{ fill: `var(--emo-${core})` }}
       shape-rendering="crispEdges"
@@ -123,7 +127,7 @@ function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: num
       style={{ '--c': `var(--emo-${e.core})`, '--w': `${w}px`, '--l': `${left}px`, '--t': `${py}px`, '--ax': `${ax}px` }}
     >
       <div class="ew-tip-head">
-        <span class="ew-tip-sprite"><Sprite core={e.core} size={22} /></span>
+        <span class="ew-tip-sprite"><Sprite core={e.core} size={22} idle /></span>
         <div class="ew-tip-title">
           <div class="ew-tip-name">{e.name}</div>
           <div class="ew-tip-meta">
@@ -167,7 +171,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
   const [tip, setTip] = useState<Tip | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const anchors = useRef(new Map<string, [number, number]>());
-  const press = useRef<{ id: string; x: number; y: number; held: boolean } | null>(null);
+  const press = useRef<{ id: string; x: number; y: number; held: boolean; touch: boolean } | null>(null);
   const suppress = useRef(false);
   const timers = useRef<{ hold?: number; linger?: number; gone?: number }>({});
   const width = stage.current?.clientWidth ?? 320;
@@ -199,13 +203,13 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
     clearTimers();
     setTip(null);
     suppress.current = false;
-    const p = { id, x: ev.clientX, y: ev.clientY, held: false };
+    const p = { id, x: ev.clientX, y: ev.clientY, held: false, touch: ev.pointerType !== 'mouse' };
     press.current = p;
     timers.current.hold = window.setTimeout(() => {
       p.held = true;
       suppress.current = true;
       showTip(p.id);
-      navigator.vibrate?.(10);
+      if (p.touch) haptic(10);
     }, HOLD_MS);
   };
   const movePress = (ev: PointerEvent) => {
@@ -222,16 +226,76 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
     if (id && id !== p.id) {
       p.id = id;
       showTip(id);
+      // a light tick each time the finger crosses into another emotion
+      if (p.touch) haptic(5);
     }
+  };
+
+  // Pinching in (or a trackpad pinch) inside a world zooms back out to all worlds.
+  const live = useRef({ zoomed: false, onFocus });
+  live.current = { zoomed: focus !== null, onFocus };
+  const zoomOut = () => {
+    if (!live.current.zoomed) return;
+    live.current.zoomed = false;
+    live.current.onFocus(null);
   };
 
   useEffect(() => {
     const el = stage.current;
     if (!el) return;
-    // once a hold has begun the finger explores the wheel instead of scrolling the page
-    const block = (ev: TouchEvent) => press.current?.held && ev.cancelable && ev.preventDefault();
-    el.addEventListener('touchmove', block, { passive: false });
-    return () => el.removeEventListener('touchmove', block);
+    let pinch0 = 0, wheel = 0;
+    const gap = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const start = (ev: TouchEvent) => {
+      if (ev.touches.length !== 2) return;
+      // a second finger means a pinch, not a hold
+      clearTimeout(timers.current.hold);
+      press.current = null;
+      pinch0 = gap(ev.touches);
+    };
+    const move = (ev: TouchEvent) => {
+      if (ev.touches.length === 2 && live.current.zoomed) {
+        if (ev.cancelable) ev.preventDefault();
+        if (pinch0 && gap(ev.touches) < pinch0 * PINCH) {
+          pinch0 = 0;
+          zoomOut();
+        }
+        return;
+      }
+      // once a hold has begun the finger explores the wheel instead of scrolling the page
+      if (press.current?.held && ev.cancelable) ev.preventDefault();
+    };
+    const end = (ev: TouchEvent) => ev.touches.length < 2 && (pinch0 = 0);
+    // trackpads: ctrl+wheel in most browsers, gesture events in Safari
+    const onWheel = (ev: WheelEvent) => {
+      if (!ev.ctrlKey || !live.current.zoomed) return;
+      ev.preventDefault();
+      wheel = Math.max(0, wheel + ev.deltaY);
+      if (wheel > 40) {
+        wheel = 0;
+        zoomOut();
+      }
+    };
+    const gesture = (ev: Event) => {
+      if (!live.current.zoomed) return;
+      ev.preventDefault();
+      if (ev.type === 'gesturechange' && ((ev as Event & { scale?: number }).scale ?? 1) < PINCH) zoomOut();
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('gesturestart', gesture);
+    el.addEventListener('gesturechange', gesture);
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', end);
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('gesturestart', gesture);
+      el.removeEventListener('gesturechange', gesture);
+    };
   }, []);
   useEffect(() => () => clearTimers(), []);
 
@@ -263,6 +327,15 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
   const inner = z ** 2;       // zoomed labels
 
   const act = (e: EmotionDef) => (suppress.current ? void 0 : zoomed ? (e.depth === 0 ? onFocus(null) : onPick(e.id)) : onFocus(e.core));
+  // Tapping beside the wheel, outside its circle, also goes back to all worlds.
+  const outside = (ev: MouseEvent) => {
+    const t = ev.target as Element, s = stage.current;
+    if (!zoomed || suppress.current || !s || !(t === ev.currentTarget || t === s || t instanceof SVGSVGElement)) return;
+    const r = s.getBoundingClientRect();
+    if (ev.clientY < r.top || ev.clientY > r.bottom) return;
+    const far = Math.hypot(ev.clientX - (r.left + r.width / 2), ev.clientY - (r.top + r.height / 2));
+    if (far > (r.width / 2) * (199 / 200)) onFocus(null);
+  };
   const key = (ev: KeyboardEvent, e: EmotionDef) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
@@ -338,7 +411,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
   const core = focus ? CORE[focus] : null;
 
   return (
-    <div class={`ew${tip?.live ? ' holding' : ''}`} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
+    <div class={`ew${tip?.live ? ' holding' : ''}`} onClick={outside} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
       <div class="ew-stage" ref={stage}>
       <svg
         class="ew-svg" viewBox="0 0 400 400" role="group" aria-label={core ? `${core.name}: zones and feelings` : 'Emotion wheel'}
@@ -357,13 +430,13 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         )}
         {z < 1 && hot && EMOTION[hot]?.depth < 2 && (
           <g opacity={outer}>
-            <PixelSprite core={EMOTION[hot].core} x={C} y={C - 8} size={22} />
+            <PixelSprite core={EMOTION[hot].core} x={C} y={C - 8} size={22} idle />
             <text x={C} y={C + 18} class="ew-hub-hint">{EMOTION[hot].name.split(' / ')[0]}</text>
           </g>
         )}
         {core && inner > 0.01 && (
           <g opacity={inner}>
-            <PixelSprite core={core.id} x={C} y={C - 16} size={24} />
+            <PixelSprite core={core.id} x={C} y={C - 16} size={24} idle />
             <text x={C} y={C + 13} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
             <text x={C} y={C + 31} class="ew-hub-back">Back</text>
           </g>

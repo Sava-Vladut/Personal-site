@@ -149,6 +149,62 @@ const SPRITES: Record<string, string[]> = {
   'shame-aversion': [".XXXXXX.","X......X","X.X..X.X","X......X","X..XX..X","X.X..X.X","X......X",".XXXXXX."],
 };
 
+/**
+ * Idle loops for the sprites: extra frames (frame 0 is the sprite itself) and the order
+ * they play in, as [frame, ms]. The heart beats, the star hops, the leaf drifts, the spark
+ * twinkles, the ghost looks around, rain falls, the flame flickers, the face looks away.
+ */
+export const SPRITE_IDLE: Record<string, { frames: string[][]; loop: [number, number][] }> = {
+  'love-connection': {
+    frames: [["........","........",".XX..XX.",".XXXXXX.","..XXXX..","...XX...","........","........"]],
+    loop: [[0, 900], [1, 110], [0, 150], [1, 110]],
+  },
+  'joy': {
+    frames: [["...XX...","XXXXXXXX",".XXXXXX.","..XXXX..","..XXXX..",".XX..XX.",".X....X.","........"]],
+    loop: [[0, 700], [1, 160], [0, 120], [1, 160]],
+  },
+  'calm-safety': {
+    frames: [["........",".....XXX","...XXXXX","..XXXXXX",".XXXXXX.",".XXXXX..",".XXXX...","X......."]],
+    loop: [[0, 1200], [1, 1200]],
+  },
+  'hope-interest': {
+    frames: [
+      ["...X....","...X....","...X....","..XXX...","XXXXXXX.","..XXX...","...X....","...X...."],
+      ["........","........","...X....","..XXX...",".XXXXX..","..XXX...","...X....","........"],
+    ],
+    loop: [[0, 900], [1, 110], [2, 170], [1, 110]],
+  },
+  'fear': {
+    frames: [
+      ["..XXXX..",".XXXXXX.","X.XX.XXX","X.XX.XXX","XXXXXXXX","XXXXXXXX","XXXXXXXX","X.XX.XX."],
+      ["..XXXX..",".XXXXXX.","XXX.XX.X","XXX.XX.X","XXXXXXXX","XXXXXXXX","XXXXXXXX",".XX.XX.X"],
+    ],
+    loop: [[0, 800], [1, 450], [0, 260], [2, 450]],
+  },
+  'sadness': {
+    frames: [
+      ["..XXX...",".XXXXXX.","XXXXXXXX","XXXXXXXX","X..X..X.","........",".X..X..X","........"],
+      ["..XXX...",".XXXXXX.","XXXXXXXX","XXXXXXXX","........","X..X..X.","........",".X..X..X"],
+      ["..XXX...",".XXXXXX.","XXXXXXXX","XXXXXXXX",".X..X..X","........","X..X..X.","........"],
+    ],
+    loop: [[0, 190], [1, 190], [2, 190], [3, 190]],
+  },
+  'anger': {
+    frames: [
+      ["....X...","....XX..",".X.XXX..",".XXXXXX.","XXXXXXXX","XXX..XXX","XX....XX",".XXXXXX."],
+      ["........","...XX...","..XXXX..",".XXXXXX.","XXXXXXXX","XXX..XXX","XX....XX",".XXXXXX."],
+    ],
+    loop: [[0, 170], [1, 130], [2, 110], [1, 140]],
+  },
+  'shame-aversion': {
+    frames: [
+      [".XXXXXX.","X......X","X......X","X......X","X..XX..X","X.X..X.X","X......X",".XXXXXX."],
+      [".XXXXXX.","X......X","X......X","X.X..X.X","X..XX..X","X.X..X.X","X......X",".XXXXXX."],
+    ],
+    loop: [[0, 1500], [1, 120], [0, 900], [2, 1100]],
+  },
+};
+
 const COLORS: Record<string, [string, string]> = {
   'sadness': ['#2a78d6', '#3987e5'],
   'hope-interest': ['#eb6834', '#d95926'],

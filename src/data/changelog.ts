@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.25.0',
+    date: '2026-10-02',
+    changes: [
+      'The world sprites on the emotion wheel come alive when you open a world, hover one or hold a feeling: the heart beats, the star hops, the leaf drifts, the spark twinkles, the ghost looks around, rain falls, the flame flickers and the face looks away',
+      'They stay still if your device asks for reduced motion',
+      'A light haptic tick each time a held finger slides onto another emotion',
+      'Inside a world, tap beside the wheel or pinch in to go back to all worlds (trackpad pinch works too)',
+    ],
+  },
+  {
     version: '1.24.1',
     date: '2026-10-01',
     changes: [
