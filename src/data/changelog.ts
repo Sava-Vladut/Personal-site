@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.28.1',
+    date: '2026-10-02',
+    changes: [
+      'The calendar’s day numbers (10, 15, 20…) no longer break onto two lines on narrow screens',
+    ],
+  },
+  {
     version: '1.28.0',
     date: '2026-10-02',
     changes: [

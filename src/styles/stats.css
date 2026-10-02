@@ -196,6 +196,8 @@ html { transition: --accent 0.6s ease; }
 .px { display: block; aspect-ratio: 1; border-radius: 5px; background: var(--surface-2); outline: none; }
 .px.on { animation: cell-in 0.45s var(--spring) calc(0.1s + var(--t, 0) * 0.7s) backwards; }
 .pixels.year .px { border-radius: 2px; }
+/* Day columns are narrower than "10": keep each number on one line, centred over its column. */
+.pixels.year > .tick-html:not(.left) { display: flex; justify-content: center; white-space: nowrap; min-width: 0; }
 .px.out, .px.none { background: none; }
 .px:not(.out):not(.none):hover, .px:focus-visible { box-shadow: 0 0 0 1.5px var(--ink); }
 
