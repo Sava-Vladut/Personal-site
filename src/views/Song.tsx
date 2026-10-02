@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
@@ -6,6 +6,7 @@ import { MAX_PERSON_EMOTIONS, deleteSong, getSongs, saveSong, toast, useEntries,
 import { songsIn } from '../lib/mentions';
 import { Stars } from '../components/books';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
+import { MentionText } from '../components/MentionText';
 import { Icon } from '../components/icons';
 import { MusicEmbed, MusicThing, isTape, musicSub } from '../components/music';
 import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
@@ -13,17 +14,6 @@ import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
 
 type Open = null | 'emotion' | 'from';
-
-function useAutosize(value: string) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
-  }, [value]);
-  return ref;
-}
 
 /** A piece of music you keep: put it on, rate it, say how it makes you feel and who it brings to mind. */
 export function SongView({ id }: { id: string }) {
@@ -40,7 +30,6 @@ export function SongView({ id }: { id: string }) {
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
-  const textRef = useAutosize(draft?.text ?? '');
   const entries = useEntries();
   const byId = usePeopleById();
   const kind = draft?.music.kind, mid = draft?.music.id;
@@ -203,14 +192,12 @@ export function SongView({ id }: { id: string }) {
         )}
       </div>
 
-      <textarea
-        ref={textRef}
+      <MentionText
         class="body-input person-text"
-        rows={3}
         placeholder="What it means to you: where you first heard it, the line that gets you, when you play it…"
         value={draft.text}
-        onInput={(e) => update({ text: e.currentTarget.value })}
-        aria-label="What it means to you"
+        onChange={(text) => update({ text })}
+        label="What it means to you"
       />
 
       <section class="section">

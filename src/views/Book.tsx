@@ -9,6 +9,7 @@ import { goBack, navigate } from '../lib/router';
 import { BOOK_STATUSES, MAX_PERSON_EMOTIONS, deleteBook, getBooks, getEntries, saveBook, saveEntry, toast, useBooks, useEntries, type Book, type BookStatus, type Entry } from '../lib/store';
 import { BookCover, Stars } from '../components/books';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
+import { MentionText } from '../components/MentionText';
 import { Icon } from '../components/icons';
 import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
@@ -148,7 +149,6 @@ export function BookView({ id }: { id: string }) {
   const latest = useRef(draft);
   latest.current = draft;
   const titleRef = useAutosize(draft?.title ?? '');
-  const textRef = useAutosize(draft?.text ?? '');
   const entries = useEntries();
   const byId = usePeopleById();
   const shelf = useBooks();
@@ -350,14 +350,12 @@ export function BookView({ id }: { id: string }) {
         )}
       </div>
 
-      <textarea
-        ref={textRef}
+      <MentionText
         class="body-input person-text"
-        rows={3}
         placeholder="Your thoughts: what stayed with you, favourite lines, what you’d tell a friend…"
         value={draft.text}
-        onInput={(e) => update({ text: e.currentTarget.value })}
-        aria-label="Your thoughts"
+        onChange={(text) => update({ text })}
+        label="Your thoughts"
       />
 
       <section class="section">

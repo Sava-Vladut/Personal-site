@@ -7,6 +7,7 @@ import { renamePersonMentions } from '../lib/mentions';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
 import { BookRow } from '../components/books';
 import { SongRow } from '../components/music';
+import { MentionText } from '../components/MentionText';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { initials } from '../components/people';
@@ -42,7 +43,7 @@ export function PersonView({ id }: { id: string }) {
   const latest = useRef(draft);
   latest.current = draft;
   const nameRef = useAutosize(draft?.name ?? '');
-  const textRef = useAutosize(draft?.text ?? '');
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
   const moments = useMoments().get(draft?.id ?? '') ?? [];
   const books = useBooks().filter((b) => b.from && b.from === draft?.id);
   const songs = useSongs().filter((s) => s.from && s.from === draft?.id);
@@ -251,14 +252,13 @@ export function PersonView({ id }: { id: string }) {
         <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
       )}
 
-      <textarea
-        ref={textRef}
+      <MentionText
+        inputRef={textRef}
         class="body-input person-text"
-        rows={3}
         placeholder={`What’s on your mind about ${first}? Memories, things they said, what they’re going through, what you want to remember…`}
         value={draft.text}
-        onInput={(e) => update({ text: e.currentTarget.value })}
-        aria-label={`About ${first}`}
+        onChange={(text) => update({ text })}
+        label={`About ${first}`}
       />
 
       <section class="section">

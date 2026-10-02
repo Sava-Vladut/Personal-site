@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.26.0',
+    date: '2026-10-02',
+    changes: [
+      'Type @ to tag someone, a book or a song in the words on a person’s, book’s or song’s page, not just in notes',
+      'Tags work in a check-in’s context too, and tagging someone there adds them to the check-in',
+      'Once you’re done writing, those words show their tags as chips you can tap to open; tap the words to keep writing',
+    ],
+  },
+  {
     version: '1.25.2',
     date: '2026-10-02',
     changes: [

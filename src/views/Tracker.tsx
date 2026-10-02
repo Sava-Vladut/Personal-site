@@ -8,6 +8,7 @@ import { addContext } from '../lib/weather';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
 import { EmotionWheel } from '../components/EmotionWheel';
 import { Sky } from '../components/Sky';
+import { MentionText } from '../components/MentionText';
 import { Icon, Sprite } from '../components/icons';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
@@ -123,7 +124,16 @@ export function Tracker({ query }: { query: URLSearchParams }) {
 
           <div class="confirm-extra">
             <span class="field-label">Add context <span class="muted">· optional</span></span>
-            <textarea class="input confirm-note" rows={2} placeholder="What’s behind it?" value={note} onInput={(e) => setNote(e.currentTarget.value)} aria-label="Note" />
+            <MentionText
+              class="input confirm-note"
+              rows={2}
+              autosize={false}
+              placeholder="What’s behind it? Type @ to tag someone, a book or a song"
+              value={note}
+              onChange={setNote}
+              onPerson={(p) => setPeople((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]))}
+              label="Note"
+            />
             <div class="meta confirm-people">
               <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} />
               {when === null ? (
