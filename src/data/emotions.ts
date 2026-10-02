@@ -249,5 +249,3 @@ export const CHART_ORDER = ['sadness', 'hope-interest', 'calm-safety', 'joy', 'l
 export const shortName = (id: string) => (EMOTION[id]?.name ?? id).split(' / ')[0];
 export const coreOf = (id: string) => CORE[id.split('/')[0]];
 export const valence = (id: string) => (coreOf(id)?.valence === 'pleasant' ? 1 : -1);
-/** CSS variable holding the core colour (switches with the theme). */
-export const colorVar = (id: string) => `var(--emo-${id.split('/')[0]})`;

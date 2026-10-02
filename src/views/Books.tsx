@@ -57,7 +57,7 @@ export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
               const pct = progressOf(b);
               const notes = mentions.get(b.id)?.length ?? 0;
               return (
-                <button class="reading-card card" onClick={() => navigate('book/' + b.id)}>
+                <button key={b.id} class="reading-card card" onClick={() => navigate('book/' + b.id)}>
                   <BookCover b={b} width={40} />
                   <span class="book-row-main">
                     <span class="book-row-title">{b.title.trim() || 'Untitled'}</span>

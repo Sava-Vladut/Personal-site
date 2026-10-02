@@ -84,10 +84,18 @@ export function Media({ query }: { query: URLSearchParams }) {
 
   /** Keeps what was picked; one piece of music opens its page, like a book does. */
   const keep = async (list: Music[]) => {
-    const fresh = list.filter((m) => !findSong(getSongs(), m));
-    for (const m of fresh) await saveSong(blankSong(m));
-    if (list.length === 1) return navigateAfterSheet('song/' + findSong(getSongs(), list[0])!.id);
-    toast(fresh.length ? `Added ${fresh.length} to your records` : 'Those are already in your records');
+    let added = 0;
+    try {
+      for (const m of list) {
+        if (findSong(getSongs(), m)) continue;
+        await saveSong(blankSong(m));
+        added++;
+      }
+      if (list.length === 1) return navigateAfterSheet('song/' + findSong(getSongs(), list[0])!.id);
+      toast(added ? `Added ${added} to your records` : 'Those are already in your records');
+    } catch {
+      toast('Couldn’t save this music. Try again.');
+    }
   };
 
   const isBooks = tab === 'books';

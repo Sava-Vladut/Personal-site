@@ -6,7 +6,8 @@ import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
 import { KIND_LABEL } from './spotify';
 import { PERSON, SONG, resolvePerson, resolveSong } from './mentions';
-import { dateName } from './people';
+import { dateName, peopleIn } from './people';
+import { todayKey } from './dates';
 import { getBooks, getEntries, getPeople, getSongs, type Book, type Entry, type Person, type Song } from './store';
 
 const LOCALE = 'en-GB';
@@ -89,7 +90,7 @@ function book(b: Book, people: Map<string, Person>, books: Book[]) {
   const lines = [`### ${b.title}${b.authors ? ` · ${b.authors}` : ''}${b.year ? ` (${b.year})` : ''}`];
   lines.push(`- Status: ${STATUS_LABEL[b.status]}${b.rating ? ` · rated ${b.rating}/5` : ''}`);
   if (b.started || b.finished) lines.push(`- ${[b.started && `Started ${longDate(b.started)}`, b.finished && `finished ${longDate(b.finished)}`].filter(Boolean).join(', ')}`);
-  if (b.status === 'reading' && b.page) lines.push(`- On page ${b.page}${b.pages ? ` of ${b.pages}` : ''}`);
+  if (b.status === 'reading' && b.page !== null) lines.push(`- On page ${b.page}${b.pages ? ` of ${b.pages}` : ''}`);
   if (b.emotions.length) lines.push(`- How it made me feel: ${feelings(b.emotions)}`);
   const from = b.from ? people.get(b.from)?.name : null;
   if (from) lines.push(`- Thinking of: ${from}`);
@@ -97,7 +98,7 @@ function book(b: Book, people: Map<string, Person>, books: Book[]) {
   return lines.join('\n');
 }
 
-function song(s: Song, people: Map<string, Person>) {
+function song(s: Song, people: Map<string, Person>, books: Book[]) {
   const m = s.music;
   const lines = [`### ${m.title}${m.sub ? ` · ${m.sub}` : ''} (${KIND_LABEL[m.kind].toLowerCase()})`];
   const facts = [s.rating ? `rated ${s.rating}/5` : '', s.repeat ? 'on repeat lately' : ''].filter(Boolean);
@@ -105,24 +106,25 @@ function song(s: Song, people: Map<string, Person>) {
   if (s.emotions.length) lines.push(`- How it makes me feel: ${feelings(s.emotions)}`);
   const from = s.from ? people.get(s.from)?.name : null;
   if (from) lines.push(`- Thinking of: ${from}`);
-  if (s.text.trim()) lines.push('', s.text.trim());
+  if (s.text.trim()) lines.push('', mentions(s.text.trim(), books));
   return lines.join('\n');
 }
 
 /** Markdown: people, books, music, then the journal from oldest to newest. No images are included, only placeholders and captions. */
 export function exportText() {
-  const entries = [...getEntries()].sort((a, b) => a.time - b.time);
+  const entries = [...getEntries()].sort((a, b) => a.date === b.date ? a.time - b.time : a.date < b.date ? -1 : 1);
   const people = getPeople();
   const books = getBooks();
   const songs = getSongs();
   const byId = new Map(people.map((p) => [p.id, p]));
   const counts = new Map<string, number>();
-  for (const e of entries) for (const id of e.people) counts.set(id, (counts.get(id) ?? 0) + 1);
+  for (const e of entries)
+    for (const id of new Set([...e.people, ...peopleIn(e.text, people)])) counts.set(id, (counts.get(id) ?? 0) + 1);
 
   const out = [
     '# My Mind: journal export',
     '',
-    `Exported ${longDate(new Date().toISOString().slice(0, 10))}. This is my personal journal: the people in my life, the books I read, the music I keep, ` +
+    `Exported ${longDate(todayKey())}. This is my personal journal: the people in my life, the books I read, the music I keep, ` +
       'and my notes and check-ins in date order. Feelings are named on an emotion wheel as Core › Family › Feeling. ' +
       'Pictures aren’t included; [Photo] and [Image: …] mark where they were.',
   ];
@@ -136,7 +138,7 @@ export function exportText() {
   }
   if (songs.length) {
     out.push('', `## Music (${songs.length})`);
-    songs.forEach((s) => out.push('', song(s, byId)));
+    songs.forEach((s) => out.push('', song(s, byId, books)));
   }
   out.push('', `## Journal (${entries.length} ${entries.length === 1 ? 'entry' : 'entries'})`);
   entries.forEach((e) => out.push('', entry(e, byId, books)));

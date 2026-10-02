@@ -1,7 +1,7 @@
 // What the People pages know about someone beyond their own page: the days in their year, the other pages that tag
 // them, and how thinking of them has felt month by month.
 import { CORE, coreOf } from '../data/emotions';
-import { DAY } from './dates';
+import { DAY, parseKey } from './dates';
 import { resolvePerson, PERSON } from './mentions';
 import type { Book, Entry, KeyDate, Person, Song } from './store';
 
@@ -107,7 +107,7 @@ export function monthsOf(moments: Entry[], count = 12, now = new Date()): Month[
   const at = new Map(out.map((x, i) => [x.y * 12 + x.m, i]));
   const counts = out.map(() => new Map<string, number>());
   for (const e of moments) {
-    const d = new Date(e.time);
+    const d = parseKey(e.date);
     const i = at.get(d.getFullYear() * 12 + d.getMonth());
     if (i === undefined) continue;
     for (const id of e.emotions) {

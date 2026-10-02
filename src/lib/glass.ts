@@ -59,11 +59,15 @@ export function useLens(ref: { current: HTMLElement | null }, { strength = 22, b
     filter.append(img, disp);
     host().appendChild(filter);
 
+    let lastMap = '';
     const draw = () => {
       const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight);
       if (!w || !h) return;
       const radius = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2);
       const band = Math.min(16, h * 0.3, w * 0.3);
+      const mapKey = `${w}:${h}:${radius}`;
+      if (mapKey === lastMap) return;
+      lastMap = mapKey;
       for (const [k, v] of [['x', 0], ['y', 0], ['width', w], ['height', h]] as const) {
         filter.setAttribute(k, String(v));
         img.setAttribute(k, String(v));
@@ -83,5 +87,5 @@ export function useLens(ref: { current: HTMLElement | null }, { strength = 22, b
       el.style.removeProperty('--glass-blur');
       el.classList.remove('lensed');
     };
-  }, []);
+  }, [ref, strength, blur]);
 }

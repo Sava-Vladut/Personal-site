@@ -102,7 +102,7 @@ const bundle = await rolldown({
       if (id === '\0store') return 'export const getBooks = () => [];';
       if (id === '\0review:mentions') return `
         export * from '${new URL('../src/lib/mentions.ts', import.meta.url).pathname}';
-        export { Editable, messy } from '${new URL('../src/lib/editable.ts', import.meta.url).pathname}';
+        export { Editable } from '${new URL('../src/lib/editable.ts', import.meta.url).pathname}';
         export { decorate } from '${new URL('../src/lib/liveMarkdown.ts', import.meta.url).pathname}';
       `;
     },

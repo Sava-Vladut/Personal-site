@@ -86,13 +86,16 @@ export const plainText = (text: string) => parseBody(text).texts.filter((t) => t
  */
 export function bodyOf(e: Entry): Body {
   const b = parseBody(e.text);
-  const known = (it: Item) => (it.kind === 'photo' ? e.photos.some((p) => p.id === it.id) : e.images.some((i) => i.url === it.url));
+  const known = new Set([
+    ...e.photos.map((p) => 'photo:' + p.id),
+    ...e.images.map((i) => 'image:' + i.url),
+  ]);
   const seen = new Set<string>();
   const out: Body = { texts: [b.texts[0]], media: [] };
   b.media.forEach((m, i) => {
     const items = itemsOf(m).filter((it) => {
       const key = itemKey(it);
-      if (!known(it) || seen.has(key)) return false;
+      if (!known.has(key) || seen.has(key)) return false;
       seen.add(key);
       return true;
     });

@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
-import { dismissToast, useToasts, type Toast } from './lib/store';
 import { useLens } from './lib/glass';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
 import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
+import { Toasts } from './components/Toasts';
 import { Icon, type UiName } from './components/icons';
 import { BookView } from './views/Book';
 import { Editor } from './views/Editor';
@@ -90,7 +90,7 @@ function TabBar({ active }: { active: RouteName }) {
     <nav class="nav" aria-label="Main">
       <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': NAV.length }} inert={adding}>
         {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
-        {NAV.map(([name, label, icon, path]) => <NavItem active={active === name} label={label} icon={icon} path={path} />)}
+        {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} label={label} icon={icon} path={path} />)}
       </div>
       <AddMenu open={adding} onOpenChange={setAdding} />
     </nav>
@@ -111,36 +111,5 @@ function NavItem({ active, label, icon, path }: { active: boolean; label: string
       <Icon name={icon} size={22} stroke={active ? 2 : 1.6} />
       <span>{label}</span>
     </a>
-  );
-}
-
-/** Toasts rise in and, once dismissed, stay a moment longer to fade away. */
-function Toasts() {
-  const toasts = useToasts();
-  const [leaving, setLeaving] = useState<Toast[]>([]);
-  const prev = useRef(toasts);
-  useEffect(() => {
-    const gone = prev.current.filter((t) => !toasts.some((x) => x.id === t.id));
-    prev.current = toasts;
-    if (!gone.length) return;
-    setLeaving((l) => [...l, ...gone]);
-    setTimeout(() => setLeaving((l) => l.filter((t) => !gone.includes(t))), 220);
-  }, [toasts]);
-  return (
-    <div class="toasts" aria-live="polite">
-      {leaving.map((t) => (
-        <div class="toast glass leaving" key={t.id} aria-hidden="true">
-          <span>{t.text}</span>
-        </div>
-      ))}
-      {toasts.map((t) => (
-        <div class="toast glass" key={t.id}>
-          <span>{t.text}</span>
-          {t.action && (
-            <button class="toast-action" onClick={() => { t.action!.run(); dismissToast(t.id); }}>{t.action.label}</button>
-          )}
-        </div>
-      ))}
-    </div>
   );
 }

@@ -122,11 +122,14 @@ and remaining browser-side and infrastructure scaling limits.
 ## Layout
 
 ```
-server/index.js          static hosting + Spotify proxy + encrypted sync storage, no dependencies
+server/index.js          HTTP routing + Spotify proxy, no dependencies
+server/static.js         compressed static hosting and bounded asset cache
+server/sync.js           encrypted sync storage and transfer limits
 src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours, sprites
 src/lib/                 storage (IndexedDB), stats, dates, router, API clients
 src/components/          sheets, pickers, charts
 src/views/               Journal, Tracker, Editor, Stats, Settings
+src/styles/              shared styling and feature styles, including books, notes and stats
 public/sw.js             offline cache
-scripts/                 icon generation, dev runner
+scripts/                 regression checks, asset generation, compression and dev runner
 ```

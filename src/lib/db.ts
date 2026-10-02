@@ -1,4 +1,5 @@
 // Minimal IndexedDB wrapper. Everything lives on this device; only sync (off by default) sends an encrypted copy out.
+import { combineDeleted } from './deletions';
 
 const NAME = 'my-mind';
 let dbp: Promise<IDBDatabase> | null = null;
@@ -75,8 +76,47 @@ async function update<T>(key: string, change: (current: T | undefined) => T): Pr
   });
 }
 
+/** Merge remote notes or a backup against durable records while holding one write transaction. */
+async function reconcileEntries<T extends { id: string; updated: number }>(incoming: T[], deleted: Record<string, number>, normalize: (raw: any) => T | null = (raw) => raw, restore = false) {
+  const database = await open();
+  type Result = { entries: T[]; changed: T[]; removed: string[]; deleted: Record<string, number> };
+  return new Promise<Result>((resolve, reject) => {
+    const tx = database.transaction(['entries', 'kv'], 'readwrite');
+    const store = tx.objectStore('entries');
+    const kv = tx.objectStore('kv');
+    const req = store.getAll();
+    const gone = kv.get('deleted');
+    let entriesReady = false, deletedReady = false;
+    let result: Result;
+    const reconcile = () => {
+      if (!entriesReady || !deletedReady) return;
+      try {
+        const tombstones = combineDeleted(combineDeleted(Object.create(null), gone.result), deleted);
+        const current = new Map((req.result as unknown[]).map(normalize).filter((entry): entry is T => !!entry).map((entry) => [entry.id, entry]));
+        const removed = restore ? [] : [...current.values()].filter((entry) => tombstones[entry.id] >= entry.updated).map((entry) => entry.id);
+        for (const id of removed) { current.delete(id); store.delete(id); }
+        const stamp = Date.now();
+        const changed = incoming
+          .filter((entry) => (restore || !(tombstones[entry.id] >= entry.updated)) && (!current.has(entry.id) || current.get(entry.id)!.updated < entry.updated))
+          .map((entry) => restore && tombstones[entry.id] >= entry.updated ? { ...entry, updated: Math.max(stamp, tombstones[entry.id] + 1) } : entry);
+        for (const entry of changed) { current.set(entry.id, entry); store.put(entry); }
+        kv.put(tombstones, 'deleted');
+        result = { entries: [...current.values()], changed, removed, deleted: tombstones };
+      } catch (error) {
+        tx.abort();
+        reject(error);
+      }
+    };
+    req.onsuccess = () => { entriesReady = true; reconcile(); };
+    gone.onsuccess = () => { deletedReady = true; reconcile(); };
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = tx.onabort = () => reject(tx.error);
+  });
+}
+
 export const db = {
   update,
+  reconcileEntries,
   all: <T>() => run<T[]>('entries', 'readonly', (s) => s.getAll() as IDBRequest<T[]>),
   put: (value: unknown) => run('entries', 'readwrite', (s) => void s.put(value)),
   putMany: (values: unknown[]) => run('entries', 'readwrite', (s) => values.forEach((v) => s.put(v))),

@@ -51,6 +51,26 @@ test('emotion transitions retain timestamp ordering within a day', () => {
   assert.deepEqual(stats.transitions, [{ from: 'sadness', to: 'joy', count: 1 }]);
 });
 
+test('rolling moods weight individual entries and leave moodless windows empty', () => {
+  for (const range of ['30d', '1y']) {
+    const back = (days) => { const date = new Date(now); date.setDate(date.getDate() - days); return dateKey(date); };
+    const entries = [
+      entry(back(0), now.getTime(), 'joy'),
+      entry(back(0), now.getTime() + 1, 'joy'),
+      entry(back(8), now.getTime(), 'sadness'),
+      { ...entry(back(1), now.getTime(), 'joy'), emotions: [] },
+    ];
+    const stats = computeStats(entries, range, 1);
+    const window = stats.step === 1 ? 7 : 4;
+    stats.buckets.forEach((bucket, i) => {
+      const moods = stats.buckets.slice(Math.max(0, i - window + 1), i + 1)
+        .flatMap((b) => b.entries.filter((e) => e.emotions.length).map((e) => e.emotions[0] === 'joy' ? 3 : -3));
+      const expected = moods.length ? moods.reduce((a, b) => a + b, 0) / moods.length : null;
+      assert.equal(bucket.rolling, expected, `${range}: ${bucket.key}`);
+    });
+  }
+});
+
 function findNode(node, predicate) {
   if (!node || typeof node !== 'object') return undefined;
   if (predicate(node)) return node;

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
-import { blankSong, findSong, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
+import { blankSong, findSong, getSongs, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
 import { Stars } from '../components/books';
 import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
@@ -18,6 +18,7 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const ready = useReady();
   const [kind, setKind] = useState<Kind>('all');
   const [sort, setSort] = useState<Sort>('recent');
+  const keeping = useRef(new Set<string>());
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -49,8 +50,17 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const count = (k: Kind) => songs.filter((s) => kindOf(s.music) === k).length;
 
   const keep = async (m: Music) => {
-    await saveSong(blankSong(m));
-    toast(`${m.title} is in your records`);
+    const key = m.kind + ':' + m.id;
+    if (keeping.current.has(key)) return;
+    keeping.current.add(key);
+    try {
+      if (!findSong(getSongs(), m)) await saveSong(blankSong(m));
+      toast(`${m.title} is in your records`);
+    } catch {
+      toast('Couldn’t save this music. Try again.');
+    } finally {
+      keeping.current.delete(key);
+    }
   };
 
   return (
@@ -79,7 +89,7 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
           <h2 class="section-title"><Icon name="repeat" size={16} /> On repeat</h2>
           <div class="repeat-list">
             {repeat.map((s) => (
-              <button class="repeat-row card is-repeat" onClick={() => navigate('song/' + s.id)}>
+              <button key={s.id} class="repeat-row card is-repeat" onClick={() => navigate('song/' + s.id)}>
                 <MusicThing m={s.music} size={44} />
                 <span class="book-row-main">
                   <span class="book-row-title">{s.music.title}</span>
@@ -101,7 +111,7 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
           <p class="hint">Music you added to notes. Keep it to rate it and say what it means to you.</p>
           <div class="tracks">
             {waiting.map((m) => (
-              <div class={`track waiting${isTape(m) ? ' is-tape' : ''}`}>
+              <div key={m.kind + ':' + m.id} class={`track waiting${isTape(m) ? ' is-tape' : ''}`}>
                 <span class="track-thing"><MusicThing m={m} size={38} /></span>
                 <span class="track-main">
                   <span class="track-title">{m.title}</span>
@@ -124,7 +134,7 @@ function Crate({ title, list, tapes }: { title: string; list: Song[]; tapes?: bo
       {title && <h2 class="section-title">{title} <span class="muted">{list.length}</span></h2>}
       <div class={`crate${tapes ? ' is-tapes' : ''}`}>
         {list.map((s, k) => (
-          <button class="crate-item" style={{ '--k': k }} onClick={() => navigate('song/' + s.id)} aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? `, ${s.rating} of 5 stars` : ''}`}>
+          <button key={s.id} class="crate-item" style={{ '--k': k }} onClick={() => navigate('song/' + s.id)} aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? `, ${s.rating} of 5 stars` : ''}`}>
             <MusicThing m={s.music} />
             <span class="crate-title">{s.music.title}</span>
             {s.rating > 0 ? <Stars value={s.rating} size={11} /> : <span class="crate-sub">{s.music.sub ?? musicSub(s.music)}</span>}

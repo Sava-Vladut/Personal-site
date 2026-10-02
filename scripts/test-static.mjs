@@ -164,6 +164,19 @@ test('repeated cached immutable requests keep encodings, HEAD and conditional bo
   }
 });
 
+test('cold conditional requests return metadata without loading a body into the asset cache', async () => {
+  await withLimits({}, async (get) => {
+    const path = '/assets/conditional-12345678.js';
+    await writeFile(join(directory, path), '/* conditional fixture */');
+    const head = await get(path, {}, 'HEAD');
+    const response = await get(path, { 'If-None-Match': head.headers.etag });
+    assert.equal(response.status, 304);
+    assert.equal(response.body.length, 0);
+    await rm(join(directory, path));
+    assert.equal((await get(path)).status, 404);
+  });
+});
+
 for (const [kind, options] of [
   ['entry count', { maxCacheEntries: 1, maxCacheBytes: 1024 }],
   ['total bytes', { maxCacheEntries: 100, maxCacheBytes: 48 }],

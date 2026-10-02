@@ -105,7 +105,7 @@ export function People() {
           const at = last.get(p.id);
           const facts = [p.relation, n ? `${n} ${n === 1 ? 'moment' : 'moments'} · last ${lastSeen(keyOf(new Date(at!)))}` : ''].filter(Boolean);
           return (
-            <button class="person-card card" onClick={() => navigate('person/' + p.id)}>
+            <button key={p.id} class="person-card card" onClick={() => navigate('person/' + p.id)}>
               <Avatar p={p} size={46} />
               <div class="person-card-main">
                 <div class="person-card-name">{p.name || 'Unnamed'}</div>
@@ -148,7 +148,7 @@ function NotLately({ last }: { last: Map<string, number> }) {
         {quiet.map(({ p, days, never }) => {
           const first = p.name.trim().split(/\s+/)[0];
           return (
-            <div class="reading-chip card quiet-chip" role="listitem">
+            <div key={p.id} class="reading-chip card quiet-chip" role="listitem">
               <button class="reading-chip-main" onClick={() => navigate('person/' + p.id)}>
                 <Avatar p={p} size={34} />
                 <span class="book-row-main">

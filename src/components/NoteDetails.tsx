@@ -86,15 +86,19 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const locationRequest = useRef(0);
 
   useEffect(() => {
+    setLocating(false);
     if (open) {
       setMounted(true);
       setClosing(false);
       const release = pushBack(() => closeRef.current());
       const prev = document.activeElement as HTMLElement | null;
-      requestAnimationFrame(() => panel.current?.focus({ preventScroll: true }));
+      const focusFrame = requestAnimationFrame(() => panel.current?.focus({ preventScroll: true }));
       return () => {
+        locationRequest.current++;
+        cancelAnimationFrame(focusFrame);
         release();
         prev?.focus?.({ preventScroll: true });
       };
@@ -119,13 +123,15 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
   const only = draft.emotions.length === 1 ? EMOTION[draft.emotions[0]] : null;
   const weather = weatherOf(draft);
   const addHere = async () => {
+    const request = ++locationRequest.current;
     setLocating(true);
     try {
-      update({ place: await here() });
+      const place = await here();
+      if (request === locationRequest.current) update({ place });
     } catch (e) {
-      toast(locationError(e));
+      if (request === locationRequest.current) toast(locationError(e));
     } finally {
-      setLocating(false);
+      if (request === locationRequest.current) setLocating(false);
     }
   };
 

@@ -40,7 +40,8 @@ async function cacheFirst(req, name) {
 async function networkFirst(req, fallback) {
   try {
     const res = await fetch(req);
-    if (res.ok) await remember(fallback ?? req, res, APP);
+    // A navigation to an image or download must not replace the offline app shell.
+    if (res.ok && (!fallback || /^text\/html(?:;|$)/i.test(res.headers.get('Content-Type') || ''))) await remember(fallback ?? req, res, APP);
     else if (res.status >= 500) return (await cached(fallback ?? req, APP)) || res;
     return res;
   } catch {

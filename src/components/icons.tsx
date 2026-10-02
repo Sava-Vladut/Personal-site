@@ -25,7 +25,7 @@ export function NoteIcon({ id, size = 22 }: { id: string; size?: number }) {
   const cache = useIconCache();
   const body = cache[id];
   useEffect(() => {
-    if (!body) resolveIcon(id);
+    if (!body) void resolveIcon(id).catch(() => {});
   }, [id, body]);
   if (!body) return <span style={{ width: size, height: size, display: 'inline-block' }} />;
   return (
@@ -76,17 +76,6 @@ export function Sprite({ core, size = 16, color, idle = false, delay }: { core: 
   return (
     <svg class="sprite" width={size} height={size} viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
       <path d={d} fill={color ?? `var(--emo-${core})`} />
-    </svg>
-  );
-}
-
-/** The app's own mark: a pixel thought bubble. Also used for the favicon and app icons. */
-export const APP_SPRITE = ['..XX.XX.', '.XXXXXXX', 'XXXXXXXX', 'XXXXXXXX', '.XXXXXX.', '........', '.XX.....', 'X.......'];
-const appPath = rowsPath(APP_SPRITE);
-export function AppMark({ size = 14 }: { size?: number }) {
-  return (
-    <svg class="sprite" width={size} height={size} viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
-      <path d={appPath} fill="currentColor" />
     </svg>
   );
 }

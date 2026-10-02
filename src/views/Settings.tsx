@@ -79,7 +79,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const upload = async (f: File) => {
     try {
       const r = await importJSON(await f.text());
-      r.icons.forEach((id) => resolveIcon(id));
+      r.icons.forEach((id) => { void resolveIcon(id).catch(() => {}); });
       const parts = [
         r.changed ? `${r.changed} ${r.changed === 1 ? 'entry' : 'entries'}` : '',
         r.people ? `${r.people} ${r.people === 1 ? 'person' : 'people'}` : '',

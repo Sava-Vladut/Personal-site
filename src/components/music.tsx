@@ -1,9 +1,9 @@
 // Music as things: a song or an album is a record in its sleeve, a playlist or a podcast is a cassette. Putting one on
 // (a tap) slides the record out and spins it, or turns the tape's reels, and opens Spotify's own player beneath.
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
 import { embedHeight, embedUrl, KIND_LABEL } from '../lib/spotify';
-import { blankSong, findSong, saveSong, toast, useSongs, type Music, type Song } from '../lib/store';
+import { blankSong, findSong, getSongs, saveSong, toast, useSongs, type Music, type Song } from '../lib/store';
 import { Icon } from './icons';
 import '../styles/objects.css';
 
@@ -66,10 +66,19 @@ export function MusicEmbed({ m }: { m: Music }) {
 /** Music in a note: tap to put it on (the player opens beneath), again to take it off. */
 export function MusicDeck({ m, onRemove }: { m: Music; onRemove?: () => void }) {
   const [on, setOn] = useState(false);
+  const keeping = useRef(false);
   const kept = findSong(useSongs(), m);
   const keep = async () => {
-    const s = await saveSong(blankSong(m));
-    toast(`${m.title} is in your records`, { label: 'Open', run: () => navigate('song/' + s.id) });
+    if (keeping.current) return;
+    keeping.current = true;
+    try {
+      const s = findSong(getSongs(), m) ?? await saveSong(blankSong(m));
+      toast(`${m.title} is in your records`, { label: 'Open', run: () => navigate('song/' + s.id) });
+    } catch {
+      toast('Couldn’t save this music. Try again.');
+    } finally {
+      keeping.current = false;
+    }
   };
   return (
     <div class={`deck${on ? ' is-on' : ''}${isTape(m) ? ' is-tape' : ''}`}>

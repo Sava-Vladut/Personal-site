@@ -1,6 +1,6 @@
 import { CHART_ORDER, EMOTION, coreOf, shortName, valence } from '../data/emotions';
 import { SKY_GROUPS, skyGroup } from '../data/weather';
-import { WEEKDAYS, addDays, diffDays, startOfWeek, todayKey, weekday } from './dates';
+import { WEEKDAYS, addDays, diffDays, keyOf, startOfWeek, todayKey, weekday } from './dates';
 import { plainText } from './body';
 import type { Entry } from './store';
 
@@ -20,10 +20,7 @@ const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.l
 const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 const inc = <K>(m: Map<K, number>, k: K, by = 1) => m.set(k, (m.get(k) ?? 0) + by);
 /** Whether an entry's clock time belongs to its calendar day (notes back-dated to another day don't). */
-const timed = (e: Entry) => {
-  const d = new Date(e.time);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === e.date;
-};
+const timed = (e: Entry) => keyOf(new Date(e.time)) === e.date;
 
 export function streaks(entries: Entry[]) {
   const days = new Set(entries.map((e) => e.date));
@@ -109,10 +106,20 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
     for (const id of e.emotions) b.cores[coreOf(id).id] = (b.cores[coreOf(id).id] ?? 0) + 1;
   }
   const win = step === 1 ? 7 : 4;
+  // Reuse each bucket's totals instead of rescanning its entries for every rolling window.
+  const totals = buckets.map((b) => {
+    const moods = b.entries.map(moodOf).filter((m): m is number => m !== null);
+    const sum = moods.reduce((s, mood) => s + mood, 0);
+    b.mood = moods.length ? sum / moods.length : null;
+    return { sum, count: moods.length };
+  });
   buckets.forEach((b, i) => {
-    b.mood = mean(b.entries.map(moodOf).filter((m): m is number => m !== null));
-    const window = buckets.slice(Math.max(0, i - win + 1), i + 1).flatMap((x) => x.entries.map(moodOf)).filter((m): m is number => m !== null);
-    b.rolling = mean(window);
+    let sum = 0, count = 0;
+    for (let j = Math.max(0, i - win + 1); j <= i; j++) {
+      sum += totals[j].sum;
+      count += totals[j].count;
+    }
+    b.rolling = count ? sum / count : null;
   });
 
   /* emotion counts: a feeling also counts toward its family and world */

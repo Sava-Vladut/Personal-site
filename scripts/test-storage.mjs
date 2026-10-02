@@ -4,6 +4,12 @@ import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
 import { rolldown } from 'rolldown';
 
+const combineDeleted = (a, b) => {
+  const merged = Object.assign(Object.create(null), a);
+  for (const [id, time] of Object.entries(b ?? {})) if (!(merged[id] >= time)) merged[id] = time;
+  return merged;
+};
+
 // Execute the real modules with browser/storage boundaries supplied in memory.
 async function loadModule(file, mocks, globals = {}) {
   const bundle = await rolldown({
@@ -45,6 +51,25 @@ function memoryDB(initialEntries = []) {
     set: async (key, value) => { kv.set(key, value); },
     update(key, change) {
       const next = writes.then(() => { const value = change(kv.get(key)); kv.set(key, value); return value; });
+      writes = next.catch(() => {});
+      return next;
+    },
+    reconcileEntries(incoming, deleted, normalize = (raw) => raw, restore = false) {
+      const next = writes.then(() => {
+        deleted = combineDeleted(kv.get('deleted'), deleted);
+        const current = [...entries.values()].map(normalize).filter(Boolean);
+        const removed = restore ? [] : current.filter((e) => deleted[e.id] >= e.updated).map((e) => e.id);
+        removed.forEach((id) => entries.delete(id));
+        const byId = new Map(current.map((e) => [e.id, e]));
+        removed.forEach((id) => byId.delete(id));
+        const changed = incoming
+          .filter((e) => (restore || !(deleted[e.id] >= e.updated)) && (!byId.has(e.id) || byId.get(e.id).updated < e.updated))
+          .map((e) => restore && deleted[e.id] >= e.updated ? { ...e, updated: Math.max(Date.now(), deleted[e.id] + 1) } : e);
+        changed.forEach((e) => entries.set(e.id, e));
+        changed.forEach((e) => byId.set(e.id, e));
+        kv.set('deleted', deleted);
+        return { entries: [...byId.values()], changed, removed, deleted };
+      });
       writes = next.catch(() => {});
       return next;
     },
@@ -392,6 +417,282 @@ test('an older synced deletion cannot remove a newer person saved by another tab
   assert.equal((await db.get('people'))[0].text, 'Newer edit in another tab');
 });
 
+test('an older synced deletion or note cannot overwrite a newer note saved by another tab', async () => {
+  const db = memoryDB([entry()]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  await db.put(entry({ title: 'Newer edit in another tab', updated: 100 }));
+  await store.mergeSynced({ deleted: { note: 50 }, entries: [entry({ title: 'Older synced edit', updated: 75 })] });
+  assert.equal((await db.all())[0].title, 'Newer edit in another tab');
+  assert.equal(store.getEntries()[0].title, 'Newer edit in another tab');
+  await store.mergeSynced({ deleted: { note: 100 } });
+  assert.equal((await db.all()).length, 0);
+  assert.equal(store.getEntries().length, 0);
+});
+
+test('a failed synced transaction leaves the visible journal and tombstones unchanged', async () => {
+  const db = memoryDB([entry()]);
+  db.reconcileEntries = async () => { throw new Error('Transaction aborted'); };
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  await assert.rejects(store.mergeSynced({ deleted: { note: 10 }, entries: [entry({ id: 'remote', updated: 20 })] }), /Transaction aborted/);
+  assert.deepEqual(Array.from(store.getEntries(), (e) => e.id), ['note']);
+  assert.deepEqual(Object.keys(store.getDeleted()), []);
+});
+
+test('local edits and deletions made during a synced transaction survive its older snapshot', async () => {
+  for (const action of ['save', 'delete', 'deleteAll']) {
+    const db = memoryDB([entry()]);
+    let finishMerge;
+    const reconcile = db.reconcileEntries;
+    let held = false;
+    db.reconcileEntries = (...args) => {
+      if (held) return reconcile(...args);
+      held = true;
+      return new Promise((resolve) => { finishMerge = resolve; });
+    };
+    const store = await loadModule('src/lib/store.ts', storeMocks(db));
+    await store.init();
+    const merging = store.mergeSynced({});
+    if (action === 'save') await store.saveEntry({ ...store.getEntries()[0], title: 'Edited during sync' });
+    else if (action === 'delete') await store.deleteEntry('note');
+    else await store.deleteAll();
+    const tombstone = store.getDeleted().note;
+    finishMerge({ entries: [entry()], changed: [], removed: [], deleted: {} });
+    await merging;
+    if (action === 'save') assert.equal(store.getEntries()[0].title, 'Edited during sync');
+    else {
+      assert.equal(store.getEntries().length, 0, action);
+      assert.equal(store.getDeleted().note, tombstone, action);
+      assert.equal((await db.get('deleted')).note, tombstone, action);
+    }
+  }
+});
+
+test('IndexedDB reconciliation commits durable timestamp comparisons atomically and rolls back aborted writes', async () => {
+  const saved = new Map([['note', entry({ title: 'Durable', updated: 100 })]]);
+  const kv = new Map();
+  const transactions = [];
+  let holdCommit = false, commit;
+  const database = {
+    transaction(name, mode) {
+      transactions.push([name, mode]);
+      const pending = new Map(saved);
+      const pendingKv = new Map(kv);
+      let aborted = false;
+      let requests = 0;
+      const request = (result) => {
+        const req = { result };
+        requests++;
+        queueMicrotask(() => {
+          req.onsuccess();
+          if (--requests || aborted) return;
+          const finish = () => {
+            saved.clear();
+            pending.forEach((value, id) => saved.set(id, value));
+            kv.clear();
+            pendingKv.forEach((value, key) => kv.set(key, value));
+            tx.oncomplete();
+          };
+          if (holdCommit) commit = finish;
+          else queueMicrotask(finish);
+        });
+        return req;
+      };
+      const tx = {
+        error: null,
+        abort() { aborted = true; queueMicrotask(() => tx.onabort?.()); },
+        objectStore: (storeName) => storeName === 'kv' ? {
+          get: (key) => request(pendingKv.get(key)),
+          put: (value, key) => pendingKv.set(key, value),
+        } : {
+          getAll: () => request([...pending.values()]),
+          put(value) {
+            if (value.invalid) throw new Error('Data cannot be cloned');
+            pending.set(value.id, value);
+          },
+          delete(id) { pending.delete(id); },
+        },
+      };
+      return tx;
+    },
+  };
+  const { db } = await loadModule('src/lib/db.ts', {}, {
+    indexedDB: { open() {
+      const request = { result: database };
+      queueMicrotask(() => request.onsuccess());
+      return request;
+    } },
+  });
+  const stale = await db.reconcileEntries([entry({ title: 'Older remote', updated: 75 })], { note: 50 });
+  assert.equal(stale.entries[0].title, 'Durable');
+  assert.equal(stale.changed.length, 0);
+  assert.equal(stale.removed.length, 0);
+  const equal = await db.reconcileEntries([entry({ title: 'Equal timestamp', updated: 100 })], {});
+  assert.equal(equal.entries[0].title, 'Durable');
+  holdCommit = true;
+  let settled = false;
+  const writing = db.reconcileEntries([entry({ title: 'Newer remote', updated: 125 })], {}).then((result) => { settled = true; return result; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, false, 'success waits for transaction commit');
+  assert.equal(saved.get('note').title, 'Durable');
+  commit();
+  const newer = await writing;
+  assert.equal(newer.changed[0].title, 'Newer remote');
+  assert.equal(saved.get('note').updated, 125);
+  holdCommit = false;
+  await assert.rejects(db.reconcileEntries([entry({ id: 'bad', invalid: true, updated: 150 })], { note: 125 }), /cannot be cloned/);
+  assert.equal(saved.get('note').updated, 125, 'a later failed put rolls back preceding deletes');
+  const removed = await db.reconcileEntries([], { note: 125 });
+  assert.deepEqual(Array.from(removed.removed), ['note']);
+  assert.equal(saved.size, 0, 'a tombstone wins when its timestamp equals the durable edit');
+  const resurrection = await db.reconcileEntries([entry({ updated: 120 })], {});
+  assert.equal(resurrection.entries.length, 0, 'durable tombstones prevent a stale tab resurrecting a note');
+  const legacy = entry({ id: 'legacy', time: 100 });
+  delete legacy.updated;
+  saved.set('legacy', legacy);
+  const normalized = await db.reconcileEntries([entry({ id: 'legacy', updated: 150 })], {}, (e) => ({ ...e, updated: e.updated ?? e.time }));
+  assert.equal(normalized.changed[0].updated, 150, 'durable legacy timestamps are normalized before comparison');
+  assert.ok(transactions.every(([names, mode]) => JSON.stringify(names) === '["entries","kv"]' && mode === 'readwrite'));
+});
+
+test('a stale tab cannot sync an old note back over a durable deletion from another tab', async () => {
+  const db = memoryDB([entry()]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  await db.del('note');
+  await db.set('deleted', { note: 100 });
+  await store.mergeSynced({ entries: [entry({ updated: 75 })] });
+  assert.equal((await db.all()).length, 0);
+  assert.equal(store.getEntries().length, 0);
+  assert.equal(store.getDeleted().note, 100);
+});
+
+test('backup import protects newer durable notes and can restore another tab’s deleted note', async () => {
+  const db = memoryDB([entry()]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  await db.put(entry({ title: 'Newer edit in another tab', updated: 100 }));
+  const stale = await store.importJSON(JSON.stringify({ entries: [entry({ title: 'Older backup', updated: 75 })] }));
+  assert.equal(stale.changed, 0);
+  assert.equal((await db.all())[0].title, 'Newer edit in another tab');
+  assert.equal(store.getEntries()[0].title, 'Newer edit in another tab');
+  const future = Date.now() + 100_000;
+  await db.del('note');
+  await db.set('deleted', { note: future });
+  const restored = await store.importJSON(JSON.stringify({ entries: [entry({ updated: 125, title: 'Restored backup' })] }));
+  assert.equal(restored.changed, 1);
+  assert.equal(store.getEntries()[0].title, 'Restored backup');
+  assert.ok(store.getEntries()[0].updated > future);
+});
+
+test('matching and older backups restore a note durably deleted by another tab', async () => {
+  for (const updated of [100, 75]) {
+    const db = memoryDB([entry({ title: 'Stale visible note', updated: 100 })]);
+    const store = await loadModule('src/lib/store.ts', storeMocks(db));
+    await store.init();
+    const future = Date.now() + 100_000;
+    await db.del('note');
+    await db.set('deleted', { note: future });
+    const restored = await store.importJSON(JSON.stringify({ entries: [entry({ title: 'Restored backup', updated })] }));
+    assert.equal(restored.changed, 1);
+    assert.equal(store.getEntries()[0].title, 'Restored backup');
+    assert.ok(store.getEntries()[0].updated > future);
+    assert.equal((await db.all())[0].updated, store.getEntries()[0].updated);
+  }
+});
+
+test('a local edit still waiting to persist remains visible during backup reconciliation', async () => {
+  const db = memoryDB([entry()]);
+  const put = db.put;
+  let finishSave;
+  db.put = (value) => new Promise((resolve) => { finishSave = async () => { await put(value); resolve(); }; });
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  const saving = store.saveEntry({ ...store.getEntries()[0], title: 'Pending local edit' });
+  await store.importJSON(JSON.stringify({ entries: [entry({ title: 'Older backup', updated: 10 })] }));
+  assert.equal(store.getEntries()[0].title, 'Pending local edit');
+  await finishSave();
+  await saving;
+  assert.equal((await db.all())[0].title, 'Pending local edit');
+});
+
+test('legacy notes without an edit timestamp use their saved creation time when syncing', async () => {
+  const old = entry({ time: 50, created: 100 });
+  delete old.updated;
+  const db = memoryDB([old]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  assert.equal(store.getEntries()[0].updated, 100);
+  await store.mergeSynced({ entries: [entry({ updated: 150, title: 'Newer synced edit' })] });
+  assert.equal(store.getEntries()[0].title, 'Newer synced edit');
+});
+
+test('delete all defeats unseen incoming notes and collections while preserving fresh local saves', async () => {
+  for (const method of ['mergeSynced', 'importJSON']) for (const phase of ['entries', 'collections']) {
+    const db = memoryDB([entry()]);
+    let reached, release;
+    const waiting = new Promise((resolve) => { reached = resolve; });
+    let held = false;
+    const original = phase === 'entries' ? db.reconcileEntries : db.update;
+    const name = phase === 'entries' ? 'reconcileEntries' : 'update';
+    db[name] = async (...args) => {
+      const result = await original(...args);
+      if (held || (phase === 'collections' && args[0] !== 'people')) return result;
+      held = true;
+      reached();
+      await new Promise((resolve) => { release = resolve; });
+      return result;
+    };
+    const store = await loadModule('src/lib/store.ts', storeMocks(db));
+    await store.init();
+    const future = Date.now() + 100_000;
+    const data = {
+      entries: [entry({ id: 'incoming', title: 'Incoming note', updated: future })],
+      people: [{ id: 'incoming-person', name: 'Incoming person', updated: future }],
+      books: [{ id: 'incoming-book', title: 'Incoming book', updated: future }],
+      songs: [{ id: 'incoming-song', music: { kind: 'track', id: '4cOdK2wGLETKBW3PvgPWqT', title: 'Incoming song' }, updated: future }],
+    };
+    const pending = store[method](method === 'importJSON' ? JSON.stringify(data) : data);
+    await waiting;
+    await store.deleteAll();
+    const put = db.put;
+    db.put = async () => { throw new Error('Storage full'); };
+    await assert.rejects(store.saveEntry({ ...data.entries[0], title: 'Failed save after wipe' }), /Storage full/);
+    db.put = put;
+    const freshNote = await store.saveEntry(store.blankEntry());
+    const freshPerson = await store.savePerson(store.blankPerson('Fresh person'));
+    release();
+    await pending;
+    assert.deepEqual(Array.from(store.getEntries(), (e) => e.id), [freshNote.id], `${method}/${phase}: note`);
+    assert.deepEqual(Array.from(await db.all(), (e) => e.id), [freshNote.id], `${method}/${phase}: durable note`);
+    assert.deepEqual(Array.from(store.getPeople(), (p) => p.id), [freshPerson.id], `${method}/${phase}: person`);
+    assert.equal(store.getBooks().length, 0);
+    assert.equal(store.getSongs().length, 0);
+    for (const id of ['incoming', 'incoming-person', 'incoming-book', 'incoming-song'])
+      assert.ok(store.getDeleted()[id] >= future, `${method}/${phase}: ${id} tombstone`);
+    await store.mergeSynced(data);
+    assert.deepEqual(Array.from(store.getEntries(), (e) => e.id), [freshNote.id], `${method}/${phase}: subsequent sync`);
+    assert.deepEqual(Array.from(store.getPeople(), (p) => p.id), [freshPerson.id]);
+  }
+});
+
+test('delete all interrupts a backup still loading photos and remembers its unseen records', async () => {
+  let finishPhotos;
+  const db = memoryDB([entry()]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db, () => new Promise((resolve) => { finishPhotos = resolve; })));
+  await store.init();
+  const incoming = entry({ id: 'incoming', title: 'Pending backup', updated: Date.now() + 100_000 });
+  const pending = store.importJSON(JSON.stringify({ entries: [incoming] }));
+  await store.deleteAll();
+  finishPhotos(0);
+  const result = await pending;
+  assert.equal(result.changed, 0);
+  assert.equal(store.getEntries().length, 0);
+  assert.equal((await db.all()).length, 0);
+  assert.ok(store.getDeleted().incoming >= incoming.updated);
+});
+
 test('books survive backup import and follow synced deletions', async () => {
   const store = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
   await store.init();
@@ -609,9 +910,48 @@ test('key dates come round each year, tags on pages count, and months show how i
   const entries = [{ id: 'e1', people: [], text: 'Saw @[Ana Pop]', emotions: [], time: 1 }, { id: 'e2', people: ['p1'], text: '', emotions: [], time: 2 }];
   assert.equal(m.momentsByPerson(entries, [ana, bo]).get('p1').length, 2, 'tags in the words count as moments');
 
-  const at = (month, emotions) => ({ time: new Date(2026, month, 3).getTime(), emotions });
+  const at = (month, emotions) => ({ date: `2026-${String(month + 1).padStart(2, '0')}-03`, time: new Date(2026, month, 3).getTime(), emotions });
   const months = m.monthsOf([at(9, ['joy']), at(8, ['joy']), at(2, ['sadness']), at(1, ['fear'])], 12, now);
   assert.equal(months.length, 12);
   assert.deepEqual([months.at(-1).m, months.at(-1).total, months.at(-1).warmth], [9, 1, 1]);
   assert.equal(m.trendOf(months), 'warmer');
+});
+
+test('People monthly feelings follow a backdated entry’s calendar day', async () => {
+  const people = await loadModule('src/lib/people.ts', { './store': { getBooks: () => [] } });
+  const months = people.monthsOf([
+    entry({ date: '2026-08-31', time: new Date(2026, 9, 2).getTime(), emotions: ['joy'] }),
+  ], 3, new Date(2026, 9, 2));
+  assert.deepEqual(Array.from(months, (month) => [month.m, month.total]), [[7, 1], [8, 0], [9, 0]]);
+});
+
+test('books retain known zero progress and resolve canonical Unicode titles', async () => {
+  const books = await loadModule('src/lib/books.ts', { './store': { getBooks: () => [] } });
+  assert.equal(books.progressOf({ pages: 250, page: 0 }), 0);
+  assert.equal(books.progressOf({ pages: 250, page: null }), null);
+  assert.equal(books.progressOf({ pages: 0, page: 10 }), null);
+  assert.equal(books.progressOf({ pages: 250, page: 300 }), 100);
+  const first = { id: 'first', title: 'Émile' };
+  const second = { id: 'second', title: 'E\u0301mile' };
+  assert.equal(books.resolveMention(undefined, second.title, [first]).id, first.id);
+  assert.equal(books.mentionOf(second, [first, second]), '[[book:second|E\u0301mile]]');
+});
+
+test('text exports follow journal dates and resolve tags consistently across collections', async () => {
+  const people = [{ id: 'person', name: 'Ana', relation: '', dates: [], text: '', emotions: [] }];
+  const books = [{ id: 'book', title: 'Dune', authors: '', status: 'reading', rating: 0, started: null, finished: null, page: 0, pages: 250, emotions: [], from: null, text: '' }];
+  const songs = [{ id: 'song', music: { kind: 'track', title: 'Blue' }, repeat: false, rating: 0, emotions: [], from: null, text: 'Thanks @[Ana] for [[Dune]].' }];
+  const entries = [
+    entry({ id: 'today', title: 'Later day', date: '2026-10-02', time: 1, text: 'With @[Ana]', people: ['person'] }),
+    entry({ id: 'earlier', title: 'Earlier day', date: '2026-09-30', time: 2, text: 'With @[Ana]' }),
+  ];
+  const exporter = await loadModule('src/lib/exportText.ts', {
+    './store': { getEntries: () => entries, getPeople: () => people, getBooks: () => books, getSongs: () => songs },
+  });
+  const text = exporter.exportText();
+  assert.ok(text.indexOf('Earlier day') < text.indexOf('Later day'), 'backdated notes retain calendar order');
+  assert.ok(text.includes('Tagged in 2 entries'), 'inline tags count once alongside Thinking of tags');
+  assert.ok(text.includes('On page 0 of 250'));
+  assert.ok(text.includes('Thanks Ana for “Dune” (book).'));
+  assert.ok(!text.includes('@[Ana]'));
 });

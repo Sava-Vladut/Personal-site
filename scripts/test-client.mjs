@@ -26,6 +26,176 @@ const deferred = () => {
 };
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
+function componentHooks() {
+  const slots = [];
+  let cursor = 0, effects = [];
+  const hooks = {
+    useRef(initial) { return slots[cursor++] ??= { current: initial }; },
+    useState(initial) {
+      const slot = slots[cursor++] ??= { value: typeof initial === 'function' ? initial() : initial };
+      return [slot.value, (next) => { slot.value = typeof next === 'function' ? next(slot.value) : next; }];
+    },
+    useMemo(fn, deps) {
+      const i = cursor++;
+      if (!slots[i] || deps.some((value, k) => value !== slots[i].deps[k])) slots[i] = { value: fn(), deps };
+      return slots[i].value;
+    },
+    useEffect(fn, deps) {
+      const i = cursor++;
+      const old = slots[i];
+      if (!old || !deps || deps.some((value, k) => value !== old.deps[k])) {
+        slots[i] = { deps, cleanup: old?.cleanup };
+        effects.push(() => { slots[i].cleanup?.(); slots[i].cleanup = fn(); });
+      }
+    },
+  };
+  hooks.useLayoutEffect = hooks.useEffect;
+  return {
+    hooks,
+    render(component, props) {
+      cursor = 0;
+      effects = [];
+      const tree = component(props);
+      effects.forEach(fn => fn());
+      return tree;
+    },
+    dispose() { slots.forEach(slot => slot?.cleanup?.()); },
+  };
+}
+const jsx = (type, props, key) => ({ type, props, key });
+function nodes(tree) {
+  if (Array.isArray(tree)) return tree.flatMap(nodes);
+  if (!tree || typeof tree !== 'object') return [];
+  return [tree, ...nodes(tree.props?.children)];
+}
+
+test('closing a nested sheet retains the parent scroll lock and cancels pending focus', async () => {
+  const classes = new Set(), effects = [], frames = new Map();
+  let frame = 0;
+  const { Sheet } = await load('src/components/Sheet.tsx', {
+    'preact/hooks': {
+      useRef: current => ({ current }), useState: value => [value, () => {}],
+      useEffect: fn => effects.push(fn),
+    },
+    'preact/jsx-runtime': { jsx, jsxs: jsx },
+    '../lib/router': { pushBack: () => () => {} },
+  }, {
+    CSS: { supports: () => false },
+    document: { activeElement: null, documentElement: { classList: { add: name => classes.add(name), remove: name => classes.delete(name) } } },
+    requestAnimationFrame: fn => { frames.set(++frame, fn); return frame; },
+    cancelAnimationFrame: id => frames.delete(id),
+  });
+  Sheet({ open: true, onClose() {}, children: [] });
+  Sheet({ open: true, onClose() {}, children: [] });
+  const cleanups = effects.map(fn => fn());
+  assert.equal(frames.size, 2);
+  cleanups[2]();
+  assert.ok(classes.has('sheet-open'), 'the parent still blocks page scrolling');
+  assert.equal(frames.size, 1);
+  cleanups[0]();
+  assert.equal(classes.has('sheet-open'), false);
+  assert.equal(frames.size, 0);
+});
+
+test('pending location lookup cannot change a note after its details are dismissed', async () => {
+  const h = componentHooks(), location = deferred(), patches = [], frames = new Map();
+  const { NoteDetails } = await load('src/components/NoteDetails.tsx', {
+    'preact/hooks': h.hooks, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    '../lib/router': { pushBack: () => () => {} },
+    '../lib/weather': { here: () => location.promise },
+    '../lib/dates': { rangeLabel: () => '' },
+    './weather': { weatherOf: () => null },
+  }, {
+    document: { activeElement: null },
+    requestAnimationFrame: fn => { frames.set(1, fn); return 1; },
+    cancelAnimationFrame: id => frames.delete(id),
+  });
+  const props = { open: true, onClose() {}, update: patch => patches.push(patch), draft: { title: '', emotions: [], people: [], photos: [], images: [], date: '2026-10-02', place: null } };
+  const tree = h.render(NoteDetails, props);
+  const button = nodes(tree).find(node => node.type === 'button' && nodes(node).some(child => child.props?.name === 'current-location'));
+  const pending = button.props.onClick();
+  h.render(NoteDetails, { ...props, open: false });
+  location.resolve({ lat: 10, lon: 20 });
+  await pending;
+  assert.equal(patches.length, 0);
+  assert.equal(frames.size, 0);
+  h.dispose();
+});
+
+test('creating a person rejects repeated submissions and keeps intervening selections', async () => {
+  for (const dismissed of [false, true]) {
+    const h = componentHooks(), saved = deferred(), selections = [];
+    let saves = 0;
+    const { PeopleSheet } = await load('src/components/people.tsx', {
+      'preact/hooks': h.hooks, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+      '../lib/store': { usePeople: () => [], useEntries: () => [], blankPerson: name => ({ name }), savePerson: () => { saves++; return saved.promise; } },
+    });
+    const props = { open: true, onClose() {}, selected: [], onChange: value => selections.push(Array.from(value)) };
+    let tree = h.render(PeopleSheet, props);
+    nodes(tree).find(node => node.type === 'input').props.onInput({ currentTarget: { value: 'Ana' } });
+    tree = h.render(PeopleSheet, props);
+    const submit = nodes(tree).find(node => node.type === 'form').props.onSubmit;
+    submit({ preventDefault() {} });
+    submit({ preventDefault() {} });
+    assert.equal(saves, 1);
+    h.render(PeopleSheet, { ...props, open: !dismissed, selected: ['existing'] });
+    saved.resolve({ id: 'new-person', name: 'Ana' });
+    await settle();
+    assert.deepEqual(selections, dismissed ? [] : [['existing', 'new-person']]);
+    h.dispose();
+  }
+});
+
+test('the icon picker reports failed icon loading and permits a later open to retry', async () => {
+  const h = componentHooks();
+  let attempts = 0;
+  const { IconSheet } = await load('src/components/IconPicker.tsx', {
+    'preact/hooks': h.hooks, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    '../lib/icons': { loadCurated: async () => { if (++attempts === 1) throw new Error('Offline'); return { categories: [], bodies: {} }; } },
+  });
+  const props = { open: true, value: null, onChange() {}, onClose() {} };
+  h.render(IconSheet, props);
+  await settle();
+  assert.match(JSON.stringify(h.render(IconSheet, props)), /Couldn’t load icons/);
+  h.render(IconSheet, { ...props, open: false });
+  h.render(IconSheet, props);
+  await settle();
+  assert.doesNotMatch(JSON.stringify(h.render(IconSheet, props)), /Couldn’t load icons/);
+  assert.equal(attempts, 2);
+  h.dispose();
+});
+
+test('keeping music ignores repeated taps, uses an existing record and reports storage failure', async () => {
+  for (const failed of [false, true]) {
+    const h = componentHooks(), stored = deferred(), messages = [], songs = [];
+    const music = { kind: 'track', id: 'track', title: 'Song' };
+    let saves = 0;
+    const { MusicDeck } = await load('src/components/music.tsx', {
+      'preact/hooks': h.hooks, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+      '../lib/store': {
+        useSongs: () => [], getSongs: () => songs, findSong: list => list[0], blankSong: m => ({ music: m }),
+        saveSong: async () => { saves++; await stored.promise; if (failed) throw new Error('Full'); const song = { id: 'song' }; songs.push(song); return song; },
+        toast: message => messages.push(message),
+      },
+    });
+    let tree = h.render(MusicDeck, { m: music });
+    nodes(tree).find(node => node.type === 'button').props.onClick();
+    tree = h.render(MusicDeck, { m: music });
+    const keep = nodes(tree).find(node => node.type === 'button' && node.props.children?.some?.(child => typeof child === 'string' && child.includes('Keep in Media'))).props.onClick;
+    const pending = keep();
+    await keep();
+    assert.equal(saves, 1);
+    stored.resolve();
+    await pending;
+    assert.deepEqual(messages, failed ? ['Couldn’t save this music. Try again.'] : ['Song is in your records']);
+    if (!failed) {
+      await keep();
+      assert.equal(saves, 1, 'a now-kept record must be reused');
+    }
+    h.dispose();
+  }
+});
+
 function textBox(value, start = 0, end = start) {
   return {
     value, selectionStart: start, selectionEnd: end,
@@ -136,7 +306,7 @@ async function weatherHarness({ place = null } = {}) {
   let settings = { weather: true, places: !!place, home: { lat: 46, lon: 23 } };
   const annotated = [], saved = [];
   const weather = await load('src/lib/weather.ts', {
-    './dates': { todayKey: () => '2026-10-01', addDays: () => '2026-08-01' },
+    './dates': { todayKey: () => '2026-10-01', addDays: () => '2026-08-01', keyOf: date => date.toISOString().slice(0, 10) },
     './store': {
       getEntries: () => entries, getSettings: () => settings,
       normalizeWeather: (w) => w, normalizePlace: (p) => p,

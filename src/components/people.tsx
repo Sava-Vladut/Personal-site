@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
-import { blankPerson, savePerson, useEntries, usePeople, type Person } from '../lib/store';
+import { blankPerson, savePerson, toast, useEntries, usePeople, type Person } from '../lib/store';
 import { Icon, NoteIcon } from './icons';
 import { Sheet } from './Sheet';
 
@@ -70,6 +70,11 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = 'Thinki
   const people = usePeople();
   const entries = useEntries();
   const [q, setQ] = useState('');
+  const creating = useRef(false);
+  const request = useRef(0);
+  const selection = useRef(selected);
+  selection.current = selected;
+  useEffect(() => () => { request.current++; }, [open]);
 
   // Most recently tagged first, so the usual people are at hand.
   const recent = useMemo(() => {
@@ -86,10 +91,19 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = 'Thinki
   const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id].slice(0, 20));
   const create = async () => {
     const name = q.trim().slice(0, 120);
-    if (!name) return;
-    const p = await savePerson(blankPerson(name));
-    onChange([...selected, p.id].slice(0, 20));
-    setQ('');
+    if (!name || creating.current) return;
+    const n = request.current;
+    creating.current = true;
+    try {
+      const p = await savePerson(blankPerson(name));
+      if (n !== request.current) return;
+      onChange([...selection.current, p.id].slice(0, 20));
+      setQ('');
+    } catch {
+      if (n === request.current) toast('Couldn’t save this person. Try again.');
+    } finally {
+      creating.current = false;
+    }
   };
 
   return (
@@ -106,7 +120,7 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = 'Thinki
           </button>
         )}
         {shown.map((p) => (
-          <button class="person-pick" aria-pressed={selected.includes(p.id)} onClick={() => toggle(p.id)}>
+          <button key={p.id} class="person-pick" aria-pressed={selected.includes(p.id)} onClick={() => toggle(p.id)}>
             <Avatar p={p} size={36} />
             <span class="person-pick-main">
               <span class="person-pick-name">{p.name || 'Unnamed'}</span>

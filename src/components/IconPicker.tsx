@@ -54,18 +54,25 @@ export function IconSheet({ open, onClose, value, onChange }: {
 
   useEffect(() => {
     if (!open || cats) return;
+    let active = true;
     loadCurated().then((c) => {
+      if (!active) return;
       setCats(c.categories);
       setBodies(c.bodies);
+      setError('');
+    }).catch(() => {
+      if (active) setError('Couldn’t load icons. Check your connection and try again.');
     });
-  }, [open]);
+    return () => { active = false; };
+  }, [open, cats]);
 
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const pool = useMemo(() => ({ ...bodies, ...(all ?? {}) }), [bodies, all]);
+  const searchIds = useMemo(() => Object.keys(all ? { ...all, ...bodies } : bodies), [all, bodies]);
   const results = useMemo(() => {
     if (!words.length) return null;
-    const pool = all ? { ...all, ...bodies } : bodies;
-    return Object.keys(pool).filter((id) => matches(id, words));
-  }, [q, all, bodies]);
+    return searchIds.filter((id) => matches(id, words));
+  }, [q, searchIds]);
 
   const pick = async (id: string) => {
     const body = bodies[id] ?? all?.[id];
@@ -86,8 +93,7 @@ export function IconSheet({ open, onClose, value, onChange }: {
     setLoadingAll(false);
   };
 
-  const pool = { ...bodies, ...(all ?? {}) };
-  const tabs = cats ? (all ? [...cats, { name: 'All', icons: Object.keys(all) }] : cats) : [];
+  const tabs = useMemo(() => cats ? (all ? [...cats, { name: 'All', icons: Object.keys(all) }] : cats) : [], [cats, all]);
   const list = results ?? tabs[tab]?.icons ?? [];
   const shown = list.slice(0, limit);
 
@@ -119,7 +125,7 @@ export function IconSheet({ open, onClose, value, onChange }: {
       {!cats && <p class="hint">Loading icons…</p>}
       <div class="icon-grid">
         {shown.map((id) => (
-          <button class="icon-cell" aria-pressed={id === value} title={iconLabel(id)} aria-label={iconLabel(id)} onClick={() => pick(id)}>
+          <button key={id} class="icon-cell" aria-pressed={id === value} title={iconLabel(id)} aria-label={iconLabel(id)} onClick={() => pick(id)}>
             <svg width="26" height="26" viewBox={viewBoxOf(id)} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svgInner(id, pool[id]) }} />
           </button>
         ))}

@@ -75,7 +75,7 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
         {items.length > 0 && (
           <div class="img-grid">
             {items.map((img) => (
-              <button class="img-pick" aria-pressed={isSel(img.url)} onClick={() => toggle(img)} aria-label={img.title || 'Image'}>
+              <button key={img.url} class="img-pick" aria-pressed={isSel(img.url)} onClick={() => toggle(img)} aria-label={img.title || 'Image'}>
                 <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
                 <span class="img-check"><Icon name="check" size={16} stroke={2.5} /></span>
               </button>

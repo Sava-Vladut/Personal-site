@@ -91,6 +91,23 @@ test('temporary server failures fall back to cached pages while client errors re
   }
 });
 
+test('successful HTML navigation refreshes the offline shell without asset navigations replacing it', async () => {
+  let online = true;
+  const app = worker({
+    entries: { 'mm-app-dev': { '/': 'old shell' } },
+    fetch: async (req) => {
+      if (!online) throw new Error('Offline');
+      return req.url.endsWith('/icon.svg')
+        ? new Response('<svg/>', { headers: { 'Content-Type': 'image/svg+xml' } })
+        : new Response('fresh shell', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    },
+  });
+  assert.equal(await (await app.request('/journal', 'navigate')).text(), 'fresh shell');
+  assert.equal(await (await app.request('/icon.svg', 'navigate')).text(), '<svg/>');
+  online = false;
+  assert.equal(await (await app.request('/journal', 'navigate')).text(), 'fresh shell');
+});
+
 test('activation removes old app caches and keeps unrelated origin caches', async () => {
   const app = worker({ entries: { 'mm-app-old': {}, 'mm-app-dev': {}, 'mm-img-v1': {}, 'another-app': {} } });
   await app.activate();

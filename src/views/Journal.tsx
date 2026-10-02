@@ -157,7 +157,7 @@ export function Journal() {
         </section>
       )}
       {groups.map(([date, list]) => (
-        <section class="day">
+        <section class="day" key={date}>
           <h2 class="day-label">{dayLabel(date)}</h2>
           <Entries list={list} compact={compact} />
         </section>
@@ -181,9 +181,9 @@ function Entries({ list, compact, dated }: { list: Entry[]; compact: boolean; da
     <div class={compact ? 'entries compact card' : 'entries'}>
       {items.map((it) =>
         'run' in it ? (
-          <CheckInRun list={it.run} />
+          <CheckInRun key={'run:' + it.run[0].id} list={it.run} />
         ) : (
-          <Swipe e={it.one}>
+          <Swipe key={it.one.id} e={it.one}>
             {it.one.kind === 'checkin' ? <CheckInRow e={it.one} /> : compact ? <NoteRow e={it.one} dated={dated} /> : <NoteCard e={it.one} dated={dated} />}
           </Swipe>
         ),
@@ -207,7 +207,7 @@ function CheckInRun({ list }: { list: Entry[] }) {
         <span class="checkin-time">{span}</span>
         <Icon name="chevron-down" size={14} />
       </button>
-      {open && list.map((e) => <Swipe e={e}><CheckInRow e={e} /></Swipe>)}
+      {open && list.map((e) => <Swipe key={e.id} e={e}><CheckInRow e={e} /></Swipe>)}
     </div>
   );
 }

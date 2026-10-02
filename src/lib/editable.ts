@@ -117,9 +117,6 @@ function fill(el: HTMLElement, text: string) {
   return true;
 }
 
-/** Whether the block holds anything but text and a closing <br> — what a browser's own line handling can leave. */
-export const messy = (el: HTMLElement) => [...el.childNodes].some((c, i, all) => c.nodeType !== Node.TEXT_NODE && !(c.nodeName === 'BR' && i === all.length - 1));
-
 export class Editable implements TextBox {
   private last: { start: number; end: number; direction: 'forward' | 'backward' | 'none' } = { start: 0, end: 0, direction: 'none' };
   constructor(readonly el: HTMLElement) {}

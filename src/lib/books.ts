@@ -39,14 +39,14 @@ export async function searchBooks(q: string, page = 1): Promise<{ items: FoundBo
 export const STATUS_LABEL: Record<BookStatus, string> = { reading: 'Reading', want: 'Want to read', read: 'Read', dnf: 'Didn’t finish' };
 
 /** Percent read, when the book's length and your page are both known. */
-export const progressOf = (b: Book) => (b.pages && b.page ? Math.min(100, Math.round((b.page / b.pages) * 100)) : null);
+export const progressOf = (b: Book) => (b.pages && b.page !== null ? Math.min(100, Math.round((b.page / b.pages) * 100)) : null);
 
 /* ---------- mentions ----------
    A note mentions a book as [[Title]], like a wiki link, so it reads naturally while writing and can be typed by hand.
    Only when two books on the shelf share a title does it name the one it means: [[book:<id>|Title]]. */
 
 export const MENTION = /\[\[(?:([^\]|\n]+)\|)?([^\]\n]+)\]\]/g;
-const key = (t: string) => t.trim().toLowerCase();
+const key = (t: string) => t.trim().normalize('NFC').toLowerCase();
 const clean = (t: string) => (t.trim() || 'Untitled').replace(/[\]|\n]/g, ' ');
 
 /** The book a [[target|text]] link points to, if it's on the shelf. */
@@ -81,10 +81,11 @@ export function mentionsByBook(entries: Entry[], books: Book[]) {
 /** After a book is renamed: its [[Old title]] mentions become [[New title]], so the notes still point to it. */
 export function renameMentions(entries: Entry[], before: Book[], book: Book): Entry[] {
   const after = [...before.filter((b) => b.id !== book.id), book];
+  const mention = mentionOf(book, after);
   const out: Entry[] = [];
   for (const e of entries) {
-    if (!booksIn(e.text, before).includes(book.id)) continue;
-    const text = e.text.replace(MENTION, (all, target, t) => (resolveMention(target, t, before)?.id === book.id ? mentionOf(book, after) : all));
+    if (!e.text.includes('[[')) continue;
+    const text = e.text.replace(MENTION, (all, target, t) => (resolveMention(target, t, before)?.id === book.id ? mention : all));
     if (text !== e.text) out.push({ ...e, text });
   }
   return out;

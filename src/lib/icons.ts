@@ -7,7 +7,10 @@ let curated: Promise<Curated> | null = null;
 let all: Promise<Record<string, string>> | null = null;
 
 /** ~290 hand-picked icons, loaded when the picker first opens. */
-export const loadCurated = () => (curated ??= import('../data/icons-curated.json').then((m) => m.default as Curated));
+export const loadCurated = () => (curated ??= import('../data/icons-curated.json').then((m) => m.default as Curated).catch((error) => {
+  curated = null;
+  throw error;
+}));
 
 /** Every icon (~4,900), fetched only when searching beyond the curated set. */
 export const loadAll = () =>

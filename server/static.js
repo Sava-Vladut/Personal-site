@@ -43,10 +43,13 @@ export function createStaticHandler(directory, { maxConcurrent = 128, maxCacheBy
       cache.delete(oldest);
     }
   }
+  function notModified(req, etag) {
+    const matches = String(req.headers['if-none-match'] || '').split(',').map((v) => v.trim().replace(/^W\//, ''));
+    return matches.includes('*') || matches.includes(etag.slice(2));
+  }
   function respond(req, res, headers, body) {
     for (const [name, value] of Object.entries(headers)) res.setHeader(name, value);
-    const matches = String(req.headers['if-none-match'] || '').split(',').map((v) => v.trim().replace(/^W\//, ''));
-    if (matches.includes('*') || matches.includes(headers.ETag.slice(2))) {
+    if (notModified(req, headers.ETag)) {
       res.removeHeader('Content-Length');
       res.writeHead(304);
       res.end();
@@ -116,8 +119,13 @@ export function createStaticHandler(directory, { maxConcurrent = 128, maxCacheBy
         'Content-Length': length,
         ...(encoding !== 'identity' ? { 'Content-Encoding': encoding } : {}),
       };
+      // HEAD and revalidation need metadata only, even on the first uncached request.
+      if (req.method === 'HEAD' || notModified(req, etag)) {
+        respond(req, res, headers);
+        return;
+      }
       let body;
-      if (fingerprinted && length <= maxCacheEntryBytes && length <= maxCacheBytes && req.method !== 'HEAD') {
+      if (fingerprinted && length <= maxCacheEntryBytes && length <= maxCacheBytes) {
         body = await handle.readFile();
         remember(cacheKey, { headers, body });
       }

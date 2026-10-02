@@ -1,6 +1,6 @@
 // The weather and where you were, added to entries when Settings allow it. Weather comes from Open-Meteo (free, no key),
 // place names from OpenStreetMap's Nominatim. They're only ever sent coordinates, never anything from the journal.
-import { addDays, todayKey } from './dates';
+import { addDays, keyOf, todayKey } from './dates';
 import { annotateEntries, getEntries, getSettings, normalizePlace, normalizeWeather, saveEntry, type Entry, type Place, type Weather } from './store';
 
 const FORECAST = 'https://api.open-meteo.com/v1/forecast';
@@ -99,7 +99,7 @@ const minutes = (iso: unknown) => {
 /** Whether it was dark at an entry's time, when its clock time belongs to its day and the sun rose and set that day. */
 function darkAt(e: Entry, rise: number | null, set: number | null) {
   const d = new Date(e.time);
-  const own = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === e.date;
+  const own = keyOf(d) === e.date;
   if (!own || rise === null || set === null || rise >= set) return {};
   const m = d.getHours() * 60 + d.getMinutes();
   return { dark: m < rise || m >= set };

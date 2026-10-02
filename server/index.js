@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HttpError } from './http-error.js';
+import { json } from './http-response.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 
@@ -68,11 +69,6 @@ const SECURITY_HEADERS = {
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
 
-
-function json(res, status, body, headers = {}) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
-  res.end(JSON.stringify(body));
-}
 
 function redirect(res, location, cookies = []) {
   res.writeHead(302, { Location: location, 'Cache-Control': 'no-store', 'Set-Cookie': cookies });

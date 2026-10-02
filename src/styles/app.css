@@ -762,16 +762,6 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .track-check { width: 24px; height: 24px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: transparent; box-shadow: inset 0 0 0 1.5px var(--line-2); }
 .track[aria-pressed='true'] .track-check { background: var(--ink); color: var(--on-ink); box-shadow: none; }
 .embed { display: block; width: 100%; border: 0; border-radius: 12px; background: var(--surface-2); }
-.add-row { display: flex; gap: 8px; margin-top: 14px; }
-.add-btn {
-  width: 44px; height: 44px; border-radius: 999px; flex: none;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--surface-2); color: var(--ink-2);
-  transition: background-color 0.15s, color 0.15s, transform 0.1s;
-}
-.add-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
-.add-btn:active:not(:disabled) { transform: scale(0.94); }
-.add-btn:disabled { opacity: 0.4; }
 .note-music { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: 12.5px; color: var(--ink-3); }
 .note-music span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch; }
 /* login setup steps */
@@ -894,12 +884,12 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 /* ---------- press feedback: things you tap sink a little and spring back ---------- */
 
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick,
-    .chip, .icon-btn, .cal-day, .icon-cell, .add-btn, .icon-pick, .prompt-worlds button, .intensity-step, .emo-x, .toast-action) {
+    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .intensity-step, .emo-x, .toast-action) {
   transition: border-color 0.15s, background-color 0.15s, color 0.15s, box-shadow 0.15s, scale 0.45s var(--spring);
 }
 :is(.note, .checkin, .person-card, .dex-link, .track, .list-row.action, .img-pick) { --press: 0.98; }
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick,
-    .chip, .icon-btn, .cal-day, .icon-cell, .add-btn, .icon-pick, .prompt-worlds button, .intensity-step, .emo-x, .toast-action):active:not(:disabled) {
+    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .intensity-step, .emo-x, .toast-action):active:not(:disabled) {
   scale: var(--press, 0.93);
   transition-duration: 0.15s, 0.15s, 0.15s, 0.15s, 0.12s;
 }
@@ -1021,7 +1011,6 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .person-pick[aria-pressed='true'] .track-check { background: var(--ink); color: var(--on-ink); box-shadow: none; }
 .sheet .search { margin-bottom: 0; }
 
-.people-meta { margin-top: 8px; }
 .confirm-people { margin: 0; align-items: center; }
 
 .avatar-pick { border-radius: 999px; }
@@ -1179,68 +1168,6 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
   background: color-mix(in oklab, var(--c) 75%, var(--surface)); animation: grow-x 0.9s var(--ease-emph) 0.2s backwards;
 }
 .mind-row-pct { min-width: 3.2em; text-align: right; font-size: 14px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-
-/* ---------- books ---------- */
-
-.book-cover {
-  flex: none; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
-  aspect-ratio: 2 / 3; border-radius: 4px 7px 7px 4px; background: var(--surface-3); color: var(--ink-2);
-  box-shadow: inset 2px 0 0 rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.12);
-}
-.book-cover.tinted { background: color-mix(in oklab, var(--c) 30%, var(--surface-2)); }
-.book-cover img { width: 100%; height: 100%; object-fit: cover; }
-.book-cover-title {
-  padding: 8%; font-family: var(--serif); font-weight: 600; line-height: 1.15; text-align: center;
-  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
-}
-
-.stars { display: inline-flex; align-items: center; gap: 1px; color: var(--emo-joy); }
-.stars svg { color: var(--line-2); }
-.stars svg.on { color: var(--emo-joy); }
-.stars svg.on g { fill: currentColor; }
-.stars.is-input { gap: 2px; margin-top: 8px; margin-left: -4px; }
-.stars.is-input button { padding: 4px; border-radius: 8px; transition: scale 0.35s var(--spring-bouncy); }
-.stars.is-input button:active { scale: 0.85; transition-duration: 0.1s; }
-
-.book-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
-.book-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 7px 10px 7px 7px; border-radius: 14px; transition: background-color 0.12s; }
-.book-row:hover { background: var(--surface-2); }
-.book-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; justify-items: start; }
-.book-row-title { max-width: 100%; font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.book-row-sub { max-width: 100%; font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.book-sheet-label { display: block; margin: 16px 2px 6px; }
-
-
-.progress { display: block; width: 100%; height: 4px; margin-top: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
-.progress i { display: block; height: 100%; border-radius: inherit; background: var(--ink); transition: width 0.4s var(--ease); }
-
-.reading-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.reading-card { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 10px 14px 10px 10px; }
-.reading-card .book-row-title { font: 550 16px/1.3 var(--serif); }
-
-.reading-strip { display: flex; gap: 8px; overflow-x: auto; margin: 10px calc(-1 * var(--gutter)) 0; padding: 2px var(--gutter); scrollbar-width: none; }
-.reading-strip::-webkit-scrollbar { display: none; }
-.reading-chip { flex: none; display: flex; align-items: center; gap: 4px; max-width: 280px; padding: 6px 6px 6px 8px; }
-.reading-chip-main { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: left; }
-.reading-chip:only-child { flex: 1; max-width: none; }
-
-.book-chip { padding-left: 5px; }
-.book-chip .book-cover { border-radius: 2px; box-shadow: none; }
-.book-chip .book-cover-title, .book-mention .book-cover-title { display: none; }
-.md .book-mention {
-  display: inline-flex; align-items: center; gap: 5px; vertical-align: baseline; padding: 0 8px 0 4px; border-radius: 6px;
-  font-family: var(--sans); font-size: 0.85em; font-weight: 600; color: var(--ink); text-decoration: none; background: var(--surface-2);
-}
-.md .book-mention .book-cover { border-radius: 2px; box-shadow: none; }
-.md .book-mention:hover { background: var(--surface-3); }
-
-.book-head { display: flex; gap: 16px; align-items: flex-start; margin-top: 10px; }
-.book-head .book-cover { box-shadow: inset 3px 0 0 rgb(0 0 0 / 0.12), 0 10px 24px -10px rgb(0 0 0 / 0.45); }
-.book-facts { margin-top: 2px; }
-.book-facts a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.book-status { margin-top: 18px; }
-.book-status button { font-size: 13px; }
-.reading-now { margin-bottom: 14px; }
 
 /* ---------- weather and places ---------- */
 .wx { display: inline-flex; align-items: center; gap: 3px; vertical-align: bottom; font-variant-numeric: tabular-nums; }

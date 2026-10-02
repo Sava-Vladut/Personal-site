@@ -13,6 +13,8 @@ interface Props {
   label?: string;
 }
 
+let openSheets = 0;
+
 /** Bottom sheet on phones, centred dialog on wide screens. The back button closes it. */
 export function Sheet({ open, onClose, title, children, footer, tall, label }: Props) {
   const [mounted, setMounted] = useState(open);
@@ -35,11 +37,13 @@ export function Sheet({ open, onClose, title, children, footer, tall, label }: P
       }
       const release = pushBack(() => closeRef.current());
       const prev = document.activeElement as HTMLElement | null;
-      requestAnimationFrame(() => panel.current?.focus({ preventScroll: true }));
+      const focusFrame = requestAnimationFrame(() => panel.current?.focus({ preventScroll: true }));
+      openSheets++;
       document.documentElement.classList.add('sheet-open');
       return () => {
+        cancelAnimationFrame(focusFrame);
         release();
-        document.documentElement.classList.remove('sheet-open');
+        if (--openSheets === 0) document.documentElement.classList.remove('sheet-open');
         prev?.focus?.({ preventScroll: true });
       };
     }

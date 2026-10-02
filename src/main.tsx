@@ -2,6 +2,7 @@ import { render } from 'preact';
 import '@fontsource-variable/source-serif-4/wght.css';
 import '@fontsource-variable/instrument-sans/index.css';
 import './styles/app.css';
+import './styles/books.css';
 import './styles/glass.css';
 import { App } from './app';
 import { applyTheme, init } from './lib/store';

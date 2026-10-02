@@ -201,7 +201,7 @@ export function BookSheet({ open, onClose, onPick, title = 'Add a book', status 
       {mine.length > 0 && (
         <>
           <div class="section-label book-sheet-label">{words.length ? 'On your shelf' : 'Recent on your shelf'}</div>
-          <div class="book-rows">{mine.map((b) => <BookRow b={b} onClick={() => pick(b)} />)}</div>
+          <div class="book-rows">{mine.map((b) => <BookRow key={b.id} b={b} onClick={() => pick(b)} />)}</div>
         </>
       )}
       {needle.length >= 2 && (
@@ -211,7 +211,7 @@ export function BookSheet({ open, onClose, onPick, title = 'Add a book', status 
             {found.map((f) => {
               const have = shelf.find((b) => sameWork(b, f));
               return (
-                <button class="book-row" onClick={() => pickFound(f)}>
+                <button key={f.olid} class="book-row" onClick={() => pickFound(f)}>
                   <BookCover b={f} width={40} />
                   <span class="book-row-main">
                     <span class="book-row-title">{f.title}</span>

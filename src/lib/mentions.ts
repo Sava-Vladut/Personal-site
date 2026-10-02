@@ -64,7 +64,8 @@ export function mentionsIn(text: string, people: Person[], books: Book[], songs:
 export function retagPerson(text: string, before: Person[], person: Person) {
   if (!text.includes('@[')) return text;
   const after = [...before.filter((p) => p.id !== person.id), person];
-  return text.replace(PERSON, (all, target, name) => (resolvePerson(target, name, before)?.id === person.id ? mentionOfPerson(person, after) : all));
+  const mention = mentionOfPerson(person, after);
+  return text.replace(PERSON, (all, target, name) => (resolvePerson(target, name, before)?.id === person.id ? mention : all));
 }
 
 /** The notes (or pages) whose tags change after someone is renamed, changed. */
@@ -118,10 +119,10 @@ function score(q: string, ...texts: string[]) {
 export function suggest(q: string, people: Person[], books: Book[], songs: Song[], entries: Entry[], max = 8): Suggestion[] {
   const needle = searchKey(q);
   if (!needle) {
-    const recent: string[] = [];
-    for (const e of entries) for (const id of e.people) if (!recent.includes(id)) recent.push(id);
+    const recent = new Set<string>();
+    for (const e of entries) for (const id of e.people) recent.add(id);
     const byId = new Map(people.map((p) => [p.id, p]));
-    const ps = [...recent.map((id) => byId.get(id)).filter(Boolean) as Person[], ...people.filter((p) => !recent.includes(p.id))].slice(0, 4);
+    const ps = [...[...recent].map((id) => byId.get(id)).filter(Boolean) as Person[], ...people.filter((p) => !recent.has(p.id))].slice(0, 4);
     return [
       ...ps.map((item): Suggestion => ({ kind: 'person', item })),
       ...books.filter((b) => b.status === 'reading').slice(0, 2).map((item): Suggestion => ({ kind: 'book', item })),

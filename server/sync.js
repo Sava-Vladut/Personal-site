@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { PassThrough, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { HttpError } from './http-error.js';
+import { json } from './http-response.js';
 
 const MAX_BYTES = 16 * 1024 * 1024;
 const digest = (hash) => hash.digest('base64url').slice(0, 22);
@@ -110,11 +111,6 @@ export function createSyncHandler({ directory, maxConcurrentUploads = 4, maxConc
       req.off('error', failed);
       if (!req.complete && !req.destroyed) req.resume();
     }
-  }
-
-  function json(res, status, body) {
-    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify(body));
   }
 
   async function download(req, res, dir, file, photo) {

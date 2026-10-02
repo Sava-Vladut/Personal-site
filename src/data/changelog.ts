@@ -11,6 +11,22 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.27.1',
+    date: '2026-10-02',
+    changes: [
+      'Protect newer journal edits during sync and backup imports, even with multiple tabs open',
+      'Keep deleted entries from returning when a pending sync or backup finishes',
+      'Keep scrolling locked while a nested sheet is open and ignore location results after closing details',
+      'Prevent duplicate people and music from repeated taps and keep your latest selections',
+      'Show backdated feelings in the correct month and keep page-zero reading progress',
+      'Keep text exports in journal date order and include tags consistently',
+      'Reduce repeated work in stats, tag suggestions, media lookup and the icon picker',
+      'Let icon loading recover after a connection failure',
+      'Keep the offline journal page intact after opening an image or download',
+      'Remove unused code and styles, organize shared files and improve server cleanup',
+    ],
+  },
+  {
     version: '1.27.0',
     date: '2026-10-02',
     changes: [

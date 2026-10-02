@@ -478,6 +478,25 @@ test('note: repeated Done taps navigate once after a pending save', async () => 
   assert.deepEqual(h.navigations, ['back']);
 });
 
+test('photo viewer: leaving a note cancels a pending photo lookup before opening', async () => {
+  const photoLookup = deferred();
+  let opens = 0;
+  const h = harness(editorCode, {
+    entry: { photos: [photo] },
+    modules: {
+      '/photos': { photoUrl: () => photoLookup.promise },
+      '/viewer': { openViewer: () => { opens++; } },
+    },
+  });
+  const tree = h.render();
+  const media = find(tree, node => node.type.name === 'MediaBlock');
+  const pending = media.props.onOpen(null, 0);
+  h.unmount();
+  photoLookup.resolve('blob:photo');
+  await pending;
+  assert.equal(opens, 0);
+});
+
 for (const leave of [false, true]) {
   test(`new note context: geolocation replaces weather from home${leave ? ' after leaving' : ''}`, async () => {
     const context = deferred();
@@ -510,7 +529,7 @@ function mockEditable(value) {
   };
 }
 const tagModules = (box) => ({
-  '/lib/editable': { editable: () => box, messy: () => false, PLAIN: true },
+  '/lib/editable': { editable: () => box, PLAIN: true },
   '/lib/weather': { contextNow: async () => null, needsWeather: () => false },
   '/lib/mentions': {
     typedMention(text, caret) {

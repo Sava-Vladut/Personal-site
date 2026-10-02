@@ -643,6 +643,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         };
       }),
     );
+    if (!alive.current || removing.current) return;
     const shown = items.filter((x) => x.src);
     const start = items[flat.findIndex((f) => f.mi === i && f.j === k)];
     const now = () => latest.current && bodyOf(latest.current);

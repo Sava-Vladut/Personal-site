@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { db } from './db';
+import { combineDeleted } from './deletions';
 import { dropImageLinks, plainText } from './body';
 import { isDateKey, todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
@@ -196,6 +197,7 @@ let persistAsked = false;
 const pendingPrevious = new WeakMap<Entry, Entry | undefined>();
 const failedWrites = new WeakSet<Entry>();
 export async function saveEntry(e: Entry) {
+  const revision = clearRevision;
   const previous = entries$.get().find((x) => x.id === e.id);
   const next = { ...e, updated: Math.max(Date.now(), e.updated + 1, (previous?.updated ?? 0) + 1, (deleted[e.id] ?? 0) + 1) };
   const list = entries$.get().filter((x) => x.id !== e.id);
@@ -217,6 +219,7 @@ export async function saveEntry(e: Entry) {
     throw error;
   }
   pendingPrevious.delete(next);
+  if (revision && revision === clearRevision) freshSinceClear.add(e.id);
   changeHandler();
   if (!persistAsked) {
     persistAsked = true;
@@ -244,9 +247,11 @@ export async function annotateEntries(patches: Map<string, Partial<Entry>>) {
 }
 
 export async function deleteEntry(id: string) {
+  freshSinceClear.delete(id);
   const removed = entries$.get().find((x) => x.id === id);
   entries$.set(entries$.get().filter((x) => x.id !== id));
   await Promise.all([db.del(id), forget([id], Math.max(Date.now(), removed?.updated ?? 0))]);
+  freshSinceClear.delete(id);
   changeHandler();
   return removed;
 }
@@ -284,11 +289,14 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
     return list;
   };
   const save = async (x: T) => {
+    const revision = clearRevision;
     const list = await write([x], {}, false, true, true);
+    if (revision && revision === clearRevision) freshSinceClear.add(x.id);
     changeHandler();
     return list.find((item) => item.id === x.id)!;
   };
   const remove = async (id: string) => {
+    freshSinceClear.delete(id);
     let removed = list$.get().find((x) => x.id === id);
     let time = Math.max(Date.now(), removed?.updated ?? 0);
     // Include pending saves and edits from other tabs in the deletion's timestamp. Unlike
@@ -301,6 +309,7 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
     }));
     list$.set(list);
     await forget([id], time);
+    freshSinceClear.delete(id);
     channel?.postMessage(null);
     changeHandler();
     return removed;
@@ -320,7 +329,7 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
 }
 
 const byName = (a: Person, b: Person) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-const people = collection<Person>('people', (raw) => normalizePerson(raw), byName);
+const people = collection<Person>('people', normalizePerson, byName);
 export const usePeople = people.list$.use;
 export const getPeople = people.list$.get;
 
@@ -333,7 +342,7 @@ export const savePerson = people.save;
 export const deletePerson = people.remove;
 
 const byTitle = (a: Book, b: Book) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-const books = collection<Book>('books', (raw) => normalizeBook(raw), byTitle);
+const books = collection<Book>('books', normalizeBook, byTitle);
 export const useBooks = books.list$.use;
 export const getBooks = books.list$.get;
 
@@ -349,7 +358,7 @@ export const saveBook = books.save;
 export const deleteBook = books.remove;
 
 const byAdded = (a: Song, b: Song) => b.created - a.created;
-const songs = collection<Song>('songs', (raw) => normalizeSong(raw), byAdded);
+const songs = collection<Song>('songs', normalizeSong, byAdded);
 export const useSongs = songs.list$.use;
 export const getSongs = songs.list$.get;
 
@@ -365,19 +374,32 @@ export const findSong = (list: Song[], m: Pick<Music, 'kind' | 'id'>) => list.fi
 
 type Collection = ReturnType<typeof collection<any>>;
 const COLLECTIONS: Collection[] = [people, books, songs];
+let clearRevision = 0;
+let lastClearAt = 0;
+const freshSinceClear = new Set<string>();
+
+/** A wipe takes precedence over a remote merge or backup that was already loading when it began. */
+async function discardClearedRecords(revision: number, records: { id: string; updated: number }[]) {
+  if (revision === clearRevision) return false;
+  // Remote collection writes can finish after the wipe too, so track fresh local saves explicitly.
+  // Notes also expose pending local edits optimistically; keep those until their own save settles.
+  const fresh = new Set([...freshSinceClear, ...entries$.get().map((entry) => entry.id)]);
+  const gone: Record<string, number> = Object.create(null);
+  for (const record of records)
+    if (!fresh.has(record.id)) gone[record.id] = Math.max(gone[record.id] ?? 0, lastClearAt, record.updated);
+  deleted = combineDeleted(deleted, gone);
+  const committed = await db.reconcileEntries<Entry>([], deleted, normalize);
+  deleted = combineDeleted(deleted, committed.deleted);
+  await Promise.all(COLLECTIONS.map((c) => c.write([], gone, false, false)));
+  COLLECTIONS.forEach((c) => c.channel?.postMessage(null));
+  changeHandler();
+  return true;
+}
 
 /* ---------- deletions: remembered (id → when) so a synced device doesn't bring the entry back ---------- */
 
 let deleted: Record<string, number> = Object.create(null);
 export const getDeleted = () => deleted;
-
-function combineDeleted(a: Record<string, number>, b: Record<string, number>) {
-  const merged: Record<string, number> = Object.assign(Object.create(null), a);
-  if (b && typeof b === 'object' && !Array.isArray(b))
-    for (const [id, time] of Object.entries(b))
-      if (id.length <= 40 && Number.isFinite(time) && time >= 0 && !(merged[id] >= time)) merged[id] = time;
-  return merged;
-}
 
 async function persistDeleted() {
   const changes = deleted;
@@ -472,6 +494,7 @@ function normalizeMusic(m: any): Music | null {
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !isDateKey(raw.date)) return null;
   const now = Date.now();
+  const created = Number.isFinite(raw.created) ? raw.created : Number.isFinite(raw.time) ? raw.time : now;
   const images: WebImage[] = Array.isArray(raw.images) ? raw.images.map(webImage).filter(Boolean).slice(0, 12) : [];
   const coverPhoto = photo(raw.cover?.photo);
   const coverImage = webImage(raw.cover?.image);
@@ -496,8 +519,8 @@ function normalize(raw: any): Entry | null {
     pinned: raw.kind !== 'checkin' && raw.pinned === true,
     place: normalizePlace(raw.place),
     weather: normalizeWeather(raw.weather),
-    created: Number.isFinite(raw.created) ? raw.created : now,
-    updated: Number.isFinite(raw.updated) ? raw.updated : now,
+    created,
+    updated: Number.isFinite(raw.updated) ? raw.updated : created,
   };
 }
 
@@ -584,6 +607,7 @@ export async function exportJSON() {
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
 export async function importJSON(text: string) {
+  const revision = clearRevision;
   const data = JSON.parse(text);
   if (!data || typeof data !== 'object' || (!Array.isArray(data) && data.entries !== undefined && !Array.isArray(data.entries)))
     throw new Error('This backup does not contain a valid journal.');
@@ -591,18 +615,19 @@ export async function importJSON(text: string) {
   // Photos can be missing even when the note itself is already up to date. Read the current
   // journal afterwards, so edits made while those photos are loading are kept.
   const restoredPhotos = await importPhotos(data?.photos, new Set(incoming.flatMap((e) => photosOf(e).map((p) => p.id))));
-  const current = new Map(entries$.get().map((e) => [e.id, e]));
-  // Restoring an entry deleted here counts as a fresh edit, so it also comes back on synced devices.
-  const now = Date.now();
-  const changed = incoming
-    .filter((e) => !current.has(e.id) || current.get(e.id)!.updated < e.updated)
-    .map((e) => (deleted[e.id] >= e.updated ? { ...e, updated: Math.max(now, deleted[e.id] + 1) } : e));
-  changed.forEach((e) => current.set(e.id, e));
-  entries$.set([...current.values()].sort(byNewest));
-  await db.putMany(changed);
+  const interrupted = () => ({ changed: 0, people: 0, books: 0, songs: 0, photos: restoredPhotos, total: incoming.length, icons: [] as string[] });
+  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(data?.[c.key]));
+  if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...incomingCollections()])) return interrupted();
+  // A stale tab must not replace another tab's newer durable note. Restored deletions count as fresh edits.
+  const { entries: durable, changed, deleted: committedDeleted } = await db.reconcileEntries(incoming, deleted, normalize, true);
+  deleted = combineDeleted(deleted, committedDeleted);
+  if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()])) return interrupted();
+  const current = newestById([...durable, ...entries$.get()]).filter((e) => !(deleted[e.id] >= e.updated));
+  entries$.set(current.sort(byNewest));
 
   const merged = COLLECTIONS.map((c) => c.merge(data?.[c.key], deleted, true).changed);
   await Promise.all(COLLECTIONS.map((c, i) => merged[i].length && c.write(merged[i])));
+  if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()])) return interrupted();
   const [pChanged, bChanged, sChanged] = merged;
 
   if (changed.length || pChanged.length || bChanged.length || sChanged.length || restoredPhotos) changeHandler();
@@ -619,23 +644,33 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
 export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; deleted?: unknown }) {
+  const revision = clearRevision;
   const incoming = newestById((Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[]);
   const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
-  const current = new Map(entries$.get().map((e) => [e.id, e]));
-  const removed = [...current.values()].filter((e) => nextDeleted[e.id] >= e.updated).map((e) => e.id);
-  removed.forEach((id) => current.delete(id));
-  const changed = incoming.filter((e) => !(nextDeleted[e.id] >= e.updated) && (!current.has(e.id) || current.get(e.id)!.updated < e.updated));
-  changed.forEach((e) => current.set(e.id, e));
+  // Another tab may have committed newer notes since this tab last loaded. Compare and write atomically,
+  // then retain optimistic edits made here while that transaction was running.
+  const { entries: durable, changed, removed, deleted: committedDeleted } = await db.reconcileEntries(incoming, nextDeleted, normalize);
+  // Local deletions can happen while IndexedDB is busy; neither their tombstones nor their visible removal
+  // may be replaced by the snapshot taken when this merge began.
+  deleted = combineDeleted(deleted, committedDeleted);
+  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs']));
+  if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()]))
+    return { changed: [] as Entry[], removed: removed.length, icons: [] as string[] };
+  const current = new Map(newestById([
+    ...durable, ...entries$.get(),
+  ]).filter((e) => !(deleted[e.id] >= e.updated)).map((e) => [e.id, e]));
 
   // People, books and songs follow the same rules. Older app versions don't send them: then nothing changes here.
-  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs'], nextDeleted, false) }));
+  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs'], deleted, false) }));
 
-  deleted = nextDeleted;
-  if (changed.length || removed.length) entries$.set([...current.values()].sort(byNewest));
+  const visible = entries$.get();
+  if (visible.length !== current.size || visible.some((e) => current.get(e.id) !== e)) entries$.set([...current.values()].sort(byNewest));
   await Promise.all([
-    db.putMany(changed), ...removed.map((id) => db.del(id)), persistDeleted(),
-    ...merged.map((m) => (m.changed.length || m.removed.length ? m.c.write(m.changed, Object.fromEntries(m.removed.map((id) => [id, nextDeleted[id]])), false, false) : null)),
+    persistDeleted(),
+    ...merged.map((m) => (m.changed.length || m.removed.length ? m.c.write(m.changed, Object.fromEntries(m.removed.map((id) => [id, deleted[id]])), false, false) : null)),
   ]);
+  if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()]))
+    return { changed: [] as Entry[], removed: removed.length, icons: [] as string[] };
   merged.forEach((m) => (m.changed.length || m.removed.length) && m.c.channel?.postMessage(null));
   return { changed, removed: removed.length, icons: iconsOf([...changed, ...merged[0].changed]) };
 }
@@ -644,7 +679,11 @@ export async function deleteAll() {
   const records: { id: string; updated: number }[] = [...entries$.get(), ...COLLECTIONS.flatMap((c) => c.list$.get())];
   const ids = records.map((record) => record.id);
   const stamp = records.reduce((latest, record) => Math.max(latest, record.updated), Date.now());
+  clearRevision++;
+  lastClearAt = stamp;
+  freshSinceClear.clear();
   entries$.set([]);
+  COLLECTIONS.forEach((c) => c.list$.set([]));
   await Promise.all([db.clear(), clearPhotos(), ...COLLECTIONS.map((c) => c.write([], {}, true, false)), forget(ids, stamp)]);
   COLLECTIONS.forEach((c) => c.channel?.postMessage(null));
   changeHandler();
