@@ -1213,3 +1213,15 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .month-col.is-empty .month-bar { background: var(--surface-2); }
 .month-name { font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; }
 .month-trend { margin: 0; }
+
+/* ---------- a person's theme song ---------- */
+
+.theme-head { margin-bottom: 8px; }
+.theme-head .eyebrow { margin: 0; }
+.theme-head .link { font-size: 13px; color: var(--ink-2); }
+.theme-song .deck { background: color-mix(in oklab, var(--c, var(--ink)) 6%, var(--surface)); }
+.theme-pick { display: grid; gap: 16px; }
+.theme-pick .search { margin: 0; }
+.theme-pick .song-row[aria-pressed='true'] { background: var(--surface-2); }
+.theme-of { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 14px 2px 0; font-size: 14px; color: var(--ink-3); }
+.theme-of a { color: var(--ink); font-weight: 600; }

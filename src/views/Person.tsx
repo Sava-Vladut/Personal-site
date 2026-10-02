@@ -13,6 +13,8 @@ import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { Avatar, initials } from '../components/people';
 import { KeyDates } from '../components/KeyDates';
+import { ThemeSong } from '../components/ThemeSong';
+import { connectSpotify } from '../lib/spotify';
 import { tipProps } from '../components/charts';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
@@ -253,6 +255,16 @@ export function PersonView({ id }: { id: string }) {
           />
         </div>
       </div>
+
+      <ThemeSong
+        p={draft}
+        onChange={(theme) => update({ theme })}
+        onConnect={async () => {
+          if (!latest.current?.name.trim()) return toast('Give them a name first');
+          if (!saved.current) dirty.current = true;
+          if (await flush() && !dirty.current && alive.current && !removing.current) connectSpotify('#/person/' + latest.current.id);
+        }}
+      />
 
       <div class="eyebrow person-label">How thinking of {first} makes you feel</div>
       <div class="meta person-meta">

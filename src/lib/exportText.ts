@@ -77,6 +77,7 @@ function entry(e: Entry, people: Map<string, Person>, books: Book[]) {
 function person(p: Person, moments: number, books: Book[]) {
   const lines = [`### ${p.name || 'Unnamed'}${p.relation.trim() ? ` · ${p.relation.trim()}` : ''}`];
   if (p.emotions.length) lines.push(`- How they make me feel: ${feelings(p.emotions)}`);
+  if (p.theme) lines.push(`- Theme song: ${p.theme.title}${p.theme.sub ? ` · ${p.theme.sub}` : ''}`);
   for (const d of p.dates) {
     const [m, day] = d.md.split('-').map(Number);
     lines.push(`- ${dateName(d)}: ${new Date(2000, m - 1, day).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}${d.year ? ' ' + d.year : ''}`);

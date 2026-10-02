@@ -64,7 +64,7 @@ export function MusicEmbed({ m }: { m: Music }) {
 }
 
 /** Music in a note: tap to put it on (the player opens beneath), again to take it off. */
-export function MusicDeck({ m, onRemove }: { m: Music; onRemove?: () => void }) {
+export function MusicDeck({ m, onRemove, removeLabel = 'Remove from the note' }: { m: Music; onRemove?: () => void; removeLabel?: string }) {
   const [on, setOn] = useState(false);
   const keeping = useRef(false);
   const kept = findSong(useSongs(), m);
@@ -100,7 +100,7 @@ export function MusicDeck({ m, onRemove }: { m: Music; onRemove?: () => void }) 
             ) : (
               <button class="btn btn-quiet btn-s grow" onClick={keep}><Icon name="plus" size={16} /> Keep in Media</button>
             )}
-            {onRemove && <button class="btn btn-quiet btn-s grow danger" onClick={onRemove} aria-label="Remove from the note"><Icon name="trash" size={16} /> Remove</button>}
+            {onRemove && <button class="btn btn-quiet btn-s grow danger" onClick={onRemove} aria-label={removeLabel}><Icon name="trash" size={16} /> Remove</button>}
           </div>
         </div>
       )}

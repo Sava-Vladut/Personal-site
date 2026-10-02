@@ -82,6 +82,7 @@ export interface Person {
   text: string;             // what you write about them
   emotions: string[];       // how they make you feel, first one is the main feeling
   dates: KeyDate[];         // birthdays, anniversaries…
+  theme: Music | null;      // the song that is theirs, at the top of their page
   created: number;
   updated: number;
 }
@@ -335,7 +336,7 @@ export const getPeople = people.list$.get;
 
 export function blankPerson(name = ''): Person {
   const now = Date.now();
-  return { id: uid(), name, icon: null, relation: '', text: '', emotions: [], dates: [], created: now, updated: now };
+  return { id: uid(), name, icon: null, relation: '', text: '', emotions: [], dates: [], theme: null, created: now, updated: now };
 }
 export const savePerson = people.save;
 /** Deletes a person. Notes they were tagged in stay; the tag just stops showing. */
@@ -536,6 +537,7 @@ function normalizePerson(raw: any): Person | null {
     text: typeof raw.text === 'string' ? raw.text : '',
     emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     dates: Array.isArray(raw.dates) ? (raw.dates.map(normalizeKeyDate).filter(Boolean) as KeyDate[]).slice(0, MAX_KEY_DATES) : [],
+    theme: normalizeMusic(raw.theme),
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };

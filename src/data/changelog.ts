@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.28.0',
+    date: '2026-10-02',
+    changes: [
+      'Give someone a theme song: it sits at the top of their page, ready to play',
+      'Pick it from the music that already brings them to mind, the rest of your music, or straight from Spotify',
+      'A song’s page says whose theme song it is',
+    ],
+  },
+  {
     version: '1.27.1',
     date: '2026-10-02',
     changes: [

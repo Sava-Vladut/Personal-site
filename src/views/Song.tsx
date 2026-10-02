@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { MAX_PERSON_EMOTIONS, deleteSong, getSongs, saveSong, toast, useEntries, useSongs, type Entry, type Song } from '../lib/store';
+import { MAX_PERSON_EMOTIONS, deleteSong, getSongs, saveSong, toast, useEntries, usePeople, useSongs, type Entry, type Song } from '../lib/store';
 import { songsIn } from '../lib/mentions';
 import { Stars } from '../components/books';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
@@ -32,6 +32,8 @@ export function SongView({ id }: { id: string }) {
   latest.current = draft;
   const entries = useEntries();
   const byId = usePeopleById();
+  // the people it's the theme song of
+  const themeOf = usePeople().filter((p) => p.theme && draft && p.theme.kind === draft.music.kind && p.theme.id === draft.music.id);
   const kind = draft?.music.kind, mid = draft?.music.id;
   const songs = useSongs();
   // notes it's added to, and notes that tag it in their words
@@ -182,6 +184,12 @@ export function SongView({ id }: { id: string }) {
         )}
       </div>
       {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition">{EMOTION[draft.emotions[0]].def}</p>}
+
+      {themeOf.length > 0 && (
+        <p class="theme-of">
+          <Icon name="vinyl" size={15} /> {themeOf.map((p, i) => <>{i > 0 && (i === themeOf.length - 1 ? ' and ' : ', ')}<a href={'#/person/' + p.id} onClick={(e) => { e.preventDefault(); flush(); navigate('person/' + p.id); }}>{p.name.trim().split(/\s+/)[0]}</a></>)}’s theme song
+        </p>
+      )}
 
       <div class="eyebrow person-label">Thinking of</div>
       <div class="meta person-meta">
