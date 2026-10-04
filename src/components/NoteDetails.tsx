@@ -168,7 +168,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
           </div>
           {draft.emotions.length > 0 && (
             <div class="details-intensity">
-              <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} core={coreOf(draft.emotions[0]).id} title="Intensity" />
+              <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} cores={draft.emotions.map((e) => coreOf(e).id)} title="Intensity" />
             </div>
           )}
           {only?.depth === 2 && <p class="definition">{only.def}</p>}

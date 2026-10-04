@@ -120,7 +120,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
           </div>
           <p class="definition">{p.def}</p>
 
-          <IntensityPicker value={intensity} onChange={setIntensity} core={p.core} />
+          <IntensityPicker value={intensity} onChange={setIntensity} cores={[p.core]} />
 
           <div class="confirm-extra">
             <span class="field-label">Add context <span class="muted">· optional</span></span>

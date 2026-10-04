@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.31.1',
+    date: '2026-10-04',
+    changes: [
+      'With more than one feeling on a note, the intensity slider now shows each one’s world: all their sprites, and bars that take turns in their colours',
+    ],
+  },
+  {
     version: '1.31.0',
     date: '2026-10-04',
     changes: [

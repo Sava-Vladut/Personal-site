@@ -37,11 +37,11 @@ export const INTENSITY = ['Barely', 'Mild', 'Moderate', 'Strong', 'Intense'];
 const INTENSITY_NOTE = ['Just a flicker', 'There, but easy to carry', 'Clearly here', 'Hard to ignore', 'It fills everything'];
 
 /** One slider for "how strong is it": tap or drag along the meter, or use the arrow keys. The feeling's world fills it and grows with it. */
-export function IntensityPicker({ value, onChange, core, title = 'How strong is it?' }: {
+export function IntensityPicker({ value, onChange, cores = [], title = 'How strong is it?' }: {
   value: number;
   onChange: (n: number) => void;
-  /** The world whose colour and sprite it wears; without one it takes `--c` from its surroundings. */
-  core?: string;
+  /** The worlds of the feelings it measures: it wears their colours and sprites, and without any it takes `--c` from its surroundings. */
+  cores?: string[];
   title?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -65,14 +65,23 @@ export function IntensityPicker({ value, onChange, core, title = 'How strong is 
     ev.preventDefault();
   };
 
+  const worlds = [...new Set(cores)].slice(0, 3);
+  const tint = (c: string) => `color-mix(in oklab, var(--emo-${c}) ${8 + value * 3}%, var(--surface-2))`;
   return (
-    <div class="intensity" style={core ? { '--c': `var(--emo-${core})` } : undefined} data-level={value}>
+    <div class="intensity" style={worlds.length ? { '--c': `var(--emo-${worlds[0]})` } : undefined} data-level={value}>
       <div class="intensity-head">
         <span class="field-label" id="intensity-title">{title}</span>
         <span class="intensity-count" aria-hidden="true">{value} of 5</span>
       </div>
       <div class="intensity-read">
-        {core && <span class="intensity-sprite" style={{ '--k': value }}><Sprite core={core} size={26} idle={value >= 4} /></span>}
+        {worlds.length > 0 && (
+          <span
+            class="intensity-sprite"
+            style={{ '--k': value, background: worlds.length > 1 ? `linear-gradient(105deg, ${worlds.map(tint).join(', ')})` : undefined }}
+          >
+            {worlds.map((w) => <Sprite core={w} size={worlds.length > 1 ? 22 : 26} idle={value >= 4} />)}
+          </span>
+        )}
         <div>
           <div class="intensity-label" key={value}>{INTENSITY[value - 1]}</div>
           <div class="intensity-note">{INTENSITY_NOTE[value - 1]}</div>
@@ -99,7 +108,9 @@ export function IntensityPicker({ value, onChange, core, title = 'How strong is 
         onPointerUp={() => (dragging.current = false)}
         onPointerCancel={() => (dragging.current = false)}
       >
-        {INTENSITY.map((_, i) => <i class={i < value ? 'on' : ''} style={{ '--i': i }} />)}
+        {INTENSITY.map((_, i) => (
+          <i class={i < value ? 'on' : ''} style={{ '--i': i, ...(worlds.length > 1 && { '--c': `var(--emo-${worlds[i % worlds.length]})` }) }} />
+        ))}
       </div>
       <div class="intensity-ends" aria-hidden="true"><span>{INTENSITY[0]}</span><span>{INTENSITY[4]}</span></div>
     </div>
