@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.29.0',
+    date: '2026-10-04',
+    changes: [
+      'On desktop, right-clicking a note or check-in opens a small menu right at the pointer instead of a dialog',
+      'The right-click menu works with the keyboard: arrow keys to move, Enter to pick, Escape to close',
+      'Opening a sheet or dialog on desktop no longer makes the page jump sideways',
+    ],
+  },
+  {
     version: '1.28.1',
     date: '2026-10-02',
     changes: [
