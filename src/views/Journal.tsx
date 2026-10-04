@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'preact/hooks';
+import { usePref } from '../lib/prefs';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
 import { dayLabel, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
@@ -29,7 +30,7 @@ export function Journal() {
   const ready = useReady();
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
-  const [calOpen, setCalOpen] = useState(false);
+  const [calOpen, setCalOpen] = usePref<boolean>('journal-calendar', false);
   const [day, setDay] = useState<string | null>(null);
   const compact = useSettings().density === 'compact';
 

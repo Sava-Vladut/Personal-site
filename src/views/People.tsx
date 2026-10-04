@@ -5,6 +5,7 @@ import { DAY } from '../lib/dates';
 import { momentsByPerson, pagesByPerson } from '../lib/people';
 import { useBooks, useEntries, usePeople, useReady, useSongs, type Person } from '../lib/store';
 import { plainText } from '../lib/body';
+import { usePref } from '../lib/prefs';
 import { EmotionChip } from '../components/emotion';
 import { Icon } from '../components/icons';
 import { Avatar } from '../components/people';
@@ -49,7 +50,7 @@ export function People() {
   const pages = usePages();
   const last = useLastThought();
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState<'recent' | 'name'>('recent');
+  const [sort, setSort] = usePref<'recent' | 'name'>('people-sort', 'recent', ['recent', 'name']);
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);

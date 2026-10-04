@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'preact/hooks';
+import { useMemo, useRef } from 'preact/hooks';
 import { navigate } from '../lib/router';
 import { blankSong, findSong, getSongs, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
 import { Stars } from '../components/books';
 import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
+import { usePref } from '../lib/prefs';
 import { isTape, MusicThing, musicSub } from '../components/music';
 
 type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
@@ -16,8 +17,8 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const songs = useSongs();
   const entries = useEntries();
   const ready = useReady();
-  const [kind, setKind] = useState<Kind>('all');
-  const [sort, setSort] = useState<Sort>('recent');
+  const [kind, setKind] = usePref<Kind>('music-kind', 'all', ['all', ...KINDS.map(([k]) => k)]);
+  const [sort, setSort] = usePref<Sort>('music-sort', 'recent', ['recent', 'title', 'rating']);
   const keeping = useRef(new Set<string>());
 
   const shown = useMemo(() => {

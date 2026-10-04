@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo } from 'preact/hooks';
 import { mentionsByBook, progressOf, STATUS_LABEL } from '../lib/books';
 import { navigate } from '../lib/router';
 import { BOOK_STATUSES, useBooks, useEntries, useReady, type Book, type BookStatus } from '../lib/store';
 import { BookCover, Shelf } from '../components/books';
 import { Icon } from '../components/icons';
+import { usePref } from '../lib/prefs';
 
 export type Sort = 'recent' | 'title' | 'rating';
 const SORTS: [Sort, string][] = [['recent', 'Recent'], ['title', 'A–Z'], ['rating', 'Top rated']];
@@ -25,8 +26,8 @@ export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const books = useBooks();
   const entries = useEntries();
   const ready = useReady();
-  const [shelf, setShelf] = useState<BookStatus | 'all'>('all');
-  const [sort, setSort] = useState<Sort>('recent');
+  const [shelf, setShelf] = usePref<BookStatus | 'all'>('books-shelf', 'all', ['all', ...BOOK_STATUSES]);
+  const [sort, setSort] = usePref<Sort>('books-sort', 'recent', SORTS.map(([s]) => s));
   const mentions = useMemo(() => mentionsByBook(entries, books), [entries, books]);
 
   const reading = books.filter((b) => b.status === 'reading');

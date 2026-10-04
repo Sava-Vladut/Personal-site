@@ -12,6 +12,7 @@ import { Overview } from './stats/Overview';
 import { Patterns } from './stats/Patterns';
 import { Weather } from './stats/Weather';
 import { RANGE_PHRASE } from './stats/parts';
+import { usePref } from '../lib/prefs';
 import '../styles/stats.css';
 
 const TABS = [['overview', 'Overview'], ['emotions', 'Emotions'], ['patterns', 'Patterns'], ['weather', 'Weather'], ['dex', 'Dex']] as const;
@@ -38,7 +39,8 @@ export function Stats({ query }: { query: URLSearchParams }) {
   const entries = useEntries();
   const { weekStart } = useSettings();
   const [range, setRangeState] = useState<RangeKey>(loadRange);
-  const tab = (TABS.some((t) => t[0] === query.get('tab')) ? query.get('tab') : 'overview') as Tab;
+  const [lastTab, setLastTab] = usePref<Tab>('stats-tab', 'overview', TABS.map((t) => t[0]));
+  const tab = (TABS.some((t) => t[0] === query.get('tab')) ? query.get('tab') : lastTab) as Tab;
   const s = useMemo(() => computeStats(entries, range, weekStart), [entries, range, weekStart]);
 
   // the sky above is made of the worlds below it (all time, on the dex)
@@ -67,7 +69,7 @@ export function Stats({ query }: { query: URLSearchParams }) {
 
         <div class="seg tabs" role="tablist" style={{ '--at': TABS.findIndex((t) => t[0] === tab), '--tabs': TABS.length }}>
           {TABS.map(([id, name]) => (
-            <button role="tab" aria-selected={tab === id} onClick={() => navigate('stats?tab=' + id, true)}>{name}</button>
+            <button role="tab" aria-selected={tab === id} onClick={() => { setLastTab(id); navigate('stats?tab=' + id, true); }}>{name}</button>
           ))}
         </div>
 

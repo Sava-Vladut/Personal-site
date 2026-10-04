@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { usePref } from '../lib/prefs';
 import { coreOf } from '../data/emotions';
 import { plainText } from '../lib/body';
 import { DAY } from '../lib/dates';
@@ -91,7 +92,7 @@ export function Mind() {
   const people = usePeople();
   const ready = useReady();
   const moments = useMoments();
-  const [range, setRange] = useState<Range>('all');
+  const [range, setRange] = usePref<Range>('mind-range', 'all', RANGES.map(([r]) => r));
   const [picked, setPicked] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
 

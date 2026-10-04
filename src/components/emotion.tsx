@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
+import { CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emotions';
 import { Icon, Sprite } from './icons';
 import { useSettings } from '../lib/store';
 import { EmotionWheel } from './EmotionWheel';
@@ -139,8 +139,8 @@ export function WorldDetail({ core, onBack, onPick, selected = [] }: {
 }
 
 /** Two-step picker used in sheets. */
-export function EmotionPicker({ onPick, selected, start }: { onPick: (id: string) => void; selected?: string[]; start?: string | null }) {
-  const [core, setCore] = useState<string | null>(start ?? (selected?.length ? coreOf(selected[0]).id : null));
+export function EmotionPicker({ onPick, selected }: { onPick: (id: string) => void; selected?: string[] }) {
+  const [core, setCore] = useState<string | null>(null);
   const { picker } = useSettings();
   if (picker === 'wheel') return <EmotionWheel focus={core} onFocus={setCore} onPick={onPick} selected={selected} />;
   return core ? (

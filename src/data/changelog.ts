@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.30.0',
+    date: '2026-10-04',
+    changes: [
+      'The feeling wheel and picker now always open on all worlds, instead of jumping into the world of the first feeling you had already chosen',
+      'The app remembers how you like things: the Books shelf and order, the Music kind and order, the People order, the Mind range, the Journal calendar being open, and the last Patterns tab',
+    ],
+  },
+  {
     version: '1.29.0',
     date: '2026-10-04',
     changes: [
