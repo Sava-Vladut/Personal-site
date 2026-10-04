@@ -17,7 +17,7 @@ const CLOSE_MS = 340;
  * The "+" button and the little menu it opens: a stack of glass tiles that unfolds from
  * the button in the corner. Lives inside the tab bar's `.nav`, which it is positioned against.
  */
-export function AddMenu({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function AddMenu({ open, onOpenChange, label }: { open: boolean; onOpenChange: (open: boolean) => void; label?: string }) {
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
@@ -81,6 +81,7 @@ export function AddMenu({ open, onOpenChange }: { open: boolean; onOpenChange: (
         aria-expanded={open}
       >
         <span class="nav-plus"><Icon name="plus" size={26} stroke={2} /></span>
+        {label && <span class="nav-new-label">{label}</span>}
       </button>
       {(open || closing) && (
         <>

@@ -5,6 +5,7 @@ import './styles/app.css';
 import './styles/books.css';
 import './styles/glass.css';
 import { App } from './app';
+import './styles/desktop.css';
 import { applyTheme, init } from './lib/store';
 import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';

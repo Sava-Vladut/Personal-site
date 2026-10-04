@@ -27,6 +27,9 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['media', 'Media', 'library', 'media'],
 ];
 
+/** Which sidebar item a page belongs under. */
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings' };
+
 export function App() {
   const route = useRoute();
 
@@ -65,6 +68,7 @@ export function App() {
         )}
       </main>
       {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
+      <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />
       <EntryMenu />
       <Toasts />
       <TooltipLayer />
@@ -97,7 +101,36 @@ function TabBar({ active }: { active: RouteName }) {
   );
 }
 
-function NavItem({ active, label, icon, path }: { active: boolean; label: string; icon: UiName; path: string }) {
+/** The desktop navigation: a sidebar with the same places as the tab bar, plus Stats and Settings. Hidden below 1024px (desktop.css). */
+function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <nav class="side" aria-label="Main">
+      <a
+        href="#/"
+        class="side-brand"
+        onClick={(e) => {
+          e.preventDefault();
+          if (here !== 'journal') navigate('');
+        }}
+      >
+        My Mind
+      </a>
+      <div class="side-add">
+        <AddMenu open={adding} onOpenChange={setAdding} label="New" />
+      </div>
+      <div class="side-links">
+        {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} here={here === name} label={label} icon={icon} path={path} />)}
+      </div>
+      <div class="side-links side-foot">
+        <NavItem active={active === 'stats'} here={here === 'stats'} label="Stats" icon="chart-dots" path="stats" />
+        <NavItem active={active === 'settings'} here={here === 'settings'} label="Settings" icon="settings" path="settings" />
+      </div>
+    </nav>
+  );
+}
+
+function NavItem({ active, here = active, label, icon, path }: { active: boolean; here?: boolean; label: string; icon: UiName; path: string }) {
   return (
     <a
       href={'#/' + path}
@@ -105,7 +138,7 @@ function NavItem({ active, label, icon, path }: { active: boolean; label: string
       aria-current={active ? 'page' : undefined}
       onClick={(e) => {
         e.preventDefault();
-        if (!active) navigate(path);
+        if (!here) navigate(path);
       }}
     >
       <Icon name={icon} size={22} stroke={active ? 2 : 1.6} />

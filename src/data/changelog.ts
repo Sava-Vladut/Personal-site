@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.32.0',
+    date: '2026-10-04',
+    changes: [
+      'A desktop layout for wide screens (1024px and up): the tab bar becomes a sidebar with Journal, Check in, People, Media, Stats, Settings and a New button',
+      'Pages use the whole screen: the journal keeps your day beside the entries, check-in and “What’s on your mind” put the picker beside the details, and Stats and Settings flow into two columns',
+      'Phones and small tablets look and work exactly as before',
+    ],
+  },
+  {
     version: '1.31.1',
     date: '2026-10-04',
     changes: [

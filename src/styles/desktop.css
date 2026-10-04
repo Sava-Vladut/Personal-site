@@ -1,0 +1,148 @@
+/* ============================================================
+   Desktop
+   From 1024px the tab bar becomes a sidebar and the pages open up to use the screen. Below that
+   nothing here applies, so phones and small tablets look exactly as they did. This file loads
+   after every other stylesheet, so a rule here wins over the one it adjusts.
+   ============================================================ */
+
+.side { display: none; }
+
+@media (min-width: 1024px) {
+  :root {
+    --side-w: 220px;
+    --gutter: 36px;
+    --nav-h: 0px;
+  }
+
+  /* ---------- the sidebar ---------- */
+
+  .nav { display: none; }
+  .side {
+    position: fixed; z-index: 40; inset: 0 auto 0 0; width: var(--side-w);
+    display: flex; flex-direction: column; gap: 14px; padding: 24px 14px 18px;
+    background: var(--surface); border-right: 1px solid var(--line);
+  }
+  .side-brand { padding: 2px 10px 4px; font: 500 23px/1.2 var(--serif); letter-spacing: -0.015em; color: var(--ink); text-decoration: none; }
+  .side-add { position: relative; z-index: 3; }
+  .side-add .nav-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 44px; border-radius: 14px; }
+  .side-add .nav-plus svg { width: 20px; height: 20px; }
+  .nav-new-label { font-size: 15px; font-weight: 620; }
+  .side-links { display: grid; gap: 2px; }
+  .side-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+  .side .nav-item {
+    flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
+    height: 42px; padding: 0 12px; border-radius: 12px; font-size: 15px;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .side .nav-item:hover, .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
+
+  /* the add menu unfolds downward from the "New" button */
+  .side .add-menu { left: 0; right: auto; top: calc(100% + 10px); bottom: auto; flex-direction: column; align-items: flex-start; }
+  .side .add-item { transform-origin: left top; animation-name: side-add-in; }
+  .side .add-menu.closing .add-item { animation-name: side-add-out; }
+  @keyframes side-add-in {
+    from { opacity: 0; transform: translate(0, calc(var(--k) * -64px - 20px)) scale(0.6); }
+  }
+  @keyframes side-add-out {
+    to { opacity: 0; transform: translate(0, calc(var(--k) * -64px - 20px)) scale(0.6); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .side .add-item { animation-name: fade-in; }
+    .side .add-menu.closing .add-item { animation-name: fade-out; }
+  }
+
+  /* the sidebar stays put while the page moves */
+  html[data-nav] .side { view-transition-name: side; }
+  ::view-transition-group(side) { animation: none; }
+  ::view-transition-old(side) { display: none; }
+  ::view-transition-new(side) { animation: none; }
+
+  /* ---------- the frame ---------- */
+
+  .app { padding-top: 10px; padding-left: var(--side-w); }
+  .page { max-width: 1320px; }
+  .page.editor { max-width: 860px; }
+
+  /* the sky panels stop being full-width banners and become cards inside the page */
+  .app .page > .journal-top {
+    margin: 0 0 18px; padding: 26px 28px 20px;
+    border: 1px solid var(--line); border-radius: 24px;
+  }
+
+  .toasts, .route-note ~ .toasts, .route-person ~ .toasts { left: calc(50% + var(--side-w) / 2); bottom: 22px; }
+  .route-note ~ .toasts, .route-person ~ .toasts { bottom: 74px; }
+  .format-bar { left: calc(50% + var(--side-w) / 2); }
+  .map-page { left: var(--side-w); }
+
+  /* rows that swipe sideways on a phone simply wrap */
+  .chips.scroll-x { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; }
+  .reading-strip { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; }
+  .reading-chip:only-child { flex: none; max-width: 280px; }
+  .search { max-width: 460px; }
+
+  /* ---------- journal: the day's panel beside the entries (below 1280px it sits on top) ---------- */
+
+  .route-journal .page .page-head .icon-btn:is([aria-label='Stats'], [aria-label='Settings']) { display: none; }
+
+  /* ---------- people ---------- */
+
+  .people-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+  /* ---------- media ---------- */
+
+  .media-panel :is(.reading-list, .repeat-list) {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); overflow: visible;
+    margin-inline: 0; padding: 2px 0 4px;
+  }
+  .media-panel :is(.reading-card, .repeat-row) { flex: none; }
+  .media-panel .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* ---------- tracker ---------- */
+
+  .ew-stage, .ew-caption, .ew-actions { max-width: 620px; }
+
+  /* ---------- stats: cards flow into two columns, the wide pieces run across both ---------- */
+
+  .seg.tabs { max-width: 640px; }
+  .tab-panel > .stack-l { display: block; column-count: 2; column-gap: 12px; }
+  .tab-panel > .stack-l > * { break-inside: avoid; margin: 0 0 12px; }
+  .tab-panel > .stack-l > :is(.hero, .tiles, .insights, .weather-empty) { column-span: all; }
+
+  /* ---------- settings: sections in two columns ---------- */
+
+  .route-settings .page { max-width: 1040px; column-count: 2; column-gap: 32px; }
+  .route-settings .page > :is(.page-head, .version, .credit) { column-span: all; }
+  .route-settings .page > .section { break-inside: avoid; margin: 0 0 26px; }
+}
+
+@media (min-width: 1280px) {
+  :root { --side-w: 240px; }
+
+  /* journal: the panel floats at the right and follows you down; every other block clears room for it */
+  .route-journal .page { display: flow-root; }
+  .route-journal .page > .journal-top {
+    float: right; width: 380px; margin: 0 0 24px 32px; padding: 22px 22px 18px;
+    position: sticky; top: 18px; max-height: calc(100dvh - 36px); overflow-y: auto; scrollbar-width: none;
+  }
+  .route-journal .page > :not(.journal-top) { margin-right: 412px; }
+  .route-journal .page > section.day:first-of-type { margin-top: 0; }
+
+  /* tracker: the picker on the left, today and the feelings count beside it */
+  .route-tracker .page {
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr;
+    column-gap: 28px; align-items: start;
+  }
+  .route-tracker .page > .journal-top { grid-column: 1; grid-row: 1 / span 2; margin-bottom: 0; }
+  .route-tracker .page > .section { grid-column: 2; grid-row: 1; margin-top: 0; }
+  .route-tracker .page > .dex-link { grid-column: 2; grid-row: 2; }
+
+  /* what's on your mind: the wheel on the left, who it is and the list on the right */
+  .route-mind .page {
+    display: grid; grid-template-columns: minmax(0, 1fr) 420px; grid-template-rows: auto 1fr;
+    column-gap: 28px; align-items: start;
+  }
+  .route-mind .page > .journal-top { grid-column: 1; grid-row: 1 / span 2; margin-bottom: 0; position: sticky; top: 18px; }
+  .route-mind .page > :is(.mind-card, .mind-summary) { grid-column: 2; grid-row: 1; margin-top: 0; }
+  .route-mind .page > .section { grid-column: 2; grid-row: 2; margin-top: 18px; }
+  .route-mind .page > .empty { grid-column: 1 / -1; }
+}
