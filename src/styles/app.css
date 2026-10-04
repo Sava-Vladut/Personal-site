@@ -231,25 +231,23 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .emo-x { width: 22px; height: 22px; margin-right: -5px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3); }
 .emo-x:hover { background: var(--surface-3); color: var(--ink); }
 
-/* intensity: five rising bars */
-.intensity { display: flex; align-items: center; gap: 12px; }
-.intensity-steps { display: flex; align-items: flex-end; gap: 4px; }
-.intensity-step { width: 30px; height: 32px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; border-radius: 8px; }
-.intensity-step:hover { background: var(--surface-2); }
-.intensity-step i { display: block; width: 12px; height: calc(8px + var(--i) * 4px); border-radius: 3px; background: var(--line-2); transition: background-color 0.15s; }
-.intensity-step.on i { background: var(--ink); }
-.intensity-label { font-size: 13.5px; color: var(--ink-2); min-width: 60px; }
-/* full-width version: even, easy-to-hit steps tinted with the feeling's colour */
-.intensity.wide { display: grid; gap: 8px; }
+/* intensity: a meter in the feeling's colour that fills, glows and grows with the level */
+.intensity { display: grid; gap: 10px; }
 .intensity-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.intensity.wide .intensity-label { min-width: 0; font-weight: 600; color: color-mix(in oklab, var(--c, var(--ink)) 70%, var(--ink)); }
-.intensity.wide .intensity-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.intensity.wide .intensity-step { width: auto; height: 52px; padding-bottom: 9px; border-radius: 12px; background: var(--surface-2); }
-.intensity.wide .intensity-step:hover { background: var(--surface-3); }
-.intensity.wide .intensity-step i { width: 8px; height: calc(10px + var(--i) * 6px); }
-.intensity.wide .intensity-step.on { background: color-mix(in oklab, var(--c, var(--ink)) 14%, var(--surface-2)); }
-.intensity.wide .intensity-step.on i { background: var(--c, var(--ink)); }
-.intensity.wide .intensity-step[aria-checked='true'] { box-shadow: inset 0 0 0 1.5px var(--c, var(--ink)); }
+.intensity-count { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.intensity-read { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.intensity-sprite { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; background: color-mix(in oklab, var(--c, var(--ink)) calc(8% + var(--k) * 3%), var(--surface-2)); transition: background-color 0.25s; }
+.intensity-sprite .sprite { transform: scale(calc(0.8 + var(--k) * 0.08)); transition: transform 0.4s var(--spring-bouncy); }
+.intensity-label { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; color: color-mix(in oklab, var(--c, var(--ink)) 75%, var(--ink)); animation: rise-in 0.3s var(--ease-emph) backwards; }
+.intensity-note { margin-top: 1px; font-size: 13.5px; color: var(--ink-3); }
+.intensity-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 8px 0; margin: -8px 0; cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; border-radius: 10px; }
+.intensity-track i { display: block; height: calc(14px + var(--i) * 3px); align-self: end; border-radius: 6px; background: var(--surface-3); transition: background-color 0.2s calc(var(--i) * 20ms), transform 0.35s var(--spring-bouncy); transform-origin: bottom; }
+.intensity-track i.on { background: color-mix(in oklab, var(--c, var(--ink)) calc(45% + var(--i) * 13%), var(--surface-3)); }
+.intensity-track:hover i:not(.on) { background: var(--line-2); }
+.intensity-track:focus-visible { outline: 2px solid var(--c, var(--ink)); outline-offset: 2px; }
+.intensity[data-level='5'] .intensity-track i.on { box-shadow: 0 0 14px color-mix(in oklab, var(--c, var(--ink)) 45%, transparent); }
+.intensity[data-level='5'] .intensity-track i.on:last-of-type { animation: bob 1.8s ease-in-out infinite; }
+.intensity-ends { display: flex; justify-content: space-between; margin-top: -4px; font-size: 11.5px; color: var(--ink-3); }
 
 /* Navigation: the floating glass tab bar lives in glass.css */
 
@@ -899,12 +897,12 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 /* ---------- press feedback: things you tap sink a little and spring back ---------- */
 
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick,
-    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .intensity-step, .emo-x, .toast-action) {
+    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .emo-x, .toast-action) {
   transition: border-color 0.15s, background-color 0.15s, color 0.15s, box-shadow 0.15s, scale 0.45s var(--spring);
 }
 :is(.note, .checkin, .person-card, .dex-link, .track, .list-row.action, .img-pick) { --press: 0.98; }
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick,
-    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .intensity-step, .emo-x, .toast-action):active:not(:disabled) {
+    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .emo-x, .toast-action):active:not(:disabled) {
   scale: var(--press, 0.93);
   transition-duration: 0.15s, 0.15s, 0.15s, 0.15s, 0.12s;
 }
@@ -918,7 +916,6 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .track[aria-pressed='true'] .track-check, .person-pick[aria-pressed='true'] .track-check, .img-pick[aria-pressed='true'] .img-check {
   animation: pop 0.5s var(--spring-bouncy);
 }
-.intensity-step[aria-checked='true'] i { transform-origin: bottom; animation: bump 0.55s var(--spring-bouncy); }
 .confirm, .wheel-detail, .card:has(> .cal) { animation: pop-in 0.5s var(--spring) backwards; }
 .page > .search { animation: rise-in 0.35s var(--ease-emph) backwards; }
 .empty, .empty-note { animation: rise-in 0.45s var(--ease-emph) backwards; }

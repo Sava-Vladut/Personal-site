@@ -1,7 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emotions';
 import { Icon, Sprite } from './icons';
 import { useSettings } from '../lib/store';
+import { haptic } from '../lib/haptics';
 import { EmotionWheel } from './EmotionWheel';
 
 /** "Worried" with its world's sprite. `path` adds the trail: Fear › Anxiety. */
@@ -33,39 +34,74 @@ export function trail(id: string) {
 }
 
 export const INTENSITY = ['Barely', 'Mild', 'Moderate', 'Strong', 'Intense'];
+const INTENSITY_NOTE = ['Just a flicker', 'There, but easy to carry', 'Clearly here', 'Hard to ignore', 'It fills everything'];
 
-export function IntensityPicker({ value, onChange, title }: { value: number; onChange: (n: number) => void; title?: string }) {
-  const steps = (
-    <div class="intensity-steps">
-      {INTENSITY.map((label, i) => (
-        <button
-          role="radio"
-          aria-checked={value === i + 1}
-          aria-label={`${i + 1} · ${label}`}
-          class={`intensity-step${i < value ? ' on' : ''}`}
-          onClick={() => onChange(i + 1)}
-        >
-          <i style={{ '--i': i }} />
-        </button>
-      ))}
-    </div>
-  );
-  // With a title it spreads across the full width: title and chosen word above, big even steps below.
-  if (title) {
-    return (
-      <div class="intensity wide" role="radiogroup" aria-label={title}>
-        <div class="intensity-head">
-          <span class="field-label">{title}</span>
-          <span class="intensity-label">{INTENSITY[value - 1]}</span>
-        </div>
-        {steps}
-      </div>
-    );
-  }
+/** One slider for "how strong is it": tap or drag along the meter, or use the arrow keys. The feeling's world fills it and grows with it. */
+export function IntensityPicker({ value, onChange, core, title = 'How strong is it?' }: {
+  value: number;
+  onChange: (n: number) => void;
+  /** The world whose colour and sprite it wears; without one it takes `--c` from its surroundings. */
+  core?: string;
+  title?: string;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const set = (n: number) => {
+    const v = Math.min(5, Math.max(1, n));
+    if (v === value) return;
+    haptic(6);
+    onChange(v);
+  };
+  const at = (ev: PointerEvent) => {
+    const r = track.current!.getBoundingClientRect();
+    set(Math.floor(((ev.clientX - r.left) / r.width) * 5) + 1);
+  };
+  const key = (ev: KeyboardEvent) => {
+    const step = ev.key === 'ArrowRight' || ev.key === 'ArrowUp' ? 1 : ev.key === 'ArrowLeft' || ev.key === 'ArrowDown' ? -1 : 0;
+    if (step) set(value + step);
+    else if (ev.key === 'Home') set(1);
+    else if (ev.key === 'End') set(5);
+    else return;
+    ev.preventDefault();
+  };
+
   return (
-    <div class="intensity" role="radiogroup" aria-label="Intensity">
-      {steps}
-      <span class="intensity-label">{INTENSITY[value - 1]}</span>
+    <div class="intensity" style={core ? { '--c': `var(--emo-${core})` } : undefined} data-level={value}>
+      <div class="intensity-head">
+        <span class="field-label" id="intensity-title">{title}</span>
+        <span class="intensity-count" aria-hidden="true">{value} of 5</span>
+      </div>
+      <div class="intensity-read">
+        {core && <span class="intensity-sprite" style={{ '--k': value }}><Sprite core={core} size={26} idle={value >= 4} /></span>}
+        <div>
+          <div class="intensity-label" key={value}>{INTENSITY[value - 1]}</div>
+          <div class="intensity-note">{INTENSITY_NOTE[value - 1]}</div>
+        </div>
+      </div>
+      <div
+        ref={track}
+        class="intensity-track"
+        role="slider"
+        tabIndex={0}
+        aria-labelledby="intensity-title"
+        aria-valuemin={1}
+        aria-valuemax={5}
+        aria-valuenow={value}
+        aria-valuetext={`${INTENSITY[value - 1]}, ${value} of 5`}
+        onKeyDown={(ev) => key(ev as KeyboardEvent)}
+        onPointerDown={(ev) => {
+          if (ev.button > 0) return;
+          dragging.current = true;
+          track.current!.setPointerCapture(ev.pointerId);
+          at(ev as PointerEvent);
+        }}
+        onPointerMove={(ev) => dragging.current && at(ev as PointerEvent)}
+        onPointerUp={() => (dragging.current = false)}
+        onPointerCancel={() => (dragging.current = false)}
+      >
+        {INTENSITY.map((_, i) => <i class={i < value ? 'on' : ''} style={{ '--i': i }} />)}
+      </div>
+      <div class="intensity-ends" aria-hidden="true"><span>{INTENSITY[0]}</span><span>{INTENSITY[4]}</span></div>
     </div>
   );
 }

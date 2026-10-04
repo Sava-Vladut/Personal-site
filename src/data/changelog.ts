@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.31.0',
+    date: '2026-10-04',
+    changes: [
+      'One new intensity slider replaces the two old ones: tap or drag along the meter, or use the arrow keys',
+      'It takes the feeling’s colour, shows its sprite growing with the level, and says what each step means (“Hard to ignore”)',
+      'At the top level the meter glows and the last bar bobs',
+    ],
+  },
+  {
     version: '1.30.0',
     date: '2026-10-04',
     changes: [

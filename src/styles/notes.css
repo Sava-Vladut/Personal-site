@@ -274,3 +274,4 @@
 .place-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
 .wx-line { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
 .wx-line svg { flex: none; }
+.details-intensity { margin-top: 14px; padding: 14px; border-radius: 13px; background: var(--surface-2); }

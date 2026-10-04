@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EMOTION } from '../data/emotions';
+import { EMOTION, coreOf } from '../data/emotions';
 import { weatherIcon } from '../data/weather';
 import { rangeLabel } from '../lib/dates';
 import { imageSrc } from '../lib/images';
@@ -167,9 +167,8 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
             )}
           </div>
           {draft.emotions.length > 0 && (
-            <div class="meta-row">
-              <span class="eyebrow">Intensity</span>
-              <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} />
+            <div class="details-intensity">
+              <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} core={coreOf(draft.emotions[0]).id} title="Intensity" />
             </div>
           )}
           {only?.depth === 2 && <p class="definition">{only.def}</p>}
