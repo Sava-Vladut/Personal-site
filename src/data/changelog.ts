@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.35.0',
+    date: '2026-10-05',
+    changes: [
+      'Each day in the journal wears its overall feeling: its sprite leads the date, with a line like “A calm day” or “Anger, then joy”',
+      'A thin ribbon under each day holds its colours at the hours you felt them, from morning to night',
+      'A soft cloud of the day’s colours drifts behind its entries, and each note carries a smaller one of its own feelings, brighter the stronger they were',
+      'Check-ins get a gentle wash of their colour, and the sprites in the journal now play their little animations while they’re on screen',
+      'On a date you wrote on in an earlier year, “A year ago today” appears under the check-in with how that day felt; tap it to see that day',
+    ],
+  },
+  {
     version: '1.34.0',
     date: '2026-10-05',
     changes: [

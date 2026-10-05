@@ -318,6 +318,63 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .note-hero { margin-top: 10px; aspect-ratio: 16 / 9; border-radius: 11px; overflow: hidden; background: var(--surface-2); }
 .note-hero img, .note-hero .photo-ph { display: block; width: 100%; height: 100%; object-fit: cover; }
 
+/* ---------- the colour of a day (views/Journal.tsx, lib/mood.ts) ----------
+   A day leads with the world it leaned toward and a line of what it was like; a ribbon under its label holds
+   its colours at the hours they were felt. Behind the entries a soft cloud of --d1 and --d2 drifts, each note
+   carries a smaller one of its own feelings (brighter the stronger they were), and check-ins a wash of theirs.
+   They only move while the day is on screen ([data-live]). */
+.day-label { display: flex; align-items: center; gap: 7px; }
+.day-label .sprite { flex: none; }
+.day-mood {
+  min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12.5px; font-weight: 500; color: color-mix(in oklab, var(--d1) 50%, var(--ink-3));
+}
+.day-ribbon { position: absolute; left: 2px; right: 2px; bottom: 0; height: 2px; border-radius: 2px; opacity: 0.7; }
+
+.day.has-mood { position: relative; isolation: isolate; --aura: 15%; }
+.day.has-mood::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  inset: 24px calc(-1 * var(--gutter)) auto; height: min(calc(100% - 24px), 440px);
+  background:
+    radial-gradient(55% 60% at 22% 35%, color-mix(in oklab, var(--d1) var(--aura), transparent), transparent 72%),
+    radial-gradient(50% 55% at 80% 62%, color-mix(in oklab, var(--d2) calc(var(--aura) * 0.8), transparent), transparent 72%);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 55%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 55%, transparent);
+  animation: aura-drift 26s ease-in-out infinite alternate paused;
+}
+@keyframes aura-drift {
+  0% { transform: translate3d(-5%, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, 4%, 0) scale(1.07); }
+  100% { transform: translate3d(6%, -3%, 0) scale(0.97); }
+}
+
+.note.has-mood { position: relative; isolation: isolate; overflow: hidden; --glow: calc(5% + var(--k, 3) * 3%); }
+.note.has-mood::before {
+  content: ''; position: absolute; z-index: -2; pointer-events: none;
+  top: -120px; right: -110px; width: 340px; height: 260px;
+  background:
+    radial-gradient(42% 46% at 58% 48%, color-mix(in oklab, var(--c1) var(--glow), transparent), transparent),
+    radial-gradient(34% 40% at 30% 68%, color-mix(in oklab, var(--c2) calc(var(--glow) * 0.75), transparent), transparent);
+  animation: glow-drift 19s ease-in-out infinite alternate paused;
+  animation-delay: calc(var(--t, 0) * -10ms);
+}
+@keyframes glow-drift {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(-34px, 18px, 0) rotate(16deg) scale(1.08); }
+  100% { transform: translate3d(-12px, 30px, 0) rotate(-10deg) scale(0.96); }
+}
+.day.has-mood[data-live]::before, .day[data-live] .note.has-mood::before { animation-play-state: running; }
+
+.entries:not(.compact) .checkin {
+  background-image: linear-gradient(90deg, color-mix(in oklab, var(--c, transparent) calc(3% + var(--k, 3) * 2%), transparent), transparent 62%);
+}
+
+@media (prefers-reduced-motion: reduce) { .day.has-mood::before, .note.has-mood::before { animation: none; } }
+
+/* a day from a year ago, on today's date */
+.on-this-day .coming-icon { background: color-mix(in oklab, var(--c, var(--ink-3)) 16%, var(--surface-2)); color: var(--c, var(--ink-2)); }
+.on-this-day .coming-main > svg { flex: none; color: var(--ink-3); margin-right: 4px; }
+
 /* pinned notes sit above the days */
 .day.pinned { margin-top: 18px; }
 .day-label svg { vertical-align: -2px; margin-right: 2px; }

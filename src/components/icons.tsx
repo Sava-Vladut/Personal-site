@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { watchView } from '../lib/inView';
 import UI from '../data/ui-icons.json';
 import { CORE, SPRITE_IDLE } from '../data/emotions';
 import { useIconCache } from '../lib/store';
@@ -70,11 +71,17 @@ export function useSpriteIdle(core: string, on: boolean, delay = 0) {
   return spritePath(core, frame);
 }
 
-/** 8×8 pixel sprite for a core emotion — the "worlds" of Emotion Quest. `idle` plays its idle loop. */
-export function Sprite({ core, size = 16, color, idle = false, delay }: { core: string; size?: number; color?: string; idle?: boolean; delay?: number }) {
-  const d = useSpriteIdle(core, idle, delay);
+/**
+ * 8×8 pixel sprite for a core emotion — the "worlds" of Emotion Quest. `idle` plays its idle loop;
+ * `idle="view"` plays it only while the sprite is on screen, for long lists like the journal.
+ */
+export function Sprite({ core, size = 16, color, idle = false, delay }: { core: string; size?: number; color?: string; idle?: boolean | 'view'; delay?: number }) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => (idle === 'view' && ref.current ? watchView(ref.current, setShown) : undefined), [idle]);
+  const d = useSpriteIdle(core, idle === true || (idle === 'view' && shown), delay);
   return (
-    <svg class="sprite" width={size} height={size} viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+    <svg ref={ref} class="sprite" width={size} height={size} viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
       <path d={d} fill={color ?? `var(--emo-${core})`} />
     </svg>
   );

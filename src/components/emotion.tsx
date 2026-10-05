@@ -6,13 +6,17 @@ import { haptic } from '../lib/haptics';
 import { EmotionWheel } from './EmotionWheel';
 
 /** "Worried" with its world's sprite. `path` adds the trail: Fear › Anxiety. */
-export function EmotionChip({ id, onRemove, path, size = 'md' }: { id: string; onRemove?: () => void; path?: boolean; size?: 'sm' | 'md' }) {
+export function EmotionChip({ id, onRemove, path, size = 'md', idle, delay }: {
+  id: string; onRemove?: () => void; path?: boolean; size?: 'sm' | 'md';
+  /** Plays the sprite's idle loop (see Sprite). */
+  idle?: boolean | 'view'; delay?: number;
+}) {
   const e = EMOTION[id];
   if (!e) return null;
   const core = e.core;
   return (
     <span class={`emo emo-${size}`}>
-      <Sprite core={core} size={size === 'sm' ? 11 : 13} />
+      <Sprite core={core} size={size === 'sm' ? 11 : 13} idle={idle} delay={delay} />
       <span class="emo-name">{e.depth === 0 ? shortName(id) : e.name}</span>
       {path && e.depth > 0 && <span class="emo-path">{trail(id)}</span>}
       {onRemove && (

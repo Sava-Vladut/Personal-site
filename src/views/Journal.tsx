@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { usePref } from '../lib/prefs';
 import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
 import { dayLabel, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
@@ -10,6 +10,8 @@ import { bodyOf, itemsOf, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Photo } from '../lib/photos';
 import { previewOf, stripMarkdown } from '../lib/markdown';
+import { dayMood } from '../lib/mood';
+import { watchView } from '../lib/inView';
 import { BookChip, BookCover } from '../components/books';
 import { Calendar } from '../components/Calendar';
 import { useHold } from '../components/EntryMenu';
@@ -131,6 +133,7 @@ export function Journal() {
       )}
 
       {!filtering && <CheckInPrompt entries={entries} />}
+      {!filtering && <OnThisDay byDay={byDay} onOpen={setDay} />}
       {!filtering && <ComingUp />}
       {!filtering && <ReadingNow />}
 
@@ -160,13 +163,37 @@ export function Journal() {
           <Entries list={pinned} compact={compact} dated />
         </section>
       )}
-      {groups.map(([date, list]) => (
-        <section class="day" key={date}>
-          <h2 class="day-label">{dayLabel(date)}</h2>
-          <Entries list={list} compact={compact} />
-        </section>
-      ))}
+      {groups.map(([date, list]) => <Day key={date} date={date} list={list} compact={compact} />)}
     </div>
+  );
+}
+
+/** Sprites side by side shouldn't move in step: each waits a little, by when its entry was written. */
+const stagger = (n: number) => n % 1300;
+
+/**
+ * One day of the journal, wearing its overall feeling: the world it leaned toward leads the label with a
+ * line of what it was like, a ribbon under it holds the day's colours at the hours they were felt, and a
+ * soft cloud of those colours drifts behind the entries while the day is on screen.
+ */
+function Day({ date, list, compact }: { date: string; list: Entry[]; compact: boolean }) {
+  const mood = useMemo(() => dayMood(list), [list]);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    return el ? watchView(el, (on) => el.toggleAttribute('data-live', on)) : undefined;
+  }, []);
+  const style = mood ? { '--d1': `var(--emo-${mood.worlds[0]})`, '--d2': `var(--emo-${mood.worlds[1] ?? mood.worlds[0]})` } : undefined;
+  return (
+    <section ref={ref} class={mood ? 'day has-mood' : 'day'} style={style}>
+      <h2 class="day-label">
+        {mood && <Sprite core={mood.worlds[0]} size={12} idle="view" delay={stagger(+date.replace(/-/g, ''))} />}
+        <span>{dayLabel(date)}</span>
+        {mood && <span class="day-mood">{mood.word}</span>}
+        {mood && <i class="day-ribbon" style={{ background: mood.ribbon }} aria-hidden="true" />}
+      </h2>
+      <Entries list={list} compact={compact} />
+    </section>
   );
 }
 
@@ -204,8 +231,8 @@ function CheckInRun({ list }: { list: Entry[] }) {
   const span = times[0] === times[times.length - 1] ? timeLabel(times[0]) : `${timeLabel(times[0])} – ${timeLabel(times[times.length - 1])}`;
   return (
     <div class={open ? 'checkin-run open' : 'checkin-run'}>
-      <button class="checkin checkin-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span class="fold-sprites">{worlds.map((c) => <Sprite core={c} size={14} />)}</span>
+      <button class="checkin checkin-fold" style={worlds.length ? { '--c': `var(--emo-${worlds[0]})` } : undefined} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span class="fold-sprites">{worlds.map((c, i) => <Sprite core={c} size={14} idle="view" delay={stagger(list[0].time) + i * 420} />)}</span>
         <span class="checkin-name">{list.length} check-ins</span>
         <span class="checkin-meta">{worlds.map((c) => shortName(c)).join(', ')}</span>
         <span class="checkin-time">{span}</span>
@@ -242,6 +269,33 @@ function CheckInPrompt({ entries }: { entries: Entry[] }) {
         ))}
       </div>
     </section>
+  );
+}
+
+/** A day from a year (or more) ago, on today's date: how it felt, and a tap away from what you wrote. */
+function OnThisDay({ byDay, onOpen }: { byDay: Map<string, Entry[]>; onOpen: (day: string) => void }) {
+  const today = todayKey();
+  const date = [...byDay.keys()].filter((k) => k < today && k.slice(5) === today.slice(5)).sort().pop();
+  const list = date ? byDay.get(date)! : null;
+  const mood = useMemo(() => (list ? dayMood(list) : null), [list]);
+  if (!date || !list) return null;
+  const years = +today.slice(0, 4) - +date.slice(0, 4);
+  const note = list.find((e) => e.kind === 'note');
+  const title = note ? previewOf(plainText(note.text), note.title).heading : '';
+  const c = mood?.worlds[0];
+  return (
+    <div class="coming-up">
+      <div class="coming-chip card on-this-day" style={c ? { '--c': `var(--emo-${c})` } : undefined}>
+        <button class="coming-main" onClick={() => onOpen(date)}>
+          <span class="coming-icon">{c ? <Sprite core={c} size={16} idle /> : <Icon name="clock" size={18} />}</span>
+          <span class="book-row-main">
+            <span class="book-row-title">{years === 1 ? 'A year ago today' : `${years} years ago today`}</span>
+            <span class="book-row-sub">{[mood?.word, title].filter(Boolean).join(' · ') || `${list.length} ${list.length === 1 ? 'entry' : 'entries'}`}</span>
+          </span>
+          <Icon name="chevron-right" size={16} />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -343,8 +397,11 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const photos = e.photos.filter((p) => p.id !== skip);
   const images = e.images.filter((i) => !(hero && 'image' in hero && hero.image.url === i.url));
   const w = weatherOf(e);
+  // the note's feelings drift through its card as a soft cloud, brighter the stronger they were
+  const worlds = [...new Set(e.emotions.map((id) => coreOf(id)?.id).filter(Boolean))];
+  const mood = worlds.length ? { '--c1': `var(--emo-${worlds[0]})`, '--c2': `var(--emo-${worlds[1] ?? worlds[0]})`, '--k': e.intensity, '--t': stagger(e.time) } : undefined;
   return (
-    <button class={`note card${e.cover ? ' has-cover' : ''}`} {...hold}>
+    <button class={`note card${e.cover ? ' has-cover' : ''}${mood ? ' has-mood' : ''}`} style={mood} {...hold}>
       {e.cover && <CoverImg cover={e.cover} class="note-cover" />}
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
@@ -365,7 +422,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
       {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0 || !!e.place?.name) && (
         <div class="note-foot">
           <div class="note-emos">
-            {e.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
+            {e.emotions.map((id, i) => <EmotionChip id={id} size="sm" idle="view" delay={stagger(e.time) + i * 380} />)}
             {people.map((p) => <PersonChip p={p} size="sm" />)}
             {books.map((b) => <BookChip b={b} />)}
             {e.music.length > 0 && (
@@ -404,7 +461,7 @@ export function NoteRow({ e, dated }: { e: Entry; dated?: boolean }) {
       <span class="row-title">{heading || 'Untitled'}</span>
       <span class="row-text">{preview.replace(/\n+/g, ' · ')}</span>
       <span class="row-marks">
-        {worlds.map((c) => <Sprite core={c} size={12} />)}
+        {worlds.map((c, i) => <Sprite core={c} size={12} idle="view" delay={stagger(e.time) + i * 380} />)}
         {pictures > 0 && <Icon name="photo" size={14} />}
         {e.music.length > 0 && <Icon name="music" size={14} />}
       </span>
@@ -421,8 +478,8 @@ export function CheckInRow({ e }: { e: Entry }) {
   const hold = useHold(e, () => navigate('note/' + e.id));
   const w = weatherOf(e);
   return (
-    <button class="checkin" {...hold}>
-      {em ? <Sprite core={em.core} size={16} /> : <span />}
+    <button class="checkin" style={em ? { '--c': `var(--emo-${em.core})`, '--k': e.intensity } : undefined} {...hold}>
+      {em ? <Sprite core={em.core} size={16} idle="view" delay={stagger(e.time)} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
       <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? `thinking of ${people.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{w && <WeatherMark w={w} />}{timeLabel(e.time)}</span>
