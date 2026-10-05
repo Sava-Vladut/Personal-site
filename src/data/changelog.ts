@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.36.0',
+    date: '2026-10-05',
+    changes: [
+      'Face ID lock: turn it on in Settings → Privacy, and My Mind asks for Face ID when you open it or come back after a couple of minutes',
+      'People asks for Face ID every time you go in, including someone’s page and the mind page, and locks again when you leave',
+      'It uses a passkey on your device (Touch ID or Windows Hello on computers); nothing about it is sent to the server',
+      'Turning the lock off asks for Face ID first, and if the passkey ever goes missing you can set it up again from the lock screen',
+    ],
+  },
+  {
     version: '1.35.0',
     date: '2026-10-05',
     changes: [

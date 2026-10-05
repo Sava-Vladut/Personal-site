@@ -497,3 +497,78 @@ test('a rejected page transition still clears navigation state and tolerates inf
   assert.equal(root.dataset.nav, undefined);
   assert.equal(animationAttempts, 1);
 });
+
+test('the Face ID lock only opens for a verified answer to its own challenge, and locks again after time away', async () => {
+  const storage = new Map();
+  const docListeners = new Map();
+  const doc = { hidden: false, addEventListener: (name, fn) => docListeners.set(name, fn) };
+  let now = 1_000_000;
+  const b64 = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const rawId = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  // what the device answers: flags byte 32 carries UV (0x04) when it checked who you are
+  let uv = true, tamper = false;
+  const answer = (opts, type) => {
+    const challenge = tamper ? new Uint8Array(32) : opts.publicKey.challenge;
+    const auth = new Uint8Array(37);
+    auth[32] = uv ? 0x05 : 0x01;
+    return {
+      rawId: rawId.buffer,
+      response: {
+        clientDataJSON: new TextEncoder().encode(JSON.stringify({ type, challenge: b64(challenge), origin: 'https://mind.test' })).buffer,
+        ...(type === 'webauthn.get' ? { authenticatorData: auth.buffer } : { getAuthenticatorData: () => auth.buffer }),
+      },
+    };
+  };
+  const observable = (value) => {
+    const subs = new Set();
+    return { get: () => value, set: (v) => { value = v; subs.forEach((f) => f(v)); }, use: () => value };
+  };
+  const lock = await load('src/lib/lock.ts', { './store': { observable } }, {
+    localStorage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: (k) => storage.delete(k) },
+    document: doc, location: { hostname: 'mind.test', origin: 'https://mind.test' },
+    navigator: {
+      userAgent: 'iPhone', maxTouchPoints: 5,
+      credentials: { create: async (o) => answer(o, 'webauthn.create'), get: async (o) => answer(o, 'webauthn.get') },
+    },
+    crypto: { getRandomValues: (a) => a.map((_, i) => (i * 37 + 11) & 255) },
+    TextEncoder, TextDecoder, btoa, Date: { now: () => now },
+  });
+  assert.equal(lock.unlockName, 'Face ID');
+  assert.deepEqual(plain(lock.getLock()), { on: false, locked: false, people: false });
+
+  await lock.enableLock();
+  assert.equal(JSON.parse(storage.get('mm-lock')).id, b64(rawId));
+  assert.equal(lock.getLock().on, true);
+
+  // leaving People locks it; coming back needs a verified answer
+  lock.leftPeople();
+  uv = false;
+  await assert.rejects(lock.unlockPeople());
+  uv = true; tamper = true;
+  await assert.rejects(lock.unlockPeople());
+  assert.equal(lock.getLock().people, false);
+  tamper = false;
+  await lock.unlockPeople();
+  assert.equal(lock.getLock().people, true);
+
+  // a short trip away keeps things open; a long one locks the app and People
+  doc.hidden = true; docListeners.get('visibilitychange')();
+  now += 5_000;
+  doc.hidden = false; docListeners.get('visibilitychange')();
+  assert.deepEqual(plain(lock.getLock()), { on: true, locked: false, people: true });
+  doc.hidden = true; docListeners.get('visibilitychange')();
+  now += 3 * 60_000;
+  doc.hidden = false; docListeners.get('visibilitychange')();
+  assert.deepEqual(plain(lock.getLock()), { on: true, locked: true, people: false });
+  await lock.unlockApp();
+  assert.equal(lock.getLock().locked, false);
+
+  // switching it off asks first
+  uv = false;
+  await assert.rejects(lock.disableLock());
+  assert.equal(lock.getLock().on, true);
+  uv = true;
+  await lock.disableLock();
+  assert.equal(storage.has('mm-lock'), false);
+  assert.equal(lock.getLock().on, false);
+});

@@ -1294,3 +1294,24 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .theme-pick .song-row[aria-pressed='true'] { background: var(--surface-2); }
 .theme-of { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 14px 2px 0; font-size: 14px; color: var(--ink-3); }
 .theme-of a { color: var(--ink); font-weight: 600; }
+
+/* ---------- Face ID lock (components/Lock.tsx) ---------- */
+
+.lock-page { display: grid; place-items: center; min-height: calc(100dvh - var(--safe-t) - var(--nav-h) - var(--safe-b) - 80px); }
+.route-lock .lock-page { min-height: calc(100dvh - var(--safe-t) - var(--safe-b) - 60px); }
+.route-lock { padding-bottom: 0; }
+.lock { display: grid; justify-items: center; gap: 12px; max-width: 320px; text-align: center; animation: rise-in 0.4s var(--ease-emph) backwards; }
+.lock .muted { margin-top: -4px; }
+.lock .btn { margin-top: 10px; }
+.lock-icon {
+  display: grid; place-items: center; width: 76px; height: 76px; margin-bottom: 6px; border-radius: 24px;
+  color: var(--emo-hope-interest);
+  background:
+    radial-gradient(80% 80% at 30% 20%, color-mix(in oklab, var(--emo-love-connection) 22%, transparent), transparent),
+    color-mix(in oklab, var(--emo-hope-interest) 14%, var(--surface-2));
+  box-shadow: 0 14px 34px -18px color-mix(in oklab, var(--emo-hope-interest) 70%, transparent);
+}
+.lock-people .lock-icon { color: var(--emo-love-connection); }
+.lock-error { font-size: 13.5px; color: var(--danger); }
+.lock-reset { font-size: 13.5px; color: var(--ink-3); text-decoration: underline; text-underline-offset: 3px; }
+.lock-reset:hover { color: var(--ink); }
