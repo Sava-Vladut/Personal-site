@@ -6,7 +6,7 @@ import { Icon, Sprite } from './icons';
 import { MapHeat, type HeatPoint } from './MapHeat';
 import '../styles/map.css';
 
-/** weight: how much it counts on the heat map (recency and intensity), 1 by default */
+/** weight: how much it counts on the heat map (recency and intensity), 1 by default. The heat map's thread joins pins in their order. */
 export interface Pin { id: string; lat: number; lon: number; core: string | null; weight?: number }
 /** The centre, in world units (0–1 across and down, Web Mercator), and the zoom. */
 export interface View { x: number; y: number; z: number }

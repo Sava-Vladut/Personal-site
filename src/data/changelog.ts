@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.39.0',
+    date: '2026-10-05',
+    changes: [
+      'A thread on your map: one thick rope joins every place in the order you were there, from your first entry to your latest',
+      'It’s woven from twisting strands in the colours of the feelings it joins, drawn in the same drifting letters, with a glow flowing along it toward where you are now',
+      'The map no longer leaves a trail behind when you move it',
+    ],
+  },
+  {
     version: '1.38.0',
     date: '2026-10-05',
     changes: [

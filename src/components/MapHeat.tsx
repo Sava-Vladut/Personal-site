@@ -1,8 +1,8 @@
 // The map's heat: where you've felt things, drawn like the journal's sky. Each entry is a soft, breathing puff in
 // the colour of its world, and where puffs gather the map fills with that world's letters (Sky's ramps), denser
 // and brighter the more was felt there. Recent entries burn brighter; older ones linger, fainter.
-// The heat lingers on screen too: it eases toward where it should be instead of jumping, so moving the map
-// leaves a fading trail of letters and colour behind it.
+// A thread runs through every place in the order you were there, from the first to the latest: a thick rope of
+// twisting strands in the colours of the places it joins, made of the same letters, with a glow flowing along it.
 import { useEffect, useRef } from 'preact/hooks';
 import { RAMPS } from './Sky';
 
@@ -21,8 +21,7 @@ const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const SCALE = 4;          // the colour layer is drawn at 1/4 size and stretched, so it stays soft
 const SPRITE = 64;
 const R_WORLD = 5.7e-5;   // a puff's radius in world units (about 60px at street-level zoom 12)
-const LINGER = 0.09;      // how far the letters move toward the real heat each frame: lower lingers longer
-const FADE = 0.14;        // how much of the colour layer fades each frame
+const THREAD_STEP = 6;    // px between the thread's samples
 const MIN_FRAME = 33;     // ~30fps is plenty for drifting clouds
 
 type RGB = [number, number, number];
@@ -48,10 +47,10 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
     const g = glyphCv.getContext('2d')!, c = cloudCv.getContext('2d')!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     let w = 0, h = 0, dpr = 1, sp = 14, font = 11, cols = 0, rows = 0;
-    let heat = new Float32Array(0), byWorld = new Float32Array(0), shown = new Float32Array(0);
-    let tint = new Uint8Array(0); // the world each cell shows; kept while it fades, so trails keep their colour
+    let heat = new Float32Array(0), byWorld = new Float32Array(0);
     let dark = false;
     let puffs: HTMLCanvasElement[] = [];
+    let strand: string[] = []; // the thread's colour in each world
     // the letters: per world, its ramp's characters in two rows (warm, and hot where the heat is strongest)
     const atlas = document.createElement('canvas');
     let tile = 0, levels: number[][][] = [];
@@ -61,6 +60,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       dark = document.documentElement.dataset.theme === 'dark';
       const ink = hex(css.getPropertyValue('--ink'));
       const tones = [...WORLDS.map((k) => hex(css.getPropertyValue(`--emo-${k}`))), mix(ink, [128, 128, 128], 0.3)];
+      strand = tones.map((col) => rgba(dark ? mix(col, [255, 255, 255], 0.2) : col, 1));
       puffs = tones.map((col) => {
         const cv = document.createElement('canvas');
         cv.width = cv.height = SPRITE;
@@ -104,12 +104,10 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       cols = Math.ceil(w / sp) + 1; rows = Math.ceil(h / sp) + 1;
       heat = new Float32Array(cols * rows);
       byWorld = new Float32Array(cols * rows * KINDS);
-      shown = new Float32Array(cols * rows);
-      tint = new Uint8Array(cols * rows);
       palette();
     };
 
-    const draw = (now: number, still: boolean) => {
+    const draw = (now: number) => {
       const { points, view, w: W, h: H } = latest.current;
       if (!W || !H || !view) return;
       if (W !== w || H !== h) resize(W, H);
@@ -118,26 +116,16 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       const left = view.x * k - w / 2, top = view.y * k - h / 2;
       const r0 = clamp(R_WORLD * k, 34, 130);
 
-      // the colour: fade what was there a little (that's the linger), then stamp this frame's puffs
       c.setTransform(1 / SCALE, 0, 0, 1 / SCALE, 0, 0);
-      c.globalCompositeOperation = 'destination-out';
-      c.globalAlpha = still ? 1 : FADE;
-      c.fillRect(0, 0, w, h);
-      c.globalCompositeOperation = 'source-over';
+      c.clearRect(0, 0, w, h);
       heat.fill(0);
       byWorld.fill(0);
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        const ph = i * 2.399; // a golden-angle phase each, so they don't breathe in step
-        const r = r0 * (0.8 + 0.25 * Math.min(2, p.weight)) * (1 + 0.12 * Math.sin(t * 0.6 + ph));
-        const cx = p.x * k - left + Math.sin(t * 0.35 + ph) * r * 0.08;
-        const cy = p.y * k - top + Math.cos(t * 0.3 + ph * 1.3) * r * 0.06;
-        if (cx < -r || cy < -r || cx > w + r || cy > h + r) continue;
-        const found = p.core ? WORLDS.indexOf(p.core) : -1;
-        const wi = found < 0 ? NONE : found;
-        c.globalAlpha = Math.min(0.9, 0.55 * p.weight) * (still ? 1 : FADE * 1.15);
-        c.drawImage(puffs[wi], cx - r * 1.3, cy - r * 1.3, r * 2.6, r * 2.6);
-        // and its heat, on the letter grid
+      const worldOf = (core: string | null) => {
+        const found = core ? WORLDS.indexOf(core) : -1;
+        return found < 0 ? NONE : found;
+      };
+      /** Adds a soft round of heat to the letter grid, looking only at the cells it can reach. */
+      const splat = (cx: number, cy: number, r: number, f0: number, wi: number) => {
         const rr = r * r;
         const row0 = Math.max(0, Math.ceil((cy - r - sp / 2) / sp)), row1 = Math.min(rows - 1, Math.floor((cy + r - sp / 2) / sp));
         for (let row = row0; row <= row1; row++) {
@@ -148,36 +136,122 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
             const dx = col * sp + shift - cx;
             const u = (dx * dx + dy * dy) / rr;
             if (u >= 1) continue;
-            const f = (1 - u) * (1 - u) * p.weight;
+            const f = (1 - u) * (1 - u) * f0;
             const cell = row * cols + col;
             heat[cell] += f;
             byWorld[cell * KINDS + wi] += f;
           }
         }
+      };
+
+      // the places: a breathing puff each, in its world's colour
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const ph = i * 2.399; // a golden-angle phase each, so they don't breathe in step
+        const r = r0 * (0.8 + 0.25 * Math.min(2, p.weight)) * (1 + 0.12 * Math.sin(t * 0.6 + ph));
+        const cx = p.x * k - left + Math.sin(t * 0.35 + ph) * r * 0.08;
+        const cy = p.y * k - top + Math.cos(t * 0.3 + ph * 1.3) * r * 0.06;
+        if (cx < -r || cy < -r || cx > w + r || cy > h + r) continue;
+        const wi = worldOf(p.core);
+        c.globalAlpha = Math.min(0.9, 0.55 * p.weight);
+        c.drawImage(puffs[wi], cx - r * 1.3, cy - r * 1.3, r * 2.6, r * 2.6);
+        splat(cx, cy, r, p.weight, wi);
       }
 
-      // the letters, easing toward the heat
+      // the thread: every place in the order you were there, one long rope of three twisting strands, with a
+      // glow running along it from the first place toward the latest
+      const nodes: { x: number; y: number; wi: number }[] = [];
+      for (const p of points) {
+        const last = nodes[nodes.length - 1];
+        const x = p.x * k - left, y = p.y * k - top;
+        if (last && Math.abs(last.x - x) < 0.5 && Math.abs(last.y - y) < 0.5) continue; // still in the same spot
+        nodes.push({ x, y, wi: worldOf(p.core) });
+      }
+      const rope = clamp(r0 * 0.3, 9, 30); // half the rope's width
+      const far = Math.max(w, h) * 3;
+      let before = 0; // how far along the thread each segment starts, so the glow flows on without jumps
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
+      for (let i = 0; i + 1 < nodes.length; i++) {
+        const A = nodes[i], B = nodes[i + 1];
+        const P0 = nodes[i - 1] ?? A, P3 = nodes[i + 2] ?? B;
+        const len = Math.hypot(B.x - A.x, B.y - A.y);
+        const start = before;
+        before += len;
+        const pad = rope + len * 0.25;
+        if (Math.max(A.x, B.x) < -pad || Math.min(A.x, B.x) > w + pad || Math.max(A.y, B.y) < -pad || Math.min(A.y, B.y) > h + pad) continue;
+        // a long segment (zoomed in close) is drawn straight and only where it crosses the screen; a short one curves
+        let t0 = 0, t1 = 1;
+        const straight = len > far;
+        if (straight) {
+          const dx = B.x - A.x, dy = B.y - A.y;
+          for (const [pp, q] of [[-dx, A.x + rope], [dx, w + rope - A.x], [-dy, A.y + rope], [dy, h + rope - A.y]]) {
+            if (pp === 0) { if (q < 0) t1 = -1; continue; }
+            const r = q / pp;
+            if (pp < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r);
+          }
+          if (t0 >= t1) continue;
+        }
+        const at = (u: number): [number, number] => {
+          if (straight) return [A.x + (B.x - A.x) * u, A.y + (B.y - A.y) * u];
+          const u2 = u * u, u3 = u2 * u;
+          return [
+            0.5 * (2 * A.x + (-P0.x + B.x) * u + (2 * P0.x - 5 * A.x + 4 * B.x - P3.x) * u2 + (-P0.x + 3 * A.x - 3 * B.x + P3.x) * u3),
+            0.5 * (2 * A.y + (-P0.y + B.y) * u + (2 * P0.y - 5 * A.y + 4 * B.y - P3.y) * u2 + (-P0.y + 3 * A.y - 3 * B.y + P3.y) * u3),
+          ];
+        };
+        const n = Math.min(1500, Math.max(2, Math.ceil((len * (t1 - t0)) / THREAD_STEP)));
+        const xs: number[] = [], ys: number[] = [], nx: number[] = [], ny: number[] = [], ss: number[] = [];
+        for (let j = 0; j <= n; j++) {
+          const u = t0 + ((t1 - t0) * j) / n;
+          const [x, y] = at(u);
+          const [x2, y2] = at(Math.min(1, u + 0.002));
+          const [x1, y1] = u + 0.002 > 1 ? at(u - 0.002) : [x, y];
+          const tl = Math.hypot(x2 - x1, y2 - y1) || 1;
+          xs.push(x); ys.push(y); nx.push(-(y2 - y1) / tl); ny.push((x2 - x1) / tl); ss.push(start + len * u);
+        }
+        // the colour: a soft wide glow down the middle, then the strands, each from A's world to B's
+        const grad = c.createLinearGradient(A.x, A.y, B.x, B.y);
+        grad.addColorStop(0, strand[A.wi]);
+        grad.addColorStop(1, strand[B.wi]);
+        c.strokeStyle = grad;
+        for (let strandNo = -1; strandNo < 3; strandNo++) {
+          c.beginPath();
+          for (let j = 0; j <= n; j++) {
+            const off = strandNo < 0 ? 0 : Math.sin(ss[j] * 0.045 - t * 1.6 + strandNo * 2.094) * rope * 0.75;
+            const x = xs[j] + nx[j] * off, y = ys[j] + ny[j] * off;
+            j ? c.lineTo(x, y) : c.moveTo(x, y);
+          }
+          c.lineWidth = strandNo < 0 ? rope * 2.4 : rope * 0.5;
+          c.globalAlpha = strandNo < 0 ? 0.22 : 0.6;
+          c.stroke();
+        }
+        // and its letters, swaying with the first strand, brighter where the glow is passing
+        for (let j = 0; j <= n; j++) {
+          const pulse = 0.5 + 0.5 * Math.sin(ss[j] * 0.012 - t * 2.4);
+          const off = Math.sin(ss[j] * 0.045 - t * 1.6) * rope * 0.3;
+          const f0 = (0.32 + 0.45 * pulse * pulse) * (THREAD_STEP / (1.07 * rope));
+          splat(xs[j] + nx[j] * off, ys[j] + ny[j] * off, rope * 1.1, f0, j / n < 0.5 ? A.wi : B.wi);
+        }
+      }
+
+      // the letters
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, glyphCv.width, glyphCv.height);
       g.imageSmoothingEnabled = false;
       const half = tile / 2;
-      const ease = still ? 1 : LINGER;
       for (let row = 0, cell = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++, cell++) {
-          const target = 1 - Math.exp(-heat[cell] * 1.5);
-          const s = (shown[cell] += (target - shown[cell]) * ease);
-          if (target > 0.04) {
-            let best = 0, at = NONE;
-            for (let wi = 0; wi < KINDS; wi++) {
-              const v = byWorld[cell * KINDS + wi];
-              if (v > best) { best = v; at = wi; }
-            }
-            tint[cell] = at;
-          }
+          const s = 1 - Math.exp(-heat[cell] * 1.5);
           if (s < 0.03) continue;
+          let best = 0, tint = NONE;
+          for (let wi = 0; wi < KINDS; wi++) {
+            const v = byWorld[cell * KINDS + wi];
+            if (v > best) { best = v; tint = wi; }
+          }
           const bx = col * sp + (row & 1) * (sp / 3), by = row * sp + sp / 2;
           const wave = 0.5 + 0.5 * Math.sin(bx * 0.021 + t * 1.1) * Math.cos(by * 0.017 - t * 0.85);
-          const ramp = levels[tint[cell]];
+          const ramp = levels[tint];
           const top = ramp.length - 1;
           const i = Math.min(top, Math.floor((s * 0.88 + wave * 0.24 - 0.08) * top));
           if (i <= 0) continue;
@@ -186,7 +260,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
           const x = bx + Math.sin(t * 1.3 + row * 0.37 + col * 0.13) * 1.3;
           const y = by + Math.cos(t * 1.1 + row * 0.18 - col * 0.17) * 1.1;
           g.globalAlpha = Math.min(0.92, 0.18 + s * 0.75) * (dark ? 1 : 0.85);
-          g.drawImage(atlas, glyph * tile, (tint[cell] * 2 + (s > 0.72 ? 1 : 0)) * tile, tile, tile,
+          g.drawImage(atlas, glyph * tile, (tint * 2 + (s > 0.72 ? 1 : 0)) * tile, tile, tile,
             Math.round(x * dpr - half), Math.round(y * dpr - half), tile, tile);
         }
       }
@@ -198,7 +272,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       raf = 0;
       if (!last || now - last >= MIN_FRAME) {
         last = now;
-        draw(now, false);
+        draw(now);
       }
       schedule();
     };
@@ -206,9 +280,9 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       if (!raf && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame);
     };
     // without motion, it's drawn once for every change of the map instead
-    poke.current = () => { if (reduced.matches) draw(0, true); };
+    poke.current = () => { if (reduced.matches) draw(0); };
     const onVisibility = () => (document.hidden ? (cancelAnimationFrame(raf), (raf = 0)) : schedule());
-    const onMotion = () => (reduced.matches ? draw(0, true) : schedule());
+    const onMotion = () => (reduced.matches ? draw(0) : schedule());
     const mo = new MutationObserver(() => w && palette());
     mo.observe(document.documentElement, { attributeFilter: ['data-theme'] });
     document.addEventListener('visibilitychange', onVisibility);

@@ -18,8 +18,9 @@ export function MapView({ query }: { query: URLSearchParams }) {
   const pins = useMemo<Pin[]>(
     () => {
       // on the heat map, recent and strong feelings burn brighter; older ones linger, fainter
+      // and the thread joins them in the order you were there, oldest first
       const now = Date.now();
-      return located.map((e) => ({
+      return [...located].sort((a, b) => a.time - b.time).map((e) => ({
         id: e.id, lat: e.place!.lat, lon: e.place!.lon, core: e.emotions[0] ? coreOf(e.emotions[0]).id : null,
         weight: (0.35 + 0.65 * Math.exp(-Math.max(0, now - e.time) / (60 * 86_400_000))) * (0.6 + e.intensity * 0.12),
       }));

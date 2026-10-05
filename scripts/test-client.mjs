@@ -573,12 +573,12 @@ test('the Face ID lock only opens for a verified answer to its own challenge, an
   assert.equal(lock.getLock().on, false);
 });
 
-test('the map heat draws feeling letters where entries gather, and lets them linger after the view moves away', async () => {
+test('the map heat draws feeling letters where entries gather, and a thread of them joins the places in order', async () => {
   const calls = { glyphs: [], puffs: 0 };
   const ctx = (kind) => new Proxy({}, {
     get: (_t, name) => name === 'drawImage'
       ? (...a) => { if (kind === 'glyph') calls.glyphs.push(a); else if (kind === 'cloud') calls.puffs++; }
-      : name === 'createRadialGradient' ? () => ({ addColorStop() {} })
+      : name === 'createRadialGradient' || name === 'createLinearGradient' ? () => ({ addColorStop() {} })
       : () => {},
     set: () => true,
   });
@@ -586,6 +586,7 @@ test('the map heat draws feeling letters where entries gather, and lets them lin
   const refs = [canvas('glyph'), canvas('cloud')];
   let frame = null;
   const props = { points: [{ x: 0.5, y: 0.5, core: 'joy', weight: 1.5 }], view: { x: 0.5, y: 0.5, z: 12 }, w: 300, h: 300 };
+  const px = 1 / (256 * 2 ** 12); // one screen pixel in world units at zoom 12
   const { MapHeat } = await load('src/components/MapHeat.tsx', {
     'preact/hooks': { useRef: (v) => ({ current: refs.length ? refs.shift() : v }), useEffect: (fn) => fn() },
     './Sky': { RAMPS: { default: [' ', '.', ':', '+', '*', 'o', 'O', '#'], joy: [' ', '·', '.', '+', '*', 'o', 'O', '@'] } },
@@ -607,13 +608,15 @@ test('the map heat draws feeling letters where entries gather, and lets them lin
   assert.ok(near > 10, `letters around the entry: ${near}`);
   assert.equal(calls.glyphs.filter((a) => Math.hypot(a[5] - 150, a[6] - 150) > 140).length, 0);
 
-  // pan far away: the letters fade over several frames instead of vanishing at once
-  props.view = { x: 0.6, y: 0.5, z: 12 };
+  // a second place: the thread runs between them, through empty map, and is gone once there's only one place again
+  props.points = [props.points[0], { x: 0.5 + 280 * px, y: 0.5 + 280 * px, core: 'sadness', weight: 1 }];
+  props.view = { x: 0.5 + 140 * px, y: 0.5 + 140 * px, z: 12 };
+  const middle = () => calls.glyphs.filter((a) => Math.hypot(a[5] - 150, a[6] - 150) < 30).length;
   calls.glyphs.length = 0;
   step(1);
-  assert.ok(calls.glyphs.length > 0, 'still lingering right after the move');
-  step(80);
+  assert.ok(middle() > 0, 'letters along the thread');
+  props.points = [props.points[0]];
   calls.glyphs.length = 0;
   step(1);
-  assert.equal(calls.glyphs.length, 0);
+  assert.equal(middle(), 0);
 });
