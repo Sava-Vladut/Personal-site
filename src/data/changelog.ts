@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.40.0',
+    date: '2026-10-05',
+    changes: [
+      'The map’s thread is now one branching arc spilling out from home: thick where you’ve been most, tapering to fine tips at the places you went',
+      'No more doubled lines: trips there and back follow the same branch',
+      'The thread and the glow around places stay the same size as you zoom in, instead of swelling across the screen',
+      'Map pins show each feeling’s sprite, animated like the ones on the journal, with a count on gatherings',
+    ],
+  },
+  {
     version: '1.39.0',
     date: '2026-10-05',
     changes: [

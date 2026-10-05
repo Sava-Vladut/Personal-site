@@ -573,7 +573,7 @@ test('the Face ID lock only opens for a verified answer to its own challenge, an
   assert.equal(lock.getLock().on, false);
 });
 
-test('the map heat draws feeling letters where entries gather, and a thread of them joins the places in order', async () => {
+test('the map heat draws feeling letters where entries gather, and one thread branches out from home to every place', async () => {
   const calls = { glyphs: [], puffs: 0 };
   const ctx = (kind) => new Proxy({}, {
     get: (_t, name) => name === 'drawImage'
@@ -611,7 +611,8 @@ test('the map heat draws feeling letters where entries gather, and a thread of t
   // a second place: the thread runs between them, through empty map, and is gone once there's only one place again
   props.points = [props.points[0], { x: 0.5 + 280 * px, y: 0.5 + 280 * px, core: 'sadness', weight: 1 }];
   props.view = { x: 0.5 + 140 * px, y: 0.5 + 140 * px, z: 12 };
-  const middle = () => calls.glyphs.filter((a) => Math.hypot(a[5] - 150, a[6] - 150) < 30).length;
+  // well away from both places (on screen at 10,10 and 290,290), where only the thread's arc can put letters
+  const middle = () => calls.glyphs.filter((a) => Math.hypot(a[5] - 10, a[6] - 10) > 110 && Math.hypot(a[5] - 290, a[6] - 290) > 110).length;
   calls.glyphs.length = 0;
   step(1);
   assert.ok(middle() > 0, 'letters along the thread');
@@ -619,4 +620,25 @@ test('the map heat draws feeling letters where entries gather, and a thread of t
   calls.glyphs.length = 0;
   step(1);
   assert.equal(middle(), 0);
+
+  // the thread's shape: one tree from home (where most was felt), no going back and forth, thickest near home
+  const { spillTree } = await load('src/components/MapHeat.tsx', {
+    'preact/hooks': { useRef: () => ({}), useEffect() {} },
+    './Sky': { RAMPS: { default: [' ', '#'] } },
+    'preact/jsx-runtime': { jsx: () => null, jsxs: () => null, Fragment: 'f' },
+  });
+  const home = { x: 0.6, y: 0.4 }, d = 1e-3;
+  const at = (x, y, core = 'joy', weight = 1) => ({ x, y, core, weight });
+  // home, a trip north and back three times, and a branch east
+  const pts = [at(home.x, home.y), at(home.x, home.y - d), at(home.x, home.y - 2 * d, 'fear'), at(home.x, home.y), at(home.x, home.y - 2 * d, 'fear'),
+    at(home.x, home.y), at(home.x + 2e-8, home.y + 2e-8), at(home.x + d, home.y - d, 'sadness')];
+  const tree = spillTree(pts);
+  assert.equal(tree.length, 4, 'one node per place');
+  assert.deepEqual([tree[0].x, tree[0].y].map((v) => +v.toFixed(6)), [home.x, home.y].map((v) => +v.toFixed(6)));
+  assert.equal(tree[0].parent, -1);
+  assert.equal(tree.filter((n) => n.parent >= 0).length, 3, 'n − 1 edges: a tree, so never two lines between places');
+  tree.forEach((n, i) => i && assert.ok(n.parent < i && n.flow <= tree[n.parent].flow));
+  assert.equal(Math.round(tree[0].flow * 1000), Math.round(pts.reduce((s, p) => s + p.weight, 0) * 1000));
+  assert.equal(tree.find((n) => n.wi === 5)?.parent, tree.findIndex((n) => Math.abs(n.y - (home.y - d)) < 1e-9), 'the far place hangs off the nearer one');
+  assert.equal(spillTree([]).length, 0);
 });

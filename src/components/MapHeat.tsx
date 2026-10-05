@@ -1,8 +1,9 @@
 // The map's heat: where you've felt things, drawn like the journal's sky. Each entry is a soft, breathing puff in
 // the colour of its world, and where puffs gather the map fills with that world's letters (Sky's ramps), denser
 // and brighter the more was felt there. Recent entries burn brighter; older ones linger, fainter.
-// A thread runs through every place in the order you were there, from the first to the latest: a thick rope of
-// twisting strands in the colours of the places it joins, made of the same letters, with a glow flowing along it.
+// From home (where most was felt) one thread spills out and branches to every place, like a spill finding its way:
+// thick near home, tapering to fine tips, in the colours of the places it joins, made of the same letters, with a
+// glow seeping outward along it. It keeps the same width at every zoom.
 import { useEffect, useRef } from 'preact/hooks';
 import { RAMPS } from './Sky';
 
@@ -34,6 +35,98 @@ const hex = (s: string): RGB => {
 const mix = (a: RGB, b: RGB, t: number): RGB => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)) as RGB;
 const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const worldOf = (core: string | null) => {
+  const found = core ? WORLDS.indexOf(core) : -1;
+  return found < 0 ? NONE : found;
+};
+
+export interface SpillNode {
+  /** a place, in world units, with how much was felt there (own) and in everything beyond it (flow) */
+  x: number; y: number; wi: number; own: number; flow: number;
+  /** the place it branches from (an index into the list, always earlier), -1 for home */
+  parent: number;
+  /** the curve in from the parent: its two control points, and how far from home it starts and ends */
+  c1: [number, number]; c2: [number, number]; s0: number; s1: number;
+}
+
+/**
+ * The thread's shape: places (entries close together are one) joined by the shortest tree that reaches them all,
+ * grown out from home, the place with the most felt around it. Home comes first; every place after its parent.
+ */
+export function spillTree(points: HeatPoint[]): SpillNode[] {
+  let cells = new Map<string, { x: number; y: number; own: number; by: number[] }>();
+  for (let bits = 20; bits >= 8; bits -= 2) {
+    const g = 2 ** bits;
+    cells = new Map();
+    for (const p of points) {
+      const key = `${Math.round(p.x * g)}:${Math.round(p.y * g)}`;
+      const cell = cells.get(key) ?? { x: 0, y: 0, own: 0, by: new Array(KINDS).fill(0) };
+      const wt = Math.max(0.01, p.weight);
+      cell.x += p.x * wt; cell.y += p.y * wt; cell.own += wt;
+      cell.by[worldOf(p.core)] += wt;
+      cells.set(key, cell);
+    }
+    if (cells.size <= 1200) break;
+  }
+  const places = [...cells.values()].map((c) => ({ x: c.x / c.own, y: c.y / c.own, own: c.own, wi: c.by.indexOf(Math.max(...c.by)) }));
+  const n = places.length;
+  if (!n) return [];
+  // home: the place with the most felt within a couple of kilometres of it
+  const NEAR = 6e-5;
+  let home = 0, most = -1;
+  for (let i = 0; i < n; i++) {
+    let sum = 0;
+    for (let j = 0; j < n; j++) if (Math.abs(places[i].x - places[j].x) < NEAR && Math.abs(places[i].y - places[j].y) < NEAR) sum += places[j].own;
+    if (sum > most) { most = sum; home = i; }
+  }
+  // Prim's tree from home
+  const dist = new Float64Array(n).fill(Infinity), from = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+  const order: number[] = [];
+  dist[home] = 0;
+  for (let step = 0; step < n; step++) {
+    let next = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && (next < 0 || dist[i] < dist[next])) next = i;
+    done[next] = 1;
+    order.push(next);
+    const a = places[next];
+    for (let i = 0; i < n; i++) {
+      if (done[i]) continue;
+      const d = Math.hypot(places[i].x - a.x, places[i].y - a.y);
+      if (d < dist[i]) { dist[i] = d; from[i] = next; }
+    }
+  }
+  const at = new Int32Array(n);
+  order.forEach((p, i) => (at[p] = i));
+  const nodes: SpillNode[] = order.map((p) => ({ ...places[p], flow: places[p].own, parent: from[p] < 0 ? -1 : at[from[p]], c1: [0, 0], c2: [0, 0], s0: 0, s1: 0 }));
+  for (let i = n - 1; i > 0; i--) nodes[nodes[i].parent].flow += nodes[i].flow;
+
+  // each place's way through: where the thread comes in from, leaning toward where most of it goes on to
+  type V = [number, number];
+  const unit = (v: V, or: V): V => { const l = Math.hypot(v[0], v[1]); return l > 1e-12 ? [v[0] / l, v[1] / l] : or; };
+  const turn = (v: V, a: number): V => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
+  const dirOf = (i: number): V => { const P = nodes[nodes[i].parent]; return unit([nodes[i].x - P.x, nodes[i].y - P.y], [1, 0]); };
+  const way: V[] = nodes.map(() => [0, 0]);
+  for (let i = 1; i < n; i++) {
+    const d = dirOf(i), f = nodes[i].flow;
+    way[i] = [way[i][0] + d[0] * f, way[i][1] + d[1] * f];
+    const p = nodes[i].parent;
+    if (p > 0) way[p] = [way[p][0] + d[0] * f, way[p][1] + d[1] * f];
+  }
+  const BEND = 0.45;
+  const leaf = new Uint8Array(n).fill(1);
+  for (let i = 1; i < n; i++) leaf[nodes[i].parent] = 0;
+  for (let i = 1; i < n; i++) {
+    const N = nodes[i], P = nodes[N.parent], d = dirOf(i);
+    const L = Math.hypot(N.x - P.x, N.y - P.y);
+    const out = N.parent === 0 ? turn(d, -BEND * 0.6) : unit([d[0] + 0.8 * unit(way[N.parent], d)[0], d[1] + 0.8 * unit(way[N.parent], d)[1]], d);
+    const inn = leaf[i] ? turn(d, BEND) : unit([d[0] + 0.8 * unit(way[i], d)[0], d[1] + 0.8 * unit(way[i], d)[1]], d);
+    N.c1 = [P.x + out[0] * L * 0.35, P.y + out[1] * L * 0.35];
+    N.c2 = [N.x - inn[0] * L * 0.35, N.y - inn[1] * L * 0.35];
+    N.s0 = P.s1;
+    N.s1 = N.s0 + L * 1.05;
+  }
+  return nodes;
+}
 
 export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: number; z: number } | null; w: number; h: number }) {
   const glyphRef = useRef<HTMLCanvasElement>(null);
@@ -51,6 +144,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
     let dark = false;
     let puffs: HTMLCanvasElement[] = [];
     let strand: string[] = []; // the thread's colour in each world
+    let spill: SpillNode[] = [], spillFor: HeatPoint[] | null = null;
     // the letters: per world, its ramp's characters in two rows (warm, and hot where the heat is strongest)
     const atlas = document.createElement('canvas');
     let tile = 0, levels: number[][][] = [];
@@ -114,16 +208,12 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       const t = now / 1000;
       const k = 256 * 2 ** view.z;
       const left = view.x * k - w / 2, top = view.y * k - h / 2;
-      const r0 = clamp(R_WORLD * k, 34, 130);
+      const r0 = clamp(R_WORLD * k, 30, 72);
 
       c.setTransform(1 / SCALE, 0, 0, 1 / SCALE, 0, 0);
       c.clearRect(0, 0, w, h);
       heat.fill(0);
       byWorld.fill(0);
-      const worldOf = (core: string | null) => {
-        const found = core ? WORLDS.indexOf(core) : -1;
-        return found < 0 ? NONE : found;
-      };
       /** Adds a soft round of heat to the letter grid, looking only at the cells it can reach. */
       const splat = (cx: number, cy: number, r: number, f0: number, wi: number) => {
         const rr = r * r;
@@ -158,80 +248,77 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
         splat(cx, cy, r, p.weight, wi);
       }
 
-      // the thread: every place in the order you were there, one long rope of three twisting strands, with a
-      // glow running along it from the first place toward the latest
-      const nodes: { x: number; y: number; wi: number }[] = [];
-      for (const p of points) {
-        const last = nodes[nodes.length - 1];
-        const x = p.x * k - left, y = p.y * k - top;
-        if (last && Math.abs(last.x - x) < 0.5 && Math.abs(last.y - y) < 0.5) continue; // still in the same spot
-        nodes.push({ x, y, wi: worldOf(p.core) });
-      }
-      const rope = clamp(r0 * 0.3, 9, 30); // half the rope's width
-      const far = Math.max(w, h) * 3;
-      let before = 0; // how far along the thread each segment starts, so the glow flows on without jumps
-      c.lineCap = 'round';
-      c.lineJoin = 'round';
-      for (let i = 0; i + 1 < nodes.length; i++) {
-        const A = nodes[i], B = nodes[i + 1];
-        const P0 = nodes[i - 1] ?? A, P3 = nodes[i + 2] ?? B;
-        const len = Math.hypot(B.x - A.x, B.y - A.y);
-        const start = before;
-        before += len;
-        const pad = rope + len * 0.25;
-        if (Math.max(A.x, B.x) < -pad || Math.min(A.x, B.x) > w + pad || Math.max(A.y, B.y) < -pad || Math.min(A.y, B.y) > h + pad) continue;
-        // a long segment (zoomed in close) is drawn straight and only where it crosses the screen; a short one curves
-        let t0 = 0, t1 = 1;
-        const straight = len > far;
-        if (straight) {
-          const dx = B.x - A.x, dy = B.y - A.y;
-          for (const [pp, q] of [[-dx, A.x + rope], [dx, w + rope - A.x], [-dy, A.y + rope], [dy, h + rope - A.y]]) {
-            if (pp === 0) { if (q < 0) t1 = -1; continue; }
-            const r = q / pp;
-            if (pp < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r);
-          }
-          if (t0 >= t1) continue;
-        }
+      // the spill: one branching thread running out from home to every place, thickest where the most has
+      // flowed through it and tapering to fine tips, with a glow running outward along it
+      if (spillFor !== points) { spill = spillTree(points); spillFor = points; }
+      const total = spill.length ? spill[0].flow : 1;
+      const width = (f: number) => 1.6 + 8.5 * Math.sqrt(Math.max(0, f) / total); // half-width, px, the same at any zoom
+      const sx = (x: number) => x * k - left, sy = (y: number) => y * k - top;
+      for (const node of spill) {
+        const P = node.parent >= 0 ? spill[node.parent] : null;
+        if (!P) continue;
+        const pts = [[P.x, P.y], node.c1, node.c2, [node.x, node.y]].map(([x, y]) => [sx(x), sy(y)]);
+        const w0 = width(node.flow), w1 = width(node.flow - node.own * 0.7);
+        const pad = w0 * 3 + 20;
+        if (Math.max(...pts.map((q) => q[0])) < -pad || Math.min(...pts.map((q) => q[0])) > w + pad) continue;
+        if (Math.max(...pts.map((q) => q[1])) < -pad || Math.min(...pts.map((q) => q[1])) > h + pad) continue;
         const at = (u: number): [number, number] => {
-          if (straight) return [A.x + (B.x - A.x) * u, A.y + (B.y - A.y) * u];
-          const u2 = u * u, u3 = u2 * u;
-          return [
-            0.5 * (2 * A.x + (-P0.x + B.x) * u + (2 * P0.x - 5 * A.x + 4 * B.x - P3.x) * u2 + (-P0.x + 3 * A.x - 3 * B.x + P3.x) * u3),
-            0.5 * (2 * A.y + (-P0.y + B.y) * u + (2 * P0.y - 5 * A.y + 4 * B.y - P3.y) * u2 + (-P0.y + 3 * A.y - 3 * B.y + P3.y) * u3),
-          ];
+          const v = 1 - u, a = v * v * v, b = 3 * v * v * u, cc = 3 * v * u * u, d = u * u * u;
+          return [a * pts[0][0] + b * pts[1][0] + cc * pts[2][0] + d * pts[3][0], a * pts[0][1] + b * pts[1][1] + cc * pts[2][1] + d * pts[3][1]];
         };
-        const n = Math.min(1500, Math.max(2, Math.ceil((len * (t1 - t0)) / THREAD_STEP)));
-        const xs: number[] = [], ys: number[] = [], nx: number[] = [], ny: number[] = [], ss: number[] = [];
-        for (let j = 0; j <= n; j++) {
-          const u = t0 + ((t1 - t0) * j) / n;
-          const [x, y] = at(u);
-          const [x2, y2] = at(Math.min(1, u + 0.002));
-          const [x1, y1] = u + 0.002 > 1 ? at(u - 0.002) : [x, y];
-          const tl = Math.hypot(x2 - x1, y2 - y1) || 1;
-          xs.push(x); ys.push(y); nx.push(-(y2 - y1) / tl); ny.push((x2 - x1) / tl); ss.push(start + len * u);
+        // only the stretches near the screen are sampled finely, so a branch to somewhere far stays cheap close in
+        const poly = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) + Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]) + Math.hypot(pts[3][0] - pts[2][0], pts[3][1] - pts[2][1]);
+        if (poly < 3) continue; // places this close are one puff from here
+        const us: number[] = [];
+        const COARSE = Math.min(48, Math.ceil(poly / 200));
+        let prev = at(0);
+        for (let i = 1; i <= COARSE; i++) {
+          const u0 = (i - 1) / COARSE, u1 = i / COARSE;
+          const cur = at(u1);
+          const len = Math.hypot(cur[0] - prev[0], cur[1] - prev[1]);
+          const m = pad + len * 0.1;
+          const seen = Math.max(prev[0], cur[0]) > -m && Math.min(prev[0], cur[0]) < w + m && Math.max(prev[1], cur[1]) > -m && Math.min(prev[1], cur[1]) < h + m;
+          if (seen) {
+            const n = Math.min(400, Math.max(1, Math.ceil(len / THREAD_STEP)));
+            for (let j = us.length && us[us.length - 1] === u0 ? 1 : 0; j <= n; j++) us.push(u0 + ((u1 - u0) * j) / n);
+          } else if (us.length && us[us.length - 1] !== -1) us.push(-1); // a break
+          prev = cur;
         }
-        // the colour: a soft wide glow down the middle, then the strands, each from A's world to B's
-        const grad = c.createLinearGradient(A.x, A.y, B.x, B.y);
-        grad.addColorStop(0, strand[A.wi]);
-        grad.addColorStop(1, strand[B.wi]);
-        c.strokeStyle = grad;
-        for (let strandNo = -1; strandNo < 3; strandNo++) {
-          c.beginPath();
-          for (let j = 0; j <= n; j++) {
-            const off = strandNo < 0 ? 0 : Math.sin(ss[j] * 0.045 - t * 1.6 + strandNo * 2.094) * rope * 0.75;
-            const x = xs[j] + nx[j] * off, y = ys[j] + ny[j] * off;
-            j ? c.lineTo(x, y) : c.moveTo(x, y);
+        const along = node.s0 * k, span = (node.s1 - node.s0) * k;
+        let run: { x: number; y: number; nx: number; ny: number; hw: number; s: number; u: number }[] = [];
+        const flush = () => {
+          if (run.length < 2) { run = []; return; }
+          // the colour: a soft glow, then the thread itself, each from where it comes from to where it goes
+          const grad = c.createLinearGradient(pts[0][0], pts[0][1], pts[3][0], pts[3][1]);
+          grad.addColorStop(0, strand[P.wi]);
+          grad.addColorStop(1, strand[node.wi]);
+          c.fillStyle = grad;
+          for (const [grow, alpha] of [[2.6, 0.16], [1, 0.7]]) {
+            c.beginPath();
+            run.forEach((q, i) => (i ? c.lineTo : c.moveTo).call(c, q.x + q.nx * q.hw * grow, q.y + q.ny * q.hw * grow));
+            for (let i = run.length - 1; i >= 0; i--) c.lineTo(run[i].x - run[i].nx * run[i].hw * grow, run[i].y - run[i].ny * run[i].hw * grow);
+            c.closePath();
+            c.globalAlpha = alpha;
+            c.fill();
           }
-          c.lineWidth = strandNo < 0 ? rope * 2.4 : rope * 0.5;
-          c.globalAlpha = strandNo < 0 ? 0.22 : 0.6;
-          c.stroke();
-        }
-        // and its letters, swaying with the first strand, brighter where the glow is passing
-        for (let j = 0; j <= n; j++) {
-          const pulse = 0.5 + 0.5 * Math.sin(ss[j] * 0.012 - t * 2.4);
-          const off = Math.sin(ss[j] * 0.045 - t * 1.6) * rope * 0.3;
-          const f0 = (0.32 + 0.45 * pulse * pulse) * (THREAD_STEP / (1.07 * rope));
-          splat(xs[j] + nx[j] * off, ys[j] + ny[j] * off, rope * 1.1, f0, j / n < 0.5 ? A.wi : B.wi);
+          // and its letters, brighter where the glow is passing
+          for (const q of run) {
+            const pulse = 0.5 + 0.5 * Math.sin(q.s * 0.012 - t * 2.2);
+            const r = Math.max(q.hw * 1.3, sp * 0.95);
+            const f0 = (0.25 + 0.45 * pulse * pulse) * (0.45 + 0.55 * Math.min(1, q.hw / 7)) * (THREAD_STEP / (1.07 * r)) * 1.6;
+            splat(q.x, q.y, r, f0, q.u < 0.5 ? P.wi : node.wi);
+          }
+          run = [];
+        };
+        for (const u of [...us, -1]) {
+          if (u < 0) { flush(); continue; }
+          const [x, y] = at(u);
+          const [x2, y2] = at(Math.min(1, u + 0.001)), [x1, y1] = at(Math.max(0, u - 0.001));
+          const tl = Math.hypot(x2 - x1, y2 - y1) || 1;
+          const s = along + span * u;
+          // it seeps: the edges swell and ebb a little as it goes
+          const hw = (w0 + (w1 - w0) * u) * (1 + 0.16 * Math.sin(s * 0.05 - t * 1.3) * Math.sin(s * 0.013 + t * 0.4));
+          run.push({ x, y, nx: -(y2 - y1) / tl, ny: (x2 - x1) / tl, hw, s, u });
         }
       }
 

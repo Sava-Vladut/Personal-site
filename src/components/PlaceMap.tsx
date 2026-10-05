@@ -6,7 +6,7 @@ import { Icon, Sprite } from './icons';
 import { MapHeat, type HeatPoint } from './MapHeat';
 import '../styles/map.css';
 
-/** weight: how much it counts on the heat map (recency and intensity), 1 by default. The heat map's thread joins pins in their order. */
+/** weight: how much it counts on the heat map (recency and intensity), 1 by default. */
 export interface Pin { id: string; lat: number; lon: number; core: string | null; weight?: number }
 /** The centre, in world units (0–1 across and down, Web Mercator), and the zoom. */
 export interface View { x: number; y: number; z: number }
@@ -307,11 +307,17 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
     >
       <div class="map-tiles" aria-hidden="true">{tiles}</div>
       {heat && <MapHeat points={heatPoints} view={v} w={w} h={h} />}
-      {clusters.map((c) => {
+      {clusters.map((c, i) => {
         const many = c.ids.length > 1;
-        const d = many ? Math.min(44, 28 + Math.log2(c.ids.length) * 4) : 26;
+        const d = many ? Math.min(40, 30 + Math.log2(c.ids.length) * 2.5) : 28;
         const style = { transform: `translate(${Math.round(c.x - d / 2)}px, ${Math.round(c.y - d / 2)}px)`, width: `${d}px`, height: `${d}px`, '--c': c.core ? `var(--emo-${c.core})` : 'var(--ink)' };
-        const face = many ? <span>{c.ids.length}</span> : c.core ? <Sprite core={c.core} size={12} color="#fff" /> : <Icon name="notebook" size={13} stroke={2} />;
+        // the feeling's sprite, living like the journal's; a gathering of pins shows its main one, with a count
+        const face = (
+          <>
+            {c.core ? <Sprite core={c.core} size={many ? 16 : 14} idle={still ? 'view' : true} delay={(i * 370) % 1300} /> : <Icon name="notebook" size={14} stroke={2} />}
+            {many && <span class="map-pin-count">{c.ids.length}</span>}
+          </>
+        );
         return still ? (
           <span key={c.key} class={`map-pin${many ? ' many' : ''}`} style={style} aria-hidden="true">{face}</span>
         ) : (
