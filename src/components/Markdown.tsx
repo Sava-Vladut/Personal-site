@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { BookMention, PersonMention, SongMention } from './mentions';
+import { PersonMention, SongMention, WikiLink } from './mentions';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
 // strings, so nothing written in a note can run as code.
@@ -66,7 +66,7 @@ function parse(text: string, offset = 0): Block[] {
 const INLINE = new RegExp(
   [
     /(`+)([^`\n]+?)\1/.source, //                                        1, 2 code
-    /\[\[(?:([^\]|\n]+)\|)?([^\]\n]+)\]\]/.source, //                    3, 4 wiki link: a book on the shelf, else text
+    /\[\[(?:([^\]|\n]+)\|)?([^\]\n]+)\]\]/.source, //                    3, 4 wiki link: a book on the shelf, a note, else text
     /\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/.source, //       5, 6 link
     /\*\*(\S(?:[^\n]*?\S)?)\*\*/.source, //                               7 bold
     /~~(\S(?:[^\n]*?\S)?)~~/.source, //                                   8 strike
@@ -88,7 +88,7 @@ function inline(text: string): ComponentChildren[] {
     if (i > at) out.push(text.slice(at, i));
     at = i + m[0].length;
     if (m[2] !== undefined) out.push(<code>{m[2]}</code>);
-    else if (m[4] !== undefined) out.push(<BookMention target={m[3]} text={m[4]} />);
+    else if (m[4] !== undefined) out.push(<WikiLink target={m[3]} text={m[4]} />);
     else if (m[5] !== undefined) out.push(<a href={m[6]} target="_blank" rel="noopener noreferrer">{inline(m[5])}</a>);
     else if (m[7] !== undefined) out.push(<strong>{inline(m[7])}</strong>);
     else if (m[8] !== undefined) out.push(<s>{inline(m[8])}</s>);

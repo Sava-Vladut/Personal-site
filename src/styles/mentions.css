@@ -1,5 +1,5 @@
 /* ============================================================
-   Tags: people, books and music named in a note
+   Tags: people, books and music named in a note, and links to other notes
    ============================================================ */
 
 /* ---------- in a note being read: a chip in the colour of the feeling it brings ---------- */
@@ -18,6 +18,8 @@
 .mention.is-book { border-radius: 7px; padding-left: 4px; }
 .mention.is-book .book-cover { border-radius: 2px; box-shadow: none; }
 .mention.is-book .book-cover-title { display: none; }
+.mention.is-note { border-radius: 7px; padding-left: 5px; }
+.mention.is-note > svg { flex: none; color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
 /* a sheen runs across each tag as the note opens */
 .mention::after {
   content: ''; position: absolute; inset: 0; pointer-events: none; translate: -110% 0;
@@ -66,6 +68,16 @@
 .peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
 .peek-actions { display: flex; gap: 8px; }
 .peek .progress { margin: -4px 0 0; }
+.peek-note-icon {
+  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 13px;
+  color: color-mix(in oklab, var(--c, var(--ink-3)) 70%, var(--ink));
+  background: color-mix(in oklab, var(--c, var(--ink-3)) 16%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c, var(--ink-3)) 30%, transparent);
+}
+.peek-text {
+  margin: 0; font: 400 14.5px/1.5 var(--serif); color: var(--ink-2); white-space: pre-line;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+}
 
 /* ---------- writing: what an @ suggests, in place of the toolbar ---------- */
 
@@ -132,6 +144,9 @@
 ::highlight(mm-at-anger) { background-color: rgb(227 73 72 / 0.2); }
 ::highlight(mm-at-book) { background-color: rgb(192 138 82 / 0.26); }
 ::highlight(mm-at-song) { background-color: rgb(138 108 240 / 0.22); }
+::highlight(mm-at-note) { background-color: rgb(120 118 112 / 0.16); text-decoration: underline dotted rgb(120 118 112 / 0.7); }
+/* a link's note:<id>| steps back, leaving its title to read */
+::highlight(mm-at-note-id) { color: rgb(140 138 132 / 0.55); }
 
 @media (prefers-reduced-motion: reduce) {
   .peek, .mention-pick, .mention-at, .mention .mini-record, .mention-pick .mini-record { animation: none !important; }

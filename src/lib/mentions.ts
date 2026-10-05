@@ -2,6 +2,7 @@
 //   @[Ana]              someone in People       — @[person:<id>|Ana] when two people share the name
 //   [[Dune]]            a book on your shelf     — see books.ts
 //   ♪[Blinding Lights]  music in your records   — ♪[song:<id>|Title] when two share a title
+//   [[note:<id>|Title]] another note             — see links.ts
 import { coreOf } from '../data/emotions';
 import { MENTION, resolveMention } from './books';
 import type { Book, Entry, Person, Song } from './store';
@@ -11,7 +12,7 @@ export const SONG = /♪\[(?:song:([^\]|\n]+)\|)?([^\]\n]+)\]/g;
 
 const key = (t: string) => t.trim().normalize('NFC').toLowerCase();
 /** Keyboard composition and iOS spaces should not change which names suggestions find. */
-const searchKey = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim().replace(/\s+/g, ' ');
+export const searchKey = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim().replace(/\s+/g, ' ');
 const clean = (t: string) => (t.trim() || 'Untitled').replace(/[\]|\n]/g, ' ').slice(0, 120);
 
 export function resolvePerson(target: string | undefined, text: string, people: Person[]) {
@@ -40,7 +41,7 @@ export function mentionOfSong(s: Song, songs: Song[]) {
 export const songsIn = (text: string, songs: Song[]) =>
   text.includes('♪[') ? [...new Set([...text.matchAll(SONG)].map((m) => resolveSong(m[1], m[2], songs)?.id).filter(Boolean) as string[])] : [];
 
-export type MentionKind = 'person' | 'book' | 'song';
+export type MentionKind = 'person' | 'book' | 'song' | 'note';
 export interface Found { start: number; end: number; kind: MentionKind; core: string | null }
 
 /** Every tag in a stretch of text that points at something you have, with where it sits: for colouring them while writing. */
@@ -100,7 +101,7 @@ export type Suggestion =
   | { kind: 'song'; item: Song };
 
 /** How well `q` matches some words: 3 for the start of the whole, 2 for the start of a word, 1 anywhere, 0 not at all. */
-function score(q: string, ...texts: string[]) {
+export function score(q: string, ...texts: string[]) {
   let best = 0;
   for (const t of texts) {
     const s = searchKey(t);

@@ -1,15 +1,19 @@
-// Tags in a note, shown: a chip for each person, book or piece of music, which opens a little card about it. And,
+// Tags in a note, shown: a chip for each person, book, piece of music or linked note, which opens a little card about it. And,
 // while writing, the strip of suggestions an @ brings up, and the burst of colour a new tag lands with.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { byline, progressOf, resolveMention, STATUS_LABEL } from '../lib/books';
+import { plainText } from '../lib/body';
+import { rangeLabel } from '../lib/dates';
+import { noteLabel, resolveNote, type LinkSuggestion } from '../lib/links';
+import { previewOf } from '../lib/markdown';
 import { resolvePerson, resolveSong, songsIn, type MentionKind, type Suggestion } from '../lib/mentions';
 import { navigate } from '../lib/router';
 import { observable, useBooks, useEntries, usePeople, useSongs, type Person } from '../lib/store';
 import { BookCover, Stars } from './books';
 import { EmotionChip } from './emotion';
-import { Icon } from './icons';
+import { Icon, NoteIcon } from './icons';
 import { MiniMusic, MusicEmbed, MusicThing, musicSub } from './music';
 import { Avatar } from './people';
 import '../styles/mentions.css';
@@ -53,10 +57,16 @@ export function PersonMention({ target, text }: { target?: string; text: string 
   return <Chip kind="person" id={p.id} c={tint(p.emotions)}><Avatar p={p} size={18} /><span>{p.name || text}</span></Chip>;
 }
 
-export function BookMention({ target, text }: { target?: string; text: string }) {
-  const b = resolveMention(target, text, useBooks());
-  if (!b) return <span class="md-wiki">{text}</span>;
-  return <Chip kind="book" id={b.id} c={tint(b.emotions)}><BookCover b={b} width={13} /><span>{text}</span></Chip>;
+/** A [[wiki link]]: a book on the shelf, or another note. */
+export function WikiLink({ target, text }: { target?: string; text: string }) {
+  const books = useBooks();
+  const entries = useEntries();
+  const isNote = !!target?.startsWith('note:');
+  const b = isNote ? undefined : resolveMention(target, text, books);
+  if (b) return <Chip kind="book" id={b.id} c={tint(b.emotions)}><BookCover b={b} width={13} /><span>{text}</span></Chip>;
+  const n = resolveNote(target, text, entries, books);
+  if (n) return <Chip kind="note" id={n.id} c={tint(n.emotions)}>{n.icon ? <NoteIcon id={n.icon} size={14} /> : <Icon name="notebook" size={14} />}<span>{noteLabel(n)}</span></Chip>;
+  return isNote ? <span class="mention is-missing" title="This note was deleted">{text}</span> : <span class="md-wiki">{text}</span>;
 }
 
 export function SongMention({ target, text }: { target?: string; text: string }) {
@@ -156,6 +166,27 @@ export function PeekLayer() {
         </div>
       </>
     );
+  } else if (t.kind === 'note') {
+    const n = entries.find((x) => x.id === t.id);
+    if (!n) return null;
+    c = tint(n.emotions);
+    const { heading, preview } = previewOf(plainText(n.text), n.title, 160);
+    body = (
+      <>
+        <div class="peek-head">
+          <span class="peek-note-icon">{n.icon ? <NoteIcon id={n.icon} size={24} /> : <Icon name="notebook" size={22} />}</span>
+          <div class="peek-who">
+            <b class="peek-name">{heading || 'Untitled'}</b>
+            <span class="peek-sub">{rangeLabel(n.date, n.dateEnd)}</span>
+          </div>
+        </div>
+        {preview && <p class="peek-text">{preview}</p>}
+        {n.emotions.length > 0 && <div class="peek-feelings">{n.emotions.slice(0, 3).map((id) => <EmotionChip id={id} size="sm" />)}</div>}
+        <div class="peek-actions">
+          <button class="btn btn-primary btn-s grow" onClick={() => go('note/' + n.id)}>Open <Icon name="arrow-up-right" size={15} /></button>
+        </div>
+      </>
+    );
   } else {
     const s = songs.find((x) => x.id === t.id);
     if (!s) return null;
@@ -216,15 +247,17 @@ function PersonPeek({ p, moments, last }: { p: Person; moments: number; last?: s
 
 /* ---------- while writing: what an @ suggests ---------- */
 
-/** The strip that takes the toolbar's place while an @ is being typed. Arrow keys move through it, Enter picks. */
-export function MentionStrip({ items, active, q, canAdd, onPick, onAdd, listId = 'mention-suggestions' }: {
-  items: Suggestion[];
+/** The strip that takes the toolbar's place while an @ (or a [[ link) is being typed. Arrow keys move through it, Enter picks. */
+export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, active, q, canAdd, onPick, onAdd, listId = 'mention-suggestions', link }: {
+  items: S[];
   active: number;
   q: string;
   canAdd: boolean;
-  onPick: (s: Suggestion) => void;
+  onPick: (s: S) => void;
   onAdd: () => void;
   listId?: string;
+  /** a [[ link to a note (or a book), not an @tag */
+  link?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const touch = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
@@ -272,15 +305,16 @@ export function MentionStrip({ items, active, q, canAdd, onPick, onAdd, listId =
     },
   });
   return (
-    <div id={listId} ref={ref} class="mention-strip" role="listbox" aria-label="Tag someone, a book or music">
-      <span class="mention-at" aria-hidden="true">@</span>
-      {items.map((s, i) => {
+    <div id={listId} ref={ref} class={`mention-strip${link ? ' is-link' : ''}`} role="listbox" aria-label={link ? 'Link a note or a book' : 'Tag someone, a book or music'}>
+      <span class="mention-at" aria-hidden="true">{link ? '[[' : '@'}</span>
+      {items.map((s: Suggestion | LinkSuggestion, i) => {
         const [label, sub, thumb, c] =
           s.kind === 'person' ? [s.item.name || 'Unnamed', s.item.relation || 'Person', <Avatar p={s.item} size={26} />, tint(s.item.emotions)]
           : s.kind === 'book' ? [s.item.title.trim() || 'Untitled', s.item.authors || 'Book', <BookCover b={s.item} width={19} />, tint(s.item.emotions)]
+          : s.kind === 'note' ? [noteLabel(s.item), rangeLabel(s.item.date, s.item.dateEnd), s.item.icon ? <NoteIcon id={s.item.icon} size={20} /> : <Icon name="notebook" size={18} />, tint(s.item.emotions)]
           : [s.item.music.title, s.item.music.sub ?? 'Music', <MiniMusic m={s.item.music} />, tint(s.item.emotions)];
         return (
-          <button key={`${s.kind}:${s.item.id}`} id={`${listId}-option-${i}`} type="button" role="option" tabIndex={-1} aria-selected={i === active} class={`mention-pick is-${s.kind}`} style={c ? { '--c': c } : undefined} {...pick(() => onPick(s))}>
+          <button key={`${s.kind}:${s.item.id}`} id={`${listId}-option-${i}`} type="button" role="option" tabIndex={-1} aria-selected={i === active} class={`mention-pick is-${s.kind}`} style={c ? { '--c': c } : undefined} {...pick(() => onPick(s as S))}>
             <span class="mention-thumb">{thumb}</span>
             <span class="mention-text"><b>{label}</b><small>{sub}</small></span>
           </button>
@@ -292,7 +326,7 @@ export function MentionStrip({ items, active, q, canAdd, onPick, onAdd, listId =
           <span class="mention-text"><b>{q.trim()}</b><small>New person</small></span>
         </button>
       )}
-      {!items.length && !canAdd && <span class="mention-empty">Type a name, a book or a song</span>}
+      {!items.length && !canAdd && <span class="mention-empty">{link ? 'No note with that title' : 'Type a name, a book or a song'}</span>}
     </div>
   );
 }

@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.34.0',
+    date: '2026-10-05',
+    changes: [
+      'Link one note to another: type [[ (or tap the new link button) and pick a note from the strip above the keyboard',
+      'With nothing typed yet, [[ suggests your latest notes and the books you’re reading; type to find any note by its title or first line',
+      'Reading a note, links are chips with the note’s current title, so renaming a note keeps every link to it; tap one for a card with Open',
+      'At the bottom of a note, “Linked from” lists the notes that link to it, with the line each link sits on',
+      'Typing [[Title]] by hand links a note with that title when no book on your shelf has it',
+      'Export as text writes links as the note’s title and day',
+    ],
+  },
+  {
     version: '1.33.0',
     date: '2026-10-05',
     changes: [

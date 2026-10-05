@@ -24,6 +24,9 @@ import { MiniMusic } from '../components/music';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 
+/** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
+const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
+
 export function Journal() {
   const entries = useEntries();
   const people = usePeople();
@@ -50,7 +53,7 @@ export function Journal() {
     return entries.filter((e) => {
       if (day && !(e.date === day || (e.dateEnd && e.date <= day && day <= e.dateEnd))) return false;
       if (words.length) {
-        const hay = `${e.title} ${plainText(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
+        const hay = `${e.title} ${plainText(e.text).replace(TAG_ID, '$1')} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
         if (!words.every((w) => hay.includes(w))) return false;
       }
       return true;

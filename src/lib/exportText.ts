@@ -5,6 +5,7 @@ import { weatherName } from '../data/weather';
 import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
 import { KIND_LABEL } from './spotify';
+import { noteLabel, resolveNote } from './links';
 import { PERSON, SONG, resolvePerson, resolveSong } from './mentions';
 import { dateName, peopleIn } from './people';
 import { todayKey } from './dates';
@@ -23,12 +24,15 @@ function feeling(id: string) {
 }
 const feelings = (ids: string[]) => ids.map(feeling).join('; ');
 
-/** Tags read as words: a book as its title, someone as their name, music as its title and who it's by. */
+/** Tags read as words: a book as its title, someone as their name, music as its title and who it's by, a linked note as its title and day. */
 function mentions(text: string, books: Book[]) {
   const people = getPeople();
   const songs = getSongs();
+  const entries = getEntries();
   return text
     .replace(MENTION, (_, target: string | undefined, label: string) => {
+      const n = target?.startsWith('note:') || !resolveMention(target, label, books) ? resolveNote(target, label, entries, books) : undefined;
+      if (n) return `“${noteLabel(n)}” (note, ${longDate(n.date)})`;
       const b = resolveMention(target, label, books);
       return b ? `“${b.title}” (book)` : label;
     })

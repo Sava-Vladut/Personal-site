@@ -1,13 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { flushSync } from 'preact/compat';
-import { timeLabel } from '../lib/dates';
-import { goBack } from '../lib/router';
+import { rangeLabel, timeLabel } from '../lib/dates';
+import { goBack, navigate } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { editable, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
 import { listKey, replace, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
+import { linkedFrom, linkOf, linkRanges, noteLabel, suggestLinks, typedLink, type LinkSuggestion } from '../lib/links';
 import { connectSpotify } from '../lib/spotify';
 import { spaceBefore } from '../lib/voiceText';
 import {
@@ -33,10 +34,12 @@ import { useDictation, VoiceButton, VoiceSheet } from '../components/VoiceButton
 import '../styles/notes.css';
 
 type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'voice';
+/** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
+type Typed = { start: number; end: number; q: string; link?: boolean };
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 /** The highlight each kind of tag is coloured with while writing: people in the colour of the feeling they bring. */
-const highlights = () => ['mm-at-book', 'mm-at-song', 'mm-at-none', ...CHART_ORDER.map((id) => `mm-at-${id}`)];
+const highlights = () => ['mm-at-book', 'mm-at-song', 'mm-at-note', 'mm-at-note-id', 'mm-at-none', ...CHART_ORDER.map((id) => `mm-at-${id}`)];
 const highlightRegistry = () => (typeof CSS === 'undefined' ? undefined : (CSS as unknown as { highlights?: Map<string, unknown> }).highlights);
 
 const MAX_PHOTOS = 20;
@@ -69,8 +72,8 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
   value: string;
   onChange: (v: string) => void;
   onCaret: (pos: number) => void;
-  /** an @tag being typed before the caret, or null */
-  onMention: (m: { start: number; end: number; q: string } | null) => void;
+  /** an @tag (or a [[ link) being typed before the caret, or null */
+  onMention: (m: Typed | null) => void;
   /** keys go here first; true means it was handled */
   onKey: (e: KeyboardEvent) => boolean;
   placeholder?: string;
@@ -90,7 +93,7 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
     const box = editable(el);
     const start = box.selectionStart;
     handlers.current.onCaret(start);
-    handlers.current.onMention(!composing.current && getSelection()?.isCollapsed !== false && start === box.selectionEnd ? typedMention(box.value, start) : null);
+    handlers.current.onMention(!composing.current && getSelection()?.isCollapsed !== false && start === box.selectionEnd ? typedMention(box.value, start) ?? typedLink(box.value, start) : null);
   };
   const queueCaret = () => {
     cancelAnimationFrame(frame.current);
@@ -201,8 +204,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // — or the picture it's over, to make an album with
   const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number; onto: string | null } | null>(null);
   const [details, setDetails] = useState(false); // the Feelings page
-  // an @tag being typed: in which text block, where its @ is and what follows it; and which suggestion is picked
-  const [mention, setMentionState] = useState<{ seg: number; start: number; end: number; q: string } | null>(null);
+  // an @tag (or [[ link) being typed: in which text block, where its @ is and what follows it; and which suggestion is picked
+  const [mention, setMentionState] = useState<({ seg: number } & Typed) | null>(null);
   const [pickAt, setPickAt] = useState(0);
   const dismissed = useRef(''); // which @ Escape put away, as block:position
   const pickingMention = useRef(false);
@@ -222,6 +225,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
+  // the notes that link here, shown at the bottom
+  const backlinks = useMemo(() => (draft ? linkedFrom(draft.id, allEntries, shelf) : []), [draft?.id, allEntries, shelf]);
 
   const titleRef = useAutosize(draft?.title ?? '');
   const textRef = useRef<HTMLDivElement | null>(null);
@@ -357,10 +362,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       areas.current.slice(0, bodyOf(draft).texts.length).forEach((el) => {
         if (!el?.isConnected) return;
         const box = editable(el);
-        for (const f of mentionsIn(box.value, people, shelf, songs)) {
-          const name = f.kind === 'person' ? `mm-at-${f.core ?? 'none'}` : `mm-at-${f.kind}`;
+        const add = (name: string, start: number, end: number) => {
           if (!groups.has(name)) groups.set(name, []);
-          groups.get(name)!.push(box.range(f.start, f.end));
+          groups.get(name)!.push(box.range(start, end));
+        };
+        for (const f of mentionsIn(box.value, people, shelf, songs)) add(f.kind === 'person' ? `mm-at-${f.core ?? 'none'}` : `mm-at-${f.kind}`, f.start, f.end);
+        // a note link's note:<id>| fades back, leaving the title to read
+        for (const l of linkRanges(box.value, allEntries, shelf)) {
+          add('mm-at-note', l.start, l.end);
+          if (l.label > l.start + 2) add('mm-at-note-id', l.start + 2, l.label);
         }
       });
     for (const name of highlights()) {
@@ -368,7 +378,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (ranges) reg.set(name, new Make(...ranges));
       else reg.delete(name);
     }
-  }, [draft?.text, reading, people, shelf, songs]);
+  }, [draft?.text, reading, people, shelf, songs, allEntries]);
   useEffect(() => () => {
     const reg = highlightRegistry();
     if (reg) highlights().forEach((n) => reg.delete(n));
@@ -706,29 +716,33 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
 
   /* ---------- @tags ---------- */
 
-  const setMention = (seg: number, m: { start: number; end: number; q: string } | null) => {
+  const setMention = (seg: number, m: Typed | null) => {
     if (!m) dismissed.current = '';
     else if (dismissed.current === `${seg}:${m.start}`) m = null;
     setMentionState((cur) =>
       !m ? (cur?.seg === seg ? null : cur)
-      : cur && cur.seg === seg && cur.start === m.start && cur.end === m.end && cur.q === m.q ? cur
+      : cur && cur.seg === seg && cur.start === m.start && cur.end === m.end && cur.q === m.q && !!cur.link === !!m.link ? cur
       : { seg, ...m });
   };
-  const found = mention ? suggest(mention.q, people, shelf, songs, allEntries) : [];
   const typing = mention;
-  const suggestions = typing ? found : [];
-  const canAdd = !!typing && typing.q.trim().length > 1 && !people.some((p) => personNameKey(p.name) === personNameKey(typing.q));
+  const suggestions: (Suggestion | LinkSuggestion)[] = !typing ? []
+    : typing.link ? suggestLinks(typing.q, allEntries, shelf, draft.id)
+    : suggest(typing.q, people, shelf, songs, allEntries);
+  const canAdd = !!typing && !typing.link && typing.q.trim().length > 1 && !people.some((p) => personNameKey(p.name) === personNameKey(typing.q));
   const choices = suggestions.length + (canAdd ? 1 : 0);
   const activeChoice = Math.min(pickAt, Math.max(0, choices - 1));
 
-  /** Swaps the typed @query for the tag, tags a person in the note too, and lets it land with a little burst. */
-  const pickMention = async (s: Suggestion | 'new') => {
+  /**
+   * Swaps the typed @query for the tag (or the [[query for the link), tags a person in the note too, and lets it land
+   * with a little burst.
+   */
+  const pickMention = async (s: Suggestion | LinkSuggestion | 'new') => {
     const m = mention;
     const el = m && areas.current[m.seg];
     if (!m || !el || !latest.current || !alive.current || removing.current || pickingMention.current) return;
     const box = editable(el);
     const source = box.value;
-    if (source.slice(m.start, m.end) !== '@' + m.q) return setMentionState(null);
+    if (source.slice(m.start, m.end) !== (m.link ? '[[' : '@') + m.q) return setMentionState(null);
     // Keep the keyboard open in the original touch event; a later asynchronous focus cannot open it on iOS.
     box.focus({ preventScroll: true });
     const selection = { start: box.selectionStart, end: box.selectionEnd };
@@ -762,6 +776,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (!current) return setMentionState(null);
       token = mentionOf(current, getBooks());
       color = '#c08a52';
+    } else if (s.kind === 'note') {
+      const current = getEntries().find((e) => e.id === s.item.id);
+      if (!current) return setMentionState(null);
+      token = linkOf(current);
+      if (current.emotions[0]) color = `var(--emo-${coreOf(current.emotions[0]).id})`;
     } else {
       const current = getSongs().find((song) => song.id === s.item.id);
       if (!current) return setMentionState(null);
@@ -775,7 +794,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const b = bodyOf(d);
     if (b.texts[m.seg] !== source) return;
     const v = source;
-    const after = v.slice(m.end);
+    // a link typed inside brackets already closed takes their place
+    const after = m.link && v.startsWith(']]', m.end) ? v.slice(m.end + 2) : v.slice(m.end);
     const insert = token + (/^\s/.test(after) ? '' : ' ');
     box.value = v.slice(0, m.start) + insert + after;
     box.setSelectionRange(m.start + insert.length, m.start + insert.length);
@@ -824,8 +844,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     return true;
   };
 
-  /** The @ button: types an @ where the caret is (writing first, if reading), which brings up the suggestions. */
-  const startMention = () => {
+  /** The @ and link buttons: type an @ (or [[) where the caret is (writing first, if reading), which brings up the suggestions. */
+  const startMention = (sigil: '@' | '[[' = '@') => {
     const go = () => {
       const box = target();
       if (!box) return;
@@ -834,7 +854,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       box.setSelectionRange(a, z);
       const original = box.value;
       const before = original.slice(0, a);
-      const insert = (before && !/[\s([{]$/.test(before) ? ' ' : '') + '@';
+      const insert = (before && !/[\s([{]$/.test(before) ? ' ' : '') + sigil;
       try { document.execCommand('insertText', false, insert); } catch {}
       if (box.value === original) box.setRangeText(insert, a, z);
       const pos = a + insert.length;
@@ -843,7 +863,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (seg >= 0) {
         setText(seg, box.value);
         where.current = { seg, pos };
-        setMention(seg, typedMention(box.value, pos));
+        setMention(seg, sigil === '@' ? typedMention(box.value, pos) : typedLink(box.value, pos));
       }
     };
     if (!reading) return go();
@@ -988,6 +1008,21 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           ))}
         </div>
       )}
+      {backlinks.length > 0 && (
+        <section class="backlinks" aria-label="Linked from">
+          <h2 class="eyebrow">Linked from</h2>
+          {backlinks.map(({ entry: e, context }) => (
+            <button key={e.id} class="backlink card" onClick={() => navigate('note/' + e.id)}>
+              <span class="backlink-icon">{e.icon ? <NoteIcon id={e.icon} size={20} /> : <Icon name={e.kind === 'checkin' ? 'mood-smile' : 'notebook'} size={18} />}</span>
+              <span class="backlink-main">
+                <span class="backlink-title">{e.kind === 'checkin' && !e.title.trim() ? 'Check-in' : noteLabel(e)}</span>
+                <span class="backlink-when">{rangeLabel(e.date, e.dateEnd)}</span>
+                {context && <span class="backlink-context">{context}</span>}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
       <input
         ref={fileRef}
         type="file"
@@ -999,9 +1034,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <FormatBar
         target={target}
         format={!reading}
-        swapLabel={typing ? 'Tag someone, a book or music' : 'Picture'}
+        swapLabel={typing ? (typing.link ? 'Link a note or a book' : 'Tag someone, a book or music') : 'Picture'}
         swap={typing ? (
-          <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} />
+          <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} link={typing.link} />
         ) : selIndex >= 0 && (
           <MediaTools
             m={body.media[selIndex]}
@@ -1032,11 +1067,21 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           class="format-btn"
           onPointerDown={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={startMention}
+          onClick={() => startMention('@')}
           aria-label="Tag someone, a book or music"
           title="Tag someone, a book or music"
         >
           <Icon name="at" size={19} />
+        </button>
+        <button
+          class="format-btn"
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => startMention('[[')}
+          aria-label="Link another note"
+          title="Link another note"
+        >
+          <Icon name="link" size={19} />
         </button>
         <button class="format-btn" onClick={() => setOpen('book')} aria-label="Mention a book" title="Mention a book">
           <Icon name="books" size={19} />

@@ -275,3 +275,16 @@
 .wx-line { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
 .wx-line svg { flex: none; }
 .details-intensity { margin-top: 14px; padding: 14px; border-radius: 13px; background: var(--surface-2); }
+
+/* ---------- Linked from: the notes that link here ---------- */
+
+.backlinks { display: grid; gap: 8px; margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line); }
+.backlinks .eyebrow { margin: 0 2px 2px; }
+.backlink { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 14px; text-align: left; color: var(--ink); transition: scale 0.25s var(--spring-bouncy), background-color 0.2s; }
+.backlink:active { scale: 0.98; }
+@media (hover: hover) { .backlink:hover { background: var(--surface-2); } }
+.backlink-icon { flex: none; display: grid; place-items: center; width: 22px; height: 24px; color: var(--ink-3); }
+.backlink-main { display: grid; gap: 2px; min-width: 0; }
+.backlink-title { font: 550 16px/1.3 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.backlink-when { font-size: 12.5px; color: var(--ink-3); }
+.backlink-context { margin-top: 4px; font: 400 14px/1.45 var(--serif); color: var(--ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

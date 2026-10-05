@@ -114,6 +114,7 @@ function harness(code, initial = {}) {
       if (id.endsWith('/store')) return store;
       if (id.endsWith('/router')) return { goBack() { navigations.push('back'); }, navigate(to) { navigations.push(to); } };
       if (id.endsWith('/photos')) return { addPhotos: () => importing };
+      if (id.endsWith('/lib/links')) return { linkedFrom: () => [], linkRanges: () => [], suggestLinks: () => [], typedLink: () => null, linkOf: (e) => `[[note:${e.id}|${e.title}]]`, noteLabel: (e) => e.title };
       if (!modules.has(id)) modules.set(id, new Proxy({}, { get: (_, name) => child(name) }));
       return modules.get(id);
     },
