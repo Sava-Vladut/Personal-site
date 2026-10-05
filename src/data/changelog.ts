@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.38.0',
+    date: '2026-10-05',
+    changes: [
+      'Your map is now a heat map: where you felt things glows in the colour of each feeling, drawn in drifting letters like the journal’s clouds',
+      'The more you felt somewhere, the denser and brighter it gets; recent and strong feelings burn brighter, older ones linger, fainter',
+      'The heat lingers as you move the map, leaving a fading trail of colour and letters behind',
+    ],
+  },
+  {
     version: '1.37.1',
     date: '2026-10-05',
     changes: [

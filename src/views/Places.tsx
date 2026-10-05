@@ -16,7 +16,14 @@ export function MapView({ query }: { query: URLSearchParams }) {
   const { places } = useSettings();
   const located = useMemo(() => entries.filter((e) => e.place), [entries]);
   const pins = useMemo<Pin[]>(
-    () => located.map((e) => ({ id: e.id, lat: e.place!.lat, lon: e.place!.lon, core: e.emotions[0] ? coreOf(e.emotions[0]).id : null })),
+    () => {
+      // on the heat map, recent and strong feelings burn brighter; older ones linger, fainter
+      const now = Date.now();
+      return located.map((e) => ({
+        id: e.id, lat: e.place!.lat, lon: e.place!.lon, core: e.emotions[0] ? coreOf(e.emotions[0]).id : null,
+        weight: (0.35 + 0.65 * Math.exp(-Math.max(0, now - e.time) / (60 * 86_400_000))) * (0.6 + e.intensity * 0.12),
+      }));
+    },
     [located],
   );
   const focus = located.find((e) => e.id === query.get('focus'))?.place ?? null;
@@ -30,7 +37,7 @@ export function MapView({ query }: { query: URLSearchParams }) {
 
   return (
     <div class="map-page">
-      <PlaceMap pins={pins} focus={focus} onOpen={setOpen} remember={focus ? undefined : 'map'} />
+      <PlaceMap pins={pins} focus={focus} onOpen={setOpen} remember={focus ? undefined : 'map'} heat />
       <div class="map-bar">
         <button class="glass glass-btn round" onClick={() => goBack('stats?tab=weather')} aria-label="Back"><Icon name="arrow-left" /></button>
         <div class="glass map-title">

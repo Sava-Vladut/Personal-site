@@ -74,3 +74,10 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 .spot-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spot-sub { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spot-when { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* the heat map (MapHeat): a soft colour layer, stretched up from 1/4 size, under the letters */
+.map-heat { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.map-heat-clouds { opacity: 0.8; mix-blend-mode: multiply; }
+:root[data-theme='dark'] .map-heat-clouds { opacity: 0.9; mix-blend-mode: screen; }
+/* the pins sit on the heat a little quieter, so the colour leads */
+.map-page .map-pin:not(.many) { scale: 0.85; }

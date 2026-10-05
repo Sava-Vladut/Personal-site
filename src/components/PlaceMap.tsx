@@ -3,9 +3,11 @@
 // Pins that would overlap gather into one with a count; tapping it zooms in until they part, then opens them.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Icon, Sprite } from './icons';
+import { MapHeat, type HeatPoint } from './MapHeat';
 import '../styles/map.css';
 
-export interface Pin { id: string; lat: number; lon: number; core: string | null }
+/** weight: how much it counts on the heat map (recency and intensity), 1 by default */
+export interface Pin { id: string; lat: number; lon: number; core: string | null; weight?: number }
 /** The centre, in world units (0–1 across and down, Web Mercator), and the zoom. */
 export interface View { x: number; y: number; z: number }
 
@@ -52,7 +54,7 @@ const tileUrl = (z: number, x: number, y: number) => `https://tile.openstreetmap
 /** Where each remembered map was left, so coming back from a note finds it as it was. */
 const remembered = new Map<string, View>();
 
-export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, class: cls }: {
+export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, class: cls }: {
   pins: Pin[];
   /** start close in on this spot, instead of showing every pin */
   focus?: { lat: number; lon: number } | null;
@@ -62,6 +64,8 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, class: c
   onTap?: () => void;
   still?: boolean;
   remember?: string;
+  /** lay a heat map of the pins' feelings over the tiles (components/MapHeat.tsx) */
+  heat?: boolean;
   class?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -82,6 +86,7 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, class: c
   };
 
   const points = useMemo(() => pins.map((p) => ({ ...p, ...project(p.lat, p.lon) })), [pins]);
+  const heatPoints = useMemo<HeatPoint[]>(() => points.map((p) => ({ x: p.x, y: p.y, core: p.core, weight: p.weight ?? 1 })), [points]);
 
   useLayoutEffect(() => {
     const el = box.current!;
@@ -301,6 +306,7 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, class: c
       onPointerCancel={still ? undefined : up}
     >
       <div class="map-tiles" aria-hidden="true">{tiles}</div>
+      {heat && <MapHeat points={heatPoints} view={v} w={w} h={h} />}
       {clusters.map((c) => {
         const many = c.ids.length > 1;
         const d = many ? Math.min(44, 28 + Math.log2(c.ids.length) * 4) : 26;

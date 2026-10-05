@@ -572,3 +572,48 @@ test('the Face ID lock only opens for a verified answer to its own challenge, an
   assert.equal(storage.has('mm-lock'), false);
   assert.equal(lock.getLock().on, false);
 });
+
+test('the map heat draws feeling letters where entries gather, and lets them linger after the view moves away', async () => {
+  const calls = { glyphs: [], puffs: 0 };
+  const ctx = (kind) => new Proxy({}, {
+    get: (_t, name) => name === 'drawImage'
+      ? (...a) => { if (kind === 'glyph') calls.glyphs.push(a); else if (kind === 'cloud') calls.puffs++; }
+      : name === 'createRadialGradient' ? () => ({ addColorStop() {} })
+      : () => {},
+    set: () => true,
+  });
+  const canvas = (kind) => ({ width: 0, height: 0, getContext: () => ctx(kind) });
+  const refs = [canvas('glyph'), canvas('cloud')];
+  let frame = null;
+  const props = { points: [{ x: 0.5, y: 0.5, core: 'joy', weight: 1.5 }], view: { x: 0.5, y: 0.5, z: 12 }, w: 300, h: 300 };
+  const { MapHeat } = await load('src/components/MapHeat.tsx', {
+    'preact/hooks': { useRef: (v) => ({ current: refs.length ? refs.shift() : v }), useEffect: (fn) => fn() },
+    './Sky': { RAMPS: { default: [' ', '.', ':', '+', '*', 'o', 'O', '#'], joy: [' ', '·', '.', '+', '*', 'o', 'O', '@'] } },
+    'preact/jsx-runtime': { jsx: () => null, jsxs: () => null, Fragment: 'f' },
+  }, {
+    document: { createElement: () => canvas('atlas'), documentElement: { dataset: { theme: 'dark' } }, hidden: false, addEventListener() {}, removeEventListener() {} },
+    getComputedStyle: () => ({ getPropertyValue: (n) => (n === '--emo-joy' ? '#eda100' : '#808080') }),
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    MutationObserver: class { observe() {} disconnect() {} },
+    requestAnimationFrame: (fn) => { frame = fn; return 1; }, cancelAnimationFrame() {},
+    devicePixelRatio: 1,
+  });
+  MapHeat(props);
+  let now = 1000;
+  const step = (n) => { for (let i = 0; i < n; i++) { const f = frame; frame = null; f((now += 40)); } };
+  step(40);
+  assert.ok(calls.puffs > 0);
+  const near = calls.glyphs.filter((a) => Math.hypot(a[5] - 150, a[6] - 150) < 80).length;
+  assert.ok(near > 10, `letters around the entry: ${near}`);
+  assert.equal(calls.glyphs.filter((a) => Math.hypot(a[5] - 150, a[6] - 150) > 140).length, 0);
+
+  // pan far away: the letters fade over several frames instead of vanishing at once
+  props.view = { x: 0.6, y: 0.5, z: 12 };
+  calls.glyphs.length = 0;
+  step(1);
+  assert.ok(calls.glyphs.length > 0, 'still lingering right after the move');
+  step(80);
+  calls.glyphs.length = 0;
+  step(1);
+  assert.equal(calls.glyphs.length, 0);
+});

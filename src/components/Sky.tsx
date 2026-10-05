@@ -15,7 +15,7 @@ const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const MIN_FRAME = 15; // never step faster than ~60fps, even on 120Hz screens
 
 /** Letters from empty to dense. A level with several characters picks one per cell, for texture. */
-const RAMPS: Record<string, string[]> = {
+export const RAMPS: Record<string, string[]> = {
   default: [' ', '.', ':', '+', '*', 'o', 'O', '#'],
   joy: [' ', '·', '.', '+', '*', 'o', 'O', '@'],
   'hope-interest': [' ', '.', ':', '^', '*', '+', 'x', 'X'],
