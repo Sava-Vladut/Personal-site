@@ -868,6 +868,8 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; min-height: 56px; border-bottom: 1px solid var(--line); }
 .list-row:not(:has(~ .list-row)) { border-bottom: 0; }
 .list-row .muted.small { margin-top: 3px; line-height: 1.45; }
+.list-row .settings-tip { margin-top: 8px; }
+.settings-tip b { font-weight: 600; color: var(--ink-2); }
 .list-row.action { width: 100%; text-align: left; font-size: 15px; transition: background-color 0.12s; }
 .list-row.action:hover:not(:disabled) { background: var(--surface-2); }
 

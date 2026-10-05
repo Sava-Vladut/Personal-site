@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.40.1',
+    date: '2026-10-05',
+    changes: [
+      'Writing again within ten minutes reuses where you just were, so the browser doesn’t ask for your location again',
+      'On an iPhone, Settings › Places shows how to make Safari stop asking for your location every time',
+    ],
+  },
+  {
     version: '1.40.0',
     date: '2026-10-05',
     changes: [

@@ -642,3 +642,30 @@ test('the map heat draws feeling letters where entries gather, and one thread br
   assert.equal(tree.find((n) => n.wi === 5)?.parent, tree.findIndex((n) => Math.abs(n.y - (home.y - d)) < 1e-9), 'the far place hangs off the nearer one');
   assert.equal(spillTree([]).length, 0);
 });
+
+test('writing again soon after uses the last location instead of asking the browser again', async () => {
+  const store = new Map();
+  let asked = 0, clock = 1_000_000;
+  const { locate, forgetFix } = await load('src/lib/weather.ts', {
+    './dates': { todayKey: () => '2026-10-01', addDays: () => '2026-08-01', keyOf: (d) => d.toISOString().slice(0, 10) },
+    './store': { getEntries: () => [], getSettings: () => ({}), normalizeWeather: (w) => w, normalizePlace: (p) => p, annotateEntries: async () => {}, saveEntry: async () => {} },
+  }, {
+    localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) },
+    navigator: { geolocation: { getCurrentPosition: (ok) => { asked++; ok({ coords: { latitude: 44.43, longitude: 26.1 } }); } } },
+    Date: class extends Date { static now() { return clock; } },
+  });
+  const ten = 10 * 60_000;
+  assert.deepEqual({ ...(await locate(ten)) }, { lat: 44.43, lon: 26.1 });
+  assert.equal(asked, 1);
+  clock += ten - 1000;
+  await locate(ten);
+  assert.equal(asked, 1, 'a fix from nine minutes ago is reused');
+  await locate();
+  assert.equal(asked, 2, 'asking on purpose always asks');
+  clock += ten + 1;
+  await locate(ten);
+  assert.equal(asked, 3, 'an old fix is not');
+  forgetFix();
+  await locate(ten);
+  assert.equal(asked, 4, 'nothing is reused once forgotten');
+});

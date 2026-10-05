@@ -26,13 +26,39 @@ async function getJSON(url: string, init: RequestInit = {}) {
 
 /* ---------- where you are ---------- */
 
-export function locate(): Promise<{ lat: number; lon: number }> {
+// The last fix, kept on this device, so writing again soon after (even after closing the app) doesn't make the
+// browser ask again. Safari forgets its answer when the app closes unless the site is set to Allow.
+const WHERE = 'mm-where';
+const REUSE_MS = 10 * 60_000;
+
+function lastFix(maxAge: number): { lat: number; lon: number } | null {
+  try {
+    const f = JSON.parse(localStorage.getItem(WHERE) || 'null');
+    return f && Date.now() - f.at >= 0 && Date.now() - f.at < maxAge && Number.isFinite(f.lat) && Number.isFinite(f.lon) ? { lat: f.lat, lon: f.lon } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Forgets the last fix: when Places is turned off, or everything is deleted. */
+export function forgetFix() {
+  try { localStorage.removeItem(WHERE); } catch {}
+}
+
+/** Where you are. A fix younger than maxAge is used as it is, without asking the browser. */
+export function locate(maxAge = 0): Promise<{ lat: number; lon: number }> {
+  const known = maxAge ? lastFix(maxAge) : null;
+  if (known) return Promise.resolve(known);
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error('unsupported'));
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      (p) => {
+        const fix = { lat: p.coords.latitude, lon: p.coords.longitude };
+        try { localStorage.setItem(WHERE, JSON.stringify({ ...fix, at: Date.now() })); } catch {}
+        resolve(fix);
+      },
       reject,
-      { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 15_000 },
+      { enableHighAccuracy: false, maximumAge: maxAge, timeout: 15_000 },
     );
   });
 }
@@ -70,8 +96,8 @@ export function placeName(lat: number, lon: number): Promise<string> {
 }
 
 /** Where you are now, rounded and named (the name is left empty if the lookup fails). */
-export async function here(): Promise<Place> {
-  const pos = await locate();
+export async function here(maxAge = 0): Promise<Place> {
+  const pos = await locate(maxAge);
   const p = normalizePlace({ ...pos, name: '' })!;
   return { ...p, name: await placeName(p.lat, p.lon).catch(() => '') };
 }
@@ -144,7 +170,7 @@ export async function contextNow(e: Entry): Promise<Partial<Entry> | null> {
   const s = getSettings();
   if ((!s.weather && !s.places) || e.date !== todayKey() || Math.abs(Date.now() - e.time) > NOW_WINDOW) return null;
   const patch: Partial<Entry> = {};
-  if (s.places && !e.place) patch.place = await here().catch(() => undefined);
+  if (s.places && !e.place) patch.place = await here(REUSE_MS).catch(() => undefined);
   const spot = patch.place ?? e.place ?? s.home;
   if (s.weather && spot) patch.weather = await weatherNow(spot, e).catch(() => undefined);
   const current = getSettings();

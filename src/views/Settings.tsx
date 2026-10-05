@@ -5,7 +5,7 @@ import { exportText } from '../lib/exportText';
 import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
-import { fillWeather, here, locationError } from '../lib/weather';
+import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
@@ -22,6 +22,9 @@ addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   installEvent = e as typeof installEvent;
 });
+
+// Safari on an iPhone or iPad forgets a site's location answer when it closes, unless the site is set to Allow
+const iOS = typeof navigator !== 'undefined' && (/iPhone|iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
 
 const copy = async (text: string) => {
   try {
@@ -108,6 +111,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
       .filter(Boolean).map((x) => ' and ' + x).join('');
     if (!confirm(`Delete all ${entries.length} entries${them} ${where}? This can’t be undone — export a backup first if you might want them.`)) return;
     await deleteAll();
+    forgetFix();
     toast('All entries deleted');
   };
   const toggleSync = () => {
@@ -142,7 +146,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   };
   // Turning places on asks for your location there and then, so the browser's question comes with a reason.
   const togglePlaces = async () => {
-    if (settings.places) return setSettings({ places: false });
+    if (settings.places) return forgetFix(), setSettings({ places: false });
     setLocating(true);
     try {
       const p = await here();
@@ -266,6 +270,11 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <div>
               <div class="row gap-s"><Icon name="map-pin" size={18} /> Places</div>
               <div class="muted small">{locating ? 'Finding you…' : 'Saves where you are when you write, and puts your entries on a map. Uses your location, with names from OpenStreetMap.'}</div>
+              {settings.places && iOS && (
+                <div class="muted small settings-tip">
+                  If your iPhone asks for your location every time: open <b>Settings › Apps › Safari › Location</b> and choose <b>Allow</b>. Then it won’t ask again.
+                </div>
+              )}
             </div>
             <button class="switch" role="switch" aria-checked={settings.places} aria-label="Places" onClick={togglePlaces} disabled={locating} />
           </div>
