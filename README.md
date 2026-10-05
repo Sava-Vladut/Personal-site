@@ -46,11 +46,11 @@ Things to know:
 |---|---|
 | **Journal** | Notes and check-ins grouped by day. Search, filter by type or by emotion world, or open the calendar to see one day. |
 | **Check in** | "Name it to tame it": pick a world → a zone → the exact feeling (48 of them, each with a definition), set intensity 1–5, optionally add a line. |
-| **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), photos from your gallery (or, on desktop, a file browser, drag and drop, or paste), images from a web search (Openverse), and music from Spotify (songs and albums as records in their sleeves, playlists and podcasts as cassettes; tap one to put it on and open Spotify's player). Tag people, books and music in the text with **@**: it suggests from People and Media, writes `@[Ana]`, `[[Dune]]` or `♪[Song]`, colours them as you write, and shows them as chips that open a card about each when reading. Saves automatically. |
+| **New note** (+) | Title, icon, text, up to three feelings with an intensity, a date (today by default, or any day, or a range), photos from your gallery (or, on desktop, a file browser, drag and drop, or paste), images from a web search (Openverse), and music from Spotify (songs and albums as records in their sleeves, playlists and podcasts as cassettes; tap one to put it on and open Spotify's player). Tag people, books and music in the text with **@**: it suggests from People and Media, writes `@[Ana]`, `[[Dune]]` or `♪[Song]`, colours them as you write, and shows them as chips that open a card about each when reading. Saves automatically. The microphone button types what you say (see [Voice typing](#voice-typing)). |
 | **Media** | Books and music. **Books**: your shelf as a bookcase, each book a spine in its cover's colour, as thick as it is long, with a call-number sticker, rating dots and, while you're reading it, a bookmark. A book's page has a library card in its pocket with the days you added, started and finished it and wrote about it, stamped in ink (tap a stamp to change it). **Music**: songs, albums, playlists and podcasts from Spotify, kept as records in a wooden shelf and tapes in a rack, with what's on repeat spinning on top. Each has a page to play it, rate it, note how it makes you feel and who it brings to mind, and see the notes it's in. Music added to notes can be kept from there. |
 | **Map** | Every entry saved with a place, as pins in the colour of what you felt. Pinch, drag or scroll to zoom; tap a spot for what you wrote there. From Settings, the Weather tab in Stats, or a note's Feelings page. |
 | **Stats** | A sky header and colour theme taken from the feeling you had most, with charts that animate in as you scroll to them. Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Weather**: mood by sky, temperature, hours of daylight and daylight vs dark, and by place, with a map. **Dex**: every feeling you've named so far. Every chart has a table view. |
-| **Settings** | Light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, backup export/import, delete everything. |
+| **Settings** | Light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, voice typing (speech model, language, remove), backup export/import, delete everything. |
 
 Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant −1), from −5 to +5.
 
@@ -90,6 +90,32 @@ and a link to its source page, shown when you open it.
 
 Spotify settings are described in `.env.example`.
 
+## Voice typing
+
+The microphone button in a note's toolbar types what you say at the caret. The first tap offers a one-time download of a
+speech model ([Whisper](https://github.com/openai/whisper), run in the browser with
+[transformers.js](https://github.com/huggingface/transformers.js) and WebAssembly), after which it works offline. The
+recording is turned into text on the device and is never uploaded. Pick the model in **Settings → Voice typing**: Quick
+(English, ~45 MB), Accurate (English, ~80 MB) or Other languages (~100 languages, ~80 MB, with a language setting).
+**Remove downloaded models** frees the space.
+
+It needs a secure page (HTTPS or localhost) and a browser with a microphone, `MediaRecorder` and WebAssembly. It runs on one
+thread, so a long recording takes a while to write down on a slow phone; the Quick model is the fastest. Recordings stop
+at 5 minutes.
+
+How it is hosted, so nothing is fetched from a third party and the CSP stays strict (`connect-src` and `script-src` are
+unchanged apart from `'wasm-unsafe-eval'`):
+
+- `public/voice/transformers-<version>.js` is the committed runtime bundle. `npm run voice` rebuilds it (it installs
+  transformers.js into a temporary directory, so the app's own `node_modules` and Docker image don't carry it). A new
+  release also needs its ONNX Runtime version added to `ORT_VERSIONS` in `server/voice.js`.
+- The server fetches the model files and ONNX Runtime's WebAssembly once, from Hugging Face and jsDelivr, into
+  `data/voice/`, and serves them from there (`/voice/models/…`, `/voice/ort-…`). Only the listed files can be asked for.
+  The first download on a new server is therefore slower. Include `data/voice/` in your backups only if you want to skip
+  that, as it is rebuilt on demand.
+- The service worker caches the runtime in its own `mm-voice-v1` cache; the model files are kept by the page in the
+  `transformers-cache` cache. Neither is part of the offline precache, so people who never use voice typing never download them.
+
 ## Deploying
 
 Any host that runs Node 20 (20.19+) or Node 22.12+: `npm ci && npm run build && npm start`, behind HTTPS. Set `PUBLIC_URL` to the public address
@@ -125,6 +151,7 @@ and remaining browser-side and infrastructure scaling limits.
 server/index.js          HTTP routing + Spotify proxy, no dependencies
 server/static.js         compressed static hosting and bounded asset cache
 server/sync.js           encrypted sync storage and transfer limits
+server/voice.js          fetches and serves voice typing's model files from data/voice
 src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours, sprites
 src/lib/                 storage (IndexedDB), stats, dates, router, API clients
 src/components/          sheets, pickers, charts

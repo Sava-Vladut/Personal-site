@@ -1,10 +1,13 @@
 // Offline support. The whole build is cached on install. Pages: network first, cached copy when offline.
 // Hashed assets: cache first. Web images (Openverse thumbnails, older Pinterest images): cache first, so notes keep their pictures offline.
+// Voice typing's runtime and WebAssembly (/voice/transformers-*, /voice/ort-*) are cached first the first time they are used, in a cache of their
+// own that updates never clear. Its model files (/voice/models/) are large and are kept by the page itself, so they pass straight through.
 // VERSION and PRECACHE are filled in by the build (see vite.config.ts).
 const VERSION = 'dev';
 const PRECACHE = [];
 const APP = 'mm-app-' + VERSION;
 const IMG = 'mm-img-v1';
+const VOICE = 'mm-voice-v1';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(PRECACHE.length ? PRECACHE : ['/', '/theme.js', '/manifest.webmanifest', '/icon.svg'])));
@@ -54,7 +57,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    if (url.pathname.startsWith('/api/')) return;
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/voice/models/')) return;
+    if (/^\/voice\/(?:transformers-|ort-)/.test(url.pathname)) return e.respondWith(cacheFirst(req, VOICE));
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/'));
     if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) return e.respondWith(cacheFirst(req, APP));
     return e.respondWith(networkFirst(req));

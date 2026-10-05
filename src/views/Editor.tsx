@@ -5,10 +5,11 @@ import { goBack } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { editable, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
-import { listKey, toggleTask } from '../lib/markdown';
+import { listKey, replace, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { connectSpotify } from '../lib/spotify';
+import { spaceBefore } from '../lib/voiceText';
 import {
   blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
   type Book, type Entry, type Person,
@@ -28,9 +29,10 @@ import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarge
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
+import { useDictation, VoiceButton, VoiceSheet } from '../components/VoiceButton';
 import '../styles/notes.css';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'voice';
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 /** The highlight each kind of tag is coloured with while writing: people in the colour of the feeling they bring. */
@@ -231,6 +233,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const cancelMove = useRef<(() => void) | null>(null);
   // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
   const where = useRef({ seg: -1, pos: 0 });
+  const dictate = useRef<(text: string) => void>(() => {});
+  useDictation((text) => dictate.current(text));
 
   // Once a new note is saved, point the URL at it so a reload reopens it. Never rewrite a sheet's history entry.
   const syncUrl = () => {
@@ -850,6 +854,18 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
   const body = bodyOf(draft);
+
+  /** Writes what was said at the caret (or the end of the note, when reading), spaced like typed text. */
+  dictate.current = (text) => {
+    const wasReading = reading;
+    if (wasReading) flushSync(() => setReading(false));
+    const last = areas.current[body.texts.length - 1];
+    const box = wasReading && last ? editable(last) : target();
+    if (!box) return;
+    const end = box.value.length;
+    const from = wasReading ? end : box.selectionStart;
+    replace(box, from, wasReading ? end : box.selectionEnd, spaceBefore(box.value.slice(0, from), text) + text);
+  };
   const last = body.texts.length - 1;
   const selIndex = reading || !sel ? -1 : body.media.findIndex((m) => mediaKey(m) === sel);
 
@@ -1025,6 +1041,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <button class="format-btn" onClick={() => setOpen('book')} aria-label="Mention a book" title="Mention a book">
           <Icon name="books" size={19} />
         </button>
+        <VoiceButton onSetup={() => setOpen('voice')} />
       </FormatBar>
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
 
@@ -1038,6 +1055,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           update({ images: [...draft.images, ...fresh], text: place(body, fresh.map((i) => ({ kind: 'image', url: i.url }))) });
         }}
       />
+      <VoiceSheet open={open === 'voice'} onClose={close} />
       <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title="Mention a book" status="reading" />
       <SpotifySheet
         open={open === 'spotify'}

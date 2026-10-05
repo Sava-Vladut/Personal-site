@@ -17,7 +17,8 @@ function precache(): Plugin {
         readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]));
       const files = walk(outDir)
         .map((f) => '/' + relative(outDir, f).split(sep).join('/'))
-        .filter((f) => f !== '/sw.js' && f !== '/index.html')
+        // voice typing's runtime is only fetched by people who turn it on (public/sw.js caches it then)
+        .filter((f) => f !== '/sw.js' && f !== '/index.html' && !f.startsWith('/voice/'))
         .sort();
       const urls = ['/', ...files];
       const hash = createHash('sha256');
@@ -36,8 +37,10 @@ function precache(): Plugin {
 export default defineConfig({
   plugins: [preact(), precache()],
   server: {
-    // The Node server (npm start / scripts/dev.mjs) handles /api
-    proxy: { '/api': `http://localhost:${process.env.PORT || 8085}` },
+    // The Node server (npm start / scripts/dev.mjs) handles /api and fetches the speech model files
+    proxy: Object.fromEntries(['/api', '/voice/models', '/voice/ort-'].map((p) => [p, `http://localhost:${process.env.PORT || 8085}`])),
   },
+  // the speech worker imports a bundled runtime, which needs modules in workers
+  worker: { format: 'es' },
   build: { target: 'es2022', cssMinify: true },
 });

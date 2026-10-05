@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.33.0',
+    date: '2026-10-05',
+    changes: [
+      'Voice typing: tap the microphone in a note’s toolbar, say it, tap again, and the words are written at the caret',
+      'It runs on your device: your voice is never uploaded. The first tap offers a one-time download of a speech model (45–80 MB), and after that it works offline',
+      'Settings → Voice typing: choose Quick, Accurate or Other languages (around 100, with a language setting), see what’s on the device, or remove it to free the space',
+    ],
+  },
+  {
     version: '1.32.0',
     date: '2026-10-04',
     changes: [

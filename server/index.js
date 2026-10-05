@@ -3,6 +3,7 @@
 //  • Spotify: resolves pasted song/album/playlist links (no key needed) and, when a client id is
 //    configured, runs the authorization-code flow and proxies search and playlist listing.
 //    Access tokens live in encrypted http-only cookies — per browser, never in JS, never on disk.
+//  • voice typing: hands out the speech model and its WebAssembly runtime, fetched once and kept in data/voice.
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 import http from 'node:http';
@@ -14,6 +15,7 @@ import { HttpError } from './http-error.js';
 import { json } from './http-response.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
+import { createVoiceHandler, isVoicePath } from './voice.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -24,6 +26,7 @@ const APP_URL = (process.env.APP_URL || PUBLIC_URL).replace(/\/+$/, ''); // wher
 const SECURE = PUBLIC_URL.startsWith('https://');
 const DIST = join(ROOT, 'dist');
 const SYNC_DIR = join(ROOT, 'data', 'sync');
+const VOICE_DIR = join(ROOT, 'data', 'voice');
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -59,10 +62,10 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'same-origin',
   'X-Frame-Options': 'DENY',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(self)',
   'Content-Security-Policy':
     "default-src 'self'; img-src 'self' data: blob: https:; " +
-    "style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; manifest-src 'self'; " +
+    "style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; manifest-src 'self'; " +
     "connect-src 'self' https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
     'https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; ' +
     "worker-src 'self'; frame-src https://open.spotify.com; " +
@@ -432,6 +435,7 @@ async function api(req, res, url) {
 /* ---------------- static files ---------------- */
 
 const serveStatic = createStaticHandler(DIST);
+const serveVoice = createVoiceHandler({ directory: VOICE_DIR });
 
 /* ---------------- server ---------------- */
 
@@ -445,6 +449,7 @@ const server = http.createServer(async (req, res) => {
         throw new HttpError(400, 'Bad request URL');
       }
       if (url.pathname.startsWith('/api/')) return await api(req, res, url);
+      if (isVoicePath(url.pathname)) return await serveVoice(req, res, url.pathname);
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
       return await serveStatic(req, res, url.pathname);
     } catch (e) {

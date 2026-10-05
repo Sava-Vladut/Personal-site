@@ -9,6 +9,8 @@ import { fillWeather, here, locationError } from '../lib/weather';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
+import { VoiceLanguage, VoiceModels, VoiceProgress } from '../components/VoiceButton';
+import { downloadModel, removeModels, useVoice, voiceModel, voiceSupported } from '../lib/voice';
 import { HomeSheet, placeLabel } from '../components/weather';
 import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
@@ -267,6 +269,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
         </div>
       </section>
 
+      {voiceSupported() && <VoiceSettings />}
+
       <section class="section">
         <h2 class="section-title">Your data</h2>
         <div class="card list">
@@ -352,6 +356,61 @@ export function Settings({ query }: { query: URLSearchParams }) {
 }
 
 /** Enter a code from another device: loads what's saved under it and keeps this device in sync from then on. */
+/** Speech-to-text for notes: which model, which language, what's on this device. */
+function VoiceSettings() {
+  const v = useVoice();
+  const model = voiceModel(v.model);
+  const ready = v.installed.includes(model.id);
+  return (
+    <section class="section">
+      <h2 class="section-title">Voice typing</h2>
+      <div class="card list">
+        <div class="list-row">
+          <div>
+            <div class="row gap-s"><Icon name="microphone" size={18} /> {v.installed.length ? 'Ready to use' : 'Not set up'}</div>
+            <div class="muted small">
+              Tap the microphone while writing a note and say it instead of typing it. Your voice is turned into words on this device and never leaves it. The speech model downloads once and then works offline.
+            </div>
+          </div>
+        </div>
+        <div class="list-row">
+          <VoiceModels />
+        </div>
+        {model.languages && (
+          <div class="list-row">
+            <span>Language</span>
+            <VoiceLanguage />
+          </div>
+        )}
+        {(!ready || v.preparing || v.error) && (
+          <div class="list-row">
+            <div class="voice-status">
+              <VoiceProgress />
+            </div>
+            {!ready && (
+              <button class="btn btn-primary" onClick={() => void downloadModel()} disabled={v.preparing}>
+                {v.preparing ? 'Downloading…' : `Download · ${model.mb} MB`}
+              </button>
+            )}
+          </div>
+        )}
+        {v.installed.length > 0 && (
+          <button
+            class="list-row action danger"
+            disabled={v.preparing}
+            onClick={async () => {
+              await removeModels();
+              toast('Speech models removed from this device');
+            }}
+          >
+            <span class="row gap-s"><Icon name="trash" size={18} /> Remove downloaded models</span>
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function JoinSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);

@@ -78,6 +78,19 @@ test('malformed request URLs return 400 and the next health request succeeds', a
   assert.deepEqual(await request('/api/health'), { status: 200, body: { ok: true } });
 });
 
+test('voice files outside the allowlist are refused without contacting anyone, and the page may use the microphone', async () => {
+  let fetched = 0;
+  globalThis.fetch = async () => { fetched++; throw new Error('not expected'); };
+  for (const path of ['/voice/models/someone/else/resolve/main/config.json', '/voice/models/onnx-community/whisper-tiny.en/resolve/main/onnx/model.onnx', '/voice/ort-9.9.9/ort-wasm-simd-threaded.wasm', '/voice/models/onnx-community/whisper-tiny.en/resolve/main/..%2Fsecret.json']) {
+    const headers = {};
+    const response = await request(path, undefined, headers);
+    assert.equal(response.status, 404, path);
+    assert.match(headers['Permissions-Policy'], /microphone=\(self\)/);
+    assert.match(headers['Content-Security-Policy'], /script-src 'self' 'wasm-unsafe-eval'/);
+  }
+  assert.equal(fetched, 0);
+});
+
 test('playlist items paginate past 1050 without repeating songs', async () => {
   const offsets = upstream(1101, 'items');
   const ids = [];
