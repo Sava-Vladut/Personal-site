@@ -81,6 +81,14 @@ const NEAR: Spec = {
   toneShift: 0, haze: 0, fill: 1, ink: 1, spacing: [17, 21], font: [12, 13], res: 2, pull: 1.4, reach: 1.15,
   waveRate: 1, active: 16, idle: 30,
 };
+// small skies, for a card: smaller, slower clouds and finer letters, redrawn less often
+const FAR_SMALL: Spec = {
+  ...FAR, size: [0.3, 0.5], perPx: 75, minCount: 3, speed: [1.5, 3], spacing: [9, 10], font: [7, 7], active: 80, idle: 80,
+};
+const NEAR_SMALL: Spec = {
+  ...NEAR, size: [0.45, 0.75], perPx: 125, minCount: 2, speed: [4, 8], yFrom: 0.25, yRange: 0.6, spacing: [12, 13], font: [9.5, 10],
+  active: 40, idle: 40,
+};
 /** If the screen can't keep up, layers redraw this much less often. */
 const EASE = [1, 1.7, 2.6];
 
@@ -186,8 +194,9 @@ function blob(col: RGB, stops: [number, number][], radius: number): HTMLCanvasEl
 /**
  * worlds: the emotion worlds the clouds take their colours from, in order of how much sky each gets.
  * letters: a ramp of its own (RAMPS) instead of the world's.
+ * small: a sky for a card rather than a panel (set once, when it first appears).
  */
-export function Sky({ world, worlds, letters }: { world?: string | null; worlds?: string[]; letters?: string }) {
+export function Sky({ world, worlds, letters, small }: { world?: string | null; worlds?: string[]; letters?: string; small?: boolean }) {
   const els = useRef<(HTMLCanvasElement | null)[]>([]);
   const latest = useRef({ world, worlds, letters });
   const retune = useRef<() => void>();
@@ -224,7 +233,9 @@ export function Sky({ world, worlds, letters }: { world?: string | null; worlds?
         cells: new Float32Array(0), dens: new Float32Array(0), dens2: new Float32Array(0), drawn: 0,
       };
     };
-    const layers = [layer(FAR, farCloud, farGlyph), layer(NEAR, nearCloud, nearGlyph)]; // far first, so the near clouds pass in front
+    const layers = small
+      ? [layer(FAR_SMALL, farCloud, farGlyph), layer(NEAR_SMALL, nearCloud, nearGlyph)]
+      : [layer(FAR, farCloud, farGlyph), layer(NEAR, nearCloud, nearGlyph)]; // far first, so the near clouds pass in front
 
     let w = 0, h = 0;
     let dark = false, norm = 1 / 0.62;

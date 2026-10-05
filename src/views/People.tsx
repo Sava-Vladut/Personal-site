@@ -11,6 +11,7 @@ import { usePref } from '../lib/prefs';
 import { EmotionChip } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
+import { Sky } from '../components/Sky';
 
 /** "today", "yesterday", "24 Sep" */
 export function lastSeen(k: string) {
@@ -137,21 +138,27 @@ const SPOTS = [
 ];
 
 /**
- * Someone in the list, in the colour of what they make you feel: clouds of their main world (and the next)
- * drift through the card, and their feelings' sprites float around it. Both only move while it's on screen.
+ * Someone in the list, in the colour of what they make you feel: a small sky of their worlds drifts through
+ * the card, drawn in their main world's letters, and their feelings' sprites float around it. The sky is only
+ * there while the card is on (or near) the screen, so a long list stays light.
  */
 function PersonCard({ p, facts, moments }: { p: Person; facts: string[]; moments?: Entry[] }) {
   const worlds = useMemo(() => worldsOf(p, moments), [p, moments]);
   const ref = useRef<HTMLButtonElement>(null);
+  const [live, setLive] = useState(false);
   useEffect(() => {
     const el = ref.current;
-    return el && worlds.length ? watchView(el, (on) => el.toggleAttribute('data-live', on)) : undefined;
+    return el && worlds.length
+      ? watchView(el, (on) => { el.toggleAttribute('data-live', on); setLive(on); })
+      : undefined;
   }, [worlds.length > 0]);
+  const sky = useMemo(() => [worlds[0], worlds[1] ?? worlds[0], worlds[2] ?? worlds[0]], [worlds.join()]);
   const style = worlds.length ? { '--m1': `var(--emo-${worlds[0]})`, '--m2': `var(--emo-${worlds[1] ?? worlds[0]})`, '--t': p.created % 9000 } : undefined;
   return (
     <button ref={ref} class={`person-card card${worlds.length ? ' has-mood' : ''}`} style={style} onClick={() => navigate('person/' + p.id)}>
       {worlds.length > 0 && (
         <span class="person-sky" aria-hidden="true">
+          {live && <span class="person-clouds"><Sky worlds={sky} letters={worlds[0]} small /></span>}
           {SPOTS.map((s, i) => (
             <span class="person-float" style={{ right: s.right, top: s.top, bottom: s.bottom, '--d': `${s.dur}s`, '--i': i }}>
               <Sprite core={worlds[i % worlds.length]} size={s.size} idle="view" delay={(p.created + i * 530) % 1500} />
