@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { dayLabel, keyOf } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { DAY } from '../lib/dates';
 import { momentsByPerson, pagesByPerson } from '../lib/people';
-import { useBooks, useEntries, usePeople, useReady, useSongs, type Person } from '../lib/store';
+import { useBooks, useEntries, usePeople, useReady, useSongs, type Entry, type Person } from '../lib/store';
+import { coreOf } from '../data/emotions';
+import { watchView } from '../lib/inView';
 import { plainText } from '../lib/body';
 import { usePref } from '../lib/prefs';
 import { EmotionChip } from '../components/emotion';
-import { Icon } from '../components/icons';
+import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
 
 /** "today", "yesterday", "24 Sep" */
@@ -105,22 +107,68 @@ export function People() {
           const n = (moments.get(p.id)?.length ?? 0) + (pages.get(p.id)?.length ?? 0);
           const at = last.get(p.id);
           const facts = [p.relation, n ? `${n} ${n === 1 ? 'moment' : 'moments'} · last ${lastSeen(keyOf(new Date(at!)))}` : ''].filter(Boolean);
-          return (
-            <button key={p.id} class="person-card card" onClick={() => navigate('person/' + p.id)}>
-              <Avatar p={p} size={46} />
-              <div class="person-card-main">
-                <div class="person-card-name">{p.name || 'Unnamed'}</div>
-                {facts.length > 0 && <div class="person-card-sub">{facts.join(' · ')}</div>}
-                {p.emotions.length > 0 && (
-                  <div class="note-emos">{p.emotions.slice(0, 3).map((id) => <EmotionChip id={id} size="sm" />)}{p.emotions.length > 3 && <span class="muted small">+{p.emotions.length - 3}</span>}</div>
-                )}
-              </div>
-              <Icon name="chevron-right" size={18} />
-            </button>
-          );
+          return <PersonCard key={p.id} p={p} facts={facts} moments={moments.get(p.id)} />;
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * The worlds someone brings out, most first: how they make you feel (the first feeling counts double), or,
+ * before you've said, the main feelings of the moments they're in.
+ */
+function worldsOf(p: Person, moments: Entry[] = []) {
+  const weight = new Map<string, number>();
+  const add = (id: string, w: number) => {
+    const c = coreOf(id)?.id;
+    if (c) weight.set(c, (weight.get(c) ?? 0) + w);
+  };
+  p.emotions.forEach((id, i) => add(id, i ? 1 : 2));
+  if (!weight.size) for (const e of moments) if (e.emotions[0]) add(e.emotions[0], 1);
+  return [...weight.keys()].sort((a, b) => weight.get(b)! - weight.get(a)!);
+}
+
+/** Where the feelings float on a card: off to the right, clear of the name, each on its own slow loop. */
+const SPOTS = [
+  { right: '15%', top: '14%', size: 13, dur: 7.4 },
+  { right: '31%', bottom: '13%', size: 11, dur: 9.1 },
+  { right: '7%', bottom: '16%', size: 10, dur: 8.3 },
+];
+
+/**
+ * Someone in the list, in the colour of what they make you feel: clouds of their main world (and the next)
+ * drift through the card, and their feelings' sprites float around it. Both only move while it's on screen.
+ */
+function PersonCard({ p, facts, moments }: { p: Person; facts: string[]; moments?: Entry[] }) {
+  const worlds = useMemo(() => worldsOf(p, moments), [p, moments]);
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    return el && worlds.length ? watchView(el, (on) => el.toggleAttribute('data-live', on)) : undefined;
+  }, [worlds.length > 0]);
+  const style = worlds.length ? { '--m1': `var(--emo-${worlds[0]})`, '--m2': `var(--emo-${worlds[1] ?? worlds[0]})`, '--t': p.created % 9000 } : undefined;
+  return (
+    <button ref={ref} class={`person-card card${worlds.length ? ' has-mood' : ''}`} style={style} onClick={() => navigate('person/' + p.id)}>
+      {worlds.length > 0 && (
+        <span class="person-sky" aria-hidden="true">
+          {SPOTS.map((s, i) => (
+            <span class="person-float" style={{ right: s.right, top: s.top, bottom: s.bottom, '--d': `${s.dur}s`, '--i': i }}>
+              <Sprite core={worlds[i % worlds.length]} size={s.size} idle="view" delay={(p.created + i * 530) % 1500} />
+            </span>
+          ))}
+        </span>
+      )}
+      <Avatar p={p} size={46} />
+      <div class="person-card-main">
+        <div class="person-card-name">{p.name || 'Unnamed'}</div>
+        {facts.length > 0 && <div class="person-card-sub">{facts.join(' · ')}</div>}
+        {p.emotions.length > 0 && (
+          <div class="note-emos">{p.emotions.slice(0, 3).map((id, i) => <EmotionChip id={id} size="sm" idle="view" delay={(p.created + i * 380) % 1300} />)}{p.emotions.length > 3 && <span class="muted small">+{p.emotions.length - 3}</span>}</div>
+        )}
+      </div>
+      <Icon name="chevron-right" size={18} />
+    </button>
   );
 }
 

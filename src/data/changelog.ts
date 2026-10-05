@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.37.0',
+    date: '2026-10-05',
+    changes: [
+      'Each person in People wears the colour of what they make you feel most: soft clouds of it drift through their card, with a glow around their picture',
+      'Their feelings’ sprites float around the card and play their little animations',
+    ],
+  },
+  {
     version: '1.36.0',
     date: '2026-10-05',
     changes: [

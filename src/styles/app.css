@@ -1071,6 +1071,55 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 .person-card-sub { font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person-card .note-emos { margin-top: 6px; align-items: center; }
 
+/* a person in the colour of what they make you feel (views/People.tsx): clouds of --m1 and --m2 drift through
+   the card and their feelings' sprites float around it, moving only while the card is on screen ([data-live]) */
+.person-card.has-mood {
+  position: relative; isolation: isolate; overflow: hidden;
+  border-color: color-mix(in oklab, var(--m1) 24%, var(--line));
+  background: linear-gradient(110deg, color-mix(in oklab, var(--m1) 5%, var(--surface)) 25%, color-mix(in oklab, var(--m1) 15%, var(--surface)));
+}
+.person-card.has-mood:hover { border-color: color-mix(in oklab, var(--m1) 40%, var(--line)); }
+.person-card.has-mood > svg { color: color-mix(in oklab, var(--m1) 50%, var(--ink-3)); }
+.person-card.has-mood .avatar {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--m1) 16%, transparent), 0 8px 22px -8px color-mix(in oklab, var(--m1) 70%, transparent);
+}
+.person-card.has-mood .emo { background: color-mix(in oklab, var(--surface-2) 72%, transparent); }
+.person-sky { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.person-sky::before, .person-sky::after { content: ''; position: absolute; border-radius: 50%; animation-delay: calc(var(--t, 0) * -1ms); }
+.person-sky::before {
+  right: -16%; top: -50%; width: 70%; height: 180%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--m1) 34%, transparent), transparent);
+  animation: person-cloud 16s ease-in-out infinite alternate paused;
+}
+.person-sky::after {
+  right: 24%; bottom: -75%; width: 55%; height: 150%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--m2) 24%, transparent), transparent);
+  animation: person-cloud-2 21s ease-in-out infinite alternate paused;
+}
+@keyframes person-cloud {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-18%, 10%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, -8%, 0) scale(0.94); }
+}
+@keyframes person-cloud-2 {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(22%, -14%, 0) scale(1.1); }
+  100% { transform: translate3d(-10%, -6%, 0) scale(0.95); }
+}
+.person-float {
+  position: absolute; display: flex; opacity: 0.6;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--m1) 65%, transparent));
+  animation: person-float var(--d) ease-in-out infinite alternate paused;
+  animation-delay: calc(var(--i) * -2.3s);
+}
+@keyframes person-float {
+  0% { transform: translate3d(0, 4px, 0) rotate(-6deg); }
+  50% { transform: translate3d(-7px, -5px, 0) rotate(5deg); }
+  100% { transform: translate3d(4px, -2px, 0) rotate(-2deg); }
+}
+.person-card[data-live] .person-float, .person-card[data-live] .person-sky::before, .person-card[data-live] .person-sky::after { animation-play-state: running; }
+@media (prefers-reduced-motion: reduce) { .person-float, .person-sky::before, .person-sky::after { animation: none; } }
+
 .person-picks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin-top: 10px; }
 .person-pick { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 7px 10px 7px 7px; border-radius: 14px; transition: background-color 0.12s; }
 .person-pick:hover { background: var(--surface-2); }
