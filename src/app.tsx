@@ -1,7 +1,5 @@
-import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
+import { useLayoutEffect, useState } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
-import { leftPeople, useLock } from './lib/lock';
-import { LockScreen } from './components/Lock';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
 import { AddMenu } from './components/AddMenu';
@@ -23,6 +21,9 @@ import { Tracker } from './views/Tracker';
 import { Twitch } from './views/Twitch';
 import { t } from './lib/i18n';
 
+// the Face ID lock is gone: forget the passkey id it kept
+try { localStorage.removeItem('mm-lock'); } catch {}
+
 const NAV: [RouteName, string, UiName, string][] = [
   ['journal', t('Journal'), 'notebook', ''],
   ['tracker', t('Check in'), 'mood-smile', 'tracker'],
@@ -35,31 +36,15 @@ const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 
 
 export function App() {
   const route = useRoute();
-  const lock = useLock();
-  // People, someone's page and the mind page ask for Face ID each time you go in, and lock again when you leave
-  const inPeople = route.name === 'people' || route.name === 'person' || route.name === 'mind';
-  useEffect(() => { if (!inPeople) leftPeople(); }, [inPeople]);
-
   // before paint, so a page transition captures the new page from its top
   useLayoutEffect(() => {
     if (!history.state?.mmSheet) scrollTo(0, 0);
   }, [route.name, route.id]);
 
-  if (lock.locked) {
-    return (
-      <>
-        <main class="app route-lock"><LockScreen scope="app" /></main>
-        <Toasts />
-      </>
-    );
-  }
-
   return (
     <>
       <main class={`app route-${route.name}`}>
-        {inPeople && lock.on && !lock.people ? (
-          <LockScreen scope="people" />
-        ) : route.name === 'note' ? (
+        {route.name === 'note' ? (
           <Editor key={route.id === 'new' ? `new-${route.visit}` : route.id} id={route.id!} query={route.query} />
         ) : route.name === 'person' ? (
           <PersonView key={route.id === 'new' ? `new-${route.visit}` : route.id} id={route.id!} />

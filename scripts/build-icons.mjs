@@ -126,7 +126,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   share copy-plus library-photo layout-grid-remove stack-pop books star bookmark quote chart-pie crop zoom-in zoom-out pin pinned-off layout-list
   haze mist cloud-rain cloud-snow cloud-storm temperature sunrise map map-pin map-pins current-location home minus
   player-play player-pause external-link vinyl library repeat at typography cake heart hourglass
-  microphone player-stop loader-2 face-id lock-open trophy dice-5 flame crown arrows-shuffle
+  microphone player-stop loader-2 trophy dice-5 flame crown arrows-shuffle
   brand-twitch coins gift broadcast trending-up`.split(/\s+/);
 const ui = {};
 for (const name of UI) {

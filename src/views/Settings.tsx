@@ -14,7 +14,6 @@ import { downloadModel, removeModels, useVoice, voiceModel, voiceSupported } fro
 import { HomeSheet, placeLabel } from '../components/weather';
 import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
-import { disableLock, enableLock, lockError, lockSupported, unlockName, useLock } from '../lib/lock';
 import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18n';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -48,9 +47,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const books = useBooks();
   const songs = useSongs();
   const sync = useSync();
-  const lock = useLock();
-  const [canLock, setCanLock] = useState<boolean | null>(null);
-  const [locking, setLocking] = useState(false);
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
   const [setup, setSetup] = useState(false);
@@ -62,7 +58,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   useEffect(() => {
-    lockSupported().then(setCanLock);
     spotifyStatus().then(setSp);
     const s = query.get('spotify');
     if (s) {
@@ -165,26 +160,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
     }
   };
 
-  // turning the lock on makes its passkey, turning it off asks for Face ID: both bring up the device's prompt
-  const toggleLock = async () => {
-    setLocking(true);
-    try {
-      if (lock.on) {
-        await disableLock();
-        toast(t('{lock} is off', { lock: lockTitle }));
-      } else {
-        await enableLock();
-        toast(t('{lock} is on', { lock: lockTitle }));
-      }
-    } catch (e) {
-      const m = lockError(e);
-      if (m) toast(m);
-    } finally {
-      setLocking(false);
-    }
-  };
-  const lockTitle = t('{name} lock', { name: unlockName[0].toUpperCase() + unlockName.slice(1) });
-
   const notes = entries.filter((e) => e.kind === 'note').length;
   const themes: [S['theme'], string, UiName][] = [['system', t('System'), 'device-desktop'], ['light', t('Light'), 'sun'], ['dark', t('Dark'), 'moon']];
   const pickers: [S['picker'], string, UiName][] = [['grid', t('Grid'), 'layout-grid'], ['wheel', t('Wheel'), 'chart-donut-2']];
@@ -245,23 +220,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2 class="section-title">{t('Privacy')}</h2>
-        <div class="card list">
-          <div class="list-row">
-            <div>
-              <div class="row gap-s"><Icon name="face-id" size={18} /> {lockTitle}</div>
-              <div class="muted small">
-                {canLock === false && !lock.on
-                  ? t('This device or browser can’t use {name} for websites. On an iPhone, open My Mind in Safari or from the Home Screen.', { name: unlockName })
-                  : t('Asks for {name} when you open My Mind or come back after a couple of minutes, and every time you go to People. It locks the app on this device; your journal stays where it is.', { name: unlockName })}
-              </div>
-            </div>
-            <button class="switch" role="switch" aria-checked={lock.on} aria-label={lockTitle} onClick={toggleLock} disabled={locking || (!lock.on && !canLock)} />
           </div>
         </div>
       </section>

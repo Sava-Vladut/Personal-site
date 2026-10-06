@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.51.0',
+    date: '2026-10-06',
+    changes: [
+      'The Face ID lock is gone: My Mind and People open straight away, with no passkey prompt',
+      'The Privacy section in Settings went with it',
+    ],
+  },
+  {
     version: '1.50.2',
     date: '2026-10-06',
     changes: [
