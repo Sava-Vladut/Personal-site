@@ -8,6 +8,7 @@ import { BookSheet } from '../components/books';
 import { CountUp } from '../components/charts';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
+import { DayPicker, SongOfDay, useDayPick } from '../components/SongOfDay';
 import { SpotifySheet } from '../components/SpotifySheet';
 import { BooksTab, bookStats } from './Books';
 import { MusicTab, musicStats } from './Music';
@@ -58,6 +59,7 @@ export function Media({ query }: { query: URLSearchParams }) {
   const [adding, setAdding] = useState<Tab | null>(null);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
+  const picker = useDayPick();
 
   const setTab = (t: Tab) => {
     setTabState(t);
@@ -145,12 +147,15 @@ export function Media({ query }: { query: URLSearchParams }) {
             <input type="search" autoFocus placeholder={search} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={search} />
           </label>
         )}
+
+        {!isBooks && songs.length > 0 && !searching && <SongOfDay songs={songs} picker={picker} />}
       </div>
 
       <div class="media-panel" key={tab}>
         {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} />}
       </div>
 
+      <DayPicker songs={songs} picker={picker} />
       <BookSheet open={adding === 'books'} onClose={() => setAdding(null)} onPick={(b) => { setAdding(null); navigateAfterSheet('book/' + b.id); }} />
       <SpotifySheet
         open={adding === 'music'}

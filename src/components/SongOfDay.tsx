@@ -1,6 +1,7 @@
 // The song of the day: one record from your collection for each day, picked by you (or by a roll of the dice), and
-// the numbers on what you keep coming back to.
-import { useMemo, useState } from 'preact/hooks';
+// the numbers on what you keep coming back to. The card sits on the Media page's sky; its day picker is a sheet, so
+// that lives apart (useDayPick, DayPicker) where no frosted or clipped panel can trap it.
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addDays, dayLabel, todayKey, WEEKDAYS, weekday } from '../lib/dates';
 import { hashOf, useColor } from '../lib/colors';
 import { haptic } from '../lib/haptics';
@@ -10,12 +11,15 @@ import { CountUp } from './charts';
 import { Icon } from './icons';
 import { MusicEmbed, MusicThing, musicSub } from './music';
 import { Sheet } from './Sheet';
+import { Sky } from './Sky';
 import { noun, t } from '../lib/i18n';
 import '../styles/sotd.css';
 
 const STRIP = 14;
 /** Each place in the ranking takes its own feeling's colour. */
 const RANK_COLORS = ['joy', 'love-connection', 'hope-interest', 'calm-safety', 'sadness', 'fear', 'anger'];
+/** The little sky behind the ranking: notes in the colours of the first places. */
+const RANK_SKY = ['joy', 'love-connection', 'hope-interest'];
 
 /** Days in a row with a song, ending today (or yesterday, while today is still open). */
 function streakOf(days: Set<string>, today: string) {
@@ -35,14 +39,46 @@ function bestRunOf(sorted: string[]) {
   return best;
 }
 
-/** Today's record, the last two weeks of them, and a picker for any of those days. */
-export function SongOfDay({ songs }: { songs: Song[] }) {
-  const today = todayKey();
+export interface DayPick {
+  /** The day a song is being chosen for, while the picker is open. */
+  picking: string | null;
+  busy: boolean;
+  open: (day: string) => void;
+  close: () => void;
+  pick: (s: Song | null, day: string) => Promise<void>;
+}
+
+/** Which day is being picked for, and the pick itself: shared by the card and its picker sheet. */
+export function useDayPick(): DayPick {
   const [picking, setPicking] = useState<string | null>(null);
-  const [on, setOn] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const pick = async (s: Song | null, day: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await pickSongOfDay(s, day);
+      haptic(14);
+      setPicking(null);
+      if (s) toast(day === todayKey() ? t('{title} is today’s song', { title: s.music.title }) : t('{title} is the song of {day}', { title: s.music.title, day: dayLabel(day) }));
+    } catch {
+      toast(t('Couldn’t save this music. Try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return { picking, busy, open: (day) => setPicking(day), close: () => setPicking(null), pick };
+}
+
+/** Today's record on the sky, with the last two weeks of them underneath; tap a day to pick or change its song. */
+export function SongOfDay({ songs, picker }: { songs: Song[]; picker: DayPick }) {
+  const today = todayKey();
+  const { busy, open, pick } = picker;
+  const [on, setOn] = useState(false);
   const song = songOfDay(songs, today);
   const color = useColor(song?.music.image);
+  useEffect(() => setOn(false), [song?.id]);
 
   const strip = useMemo(() => Array.from({ length: STRIP }, (_, i) => {
     const day = addDays(today, i - STRIP + 1);
@@ -55,22 +91,6 @@ export function SongOfDay({ songs }: { songs: Song[] }) {
     .sort((a, b) => +b.repeat - +a.repeat || b.rating - a.rating || hashOf(today + a.id) - hashOf(today + b.id))
     .slice(0, 8), [songs, today]);
 
-  const pick = async (s: Song | null, day: string) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await pickSongOfDay(s, day);
-      haptic(14);
-      setPicking(null);
-      if (day === today) setOn(false);
-      if (s) toast(day === today ? t('{title} is today’s song', { title: s.music.title }) : t('{title} is the song of {day}', { title: s.music.title, day: dayLabel(day) }));
-    } catch {
-      toast(t('Couldn’t save this music. Try again.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   // a roll of the dice: anything but yesterday's song, if there's a choice
   const surprise = () => {
     const yesterday = songOfDay(songs, addDays(today, -1));
@@ -80,82 +100,80 @@ export function SongOfDay({ songs }: { songs: Song[] }) {
   };
 
   return (
-    <>
-      <section class={`sotd${song ? ' is-picked' : ''}`} style={{ '--c': color ?? 'var(--emo-love-connection)' }}>
-        <div class="sotd-aura" aria-hidden="true"><i /><i /><i /></div>
-        <header class="sotd-head">
-          <span class="sotd-kicker">
-            <span class={`eq${on ? ' is-on' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
-            {t('Song of the day')}
+    <section class={`sotd${song ? ' is-picked' : ''}`} style={{ '--c': color ?? 'var(--emo-love-connection)' }}>
+      <div class="sotd-aura" aria-hidden="true"><i /><i /><i /></div>
+      <header class="sotd-head">
+        <span class="sotd-kicker">
+          <span class={`eq${on ? ' is-on' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
+          {t('Song of the day')}
+        </span>
+        {streak > 1 && <span class="sotd-streak" title={t('Days in a row')}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
+        {song && (
+          <span class="sotd-tools">
+            <button class="sotd-tool" onClick={() => open(today)} aria-label={t('Change')} title={t('Change')}><Icon name="refresh" size={17} /></button>
+            <button class="sotd-tool" onClick={surprise} disabled={busy || songs.length < 2} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="dice-5" size={17} /></button>
+            <button class="sotd-tool" onClick={() => navigate('song/' + song.id)} aria-label={t('Open')} title={t('Open')}><Icon name="arrow-up-right" size={17} /></button>
           </span>
-          {streak > 1 && <span class="sotd-streak" title={t('Days in a row')}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
-        </header>
-
-        {song ? (
-          <div class="sotd-now" key={song.id}>
-            <button class={`sotd-main${on ? ' is-on' : ' is-repeat'}`} aria-expanded={on} onClick={() => setOn(!on)} aria-label={on ? t('Close the player for {title}', { title: song.music.title }) : t('Play {title}', { title: song.music.title })}>
-              <MusicThing m={song.music} size={78} />
-              <span class="sotd-text">
-                <span class="sotd-title">{song.music.title}</span>
-                <span class="sotd-sub">{musicSub(song.music)}</span>
-                <span class="sotd-times">
-                  {song.days.length > 1 ? t('Song of the day {n} times', { n: song.days.length }) : t('First time as song of the day')}
-                </span>
-              </span>
-              <span class="deck-button"><Icon name={on ? 'player-pause' : 'player-play'} size={18} stroke={2} /></span>
-            </button>
-            {on && <div class="sotd-player"><MusicEmbed m={song.music} /></div>}
-            <div class="sotd-actions">
-              <button class="btn btn-quiet btn-s" onClick={() => setPicking(today)}><Icon name="refresh" size={16} /> {t('Change')}</button>
-              <button class="btn btn-quiet btn-s" onClick={surprise} disabled={busy || songs.length < 2}><Icon name="dice-5" size={16} /> {t('Shuffle')}</button>
-              <button class="btn btn-quiet btn-s" onClick={() => navigate('song/' + song.id)}><Icon name="vinyl" size={16} /> {t('Open')}</button>
-            </div>
-          </div>
-        ) : (
-          <div class="sotd-empty">
-            <p class="sotd-ask">{t('What does today sound like?')}</p>
-            <div class="sotd-ideas" role="list">
-              {ideas.map((s, k) => (
-                <button key={s.id} role="listitem" class="sotd-idea" style={{ '--k': k }} disabled={busy} onClick={() => pick(s, today)} aria-label={t('Make {title} today’s song', { title: s.music.title })}>
-                  <MusicThing m={s.music} size={52} />
-                  <span class="sotd-idea-title">{s.music.title}</span>
-                </button>
-              ))}
-            </div>
-            <div class="sotd-actions">
-              <button class="btn btn-primary btn-s" onClick={surprise} disabled={busy}><Icon name="dice-5" size={16} /> {t('Surprise me')}</button>
-              {songs.length > ideas.length && <button class="btn btn-quiet btn-s" onClick={() => setPicking(today)}><Icon name="list" size={16} /> {t('Choose…')}</button>}
-            </div>
-          </div>
         )}
+      </header>
 
-        {/* the last two weeks, a record for each day that had one; tap a day to pick or change its song */}
-        <div class="sotd-strip" role="list" aria-label={t('The last two weeks')}>
-          {strip.map(({ day, song: s }, i) => (
-            <button
-              key={day}
-              role="listitem"
-              class={`sotd-day${s ? ' has' : ''}${day === today ? ' is-today' : ''}`}
-              style={{ '--i': i }}
-              onClick={() => setPicking(day)}
-              aria-label={`${dayLabel(day)}: ${s ? s.music.title : t('no song yet')}`}
-              title={`${dayLabel(day)}${s ? ' · ' + s.music.title : ''}`}
-            >
-              <span class="sotd-disc">{s?.music.image && <img src={s.music.image} alt="" loading="lazy" referrerpolicy="no-referrer" />}</span>
-              <small>{WEEKDAYS[weekday(day)].slice(0, 1)}</small>
-            </button>
-          ))}
+      {song ? (
+        <div class="sotd-now" key={song.id}>
+          <button class={`sotd-main${on ? ' is-on' : ' is-repeat'}`} aria-expanded={on} onClick={() => setOn(!on)} aria-label={on ? t('Close the player for {title}', { title: song.music.title }) : t('Play {title}', { title: song.music.title })}>
+            <MusicThing m={song.music} size={56} />
+            <span class="sotd-text">
+              <span class="sotd-title">{song.music.title}</span>
+              <span class="sotd-sub">{musicSub(song.music)}</span>
+              <span class="sotd-times">
+                {song.days.length > 1 ? t('Song of the day {n} times', { n: song.days.length }) : t('First time as song of the day')}
+              </span>
+            </span>
+            <span class="deck-button"><Icon name={on ? 'player-pause' : 'player-play'} size={18} stroke={2} /></span>
+          </button>
+          {on && <div class="sotd-player"><MusicEmbed m={song.music} /></div>}
         </div>
-      </section>
+      ) : (
+        <div class="sotd-empty">
+          <p class="sotd-ask">{t('What does today sound like?')}</p>
+          <div class="sotd-ideas" role="list">
+            {ideas.map((s, k) => (
+              <button key={s.id} role="listitem" class="sotd-idea" style={{ '--k': k }} disabled={busy} onClick={() => pick(s, today)} aria-label={t('Make {title} today’s song', { title: s.music.title })}>
+                <MusicThing m={s.music} size={34} />
+                <span class="sotd-idea-title">{s.music.title}</span>
+              </button>
+            ))}
+          </div>
+          <div class="sotd-actions">
+            <button class="btn btn-primary btn-s" onClick={surprise} disabled={busy}><Icon name="dice-5" size={16} /> {t('Surprise me')}</button>
+            {songs.length > ideas.length && <button class="btn btn-quiet btn-s" onClick={() => open(today)}><Icon name="list" size={16} /> {t('Choose…')}</button>}
+          </div>
+        </div>
+      )}
 
-      {/* outside the card: the card isolates its glow, which would trap the sheet beneath the rest of the page */}
-      <DayPicker day={picking} songs={songs} busy={busy} onPick={pick} onClose={() => setPicking(null)} />
-    </>
+      {/* the last two weeks, a record for each day that had one */}
+      <div class="sotd-strip" role="list" aria-label={t('The last two weeks')}>
+        {strip.map(({ day, song: s }, i) => (
+          <button
+            key={day}
+            role="listitem"
+            class={`sotd-day${s ? ' has' : ''}${day === today ? ' is-today' : ''}`}
+            style={{ '--i': i }}
+            onClick={() => open(day)}
+            aria-label={`${dayLabel(day)}: ${s ? s.music.title : t('no song yet')}`}
+            title={`${dayLabel(day)}${s ? ' · ' + s.music.title : ''}`}
+          >
+            <span class="sotd-disc">{s?.music.image && <img src={s.music.image} alt="" loading="lazy" referrerpolicy="no-referrer" />}</span>
+            <small>{WEEKDAYS[weekday(day)].slice(0, 1)}</small>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
-/** Every record you keep, to make one the song of `day`. */
-function DayPicker({ day, songs, busy, onPick, onClose }: { day: string | null; songs: Song[]; busy: boolean; onPick: (s: Song | null, day: string) => void; onClose: () => void }) {
+/** Every record you keep, to make one the song of the day being picked. Put it beside the page's other sheets. */
+export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick }) {
+  const { picking: day, busy, pick, close: closePicker } = picker;
   const [q, setQ] = useState('');
   const current = day ? songOfDay(songs, day) : null;
   const shown = useMemo(() => {
@@ -166,7 +184,7 @@ function DayPicker({ day, songs, busy, onPick, onClose }: { day: string | null; 
   }, [songs, q]);
   const close = () => {
     setQ('');
-    onClose();
+    closePicker();
   };
   const title = !day ? '' : day === todayKey() ? t('Today’s song') : t('Song of {day}', { day: dayLabel(day) });
 
@@ -176,7 +194,7 @@ function DayPicker({ day, songs, busy, onPick, onClose }: { day: string | null; 
       onClose={close}
       title={title}
       tall
-      footer={current && day ? <button class="btn btn-quiet danger" disabled={busy} onClick={() => { setQ(''); onPick(null, day); }}><Icon name="x" size={16} /> {t('Clear this day')}</button> : undefined}
+      footer={current && day ? <button class="btn btn-quiet danger" disabled={busy} onClick={() => { setQ(''); void pick(null, day); }}><Icon name="x" size={16} /> {t('Clear this day')}</button> : undefined}
     >
       <label class="search">
         <Icon name="search" size={18} />
@@ -184,7 +202,7 @@ function DayPicker({ day, songs, busy, onPick, onClose }: { day: string | null; 
       </label>
       <div class="tracks sotd-picks">
         {shown.map((s) => (
-          <button key={s.id} class="track" aria-pressed={s === current} disabled={busy} onClick={() => day && (setQ(''), onPick(s, day))}>
+          <button key={s.id} class="track" aria-pressed={s === current} disabled={busy} onClick={() => day && (setQ(''), void pick(s, day))}>
             <span class="track-thing"><MusicThing m={s.music} size={38} /></span>
             <span class="track-main">
               <span class="track-title">{s.music.title}</span>
@@ -199,7 +217,7 @@ function DayPicker({ day, songs, busy, onPick, onClose }: { day: string | null; 
   );
 }
 
-/** Which songs got picked the most: a podium of bars, and the streaks behind them. */
+/** Which songs got picked the most: a few coloured bars on a little sky of their own, and the streaks behind them. */
 export function SongStats({ songs }: { songs: Song[] }) {
   const [all, setAll] = useState(false);
   const today = todayKey();
@@ -221,13 +239,21 @@ export function SongStats({ songs }: { songs: Song[] }) {
   ];
 
   return (
-    <section class="section sotd-stats">
-      <h2 class="section-title"><Icon name="chart-bar" size={16} /> {t('Most picked')}</h2>
+    <section class="sotd-stats">
+      <div class="sotd-clouds" aria-hidden="true"><Sky worlds={RANK_SKY} letters="music" small /></div>
+      <header class="sotd-stats-head">
+        <h2 class="section-title"><Icon name="chart-bar" size={16} /> {t('Most picked')}</h2>
+        {ranked.length > 3 && (
+          <button class="sotd-more" aria-expanded={all} onClick={() => setAll(!all)}>
+            {all ? t('Show less') : t('Show the top {n}', { n: Math.min(10, ranked.length) })}
+            <Icon name={all ? 'arrow-up' : 'chevron-down'} size={14} />
+          </button>
+        )}
+      </header>
       <div class="sotd-tiles">
         {tiles.map(([value, label, icon], i) => (
           <span class="sotd-tile" style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i + 1]})` }}>
-            <Icon name={icon} size={15} stroke={2} />
-            <b><CountUp value={value} /></b>
+            <span class="sotd-tile-n"><Icon name={icon} size={14} stroke={2} /><b><CountUp value={value} /></b></span>
             <small>{label}</small>
           </span>
         ))}
@@ -236,23 +262,17 @@ export function SongStats({ songs }: { songs: Song[] }) {
         {shown.map((s, i) => (
           <li key={s.id} style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i % RANK_COLORS.length]})`, '--w': s.days.length / top }}>
             <button class="sotd-rank-row" onClick={() => navigate('song/' + s.id)}>
-              <span class={`sotd-place${i < 3 ? ' p' + (i + 1) : ''}`}>{i === 0 ? <Icon name="crown" size={15} stroke={2} /> : i + 1}</span>
-              <MusicThing m={s.music} size={34} />
+              <span class={`sotd-place${i < 3 ? ' p' + (i + 1) : ''}`}>{i === 0 ? <Icon name="crown" size={13} stroke={2} /> : i + 1}</span>
+              <MusicThing m={s.music} size={30} />
               <span class="sotd-rank-main">
-                <span class="sotd-rank-title">{s.music.title}</span>
+                <span class="sotd-rank-title"><span>{s.music.title}</span><small>{musicSub(s.music)}</small></span>
                 <span class="sotd-bar"><i /></span>
-                <span class="sotd-rank-sub">{musicSub(s.music)}</span>
               </span>
               <span class="sotd-rank-n"><b>{s.days.length}</b><small>{noun(s.days.length, 'day', 'days')}</small></span>
             </button>
           </li>
         ))}
       </ol>
-      {ranked.length > 3 && (
-        <button class="btn btn-quiet btn-s sotd-more" onClick={() => setAll(!all)}>
-          <Icon name={all ? 'arrow-up' : 'chevron-down'} size={16} /> {all ? t('Show less') : t('Show the top {n}', { n: Math.min(10, ranked.length) })}
-        </button>
-      )}
     </section>
   );
 }

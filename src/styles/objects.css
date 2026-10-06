@@ -192,7 +192,7 @@
 /* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind; on repeat, slowly */
 .record { transition: width 0.7s var(--spring); }
 /* a hover pulls the record out a little; once it's on, it's all the way out */
-@media (hover: hover) { :is(.deck-main, .track, .crate-item, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
+@media (hover: hover) { :is(.deck-main, .track, .sleeve, .mini-card, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record { width: calc(var(--s) * 1.74); }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record-disc { translate: calc(var(--s) * 0.76) 0; }
 :is(.is-on, .track[aria-pressed='true']) :is(.record-spin, .reel) { animation: turn 1.8s linear infinite; }
@@ -224,32 +224,55 @@
 .mini-tape { flex: none; display: inline-flex; align-items: center; justify-content: space-around; width: 18px; height: 12px; padding: 0 2px; border-radius: 2px; background: #3d3c42; }
 .mini-tape i { width: 4px; height: 4px; border-radius: 50%; background: #efe9dc; }
 
-/* ---------- the record collection: cubbies in a wooden shelf, a record or tape standing face out in each ---------- */
+/* ---------- the record collection: sleeves in a dense grid, each tinted by how the music makes you feel ---------- */
 
-.crate {
-  --wood: #b78857; --wall: color-mix(in oklab, var(--surface-2) 88%, #b78857);
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; padding: 6px;
-  border-radius: 8px; background: linear-gradient(180deg, #c49566, var(--wood));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 10px 22px -16px rgb(0 0 0 / 0.5);
-}
-:root[data-theme='dark'] .crate { --wood: #6a4c33; --wall: #232220; background: linear-gradient(180deg, #7a5a3e, var(--wood)); }
-.crate-item {
-  display: grid; justify-items: start; align-content: start; gap: 2px; min-width: 0; padding: 10px 8px 8px;
-  text-align: left; border-radius: 3px; background: var(--wall); box-shadow: inset 0 3px 8px rgb(0 0 0 / 0.14);
+.sleeves { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 6px; margin-top: 10px; }
+.sleeve {
+  position: relative; display: grid; justify-items: start; align-content: start; gap: 1px; min-width: 0; padding: 8px 8px 7px; text-align: left; border-radius: 14px;
+  background: linear-gradient(165deg, color-mix(in oklab, var(--t) 13%, var(--surface)), var(--surface) 70%);
+  border: 1px solid color-mix(in oklab, var(--t) 24%, var(--line));
   animation: spine-in 0.5s var(--spring) calc(min(var(--k), 20) * 30ms) backwards;
+  transition: transform 0.2s var(--spring), border-color 0.2s, scale 0.45s var(--spring);
 }
-.crate-item :is(.record, .cassette) { --s: 62px; margin-bottom: 6px; }
-.crate.is-tapes .crate-item { justify-items: center; text-align: center; }
-.crate-title { max-width: 100%; font: 600 13.5px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.crate-sub { max-width: 100%; font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.crate-item:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.sleeve:hover { border-color: color-mix(in oklab, var(--t) 55%, var(--line)); transform: translateY(-2px); }
+.sleeve:active { scale: 0.96; transition-duration: 0.2s, 0.2s, 0.12s; }
+.sleeve:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sleeve :is(.record, .cassette) { margin-bottom: 6px; }
+.sleeve-title { max-width: 100%; font: 600 13px/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sleeve-sub { max-width: 100%; font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sleeve .stars { margin-top: 1px; }
+.sleeve-badge {
+  position: absolute; top: 7px; right: 7px; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--emo-love-connection); background: color-mix(in oklab, var(--emo-love-connection) 16%, var(--surface));
+}
 
-.repeat-list { display: grid; gap: 8px; }
-.repeat-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 14px 10px 10px; text-align: left; color: var(--ink-3); }
-.repeat-row .book-row-title { font: 550 16px/1.3 var(--serif); color: var(--ink); }
+/* on repeat and waiting in your notes: small cards in a row you swipe through */
+.mini-strip {
+  display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter);
+  margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) 4px; scrollbar-width: none;
+}
+.mini-strip::-webkit-scrollbar { display: none; }
+.mini-card {
+  flex: 0 0 min(236px, 76%); scroll-snap-align: start; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 8px;
+  text-align: left; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
+  transition: border-color 0.2s, scale 0.45s var(--spring);
+}
+button.mini-card:hover { border-color: var(--line-2); }
+button.mini-card:active { scale: 0.97; transition-duration: 0.2s, 0.12s; }
+.mini-card.is-repeat {
+  background: linear-gradient(120deg, color-mix(in oklab, var(--emo-love-connection) 13%, var(--surface)), var(--surface) 72%);
+  border-color: color-mix(in oklab, var(--emo-love-connection) 28%, var(--line));
+}
+.mini-main { flex: 1; min-width: 0; display: grid; }
+.mini-title { font: 600 14px/1.3 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-sub { font-size: 12px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-keep {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ink); color: var(--on-ink); transition: scale 0.45s var(--spring);
+}
+.mini-keep:active { scale: 0.88; transition-duration: 0.12s; }
 .section-title > svg { vertical-align: -3px; margin-right: 4px; }
 
-.track.waiting { cursor: default; }
 .song-row .record, .song-row .cassette { flex: none; }
 
 /* ---------- a song's page: the record in the middle, ready to put on ---------- */
@@ -266,7 +289,7 @@
 .song-player { margin-top: 16px; animation: fade-in 0.3s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .crate-item { animation: none; }
+  .sleeve { animation: none; }
   .spine, .due-card { animation: none; }
   .record-spin, .reel { animation: none !important; }
 }
@@ -290,36 +313,37 @@
 @keyframes cloud-letter { from { opacity: 0; translate: 0 0.4em; filter: blur(6px); } }
 
 /* a row of small frosted numbers, each popping in after the last */
-.media-stats { display: flex; gap: 6px; margin-bottom: 10px; }
+.media-stats { display: flex; gap: 6px; margin-bottom: 8px; }
 .media-stat {
-  flex: 1 1 0; min-width: 0; display: grid; gap: 1px; padding: 7px 10px 6px; border-radius: 12px;
+  flex: 1 1 0; min-width: 0; display: grid; padding: 5px 10px 4px; border-radius: 12px;
   border: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
   box-shadow: 0 8px 22px -16px color-mix(in oklab, var(--sky) 70%, transparent);
   animation: pop-in 0.45s var(--spring) calc(var(--i) * 60ms + 150ms) backwards;
 }
-.media-stat b { font: 500 21px/1.1 var(--serif); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
-.media-stat small { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.media-stat b { font: 500 18px/1.15 var(--serif); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.media-stat small { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* filters and order on one line that scrolls sideways */
-.chips.media-filters { margin-block: 12px 0; gap: 6px; }
+.chips.media-filters { margin-block: 10px 0; gap: 6px; }
+.chips.media-filters .chip { height: 30px; padding: 0 11px; font-size: 13px; }
 .sort-chip { gap: 4px; padding-left: 10px; margin-right: 4px; background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
 .sort-chip span { animation: fade-in 0.25s ease-out; }
 
-.media-panel .section { margin-top: 18px; }
-.media-panel .section-title { margin-bottom: 8px; }
+.media-panel .section { margin-top: 14px; }
+.media-panel .section-title { margin-bottom: 6px; }
 .media-panel .hint { margin: -2px 0 10px; }
 .media-panel .shelf-group { margin-top: 16px; }
 .media-panel .reading-now { margin-bottom: 0; }
 
-/* what you're reading and what's on repeat: cards in a row you swipe through */
-.media-panel :is(.reading-list, .repeat-list) {
+/* what you're reading: cards in a row you swipe through */
+.media-panel .reading-list {
   display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter);
   margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) 4px; scrollbar-width: none;
 }
-.media-panel :is(.reading-list, .repeat-list)::-webkit-scrollbar { display: none; }
-.media-panel :is(.reading-card, .repeat-row) { flex: 0 0 min(280px, 80%); scroll-snap-align: start; gap: 12px; padding: 8px 12px 8px 8px; }
-.media-panel :is(.reading-card, .repeat-row):only-child { flex-basis: 100%; }
-.media-panel :is(.reading-card, .repeat-row) .book-row-title { font-size: 15px; }
+.media-panel .reading-list::-webkit-scrollbar { display: none; }
+.media-panel .reading-card { flex: 0 0 min(280px, 80%); scroll-snap-align: start; gap: 12px; padding: 8px 12px 8px 8px; }
+.media-panel .reading-card:only-child { flex-basis: 100%; }
+.media-panel .reading-card .book-row-title { font-size: 15px; }
 
 /* shorter books, so more of the shelf fits on a screen */
 .media-panel .shelf { --row: 194px; }
@@ -327,4 +351,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cloud-title span, .media-stat { animation: none; }
+  .sleeve, .mini-card, .mini-keep { transition: none; }
 }

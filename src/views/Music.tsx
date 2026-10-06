@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'preact/hooks';
+import { coreOf } from '../data/emotions';
 import { navigate } from '../lib/router';
 import { blankSong, findSong, getSongs, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
 import { Stars } from '../components/books';
@@ -6,7 +7,7 @@ import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
 import { usePref } from '../lib/prefs';
 import { isTape, MusicThing, musicSub } from '../components/music';
-import { SongOfDay, SongStats } from '../components/SongOfDay';
+import { SongStats } from '../components/SongOfDay';
 import { noun, t } from '../lib/i18n';
 
 type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
@@ -14,7 +15,7 @@ type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
 const KINDS: [Kind, string][] = [['track', t('Songs')], ['album', t('Albums')], ['playlist', t('Playlists')], ['podcast', t('Podcasts')]];
 const kindOf = (m: Music): Kind => (m.kind === 'show' || m.kind === 'episode' ? 'podcast' : m.kind === 'artist' ? 'album' : m.kind);
 
-/** The Media page's music: the song of the day, what's on repeat, your records, your tapes, and what's waiting in your notes. */
+/** The Media page's music (the song of the day sits on its sky): what you pick most, what's on repeat, your records and tapes in one dense grid, and what's waiting in your notes. */
 export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const songs = useSongs();
   const entries = useEntries();
@@ -48,9 +49,7 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const grouped = kind === 'all' && !q.trim();
   const repeat = grouped ? shown.filter((s) => s.repeat) : [];
   const rest = grouped ? shown.filter((s) => !s.repeat) : shown;
-  const records = rest.filter((s) => !isTape(s.music));
-  const tapes = rest.filter((s) => isTape(s.music));
-  const count = (k: Kind) => songs.filter((s) => kindOf(s.music) === k).length;
+    const count = (k: Kind) => songs.filter((s) => kindOf(s.music) === k).length;
 
   const keep = async (m: Music) => {
     const key = m.kind + ':' + m.id;
@@ -68,11 +67,23 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
 
   return (
     <>
-      {songs.length > 0 && !q.trim() && (
-        <>
-          <SongOfDay songs={songs} />
-          <SongStats songs={songs} />
-        </>
+      {songs.length > 0 && !q.trim() && <SongStats songs={songs} />}
+
+      {repeat.length > 0 && (
+        <section class="section">
+          <h2 class="section-title"><Icon name="repeat" size={16} /> {t('On repeat')}</h2>
+          <div class="mini-strip">
+            {repeat.map((s) => (
+              <button key={s.id} class="mini-card is-repeat" onClick={() => navigate('song/' + s.id)}>
+                <MusicThing m={s.music} size={34} />
+                <span class="mini-main">
+                  <span class="mini-title">{s.music.title}</span>
+                  <span class="mini-sub">{musicSub(s.music)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {songs.length > 0 && (
@@ -94,64 +105,46 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
       )}
       {!!songs.length && !shown.length && <p class="empty-note center">{t('No music matches.')}</p>}
 
-      {repeat.length > 0 && (
-        <section class="section">
-          <h2 class="section-title"><Icon name="repeat" size={16} /> {t('On repeat')}</h2>
-          <div class="repeat-list">
-            {repeat.map((s) => (
-              <button key={s.id} class="repeat-row card is-repeat" onClick={() => navigate('song/' + s.id)}>
-                <MusicThing m={s.music} size={44} />
-                <span class="book-row-main">
-                  <span class="book-row-title">{s.music.title}</span>
-                  <span class="book-row-sub">{musicSub(s.music)}</span>
-                </span>
-                <Icon name="chevron-right" size={18} />
+      {rest.length > 0 && (
+        <div class="sleeves">
+          {rest.map((s, k) => {
+            const core = s.emotions[0] && coreOf(s.emotions[0])?.id;
+            return (
+              <button
+                key={s.id}
+                class={`sleeve${isTape(s.music) ? ' is-tape' : ''}`}
+                style={{ '--k': k, '--t': core ? `var(--emo-${core})` : 'var(--line-2)' }}
+                onClick={() => navigate('song/' + s.id)}
+                aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
+              >
+                <MusicThing m={s.music} size={50} />
+                {s.repeat && <span class="sleeve-badge" title={t('On repeat')}><Icon name="repeat" size={11} stroke={2.2} /></span>}
+                <span class="sleeve-title">{s.music.title}</span>
+                {s.rating > 0 ? <Stars value={s.rating} size={10} /> : <span class="sleeve-sub">{s.music.sub ?? musicSub(s.music)}</span>}
               </button>
-            ))}
-          </div>
-        </section>
+            );
+          })}
+        </div>
       )}
 
-      {records.length > 0 && <Crate title={grouped ? t('Records') : ''} list={records} />}
-      {tapes.length > 0 && <Crate title={grouped ? t('Tapes') : ''} list={tapes} tapes />}
-
       {waiting.length > 0 && grouped && (
-        <section class="section">
-          <h2 class="section-title">{t('In your notes')}</h2>
-          <p class="hint">{t('Music you added to notes. Keep it to rate it and say what it means to you.')}</p>
-          <div class="tracks">
+        <section class="section" title={t('Music you added to notes. Keep it to rate it and say what it means to you.')}>
+          <h2 class="section-title"><Icon name="notebook" size={16} /> {t('In your notes')}</h2>
+          <div class="mini-strip">
             {waiting.map((m) => (
-              <div key={m.kind + ':' + m.id} class={`track waiting${isTape(m) ? ' is-tape' : ''}`}>
-                <span class="track-thing"><MusicThing m={m} size={38} /></span>
-                <span class="track-main">
-                  <span class="track-title">{m.title}</span>
-                  <span class="track-sub">{musicSub(m)}</span>
+              <div key={m.kind + ':' + m.id} class="mini-card">
+                <MusicThing m={m} size={34} />
+                <span class="mini-main">
+                  <span class="mini-title">{m.title}</span>
+                  <span class="mini-sub">{musicSub(m)}</span>
                 </span>
-                <button class="btn btn-quiet btn-s" onClick={() => keep(m)}><Icon name="plus" size={16} /> {t('Keep')}</button>
+                <button class="mini-keep" onClick={() => keep(m)} aria-label={`${t('Keep')}: ${m.title}`} title={t('Keep')}><Icon name="plus" size={16} stroke={2} /></button>
               </div>
             ))}
           </div>
         </section>
       )}
     </>
-  );
-}
-
-/** Records standing in a crate (or tapes in a rack), face out: sleeve, title, and its stars or who it's by. */
-function Crate({ title, list, tapes }: { title: string; list: Song[]; tapes?: boolean }) {
-  return (
-    <section class="section">
-      {title && <h2 class="section-title">{title} <span class="muted">{list.length}</span></h2>}
-      <div class={`crate${tapes ? ' is-tapes' : ''}`}>
-        {list.map((s, k) => (
-          <button key={s.id} class="crate-item" style={{ '--k': k }} onClick={() => navigate('song/' + s.id)} aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}>
-            <MusicThing m={s.music} />
-            <span class="crate-title">{s.music.title}</span>
-            {s.rating > 0 ? <Stars value={s.rating} size={11} /> : <span class="crate-sub">{s.music.sub ?? musicSub(s.music)}</span>}
-          </button>
-        ))}
-      </div>
-    </section>
   );
 }
 

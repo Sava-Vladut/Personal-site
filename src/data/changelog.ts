@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.43.0',
+    date: '2026-10-06',
+    changes: [
+      'Music is redesigned to be tighter and easier to scan, in the same cloud style as the main page',
+      'Song of the day now sits on the page’s sky as a frosted card: the record, play button, change, shuffle and open in one line, and the last two weeks right underneath',
+      'Most picked is a compact card with its own little sky: four numbers in one row, then the top 3 as slim coloured bars, with the top 10 a tap away',
+      'Records and tapes are one dense grid of sleeves tinted by how each makes you feel, instead of the wooden crate; songs on repeat carry a small repeat badge',
+      'On repeat and In your notes are slim swipeable strips, and “Keep” is a single plus button',
+      'Smaller stat pills and filter chips, and less space between sections',
+    ],
+  },
+  {
     version: '1.42.1',
     date: '2026-10-06',
     changes: [
