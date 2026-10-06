@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.45.0',
+    date: '2026-10-06',
+    changes: [
+      'New Channel points page: your Twitch points from the points miner, with the balance over 90 days, where the points came from, every channel and what happened lately',
+      'The wheel has a Twitch category (Points, Channels, Lately) and shows your total points and today’s gain as you open it',
+      'The wheel only shows one ring at a time: what’s inside a category stays hidden until you tap it, with a dot for each thing inside',
+      'The wheel now uses the site’s own white and graphite, with each category’s colour as a thin line, its icon and its dots, so it’s lighter and no longer muddy in dark mode',
+    ],
+  },
+  {
     version: '1.44.0',
     date: '2026-10-06',
     changes: [

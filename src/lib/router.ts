@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -20,7 +20,7 @@ function parse(): Route {
   if (head === 'song' && id) return { name: 'song', id, query, visit };
   if (head === 'books') return { name: 'media', query, visit }; // where the shelf used to live
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 

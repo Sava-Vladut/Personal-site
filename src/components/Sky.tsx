@@ -28,6 +28,8 @@ export const RAMPS: Record<string, string[]> = {
   // the media page: a sky of pages, and one of notes
   books: [' ', '.', ',', ';', 'ilt', 'aeo', 'bdhk', '¶§'],
   music: [' ', '.', '·', '-', '♩', '♪', '♫', '♬'],
+  // channel points: a sky of coins
+  twitch: [' ', '.', '·', ':', 'o', '¢', '$', '¤'],
 };
 
 /** The world a sky leans toward; the second colour keeps it from going flat. */

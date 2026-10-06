@@ -6,6 +6,7 @@
 //  • voice typing: hands out the speech model and its WebAssembly runtime, fetched once and kept in data/voice.
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
+//  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -16,6 +17,7 @@ import { json } from './http-response.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createVoiceHandler, isVoicePath } from './voice.js';
+import { createTwitchHandler } from './twitch.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -27,6 +29,8 @@ const SECURE = PUBLIC_URL.startsWith('https://');
 const DIST = join(ROOT, 'dist');
 const SYNC_DIR = join(ROOT, 'data', 'sync');
 const VOICE_DIR = join(ROOT, 'data', 'voice');
+// the miner's analytics folder (the one holding a folder per account)
+const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -415,6 +419,7 @@ async function spotify(req, res, url, p, setCookies, out) {
 /* ---------------- sync ---------------- */
 
 const sync = createSyncHandler({ directory: SYNC_DIR });
+const twitch = createTwitchHandler({ directory: TWITCH_DIR });
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -425,6 +430,7 @@ async function api(req, res, url) {
     if (p === '/api/health') return json(res, 200, { ok: true });
     if (p.startsWith('/api/spotify/')) return await spotify(req, res, url, p, setCookies, out);
     if (p.startsWith('/api/sync/')) return await sync(req, res, p);
+    if (p === '/api/twitch') return await twitch(req, res, json);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

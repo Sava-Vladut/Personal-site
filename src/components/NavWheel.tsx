@@ -3,16 +3,17 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { WHEEL, type WheelNode } from '../data/wheel';
 import { navigateAfterSheet, pushBack } from '../lib/router';
 import { haptic } from '../lib/haptics';
-import { t } from '../lib/i18n';
+import { LOCALE, t } from '../lib/i18n';
+import { compact, usePoints } from '../lib/twitch';
 import { Icon } from './icons';
 import { RAMPS, Sky } from './Sky';
 import '../styles/wheel.css';
 
 /*
- * The wheel everything else lives on: a button that opens a sky of its own with a wheel in it,
- * categories in the middle ring and what's in them around those. Tapping a category zooms in
- * (like the emotion wheel) so it fills the circle; the middle takes you back out. It sways a
- * little while it waits, and a ring of letters drifts around it.
+ * The wheel everything else lives on: a button that opens a sky of its own with a wheel in it.
+ * Only one ring shows at a time, so it never crowds: the categories first, and tapping one zooms
+ * in (like the emotion wheel) so what's inside takes the ring and the category becomes the middle,
+ * which takes you back out. It sways a little while it waits, and a ring of letters drifts around it.
  * All geometry is in a 400×400 viewBox; angles are degrees, clockwise from 12 o'clock.
  */
 
@@ -21,23 +22,19 @@ const GAP = 3;
 const MS = 480;
 const CLOSE_MS = 340;
 const OUT = 196;
-// The rings, by how many levels below the one in view: the middle, its children, theirs, and those after (hidden)
-const STOPS: [number, number][] = [[0, 0], [0, 56], [62, 126], [132, OUT], [OUT, OUT]];
+// The rings, by how many levels below the one in view: gone, the middle, the ring, and everything deeper (hidden at the rim)
+const STOPS: [number, number][] = [[0, 0], [0, 58], [64, OUT], [OUT, OUT]];
 
 interface Seg { n: WheelNode; depth: number; a0: number; a1: number; hue: string; parent: Seg | null; leaf: boolean; k: number }
 
-const weight = (n: WheelNode, depth: number): number =>
-  Math.max(depth === 0 ? 2 : 1, (n.kids ?? []).reduce((s, k) => s + weight(k, depth + 1), 0));
-
-/** Every node with its arc of the full wheel; a node's children share its arc by how much each holds. */
+/** Every node with its arc of the full wheel; a node's children share its arc equally. */
 function layout(tree: WheelNode[]): Seg[] {
   const out: Seg[] = [];
   let k = 0;
   const lay = (list: WheelNode[], depth: number, a0: number, a1: number, parent: Seg | null) => {
-    const total = list.reduce((s, n) => s + weight(n, depth), 0);
+    const span = (a1 - a0) / list.length;
     let a = a0;
     for (const n of list) {
-      const span = ((a1 - a0) * weight(n, depth)) / total;
       const s: Seg = { n, depth, a0: a, a1: a + span, hue: n.hue ?? parent?.hue ?? 'sadness', parent, leaf: !n.kids?.length, k: parent ? parent.k : k++ };
       out.push(s);
       if (n.kids?.length) lay(n.kids, depth + 1, a, a + span, s);
@@ -69,8 +66,8 @@ const pt = (r: number, a: number) => `${(C + r * Math.sin(rad(a))).toFixed(2)} $
 const xy = (r: number, a: number) => [C + r * Math.sin(rad(a)), C - r * Math.cos(rad(a))];
 
 function ring(rel: number): [number, number] {
-  const x = Math.min(4, Math.max(0, rel + 2));
-  const i = Math.min(3, Math.floor(x)), f = x - i;
+  const x = Math.min(3, Math.max(0, rel + 2));
+  const i = Math.min(2, Math.floor(x)), f = x - i;
   return [lerp(STOPS[i][0], STOPS[i + 1][0], f), lerp(STOPS[i][1], STOPS[i + 1][1], f)];
 }
 
@@ -251,19 +248,18 @@ export function NavWheel({ world, runs = {}, active = {} }: {
   for (const s of segs) {
     const rel = s.depth - z;
     const a0 = map(s.a0), a1 = map(s.a1);
-    const [r0] = ring(rel);
-    const r1 = s.leaf ? ring(rel + 1)[1] : ring(rel)[1];
+    const [r0, r1] = ring(rel);
     const d = sector(r0, r1, a0, a1);
     if (!d) continue;
     const isHub = s === focusSeg;
-    const lvl = Math.round(rel);
-    const tabbable = settled && (isHub || (lvl === 0 && (focusSeg ? s.parent === focusSeg : s.depth === 0)));
+    const tabbable = settled && (isHub || (Math.round(rel) === 0 && (focusSeg ? s.parent === focusSeg : s.depth === 0)));
     const on = !!(s.n.run && active[s.n.run]);
+    const style = { '--c': `var(--emo-${s.hue})`, '--k': s.k };
     shapes.push(
       <path
         d={d}
-        class={`nw-seg r${Math.max(-1, Math.min(1, lvl))}${s.leaf && lvl === 0 && s.depth === 0 ? ' tall' : ''}${hot === s.n.id ? ' hot' : ''}${on ? ' on' : ''}`}
-        style={{ '--c': `var(--emo-${s.hue})`, '--k': s.k }}
+        class={`nw-seg${isHub ? ' hub' : ''}${hot === s.n.id ? ' hot' : ''}${on ? ' on' : ''}`}
+        style={style}
         role="button"
         tabIndex={tabbable ? 0 : -1}
         aria-label={isHub ? t('Back') : s.n.name}
@@ -276,24 +272,40 @@ export function NavWheel({ world, runs = {}, active = {} }: {
         onBlur={() => setHot((h) => (h === s.n.id ? null : h))}
       />,
     );
+    if (isHub) continue;
+    // its colour, as a thin line along the outer edge
+    const rr = r1 - 7;
+    const trim = (Math.asin(Math.min(1, (GAP + 9) / rr)) * 180) / Math.PI;
+    if (rr > r0 + 6 && a1 - a0 > trim * 2 + 2) {
+      shapes.push(<path d={`M${pt(rr, a0 + trim)}A${rr} ${rr} 0 ${a1 - a0 - trim * 2 > 180 ? 1 : 0} 1 ${pt(rr, a1 - trim)}`} class="nw-rim" style={style} />);
+    }
 
-    if (isHub || rel <= -0.5 || rel >= 1.5) continue;
-    const off = Math.abs(rel - lvl);
-    const op = (1 - off * 2) ** 2;
-    const big = lvl === 0;
-    const rm = (r0 + r1) / 2, m = (a0 + a1) / 2;
-    if (op < 0.02 || rad(a1 - a0) * rm < (big ? 46 : 38)) continue;
+    // labels on the ring only; what's deeper waits at the rim until its category is opened
+    const op = Math.max(0, 1 - Math.abs(rel) * 2) ** 2;
+    const rm = (r0 + r1) / 2 - 4, m = (a0 + a1) / 2;
+    if (op < 0.02 || rad(a1 - a0) * rm < 50) continue;
     const [x, y] = xy(rm, m);
-    const size = big ? 22 : 17;
+    const kids = s.n.kids?.length ?? 0;
     labels.push(
-      <g class={`nw-label${hot === s.n.id ? ' hot' : ''}`} opacity={op} style={{ transformOrigin: `${x.toFixed(1)}px ${y.toFixed(1)}px` }}>
-        <g transform={`translate(${(x - size / 2).toFixed(2)} ${(y - size / 2 - (big ? 9 : 7)).toFixed(2)})`}>
-          <Icon name={s.n.icon} size={size} stroke={big ? 1.7 : 1.8} />
+      <g class={`nw-label${hot === s.n.id ? ' hot' : ''}`} opacity={op} style={{ ...style, transformOrigin: `${x.toFixed(1)}px ${y.toFixed(1)}px` }}>
+        <g class="nw-icon" transform={`translate(${(x - 13).toFixed(2)} ${(y - 26).toFixed(2)})`}>
+          <Icon name={s.n.icon} size={26} stroke={1.7} />
         </g>
-        <text x={x} y={y + (big ? 18 : 14)} class={big ? 'nw-name' : 'nw-name small'}>{s.n.name}</text>
+        <text x={x} y={y + 16} class="nw-name">{s.n.name}</text>
+        {kids > 0 && (
+          // one dot for each thing inside
+          <g class="nw-dots">
+            {Array.from({ length: kids }, (_, i) => <circle cx={x + (i - (kids - 1) / 2) * 7} cy={y + 28} r={2} />)}
+          </g>
+        )}
       </g>,
     );
   }
+
+  // the miner's points, for the Twitch category
+  const points = usePoints(open).data;
+  const isTwitch = (n?: WheelNode | null) => n?.id === 'twitch' || !!n?.to?.startsWith('twitch');
+  const pointsLine = points && t('{points} points · {gain} today', { points: points.total.toLocaleString(LOCALE), gain: (points.change.day >= 0 ? '+' : '−') + Math.abs(points.change.day).toLocaleString(LOCALE) });
 
   const info = (hot && segs.find((s) => s.n.id === hot)) || focusSeg;
   const hub = ring(-1 - z)[1];
@@ -336,7 +348,7 @@ export function NavWheel({ world, runs = {}, active = {} }: {
                 <g opacity={hubName}>
                   <g transform={`translate(${C - 12} ${C - 30})`}><Icon name={focusSeg.n.icon} size={24} stroke={1.7} /></g>
                   <text x={C} y={C + 10} class="nw-hub-name">{focusSeg.n.name}</text>
-                  <text x={C} y={C + 28} class="nw-hub-text">{t('Back')}</text>
+                  <text x={C} y={C + 28} class="nw-hub-text">{isTwitch(focusSeg.n) && points ? compact(points.total) : t('Back')}</text>
                 </g>
               )}
             </g>
@@ -348,9 +360,10 @@ export function NavWheel({ world, runs = {}, active = {} }: {
           <>
             <div class="nw-cap-name">{info.n.name}</div>
             <p class="nw-cap-sub">{info.n.sub}</p>
+            {isTwitch(info.n) && pointsLine && <p class="nw-cap-stat">{pointsLine}</p>}
           </>
         ) : (
-          <p class="nw-cap-sub">{t('Tap a colour to open it, the middle to close')}</p>
+          <p class="nw-cap-sub">{t('Tap one to open it, the middle to close')}</p>
         )}
       </div>
     </div>

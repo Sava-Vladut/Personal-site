@@ -15,12 +15,16 @@
   isolation: isolate; overflow: hidden;
   display: flex; flex-direction: column; gap: 10px;
   padding: calc(var(--safe-t) + 22px) 20px calc(var(--safe-b) + 26px);
+  /* the site's own white or graphite, only touched by the sky's colour; the wheel is the same frosted surface as the cards */
+  --nw-seg: color-mix(in oklab, var(--surface) 90%, transparent);
   background:
-    radial-gradient(80% 55% at 50% 48%, color-mix(in oklab, var(--sky) 18%, transparent), transparent 72%),
-    linear-gradient(180deg, color-mix(in oklab, var(--sky) 13%, var(--surface)), color-mix(in oklab, var(--sky) 4%, var(--surface)) 80%);
+    radial-gradient(70% 50% at 50% 46%, color-mix(in oklab, var(--sky) 8%, transparent), transparent 75%),
+    linear-gradient(180deg, color-mix(in oklab, var(--sky) 7%, var(--bg)), var(--bg) 75%);
   touch-action: none; overscroll-behavior: contain;
   animation: fade-in 0.4s ease-out;
 }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .nw-layer { --nw-seg: color-mix(in oklab, var(--surface-2) 88%, transparent); } }
+:root[data-theme='dark'] .nw-layer { --nw-seg: color-mix(in oklab, var(--surface-2) 88%, transparent); }
 .nw-layer.closing { animation: fade-out 0.34s ease-in forwards; pointer-events: none; }
 .nw-layer > .sky { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; animation: nw-sky-in 1.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
 @keyframes nw-sky-in { from { scale: 1.3; opacity: 0; } }
@@ -37,10 +41,13 @@
 
 .nw-body { flex: 1; min-height: 0; display: grid; place-items: center; }
 .nw-stage {
+  position: relative;
   width: min(84vw, 470px, calc(100dvh - 320px)); aspect-ratio: 1; min-width: 220px;
   animation: nw-in 0.8s var(--spring);
 }
 .nw-layer.closing .nw-stage { animation: nw-out 0.34s cubic-bezier(0.5, 0, 0.75, 0.3) forwards; }
+/* a soft shadow under the disc, so it floats over the sky like the glass does */
+.nw-stage::before { content: ''; position: absolute; inset: 1%; border-radius: 50%; box-shadow: var(--glass-shadow); pointer-events: none; }
 @keyframes nw-in { from { translate: var(--dx, 0) var(--dy, 0); scale: 0.06; rotate: -160deg; opacity: 0; } }
 @keyframes nw-out { to { translate: var(--dx, 0) var(--dy, 0); scale: 0.06; rotate: -120deg; opacity: 0; } }
 
@@ -55,26 +62,24 @@
 .nw-turn .nw-label { rotate: calc(-1 * var(--nw-sway)); transform-box: view-box; }
 
 .nw-seg {
-  --m: 24%;
-  fill: color-mix(in oklab, var(--c) var(--m), var(--surface));
-  stroke: color-mix(in oklab, var(--c) var(--m), var(--surface));
+  --f: var(--nw-seg);
+  fill: var(--f); stroke: var(--f);
   stroke-width: 3; stroke-linejoin: round; cursor: pointer; outline: none;
   transition: fill 0.15s, stroke 0.15s, filter 0.2s;
 }
-.nw-seg.r1 { --m: 13%; }
-.nw-seg.tall { --m: 19%; }
-.nw-seg.r-1 { --m: 30%; }
-.nw-seg.hot, .nw-seg:active { --m: 40%; filter: drop-shadow(0 0 10px color-mix(in oklab, var(--c) 55%, transparent)); }
-.nw-seg.on { --m: 48%; }
+.nw-seg.hub { --f: color-mix(in oklab, var(--c) 10%, var(--nw-seg)); }
+.nw-seg.hot, .nw-seg:active { --f: color-mix(in oklab, var(--c) 12%, var(--nw-seg)); filter: drop-shadow(0 4px 14px color-mix(in oklab, var(--c) 30%, transparent)); }
+.nw-seg.on { --f: color-mix(in oklab, var(--c) 20%, var(--nw-seg)); }
 .nw-seg:focus-visible { stroke: var(--ink); }
-.nw-hub { fill: color-mix(in oklab, var(--surface) 88%, transparent); stroke: var(--line-2); stroke-width: 1; cursor: pointer; }
+.nw-rim { fill: none; stroke: var(--c); stroke-width: 3.5; stroke-linecap: round; pointer-events: none; opacity: 0.9; }
+.nw-hub { fill: var(--nw-seg); stroke: var(--line); stroke-width: 1; cursor: pointer; }
 
 .nw-labels { pointer-events: none; color: var(--ink-2); }
-.nw-label { color: var(--ink-2); transition: color 0.15s; }
-.nw-label.hot { color: var(--ink); }
+.nw-label { color: var(--ink); }
+.nw-icon { color: color-mix(in oklab, var(--c) 85%, var(--ink)); }
+.nw-dots { fill: var(--c); opacity: 0.6; }
 .nw-svg text { text-anchor: middle; font-family: var(--sans); fill: currentColor; }
-.nw-name { font-size: 12.5px; font-weight: 650; }
-.nw-name.small { font-size: 10px; font-weight: 600; }
+.nw-name { font-size: 13.5px; font-weight: 600; }
 .nw-svg .nw-hub-text { font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; fill: var(--ink-3); }
 .nw-svg .nw-hub-name { font: 500 17px var(--serif); fill: var(--ink); }
 
@@ -83,14 +88,13 @@
 .nw-ring.far { animation-duration: 240s; animation-direction: reverse; }
 .nw-svg .nw-ring text {
   text-anchor: start; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
-  fill: color-mix(in oklab, var(--sky) 60%, var(--ink-3)); opacity: 0.75;
+  fill: color-mix(in oklab, var(--sky) 35%, var(--ink-3)); opacity: 0.55;
 }
-.nw-svg .nw-ring.far text { font-size: 8px; opacity: 0.4; }
+.nw-svg .nw-ring.far text { font-size: 8px; opacity: 0.3; }
 @keyframes nw-spin { to { rotate: 360deg; } }
 
-/* opening: the categories fan in one after another, then what's in them, then the words */
-.nw.opening .nw-seg { transform-box: view-box; transform-origin: 200px 200px; animation: nw-seg-in 0.65s var(--spring) backwards; animation-delay: calc(150ms + var(--k) * 70ms); }
-.nw.opening .nw-seg.r1 { animation-delay: calc(300ms + var(--k) * 70ms); }
+/* opening: the categories fan in one after another, then the words */
+.nw.opening :is(.nw-seg, .nw-rim) { transform-box: view-box; transform-origin: 200px 200px; animation: nw-seg-in 0.65s var(--spring) backwards; animation-delay: calc(150ms + var(--k) * 70ms); }
 .nw.opening .nw-turn > .nw-labels { animation: fade-in 0.5s ease-out 0.5s backwards; }
 .nw.opening .nw-ring text { animation: fade-in 1s ease-out 0.4s backwards; }
 @keyframes nw-seg-in { from { scale: 0.5; rotate: -40deg; opacity: 0; } }
@@ -101,6 +105,7 @@
 }
 .nw-cap-name { font: 500 19px/1.25 var(--serif); }
 .nw-cap-sub { margin: 4px 0 0; color: var(--ink-3); font-size: 14px; text-wrap: balance; }
+.nw-cap-stat { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: color-mix(in oklab, var(--sky) 70%, var(--ink)); font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
   .nw-mark, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }

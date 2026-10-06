@@ -21,6 +21,7 @@ import { Settings } from './views/Settings';
 import { SongView } from './views/Song';
 import { Stats } from './views/Stats';
 import { Tracker } from './views/Tracker';
+import { Twitch } from './views/Twitch';
 import { t } from './lib/i18n';
 
 const NAV: [RouteName, string, UiName, string][] = [
@@ -33,7 +34,7 @@ const NAV: [RouteName, string, UiName, string][] = [
 const TAB_NAV = NAV.filter(([name]) => name !== 'tracker');
 
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats' };
 
 export function App() {
   const route = useRoute();
@@ -81,6 +82,8 @@ export function App() {
           <Stats query={route.query} />
         ) : route.name === 'settings' ? (
           <Settings query={route.query} />
+        ) : route.name === 'twitch' ? (
+          <Twitch query={route.query} />
         ) : route.name === 'map' ? (
           <MapView key={route.query.get('focus') ?? ''} query={route.query} />
         ) : (

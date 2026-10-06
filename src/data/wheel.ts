@@ -45,5 +45,13 @@ export const WHEEL: WheelNode[] = [
       { id: 'mind', name: t('Mind'), sub: t('Who and what is on your mind'), icon: 'sparkles', to: 'people/mind' },
     ],
   },
+  {
+    id: 'twitch', name: t('Twitch'), sub: t('Channel points from the miner'), icon: 'brand-twitch', hue: 'fear',
+    kids: [
+      { id: 'points', name: t('Points'), sub: t('Your balance and how it grew'), icon: 'coins', to: 'twitch' },
+      { id: 'channels', name: t('Channels'), sub: t('Who you’ve been watching'), icon: 'broadcast', to: 'twitch?at=channels' },
+      { id: 'lately', name: t('Lately'), sub: t('Streaks, raids and spending'), icon: 'flame', to: 'twitch?at=recent' },
+    ],
+  },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },
 ];

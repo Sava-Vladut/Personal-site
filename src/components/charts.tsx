@@ -135,7 +135,7 @@ export function TooltipLayer() {
   );
 }
 
-const TipRow = ({ value, label, color }: { value: ComponentChildren; label: string; color?: string }) => (
+export const TipRow = ({ value, label, color }: { value: ComponentChildren; label: string; color?: string }) => (
   <div class="tip-row">
     {color && <i style={{ background: color }} />}
     <b>{value}</b>
@@ -192,7 +192,7 @@ export const LegendItem = ({ color, label, line, core }: { color?: string; label
   </span>
 );
 
-function useWidth() {
+export function useWidth() {
   const ref = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(0);
   useLayoutEffect(() => {
