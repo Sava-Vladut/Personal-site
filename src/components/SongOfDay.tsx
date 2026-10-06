@@ -80,74 +80,77 @@ export function SongOfDay({ songs }: { songs: Song[] }) {
   };
 
   return (
-    <section class={`sotd${song ? ' is-picked' : ''}`} style={{ '--c': color ?? 'var(--emo-love-connection)' }}>
-      <div class="sotd-aura" aria-hidden="true"><i /><i /><i /></div>
-      <header class="sotd-head">
-        <span class="sotd-kicker">
-          <span class={`eq${on ? ' is-on' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
-          {t('Song of the day')}
-        </span>
-        {streak > 1 && <span class="sotd-streak" title={t('Days in a row')}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
-      </header>
+    <>
+      <section class={`sotd${song ? ' is-picked' : ''}`} style={{ '--c': color ?? 'var(--emo-love-connection)' }}>
+        <div class="sotd-aura" aria-hidden="true"><i /><i /><i /></div>
+        <header class="sotd-head">
+          <span class="sotd-kicker">
+            <span class={`eq${on ? ' is-on' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
+            {t('Song of the day')}
+          </span>
+          {streak > 1 && <span class="sotd-streak" title={t('Days in a row')}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
+        </header>
 
-      {song ? (
-        <div class="sotd-now" key={song.id}>
-          <button class={`sotd-main${on ? ' is-on' : ' is-repeat'}`} aria-expanded={on} onClick={() => setOn(!on)} aria-label={on ? t('Close the player for {title}', { title: song.music.title }) : t('Play {title}', { title: song.music.title })}>
-            <MusicThing m={song.music} size={78} />
-            <span class="sotd-text">
-              <span class="sotd-title">{song.music.title}</span>
-              <span class="sotd-sub">{musicSub(song.music)}</span>
-              <span class="sotd-times">
-                {song.days.length > 1 ? t('Song of the day {n} times', { n: song.days.length }) : t('First time as song of the day')}
+        {song ? (
+          <div class="sotd-now" key={song.id}>
+            <button class={`sotd-main${on ? ' is-on' : ' is-repeat'}`} aria-expanded={on} onClick={() => setOn(!on)} aria-label={on ? t('Close the player for {title}', { title: song.music.title }) : t('Play {title}', { title: song.music.title })}>
+              <MusicThing m={song.music} size={78} />
+              <span class="sotd-text">
+                <span class="sotd-title">{song.music.title}</span>
+                <span class="sotd-sub">{musicSub(song.music)}</span>
+                <span class="sotd-times">
+                  {song.days.length > 1 ? t('Song of the day {n} times', { n: song.days.length }) : t('First time as song of the day')}
+                </span>
               </span>
-            </span>
-            <span class="deck-button"><Icon name={on ? 'player-pause' : 'player-play'} size={18} stroke={2} /></span>
-          </button>
-          {on && <div class="sotd-player"><MusicEmbed m={song.music} /></div>}
-          <div class="sotd-actions">
-            <button class="btn btn-quiet btn-s" onClick={() => setPicking(today)}><Icon name="refresh" size={16} /> {t('Change')}</button>
-            <button class="btn btn-quiet btn-s" onClick={surprise} disabled={busy || songs.length < 2}><Icon name="dice-5" size={16} /> {t('Shuffle')}</button>
-            <button class="btn btn-quiet btn-s" onClick={() => navigate('song/' + song.id)}><Icon name="vinyl" size={16} /> {t('Open')}</button>
+              <span class="deck-button"><Icon name={on ? 'player-pause' : 'player-play'} size={18} stroke={2} /></span>
+            </button>
+            {on && <div class="sotd-player"><MusicEmbed m={song.music} /></div>}
+            <div class="sotd-actions">
+              <button class="btn btn-quiet btn-s" onClick={() => setPicking(today)}><Icon name="refresh" size={16} /> {t('Change')}</button>
+              <button class="btn btn-quiet btn-s" onClick={surprise} disabled={busy || songs.length < 2}><Icon name="dice-5" size={16} /> {t('Shuffle')}</button>
+              <button class="btn btn-quiet btn-s" onClick={() => navigate('song/' + song.id)}><Icon name="vinyl" size={16} /> {t('Open')}</button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div class="sotd-empty">
-          <p class="sotd-ask">{t('What does today sound like?')}</p>
-          <div class="sotd-ideas" role="list">
-            {ideas.map((s, k) => (
-              <button key={s.id} role="listitem" class="sotd-idea" style={{ '--k': k }} disabled={busy} onClick={() => pick(s, today)} aria-label={t('Make {title} today’s song', { title: s.music.title })}>
-                <MusicThing m={s.music} size={52} />
-                <span class="sotd-idea-title">{s.music.title}</span>
-              </button>
-            ))}
+        ) : (
+          <div class="sotd-empty">
+            <p class="sotd-ask">{t('What does today sound like?')}</p>
+            <div class="sotd-ideas" role="list">
+              {ideas.map((s, k) => (
+                <button key={s.id} role="listitem" class="sotd-idea" style={{ '--k': k }} disabled={busy} onClick={() => pick(s, today)} aria-label={t('Make {title} today’s song', { title: s.music.title })}>
+                  <MusicThing m={s.music} size={52} />
+                  <span class="sotd-idea-title">{s.music.title}</span>
+                </button>
+              ))}
+            </div>
+            <div class="sotd-actions">
+              <button class="btn btn-primary btn-s" onClick={surprise} disabled={busy}><Icon name="dice-5" size={16} /> {t('Surprise me')}</button>
+              {songs.length > ideas.length && <button class="btn btn-quiet btn-s" onClick={() => setPicking(today)}><Icon name="list" size={16} /> {t('Choose…')}</button>}
+            </div>
           </div>
-          <div class="sotd-actions">
-            <button class="btn btn-primary btn-s" onClick={surprise} disabled={busy}><Icon name="dice-5" size={16} /> {t('Surprise me')}</button>
-            {songs.length > ideas.length && <button class="btn btn-quiet btn-s" onClick={() => setPicking(today)}><Icon name="list" size={16} /> {t('Choose…')}</button>}
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* the last two weeks, a record for each day that had one; tap a day to pick or change its song */}
-      <div class="sotd-strip" role="list" aria-label={t('The last two weeks')}>
-        {strip.map(({ day, song: s }, i) => (
-          <button
-            key={day}
-            role="listitem"
-            class={`sotd-day${s ? ' has' : ''}${day === today ? ' is-today' : ''}`}
-            style={{ '--i': i }}
-            onClick={() => setPicking(day)}
-            aria-label={`${dayLabel(day)}: ${s ? s.music.title : t('no song yet')}`}
-            title={`${dayLabel(day)}${s ? ' · ' + s.music.title : ''}`}
-          >
-            <span class="sotd-disc">{s?.music.image && <img src={s.music.image} alt="" loading="lazy" referrerpolicy="no-referrer" />}</span>
-            <small>{WEEKDAYS[weekday(day)].slice(0, 1)}</small>
-          </button>
-        ))}
-      </div>
+        {/* the last two weeks, a record for each day that had one; tap a day to pick or change its song */}
+        <div class="sotd-strip" role="list" aria-label={t('The last two weeks')}>
+          {strip.map(({ day, song: s }, i) => (
+            <button
+              key={day}
+              role="listitem"
+              class={`sotd-day${s ? ' has' : ''}${day === today ? ' is-today' : ''}`}
+              style={{ '--i': i }}
+              onClick={() => setPicking(day)}
+              aria-label={`${dayLabel(day)}: ${s ? s.music.title : t('no song yet')}`}
+              title={`${dayLabel(day)}${s ? ' · ' + s.music.title : ''}`}
+            >
+              <span class="sotd-disc">{s?.music.image && <img src={s.music.image} alt="" loading="lazy" referrerpolicy="no-referrer" />}</span>
+              <small>{WEEKDAYS[weekday(day)].slice(0, 1)}</small>
+            </button>
+          ))}
+        </div>
+      </section>
 
+      {/* outside the card: the card isolates its glow, which would trap the sheet beneath the rest of the page */}
       <DayPicker day={picking} songs={songs} busy={busy} onPick={pick} onClose={() => setPicking(null)} />
-    </section>
+    </>
   );
 }
 
