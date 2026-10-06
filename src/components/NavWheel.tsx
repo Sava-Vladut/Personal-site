@@ -257,23 +257,55 @@ export function NavWheel({ world }: { world?: string | null }) {
       act(s);
     }
   };
-  const spin = useRef({ angle: 0, raf: 0 });
+  const spin = useRef({ angle: 0, raf: 0, last: 0, vel: 0, from: 0, drag: false, moved: false });
   useEffect(() => () => cancelAnimationFrame(spin.current.raf), []);
-  const outside = (ev: MouseEvent) => {
-    const tg = ev.target as Element;
-    if (leaving || !(tg === ev.currentTarget || tg.matches('.nw-svg, .nw-stage, .nw-body'))) return;
-    const g = stage.current?.querySelector<SVGGElement>('.nw-spin');
-    if (!g || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    haptic(5);
-    cancelAnimationFrame(spin.current.raf);
-    const from = spin.current.angle, by = 360 + Math.random() * 360, start = performance.now(), dur = 1800 + by;
-    const step = (now: number) => {
-      const p = Math.min(1, (now - start) / dur);
-      spin.current.angle = from + by * (1 - (1 - p) ** 3);
-      g.style.setProperty('--spin', `${spin.current.angle.toFixed(2)}deg`);
-      if (p < 1) spin.current.raf = requestAnimationFrame(step);
+  const isBg = (tg: Element, ev: Event) => tg === ev.currentTarget || tg.matches('.nw-svg, .nw-stage, .nw-body');
+  const setSpin = (deg: number) => {
+    spin.current.angle = deg;
+    stage.current?.querySelector<SVGGElement>('.nw-spin')?.style.setProperty('--spin', `${deg.toFixed(2)}deg`);
+  };
+  const aim = (ev: PointerEvent) => {
+    const r = stage.current!.getBoundingClientRect();
+    return (Math.atan2(ev.clientX - (r.left + r.width / 2), -(ev.clientY - (r.top + r.height / 2))) * 180) / Math.PI;
+  };
+  const down = (ev: PointerEvent) => {
+    if (leaving || !stage.current || !isBg(ev.target as Element, ev)) return;
+    const sp = spin.current;
+    cancelAnimationFrame(sp.raf);
+    Object.assign(sp, { drag: true, moved: false, vel: 0, last: performance.now(), from: aim(ev) - sp.angle });
+    (ev.currentTarget as Element).setPointerCapture(ev.pointerId);
+  };
+  const move = (ev: PointerEvent) => {
+    const sp = spin.current;
+    if (!sp.drag) return;
+    const now = performance.now(), prev = sp.angle;
+    let next = aim(ev) - sp.from;
+    next = prev + ((((next - prev) % 360) + 540) % 360) - 180; // the short way round
+    if (Math.abs(next - prev) > 0.5) sp.moved = true;
+    if (!sp.moved) return;
+    sp.vel = (next - prev) / Math.max(1, now - sp.last);
+    sp.last = now;
+    setSpin(next);
+  };
+  const up = () => {
+    const sp = spin.current;
+    if (!sp.drag) return;
+    sp.drag = false;
+    if (!sp.moved || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let t0 = performance.now();
+    if (t0 - sp.last > 80) sp.vel = 0;
+    const coast = (now: number) => {
+      sp.vel *= 0.95 ** ((now - t0) / 16);
+      setSpin(sp.angle + sp.vel * (now - t0));
+      t0 = now;
+      if (Math.abs(sp.vel) > 0.01) sp.raf = requestAnimationFrame(coast);
     };
-    spin.current.raf = requestAnimationFrame(step);
+    sp.raf = requestAnimationFrame(coast);
+  };
+  const outside = (ev: MouseEvent) => {
+    if (leaving || !isBg(ev.target as Element, ev)) return;
+    if (spin.current.moved) return void (spin.current.moved = false); // that was a drag, not a tap
+    back();
   };
 
   const { z, d0, d1 } = view;
@@ -357,6 +389,10 @@ export function NavWheel({ world }: { world?: string | null }) {
       aria-modal="true"
       aria-label={t('Everything')}
       onClick={outside}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
     >
       <Sky world={sky} />
       <header class="nw-head">
