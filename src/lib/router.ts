@@ -9,11 +9,10 @@ export interface Route {
 }
 let visits = 0;
 
-function parse(): Route {
+function parse(visit = ++visits): Route {
   const [path, qs = ''] = location.hash.replace(/^#\/?/, '').split('?');
   const [head, id] = path.split('/');
   const query = new URLSearchParams(qs);
-  const visit = ++visits;
   if (head === 'note') return { name: 'note', id: id || 'new', query, visit };
   if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
   if (head === 'book' && id) return { name: 'book', id, query, visit };
@@ -26,9 +25,12 @@ function parse(): Route {
 
 /* ---------- page transitions ----------
    Tabs slide sideways toward the tab you picked; opening a note, person, stats or the mind page pushes the new page
-   in from the right, and going back pops it off again. The CSS lives under "Page transitions". */
+   in from the right, and going back pops it off again. Leaving the wheel for a page dissolves the wheel into it.
+   The CSS lives under "Page transitions". */
 
-type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade';
+export type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade' | 'wheel';
+/** The move the next navigation asked for, instead of the one its pages would pick. */
+let asked: Motion | null = null;
 const TABS: RouteName[] = ['journal', 'tracker', 'people', 'media'];
 const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
 
@@ -61,8 +63,9 @@ export function useRoute() {
   useEffect(() => {
     const f = () => {
       const next = parse();
-      const motion = uaAnimated || reduced.matches || !document.startViewTransition ? null : motionFor(current.current, next);
+      const motion = uaAnimated || reduced.matches || !document.startViewTransition ? null : (asked ?? motionFor(current.current, next));
       uaAnimated = false;
+      asked = null;
       if (!motion) return setRoute(next);
       const root = document.documentElement;
       const n = ++transitions;
@@ -95,8 +98,15 @@ export function useRoute() {
   return route;
 }
 
+/** The page you're on, for things inside it that only need to know (only the app itself follows changes, so only it animates them). */
+export const routeName = () => parse(0).name;
+
+/** Whether pages change with a transition here, rather than at once. */
+export const transitionsOn = () => !!document.startViewTransition && !reduced.matches;
+
 /** In-app navigation. Entries are tagged so goBack() knows whether "back" stays inside the app. */
-export function navigate(to: string, replace = false) {
+export function navigate(to: string, replace = false, motion?: Motion) {
+  asked = motion ?? null;
   const hash = '#/' + to.replace(/^[#/]+/, '');
   if (replace) history.replaceState({ mmInApp: history.state?.mmInApp }, '', hash);
   else history.pushState({ mmInApp: 1 }, '', hash);
@@ -104,9 +114,9 @@ export function navigate(to: string, replace = false) {
 }
 
 /** Navigates once an open sheet has finished closing — its history entry popping would otherwise undo it. */
-export function navigateAfterSheet(to: string) {
-  if (history.state?.mmSheet) addEventListener('popstate', () => navigate(to), { once: true });
-  else navigate(to);
+export function navigateAfterSheet(to: string, motion?: Motion) {
+  if (history.state?.mmSheet) addEventListener('popstate', () => navigate(to, false, motion), { once: true });
+  else navigate(to, false, motion);
 }
 
 export function goBack(fallback = '') {

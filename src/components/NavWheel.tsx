@@ -1,7 +1,7 @@
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { WHEEL, type WheelNode } from '../data/wheel';
-import { navigateAfterSheet, pushBack, useRoute } from '../lib/router';
+import { navigateAfterSheet, pushBack, routeName, transitionsOn } from '../lib/router';
 import { haptic } from '../lib/haptics';
 import { LOCALE, t } from '../lib/i18n';
 import { compact, usePoints } from '../lib/twitch';
@@ -134,11 +134,12 @@ export function NavWheel({ world }: { world?: string | null }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const segs = useMemo(() => layout(WHEEL), []);
   // where you are: the place you're on, and the category it's in
-  const route = useRoute().name;
+  const route = routeName();
   const here = segs.find((s) => s.leaf && s.n.to != null && !s.n.to.includes('?') && routeOf(s.n.to) === route) ?? null;
   const within = (s: Seg) => { for (let x = here; x; x = x.parent) if (x === s) return true; return false; };
 
@@ -197,6 +198,13 @@ export function NavWheel({ world }: { world?: string | null }) {
     };
   }, [open]);
 
+  // going somewhere: the wheel holds still until the page change takes it (lib/router.ts, 'wheel'), which unmounts it
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(() => setLeaving(false), 1000); // never left standing if the page didn't change
+    return () => clearTimeout(timer);
+  }, [leaving]);
+
   useEffect(() => {
     if (!closing) return;
     const timer = setTimeout(() => setClosing(false), CLOSE_MS);
@@ -232,10 +240,16 @@ export function NavWheel({ world }: { world?: string | null }) {
     haptic(5);
     if (s === focusSeg) return back();
     if (!s.leaf) return setFocus(s.n.id);
-    if (s.n.to != null) {
-      navigateAfterSheet(s.n.to);
-      close();
+    if (s.n.to == null) return;
+    if (s !== here && transitionsOn()) {
+      // the wheel dissolves into the page instead of shrinking back into the button first
+      setLeaving(true);
+      setOpen(false);
+      navigateAfterSheet(s.n.to, 'wheel');
+      return;
     }
+    navigateAfterSheet(s.n.to);
+    close();
   };
   const key = (ev: KeyboardEvent, s: Seg) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -245,6 +259,7 @@ export function NavWheel({ world }: { world?: string | null }) {
   };
   const outside = (ev: MouseEvent) => {
     const tg = ev.target as Element;
+    if (leaving) return;
     if (tg === ev.currentTarget || tg.matches('.nw-svg, .nw-stage, .nw-body')) back();
   };
 
@@ -320,9 +335,9 @@ export function NavWheel({ world }: { world?: string | null }) {
   const info = (hot && segs.find((s) => s.n.id === hot)) || focusSeg;
   const hub = ring(-1 - z)[1];
   const hubName = focusSeg ? Math.max(0, 1 - Math.abs(z - focusSeg.depth - 1)) ** 2 : 0;
-  const layer = (open || closing) && (
+  const layer = (open || closing || leaving) && (
     <div
-      class={`nw-layer${open ? '' : ' closing'}`}
+      class={`nw-layer${leaving ? ' leaving' : open ? '' : ' closing'}`}
       data-cover=""
       style={{ '--sky': `var(--emo-${sky})` }}
       role="dialog"

@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.47.2',
+    date: '2026-10-06',
+    changes: [
+      'Picking a page on the wheel now dissolves the wheel into that page, instead of the half-closed wheel sliding away sideways',
+      'Page changes no longer start twice on pages with the wheel button, and a swipe back on iPhone no longer animates twice',
+      'Settings no longer shows the + button',
+    ],
+  },
+  {
     version: '1.47.1',
     date: '2026-10-06',
     changes: [

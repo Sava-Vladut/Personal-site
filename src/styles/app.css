@@ -105,7 +105,7 @@ code { font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-
 
 /* overflow-x: clip keeps any stray wide content from making the whole page scroll sideways (unlike hidden, it doesn't break sticky) */
 .app { min-height: 100dvh; overflow-x: clip; padding-bottom: calc(var(--nav-h) + var(--safe-b) + 28px); }
-.app.route-note, .app.route-person { padding-bottom: calc(var(--safe-b) + 40px); }
+.app.route-note, .app.route-person, .app.route-settings { padding-bottom: calc(var(--safe-b) + 40px); }
 .page {
   max-width: 640px;
   margin: 0 auto;
@@ -919,7 +919,7 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
   bottom: calc(var(--nav-h) + var(--safe-b) + 12px);
   width: min(440px, calc(100% - 2 * var(--gutter))); display: grid; gap: 8px; pointer-events: none;
 }
-.route-note ~ .toasts, .route-person ~ .toasts { bottom: calc(var(--safe-b) + 16px); }
+.route-note ~ .toasts, .route-person ~ .toasts, .route-settings ~ .toasts { bottom: calc(var(--safe-b) + 16px); }
 .toast {
   pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 8px 8px 8px 18px; min-height: 50px; border-radius: 999px; color: var(--ink);
@@ -998,9 +998,9 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
    runs, though: a named element can't blur what's behind it, so at rest the glass would stop frosting.
    For the moment it can't, the glass gets a denser fill so the change doesn't show. */
 
-html[data-nav] .nav { view-transition-name: nav; }
+html[data-nav]:not([data-nav='wheel']) .nav { view-transition-name: nav; }
 html[data-nav] .toasts { view-transition-name: toasts; }
-html[data-nav] .nav .glass:not(.tinted) { background: var(--glass-fill-strong); }
+html[data-nav]:not([data-nav='wheel']) .nav .glass:not(.tinted) { background: var(--glass-fill-strong); }
 html[data-nav] .page, html[data-nav] .page > * { animation: none; }
 
 html[data-nav]::view-transition-old(root),
@@ -1018,6 +1018,10 @@ html[data-nav='tab-right']::view-transition-new(root) { animation: 0.38s var(--e
 html[data-nav='tab-left']::view-transition-new(root) { animation: 0.38s var(--ease-emph) 0.04s both vt-from-left; }
 html[data-nav='fade']::view-transition-old(root) { animation: 0.16s ease-in both fade-out; }
 html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-emph) both page-in; }
+/* leaving the wheel for a page: the wheel (which covers everything, tab bar too) lifts away and fades,
+   and the page settles in from just behind it; nothing slides sideways, as the wheel wasn't a page */
+html[data-nav='wheel']::view-transition-old(root) { z-index: 1; animation: 0.36s cubic-bezier(0.4, 0, 0.7, 0.4) both vt-wheel-out; }
+html[data-nav='wheel']::view-transition-new(root) { animation: 0.5s var(--ease-emph) both vt-wheel-in; }
 
 /* on wide screens a full-width slide is a lot of movement: keep it short */
 @media (min-width: 720px) {
@@ -1035,6 +1039,8 @@ html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-em
 @keyframes vt-from-left { from { opacity: 0; transform: translateX(-24px); } }
 @keyframes vt-enter-short { from { opacity: 0; transform: translateX(48px); } }
 @keyframes vt-leave-short { to { opacity: 0; transform: translateX(48px); } }
+@keyframes vt-wheel-out { to { opacity: 0; transform: scale(1.06); } }
+@keyframes vt-wheel-in { from { transform: scale(0.96); } }
 
 /* the tab bar stays live (its pill keeps sliding) and drops away when a page without it opens */
 ::view-transition-group(nav), ::view-transition-group(toasts) { animation: none; }

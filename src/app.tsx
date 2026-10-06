@@ -87,7 +87,7 @@ export function App() {
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && route.name !== 'settings' && <TabBar />}
       <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />
       <EntryMenu />
       <Toasts />
