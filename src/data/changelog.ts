@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.50.1',
+    date: '2026-10-06',
+    changes: [
+      'On iPhone, the lock no longer brings up a passkey sheet: tap anywhere on it and Face ID starts straight away',
+      'No more mentions of passkeys in the lock’s messages',
+    ],
+  },
+  {
     version: '1.50.0',
     date: '2026-10-06',
     changes: [

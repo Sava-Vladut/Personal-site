@@ -40,10 +40,16 @@ export const useLock = lock$.use;
 export const getLock = lock$.get;
 const publish = (patch: Partial<LockStatus>) => lock$.set({ ...lock$.get(), ...patch });
 
+const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+/**
+ * iPhone and iPad: Safari only goes straight to Face ID when it's asked from a tap. Asked any other way, it
+ * first shows its own "sign in with a passkey" sheet that needs a Continue, so there the lock waits for a tap.
+ */
+export const isIOS = /iPhone|iPad/.test(ua) || (/Macintosh/.test(ua) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1);
+
 /** What the device calls the way it checks it's you. */
 export const unlockName = (() => {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
-  if (/iPhone|iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'Face ID';
+  if (isIOS) return 'Face ID';
   if (/Macintosh/.test(ua)) return 'Touch ID';
   if (/Windows/.test(ua)) return 'Windows Hello';
   return t('biometrics');
@@ -91,7 +97,7 @@ async function create(): Promise<string> {
     publicKey: {
       challenge,
       rp: { name: 'My Mind', id: location.hostname },
-      user: { id: random(16), name: 'My Mind lock', displayName: 'My Mind' },
+      user: { id: random(16), name: 'My Mind', displayName: 'My Mind' },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
       attestation: 'none',
@@ -127,7 +133,7 @@ export function lockError(e: unknown): string | null {
   const name = (e as DOMException)?.name;
   if (name === 'AbortError') return null;
   if (name === 'NotAllowedError') return t('{name} was cancelled or didn’t recognise you.', { name: unlockName });
-  if (name === 'InvalidStateError') return t('This device already has a passkey for My Mind.');
+  if (name === 'InvalidStateError') return t('{name} is already set up for My Mind on this device.', { name: unlockName });
   return (e as Error)?.message || t('{name} isn’t available right now.', { name: unlockName });
 }
 
