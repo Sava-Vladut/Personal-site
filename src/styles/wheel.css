@@ -39,6 +39,9 @@
 .nw-mark-orbit circle { fill: var(--ink-2); opacity: 0.7; }
 .nw-mark-hub { fill: var(--ink); transform-box: fill-box; transform-origin: center; animation: nw-hub 2.8s ease-in-out infinite; }
 @keyframes nw-hub { 0%, 100% { scale: 0.85; } 50% { scale: 1.1; } }
+/* the mark's SVG repaints every frame, so it rests while the open wheel covers it */
+:root[data-covered] .nw-trigger::before,
+:root[data-covered] .nw-mark :is(.nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub) { animation-play-state: paused; }
 
 .nw-layer {
   --sky: var(--emo-hope-interest);

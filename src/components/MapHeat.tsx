@@ -24,6 +24,7 @@ const SPRITE = 64;
 const R_WORLD = 5.7e-5;   // a puff's radius in world units (about 60px at street-level zoom 12)
 const THREAD_STEP = 6;    // px between the thread's samples
 const MIN_FRAME = 33;     // ~30fps is plenty for drifting clouds
+const STRIDE = 10;        // per letter cell: x, y, then sine and cosine of four fixed phases
 
 type RGB = [number, number, number];
 const hex = (s: string): RGB => {
@@ -140,7 +141,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
     const g = glyphCv.getContext('2d')!, c = cloudCv.getContext('2d')!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     let w = 0, h = 0, dpr = 1, sp = 14, font = 11, cols = 0, rows = 0;
-    let heat = new Float32Array(0), byWorld = new Float32Array(0);
+    let heat = new Float32Array(0), byWorld = new Float32Array(0), cells = new Float32Array(0);
     let dark = false;
     let puffs: HTMLCanvasElement[] = [];
     let strand: string[] = []; // the thread's colour in each world
@@ -198,6 +199,15 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       cols = Math.ceil(w / sp) + 1; rows = Math.ceil(h / sp) + 1;
       heat = new Float32Array(cols * rows);
       byWorld = new Float32Array(cols * rows * KINDS);
+      // each letter's place, and the fixed halves of its wave and wobble, so a frame needs almost no trig (as in Sky)
+      cells = new Float32Array(cols * rows * STRIDE);
+      for (let row = 0, o = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++, o += STRIDE) {
+          const bx = col * sp + (row & 1) * (sp / 3), by = row * sp + sp / 2;
+          const a = bx * 0.021, b = by * 0.017, e = row * 0.37 + col * 0.13, f = row * 0.18 - col * 0.17; // (c is the cloud canvas)
+          cells.set([bx, by, Math.sin(a), Math.cos(a), Math.sin(b), Math.cos(b), Math.sin(e), Math.cos(e), Math.sin(f), Math.cos(f)], o);
+        }
+      }
       palette();
     };
 
@@ -327,6 +337,9 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       g.clearRect(0, 0, glyphCv.width, glyphCv.height);
       g.imageSmoothingEnabled = false;
       const half = tile / 2;
+      // sin(a + t·1.1)·cos(b − t·0.85) for the wave, sin(t·1.3 + e) and cos(t·1.1 + f) for the wobble, split by angle addition
+      const s1 = Math.sin(t * 1.1), c1 = Math.cos(t * 1.1), s2 = Math.sin(t * 0.85), c2 = Math.cos(t * 0.85);
+      const s3 = Math.sin(t * 1.3), c3 = Math.cos(t * 1.3);
       for (let row = 0, cell = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++, cell++) {
           const s = 1 - Math.exp(-heat[cell] * 1.5);
@@ -336,16 +349,17 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
             const v = byWorld[cell * KINDS + wi];
             if (v > best) { best = v; tint = wi; }
           }
-          const bx = col * sp + (row & 1) * (sp / 3), by = row * sp + sp / 2;
-          const wave = 0.5 + 0.5 * Math.sin(bx * 0.021 + t * 1.1) * Math.cos(by * 0.017 - t * 0.85);
+          const o = cell * STRIDE;
+          const bx = cells[o], by = cells[o + 1];
+          const wave = 0.5 + 0.5 * (cells[o + 2] * c1 + cells[o + 3] * s1) * (cells[o + 5] * c2 + cells[o + 4] * s2);
           const ramp = levels[tint];
           const top = ramp.length - 1;
           const i = Math.min(top, Math.floor((s * 0.88 + wave * 0.24 - 0.08) * top));
           if (i <= 0) continue;
           const variants = ramp[i];
           const glyph = variants[variants.length === 1 ? 0 : (col * 3 + row * 5) % variants.length];
-          const x = bx + Math.sin(t * 1.3 + row * 0.37 + col * 0.13) * 1.3;
-          const y = by + Math.cos(t * 1.1 + row * 0.18 - col * 0.17) * 1.1;
+          const x = bx + (s3 * cells[o + 7] + c3 * cells[o + 6]) * 1.3;
+          const y = by + (c1 * cells[o + 9] - s1 * cells[o + 8]) * 1.1;
           g.globalAlpha = Math.min(0.92, 0.18 + s * 0.75) * (dark ? 1 : 0.85);
           g.drawImage(atlas, glyph * tile, (tint * 2 + (s > 0.72 ? 1 : 0)) * tile, tile, tile,
             Math.round(x * dpr - half), Math.round(y * dpr - half), tile, tile);

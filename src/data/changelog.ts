@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.47.1',
+    date: '2026-10-06',
+    changes: [
+      'Smoother wheel: the page’s sky and the wheel button rest while the open wheel covers them',
+      'The map’s heat letters take less work to draw each frame',
+      'The live dot on Channel points pulses without repainting the page',
+    ],
+  },
+  {
     version: '1.47.0',
     date: '2026-10-06',
     changes: [

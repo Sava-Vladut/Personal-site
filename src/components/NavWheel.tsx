@@ -21,6 +21,7 @@ const C = 200;
 const GAP = 3;
 const MS = 480;
 const CLOSE_MS = 340;
+const COVER_MS = 450; // the layer's fade-in (0.4s), and a little to spare
 const OUT = 196;
 // The rings, by how many levels below the one in view: gone, the middle, the ring, and everything deeper (hidden at the rim)
 const STOPS: [number, number][] = [[0, 0], [0, 58], [64, OUT], [OUT, OUT]];
@@ -185,6 +186,17 @@ export function NavWheel({ world }: { world?: string | null }) {
     };
   }, [open]);
 
+  // once faded in, the layer hides the page: its skies and the button's mark rest until it starts to close (components/Sky.tsx)
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    const timer = setTimeout(() => root.setAttribute('data-covered', ''), COVER_MS);
+    return () => {
+      clearTimeout(timer);
+      root.removeAttribute('data-covered');
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!closing) return;
     const timer = setTimeout(() => setClosing(false), CLOSE_MS);
@@ -311,6 +323,7 @@ export function NavWheel({ world }: { world?: string | null }) {
   const layer = (open || closing) && (
     <div
       class={`nw-layer${open ? '' : ' closing'}`}
+      data-cover=""
       style={{ '--sky': `var(--emo-${sky})` }}
       role="dialog"
       aria-modal="true"

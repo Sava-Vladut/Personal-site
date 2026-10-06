@@ -242,7 +242,7 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
     let w = 0, h = 0;
     let dark = false, norm = 1 / 0.62;
     const lut = new Float32Array(LUT_N + 1); // how solid a puff is, by squared distance from its centre
-    let raf = 0, visible = true, last = 0, clock = 0;
+    let raf = 0, visible = true, covered = false, last = 0, clock = 0;
     let rect: DOMRect | null = null;
     const pointer = { x: 0, y: 0, tx: 0, ty: 0, pull: 0, target: 0 };
 
@@ -529,7 +529,7 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
       schedule();
     };
     const schedule = () => {
-      if (!raf && visible && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame);
+      if (!raf && visible && !covered && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame);
     };
     const stop = () => {
       cancelAnimationFrame(raf);
@@ -550,6 +550,16 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
     const scrolled = () => { rect = null; };
 
     const retheme = () => { palette(); draw(); };
+    // a full-screen layer ([data-cover], e.g. the wheel) hides the skies under it: they wait, and its own sky goes on
+    const front = !!host.closest('[data-cover]');
+    const recover = () => {
+      covered = !front && document.documentElement.hasAttribute('data-covered');
+      covered ? stop() : schedule();
+    };
+    const onRoot = (list: MutationRecord[]) => {
+      if (list.some((m) => m.attributeName === 'data-theme')) retheme();
+      if (list.some((m) => m.attributeName === 'data-covered')) recover();
+    };
     const onVisibility = () => (document.hidden ? stop() : schedule());
     const onMotion = () => (reduced.matches ? (stop(), draw()) : schedule());
     const ro = new ResizeObserver(resize);
@@ -557,15 +567,16 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
       visible = e.isIntersecting;
       visible ? schedule() : stop();
     });
-    const mo = new MutationObserver(retheme);
+    const mo = new MutationObserver(onRoot);
 
     palette();
+    recover();
     applied.current = key;
     retune.current = () => { palette(); draw(); };
     resize();
     ro.observe(host);
     io.observe(host);
-    mo.observe(document.documentElement, { attributeFilter: ['data-theme'] });
+    mo.observe(document.documentElement, { attributeFilter: ['data-theme', 'data-covered'] });
     darkQuery.addEventListener('change', retheme);
     reduced.addEventListener('change', onMotion);
     document.addEventListener('visibilitychange', onVisibility);
