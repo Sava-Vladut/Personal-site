@@ -9,6 +9,7 @@ import { blankPerson, getBooks, getPeople, getSongs, savePerson, toast, useBooks
 import { FormatBar } from './FormatBar';
 import { Markdown } from './Markdown';
 import { MentionStrip } from './mentions';
+import { t } from '../lib/i18n';
 
 const nameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
@@ -88,9 +89,9 @@ export function MentionText({ value, onChange, onPerson, class: cls, placeholder
         picking.current = true;
         try {
           person = await savePerson(blankPerson(m.q.trim()));
-          toast(`${person.name} added to People`);
+          toast(t('{name} added to People', { name: person.name }));
         } catch {
-          toast('Couldn’t save this person. Try again.');
+          toast(t('Couldn’t save this person. Try again.'));
           return;
         } finally {
           picking.current = false;
@@ -190,7 +191,7 @@ export function MentionText({ value, onChange, onPerson, class: cls, placeholder
         <FormatBar
           target={() => null}
           format={false}
-          swapLabel="Tag someone, a book or music"
+          swapLabel={t('Tag someone, a book or music')}
           swap={<MentionStrip items={found} active={active} q={mention.q} canAdd={canAdd} onPick={pick} onAdd={() => pick('new')} listId={listId} />}
         />
       )}

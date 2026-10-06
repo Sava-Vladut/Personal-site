@@ -6,6 +6,7 @@ import { MENTION, resolveMention } from './books';
 import { stripMarkdown } from './markdown';
 import { score, searchKey } from './mentions';
 import type { Book, Entry } from './store';
+import { t } from './i18n';
 
 const NOTE = 'note:';
 const key = (t: string) => t.trim().normalize('NFC').toLowerCase();
@@ -22,7 +23,7 @@ export function noteLabel(e: Pick<Entry, 'title' | 'text'>) {
     const s = stripMarkdown(l).trim();
     if (s) return cut(s, 70);
   }
-  return 'Untitled';
+  return t('Untitled');
 }
 
 /** The note a [[target|text]] link points to, if it's still there. */

@@ -12,6 +12,7 @@ import { MentionText } from '../components/MentionText';
 import { Icon, Sprite } from '../components/icons';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
+import { t } from '../lib/i18n';
 
 const localInput = (ms: number) => {
   const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000);
@@ -66,7 +67,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   const log = async () => {
     if (!picked || !EMOTION[picked] || submitting.current) return;
     const time = when ? new Date(when).getTime() : Date.now();
-    if (!Number.isFinite(time) || time > Date.now()) return toast('Choose a valid time that isn’t in the future.');
+    if (!Number.isFinite(time) || time > Date.now()) return toast(t('Choose a valid time that isn’t in the future.'));
     const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), people, time, date: keyOf(new Date(time)) };
     const fresh = EMOTION[picked].depth === 2 && !named.has(picked);
     submitting.current = true;
@@ -74,7 +75,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
     try {
       await saveEntry(e);
     } catch {
-      toast('Couldn’t save this check-in. Try again.');
+      toast(t('Couldn’t save this check-in. Try again.'));
       return;
     } finally {
       submitting.current = false;
@@ -82,8 +83,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
     }
     addContext(e);
     const name = EMOTION[picked].depth === 0 ? shortName(picked) : EMOTION[picked].name;
-    toast(fresh ? `New feeling named: ${name} · ${named.size + 1} of ${FEELINGS.length}` : `Logged: ${name}`, {
-      label: 'Undo',
+    toast(fresh ? t('New feeling named: {name} · {n} of {total}', { name, n: named.size + 1, total: FEELINGS.length }) : t('Logged: {name}', { name }), {
+      label: t('Undo'),
       run: () => deleteEntry(e.id),
     });
     reset();
@@ -100,9 +101,9 @@ export function Tracker({ query }: { query: URLSearchParams }) {
       <div class="journal-top track-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
       <Sky world={world} />
       <header class="page-head">
-        <div class="eyebrow">Check in</div>
-        <h1 class="title">How are you feeling?</h1>
-        <p class="subtitle">Name it to tame it. Pick a world, then find the word.</p>
+        <div class="eyebrow">{t('Check in')}</div>
+        <h1 class="title">{t('How are you feeling?')}</h1>
+        <p class="subtitle">{t('Name it to tame it. Pick a world, then find the word.')}</p>
       </header>
 
       {p ? (
@@ -112,41 +113,41 @@ export function Tracker({ query }: { query: URLSearchParams }) {
             <div class="grow">
               <div class="row gap-s">
                 <h2 class="confirm-name">{p.depth === 0 ? EMOTION[p.core].name : p.name}</h2>
-                {p.depth === 2 && !named.has(p.id) && <span class="badge">New</span>}
+                {p.depth === 2 && !named.has(p.id) && <span class="badge">{t('New')}</span>}
               </div>
               {p.depth > 0 && <div class="confirm-path">{trail(p.id)}</div>}
             </div>
-            <button class="btn btn-quiet btn-s" onClick={() => setPicked(null)}>Change</button>
+            <button class="btn btn-quiet btn-s" onClick={() => setPicked(null)}>{t('Change')}</button>
           </div>
           <p class="definition">{p.def}</p>
 
           <IntensityPicker value={intensity} onChange={setIntensity} cores={[p.core]} />
 
           <div class="confirm-extra">
-            <span class="field-label">Add context <span class="muted">· optional</span></span>
+            <span class="field-label">{t('Add context')} <span class="muted">· {t('optional')}</span></span>
             <MentionText
               class="input confirm-note"
               rows={2}
               autosize={false}
-              placeholder="What’s behind it? Type @ to tag someone, a book or a song"
+              placeholder={t('What’s behind it? Type @ to tag someone, a book or a song')}
               value={note}
               onChange={setNote}
               onPerson={(p) => setPeople((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]))}
-              label="Note"
+              label={t('Note')}
             />
             <div class="meta confirm-people">
               <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} />
               {when === null ? (
-                <button class="chip" onClick={() => setWhen(localInput(Date.now()))} aria-label="When: now. Change time">
-                  <Icon name="clock" size={16} /> Now <Icon name="chevron-down" size={14} />
+                <button class="chip" onClick={() => setWhen(localInput(Date.now()))} aria-label={t('When: now. Change time')}>
+                  <Icon name="clock" size={16} /> {t('Now')} <Icon name="chevron-down" size={14} />
                 </button>
               ) : (
-                <input class="input input-s confirm-when" type="datetime-local" value={when} max={localInput(Date.now())} onInput={(e) => setWhen(e.currentTarget.value)} aria-label="When" />
+                <input class="input input-s confirm-when" type="datetime-local" value={when} max={localInput(Date.now())} onInput={(e) => setWhen(e.currentTarget.value)} aria-label={t('When')} />
               )}
             </div>
           </div>
 
-          <button class="btn btn-primary block confirm-log" onClick={log} disabled={saving}>{saving ? 'Saving…' : 'Log feeling'}</button>
+          <button class="btn btn-primary block confirm-log" onClick={log} disabled={saving}>{saving ? t('Saving…') : t('Log feeling')}</button>
         </div>
       ) : picker === 'wheel' ? (
         <EmotionWheel focus={core} onFocus={setCore} onPick={setPicked} counts={counts} />
@@ -161,13 +162,13 @@ export function Tracker({ query }: { query: URLSearchParams }) {
 
       <section class="section">
         <div class="row between">
-          <h2 class="section-title">Today</h2>
-          {streak > 1 && <span class="muted small">{streak}-day streak</span>}
+          <h2 class="section-title">{t('Today')}</h2>
+          {streak > 1 && <span class="muted small">{t('{n}-day streak', { n: streak })}</span>}
         </div>
         {todays.length ? (
           <div class="entries">{todays.map((e) => <CheckInRow e={e} />)}</div>
         ) : (
-          <p class="empty-note">No check-ins yet today.</p>
+          <p class="empty-note">{t('No check-ins yet today.')}</p>
         )}
       </section>
 
@@ -175,8 +176,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
 
       <button class="card dex-link" onClick={() => navigate('stats?tab=dex')}>
         <div>
-          <div class="section-title">Feelings named</div>
-          <div class="muted small">{named.size} of {FEELINGS.length} found</div>
+          <div class="section-title">{t('Feelings named')}</div>
+          <div class="muted small">{t('{n} of {total} found', { n: named.size, total: FEELINGS.length })}</div>
         </div>
         <div class="meter" aria-hidden="true"><i style={{ width: `${(named.size / FEELINGS.length) * 100}%` }} /></div>
         <Icon name="chevron-right" />

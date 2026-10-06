@@ -5,6 +5,7 @@ import 'photoswipe/style.css';
 import UI from '../data/ui-icons.json';
 import { svgInner } from './icons';
 import { pushBack } from './router';
+import { t } from './i18n';
 
 export interface ViewItem {
   src: string;
@@ -71,11 +72,11 @@ export async function openViewer(items: ViewItem[], index: number, opts: ViewOpt
       secondaryZoomLevel: 2.5,
       maxZoomLevel: 6,
       wheelToZoom: true,
-      closeTitle: 'Close',
+      closeTitle: t('Close'),
       closeSVG: icon('x'),
-      arrowPrevTitle: 'Previous',
-      arrowNextTitle: 'Next',
-      errorMsg: 'This picture couldn’t be loaded',
+      arrowPrevTitle: t('Previous'),
+      arrowNextTitle: t('Next'),
+      errorMsg: t('This picture couldn’t be loaded'),
       mainClass: 'viewer',
       paddingFn: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
     });
@@ -102,21 +103,21 @@ export async function openViewer(items: ViewItem[], index: number, opts: ViewOpt
             if (i) click(i);
           },
         });
-      button('save', 8, 'Save', icon('download'), (i) => !!i.save, (i) => {
+      button('save', 8, t('Save'), icon('download'), (i) => !!i.save, (i) => {
         const a = document.createElement('a');
         a.href = i.src;
         a.download = i.save!;
         a.click();
       });
-      button('source', 8, 'Open source', icon('arrow-up-right'), (i) => !!i.link, (i) => open(i.link, '_blank', 'noopener,noreferrer'));
+      button('source', 8, t('Open source'), icon('arrow-up-right'), (i) => !!i.link, (i) => open(i.link, '_blank', 'noopener,noreferrer'));
       if (opts.onTakeOut)
-        button('takeout', 8, 'Take out of the album', icon('stack-pop'), (i) => !!i.album, () => {
+        button('takeout', 8, t('Take out of the album'), icon('stack-pop'), (i) => !!i.album, () => {
           const at = pswp.currIndex;
           pswp.close();
           opts.onTakeOut!(at);
         });
       if (opts.onRemove)
-        button('remove', 9, 'Remove', icon('trash'), () => true, () => {
+        button('remove', 9, t('Remove'), icon('trash'), () => true, () => {
           const at = pswp.currIndex;
           pswp.close();
           opts.onRemove!(at);

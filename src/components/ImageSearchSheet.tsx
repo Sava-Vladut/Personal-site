@@ -3,6 +3,7 @@ import { imageSrc, searchImages } from '../lib/images';
 import type { WebImage } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import { count, t } from '../lib/i18n';
 
 /** Search Openverse and pick images. `single` picks one, with `action` as the button's label. */
 export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { open: boolean; onClose: () => void; onAdd: (imgs: WebImage[]) => void; single?: boolean; action?: string }) {
@@ -56,13 +57,13 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
       open={open}
       onClose={onClose}
       tall
-      title={<span class="row gap-s"><Icon name="photo-search" /> Find an image</span>}
-      label="Find an image"
+      title={<span class="row gap-s"><Icon name="photo-search" /> {t('Find an image')}</span>}
+      label={t('Find an image')}
       footer={
         selected.length ? (
           <>
-            <span class="foot-note">{selected.length} selected</span>
-            <button class="btn btn-primary" onClick={() => { onAdd(selected); onClose(); }}>{action ?? `Add ${selected.length === 1 ? 'image' : `${selected.length} images`}`}</button>
+            <span class="foot-note">{t('{n} selected', { n: selected.length })}</span>
+            <button class="btn btn-primary" onClick={() => { onAdd(selected); onClose(); }}>{action ?? (selected.length === 1 ? t('Add image') : t('Add {count}', { count: count(selected.length, 'image', 'images') }))}</button>
           </>
         ) : undefined
       }
@@ -70,25 +71,25 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
       <div class="stack">
         <form class="search" onSubmit={submit} role="search">
           <Icon name="search" size={18} />
-          <input type="search" enterKeyHint="search" placeholder="Rainy window, sunset, cozy café…" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search images" />
+          <input type="search" enterKeyHint="search" placeholder={t('Rainy window, sunset, cozy café…')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search images')} />
         </form>
         {items.length > 0 && (
           <div class="img-grid">
             {items.map((img) => (
-              <button key={img.url} class="img-pick" aria-pressed={isSel(img.url)} onClick={() => toggle(img)} aria-label={img.title || 'Image'}>
+              <button key={img.url} class="img-pick" aria-pressed={isSel(img.url)} onClick={() => toggle(img)} aria-label={img.title || t('Image')}>
                 <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
                 <span class="img-check"><Icon name="check" size={16} stroke={2.5} /></span>
               </button>
             ))}
           </div>
         )}
-        {busy && <p class="hint center">Searching…</p>}
+        {busy && <p class="hint center">{t('Searching…')}</p>}
         {error && <p class="error">{error}</p>}
-        {!busy && next !== undefined && <button class="btn btn-quiet block" onClick={() => load(searched, next)}>More images</button>}
-        {!busy && !error && searched && !items.length && <p class="hint center">No images found. Try other words.</p>}
-        {!searched && <p class="hint center">Search for a picture that fits this moment.</p>}
+        {!busy && next !== undefined && <button class="btn btn-quiet block" onClick={() => load(searched, next)}>{t('More images')}</button>}
+        {!busy && !error && searched && !items.length && <p class="hint center">{t('No images found. Try other words.')}</p>}
+        {!searched && <p class="hint center">{t('Search for a picture that fits this moment.')}</p>}
       </div>
-      <p class="attribution">Openly licensed images from Openverse</p>
+      <p class="attribution">{t('Openly licensed images from Openverse')}</p>
     </Sheet>
   );
 }

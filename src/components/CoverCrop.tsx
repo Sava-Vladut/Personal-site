@@ -3,6 +3,7 @@ import { MAX_ZOOM, type Cover, type Crop } from '../lib/store';
 import { Icon } from './icons';
 import { CoverImg } from './NoteDetails';
 import { Sheet } from './Sheet';
+import { t } from '../lib/i18n';
 
 const CENTRED: Crop = { x: 0.5, y: 0.5, zoom: 1 };
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -108,22 +109,22 @@ export function CoverCropSheet({ open, onClose, cover, onSave }: {
     <Sheet
       open={open}
       onClose={onClose}
-      title="Adjust cover"
+      title={t('Adjust cover')}
       footer={
         <>
-          <button class="btn btn-quiet" onClick={() => setCrop((cur.current = CENTRED))} disabled={centred}>Reset</button>
-          <button class="btn btn-primary" onClick={() => { onSave(centred ? undefined : crop); onClose(); }}>Done</button>
+          <button class="btn btn-quiet" onClick={() => setCrop((cur.current = CENTRED))} disabled={centred}>{t('Reset')}</button>
+          <button class="btn btn-primary" onClick={() => { onSave(centred ? undefined : crop); onClose(); }}>{t('Done')}</button>
         </>
       }
     >
-      <p class="details-hint crop-hint">Drag to move it, pinch or scroll to zoom.</p>
+      <p class="details-hint crop-hint">{t('Drag to move it, pinch or scroll to zoom.')}</p>
       {cover && (
         <div
           ref={frame}
           class={`crop-frame${moving ? ' moving' : ''}`}
           tabIndex={0}
           role="application"
-          aria-label="Cover picture. Arrow keys move it, plus and minus zoom."
+          aria-label={t('Cover picture. Arrow keys move it, plus and minus zoom.')}
           data-own-gestures
           onPointerDown={down}
           onPointerMove={move}
@@ -143,7 +144,7 @@ export function CoverCropSheet({ open, onClose, cover, onSave }: {
           max={MAX_ZOOM}
           step={0.01}
           value={crop.zoom}
-          aria-label="Zoom"
+          aria-label={t('Zoom')}
           onInput={(e) => change(0, 0, +e.currentTarget.value / cur.current.zoom)}
         />
         <Icon name="zoom-in" size={18} />

@@ -2,6 +2,7 @@
 // place names from OpenStreetMap's Nominatim. They're only ever sent coordinates, never anything from the journal.
 import { addDays, keyOf, todayKey } from './dates';
 import { annotateEntries, getEntries, getSettings, normalizePlace, normalizeWeather, saveEntry, type Entry, type Place, type Weather } from './store';
+import { lang, t } from './i18n';
 
 const FORECAST = 'https://api.open-meteo.com/v1/forecast';
 const ARCHIVE = 'https://archive-api.open-meteo.com/v1/archive';
@@ -65,8 +66,8 @@ export function locate(maxAge = 0): Promise<{ lat: number; lon: number }> {
 
 export const locationError = (e: unknown) =>
   (e as GeolocationPositionError | null)?.code === 1
-    ? 'Location is blocked for this site. Allow it in your browser’s settings.'
-    : 'Couldn’t find where you are right now';
+    ? t('Location is blocked for this site. Allow it in your browser’s settings.')
+    : t('Couldn’t find where you are right now');
 
 /** "Centru, Cluj-Napoca": the neighbourhood (or village) and the town. */
 function nameOf(a: Record<string, string | undefined>) {
@@ -106,7 +107,7 @@ export interface FoundPlace extends Place { detail: string }
 
 /** Towns and cities matching what's typed, for picking a home. */
 export async function searchPlaces(q: string): Promise<FoundPlace[]> {
-  const r = await getJSON(`${GEOCODE}?count=8&language=en&format=json&name=${encodeURIComponent(q)}`);
+  const r = await getJSON(`${GEOCODE}?count=8&language=${lang}&format=json&name=${encodeURIComponent(q)}`);
   const out: FoundPlace[] = [];
   for (const x of r?.results ?? []) {
     const p = normalizePlace({ lat: x.latitude, lon: x.longitude, name: x.name });

@@ -25,6 +25,7 @@ import { WeatherMark, weatherOf } from '../components/weather';
 import { MiniMusic } from '../components/music';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
+import { LOCALE, count, t } from '../lib/i18n';
 
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
@@ -89,16 +90,16 @@ export function Journal() {
         <div class="row between">
           <h1 class="title">{longToday()}</h1>
           <div class="row">
-            <button class="icon-btn" aria-pressed={searching} aria-label="Search" onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+            <button class="icon-btn" aria-pressed={searching} aria-label={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
               <Icon name="search" />
             </button>
-            <button class="icon-btn" aria-pressed={calOpen} aria-label="Calendar" onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
+            <button class="icon-btn" aria-pressed={calOpen} aria-label={t('Calendar')} onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
               <Icon name="calendar" />
             </button>
-            <button class="icon-btn" aria-label="Stats" title="Stats" onClick={() => navigate('stats')}>
+            <button class="icon-btn" aria-label={t('Stats')} title={t('Stats')} onClick={() => navigate('stats')}>
               <Icon name="chart-dots" />
             </button>
-            <button class="icon-btn" aria-label="Settings" title="Settings" onClick={() => navigate('settings')}>
+            <button class="icon-btn" aria-label={t('Settings')} title={t('Settings')} onClick={() => navigate('settings')}>
               <Icon name="settings" />
             </button>
           </div>
@@ -108,7 +109,7 @@ export function Journal() {
       {searching && (
         <label class="search">
           <Icon name="search" size={18} />
-          <input type="search" autoFocus placeholder="Search notes, feelings, people, songs and books" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search notes" />
+          <input type="search" autoFocus placeholder={t('Search notes, feelings, people, songs and books')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search notes')} />
         </label>
       )}
 
@@ -139,27 +140,27 @@ export function Journal() {
 
       {day && (
         <div class="row between filter-note">
-          <span>Showing {rangeLabel(day, null)}</span>
-          <button class="link" onClick={() => setDay(null)}>Clear</button>
+          <span>{t('Showing {day}', { day: rangeLabel(day, null) })}</span>
+          <button class="link" onClick={() => setDay(null)}>{t('Clear')}</button>
         </div>
       )}
       </div>
 
       {ready && !entries.length && (
         <div class="empty">
-          <h2 class="title-s">Your journal is empty</h2>
-          <p>Write down what’s on your mind, or check in with how you feel right now.</p>
+          <h2 class="title-s">{t('Your journal is empty')}</h2>
+          <p>{t('Write down what’s on your mind, or check in with how you feel right now.')}</p>
           <div class="row gap-s center">
-            <button class="btn btn-primary" onClick={() => navigate('note/new')}><Icon name="pencil" size={18} /> Write a note</button>
-            <button class="btn btn-quiet" onClick={() => navigate('tracker')}>Check in</button>
+            <button class="btn btn-primary" onClick={() => navigate('note/new')}><Icon name="pencil" size={18} /> {t('Write a note')}</button>
+            <button class="btn btn-quiet" onClick={() => navigate('tracker')}>{t('Check in')}</button>
           </div>
         </div>
       )}
-      {ready && !!entries.length && !shown.length && <p class="empty-note center">Nothing matches these filters.</p>}
+      {ready && !!entries.length && !shown.length && <p class="empty-note center">{t('Nothing matches these filters.')}</p>}
 
       {pinned.length > 0 && (
         <section class="day pinned">
-          <h2 class="day-label"><Icon name="pin" size={13} /> Pinned</h2>
+          <h2 class="day-label"><Icon name="pin" size={13} /> {t('Pinned')}</h2>
           <Entries list={pinned} compact={compact} dated />
         </section>
       )}
@@ -233,7 +234,7 @@ function CheckInRun({ list }: { list: Entry[] }) {
     <div class={open ? 'checkin-run open' : 'checkin-run'}>
       <button class="checkin checkin-fold" style={worlds.length ? { '--c': `var(--emo-${worlds[0]})` } : undefined} aria-expanded={open} onClick={() => setOpen(!open)}>
         <span class="fold-sprites">{worlds.map((c, i) => <Sprite core={c} size={14} idle="view" delay={stagger(list[0].time) + i * 420} />)}</span>
-        <span class="checkin-name">{list.length} check-ins</span>
+        <span class="checkin-name">{count(list.length, 'check-in', 'check-ins')}</span>
         <span class="checkin-meta">{worlds.map((c) => shortName(c)).join(', ')}</span>
         <span class="checkin-time">{span}</span>
         <Icon name="chevron-down" size={14} />
@@ -251,13 +252,13 @@ function CheckInPrompt({ entries }: { entries: Entry[] }) {
   return (
     <section class="prompt card">
       <div class="prompt-head">
-        <h2 class="prompt-q">How are you feeling?</h2>
+        <h2 class="prompt-q">{t('How are you feeling?')}</h2>
         {em ? (
           <button class="prompt-last" onClick={() => navigate('note/' + last!.id)}>
             <Sprite core={em.core} size={11} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}
           </button>
         ) : (
-          <span class="prompt-sub">Name it to tame it.</span>
+          <span class="prompt-sub">{t('Name it to tame it.')}</span>
         )}
       </div>
       <div class="prompt-worlds">
@@ -289,8 +290,8 @@ function OnThisDay({ byDay, onOpen }: { byDay: Map<string, Entry[]>; onOpen: (da
         <button class="coming-main" onClick={() => onOpen(date)}>
           <span class="coming-icon">{c ? <Sprite core={c} size={16} idle /> : <Icon name="clock" size={18} />}</span>
           <span class="book-row-main">
-            <span class="book-row-title">{years === 1 ? 'A year ago today' : `${years} years ago today`}</span>
-            <span class="book-row-sub">{[mood?.word, title].filter(Boolean).join(' · ') || `${list.length} ${list.length === 1 ? 'entry' : 'entries'}`}</span>
+            <span class="book-row-title">{years === 1 ? t('A year ago today') : t('{span} ago today', { span: count(years, 'year', 'years') })}</span>
+            <span class="book-row-sub">{[mood?.word, title].filter(Boolean).join(' · ') || count(list.length, 'entry', 'entries')}</span>
           </span>
           <Icon name="chevron-right" size={16} />
         </button>
@@ -323,7 +324,7 @@ function ComingUp() {
     setHidden(next);
   };
   return (
-    <div class="coming-up" role="list" aria-label="Coming up">
+    <div class="coming-up" role="list" aria-label={t('Coming up')}>
       {list.map((u) => {
         const { what, years } = whatsComing(u);
         return (
@@ -332,10 +333,10 @@ function ComingUp() {
               <span class="coming-icon"><Icon name={u.date.kind === 'birthday' ? 'cake' : u.date.kind === 'anniversary' ? 'heart' : 'calendar-event'} size={18} /></span>
               <span class="book-row-main">
                 <span class="book-row-title">{what}</span>
-                <span class="book-row-sub">{[whenLabel(u.days), u.days > 1 ? u.on.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : '', years].filter(Boolean).join(' · ')}</span>
+                <span class="book-row-sub">{[whenLabel(u.days), u.days > 1 ? u.on.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' }) : '', years].filter(Boolean).join(' · ')}</span>
               </span>
             </button>
-            <button class="icon-btn small" onClick={() => hide(u)} aria-label="Put away until next time" title="Put away">
+            <button class="icon-btn small" onClick={() => hide(u)} aria-label={t('Put away until next time')} title={t('Put away')}>
               <Icon name="x" size={16} />
             </button>
           </div>
@@ -349,7 +350,7 @@ function ReadingNow() {
   const reading = useBooks().filter((b) => b.status === 'reading');
   if (!reading.length) return null;
   return (
-    <div class="reading-strip" role="list" aria-label="Reading now">
+    <div class="reading-strip" role="list" aria-label={t('Reading now')}>
       {reading.map((b) => {
         const pct = b.pages && b.page ? Math.min(100, Math.round((b.page / b.pages) * 100)) : null;
         return (
@@ -357,11 +358,11 @@ function ReadingNow() {
             <button class="reading-chip-main" onClick={() => navigate('book/' + b.id)}>
               <BookCover b={b} width={30} />
               <span class="book-row-main">
-                <span class="book-row-title">{b.title.trim() || 'Untitled'}</span>
-                <span class="book-row-sub">{pct !== null ? `${pct}% read` : 'Reading'}</span>
+                <span class="book-row-title">{b.title.trim() || t('Untitled')}</span>
+                <span class="book-row-sub">{pct !== null ? t('{pct}% read', { pct }) : t('Reading')}</span>
               </span>
             </button>
-            <button class="icon-btn small" onClick={() => navigate('note/new?book=' + b.id)} aria-label={`Write about ${b.title}`} title="Write about it">
+            <button class="icon-btn small" onClick={() => navigate('note/new?book=' + b.id)} aria-label={t('Write about {title}', { title: b.title })} title={t('Write about it')}>
               <Icon name="pencil" size={16} />
             </button>
           </div>
@@ -406,7 +407,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
         <div class="note-main">
-          <div class="note-title">{heading || 'Untitled'}</div>
+          <div class="note-title">{heading || t('Untitled')}</div>
           <div class="note-when">
             {e.dateEnd ? rangeLabel(e.date, e.dateEnd) : dated ? `${shortDate(e.date)} · ${timeLabel(e.time)}` : timeLabel(e.time)}
             {w && <> · <WeatherMark w={w} /></>}
@@ -458,7 +459,7 @@ export function NoteRow({ e, dated }: { e: Entry; dated?: boolean }) {
   return (
     <button class="note-row" {...hold}>
       <span class="row-icon">{e.icon ? <NoteIcon id={e.icon} size={18} /> : <Icon name="notebook" size={18} />}</span>
-      <span class="row-title">{heading || 'Untitled'}</span>
+      <span class="row-title">{heading || t('Untitled')}</span>
       <span class="row-text">{preview.replace(/\n+/g, ' · ')}</span>
       <span class="row-marks">
         {worlds.map((c, i) => <Sprite core={c} size={12} idle="view" delay={stagger(e.time) + i * 380} />)}
@@ -480,8 +481,8 @@ export function CheckInRow({ e }: { e: Entry }) {
   return (
     <button class="checkin" style={em ? { '--c': `var(--emo-${em.core})`, '--k': e.intensity } : undefined} {...hold}>
       {em ? <Sprite core={em.core} size={16} idle="view" delay={stagger(e.time)} /> : <span />}
-      <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in'}</span>
-      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? `thinking of ${people.join(', ')}` : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
+      <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : t('Check-in')}</span>
+      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? t('thinking of {names}', { names: people.join(', ') }) : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{w && <WeatherMark w={w} />}{timeLabel(e.time)}</span>
     </button>
   );

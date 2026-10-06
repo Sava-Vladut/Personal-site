@@ -4,10 +4,11 @@ import { CORE, coreOf } from '../data/emotions';
 import { DAY, parseKey } from './dates';
 import { resolvePerson, PERSON } from './mentions';
 import type { Book, Entry, KeyDate, Person, Song } from './store';
+import { count, t } from './i18n';
 
 /* ---------- key dates ---------- */
 
-export const KEY_DATE_LABEL = { birthday: 'Birthday', anniversary: 'Anniversary', other: 'Date' } as const;
+export const KEY_DATE_LABEL = { birthday: t('Birthday'), anniversary: t('Anniversary'), other: t('Date') } as const;
 
 const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
@@ -37,17 +38,19 @@ export function upcoming(people: Person[], within = 14, now = new Date()) {
 }
 
 /** "Birthday", "Anniversary" or what you called it. */
-export const dateName = (d: KeyDate) => (d.kind === 'other' ? d.label.trim() || 'A date' : KEY_DATE_LABEL[d.kind]);
+export const dateName = (d: KeyDate) => (d.kind === 'other' ? d.label.trim() || t('A date') : KEY_DATE_LABEL[d.kind]);
 
 /** "Ana's birthday · turning 30", "10 years together"… */
 export function whatsComing(u: Upcoming) {
-  const first = u.person.name.trim().split(/\s+/)[0] || 'Someone';
-  const what = u.date.kind === 'other' ? `${first} · ${dateName(u.date)}` : `${first}’s ${dateName(u.date).toLowerCase()}`;
-  const years = u.years === null ? '' : u.date.kind === 'birthday' ? `turning ${u.years}` : u.date.kind === 'anniversary' ? `${u.years} ${u.years === 1 ? 'year' : 'years'}` : `${u.years} ${u.years === 1 ? 'year' : 'years'} ago`;
+  const first = u.person.name.trim().split(/\s+/)[0] || t('Someone');
+  const name = dateName(u.date);
+  const what = u.date.kind === 'other' ? `${first} · ${name}` : t('{name}’s {date}', { name: first, date: name.toLowerCase(), Date: name });
+  const span = u.years === null ? '' : count(u.years, 'year', 'years');
+  const years = u.years === null ? '' : u.date.kind === 'birthday' ? t('turning {n}', { n: u.years, years: span }) : u.date.kind === 'anniversary' ? span : t('{span} ago', { span });
   return { what, years };
 }
 
-export const whenLabel = (days: number) => (days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`);
+export const whenLabel = (days: number) => (days === 0 ? t('Today') : days === 1 ? t('Tomorrow') : t('In {span}', { span: count(days, 'day', 'days') }));
 
 /* ---------- tags on other pages ---------- */
 

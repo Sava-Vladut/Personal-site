@@ -12,11 +12,12 @@ import { EmotionChip } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
 import { Sky } from '../components/Sky';
+import { count, t } from '../lib/i18n';
 
 /** "today", "yesterday", "24 Sep" */
 export function lastSeen(k: string) {
   const d = dayLabel(k);
-  return /^(Today|Yesterday|Tomorrow)$/.test(d) ? d.toLowerCase() : d.replace(/^\S+ /, '');
+  return [t('Today'), t('Yesterday'), t('Tomorrow')].includes(d) ? d.toLowerCase() : d.replace(/^\S+ /, '');
 }
 
 /** Notes and check-ins each person is tagged in, under "Thinking of" or in their words, newest first. */
@@ -69,14 +70,14 @@ export function People() {
   return (
     <div class="page">
       <header class="page-head">
-        <div class="eyebrow">People</div>
+        <div class="eyebrow">{t('People')}</div>
         <div class="row between">
-          <h1 class="title">The people in your life</h1>
-          <button class="icon-btn" onClick={() => navigate('person/new')} aria-label="Add person" title="Add person">
+          <h1 class="title">{t('The people in your life')}</h1>
+          <button class="icon-btn" onClick={() => navigate('person/new')} aria-label={t('Add person')} title={t('Add person')}>
             <Icon name="user-plus" />
           </button>
         </div>
-        <p class="subtitle">Write about them, tag them in notes and check-ins, and notice how they make you feel.</p>
+        <p class="subtitle">{t('Write about them, tag them in notes and check-ins, and notice how they make you feel.')}</p>
       </header>
 
       {people.length > 0 && (
@@ -85,29 +86,29 @@ export function People() {
           {!q.trim() && <NotLately last={last} />}
           <label class="search">
             <Icon name="search" size={18} />
-            <input type="search" placeholder="Search people" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search people" />
+            <input type="search" placeholder={t('Search people')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search people')} />
           </label>
-          <div class="chips filters" role="toolbar" aria-label="Sort">
-            <button class="chip" aria-pressed={sort === 'recent'} onClick={() => setSort('recent')}>Recent</button>
-            <button class="chip" aria-pressed={sort === 'name'} onClick={() => setSort('name')}>A–Z</button>
+          <div class="chips filters" role="toolbar" aria-label={t('Sort')}>
+            <button class="chip" aria-pressed={sort === 'recent'} onClick={() => setSort('recent')}>{t('Recent')}</button>
+            <button class="chip" aria-pressed={sort === 'name'} onClick={() => setSort('name')}>{t('A–Z')}</button>
           </div>
         </>
       )}
 
       {ready && !people.length && (
         <div class="empty">
-          <h2 class="title-s">No one here yet</h2>
-          <p>Add the people who matter to you — friends, family, anyone on your mind — and keep what you think and feel about them in one place.</p>
-          <button class="btn btn-primary" onClick={() => navigate('person/new')}><Icon name="user-plus" size={18} /> Add a person</button>
+          <h2 class="title-s">{t('No one here yet')}</h2>
+          <p>{t('Add the people who matter to you — friends, family, anyone on your mind — and keep what you think and feel about them in one place.')}</p>
+          <button class="btn btn-primary" onClick={() => navigate('person/new')}><Icon name="user-plus" size={18} /> {t('Add a person')}</button>
         </div>
       )}
-      {!!people.length && !shown.length && <p class="empty-note center">No one matches “{q.trim()}”.</p>}
+      {!!people.length && !shown.length && <p class="empty-note center">{t('No one matches “{q}”.', { q: q.trim() })}</p>}
 
       <div class="entries people-list">
         {shown.map((p) => {
           const n = (moments.get(p.id)?.length ?? 0) + (pages.get(p.id)?.length ?? 0);
           const at = last.get(p.id);
-          const facts = [p.relation, n ? `${n} ${n === 1 ? 'moment' : 'moments'} · last ${lastSeen(keyOf(new Date(at!)))}` : ''].filter(Boolean);
+          const facts = [p.relation, n ? `${count(n, 'moment', 'moments')} · ${t('last {date}', { date: lastSeen(keyOf(new Date(at!))) })}` : ''].filter(Boolean);
           return <PersonCard key={p.id} p={p} facts={facts} moments={moments.get(p.id)} />;
         })}
       </div>
@@ -168,7 +169,7 @@ function PersonCard({ p, facts, moments }: { p: Person; facts: string[]; moments
       )}
       <Avatar p={p} size={46} />
       <div class="person-card-main">
-        <div class="person-card-name">{p.name || 'Unnamed'}</div>
+        <div class="person-card-name">{p.name || t('Unnamed')}</div>
         {facts.length > 0 && <div class="person-card-sub">{facts.join(' · ')}</div>}
         {p.emotions.length > 0 && (
           <div class="note-emos">{p.emotions.slice(0, 3).map((id, i) => <EmotionChip id={id} size="sm" idle="view" delay={(p.created + i * 380) % 1300} />)}{p.emotions.length > 3 && <span class="muted small">+{p.emotions.length - 3}</span>}</div>
@@ -199,7 +200,7 @@ function NotLately({ last }: { last: Map<string, number> }) {
   if (!quiet.length) return null;
   return (
     <section class="not-lately">
-      <h2 class="section-title">Haven’t thought of in a while</h2>
+      <h2 class="section-title">{t('Haven’t thought of in a while')}</h2>
       <div class="reading-strip" role="list">
         {quiet.map(({ p, days, never }) => {
           const first = p.name.trim().split(/\s+/)[0];
@@ -209,13 +210,13 @@ function NotLately({ last }: { last: Map<string, number> }) {
                 <Avatar p={p} size={34} />
                 <span class="book-row-main">
                   <span class="book-row-title">{p.name}</span>
-                  <span class="book-row-sub">{never ? `Added ${ago(days)}` : `Last ${ago(days)}`}</span>
+                  <span class="book-row-sub">{never ? t('Added {when}', { when: ago(days) }) : t('Last {when}', { when: ago(days) })}</span>
                 </span>
               </button>
-              <button class="icon-btn small" onClick={() => navigate('tracker?person=' + p.id)} aria-label={`Check in about ${first}`} title="Check in">
+              <button class="icon-btn small" onClick={() => navigate('tracker?person=' + p.id)} aria-label={t('Check in about {name}', { name: first })} title={t('Check in')}>
                 <Icon name="mood-smile" size={16} />
               </button>
-              <button class="icon-btn small" onClick={() => navigate('note/new?person=' + p.id)} aria-label={`Write about ${first}`} title="Write about them">
+              <button class="icon-btn small" onClick={() => navigate('note/new?person=' + p.id)} aria-label={t('Write about {title}', { title: first })} title={t('Write about them')}>
                 <Icon name="pencil" size={16} />
               </button>
             </div>
@@ -228,9 +229,9 @@ function NotLately({ last }: { last: Map<string, number> }) {
 
 /** "5 weeks ago", "3 months ago", "over a year ago" */
 function ago(days: number) {
-  if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
-  if (days < 365) return `${Math.floor(days / 30)} months ago`;
-  return days < 730 ? 'over a year ago' : `${Math.floor(days / 365)} years ago`;
+  if (days < 60) return t('{span} ago', { span: count(Math.floor(days / 7), 'week', 'weeks') });
+  if (days < 365) return t('{span} ago', { span: count(Math.floor(days / 30), 'month', 'months') });
+  return days < 730 ? t('over a year ago') : t('{span} ago', { span: count(Math.floor(days / 365), 'year', 'years') });
 }
 
 /** The way into the mind page: the people who take up the most room, peeking out on the right. */
@@ -245,8 +246,8 @@ function MindLink() {
     <button class="mind-link card" onClick={() => navigate('people/mind')}>
       <span class="mind-link-icon"><Icon name="chart-pie" size={24} stroke={1.6} /></span>
       <span class="mind-link-main">
-        <span class="mind-link-title">What’s on your mind</span>
-        <span class="mind-link-sub">How much of your thoughts each person takes up</span>
+        <span class="mind-link-title">{t('What’s on your mind')}</span>
+        <span class="mind-link-sub">{t('How much of your thoughts each person takes up')}</span>
       </span>
       {top.length > 0 && <span class="avatar-stack">{top.map((p) => <Avatar p={p} size={26} />)}</span>}
       <Icon name="chevron-right" size={18} />

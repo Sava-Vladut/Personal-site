@@ -2,9 +2,11 @@ import { EMOTION, shortName } from '../../data/emotions';
 import type { RangeKey, Stats as S } from '../../lib/stats';
 import { CountUp } from '../../components/charts';
 import { Icon, Sprite, type UiName } from '../../components/icons';
+import { t } from '../../lib/i18n';
 
-export const RANGE_NAME: Record<RangeKey, string> = { '7d': '7 days', '30d': '30 days', '90d': '90 days', '1y': 'year', all: 'period' };
-export const RANGE_PHRASE: Record<RangeKey, string> = { '7d': 'over the last 7 days', '30d': 'over the last 30 days', '90d': 'over the last 90 days', '1y': 'over the last year', all: 'so far' };
+/** The period just before the one shown, to compare with. */
+export const RANGE_BEFORE: Record<RangeKey, string> = { '7d': t('the 7 days before'), '30d': t('the 30 days before'), '90d': t('the 90 days before'), '1y': t('the year before'), all: t('the period before') };
+export const RANGE_PHRASE: Record<RangeKey, string> = { '7d': t('over the last 7 days'), '30d': t('over the last 30 days'), '90d': t('over the last 90 days'), '1y': t('over the last year'), all: t('so far') };
 export const label = (id: string) => (EMOTION[id].depth === 0 ? shortName(id) : EMOTION[id].name);
 
 /** The world felt most in the period, if any feelings were named. */
@@ -13,7 +15,7 @@ export const leadWorld = (s: S) => s.cores.reduce<{ id: string; count: number } 
 export function Delta({ cur, prev, digits = 0, unit = '' }: { cur: number | null; prev: number | null | undefined; digits?: number; unit?: string }) {
   if (cur === null || prev === null || prev === undefined) return null;
   const d = cur - prev;
-  if (Math.abs(d) < (digits ? 0.05 : 0.5)) return <span class="delta">no change</span>;
+  if (Math.abs(d) < (digits ? 0.05 : 0.5)) return <span class="delta">{t('no change')}</span>;
   return (
     <span class="delta">
       {d > 0 ? '↑' : '↓'} {Math.abs(d).toFixed(digits)}{unit}

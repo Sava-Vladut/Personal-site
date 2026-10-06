@@ -15,6 +15,7 @@ import { PeopleChips, PeopleSheet, PersonChip, usePeopleById } from './people';
 import { PhotoImg } from './Photo';
 import { Sheet } from './Sheet';
 import { WeatherMark, placeLabel, weatherLine, weatherOf } from './weather';
+import { t } from '../lib/i18n';
 
 /**
  * A note's cover picture, filling whatever box it's put in, cropped the way it was adjusted. The crop's point sits at the
@@ -41,7 +42,7 @@ export function DetailsSummary({ draft, onOpen }: { draft: Entry; onOpen: () => 
   const people = draft.people.map((id) => byId.get(id)!).filter(Boolean);
   const w = weatherOf(draft);
   return (
-    <button class="details-summary" onClick={onOpen} aria-label="Feelings, people, date, place and cover">
+    <button class="details-summary" onClick={onOpen} aria-label={t('Feelings, people, date, place and cover')}>
       <span class="details-chips">
         <span class="details-date"><Icon name="calendar-event" size={15} /> {rangeLabel(draft.date, draft.dateEnd)}</span>
         {w && <span class="details-date"><WeatherMark w={w} size={15} /></span>}
@@ -49,7 +50,7 @@ export function DetailsSummary({ draft, onOpen }: { draft: Entry; onOpen: () => 
         {draft.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
         {draft.emotions.length > 0 && <Bars n={draft.intensity} />}
         {people.map((p) => <PersonChip p={p} size="sm" />)}
-        {!draft.emotions.length && <span class="details-add"><Icon name="mood-plus" size={15} /> How does it feel?</span>}
+        {!draft.emotions.length && <span class="details-add"><Icon name="mood-plus" size={15} /> {t('How does it feel?')}</span>}
       </span>
       <Icon name="chevron-right" size={18} class="details-go" />
     </button>
@@ -58,7 +59,7 @@ export function DetailsSummary({ draft, onOpen }: { draft: Entry; onOpen: () => 
 
 function Bars({ n }: { n: number }) {
   return (
-    <span class="mini-bars" title={`Intensity: ${INTENSITY[n - 1]}`} aria-label={`Intensity: ${INTENSITY[n - 1]}`}>
+    <span class="mini-bars" title={t('Intensity: {level}', { level: INTENSITY[n - 1] })} aria-label={t('Intensity: {level}', { level: INTENSITY[n - 1] })}>
       {INTENSITY.map((_, i) => <i class={i < n ? 'on' : ''} style={{ height: `${4 + i * 2}px` }} />)}
     </span>
   );
@@ -141,48 +142,48 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
       class={`details${closing ? ' closing' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Feelings"
+      aria-label={t('Feelings')}
       tabIndex={-1}
       onKeyDown={(e) => e.key === 'Escape' && !document.querySelector('.sheet-wrap') && (e.stopPropagation(), onClose())}
     >
       <div class="details-page">
         <div class="editor-bar">
-          <button class="glass glass-btn round" onClick={onClose} aria-label="Back to the note"><Icon name="arrow-left" /></button>
+          <button class="glass glass-btn round" onClick={onClose} aria-label={t('Back to the note')}><Icon name="arrow-left" /></button>
           <span class="grow" />
-          <button class="glass glass-btn tinted" onClick={onClose}>Done</button>
+          <button class="glass glass-btn tinted" onClick={onClose}>{t('Done')}</button>
         </div>
-        <h1 class="title details-title">Feelings</h1>
+        <h1 class="title details-title">{t('Feelings')}</h1>
         {draft.title.trim() && <p class="details-of">{draft.title}</p>}
 
         <section class="details-section">
-          <h2 class="eyebrow">How does it feel?</h2>
+          <h2 class="eyebrow">{t('How does it feel?')}</h2>
           <div class="meta">
             {draft.emotions.map((eid) => (
               <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />
             ))}
             {draft.emotions.length < 3 && (
               <button class="chip" onClick={() => setSheet('emotion')}>
-                <Icon name="mood-plus" size={16} /> {draft.emotions.length ? 'Add' : 'Name the feeling'}
+                <Icon name="mood-plus" size={16} /> {draft.emotions.length ? t('Add') : t('Name the feeling')}
               </button>
             )}
           </div>
           {draft.emotions.length > 0 && (
             <div class="details-intensity">
-              <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} cores={draft.emotions.map((e) => coreOf(e).id)} title="Intensity" />
+              <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} cores={draft.emotions.map((e) => coreOf(e).id)} title={t('Intensity')} />
             </div>
           )}
           {only?.depth === 2 && <p class="definition">{only.def}</p>}
         </section>
 
         <section class="details-section">
-          <h2 class="eyebrow">Thinking of</h2>
+          <h2 class="eyebrow">{t('Thinking of')}</h2>
           <div class="meta">
-            <PeopleChips ids={draft.people} onChange={(people) => update({ people })} onAdd={() => setSheet('people')} label="Add someone" />
+            <PeopleChips ids={draft.people} onChange={(people) => update({ people })} onAdd={() => setSheet('people')} label={t('Add someone')} />
           </div>
         </section>
 
         <section class="details-section">
-          <h2 class="eyebrow">When</h2>
+          <h2 class="eyebrow">{t('When')}</h2>
           <div class="meta">
             <button class="chip" onClick={() => setSheet('date')}>
               <Icon name="calendar-event" size={16} /> {rangeLabel(draft.date, draft.dateEnd)}
@@ -191,19 +192,19 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
         </section>
 
         <section class="details-section">
-          <h2 class="eyebrow">Where</h2>
+          <h2 class="eyebrow">{t('Where')}</h2>
           {draft.place ? (
             <div class="meta-row place-row">
               <span class="row gap-s grow"><Icon name="map-pin" size={16} /> <span class="place-name">{placeLabel(draft.place)}</span></span>
               <span class="row">
-                <button class="btn btn-quiet btn-s" onClick={() => { navigateAfterSheet('map?focus=' + draft.id); onClose(); }}>Map</button>
-                <button class="icon-btn small" onClick={() => update({ place: null })} aria-label="Remove the place" title="Remove the place"><Icon name="trash" size={16} /></button>
+                <button class="btn btn-quiet btn-s" onClick={() => { navigateAfterSheet('map?focus=' + draft.id); onClose(); }}>{t('Map')}</button>
+                <button class="icon-btn small" onClick={() => update({ place: null })} aria-label={t('Remove the place')} title={t('Remove the place')}><Icon name="trash" size={16} /></button>
               </span>
             </div>
           ) : (
             <div class="meta">
               <button class="chip" onClick={addHere} disabled={locating}>
-                <Icon name="current-location" size={16} /> {locating ? 'Finding you…' : 'Add where I am'}
+                <Icon name="current-location" size={16} /> {locating ? t('Finding you…') : t('Add where I am')}
               </button>
             </div>
           )}
@@ -211,26 +212,26 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
         </section>
 
         <section class="details-section">
-          <h2 class="eyebrow">Cover</h2>
-          <p class="details-hint">Shown faintly behind the note in your journal.</p>
+          <h2 class="eyebrow">{t('Cover')}</h2>
+          <p class="details-hint">{t('Shown faintly behind the note in your journal.')}</p>
           {draft.cover && (
             <div class="cover-preview">
-              <button class="cover-open" onClick={() => setSheet('cover-crop')} aria-label="Adjust the cover"><CoverImg cover={draft.cover} /></button>
+              <button class="cover-open" onClick={() => setSheet('cover-crop')} aria-label={t('Adjust the cover')}><CoverImg cover={draft.cover} /></button>
               <div class="cover-tools">
-                <button class="glass glass-btn cover-adjust" onClick={() => setSheet('cover-crop')}><Icon name="crop" size={18} /> Adjust</button>
-                <button class="glass glass-btn round cover-remove" onClick={() => update({ cover: null })} aria-label="Remove cover"><Icon name="trash" size={18} /></button>
+                <button class="glass glass-btn cover-adjust" onClick={() => setSheet('cover-crop')}><Icon name="crop" size={18} /> {t('Adjust')}</button>
+                <button class="glass glass-btn round cover-remove" onClick={() => update({ cover: null })} aria-label={t('Remove cover')}><Icon name="trash" size={18} /></button>
               </div>
             </div>
           )}
           <div class="cover-picks">
             <button class="cover-pick" onClick={() => fileRef.current?.click()} disabled={uploadingCover}>
-              <Icon name="photo-plus" size={20} /><span>{uploadingCover ? 'Adding…' : 'Upload'}</span>
+              <Icon name="photo-plus" size={20} /><span>{uploadingCover ? t('Adding…') : t('Upload')}</span>
             </button>
             <button class="cover-pick" onClick={() => setSheet('cover-search')}>
-              <Icon name="photo-search" size={20} /><span>Find</span>
+              <Icon name="photo-search" size={20} /><span>{t('Find')}</span>
             </button>
             {pictures.map((c) => (
-              <button class="cover-pick is-pic" aria-pressed={same(draft.cover, c)} onClick={() => update({ cover: same(draft.cover, c) ? null : c })} aria-label="Use this picture as the cover">
+              <button class="cover-pick is-pic" aria-pressed={same(draft.cover, c)} onClick={() => update({ cover: same(draft.cover, c) ? null : c })} aria-label={t('Use this picture as the cover')}>
                 {'photo' in c ? <PhotoImg photo={c.photo} fit={false} /> : <img src={imageSrc(c.image, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" />}
               </button>
             ))}
@@ -240,12 +241,12 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
       </div>
 
       <DateSheet open={sheet === 'date'} onClose={close} start={draft.date} end={draft.dateEnd} onChange={(date, dateEnd) => update({ date, dateEnd })} />
-      <Sheet open={sheet === 'emotion'} onClose={close} title="How does it feel?">
+      <Sheet open={sheet === 'emotion'} onClose={close} title={t('How does it feel?')}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
       <PeopleSheet open={sheet === 'people'} onClose={close} selected={draft.people} onChange={(people) => update({ people })} />
       <CoverCropSheet open={sheet === 'cover-crop'} onClose={close} cover={draft.cover} onSave={(crop) => draft.cover && update({ cover: { ...draft.cover, crop } })} />
-      <ImageSearchSheet open={sheet === 'cover-search'} onClose={close} single action="Use as cover" onAdd={([image]) => image && update({ cover: { image } })} />
+      <ImageSearchSheet open={sheet === 'cover-search'} onClose={close} single action={t('Use as cover')} onAdd={([image]) => image && update({ cover: { image } })} />
     </div>
   );
 }

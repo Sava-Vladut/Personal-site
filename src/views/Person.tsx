@@ -19,6 +19,7 @@ import { tipProps } from '../components/charts';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
 import { lastSeen, useMoments, usePages } from './People';
+import { t } from '../lib/i18n';
 
 type Open = null | 'icon' | 'emotion';
 
@@ -71,14 +72,14 @@ export function PersonView({ id }: { id: string }) {
       saved.current = true;
       if (alive.current && !removing.current) {
         syncUrl();
-        if (request === saveRequest.current && !dirty.current) setStatus('Saved');
+        if (request === saveRequest.current && !dirty.current) setStatus(t('Saved'));
       }
       return true;
     }).catch(() => {
       if (!removing.current && request === saveRequest.current) {
         dirty.current = true;
-        setStatus('Couldn’t save');
-        toast('Couldn’t save this person. Try again.');
+        setStatus(t('Couldn’t save'));
+        toast(t('Couldn’t save this person. Try again.'));
       }
       return false;
     }).finally(() => {
@@ -123,7 +124,7 @@ export function PersonView({ id }: { id: string }) {
             ...renamePersonMentions(getPeople().filter((p) => p.id !== d.id), before, renamed).map((p) => savePerson(p)),
           ]);
         }
-      }).catch(() => toast('Couldn’t update the notes and pages mentioning this person.'));
+      }).catch(() => toast(t('Couldn’t update the notes and pages mentioning this person.')));
     };
   }, []);
 
@@ -163,16 +164,16 @@ export function PersonView({ id }: { id: string }) {
     return (
       <div class="page">
         <div class="empty">
-          <h2 class="title-s">This person isn’t here</h2>
-          <p>They may have been deleted.</p>
-          <button class="btn btn-primary" onClick={() => goBack('people')}>Back to people</button>
+          <h2 class="title-s">{t('This person isn’t here')}</h2>
+          <p>{t('They may have been deleted.')}</p>
+          <button class="btn btn-primary" onClick={() => goBack('people')}>{t('Back to people')}</button>
         </div>
       </div>
     );
 
   const remove = async () => {
     if (removing.current) return;
-    if (saved.current && !confirm(`Delete ${draft.name.trim() || 'this person'}? Notes they’re tagged in stay in your journal.`)) return;
+    if (saved.current && !confirm(t('Delete {name}? Notes they’re tagged in stay in your journal.', { name: draft.name.trim() || t('this person') }))) return;
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;
@@ -180,11 +181,11 @@ export function PersonView({ id }: { id: string }) {
     try {
       const removed = saved.current ? await deletePerson(draft.id) : null;
       if (alive.current) goBack('people');
-      if (removed) toast(`${removed.name || 'Person'} deleted`, { label: 'Undo', run: () => savePerson(removed) });
+      if (removed) toast(t('{name} deleted', { name: removed.name || t('Person') }), { label: t('Undo'), run: () => savePerson(removed) });
     } catch {
       removing.current = false;
       dirty.current = true;
-      toast('Couldn’t delete this person. Try again.');
+      toast(t('Couldn’t delete this person. Try again.'));
     }
   };
   const done = async () => {
@@ -212,16 +213,16 @@ export function PersonView({ id }: { id: string }) {
     navigate(to === 'note' ? `note/new?person=${d.id}` : `tracker?person=${d.id}`);
   };
 
-  const first = draft.name.trim().split(/\s+/)[0] || 'them';
+  const first = draft.name.trim().split(/\s+/)[0] || t('them');
   const main = draft.emotions[0] ? coreOf(draft.emotions[0]).id : null;
 
   return (
     <div class="page editor person">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={done} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
-        <button class="glass glass-btn round" onClick={remove} aria-label="Delete person"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={done}>Done</button>
+        <button class="glass glass-btn round" onClick={remove} aria-label={t('Delete person')}><Icon name="trash" /></button>
+        <button class="glass glass-btn tinted" onClick={done}>{t('Done')}</button>
       </div>
 
       <div class="editor-top">
@@ -229,7 +230,7 @@ export function PersonView({ id }: { id: string }) {
           class={`icon-pick avatar-pick${main ? ' tinted' : ''}`}
           style={{ '--c': main ? `var(--emo-${main})` : undefined }}
           onClick={() => setOpen('icon')}
-          aria-label={draft.icon ? 'Change icon' : 'Add icon'}
+          aria-label={draft.icon ? t('Change icon') : t('Add icon')}
         >
           {draft.icon ? <NoteIcon id={draft.icon} size={28} /> : draft.name.trim() ? <span class="avatar-initials">{initials(draft.name)}</span> : <Icon name="user" size={24} />}
         </button>
@@ -238,20 +239,20 @@ export function PersonView({ id }: { id: string }) {
             ref={nameRef}
             class="title-input"
             rows={1}
-            placeholder="Name"
+            placeholder={t('Name')}
             value={draft.name}
             maxLength={120}
             onInput={(e) => update({ name: e.currentTarget.value.replace(/\n/g, ' ') })}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), textRef.current?.focus())}
-            aria-label="Name"
+            aria-label={t('Name')}
           />
           <input
             class="relation-input"
-            placeholder="Who are they to you? Friend, sister, coworker…"
+            placeholder={t('Who are they to you? Friend, sister, coworker…')}
             value={draft.relation}
             maxLength={60}
             onInput={(e) => update({ relation: e.currentTarget.value })}
-            aria-label="Relationship"
+            aria-label={t('Relationship')}
           />
         </div>
       </div>
@@ -260,20 +261,20 @@ export function PersonView({ id }: { id: string }) {
         p={draft}
         onChange={(theme) => update({ theme })}
         onConnect={async () => {
-          if (!latest.current?.name.trim()) return toast('Give them a name first');
+          if (!latest.current?.name.trim()) return toast(t('Give them a name first'));
           if (!saved.current) dirty.current = true;
           if (await flush() && !dirty.current && alive.current && !removing.current) connectSpotify('#/person/' + latest.current.id);
         }}
       />
 
-      <div class="eyebrow person-label">How thinking of {first} makes you feel</div>
+      <div class="eyebrow person-label">{t('How thinking of {name} makes you feel', { name: first })}</div>
       <div class="meta person-meta">
         {draft.emotions.map((eid) => (
           <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />
         ))}
         {draft.emotions.length < MAX_PERSON_EMOTIONS && (
           <button class="chip" onClick={() => setOpen('emotion')}>
-            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? 'Add' : 'Add a feeling'}
+            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? t('Add') : t('Add a feeling')}
           </button>
         )}
       </div>
@@ -281,37 +282,37 @@ export function PersonView({ id }: { id: string }) {
         <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
       )}
 
-      <div class="eyebrow person-label">Key dates</div>
+      <div class="eyebrow person-label">{t('Key dates')}</div>
       <KeyDates p={draft} onChange={(dates) => update({ dates })} />
 
       <MentionText
         inputRef={textRef}
         class="body-input person-text"
-        placeholder={`What’s on your mind about ${first}? Memories, things they said, what they’re going through, what you want to remember…`}
+        placeholder={t('What’s on your mind about {name}? Memories, things they said, what they’re going through, what you want to remember…', { name: first })}
         value={draft.text}
         onChange={(text) => update({ text })}
-        label={`About ${first}`}
+        label={t('About {name}', { name: first })}
       />
 
       <section class="section">
         <div class="row between">
-          <h2 class="section-title">Thinking of {first}</h2>
-          {moments.length + pages.length > 0 && <span class="muted small">{moments.length + pages.length}{moments.length ? ` · since ${lastSeen(moments[moments.length - 1].date)}` : ''}</span>}
+          <h2 class="section-title">{t('Thinking of {name}', { name: first })}</h2>
+          {moments.length + pages.length > 0 && <span class="muted small">{moments.length + pages.length}{moments.length ? ' · ' + t('since {date}', { date: lastSeen(moments[moments.length - 1].date) }) : ''}</span>}
         </div>
         <div class="row gap-s person-actions">
-          <button class="btn btn-quiet grow" onClick={() => write('note')} disabled={!draft.name.trim()}><Icon name="pencil" size={18} /> Write about {first}</button>
-          <button class="btn btn-quiet" onClick={() => write('tracker')} disabled={!draft.name.trim()}><Icon name="mood-smile" size={18} /> Check in</button>
+          <button class="btn btn-quiet grow" onClick={() => write('note')} disabled={!draft.name.trim()}><Icon name="pencil" size={18} /> {t('Write about {title}', { title: first })}</button>
+          <button class="btn btn-quiet" onClick={() => write('tracker')} disabled={!draft.name.trim()}><Icon name="mood-smile" size={18} /> {t('Check in')}</button>
         </div>
 
         {felt.total > 0 && (
           <div class="card person-felt">
-            <div class="chart-title">How thinking of {first} felt</div>
+            <div class="chart-title">{t('How thinking of {name} felt', { name: first })}</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
             {months.some((m, i) => m.total && i < months.length - 1) && (
               <div class="month-strip-wrap">
-                <div class="month-strip" role="img" aria-label={`Feelings month by month over the last year${trend ? `: lately ${trend === 'steady' ? 'about the same' : trend}` : ''}`}>
+                <div class="month-strip" role="img" aria-label={t('Feelings month by month over the last year') + (trend ? ': ' + (trend === 'warmer' ? t('lately warmer') : trend === 'heavier' ? t('lately heavier') : t('lately about the same')) : '')}>
                   {months.map((m) => (
                     <span
                       class={`month-col${m.total ? '' : ' is-empty'}`}
@@ -324,7 +325,7 @@ export function PersonView({ id }: { id: string }) {
                 </div>
                 {trend && (
                   <p class="muted small month-trend">
-                    {trend === 'warmer' ? `Lately, thinking of ${first} has felt warmer than before.` : trend === 'heavier' ? `Lately, thinking of ${first} has felt heavier than before.` : `Lately it feels much as it did before.`}
+                    {trend === 'warmer' ? t('Lately, thinking of {name} has felt warmer than before.', { name: first }) : trend === 'heavier' ? t('Lately, thinking of {name} has felt heavier than before.', { name: first }) : t('Lately it feels much as it did before.')}
                   </p>
                 )}
               </div>
@@ -345,13 +346,13 @@ export function PersonView({ id }: { id: string }) {
             </section>
           ))
         ) : (
-          <p class="empty-note">Add {first} under “Thinking of” in a note or check-in and it shows up here.</p>
+          <p class="empty-note">{t('Add {name} under “Thinking of” in a note or check-in and it shows up here.', { name: first })}</p>
         )}
       </section>
 
       {pages.length > 0 && (
         <section class="section">
-          <h2 class="section-title">Mentioned on</h2>
+          <h2 class="section-title">{t('Mentioned on')}</h2>
           <div class="book-rows">
             {pages.map((pg) =>
               pg.kind === 'book' ? <BookRow b={pg.item} onClick={() => { flush(); navigate('book/' + pg.item.id); }} />
@@ -360,7 +361,7 @@ export function PersonView({ id }: { id: string }) {
                 <button class="person-card card" onClick={() => { flush(); navigate('person/' + pg.item.id); }}>
                   <Avatar p={pg.item} size={40} />
                   <div class="person-card-main">
-                    <div class="person-card-name">{pg.item.name || 'Unnamed'}</div>
+                    <div class="person-card-name">{pg.item.name || t('Unnamed')}</div>
                     {pg.item.relation && <div class="person-card-sub">{pg.item.relation}</div>}
                   </div>
                   <Icon name="chevron-right" size={18} />
@@ -373,20 +374,20 @@ export function PersonView({ id }: { id: string }) {
 
       {books.length > 0 && (
         <section class="section">
-          <h2 class="section-title">Books · thinking of {first}</h2>
+          <h2 class="section-title">{t('Books · thinking of {name}', { name: first })}</h2>
           <div class="book-rows">{books.map((b) => <BookRow b={b} onClick={() => { flush(); navigate('book/' + b.id); }} />)}</div>
         </section>
       )}
 
       {songs.length > 0 && (
         <section class="section">
-          <h2 class="section-title">Music · thinking of {first}</h2>
+          <h2 class="section-title">{t('Music · thinking of {name}', { name: first })}</h2>
           <div class="book-rows">{songs.map((s) => <SongRow s={s} onClick={() => { flush(); navigate('song/' + s.id); }} />)}</div>
         </section>
       )}
 
       <IconSheet open={open === 'icon'} onClose={() => setOpen(null)} value={draft.icon} onChange={(icon) => update({ icon })} />
-      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={`How does thinking of ${first} make you feel?`}>
+      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={t('How does thinking of {name} make you feel?', { name: first })}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
     </div>

@@ -2,11 +2,12 @@ import { CHART_ORDER, EMOTION, coreOf, shortName, valence } from '../data/emotio
 import { SKY_GROUPS, skyGroup } from '../data/weather';
 import { WEEKDAYS, addDays, diffDays, keyOf, startOfWeek, todayKey, weekday } from './dates';
 import { plainText } from './body';
+import { count, t } from './i18n';
 import type { Entry } from './store';
 
 export type RangeKey = '7d' | '30d' | '90d' | '1y' | 'all';
 export const RANGES: [RangeKey, string, number | null][] = [
-  ['7d', '7D', 7], ['30d', '30D', 30], ['90d', '90D', 90], ['1y', '1Y', 365], ['all', 'All', null],
+  ['7d', t('7D'), 7], ['30d', t('30D'), 30], ['90d', t('90D'), 90], ['1y', t('1Y'), 365], ['all', t('All'), null],
 ];
 
 /** Mood of one entry: intensity × average valence of its emotions, from −5 (intensely unpleasant) to +5. */
@@ -75,10 +76,10 @@ export interface Bucket {
 }
 
 export const DAYPARTS = [
-  { name: 'Morning', test: (h: number) => h >= 5 && h < 12 },
-  { name: 'Afternoon', test: (h: number) => h >= 12 && h < 17 },
-  { name: 'Evening', test: (h: number) => h >= 17 && h < 22 },
-  { name: 'Night', test: (h: number) => h >= 22 || h < 5 },
+  { name: t('Morning'), when: t('in the morning'), test: (h: number) => h >= 5 && h < 12 },
+  { name: t('Afternoon'), when: t('in the afternoon'), test: (h: number) => h >= 12 && h < 17 },
+  { name: t('Evening'), when: t('in the evening'), test: (h: number) => h >= 17 && h < 22 },
+  { name: t('Night'), when: t('at night'), test: (h: number) => h >= 22 || h < 5 },
 ];
 
 export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
@@ -204,7 +205,7 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
     heat,
     heatMax: Math.max(1, ...heat.flat()),
     weekdays: wdMoods.map((ms, i) => ({ day: WEEKDAYS[i], mood: mean(ms), n: ms.length })),
-    dayparts: DAYPARTS.map((d, i) => ({ name: d.name, mood: mean(dpMoods[i]), n: dpCounts[i] })),
+    dayparts: DAYPARTS.map((d, i) => ({ name: d.name, when: d.when, mood: mean(dpMoods[i]), n: dpCounts[i] })),
     intensity,
     pairs: [...pairs].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, count]) => ({ ids: k.split('|'), count })),
     transitions: [...trans].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, count]) => ({ from: k.split('>')[0], to: k.split('>')[1], count })),
@@ -257,18 +258,18 @@ export function dex(entries: Entry[]) {
 
 interface Bin { name: string; phrase: string; test: (v: number) => boolean }
 export const TEMP_BINS: Bin[] = [
-  { name: 'Below 0°', phrase: 'below freezing', test: (t) => t < 0 },
-  { name: '0–10°', phrase: 'at 0–10°', test: (t) => t >= 0 && t < 10 },
-  { name: '10–20°', phrase: 'at 10–20°', test: (t) => t >= 10 && t < 20 },
-  { name: '20–30°', phrase: 'at 20–30°', test: (t) => t >= 20 && t < 30 },
-  { name: '30° and up', phrase: 'at 30° or more', test: (t) => t >= 30 },
+  { name: t('Below 0°'), phrase: t('below freezing'), test: (c) => c < 0 },
+  { name: '0–10°', phrase: t('at 0–10°'), test: (c) => c >= 0 && c < 10 },
+  { name: '10–20°', phrase: t('at 10–20°'), test: (c) => c >= 10 && c < 20 },
+  { name: '20–30°', phrase: t('at 20–30°'), test: (c) => c >= 20 && c < 30 },
+  { name: t('30° and up'), phrase: t('at 30° or more'), test: (c) => c >= 30 },
 ];
 export const LIGHT_BINS: Bin[] = [
-  { name: 'Under 9 h', phrase: 'on days with under 9 h of daylight', test: (h) => h < 9 },
-  { name: '9–11 h', phrase: 'on days with 9–11 h of daylight', test: (h) => h >= 9 && h < 11 },
-  { name: '11–13 h', phrase: 'on days with 11–13 h of daylight', test: (h) => h >= 11 && h < 13 },
-  { name: '13–15 h', phrase: 'on days with 13–15 h of daylight', test: (h) => h >= 13 && h < 15 },
-  { name: '15 h or more', phrase: 'on days with 15 h or more of daylight', test: (h) => h >= 15 },
+  { name: t('Under 9 h'), phrase: t('on days with under 9 h of daylight'), test: (h) => h < 9 },
+  { name: '9–11 h', phrase: t('on days with 9–11 h of daylight'), test: (h) => h >= 9 && h < 11 },
+  { name: '11–13 h', phrase: t('on days with 11–13 h of daylight'), test: (h) => h >= 11 && h < 13 },
+  { name: '13–15 h', phrase: t('on days with 13–15 h of daylight'), test: (h) => h >= 13 && h < 15 },
+  { name: t('15 h or more'), phrase: t('on days with 15 h or more of daylight'), test: (h) => h >= 15 },
 ];
 
 export interface MoodGroup { name: string; mood: number | null; n: number; phrase?: string }
@@ -305,7 +306,7 @@ export function weatherStats(list: Entry[]) {
   const temps = binned(TEMP_BINS, (w) => w.temp);
   const light = binned(LIGHT_BINS, (w) => w.daylight);
   const [day, night] = group<boolean | undefined>((w) => w.dark, [false, true]);
-  const dark = day.n || night.n ? [{ name: 'In daylight', ...day }, { name: 'After dark', ...night }] : [];
+  const dark = day.n || night.n ? [{ name: t('In daylight'), ...day }, { name: t('After dark'), ...night }] : [];
 
   // places by name (or, before a name is known, by spot)
   const spots = new Map<string, { name: string; lat: number; lon: number; ms: number[]; ids: string[]; cores: Map<string, number> }>();
@@ -335,8 +336,8 @@ export function weatherStats(list: Entry[]) {
 export type WeatherStats = ReturnType<typeof weatherStats>;
 
 const SKY_PHRASE: Record<string, string> = {
-  clear: 'on clear days', partly: 'on partly cloudy days', overcast: 'under overcast skies', fog: 'on foggy days',
-  rain: 'when it rains', snow: 'when it snows', storm: 'in thunderstorms',
+  clear: t('on clear days'), partly: t('on partly cloudy days'), overcast: t('under overcast skies'), fog: t('on foggy days'),
+  rain: t('when it rains'), snow: t('when it snows'), storm: t('in thunderstorms'),
 };
 const DIFF = 0.8; // how far apart two averages must be to be worth a sentence
 const MIN_N = 3;
@@ -345,9 +346,9 @@ export function weatherInsights(w: WeatherStats): Insight[] {
   const out: Insight[] = [];
   const sky = w.sky.filter((g) => g.n >= MIN_N && g.mood !== null).sort((a, b) => b.mood! - a.mood!);
   if (sky.length >= 2 && sky[0].mood! - sky[sky.length - 1].mood! >= DIFF)
-    out.push({ text: `You feel best ${SKY_PHRASE[sky[0].id]} (${fmtMood(sky[0].mood)}) and lowest ${SKY_PHRASE[sky[sky.length - 1].id]} (${fmtMood(sky[sky.length - 1].mood)}).` });
+    out.push({ text: t('You feel best {best} ({a}) and lowest {worst} ({b}).', { best: SKY_PHRASE[sky[0].id], a: fmtMood(sky[0].mood), worst: SKY_PHRASE[sky[sky.length - 1].id], b: fmtMood(sky[sky.length - 1].mood) }) });
   const common = [...w.sky].sort((a, b) => b.entries - a.entries)[0];
-  if (common?.entries && w.covered >= 5) out.push({ text: `${common.name} was the most common sky when you wrote (${pct(common.entries / w.covered)} of entries).` });
+  if (common?.entries && w.covered >= 5) out.push({ text: t('{sky} was the most common sky when you wrote ({share} of entries).', { sky: common.name, share: pct(common.entries / w.covered) }) });
 
   const compare = (rows: MoodGroup[], say: (hi: MoodGroup, lo: MoodGroup) => string) => {
     const ok = rows.filter((r) => r.n >= MIN_N && r.mood !== null);
@@ -357,21 +358,21 @@ export function weatherInsights(w: WeatherStats): Insight[] {
   };
   compare(w.light, (hi, lo) =>
     hi.mood! > lo.mood!
-      ? `Longer days suit you: ${fmtMood(hi.mood)} ${hi.phrase}, against ${fmtMood(lo.mood)} ${lo.phrase}.`
-      : `Shorter days suit you: ${fmtMood(lo.mood)} ${lo.phrase}, against ${fmtMood(hi.mood)} ${hi.phrase}.`);
+      ? t('Longer days suit you: {a} {when}, against {b} {other}.', { a: fmtMood(hi.mood), when: hi.phrase!, b: fmtMood(lo.mood), other: lo.phrase! })
+      : t('Shorter days suit you: {a} {when}, against {b} {other}.', { a: fmtMood(lo.mood), when: lo.phrase!, b: fmtMood(hi.mood), other: hi.phrase! }));
   compare(w.temps, (hi, lo) =>
     hi.mood! > lo.mood!
-      ? `Warmer days lift you: ${fmtMood(hi.mood)} ${hi.phrase}, against ${fmtMood(lo.mood)} ${lo.phrase}.`
-      : `You feel better when it’s cooler: ${fmtMood(lo.mood)} ${lo.phrase}, against ${fmtMood(hi.mood)} ${hi.phrase}.`);
+      ? t('Warmer days lift you: {a} {when}, against {b} {other}.', { a: fmtMood(hi.mood), when: hi.phrase!, b: fmtMood(lo.mood), other: lo.phrase! })
+      : t('You feel better when it’s cooler: {a} {when}, against {b} {other}.', { a: fmtMood(lo.mood), when: lo.phrase!, b: fmtMood(hi.mood), other: hi.phrase! }));
   const [day, night] = w.dark;
   if (day && night && day.n >= MIN_N && night.n >= MIN_N && Math.abs(day.mood! - night.mood!) >= DIFF)
-    out.push({ text: `Your mood is ${night.mood! < day.mood! ? 'lower' : 'higher'} after dark (${fmtMood(night.mood)}) than in daylight (${fmtMood(day.mood)}).` });
+    out.push({ text: t(night.mood! < day.mood! ? 'Your mood is lower after dark ({a}) than in daylight ({b}).' : 'Your mood is higher after dark ({a}) than in daylight ({b}).', { a: fmtMood(night.mood), b: fmtMood(day.mood) }) });
 
   const top = w.places[0];
-  if (top && top.n >= MIN_N) out.push({ text: `You wrote most from ${top.name} (${top.n} entries).`, core: top.core ?? undefined });
+  if (top && top.n >= MIN_N) out.push({ text: t('You wrote most from {place} ({count}).', { place: top.name, count: count(top.n, 'entry', 'entries') }), core: top.core ?? undefined });
   const best = w.places.filter((p) => p.n >= MIN_N && p.mood !== null).sort((a, b) => b.mood! - a.mood!);
   if (best.length >= 2 && best[0].mood! - best[best.length - 1].mood! >= DIFF)
-    out.push({ text: `You felt best in ${best[0].name} (${fmtMood(best[0].mood)}).`, core: best[0].core ?? undefined });
+    out.push({ text: t('You felt best in {place} ({mood}).', { place: best[0].name, mood: fmtMood(best[0].mood) }), core: best[0].core ?? undefined });
   return out;
 }
 
@@ -384,7 +385,7 @@ const label = (id: string) => (EMOTION[id].depth === 0 ? shortName(id) : EMOTION
 /** One sentence about the period, with the world it's about (drawn as its sprite) when it has one. */
 export interface Insight { text: string; core?: string }
 
-export function insights(s: Stats, rangeName: string, entries: Entry[]): Insight[] {
+export function insights(s: Stats, rangeBefore: string, entries: Entry[]): Insight[] {
   const out: Insight[] = [];
   const lead = s.cores.reduce((a, c) => (c.count > a.count ? c : a), s.cores[0]);
   const { k, prev } = s;
@@ -393,30 +394,31 @@ export function insights(s: Stats, rangeName: string, entries: Entry[]): Insight
   if (k.pleasantShare !== null) {
     const p = k.pleasantShare;
     out.push({
-      text: p >= 0.6 ? `Mostly pleasant — ${pct(p)} of the feelings you named felt good.`
-      : p <= 0.4 ? `A heavier stretch — ${pct(1 - p)} of the feelings you named were unpleasant.`
-      : `A mixed stretch — pleasant and unpleasant feelings were close to even (${pct(p)} pleasant).`,
+      text: p >= 0.6 ? t('Mostly pleasant — {share} of the feelings you named felt good.', { share: pct(p) })
+      : p <= 0.4 ? t('A heavier stretch — {share} of the feelings you named were unpleasant.', { share: pct(1 - p) })
+      : t('A mixed stretch — pleasant and unpleasant feelings were close to even ({share} pleasant).', { share: pct(p) }),
       core: lead?.count ? lead.id : undefined,
     });
   }
   if (prev && prev.mood !== null && k.mood !== null && Math.abs(k.mood - prev.mood) >= 0.3)
-    out.push({ text: `Your average mood is ${k.mood > prev.mood ? 'up' : 'down'} ${Math.abs(k.mood - prev.mood).toFixed(1)} compared with the ${rangeName} before.` });
+    out.push({ text: t(k.mood > prev.mood ? 'Your average mood is up {by} compared with {before}.' : 'Your average mood is down {by} compared with {before}.', { by: Math.abs(k.mood - prev.mood).toFixed(1), before: rangeBefore }) });
   const top = s.exact[0];
-  if (top && top.count > 1) out.push({ text: `${label(top.id)} came up most often (${top.count}×).`, core: EMOTION[top.id].core });
+  if (top && top.count > 1) out.push({ text: t('{feeling} came up most often ({n}×).', { feeling: label(top.id), n: top.count }), core: EMOTION[top.id].core });
 
   const wd = s.weekdays.filter((w) => w.mood !== null && w.n >= 2).sort((a, b) => b.mood! - a.mood!);
   if (wd.length >= 3 && wd[0].mood! - wd[wd.length - 1].mood! >= 1)
-    out.push({ text: `${full(wd[0].day)} tend to feel best (${fmtMood(wd[0].mood)}); ${full(wd[wd.length - 1].day)} are the hardest (${fmtMood(wd[wd.length - 1].mood)}).` });
+    out.push({ text: t('{best} tend to feel best ({a}); {worst} are the hardest ({b}).', { best: full(wd[0].day), a: fmtMood(wd[0].mood), worst: full(wd[wd.length - 1].day), b: fmtMood(wd[wd.length - 1].mood) }) });
 
   const dp = [...s.dayparts].sort((a, b) => b.n - a.n)[0];
-  if (dp.n >= 3) out.push({ text: `You check in most in the ${dp.name.toLowerCase()}.` });
+  if (dp.n >= 3) out.push({ text: t('You check in most {when}.', { when: dp.when }) });
 
-  const t = s.transitions[0];
-  if (t && t.count >= 2) out.push({ text: `After ${shortName(t.from)}, the next thing you felt was most often ${shortName(t.to)}.`, core: t.to });
+  const next = s.transitions[0];
+  if (next && next.count >= 2) out.push({ text: t('After {a}, the next thing you felt was most often {b}.', { a: shortName(next.from), b: shortName(next.to) }), core: next.to });
 
   const before = dex(entries.filter((e) => e.date < s.start));
   const fresh = [...dex(s.list).keys()].filter((id) => !before.has(id));
-  if (fresh.length) out.push({ text: `You named ${fresh.length} new feeling${fresh.length > 1 ? 's' : ''} in this period: ${fresh.slice(0, 3).map(label).join(', ')}${fresh.length > 3 ? '…' : ''}.`, core: EMOTION[fresh[0]].core });
+  if (fresh.length) out.push({ text: t('You named {count} in this period: {list}.', { count: count(fresh.length, 'new feeling', 'new feelings'), list: fresh.slice(0, 3).map(label).join(', ') + (fresh.length > 3 ? '…' : '') }), core: EMOTION[fresh[0]].core });
   return out;
 }
-const full = (d: string) => ({ Mon: 'Mondays', Tue: 'Tuesdays', Wed: 'Wednesdays', Thu: 'Thursdays', Fri: 'Fridays', Sat: 'Saturdays', Sun: 'Sundays' })[d];
+const FULL_DAYS = [t('Mondays'), t('Tuesdays'), t('Wednesdays'), t('Thursdays'), t('Fridays'), t('Saturdays'), t('Sundays')];
+const full = (d: string) => FULL_DAYS[WEEKDAYS.indexOf(d)];

@@ -6,10 +6,11 @@ import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
 import { usePref } from '../lib/prefs';
 import { isTape, MusicThing, musicSub } from '../components/music';
+import { noun, t } from '../lib/i18n';
 
 type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
 
-const KINDS: [Kind, string][] = [['track', 'Songs'], ['album', 'Albums'], ['playlist', 'Playlists'], ['podcast', 'Podcasts']];
+const KINDS: [Kind, string][] = [['track', t('Songs')], ['album', t('Albums')], ['playlist', t('Playlists')], ['podcast', t('Podcasts')]];
 const kindOf = (m: Music): Kind => (m.kind === 'show' || m.kind === 'episode' ? 'podcast' : m.kind === 'artist' ? 'album' : m.kind);
 
 /** The Media page's music: what's on repeat, your records, your tapes, and what's waiting in your notes. */
@@ -56,9 +57,9 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
     keeping.current.add(key);
     try {
       if (!findSong(getSongs(), m)) await saveSong(blankSong(m));
-      toast(`${m.title} is in your records`);
+      toast(t('{title} is in your records', { title: m.title }));
     } catch {
-      toast('Couldn’t save this music. Try again.');
+      toast(t('Couldn’t save this music. Try again.'));
     } finally {
       keeping.current.delete(key);
     }
@@ -67,9 +68,9 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   return (
     <>
       {songs.length > 0 && (
-        <div class="chips scroll-x filters media-filters" role="toolbar" aria-label="Kind and order">
+        <div class="chips scroll-x filters media-filters" role="toolbar" aria-label={t('Kind and order')}>
           <SortChip sort={sort} onSort={setSort} />
-          <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>All {songs.length}</button>
+          <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>{t('All')} {songs.length}</button>
           {KINDS.map(([k, name]) => count(k) > 0 && (
             <button class="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>{name} {count(k)}</button>
           ))}
@@ -78,16 +79,16 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
 
       {ready && !songs.length && (
         <div class="empty">
-          <h2 class="title-s">No records yet</h2>
-          <p>Keep the songs, albums and playlists that mean something: rate them, say how they make you feel, and who they remind you of.</p>
-          <button class="btn btn-primary" onClick={onAdd}><Icon name="vinyl" size={18} /> Add music</button>
+          <h2 class="title-s">{t('No records yet')}</h2>
+          <p>{t('Keep the songs, albums and playlists that mean something: rate them, say how they make you feel, and who they remind you of.')}</p>
+          <button class="btn btn-primary" onClick={onAdd}><Icon name="vinyl" size={18} /> {t('Add music')}</button>
         </div>
       )}
-      {!!songs.length && !shown.length && <p class="empty-note center">No music matches.</p>}
+      {!!songs.length && !shown.length && <p class="empty-note center">{t('No music matches.')}</p>}
 
       {repeat.length > 0 && (
         <section class="section">
-          <h2 class="section-title"><Icon name="repeat" size={16} /> On repeat</h2>
+          <h2 class="section-title"><Icon name="repeat" size={16} /> {t('On repeat')}</h2>
           <div class="repeat-list">
             {repeat.map((s) => (
               <button key={s.id} class="repeat-row card is-repeat" onClick={() => navigate('song/' + s.id)}>
@@ -103,13 +104,13 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
         </section>
       )}
 
-      {records.length > 0 && <Crate title={grouped ? 'Records' : ''} list={records} />}
-      {tapes.length > 0 && <Crate title={grouped ? 'Tapes' : ''} list={tapes} tapes />}
+      {records.length > 0 && <Crate title={grouped ? t('Records') : ''} list={records} />}
+      {tapes.length > 0 && <Crate title={grouped ? t('Tapes') : ''} list={tapes} tapes />}
 
       {waiting.length > 0 && grouped && (
         <section class="section">
-          <h2 class="section-title">In your notes</h2>
-          <p class="hint">Music you added to notes. Keep it to rate it and say what it means to you.</p>
+          <h2 class="section-title">{t('In your notes')}</h2>
+          <p class="hint">{t('Music you added to notes. Keep it to rate it and say what it means to you.')}</p>
           <div class="tracks">
             {waiting.map((m) => (
               <div key={m.kind + ':' + m.id} class={`track waiting${isTape(m) ? ' is-tape' : ''}`}>
@@ -118,7 +119,7 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
                   <span class="track-title">{m.title}</span>
                   <span class="track-sub">{musicSub(m)}</span>
                 </span>
-                <button class="btn btn-quiet btn-s" onClick={() => keep(m)}><Icon name="plus" size={16} /> Keep</button>
+                <button class="btn btn-quiet btn-s" onClick={() => keep(m)}><Icon name="plus" size={16} /> {t('Keep')}</button>
               </div>
             ))}
           </div>
@@ -135,7 +136,7 @@ function Crate({ title, list, tapes }: { title: string; list: Song[]; tapes?: bo
       {title && <h2 class="section-title">{title} <span class="muted">{list.length}</span></h2>}
       <div class={`crate${tapes ? ' is-tapes' : ''}`}>
         {list.map((s, k) => (
-          <button key={s.id} class="crate-item" style={{ '--k': k }} onClick={() => navigate('song/' + s.id)} aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? `, ${s.rating} of 5 stars` : ''}`}>
+          <button key={s.id} class="crate-item" style={{ '--k': k }} onClick={() => navigate('song/' + s.id)} aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}>
             <MusicThing m={s.music} />
             <span class="crate-title">{s.music.title}</span>
             {s.rating > 0 ? <Stars value={s.rating} size={11} /> : <span class="crate-sub">{s.music.sub ?? musicSub(s.music)}</span>}
@@ -152,10 +153,10 @@ export function musicStats(songs: Song[]): [string, string][] {
   const records = songs.length - tapes;
   const rated = songs.filter((s) => s.rating);
   const out: [string, string][] = [
-    [String(records), records === 1 ? 'record' : 'records'],
-    [String(tapes), tapes === 1 ? 'tape' : 'tapes'],
-    [String(songs.filter((s) => s.repeat).length), 'on repeat'],
+    [String(records), noun(records, 'record', 'records')],
+    [String(tapes), noun(tapes, 'tape', 'tapes')],
+    [String(songs.filter((s) => s.repeat).length), t('on repeat')],
   ];
-  if (rated.length) out.push([(rated.reduce((n, s) => n + s.rating, 0) / rated.length).toFixed(1), 'average ★']);
+  if (rated.length) out.push([(rated.reduce((n, s) => n + s.rating, 0) / rated.length).toFixed(1), t('average ★')]);
   return out.filter(([v]) => v !== '0');
 }

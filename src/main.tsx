@@ -10,6 +10,7 @@ import { applyTheme, init } from './lib/store';
 import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
 import { startWeather } from './lib/weather';
+import { t } from './lib/i18n';
 
 applyTheme();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
@@ -25,8 +26,8 @@ onBlocked(() =>
   render(
     <div class="page">
       <div class="empty">
-        <h2 class="title-s">Finishing an update</h2>
-        <p>My Mind is open somewhere else on this device (another tab or the installed app). Close it and this page will continue by itself.</p>
+        <h2 class="title-s">{t('Finishing an update')}</h2>
+        <p>{t('My Mind is open somewhere else on this device (another tab or the installed app). Close it and this page will continue by itself.')}</p>
       </div>
     </div>,
     document.getElementById('app')!,
@@ -44,9 +45,9 @@ init().then(
     document.documentElement.classList.remove('booting');
     render(
       <div class="page"><div class="empty">
-        <h2 class="title-s">Couldn’t open your journal</h2>
-        <p>Your browser’s storage is unavailable. Try reopening the app or reloading this page.</p>
-        <button class="btn" onClick={() => location.reload()}>Try again</button>
+        <h2 class="title-s">{t('Couldn’t open your journal')}</h2>
+        <p>{t('Your browser’s storage is unavailable. Try reopening the app or reloading this page.')}</p>
+        <button class="btn" onClick={() => location.reload()}>{t('Try again')}</button>
       </div></div>,
       document.getElementById('app')!,
     );

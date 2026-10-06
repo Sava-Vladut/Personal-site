@@ -3,6 +3,7 @@ import type { ComponentChildren } from 'preact';
 import type { Entry } from '../lib/store';
 import { removeEntry, togglePin } from './EntryMenu';
 import { Icon } from './icons';
+import { t } from '../lib/i18n';
 
 const START = 12; // px of sideways movement before a drag counts as a swipe (more than the hold's 10px slop)
 const COMMIT = 96; // how far to drag before letting go does something
@@ -92,8 +93,8 @@ export function Swipe({ e, children }: { e: Entry; children: ComponentChildren }
       }}
     >
       <div class="swipe-bg" aria-hidden="true">
-        <span class="swipe-act pin"><Icon name={e.pinned ? 'pinned-off' : 'pin'} size={20} /> {e.pinned ? 'Unpin' : 'Pin'}</span>
-        <span class="swipe-act del">Delete <Icon name="trash" size={20} /></span>
+        <span class="swipe-act pin"><Icon name={e.pinned ? 'pinned-off' : 'pin'} size={20} /> {e.pinned ? t('Unpin') : t('Pin')}</span>
+        <span class="swipe-act del">{t('Delete')} <Icon name="trash" size={20} /></span>
       </div>
       <div ref={face} class="swipe-face">{children}</div>
     </div>

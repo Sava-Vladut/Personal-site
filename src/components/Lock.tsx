@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { lockError, replacePasskey, unlockApp, unlockName, unlockPeople } from '../lib/lock';
 import { Icon } from './icons';
+import { t } from '../lib/i18n';
 
 const Name = unlockName[0].toUpperCase() + unlockName.slice(1);
 
@@ -35,15 +36,15 @@ export function LockScreen({ scope }: { scope: 'app' | 'people' }) {
     <div class={`page lock-page lock-${scope}`}>
       <div class="lock">
         <span class="lock-icon"><Icon name="face-id" size={36} stroke={1.5} /></span>
-        <h1 class="title-s">{scope === 'app' ? 'My Mind is locked' : 'People is locked'}</h1>
-        <p class="muted">{scope === 'app' ? `Use ${unlockName} to open your journal.` : `Use ${unlockName} to see the people in your life.`}</p>
+        <h1 class="title-s">{scope === 'app' ? t('My Mind is locked') : t('People is locked')}</h1>
+        <p class="muted">{scope === 'app' ? t('Use {name} to open your journal.', { name: unlockName }) : t('Use {name} to see the people in your life.', { name: unlockName })}</p>
         <button class="btn btn-primary" onClick={() => run(unlock)} disabled={busy}>
-          <Icon name="lock-open" size={18} /> Unlock with {Name}
+          <Icon name="lock-open" size={18} /> {t('Unlock with {name}', { name: Name })}
         </button>
         {error && <p class="lock-error" role="alert">{error}</p>}
         {failed && (
           <button class="lock-reset" onClick={() => run(() => replacePasskey(scope))} disabled={busy}>
-            Still not working? Set up {Name} again
+            {t('Still not working? Set up {name} again', { name: Name })}
           </button>
         )}
       </div>

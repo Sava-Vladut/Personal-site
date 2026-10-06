@@ -32,6 +32,7 @@ import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
 import { useDictation, VoiceButton, VoiceSheet } from '../components/VoiceButton';
 import '../styles/notes.css';
+import { t } from '../lib/i18n';
 
 type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'voice';
 /** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
@@ -137,7 +138,7 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       contentEditable={PLAIN ? 'plaintext-only' : 'true'}
       role="textbox"
       aria-multiline="true"
-      aria-label="Note"
+      aria-label={t('Note')}
       aria-autocomplete="list"
       aria-controls={suggestionsOpen ? 'mention-suggestions' : undefined}
       aria-expanded={!!suggestionsOpen}
@@ -264,14 +265,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       saved.current = true;
       if (alive.current) {
         syncUrl();
-        if (request === saveRequest.current && !dirty.current) setStatus('Saved');
+        if (request === saveRequest.current && !dirty.current) setStatus(t('Saved'));
       }
       return true;
     }).catch(() => {
       if (removing.current || request !== saveRequest.current) return false;
       dirty.current = true;
-      if (alive.current) setStatus('Couldn’t save');
-      toast('Couldn’t save this note. Try again.');
+      if (alive.current) setStatus(t('Couldn’t save'));
+      toast(t('Couldn’t save this note. Try again.'));
       return false;
     }).finally(() => {
       if (pendingSave.current === saving) pendingSave.current = null;
@@ -295,7 +296,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const cur = getEntries().find((x) => x.id === d.id);
       if (cur && unchanged(cur)) saveEntry({ ...cur, place: cur.place ?? patch.place ?? null,
         weather: patch.place && !cur.place ? patch.weather ?? null : cur.weather ?? patch.weather ?? null,
-      }).catch(() => toast('Couldn’t save the note’s weather.'));
+      }).catch(() => toast(t('Couldn’t save the note’s weather.')));
     }
   };
 
@@ -318,13 +319,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (query?.get('person') || query?.get('book') || query?.get('song')) history.replaceState(history.state, '', '#/note/new');
     if (sp) {
       history.replaceState(history.state, '', location.hash.split('?')[0]);
-      toast(sp === 'connected' ? 'Spotify connected' : sp === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
+      toast(sp === 'connected' ? t('Spotify connected') : sp === 'cancelled' ? t('Spotify login cancelled') : t('Couldn’t connect Spotify — try again'));
       if (sp === 'connected') setOpen('spotify');
     } else if (id === 'new') titleRef.current?.focus();
     return () => {
       alive.current = false;
       cancelMove.current?.();
-      if (pendingImports.current && !removing.current) toast('Photo import cancelled because you left the note');
+      if (pendingImports.current && !removing.current) toast(t('Photo import cancelled because you left the note'));
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('popstate', syncUrl);
       flush();
@@ -388,9 +389,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     return (
       <div class="page">
         <div class="empty">
-          <h2 class="title-s">This note doesn’t exist</h2>
-          <p>It may have been deleted.</p>
-          <button class="btn btn-primary" onClick={() => goBack()}>Back to journal</button>
+          <h2 class="title-s">{t('This note doesn’t exist')}</h2>
+          <p>{t('It may have been deleted.')}</p>
+          <button class="btn btn-primary" onClick={() => goBack()}>{t('Back to journal')}</button>
         </div>
       </div>
     );
@@ -405,11 +406,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     try {
       const removed = saved.current || pending ? await deleteEntry(draft.id) : null;
       if (alive.current) goBack();
-      if (removed) toast(removed.kind === 'checkin' ? 'Check-in deleted' : 'Note deleted', { label: 'Undo', run: () => saveEntry(removed) });
+      if (removed) toast(removed.kind === 'checkin' ? t('Check-in deleted') : t('Note deleted'), { label: t('Undo'), run: () => saveEntry(removed) });
     } catch {
       removing.current = false;
       dirty.current = true;
-      toast('Couldn’t delete this note. Try again.');
+      toast(t('Couldn’t delete this note. Try again.'));
     }
   };
 
@@ -426,7 +427,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const files = all.filter(isImageFile);
     if (!files.length) return;
     const room = MAX_PHOTOS - draft.photos.length - adding;
-    if (room <= 0) return toast(`A note can hold ${MAX_PHOTOS} photos`);
+    if (room <= 0) return toast(t('A note can hold {n} photos', { n: MAX_PHOTOS }));
     const take = files.slice(0, room);
     pendingImports.current++;
     setAdding((n) => n + take.length);
@@ -438,10 +439,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         const fit = photos.slice(0, MAX_PHOTOS - d.photos.length);
         update({ photos: [...d.photos, ...fit], text: place(bodyOf(d), fit.map((p) => ({ kind: 'photo', id: p.id }))) });
       }
-      if (failed) toast(failed === take.length && failed === 1 ? 'Couldn’t read that image' : `Couldn’t read ${failed} of the images`);
-      else if (files.length > room) toast(`Added ${take.length} — a note can hold ${MAX_PHOTOS} photos`);
+      if (failed) toast(failed === take.length && failed === 1 ? t('Couldn’t read that image') : t('Couldn’t read {n} of the images', { n: failed }));
+      else if (files.length > room) toast(t('Added {n} — a note can hold {max} photos', { n: take.length, max: MAX_PHOTOS }));
     } catch {
-      if (alive.current && !removing.current) toast('Couldn’t save those photos. Please try again.');
+      if (alive.current && !removing.current) toast(t('Couldn’t save those photos. Please try again.'));
     } finally {
       pendingImports.current--;
       if (alive.current && !removing.current) setAdding((n) => n - take.length);
@@ -456,9 +457,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const { photos } = await addPhotos([file]);
       if (!alive.current || removing.current) return;
       if (photos[0]) update({ cover: { photo: photos[0] } });
-      else toast('Couldn’t read that image');
+      else toast(t('Couldn’t read that image'));
     } catch {
-      if (alive.current && !removing.current) toast('Couldn’t save that cover. Please try again.');
+      if (alive.current && !removing.current) toast(t('Couldn’t save that cover. Please try again.'));
     } finally {
       pendingImports.current--;
       if (alive.current && !removing.current) setCoverAdding(false);
@@ -513,8 +514,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       // untouched since: as it was. Otherwise the picture goes back where it was, or (from an album) at the end.
       text: e.text === after ? d.text : alone ? serializeBody(insertMedia(bodyOf(e), [at], i, pos)) : e.text,
     });
-    toast(gone.length > 1 ? 'Album removed' : gone[0].kind === 'photo' ? 'Photo removed' : 'Image removed', {
-      label: 'Undo',
+    toast(gone.length > 1 ? t('Album removed') : gone[0].kind === 'photo' ? t('Photo removed') : t('Image removed'), {
+      label: t('Undo'),
       run: () => {
         if (alive.current) return latest.current && update(restore(latest.current));
         const e = getEntries().find((x) => x.id === d.id);
@@ -648,11 +649,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         const at = mi === i && j === k && el ? el : tiles?.length ? tiles[Math.min(j, tiles.length - 1)] : blocks[mi]?.querySelector<HTMLElement>('.media-pic');
         if (it.kind === 'photo') {
           const p = d.photos.find((x) => x.id === it.id);
-          return { src: (await photoUrl(it.id)) ?? '', w: p?.w, h: p?.h, el: at, save: name, alt: 'Photo', album, it };
+          return { src: (await photoUrl(it.id)) ?? '', w: p?.w, h: p?.h, el: at, save: name, alt: t('Photo'), album, it };
         }
         const img = d.images.find((x) => x.url === it.url);
         return {
-          src: img ? imageSrc(img, 'full') : it.url, w: img?.w, h: img?.h, el: at, link: img?.link, alt: img?.title || 'Image', album, it,
+          src: img ? imageSrc(img, 'full') : it.url, w: img?.w, h: img?.h, el: at, link: img?.link, alt: img?.title || t('Image'), album, it,
           caption: img ? [img.title, img.credit].filter(Boolean).join(' — ') : undefined,
         };
       }),
@@ -705,8 +706,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const bb = bodyOf(d);
     const end = bb.texts.length - 1;
     const { seg, pos } = reading || where.current.seg < 0 || where.current.seg > end ? { seg: end, pos: bb.texts[end].length } : where.current;
-    const t = bb.texts[seg];
-    const before = t.slice(0, pos), after = t.slice(pos);
+    const text = bb.texts[seg];
+    const before = text.slice(0, pos), after = text.slice(pos);
     const add = (before && !/\s$/.test(before) ? ' ' : '') + mentionOf(b, getBooks()) + (/^\s/.test(after) ? '' : ' ');
     bb.texts[seg] = before + add + after;
     where.current = { seg, pos: pos + add.length };
@@ -758,9 +759,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         awaitedCreation = true;
         try {
           person = await savePerson(blankPerson(m.q.trim()));
-          toast(`${person.name} added to People`);
+          toast(t('{name} added to People', { name: person.name }));
         } catch {
-          toast('Couldn’t save this person. Try again.');
+          toast(t('Couldn’t save this person. Try again.'));
           return;
         } finally {
           pickingMention.current = false;
@@ -898,44 +899,44 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       onPaste={(e) => { const files = [...(e.clipboardData?.files ?? [])].filter(isImageFile); if (files.length) { e.preventDefault(); addFiles(files); } }}
     >
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={done} disabled={adding > 0 || coverAdding} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} disabled={adding > 0 || coverAdding} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
         <button
           class="glass glass-btn round"
           onClick={() => (reading ? write() : setReading(true))}
-          aria-label={reading ? 'Edit' : 'Reading view'}
-          title={reading ? 'Edit' : 'Reading view'}
+          aria-label={reading ? t('Edit') : t('Reading view')}
+          title={reading ? t('Edit') : t('Reading view')}
         >
           <Icon name={reading ? 'pencil' : 'book'} />
         </button>
-        <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? 'Delete check-in' : 'Delete note'}><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>Done</button>
+        <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? t('Delete check-in') : t('Delete note')}><Icon name="trash" /></button>
+        <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>{t('Done')}</button>
       </div>
 
       <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
         {draft.cover && <CoverImg cover={draft.cover} class="note-head-cover" />}
         {isCheckin && <div class="eyebrow">Check-in · {timeLabel(draft.time)}</div>}
         <div class="editor-top">
-          <button class={`icon-pick${draft.icon ? '' : ' is-empty'}`} onClick={() => setOpen('icon')} aria-label={draft.icon ? 'Change icon' : 'Add icon'}>
+          <button class={`icon-pick${draft.icon ? '' : ' is-empty'}`} onClick={() => setOpen('icon')} aria-label={draft.icon ? t('Change icon') : t('Add icon')}>
             {draft.icon ? <NoteIcon id={draft.icon} size={24} /> : <Icon name="mood-plus" size={20} />}
           </button>
           <textarea
             ref={titleRef}
             class="title-input"
             rows={1}
-            placeholder="Title"
+            placeholder={t('Title')}
             value={draft.title}
             maxLength={300}
             onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write(0))}
-            aria-label="Title"
+            aria-label={t('Title')}
           />
         </div>
         <DetailsSummary draft={draft} onOpen={() => setDetails(true)} />
       </section>
 
       <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef}>
-        {body.texts.map((t, i) => (
+        {body.texts.map((text, i) => (
           <>
             {i > 0 && (() => {
               const m = body.media[i - 1];
@@ -957,7 +958,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               );
             })()}
             {reading ? (
-              t.trim() && (
+              text.trim() && (
                 <div
                   class="read-text"
                   onClick={(e) => {
@@ -966,15 +967,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                     write(i);
                   }}
                 >
-                  <Markdown text={t} onTask={(line) => setText(i, toggleTask(t, line))} />
+                  <Markdown text={text} onTask={(line) => setText(i, toggleTask(text, line))} />
                 </div>
               )
             ) : (
             <BodyText
-              value={t}
+              value={text}
               textRef={(el) => { areas.current[i] = el; if (i === 0) textRef.current = el; }}
               grow={i === last}
-              placeholder={i === 0 && !body.media.length ? 'What’s on your mind?' : i === last ? 'Keep writing…' : undefined}
+              placeholder={i === 0 && !body.media.length ? t('What’s on your mind?') : i === last ? t('Keep writing…') : undefined}
               onChange={(v) => setText(i, v)}
               onCaret={(pos) => (where.current = { seg: i, pos })}
               onMention={(m) => setMention(i, m)}
@@ -985,20 +986,20 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             )}
           </>
         ))}
-        {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label="Adding photo" />)}
+        {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label={t('Adding photo')} />)}
         {moving && !moving.onto && (
           <span
             class={`drop-slot is-${moving.side}`}
             style={{ top: moving.y + 'px', width: (moving.layout.size ?? 100) + '%', aspectRatio: String(moving.ratio) }}
             aria-hidden="true"
           >
-            <span class="drop-slot-label glass">{moving.side === 'center' ? 'On its own line' : 'Text wraps around'}</span>
+            <span class="drop-slot-label glass">{moving.side === 'center' ? t('On its own line') : t('Text wraps around')}</span>
           </span>
         )}
         {reading && !plainText(draft.text).trim() && (
-          <button class="read-empty" onClick={() => write(last)}>Nothing written yet. Tap to write.</button>
+          <button class="read-empty" onClick={() => write(last)}>{t('Nothing written yet. Tap to write.')}</button>
         )}
-        {reading && <button class="read-tail" onClick={() => write(last)} aria-label="Keep writing" tabIndex={-1} />}
+        {reading && <button class="read-tail" onClick={() => write(last)} aria-label={t('Keep writing')} tabIndex={-1} />}
       </div>
 
       {draft.music.length > 0 && (
@@ -1009,13 +1010,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         </div>
       )}
       {backlinks.length > 0 && (
-        <section class="backlinks" aria-label="Linked from">
-          <h2 class="eyebrow">Linked from</h2>
+        <section class="backlinks" aria-label={t('Linked from')}>
+          <h2 class="eyebrow">{t('Linked from')}</h2>
           {backlinks.map(({ entry: e, context }) => (
             <button key={e.id} class="backlink card" onClick={() => navigate('note/' + e.id)}>
               <span class="backlink-icon">{e.icon ? <NoteIcon id={e.icon} size={20} /> : <Icon name={e.kind === 'checkin' ? 'mood-smile' : 'notebook'} size={18} />}</span>
               <span class="backlink-main">
-                <span class="backlink-title">{e.kind === 'checkin' && !e.title.trim() ? 'Check-in' : noteLabel(e)}</span>
+                <span class="backlink-title">{e.kind === 'checkin' && !e.title.trim() ? t('Check-in') : noteLabel(e)}</span>
                 <span class="backlink-when">{rangeLabel(e.date, e.dateEnd)}</span>
                 {context && <span class="backlink-context">{context}</span>}
               </span>
@@ -1034,7 +1035,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <FormatBar
         target={target}
         format={!reading}
-        swapLabel={typing ? (typing.link ? 'Link a note or a book' : 'Tag someone, a book or music') : 'Picture'}
+        swapLabel={typing ? (typing.link ? t('Link a note or a book') : t('Tag someone, a book or music')) : t('Picture')}
         swap={typing ? (
           <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} link={typing.link} />
         ) : selIndex >= 0 && (
@@ -1054,13 +1055,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           />
         )}
       >
-        <button class="format-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label="Add photos" title="Add photos">
+        <button class="format-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label={t('Add photos')} title={t('Add photos')}>
           <Icon name="photo-plus" size={19} />
         </button>
-        <button class="format-btn" onClick={() => setOpen('images')} aria-label="Find an image" title="Find an image">
+        <button class="format-btn" onClick={() => setOpen('images')} aria-label={t('Find an image')} title={t('Find an image')}>
           <Icon name="photo-search" size={19} />
         </button>
-        <button class="format-btn" onClick={() => setOpen('spotify')} aria-label="Add music from Spotify" title="Add music from Spotify">
+        <button class="format-btn" onClick={() => setOpen('spotify')} aria-label={t('Add music from Spotify')} title={t('Add music from Spotify')}>
           <Icon name="brand-spotify" size={19} />
         </button>
         <button
@@ -1068,8 +1069,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           onPointerDown={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => startMention('@')}
-          aria-label="Tag someone, a book or music"
-          title="Tag someone, a book or music"
+          aria-label={t('Tag someone, a book or music')}
+          title={t('Tag someone, a book or music')}
         >
           <Icon name="at" size={19} />
         </button>
@@ -1078,17 +1079,17 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           onPointerDown={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => startMention('[[')}
-          aria-label="Link another note"
-          title="Link another note"
+          aria-label={t('Link another note')}
+          title={t('Link another note')}
         >
           <Icon name="link" size={19} />
         </button>
-        <button class="format-btn" onClick={() => setOpen('book')} aria-label="Mention a book" title="Mention a book">
+        <button class="format-btn" onClick={() => setOpen('book')} aria-label={t('Mention a book')} title={t('Mention a book')}>
           <Icon name="books" size={19} />
         </button>
         <VoiceButton onSetup={() => setOpen('voice')} />
       </FormatBar>
-      {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> Drop to add photos</span></div>}
+      {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />
       <NoteDetails open={details} onClose={() => setDetails(false)} draft={draft} update={update} uploadCover={uploadCover} uploadingCover={coverAdding} />
@@ -1101,7 +1102,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         }}
       />
       <VoiceSheet open={open === 'voice'} onClose={close} />
-      <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title="Mention a book" status="reading" />
+      <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title={t('Mention a book')} status="reading" />
       <SpotifySheet
         open={open === 'spotify'}
         onClose={close}

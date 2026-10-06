@@ -4,6 +4,7 @@ import { Icon, Sprite } from './icons';
 import { useSettings } from '../lib/store';
 import { haptic } from '../lib/haptics';
 import { EmotionWheel } from './EmotionWheel';
+import { t } from '../lib/i18n';
 
 /** "Worried" with its world's sprite. `path` adds the trail: Fear › Anxiety. */
 export function EmotionChip({ id, onRemove, path, size = 'md', idle, delay }: {
@@ -20,7 +21,7 @@ export function EmotionChip({ id, onRemove, path, size = 'md', idle, delay }: {
       <span class="emo-name">{e.depth === 0 ? shortName(id) : e.name}</span>
       {path && e.depth > 0 && <span class="emo-path">{trail(id)}</span>}
       {onRemove && (
-        <button class="emo-x" onClick={onRemove} aria-label={`Remove ${e.name}`}>
+        <button class="emo-x" onClick={onRemove} aria-label={t('Remove {name}', { name: e.name })}>
           <Icon name="x" size={14} />
         </button>
       )}
@@ -37,11 +38,11 @@ export function trail(id: string) {
   return parts.join(' › ');
 }
 
-export const INTENSITY = ['Barely', 'Mild', 'Moderate', 'Strong', 'Intense'];
-const INTENSITY_NOTE = ['Just a flicker', 'There, but easy to carry', 'Clearly here', 'Hard to ignore', 'It fills everything'];
+export const INTENSITY = [t('Barely'), t('Mild'), t('Moderate'), t('Strong'), t('Intense')];
+const INTENSITY_NOTE = [t('Just a flicker'), t('There, but easy to carry'), t('Clearly here'), t('Hard to ignore'), t('It fills everything')];
 
 /** One slider for "how strong is it": tap or drag along the meter, or use the arrow keys. The feeling's world fills it and grows with it. */
-export function IntensityPicker({ value, onChange, cores = [], title = 'How strong is it?' }: {
+export function IntensityPicker({ value, onChange, cores = [], title = t('How strong is it?') }: {
   value: number;
   onChange: (n: number) => void;
   /** The worlds of the feelings it measures: it wears their colours and sprites, and without any it takes `--c` from its surroundings. */
@@ -75,7 +76,7 @@ export function IntensityPicker({ value, onChange, cores = [], title = 'How stro
     <div class="intensity" style={worlds.length ? { '--c': `var(--emo-${worlds[0]})` } : undefined} data-level={value}>
       <div class="intensity-head">
         <span class="field-label" id="intensity-title">{title}</span>
-        <span class="intensity-count" aria-hidden="true">{value} of 5</span>
+        <span class="intensity-count" aria-hidden="true">{t('{n} of 5', { n: value })}</span>
       </div>
       <div class="intensity-read">
         {worlds.length > 0 && (
@@ -100,7 +101,7 @@ export function IntensityPicker({ value, onChange, cores = [], title = 'How stro
         aria-valuemin={1}
         aria-valuemax={5}
         aria-valuenow={value}
-        aria-valuetext={`${INTENSITY[value - 1]}, ${value} of 5`}
+        aria-valuetext={`${INTENSITY[value - 1]}, ${t('{n} of 5', { n: value })}`}
         onKeyDown={(ev) => key(ev as KeyboardEvent)}
         onPointerDown={(ev) => {
           if (ev.button > 0) return;
@@ -125,8 +126,8 @@ export function IntensityPicker({ value, onChange, cores = [], title = 'How stro
 
 export function WorldGrid({ onSelect, active }: { onSelect: (core: string) => void; active?: string | null }) {
   const groups: [string, string[]][] = [
-    ['Unpleasant', PICKER_ORDER.slice(0, 4)],
-    ['Pleasant', PICKER_ORDER.slice(4)],
+    [t('Unpleasant'), PICKER_ORDER.slice(0, 4)],
+    [t('Pleasant'), PICKER_ORDER.slice(4)],
   ];
   return (
     <div class="worlds">
@@ -157,7 +158,7 @@ export function WorldDetail({ core, onBack, onPick, selected = [] }: {
   return (
     <div class="world-detail" style={{ '--c': `var(--emo-${core})` }}>
       <div class="world-head">
-        <button class="icon-btn" onClick={onBack} aria-label="Back to all emotions">
+        <button class="icon-btn" onClick={onBack} aria-label={t('Back to all emotions')}>
           <Icon name="chevron-left" />
         </button>
         <Sprite core={core} size={22} />
@@ -183,7 +184,7 @@ export function WorldDetail({ core, onBack, onPick, selected = [] }: {
         </section>
       ))}
       <button class="btn btn-quiet just-core" aria-pressed={selected.includes(core)} onClick={() => onPick(core)}>
-        Just “{shortName(core)}” — not sure which
+        {t('Just “{world}” — not sure which', { world: shortName(core) })}
       </button>
     </div>
   );
@@ -198,7 +199,7 @@ export function EmotionPicker({ onPick, selected }: { onPick: (id: string) => vo
     <WorldDetail core={core} onBack={() => setCore(null)} onPick={onPick} selected={selected} />
   ) : (
     <div>
-      <p class="hint">Pick the world that feels closest. There are no wrong answers.</p>
+      <p class="hint">{t('Pick the world that feels closest. There are no wrong answers.')}</p>
       <WorldGrid onSelect={setCore} />
     </div>
   );

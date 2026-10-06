@@ -8,6 +8,7 @@ import { blankBook, getBooks, saveBook, useBooks, type Book, type BookStatus } f
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
 import '../styles/objects.css';
+import { count, t } from '../lib/i18n';
 
 /** The book's cover, or a plain one with its title, tinted with the main feeling it left you with. */
 export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> & { emotions?: string[] }; width?: number }) {
@@ -18,7 +19,7 @@ export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> 
       {b.cover && b.cover !== broken ? (
         <img src={b.cover} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => setBroken(b.cover)} />
       ) : (
-        <span class="book-cover-title" style={{ fontSize: Math.max(8, Math.round(width / 7)) }}>{b.title.trim() || 'Untitled'}</span>
+        <span class="book-cover-title" style={{ fontSize: Math.max(8, Math.round(width / 7)) }}>{b.title.trim() || t('Untitled')}</span>
       )}
     </span>
   );
@@ -28,14 +29,14 @@ export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> 
 export function Stars({ value, onChange, size = 16 }: { value: number; onChange?: (n: number) => void; size?: number }) {
   if (!onChange)
     return (
-      <span class="stars" role="img" aria-label={value ? `${value} out of 5 stars` : 'Not rated'}>
+      <span class="stars" role="img" aria-label={value ? t('{n} out of 5 stars', { n: value }) : t('Not rated')}>
         {[1, 2, 3, 4, 5].map((n) => <Icon name="star" size={size} class={n <= value ? 'on' : ''} />)}
       </span>
     );
   return (
-    <span class="stars is-input" role="radiogroup" aria-label="Rating">
+    <span class="stars is-input" role="radiogroup" aria-label={t('Rating')}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <button role="radio" aria-checked={value === n} aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`} onClick={() => onChange(value === n ? 0 : n)}>
+        <button role="radio" aria-checked={value === n} aria-label={count(n, 'star', 'stars')} onClick={() => onChange(value === n ? 0 : n)}>
           <Icon name="star" size={size} class={n <= value ? 'on' : ''} />
         </button>
       ))}
@@ -48,7 +49,7 @@ export function BookChip({ b }: { b: Book }) {
   return (
     <span class="emo emo-sm book-chip">
       <BookCover b={b} width={12} />
-      <span class="emo-name">{b.title.trim() || 'Untitled'}</span>
+      <span class="emo-name">{b.title.trim() || t('Untitled')}</span>
     </span>
   );
 }
@@ -59,7 +60,7 @@ export function BookRow({ b, onClick, end }: { b: Book; onClick: () => void; end
     <button class="book-row" onClick={onClick}>
       <BookCover b={b} width={40} />
       <span class="book-row-main">
-        <span class="book-row-title">{b.title.trim() || 'Untitled'}</span>
+        <span class="book-row-title">{b.title.trim() || t('Untitled')}</span>
         <span class="book-row-sub">{byline(b) || STATUS_LABEL[b.status]}</span>
         {b.rating > 0 && <Stars value={b.rating} size={12} />}
       </span>
@@ -85,7 +86,7 @@ export function BookSpine({ b, k = 0 }: { b: Book; k?: number }) {
   const height = 158 + ((h >> 9) % 38);
   const code = callNumber(b.authors);
   const pct = progressOf(b);
-  const label = [b.title.trim() || 'Untitled', b.authors && `by ${b.authors}`, STATUS_LABEL[b.status], pct !== null && `${pct}% read`, b.rating && `${b.rating} of 5 stars`]
+  const label = [b.title.trim() || t('Untitled'), b.authors && t('by {authors}', { authors: b.authors }), STATUS_LABEL[b.status], pct !== null && t('{pct}% read', { pct }), b.rating && t('{n} of 5 stars', { n: b.rating })]
     .filter(Boolean).join(', ');
   return (
     <button
@@ -97,7 +98,7 @@ export function BookSpine({ b, k = 0 }: { b: Book; k?: number }) {
     >
       <span class="spine-band" />
       {b.rating > 0 && <span class="spine-dots" aria-hidden="true">{Array.from({ length: b.rating }, () => <i />)}</span>}
-      <span class="spine-title" aria-hidden="true">{b.title.trim() || 'Untitled'}</span>
+      <span class="spine-title" aria-hidden="true">{b.title.trim() || t('Untitled')}</span>
       <span class="spine-band" />
       {code && <span class="spine-label" aria-hidden="true">{code}</span>}
       {b.status === 'reading' && <span class="spine-mark" aria-hidden="true" />}
@@ -122,7 +123,7 @@ const sameWork = (b: Book, f: FoundBook) => b.olid === f.olid || (b.title.trim()
  * Find a book: your shelf first, then Open Library, or add it by hand. A book picked from Open Library joins the
  * shelf (as `status`) before `onPick` gets it, so whatever picked it has a book to point to.
  */
-export function BookSheet({ open, onClose, onPick, title = 'Add a book', status = 'want' }: {
+export function BookSheet({ open, onClose, onPick, title = t('Add a book'), status = 'want' }: {
   open: boolean;
   onClose: () => void;
   onPick: (b: Book) => void;
@@ -162,9 +163,9 @@ export function BookSheet({ open, onClose, onPick, title = 'Add a book', status 
     setError('');
     setBusy(false);
     if (!open || needle.length < 2) return;
-    const t = setTimeout(() => load(1), 400);
+    const timer = setTimeout(() => load(1), 400);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       req.current++;
     };
   }, [needle, open]);
@@ -196,17 +197,17 @@ export function BookSheet({ open, onClose, onPick, title = 'Add a book', status 
     <Sheet open={open} onClose={close} title={title} tall>
       <label class="search">
         <Icon name="search" size={18} />
-        <input type="search" placeholder="Title, author or ISBN" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Find a book" />
+        <input type="search" placeholder={t('Title, author or ISBN')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Find a book')} />
       </label>
       {mine.length > 0 && (
         <>
-          <div class="section-label book-sheet-label">{words.length ? 'On your shelf' : 'Recent on your shelf'}</div>
+          <div class="section-label book-sheet-label">{words.length ? t('On your shelf') : t('Recent on your shelf')}</div>
           <div class="book-rows">{mine.map((b) => <BookRow key={b.id} b={b} onClick={() => pick(b)} />)}</div>
         </>
       )}
       {needle.length >= 2 && (
         <>
-          <div class="section-label book-sheet-label">From Open Library</div>
+          <div class="section-label book-sheet-label">{t('From Open Library')}</div>
           <div class="book-rows">
             {found.map((f) => {
               const have = shelf.find((b) => sameWork(b, f));
@@ -215,22 +216,22 @@ export function BookSheet({ open, onClose, onPick, title = 'Add a book', status 
                   <BookCover b={f} width={40} />
                   <span class="book-row-main">
                     <span class="book-row-title">{f.title}</span>
-                    <span class="book-row-sub">{[byline(f), f.pages ? `${f.pages} pages` : ''].filter(Boolean).join(' · ')}</span>
+                    <span class="book-row-sub">{[byline(f), f.pages ? count(f.pages, 'page', 'pages') : ''].filter(Boolean).join(' · ')}</span>
                   </span>
                   <span class="track-end">{have ? <span class="muted small">{STATUS_LABEL[have.status]}</span> : <Icon name="plus" size={18} />}</span>
                 </button>
               );
             })}
           </div>
-          {busy && <p class="hint center">Searching…</p>}
+          {busy && <p class="hint center">{t('Searching…')}</p>}
           {error && <p class="error">{error}</p>}
-          {!busy && more && <button class="btn btn-quiet block" onClick={() => load(page + 1)}>More results</button>}
-          {!busy && !error && !found.length && <p class="hint center">Open Library has nothing called that.</p>}
-          <button class="btn btn-quiet block" onClick={byHand}><Icon name="pencil" size={18} /> Add “{needle}” by hand</button>
+          {!busy && more && <button class="btn btn-quiet block" onClick={() => load(page + 1)}>{t('More results')}</button>}
+          {!busy && !error && !found.length && <p class="hint center">{t('Open Library has nothing called that.')}</p>}
+          <button class="btn btn-quiet block" onClick={byHand}><Icon name="pencil" size={18} /> {t('Add “{title}” by hand', { title: needle })}</button>
         </>
       )}
-      {needle.length < 2 && !mine.length && <p class="hint center">Search millions of books from Open Library.</p>}
-      <p class="attribution"><Icon name="books" size={14} /> Book data and covers from Open Library</p>
+      {needle.length < 2 && !mine.length && <p class="hint center">{t('Search millions of books from Open Library.')}</p>}
+      <p class="attribution"><Icon name="books" size={14} /> {t('Book data and covers from Open Library')}</p>
     </Sheet>
   );
 }

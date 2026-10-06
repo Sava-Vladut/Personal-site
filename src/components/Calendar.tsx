@@ -4,6 +4,7 @@ import { WEEKDAYS, addDays, keyOf, monthLabel, parseKey, rangeLabel, startOfWeek
 import { useSettings } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import { t } from '../lib/i18n';
 
 interface CalendarProps {
   focus: string;                          // any day in the month to show first
@@ -40,9 +41,9 @@ export function Calendar({ focus, isSelected, inRange, onPick, mark }: CalendarP
   return (
     <div class="cal">
       <div class="cal-head">
-        <button class="icon-btn" onClick={() => shift(-1)} aria-label="Previous month"><Icon name="chevron-left" /></button>
+        <button class="icon-btn" onClick={() => shift(-1)} aria-label={t('Previous month')}><Icon name="chevron-left" /></button>
         <span class="cal-month">{monthLabel(y, m)}</span>
-        <button class="icon-btn" onClick={() => shift(1)} aria-label="Next month"><Icon name="chevron-right" /></button>
+        <button class="icon-btn" onClick={() => shift(1)} aria-label={t('Next month')}><Icon name="chevron-right" /></button>
       </div>
       <div class="cal-grid" aria-hidden="true">
         {labels.map((l) => <span class="cal-dow">{l.slice(0, 2)}</span>)}
@@ -118,29 +119,29 @@ export function DateSheet({ open, onClose, start, end, onChange }: {
     }
   };
   const presets: [string, () => void][] = mode === 'day'
-    ? [['Today', () => set(today, null)], ['Yesterday', () => set(addDays(today, -1), null)]]
+    ? [[t('Today'), () => set(today, null)], [t('Yesterday'), () => set(addDays(today, -1), null)]]
     : [
-        ['This week', () => set(startOfWeek(today, weekStart), today)],
-        ['Last 7 days', () => set(addDays(today, -6), today)],
-        ['This month', () => set(today.slice(0, 8) + '01', today)],
+        [t('This week'), () => set(startOfWeek(today, weekStart), today)],
+        [t('Last 7 days'), () => set(addDays(today, -6), today)],
+        [t('This month'), () => set(today.slice(0, 8) + '01', today)],
       ];
 
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title="Date"
+      title={t('Date')}
       footer={
         <>
           <span class="foot-note">{rangeLabel(a, b)}</span>
-          <button class="btn btn-primary" onClick={() => { onChange(a, b); onClose(); }}>Done</button>
+          <button class="btn btn-primary" onClick={() => { onChange(a, b); onClose(); }}>{t('Done')}</button>
         </>
       }
     >
       <div class="seg" role="tablist">
         {(['day', 'range'] as const).map((m) => (
           <button role="tab" aria-selected={mode === m} onClick={() => { setMode(m); setPicking('start'); if (m === 'day') setB(null); }}>
-            {m === 'day' ? 'Single day' : 'Range'}
+            {m === 'day' ? t('Single day') : t('Range')}
           </button>
         ))}
       </div>
@@ -155,7 +156,7 @@ export function DateSheet({ open, onClose, start, end, onChange }: {
       />
       {/* always rendered so the sheet doesn't change height when switching modes */}
       <p class="hint center" style={{ visibility: mode === 'range' ? 'visible' : 'hidden' }}>
-        {picking === 'end' ? 'Now tap the last day' : 'Tap the first day'}
+        {picking === 'end' ? t('Now tap the last day') : t('Tap the first day')}
       </p>
     </Sheet>
   );

@@ -5,6 +5,7 @@ import { imageSrc } from '../lib/images';
 import type { Entry } from '../lib/store';
 import { Icon } from './icons';
 import { PhotoImg } from './Photo';
+import { t } from '../lib/i18n';
 
 const SIZES = [100, 75, 50, 33];
 /** The next preset down from `size`, back to full width after the smallest. */
@@ -36,10 +37,10 @@ const ratioOf = (m: Media, draft: Entry) => (m.kind === 'album' ? ALBUM_RATIO[Ma
 function Pic({ it, draft, tile }: { it: Item; draft: Entry; tile?: boolean }) {
   const photo = it.kind === 'photo' ? draft.photos.find((p) => p.id === it.id) : undefined;
   const img = it.kind === 'image' ? draft.images.find((i) => i.url === it.url) : undefined;
-  if (photo) return <PhotoImg photo={photo} alt="Photo" fit={!tile} draggable={false} />;
+  if (photo) return <PhotoImg photo={photo} alt={t('Photo')} fit={!tile} draggable={false} />;
   if (!img) return null;
   return (
-    <img src={imageSrc(img, 'thumb')} alt={img.title || 'Image'} loading="lazy" draggable={false} referrerpolicy="no-referrer"
+    <img src={imageSrc(img, 'thumb')} alt={img.title || t('Image')} loading="lazy" draggable={false} referrerpolicy="no-referrer"
       style={!tile && img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
   );
 }
@@ -109,7 +110,7 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
   const album = m.kind === 'album';
   const ratio = ratioOf(m, draft);
   const img = m.kind === 'image' ? draft.images.find((i) => i.url === m.url) : undefined;
-  const label = album ? `Album of ${items.length}` : m.kind === 'photo' ? 'Photo' : img?.title ? `Image: ${img.title}` : 'Image';
+  const label = album ? t('Album of {n}', { n: items.length }) : m.kind === 'photo' ? t('Photo') : img?.title ? t('Image: {title}', { title: img.title }) : t('Image');
   const size = live ?? m.size ?? 100;
   const align = size < 100 ? m.align : undefined;
   const colWidth = () => box.current?.parentElement?.clientWidth ?? 0;
@@ -191,8 +192,8 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
     if (!el || !col) return;
     e.preventDefault();
     e.stopPropagation();
-    const t = e.currentTarget as HTMLElement;
-    t.setPointerCapture(e.pointerId);
+    const handle = e.currentTarget as HTMLElement;
+    handle.setPointerCapture(e.pointerId);
     const r = el.getBoundingClientRect();
     const len = Math.hypot(r.width, r.height);
     const factor = align ? 1 : 2;
@@ -204,9 +205,9 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
       setLive(pct);
     };
     const cleanup = () => {
-      t.removeEventListener('pointermove', move);
-      t.removeEventListener('pointerup', end);
-      t.removeEventListener('pointercancel', end);
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
       cancelCorner.current = null;
     };
     cancelCorner.current = cleanup;
@@ -215,9 +216,9 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
       setLive(null);
       if (ev.type === 'pointerup' && pct !== size) onResize(pct);
     };
-    t.addEventListener('pointermove', move);
-    t.addEventListener('pointerup', end);
-    t.addEventListener('pointercancel', end);
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
   };
   const corners: [string, -1 | 1, -1 | 1][] = [['tl', -1, -1], ['tr', 1, -1], ['bl', -1, 1], ['br', 1, 1]];
 
@@ -239,7 +240,7 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
           if (selected || !editing) onOpen(tile ?? e.currentTarget, tile ? +tile.dataset.i! : 0);
           else onSelect();
         }}
-        aria-label={selected || !editing ? `View ${label.toLowerCase()}` : `Select ${label.toLowerCase()}`}
+        aria-label={selected || !editing ? t('View {what}', { what: label.toLowerCase() }) : t('Select {what}', { what: label.toLowerCase() })}
         aria-pressed={editing ? selected : undefined}
       >
         {album ? (
@@ -255,13 +256,13 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
           <Pic it={items[0]} draft={draft} />
         )}
       </button>
-      {merging && <span class="media-merge glass">{album ? 'Add to album' : 'Make an album'}</span>}
+      {merging && <span class="media-merge glass">{album ? t('Add to album') : t('Make an album')}</span>}
       {selected && !dragging &&
         corners
           // a picture on a side is pulled from its free side, the one the text is on
           .filter(([, sx]) => !align || (align === 'left' ? sx > 0 : sx < 0))
           .map(([c, sx, sy]) => <span key={c} class={`media-corner ${c}`} onPointerDown={corner(sx, sy)} aria-hidden="true" />)}
-      {live !== null && <span class="media-badge glass">{live === 100 ? 'Full width' : live + '%'}</span>}
+      {live !== null && <span class="media-badge glass">{live === 100 ? t('Full width') : live + '%'}</span>}
     </div>
   );
 }
@@ -282,36 +283,36 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
   const side = (s: Side) => onLayout(s === 'center' ? { size } : dropLayout(m, s));
   return (
     <>
-      <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label="Left, text wraps around it" title="Left, text wraps around it">
+      <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label={t('Left, text wraps around it')} title={t('Left, text wraps around it')}>
         <Icon name="float-left" size={19} />
       </button>
-      <button class="format-btn" onClick={() => side('center')} aria-pressed={!align} aria-label="Centre, on its own line" title="Centre, on its own line">
+      <button class="format-btn" onClick={() => side('center')} aria-pressed={!align} aria-label={t('Centre, on its own line')} title={t('Centre, on its own line')}>
         <Icon name="float-center" size={19} />
       </button>
-      <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label="Right, text wraps around it" title="Right, text wraps around it">
+      <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label={t('Right, text wraps around it')} title={t('Right, text wraps around it')}>
         <Icon name="float-right" size={19} />
       </button>
       <span class="format-sep" />
-      <button class="format-btn media-size" onClick={() => onLayout({ size: nextSize(size), align: m.align })} aria-label={`Size: ${size === 100 ? 'full width' : size + '%'}. Change size`} title="Change size">
-        {size === 100 ? 'Full' : size + '%'}
+      <button class="format-btn media-size" onClick={() => onLayout({ size: nextSize(size), align: m.align })} aria-label={t('Size: {size}. Change size', { size: size === 100 ? t('full width') : size + '%' })} title={t('Change size')}>
+        {size === 100 ? t('Full') : size + '%'}
       </button>
       <span class="format-sep" />
-      <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label="Move up" title="Move up">
+      <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label={t('Move up')} title={t('Move up')}>
         <Icon name="arrow-up" size={19} />
       </button>
-      <button class="format-btn" onClick={() => onStep(1)} disabled={!canDown} aria-label="Move down" title="Move down">
+      <button class="format-btn" onClick={() => onStep(1)} disabled={!canDown} aria-label={t('Move down')} title={t('Move down')}>
         <Icon name="arrow-down" size={19} />
       </button>
       <span class="format-sep" />
       {m.kind === 'album' && (
-        <button class="format-btn" onClick={onUngroup} aria-label="Ungroup the album" title="Ungroup the album">
+        <button class="format-btn" onClick={onUngroup} aria-label={t('Ungroup the album')} title={t('Ungroup the album')}>
           <Icon name="layout-grid-remove" size={19} />
         </button>
       )}
-      <button class="format-btn" onClick={onOpen} aria-label="View" title="View">
+      <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
         <Icon name="maximize" size={19} />
       </button>
-      <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? 'Remove the album' : 'Remove'} title={m.kind === 'album' ? 'Remove the album' : 'Remove'}>
+      <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? t('Remove the album') : t('Remove')} title={m.kind === 'album' ? t('Remove the album') : t('Remove')}>
         <Icon name="trash" size={19} />
       </button>
     </>

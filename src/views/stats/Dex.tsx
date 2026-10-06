@@ -8,6 +8,7 @@ import { CountUp, RevealStack } from '../../components/charts';
 import { trail } from '../../components/emotion';
 import { Sprite } from '../../components/icons';
 import { Sheet } from '../../components/Sheet';
+import { count, t } from '../../lib/i18n';
 
 const feelingsOf = (core: string) => CORE[core].families.flatMap((f) => f.feelings);
 
@@ -22,17 +23,17 @@ export function Dex() {
   return (
     <RevealStack>
       <section class="card hero">
-        <div class="tile-label">Feelings named · all time</div>
+        <div class="tile-label">{t('Feelings named · all time')}</div>
         <div class="hero-row">
           <span class="hero-num"><CountUp value={found.size} /></span>
-          <span class="hero-scale">of {FEELINGS.length}</span>
+          <span class="hero-scale">{t('of {n}', { n: FEELINGS.length })}</span>
         </div>
         <div class="dex-worlds">
           {PICKER_ORDER.map((c, i) => {
             const all = feelingsOf(c), n = all.filter((x) => found.has(x.id)).length;
             return (
               <button
-                class="dex-mini" data-core={c} style={{ '--c': `var(--emo-${c})`, '--k': i }} aria-label={`${CORE[c].name}: ${n} of ${all.length} found`}
+                class="dex-mini" data-core={c} style={{ '--c': `var(--emo-${c})`, '--k': i }} aria-label={t('{world}: {n} of {total} found', { world: CORE[c].name, n, total: all.length })}
                 onClick={() => document.getElementById('dex-' + c)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
                 <Sprite core={c} size={18} idle={n > 0} delay={i * 370} />
@@ -42,7 +43,7 @@ export function Dex() {
             );
           })}
         </div>
-        <p class="muted small">Each specific feeling you log fills a slot. Tap one to read it again.</p>
+        <p class="muted small">{t('Each specific feeling you log fills a slot. Tap one to read it again.')}</p>
       </section>
       {PICKER_ORDER.map((c, i) => {
         const all = feelingsOf(c), n = all.filter((x) => found.has(x.id)).length;
@@ -60,7 +61,7 @@ export function Dex() {
                     <span class="dex-count">{found.get(x.id)!.count}×</span>
                   </button>
                 ) : (
-                  <button class="dex-slot" aria-label={`Not found yet — check in with ${CORE[c].name}`} onClick={() => navigate('tracker?world=' + c)}>???</button>
+                  <button class="dex-slot" aria-label={t('Not found yet — check in with {world}', { world: CORE[c].name })} onClick={() => navigate('tracker?world=' + c)}>???</button>
                 ),
               )}
             </div>
@@ -72,7 +73,7 @@ export function Dex() {
           <div class="stack">
             <div class="row gap-s"><Sprite core={e.core} size={18} /><span class="muted">{trail(e.id)}</span></div>
             <p class="definition big">{e.def}</p>
-            <p class="muted small">Named {info.count} {info.count === 1 ? 'time' : 'times'} · first on {shortDate(info.first)}</p>
+            <p class="muted small">{t('Named {count} · first on {date}', { count: count(info.count, 'time', 'times'), date: shortDate(info.first) })}</p>
           </div>
         )}
       </Sheet>

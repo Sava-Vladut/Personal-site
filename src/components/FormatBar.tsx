@@ -4,25 +4,26 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { editable } from '../lib/editable';
 import { insertBlock, insertLink, toggleLines, toggleWrap, type TextBox } from '../lib/markdown';
 import { Icon, type UiName } from './icons';
+import { t } from '../lib/i18n';
 
 type Action = (el: TextBox) => void;
 
 // Each tool, and what it's lit up by when the caret is in text styled that way: a class of the styled text around
 // the caret (lib/liveMarkdown.ts), or the kind of line it's on.
 const TOOLS: [UiName, string, Action, string?][] = [
-  ['bold', 'Bold', (el) => toggleWrap(el, '**'), 'md-b'],
-  ['italic', 'Italic', (el) => toggleWrap(el, '*'), 'md-i'],
-  ['strikethrough', 'Strikethrough', (el) => toggleWrap(el, '~~'), 'md-s'],
-  ['highlight', 'Highlight', (el) => toggleWrap(el, '=='), 'md-hl'],
-  ['heading', 'Heading', (el) => toggleLines(el, 'heading'), 'md-h'],
-  ['list', 'Bullet list', (el) => toggleLines(el, 'ul'), 'ul'],
-  ['list-numbers', 'Numbered list', (el) => toggleLines(el, 'ol'), 'ol'],
-  ['list-check', 'Task list', (el) => toggleLines(el, 'task'), 'task'],
-  ['blockquote', 'Quote', (el) => toggleLines(el, 'quote'), 'quote'],
-  ['info-circle', 'Callout', (el) => insertBlock(el, '> [!note] ', 10), 'callout'],
-  ['code', 'Code', (el) => (el.value.slice(el.selectionStart, el.selectionEnd).includes('\n') ? insertBlock(el, '```\n' + el.value.slice(el.selectionStart, el.selectionEnd) + '\n```', 4) : toggleWrap(el, '`')), 'md-code'],
-  ['link', 'Link', insertLink, 'md-link'],
-  ['separator-horizontal', 'Divider', (el) => insertBlock(el, '---')],
+  ['bold', t('Bold'), (el) => toggleWrap(el, '**'), 'md-b'],
+  ['italic', t('Italic'), (el) => toggleWrap(el, '*'), 'md-i'],
+  ['strikethrough', t('Strikethrough'), (el) => toggleWrap(el, '~~'), 'md-s'],
+  ['highlight', t('Highlight'), (el) => toggleWrap(el, '=='), 'md-hl'],
+  ['heading', t('Heading'), (el) => toggleLines(el, 'heading'), 'md-h'],
+  ['list', t('Bullet list'), (el) => toggleLines(el, 'ul'), 'ul'],
+  ['list-numbers', t('Numbered list'), (el) => toggleLines(el, 'ol'), 'ol'],
+  ['list-check', t('Task list'), (el) => toggleLines(el, 'task'), 'task'],
+  ['blockquote', t('Quote'), (el) => toggleLines(el, 'quote'), 'quote'],
+  ['info-circle', t('Callout'), (el) => insertBlock(el, '> [!note] ', 10), 'callout'],
+  ['code', t('Code'), (el) => (el.value.slice(el.selectionStart, el.selectionEnd).includes('\n') ? insertBlock(el, '```\n' + el.value.slice(el.selectionStart, el.selectionEnd) + '\n```', 4) : toggleWrap(el, '`')), 'md-code'],
+  ['link', t('Link'), insertLink, 'md-link'],
+  ['separator-horizontal', t('Divider'), (el) => insertBlock(el, '---')],
 ];
 
 /** The note's text box the selection is in, if it is in one. */
@@ -61,7 +62,7 @@ const keepFocus = {
  * the caret is styled are lit. Scrolling down through a note, not writing, tucks it away until you scroll back up.
  * With `swap` (a selected picture's tools, or what an @ suggests), it shows those instead.
  */
-export function FormatBar({ target, format = true, swap, swapLabel = 'Picture', children }: {
+export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'), children }: {
   target: () => TextBox | null;
   format?: boolean;
   swap?: ComponentChildren;
@@ -172,13 +173,13 @@ export function FormatBar({ target, format = true, swap, swapLabel = 'Picture', 
         <div class="format-scroll">{swap}</div>
       </div>
     ) : (
-    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${tucked ? ' is-tucked' : ''}`} role="toolbar" aria-label={showTools ? 'Formatting' : 'Add to the note'}>
+    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${tucked ? ' is-tucked' : ''}`} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')}>
       {format && (
         <button
           class="format-btn format-toggle"
           aria-pressed={showTools}
-          aria-label={showTools ? 'Hide formatting' : 'Formatting'}
-          title={showTools ? 'Hide formatting' : 'Formatting'}
+          aria-label={showTools ? t('Hide formatting') : t('Formatting')}
+          title={showTools ? t('Hide formatting') : t('Formatting')}
           {...keepFocus}
           onClick={() => {
             opened.current = false;

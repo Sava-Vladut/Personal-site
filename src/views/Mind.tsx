@@ -10,12 +10,13 @@ import { Avatar } from '../components/people';
 import { CountUp } from '../components/charts';
 import { Sky } from '../components/Sky';
 import { lastSeen, useMoments } from './People';
+import { count, rich, t } from '../lib/i18n';
 
 type Range = 'month' | 'year' | 'all';
 const RANGES: [Range, string, number][] = [
-  ['month', '30 days', 30],
-  ['year', '12 months', 365],
-  ['all', 'All time', 0],
+  ['month', t('30 days'), 30],
+  ['year', t('12 months'), 365],
+  ['all', t('All time'), 0],
 ];
 
 interface Share {
@@ -39,32 +40,32 @@ const pctOf = (x: number) => (x > 0 && x < 0.01 ? '<1%' : Math.round(x * 100) + 
 
 /** "a third of your thoughts", "almost half of your thoughts"… */
 function portion(x: number) {
-  if (x >= 0.97) return 'all of your thoughts';
-  if (x >= 0.7) return 'most of your thoughts';
-  if (x >= 0.55) return 'over half of your thoughts';
-  if (x >= 0.45) return 'about half of your thoughts';
-  if (x >= 0.38) return 'almost half of your thoughts';
-  if (x >= 0.3) return 'about a third of your thoughts';
-  if (x >= 0.22) return 'about a quarter of your thoughts';
-  return `${pctOf(x)} of your thoughts`;
+  if (x >= 0.97) return t('all of your thoughts');
+  if (x >= 0.7) return t('most of your thoughts');
+  if (x >= 0.55) return t('over half of your thoughts');
+  if (x >= 0.45) return t('about half of your thoughts');
+  if (x >= 0.38) return t('almost half of your thoughts');
+  if (x >= 0.3) return t('about a third of your thoughts');
+  if (x >= 0.22) return t('about a quarter of your thoughts');
+  return t('{pct} of your thoughts', { pct: pctOf(x) });
 }
 
 /** How a feeling world sounds when it's about someone you keep thinking of. */
 const HOLD: Record<string, string> = {
-  joy: 'and they bring you joy',
-  'hope-interest': 'and they give you hope',
-  'love-connection': 'and you hold them with love',
-  'calm-safety': 'and they feel like home',
-  sadness: 'and they weigh on your heart',
-  fear: 'and they bring some worry with them',
-  anger: 'and it stirs up frustration',
-  'shame-aversion': 'and it comes with mixed feelings',
+  joy: t('and they bring you joy'),
+  'hope-interest': t('and they give you hope'),
+  'love-connection': t('and you hold them with love'),
+  'calm-safety': t('and they feel like home'),
+  sadness: t('and they weigh on your heart'),
+  fear: t('and they bring some worry with them'),
+  anger: t('and it stirs up frustration'),
+  'shame-aversion': t('and it comes with mixed feelings'),
 };
 
 /** The last thing written in a moment, trimmed to a line or two. */
 function snippet(e: Entry) {
-  const t = (plainText(e.text) || e.title).replace(/\s+/g, ' ').trim();
-  return t.length > 110 ? t.slice(0, 107).replace(/\s+\S*$/, '') + '…' : t;
+  const s = (plainText(e.text) || e.title).replace(/\s+/g, ' ').trim();
+  return s.length > 110 ? s.slice(0, 107).replace(/\s+\S*$/, '') + '…' : s;
 }
 
 /**
@@ -126,13 +127,13 @@ export function Mind() {
       <div class="journal-top mind-top" style={topWorld ? { '--sky': `var(--emo-${topWorld})` } : undefined}>
         <Sky world={topWorld} worlds={worlds} />
         <header class="page-head">
-          <button class="back-link stats-back" onClick={() => goBack('people')}><Icon name="chevron-left" size={18} /> People</button>
-          <h1 class="title">What’s on your mind</h1>
-          <p class="subtitle">Who takes up your thoughts, by how often you tag them in notes and check-ins, and how strongly you feel it.</p>
+          <button class="back-link stats-back" onClick={() => goBack('people')}><Icon name="chevron-left" size={18} /> {t('People')}</button>
+          <h1 class="title">{t('What’s on your mind')}</h1>
+          <p class="subtitle">{t('Who takes up your thoughts, by how often you tag them in notes and check-ins, and how strongly you feel it.')}</p>
         </header>
 
         {people.length > 0 && (
-          <div class="chips filters" role="toolbar" aria-label="Time range">
+          <div class="chips filters" role="toolbar" aria-label={t('Time range')}>
             {RANGES.map(([id, name]) => (
               <button class="chip" aria-pressed={range === id} onClick={() => { setRange(id); setPicked(null); }}>{name}</button>
             ))}
@@ -144,9 +145,9 @@ export function Mind() {
 
       {ready && !people.length && (
         <div class="empty">
-          <h2 class="title-s">An empty mind, for now</h2>
-          <p>Add the people who matter to you and tag them in notes and check-ins. The ones you think of most get the biggest slice of the wheel.</p>
-          <button class="btn btn-primary" onClick={() => navigate('person/new')}><Icon name="user-plus" size={18} /> Add a person</button>
+          <h2 class="title-s">{t('An empty mind, for now')}</h2>
+          <p>{t('Add the people who matter to you and tag them in notes and check-ins. The ones you think of most get the biggest slice of the wheel.')}</p>
+          <button class="btn btn-primary" onClick={() => navigate('person/new')}><Icon name="user-plus" size={18} /> {t('Add a person')}</button>
         </div>
       )}
 
@@ -155,26 +156,30 @@ export function Mind() {
           <div class="mind-card card" key={sel.p.id} style={{ '--c': sel.core ? `var(--emo-${sel.core})` : 'var(--ink-3)' }}>
             <Avatar p={sel.p} size={48} />
             <div class="mind-card-main">
-              <div class="mind-card-name">{sel.p.name || 'Unnamed'}</div>
+              <div class="mind-card-name">{sel.p.name || t('Unnamed')}</div>
               <div class="mind-card-sub">
-                {sel.count ? `${sel.count} ${sel.count === 1 ? 'moment' : 'moments'} · last ${lastSeen(sel.last!.date)}` : 'Not in your notes lately'}
+                {sel.count ? `${count(sel.count, 'moment', 'moments')} · ${t('last {date}', { date: lastSeen(sel.last!.date) })}` : t('Not in your notes lately')}
               </div>
               {sel.last && snippet(sel.last) && <q class="mind-card-quote">{snippet(sel.last)}</q>}
             </div>
             <div class="mind-card-pct">{pctOf(sel.share)}</div>
-            <button class="icon-btn" onClick={() => navigate('person/' + sel.p.id)} aria-label={`Open ${sel.p.name}`} title="Open"><Icon name="chevron-right" /></button>
+            <button class="icon-btn" onClick={() => navigate('person/' + sel.p.id)} aria-label={t('Open {name}', { name: sel.p.name })} title={t('Open')}><Icon name="chevron-right" /></button>
           </div>
         ) : (
           <p class="mind-summary">
             {total && top ? (
               <>
-                <b>{top.p.name || 'Unnamed'}</b> takes up {portion(top.share)}{range === 'all' ? '' : range === 'month' ? ' this past month' : ' this past year'}
-                {top.core ? `, ${HOLD[top.core]}` : ''}.
+                {rich('{name} takes up {portion}{when}{hold}.', {
+                  name: <b>{top.p.name || t('Unnamed')}</b>,
+                  portion: portion(top.share),
+                  when: range === 'all' ? '' : range === 'month' ? t(' this past month') : t(' this past year'),
+                  hold: top.core ? `, ${HOLD[top.core]}` : '',
+                })}
               </>
             ) : range === 'all' ? (
-              'Tag people in notes and check-ins, and the ones you think of most will fill the wheel.'
+              t('Tag people in notes and check-ins, and the ones you think of most will fill the wheel.')
             ) : (
-              'No one tagged in this stretch of time. Try a longer range.'
+              t('No one tagged in this stretch of time. Try a longer range.')
             )}
           </p>
         )
@@ -182,7 +187,7 @@ export function Mind() {
 
       {total > 0 && (
         <section class="section">
-          <h2 class="section-title">Share of mind</h2>
+          <h2 class="section-title">{t('Share of mind')}</h2>
           <div class="card list mind-list">
             {shares.map((x) => (
               <button
@@ -194,7 +199,7 @@ export function Mind() {
               >
                 <Avatar p={x.p} size={34} />
                 <span class="mind-row-main">
-                  <span class="mind-row-name">{x.p.name || 'Unnamed'}</span>
+                  <span class="mind-row-name">{x.p.name || t('Unnamed')}</span>
                   <span class="mind-bar"><i /></span>
                 </span>
                 <span class="mind-row-pct">{x.count ? pctOf(x.share) : '—'}</span>
@@ -262,7 +267,7 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
 
   return (
     <figure class="wheel" ref={box} data-focus={focus ? '' : undefined} style={{ '--aura': hero ? colorOf(hero) : 'var(--ink-3)' }}>
-      <svg class="wheel-art" viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label="Share of your thoughts, by person">
+      <svg class="wheel-art" viewBox={`0 0 ${SIZE} ${SIZE}`} role="group" aria-label={t('Share of your thoughts, by person')}>
         <defs>
           <mask id="wheel-sweep" maskUnits="userSpaceOnUse" x="0" y="0" width={SIZE} height={SIZE}>
             <circle class="wheel-sweep" cx={C} cy={C} r={(R + HOLE) / 2} pathLength={1} transform={`rotate(-90 ${C} ${C})`} />
@@ -279,7 +284,7 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
                 style={{ '--c': colorOf(x), '--i': i, '--dx': `${f(Math.sin(mid) * POP)}px`, '--dy': `${f(-Math.cos(mid) * POP)}px` }}
                 role="button"
                 tabIndex={0}
-                aria-label={`${x.p.name || 'Unnamed'}: ${pctOf(x.share)}, ${x.count} ${x.count === 1 ? 'moment' : 'moments'}`}
+                aria-label={`${x.p.name || t('Unnamed')}: ${pctOf(x.share)}, ${count(x.count, 'moment', 'moments')}`}
                 aria-pressed={picked === x.p.id}
                 onClick={() => toggle(x.p.id)}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toggle(x.p.id))}
@@ -317,11 +322,11 @@ function Wheel({ shares, focus, picked, onPick, onHover }: {
       {hero ? (
         <div class="wheel-hub" aria-live="polite">
           <span class="wheel-pct"><CountUp value={pctOf(hero.share)} /></span>
-          <span class="wheel-name" key={hero.p.id}>{hero.p.name || 'Unnamed'}</span>
-          <span class="wheel-sub" key={`${hero.p.id}:n`}>{hero.count} {hero.count === 1 ? 'moment' : 'moments'}</span>
+          <span class="wheel-name" key={hero.p.id}>{hero.p.name || t('Unnamed')}</span>
+          <span class="wheel-sub" key={`${hero.p.id}:n`}>{count(hero.count, 'moment', 'moments')}</span>
         </div>
       ) : (
-        <div class="wheel-hub"><span class="wheel-sub">No one yet</span></div>
+        <div class="wheel-hub"><span class="wheel-sub">{t('No one yet')}</span></div>
       )}
     </figure>
   );

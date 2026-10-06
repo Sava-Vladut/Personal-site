@@ -7,6 +7,7 @@ import { navigate } from '../lib/router';
 import { deleteEntry, observable, saveEntry, toast, uid, type Entry } from '../lib/store';
 import { Icon, type UiName } from './icons';
 import { Sheet } from './Sheet';
+import { t } from '../lib/i18n';
 
 const HOLD_MS = 450;
 
@@ -87,14 +88,14 @@ function swallowLiftClick() {
 /** Deletes an entry, with a toast to bring it back. */
 export async function removeEntry(e: Entry) {
   const removed = await deleteEntry(e.id);
-  if (removed) toast(e.kind === 'note' ? 'Note deleted' : 'Check-in deleted', { label: 'Undo', run: () => saveEntry(removed) });
+  if (removed) toast(e.kind === 'note' ? t('Note deleted') : t('Check-in deleted'), { label: t('Undo'), run: () => saveEntry(removed) });
 }
 
 /** Pins a note to the top of the journal, or lets it go back to its day. */
 export async function togglePin(e: Entry) {
   const pinned = !e.pinned;
   const saved = await saveEntry({ ...e, pinned });
-  toast(pinned ? 'Pinned to the top' : 'Unpinned', { label: 'Undo', run: () => saveEntry({ ...saved, pinned: !pinned }) });
+  toast(pinned ? t('Pinned to the top') : t('Unpinned'), { label: t('Undo'), run: () => saveEntry({ ...saved, pinned: !pinned }) });
 }
 
 /** The options for the entry that was held. Rendered once, by the app. */
@@ -115,44 +116,44 @@ export function EntryMenu() {
   const text = stripMarkdown(plainText(entry.text)).trim();
   const em = entry.emotions[0] ? EMOTION[entry.emotions[0]] : null;
   const name = isNote
-    ? entry.title.trim() || text.split('\n')[0].slice(0, 60) || 'Untitled'
-    : em ? (em.depth === 0 ? shortName(em.id) : em.name) : 'Check-in';
+    ? entry.title.trim() || text.split('\n')[0].slice(0, 60) || t('Untitled')
+    : em ? (em.depth === 0 ? shortName(em.id) : em.name) : t('Check-in');
   const when = entry.dateEnd ? rangeLabel(entry.date, entry.dateEnd) : `${dayLabel(entry.date)} · ${timeLabel(entry.time)}`;
   const shareText = [entry.title.trim(), plainText(entry.text).trim()].filter(Boolean).join('\n\n');
 
   const duplicate = async () => {
     const now = Date.now();
-    const copy = await saveEntry({ ...entry, id: uid(), title: entry.title.trim() ? `${entry.title.trim()} (copy)` : '', time: entry.time + 1, created: now, updated: now });
-    toast('Note duplicated', { label: 'Open', run: () => navigate('note/' + copy.id) });
+    const copy = await saveEntry({ ...entry, id: uid(), title: entry.title.trim() ? t('{title} (copy)', { title: entry.title.trim() }) : '', time: entry.time + 1, created: now, updated: now });
+    toast(t('Note duplicated'), { label: t('Open'), run: () => navigate('note/' + copy.id) });
   };
   const copyText = async () => {
     try {
       await navigator.clipboard.writeText(shareText);
-      toast('Copied');
+      toast(t('Copied'));
     } catch {
-      toast('Couldn’t copy');
+      toast(t('Couldn’t copy'));
     }
   };
   const share = () => navigator.share({ title: entry.title.trim() || undefined, text: shareText }).catch(() => {});
 
   const actions: { icon: UiName; label: string; run: () => unknown; danger?: boolean }[] = [];
-  if (isNote) actions.push({ icon: entry.pinned ? 'pinned-off' : 'pin', label: entry.pinned ? 'Unpin' : 'Pin to the top', run: () => togglePin(entry) });
-  if (isNote) actions.push({ icon: 'copy-plus', label: 'Duplicate', run: duplicate });
-  if (shareText) actions.push({ icon: 'copy', label: 'Copy text', run: copyText });
-  if (shareText && 'share' in navigator) actions.push({ icon: 'share', label: 'Share', run: share });
-  actions.push({ icon: 'trash', label: isNote ? 'Delete note' : 'Delete check-in', run: () => removeEntry(entry), danger: true });
+  if (isNote) actions.push({ icon: entry.pinned ? 'pinned-off' : 'pin', label: entry.pinned ? t('Unpin') : t('Pin to the top'), run: () => togglePin(entry) });
+  if (isNote) actions.push({ icon: 'copy-plus', label: t('Duplicate'), run: duplicate });
+  if (shareText) actions.push({ icon: 'copy', label: t('Copy text'), run: copyText });
+  if (shareText && 'share' in navigator) actions.push({ icon: 'share', label: t('Share'), run: share });
+  actions.push({ icon: 'trash', label: isNote ? t('Delete note') : t('Delete check-in'), run: () => removeEntry(entry), danger: true });
   const run = (f: () => unknown) => () => {
     close();
     f();
   };
 
-  if (at) return <ContextMenu key={entry.id + at.x + at.y} at={at} open={!!m} onClose={close} label={`Options for ${name}`} actions={actions.map((a) => ({ ...a, run: run(a.run) }))} />;
+  if (at) return <ContextMenu key={entry.id + at.x + at.y} at={at} open={!!m} onClose={close} label={t('Options for {name}', { name })} actions={actions.map((a) => ({ ...a, run: run(a.run) }))} />;
 
   return (
     <Sheet
       open={!!m}
       onClose={close}
-      label={`Options for ${name}`}
+      label={t('Options for {name}', { name })}
       title={
         <span class="menu-head">
           <span class="menu-name">{name}</span>

@@ -21,12 +21,13 @@ import { Settings } from './views/Settings';
 import { SongView } from './views/Song';
 import { Stats } from './views/Stats';
 import { Tracker } from './views/Tracker';
+import { t } from './lib/i18n';
 
 const NAV: [RouteName, string, UiName, string][] = [
-  ['journal', 'Journal', 'notebook', ''],
-  ['tracker', 'Check in', 'mood-smile', 'tracker'],
-  ['people', 'People', 'users', 'people'],
-  ['media', 'Media', 'library', 'media'],
+  ['journal', t('Journal'), 'notebook', ''],
+  ['tracker', t('Check in'), 'mood-smile', 'tracker'],
+  ['people', t('People'), 'users', 'people'],
+  ['media', t('Media'), 'library', 'media'],
 ];
 
 /** Which sidebar item a page belongs under. */
@@ -108,7 +109,7 @@ function TabBar({ active }: { active: RouteName }) {
     prev.current = i;
   }
   return (
-    <nav class="nav" aria-label="Main">
+    <nav class="nav" aria-label={t('Main')}>
       <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': NAV.length }} inert={adding}>
         {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
         {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} label={label} icon={icon} path={path} />)}
@@ -122,7 +123,7 @@ function TabBar({ active }: { active: RouteName }) {
 function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
   const [adding, setAdding] = useState(false);
   return (
-    <nav class="side" aria-label="Main">
+    <nav class="side" aria-label={t('Main')}>
       <a
         href="#/"
         class="side-brand"
@@ -134,14 +135,14 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
         My Mind
       </a>
       <div class="side-add">
-        <AddMenu open={adding} onOpenChange={setAdding} label="New" />
+        <AddMenu open={adding} onOpenChange={setAdding} label={t('New')} />
       </div>
       <div class="side-links">
         {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} here={here === name} label={label} icon={icon} path={path} />)}
       </div>
       <div class="side-links side-foot">
-        <NavItem active={active === 'stats'} here={here === 'stats'} label="Stats" icon="chart-dots" path="stats" />
-        <NavItem active={active === 'settings'} here={here === 'settings'} label="Settings" icon="settings" path="settings" />
+        <NavItem active={active === 'stats'} here={here === 'stats'} label={t('Stats')} icon="chart-dots" path="stats" />
+        <NavItem active={active === 'settings'} here={here === 'settings'} label={t('Settings')} icon="settings" path="settings" />
       </div>
     </nav>
   );

@@ -3,6 +3,7 @@ import { CORE, EMOTION, type EmotionDef, type FamilyDef } from '../data/emotions
 import { Icon, Sprite, useSpriteIdle } from './icons';
 import { haptic } from '../lib/haptics';
 import { trail } from './emotion';
+import { count, t } from '../lib/i18n';
 
 /*
  * The emotion wheel: worlds in the middle ring, zones around them. Tapping a world
@@ -21,7 +22,7 @@ const LINGER = 1700;   // the tooltip stays a moment after letting go, so it can
 const TIP_W = 272;
 const TIP_H = 176;     // roughly; decides whether the tooltip opens above or below
 const PINCH = 0.7;     // fingers closing to this share of where they started zoom back out
-const LEVEL = ['World', 'Zone', 'Feeling'];
+const LEVEL = [t('World'), t('Zone'), t('Feeling')];
 
 interface Seg { e: EmotionDef; a0: number; a1: number }
 const SEGS: Seg[] = ORDER.flatMap((id, i) => {
@@ -112,13 +113,13 @@ function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: num
     e.depth === 0 ? c.families
     : e.depth === 1 ? (fam as FamilyDef).feelings
     : (c.families.find((f) => f.id === e.parent)?.feelings ?? []).filter((x) => x.id !== e.id);
-  const nearLabel = ['Zones', 'Feelings', 'Nearby'][e.depth];
+  const nearLabel = [t('Zones'), t('Feelings'), t('Nearby')][e.depth];
   const w = Math.min(TIP_W, width - 8);
   const px = (tip.x / 400) * width, py = (tip.y / 400) * width;
   const left = clamp(px - w / 2, 0, Math.max(0, width - w));
   const ax = clamp(px - left, 22, w - 22);
   const below = py < TIP_H + 24;
-  const hint = zoomed && e.depth === 0 ? 'Tap to go back' : selected ? 'Selected · tap to undo' : e.depth === 0 && !zoomed ? 'Tap to open this world' : 'Tap to choose';
+  const hint = zoomed && e.depth === 0 ? t('Tap to go back') : selected ? t('Selected · tap to undo') : e.depth === 0 && !zoomed ? t('Tap to open this world') : t('Tap to choose');
 
   return (
     <div
@@ -133,7 +134,7 @@ function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: num
           <div class="ew-tip-meta">
             <span class="ew-tip-level">{LEVEL[e.depth]}</span>
             <span class="ew-tip-dot" aria-hidden="true" />
-            <span>{c.valence === 'pleasant' ? 'Pleasant' : 'Unpleasant'}</span>
+            <span>{c.valence === 'pleasant' ? t('Pleasant') : t('Unpleasant')}</span>
           </div>
           {e.depth > 0 && <div class="ew-tip-trail">{trail(e.id)}</div>}
         </div>
@@ -146,7 +147,7 @@ function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: num
         </div>
       )}
       <div class="ew-tip-foot">
-        {times !== undefined && <span class="ew-tip-count">{times ? `Felt ${times} ${times === 1 ? 'time' : 'times'}` : 'Not felt yet'}</span>}
+        {times !== undefined && <span class="ew-tip-count">{times ? t('Felt {count}', { count: count(times, 'time', 'times') }) : t('Not felt yet')}</span>}
         <span class="ew-tip-hint">{hint}</span>
       </div>
     </div>
@@ -364,7 +365,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         data-eid={e.id}
         role="button"
         tabIndex={tabbable ? 0 : -1}
-        aria-label={isFocus ? 'Back to all worlds' : e.name}
+        aria-label={isFocus ? t('Back to all worlds') : e.name}
         aria-pressed={selected.includes(e.id)}
         onClick={() => act(e)}
         onPointerDown={(ev) => beginPress(ev as PointerEvent, e.id)}
@@ -414,7 +415,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
     <div class={`ew${tip?.live ? ' holding' : ''}`} onClick={outside} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
       <div class="ew-stage" ref={stage}>
       <svg
-        class="ew-svg" viewBox="0 0 400 400" role="group" aria-label={core ? `${core.name}: zones and feelings` : 'Emotion wheel'}
+        class="ew-svg" viewBox="0 0 400 400" role="group" aria-label={core ? t('{world}: zones and feelings', { world: core.name }) : t('Emotion wheel')}
         onPointerMove={(ev) => movePress(ev as PointerEvent)}
         onPointerUp={endPress}
         onPointerCancel={endPress}
@@ -426,7 +427,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         <g class="ew-labels">
         {labels}
         {z < 1 && !hot && (
-          <text x={C} y={C} class="ew-hub-hint" opacity={outer} dy="0.35em">Pick a world</text>
+          <text x={C} y={C} class="ew-hub-hint" opacity={outer} dy="0.35em">{t('Pick a world')}</text>
         )}
         {z < 1 && hot && EMOTION[hot]?.depth < 2 && (
           <g opacity={outer}>
@@ -438,7 +439,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
           <g opacity={inner}>
             <PixelSprite core={core.id} x={C} y={C - 16} size={24} idle />
             <text x={C} y={C + 13} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
-            <text x={C} y={C + 31} class="ew-hub-back">Back</text>
+            <text x={C} y={C + 31} class="ew-hub-back">{t('Back')}</text>
           </g>
         )}
         </g>
@@ -457,15 +458,15 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
             <p class="world-def">{info.def}</p>
           </>
         ) : (
-          <p class="world-def">Start from the world that feels closest — there are no wrong answers.</p>
+          <p class="world-def">{t('Start from the world that feels closest — there are no wrong answers.')}</p>
         )}
       </div>
 
       {core && (
         <div class="row gap-s ew-actions">
-          <button class="btn btn-quiet" onClick={() => onFocus(null)}><Icon name="chevron-left" size={18} /> All worlds</button>
+          <button class="btn btn-quiet" onClick={() => onFocus(null)}><Icon name="chevron-left" size={18} /> {t('All worlds')}</button>
           <button class="btn btn-quiet grow" aria-pressed={selected.includes(core.id)} onClick={() => onPick(core.id)}>
-            Just “{core.name.split(' / ')[0]}”
+            {t('Just “{world}”', { world: core.name.split(' / ')[0] })}
           </button>
         </div>
       )}

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { rolldown } from 'rolldown';
+import { i18n } from './i18n-stub.mjs';
 
 const bundle = await rolldown({ input: 'src/components/mentions.tsx', external: (_id, importer) => !!importer });
 const code = (await bundle.generate({ format: 'cjs' })).output[0].code;
@@ -31,7 +32,7 @@ function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height:
         usePeople: () => [{ id: 'person', name: 'Person', emotions: [] }],
         useBooks: () => [], useSongs: () => [], useEntries: () => [],
       },
-    }[id] ?? {}),
+    }[id] ?? (id.endsWith('/i18n') ? i18n : {})),
     window: { visualViewport: viewport }, innerWidth: 390, innerHeight: 844,
     matchMedia: () => ({ matches: reduced }),
     document: {

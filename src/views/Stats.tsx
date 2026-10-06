@@ -14,8 +14,9 @@ import { Weather } from './stats/Weather';
 import { RANGE_PHRASE } from './stats/parts';
 import { usePref } from '../lib/prefs';
 import '../styles/stats.css';
+import { t } from '../lib/i18n';
 
-const TABS = [['overview', 'Overview'], ['emotions', 'Emotions'], ['patterns', 'Patterns'], ['weather', 'Weather'], ['dex', 'Dex']] as const;
+const TABS = [['overview', t('Overview')], ['emotions', t('Emotions')], ['patterns', t('Patterns')], ['weather', t('Weather')], ['dex', t('Dex')]] as const;
 type Tab = (typeof TABS)[number][0];
 
 function loadRange(): RangeKey {
@@ -60,10 +61,10 @@ export function Stats({ query }: { query: URLSearchParams }) {
       <div class="journal-top stats-top" style={{ '--sky': `var(--emo-${lead ?? 'hope-interest'})` }}>
         <Sky world={lead} worlds={sky} />
         <header class="page-head">
-          <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> Back</button>
-          <h1 class="title">Your patterns</h1>
+          <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
+          <h1 class="title">{t('Your patterns')}</h1>
           <p class="subtitle">
-            {tab === 'dex' ? 'Every feeling you have named, all time.' : lead ? <>Mostly <b>{shortName(lead)}</b> {RANGE_PHRASE[range]}.</> : 'Your feelings, over time.'}
+            {tab === 'dex' ? t('Every feeling you have named, all time.') : lead ? <>{t('Mostly')} <b>{shortName(lead)}</b> {RANGE_PHRASE[range]}.</> : t('Your feelings, over time.')}
           </p>
         </header>
 
@@ -74,7 +75,7 @@ export function Stats({ query }: { query: URLSearchParams }) {
         </div>
 
         {tab !== 'dex' && (
-          <div class="chips filters" role="toolbar" aria-label="Time range">
+          <div class="chips filters" role="toolbar" aria-label={t('Time range')}>
             {RANGES.map(([id, name]) => (
               <button class="chip" aria-pressed={range === id} onClick={() => setRange(id)}>{name}</button>
             ))}
@@ -86,14 +87,14 @@ export function Stats({ query }: { query: URLSearchParams }) {
       <div class="tab-panel" key={tab === 'dex' ? tab : tab + range}>
         {!entries.length ? (
           <div class="empty">
-            <h2 class="title-s">No stats yet</h2>
-            <p>Check in or write a note with a feeling attached, and your patterns will start to show here.</p>
-            <button class="btn btn-primary" onClick={() => navigate('tracker')}>Check in now</button>
+            <h2 class="title-s">{t('No stats yet')}</h2>
+            <p>{t('Check in or write a note with a feeling attached, and your patterns will start to show here.')}</p>
+            <button class="btn btn-primary" onClick={() => navigate('tracker')}>{t('Check in now')}</button>
           </div>
         ) : tab === 'dex' ? (
           <Dex />
         ) : !s.k.entries ? (
-          <p class="empty-note center">Nothing logged in this range. Try a longer one.</p>
+          <p class="empty-note center">{t('Nothing logged in this range. Try a longer one.')}</p>
         ) : tab === 'overview' ? (
           <Overview s={s} range={range} />
         ) : tab === 'emotions' ? (

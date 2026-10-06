@@ -17,6 +17,7 @@ import { Icon, NoteIcon } from './icons';
 import { MiniMusic, MusicEmbed, MusicThing, musicSub } from './music';
 import { Avatar } from './people';
 import '../styles/mentions.css';
+import { LOCALE, count, t } from '../lib/i18n';
 
 const tint = (emotions: string[]) => (emotions[0] ? `var(--emo-${coreOf(emotions[0]).id})` : undefined);
 
@@ -66,7 +67,7 @@ export function WikiLink({ target, text }: { target?: string; text: string }) {
   if (b) return <Chip kind="book" id={b.id} c={tint(b.emotions)}><BookCover b={b} width={13} /><span>{text}</span></Chip>;
   const n = resolveNote(target, text, entries, books);
   if (n) return <Chip kind="note" id={n.id} c={tint(n.emotions)}>{n.icon ? <NoteIcon id={n.icon} size={14} /> : <Icon name="notebook" size={14} />}<span>{noteLabel(n)}</span></Chip>;
-  return isNote ? <span class="mention is-missing" title="This note was deleted">{text}</span> : <span class="md-wiki">{text}</span>;
+  return isNote ? <span class="mention is-missing" title={t('This note was deleted')}>{text}</span> : <span class="md-wiki">{text}</span>;
 }
 
 export function SongMention({ target, text }: { target?: string; text: string }) {
@@ -82,7 +83,7 @@ const go = (to: string) => {
 
 /** The card itself, floating by the tag that opened it, with a tail pointing back at it. */
 export function PeekLayer() {
-  const t = peek$.use();
+  const peek = peek$.use();
   const people = usePeople();
   const books = useBooks();
   const songs = useSongs();
@@ -92,9 +93,9 @@ export function PeekLayer() {
   const [viewport, setViewport] = useState(visibleViewport);
   const [height, setHeight] = useState(0);
 
-  useEffect(() => setPlaying(false), [t?.kind, t?.id]);
+  useEffect(() => setPlaying(false), [peek?.kind, peek?.id]);
   useEffect(() => {
-    if (!t) return;
+    if (!peek) return;
     const away = (e: PointerEvent) => !(e.target as Element).closest?.('.peek, .mention') && closePeek();
     const key = (e: KeyboardEvent) => e.key === 'Escape' && closePeek();
     const scroll = (e: Event) => !(e.target instanceof Element && e.target.closest('.peek')) && closePeek();
@@ -116,35 +117,35 @@ export function PeekLayer() {
       window.visualViewport?.removeEventListener('resize', resize);
       window.visualViewport?.removeEventListener('scroll', resize);
     };
-  }, [t]);
+  }, [peek]);
   useLayoutEffect(() => {
-    if (!t || !ref.current) return;
+    if (!peek || !ref.current) return;
     setHeight(ref.current.offsetHeight);
-  }, [t, playing, viewport, people, books, songs, entries]);
+  }, [peek, playing, viewport, people, books, songs, entries]);
   useEffect(() => {
-    if (!t || !ref.current || typeof ResizeObserver === 'undefined') return;
+    if (!peek || !ref.current || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => ref.current && setHeight(ref.current.offsetHeight));
     observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [t]);
+  }, [peek]);
 
-  if (!t) return null;
+  if (!peek) return null;
   const W = Math.max(0, Math.min(320, viewport.width - 24));
-  const left = clamp(t.x - W / 2, viewport.left + 12, viewport.left + viewport.width - W - 12);
+  const left = clamp(peek.x - W / 2, viewport.left + 12, viewport.left + viewport.width - W - 12);
   const availableHeight = Math.max(0, viewport.height - 24);
   const h = Math.min(height, availableHeight);
-  const above = t.bottom + 10 + h > viewport.top + viewport.height - 12 && t.top - viewport.top > viewport.top + viewport.height - t.bottom;
-  const top = clamp(above ? t.top - 10 - h : t.bottom + 10, viewport.top + 12, viewport.top + viewport.height - h - 12);
+  const above = peek.bottom + 10 + h > viewport.top + viewport.height - 12 && peek.top - viewport.top > viewport.top + viewport.height - peek.bottom;
+  const top = clamp(above ? peek.top - 10 - h : peek.bottom + 10, viewport.top + 12, viewport.top + viewport.height - h - 12);
   let c: string | undefined;
   let body: ComponentChildren = null;
 
-  if (t.kind === 'person') {
-    const p = people.find((x) => x.id === t.id);
+  if (peek.kind === 'person') {
+    const p = people.find((x) => x.id === peek.id);
     if (!p) return null;
     c = tint(p.emotions);
     body = <PersonPeek p={p} moments={entries.filter((e) => e.people.includes(p.id)).length} last={entries.find((e) => e.people.includes(p.id))?.date} />;
-  } else if (t.kind === 'book') {
-    const b = books.find((x) => x.id === t.id);
+  } else if (peek.kind === 'book') {
+    const b = books.find((x) => x.id === peek.id);
     if (!b) return null;
     c = tint(b.emotions);
     const pct = progressOf(b);
@@ -153,21 +154,21 @@ export function PeekLayer() {
         <div class="peek-head">
           <BookCover b={b} width={54} />
           <div class="peek-who">
-            <b class="peek-name">{b.title.trim() || 'Untitled'}</b>
+            <b class="peek-name">{b.title.trim() || t('Untitled')}</b>
             <span class="peek-sub">{byline(b) || STATUS_LABEL[b.status]}</span>
-            <span class="peek-sub">{STATUS_LABEL[b.status]}{pct !== null ? ` · ${pct}% read` : ''}</span>
+            <span class="peek-sub">{STATUS_LABEL[b.status]}{pct !== null ? ' · ' + t('{pct}% read', { pct }) : ''}</span>
           </div>
         </div>
-        {b.status === 'reading' && pct !== null && <span class="progress" role="img" aria-label={`${pct}% read`}><i style={{ width: pct + '%' }} /></span>}
+        {b.status === 'reading' && pct !== null && <span class="progress" role="img" aria-label={t('{pct}% read', { pct })}><i style={{ width: pct + '%' }} /></span>}
         {b.rating > 0 && <Stars value={b.rating} size={14} />}
         <div class="peek-actions">
-          <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?book=' + b.id)}><Icon name="pencil" size={15} /> Write</button>
-          <button class="btn btn-primary btn-s grow" onClick={() => go('book/' + b.id)}>Open <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?book=' + b.id)}><Icon name="pencil" size={15} /> {t('Write')}</button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go('book/' + b.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
         </div>
       </>
     );
-  } else if (t.kind === 'note') {
-    const n = entries.find((x) => x.id === t.id);
+  } else if (peek.kind === 'note') {
+    const n = entries.find((x) => x.id === peek.id);
     if (!n) return null;
     c = tint(n.emotions);
     const { heading, preview } = previewOf(plainText(n.text), n.title, 160);
@@ -176,19 +177,19 @@ export function PeekLayer() {
         <div class="peek-head">
           <span class="peek-note-icon">{n.icon ? <NoteIcon id={n.icon} size={24} /> : <Icon name="notebook" size={22} />}</span>
           <div class="peek-who">
-            <b class="peek-name">{heading || 'Untitled'}</b>
+            <b class="peek-name">{heading || t('Untitled')}</b>
             <span class="peek-sub">{rangeLabel(n.date, n.dateEnd)}</span>
           </div>
         </div>
         {preview && <p class="peek-text">{preview}</p>}
         {n.emotions.length > 0 && <div class="peek-feelings">{n.emotions.slice(0, 3).map((id) => <EmotionChip id={id} size="sm" />)}</div>}
         <div class="peek-actions">
-          <button class="btn btn-primary btn-s grow" onClick={() => go('note/' + n.id)}>Open <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go('note/' + n.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
         </div>
       </>
     );
   } else {
-    const s = songs.find((x) => x.id === t.id);
+    const s = songs.find((x) => x.id === peek.id);
     if (!s) return null;
     c = tint(s.emotions);
     const notes = entries.filter((e) => e.music.some((m) => m.kind === s.music.kind && m.id === s.music.id) || songsIn(e.text, songs).includes(s.id)).length;
@@ -199,14 +200,14 @@ export function PeekLayer() {
           <div class="peek-who">
             <b class="peek-name">{s.music.title}</b>
             <span class="peek-sub">{musicSub(s.music)}</span>
-            <span class="peek-sub">{notes} {notes === 1 ? 'note' : 'notes'}{s.repeat ? ' · on repeat' : ''}</span>
+            <span class="peek-sub">{count(notes, 'note', 'notes')}{s.repeat ? ' · ' + t('on repeat') : ''}</span>
           </div>
         </div>
         {s.rating > 0 && <Stars value={s.rating} size={14} />}
         {playing && <MusicEmbed m={s.music} />}
         <div class="peek-actions">
-          <button class="btn btn-quiet btn-s grow" onClick={() => setPlaying(!playing)}><Icon name={playing ? 'player-pause' : 'player-play'} size={15} /> {playing ? 'Stop' : 'Play'}</button>
-          <button class="btn btn-primary btn-s grow" onClick={() => go('song/' + s.id)}>Open <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-quiet btn-s grow" onClick={() => setPlaying(!playing)}><Icon name={playing ? 'player-pause' : 'player-play'} size={15} /> {playing ? t('Stop') : t('Play')}</button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go('song/' + s.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
         </div>
       </>
     );
@@ -217,8 +218,8 @@ export function PeekLayer() {
       ref={ref}
       class={`peek${above ? ' is-above' : ''}`}
       role="dialog"
-      aria-label="About this tag"
-      style={{ left: `${left}px`, top: `${top}px`, width: `${W}px`, maxHeight: `${availableHeight}px`, '--peek-height': `${availableHeight}px`, '--tail': `${clamp(t.x - left, 20, W - 20)}px`, ...(c ? { '--c': c } : {}) }}
+      aria-label={t('About this tag')}
+      style={{ left: `${left}px`, top: `${top}px`, width: `${W}px`, maxHeight: `${availableHeight}px`, '--peek-height': `${availableHeight}px`, '--tail': `${clamp(peek.x - left, 20, W - 20)}px`, ...(c ? { '--c': c } : {}) }}
     >
       <div class="peek-content">{body}</div>
     </div>
@@ -231,15 +232,15 @@ function PersonPeek({ p, moments, last }: { p: Person; moments: number; last?: s
       <div class="peek-head">
         <Avatar p={p} size={48} />
         <div class="peek-who">
-          <b class="peek-name">{p.name || 'Unnamed'}</b>
+          <b class="peek-name">{p.name || t('Unnamed')}</b>
           {p.relation && <span class="peek-sub">{p.relation}</span>}
-          <span class="peek-sub">{moments ? `${moments} ${moments === 1 ? 'moment' : 'moments'}${last ? ` · last ${new Date(last + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}` : 'No moments yet'}</span>
+          <span class="peek-sub">{moments ? count(moments, 'moment', 'moments') + (last ? ' · ' + t('last {date}', { date: new Date(last + 'T12:00').toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) }) : '') : t('No moments yet')}</span>
         </div>
       </div>
       {p.emotions.length > 0 && <div class="peek-feelings">{p.emotions.slice(0, 3).map((id) => <EmotionChip id={id} size="sm" />)}</div>}
       <div class="peek-actions">
-        <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?person=' + p.id)}><Icon name="pencil" size={15} /> Write</button>
-        <button class="btn btn-primary btn-s grow" onClick={() => go('person/' + p.id)}>Open <Icon name="arrow-up-right" size={15} /></button>
+        <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?person=' + p.id)}><Icon name="pencil" size={15} /> {t('Write')}</button>
+        <button class="btn btn-primary btn-s grow" onClick={() => go('person/' + p.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
       </div>
     </>
   );
@@ -305,14 +306,14 @@ export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, act
     },
   });
   return (
-    <div id={listId} ref={ref} class={`mention-strip${link ? ' is-link' : ''}`} role="listbox" aria-label={link ? 'Link a note or a book' : 'Tag someone, a book or music'}>
+    <div id={listId} ref={ref} class={`mention-strip${link ? ' is-link' : ''}`} role="listbox" aria-label={link ? t('Link a note or a book') : t('Tag someone, a book or music')}>
       <span class="mention-at" aria-hidden="true">{link ? '[[' : '@'}</span>
       {items.map((s: Suggestion | LinkSuggestion, i) => {
         const [label, sub, thumb, c] =
-          s.kind === 'person' ? [s.item.name || 'Unnamed', s.item.relation || 'Person', <Avatar p={s.item} size={26} />, tint(s.item.emotions)]
-          : s.kind === 'book' ? [s.item.title.trim() || 'Untitled', s.item.authors || 'Book', <BookCover b={s.item} width={19} />, tint(s.item.emotions)]
+          s.kind === 'person' ? [s.item.name || t('Unnamed'), s.item.relation || t('Person'), <Avatar p={s.item} size={26} />, tint(s.item.emotions)]
+          : s.kind === 'book' ? [s.item.title.trim() || t('Untitled'), s.item.authors || t('Book'), <BookCover b={s.item} width={19} />, tint(s.item.emotions)]
           : s.kind === 'note' ? [noteLabel(s.item), rangeLabel(s.item.date, s.item.dateEnd), s.item.icon ? <NoteIcon id={s.item.icon} size={20} /> : <Icon name="notebook" size={18} />, tint(s.item.emotions)]
-          : [s.item.music.title, s.item.music.sub ?? 'Music', <MiniMusic m={s.item.music} />, tint(s.item.emotions)];
+          : [s.item.music.title, s.item.music.sub ?? t('Music'), <MiniMusic m={s.item.music} />, tint(s.item.emotions)];
         return (
           <button key={`${s.kind}:${s.item.id}`} id={`${listId}-option-${i}`} type="button" role="option" tabIndex={-1} aria-selected={i === active} class={`mention-pick is-${s.kind}`} style={c ? { '--c': c } : undefined} {...pick(() => onPick(s as S))}>
             <span class="mention-thumb">{thumb}</span>
@@ -323,10 +324,10 @@ export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, act
       {canAdd && (
         <button key="new" id={`${listId}-option-${items.length}`} type="button" role="option" tabIndex={-1} aria-selected={active === items.length} class="mention-pick is-new" {...pick(onAdd)}>
           <span class="mention-thumb"><Icon name="user-plus" size={16} /></span>
-          <span class="mention-text"><b>{q.trim()}</b><small>New person</small></span>
+          <span class="mention-text"><b>{q.trim()}</b><small>{t('New person')}</small></span>
         </button>
       )}
-      {!items.length && !canAdd && <span class="mention-empty">{link ? 'No note with that title' : 'Type a name, a book or a song'}</span>}
+      {!items.length && !canAdd && <span class="mention-empty">{link ? t('No note with that title') : t('Type a name, a book or a song')}</span>}
     </div>
   );
 }

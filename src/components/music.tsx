@@ -6,12 +6,13 @@ import { embedHeight, embedUrl, KIND_LABEL } from '../lib/spotify';
 import { blankSong, findSong, getSongs, saveSong, toast, useSongs, type Music, type Song } from '../lib/store';
 import { Icon } from './icons';
 import '../styles/objects.css';
+import { t } from '../lib/i18n';
 
 /** Playlists and podcasts come on tape; songs, albums and artists on vinyl. */
 export const isTape = (m: Music) => m.kind === 'playlist' || m.kind === 'show' || m.kind === 'episode';
 
 /** "Artist" for a song, "Playlist · Owner" for the rest. */
-export const musicSub = (m: Music) => (m.kind === 'track' ? m.sub ?? 'Song' : KIND_LABEL[m.kind] + (m.sub ? ` · ${m.sub}` : ''));
+export const musicSub = (m: Music) => (m.kind === 'track' ? m.sub ?? t('Song') : KIND_LABEL[m.kind] + (m.sub ? ` · ${m.sub}` : ''));
 
 const Art = ({ m, class: cls }: { m: Music; class: string }) =>
   m.image ? <img class={cls} src={m.image} alt="" loading="lazy" referrerpolicy="no-referrer" draggable={false} /> : <span class={`${cls} no-art`} />;
@@ -56,7 +57,7 @@ export function MusicEmbed({ m }: { m: Music }) {
       class="embed"
       src={embedUrl(m)}
       height={embedHeight(m)}
-      title={`${m.title} on Spotify`}
+      title={t('{title} on Spotify', { title: m.title })}
       loading="lazy"
       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
     />
@@ -64,7 +65,7 @@ export function MusicEmbed({ m }: { m: Music }) {
 }
 
 /** Music in a note: tap to put it on (the player opens beneath), again to take it off. */
-export function MusicDeck({ m, onRemove, removeLabel = 'Remove from the note' }: { m: Music; onRemove?: () => void; removeLabel?: string }) {
+export function MusicDeck({ m, onRemove, removeLabel = t('Remove from the note') }: { m: Music; onRemove?: () => void; removeLabel?: string }) {
   const [on, setOn] = useState(false);
   const keeping = useRef(false);
   const kept = findSong(useSongs(), m);
@@ -73,16 +74,16 @@ export function MusicDeck({ m, onRemove, removeLabel = 'Remove from the note' }:
     keeping.current = true;
     try {
       const s = findSong(getSongs(), m) ?? await saveSong(blankSong(m));
-      toast(`${m.title} is in your records`, { label: 'Open', run: () => navigate('song/' + s.id) });
+      toast(t('{title} is in your records', { title: m.title }), { label: t('Open'), run: () => navigate('song/' + s.id) });
     } catch {
-      toast('Couldn’t save this music. Try again.');
+      toast(t('Couldn’t save this music. Try again.'));
     } finally {
       keeping.current = false;
     }
   };
   return (
     <div class={`deck${on ? ' is-on' : ''}${isTape(m) ? ' is-tape' : ''}`}>
-      <button class="deck-main" aria-expanded={on} onClick={() => setOn(!on)} aria-label={`${on ? 'Close the player for' : 'Play'} ${m.title}`}>
+      <button class="deck-main" aria-expanded={on} onClick={() => setOn(!on)} aria-label={on ? t('Close the player for {title}', { title: m.title }) : t('Play {title}', { title: m.title })}>
         <MusicThing m={m} />
         <span class="track-main">
           <span class="track-title">{m.title}</span>
@@ -96,11 +97,11 @@ export function MusicDeck({ m, onRemove, removeLabel = 'Remove from the note' }:
           <div class="row gap-s">
             <a class="btn btn-quiet btn-s grow" href={m.link} target="_blank" rel="noopener noreferrer"><Icon name="brand-spotify" size={16} /> Spotify</a>
             {kept ? (
-              <button class="btn btn-quiet btn-s grow" onClick={() => navigate('song/' + kept.id)}><Icon name="vinyl" size={16} /> In Media</button>
+              <button class="btn btn-quiet btn-s grow" onClick={() => navigate('song/' + kept.id)}><Icon name="vinyl" size={16} /> {t('In Media')}</button>
             ) : (
-              <button class="btn btn-quiet btn-s grow" onClick={keep}><Icon name="plus" size={16} /> Keep in Media</button>
+              <button class="btn btn-quiet btn-s grow" onClick={keep}><Icon name="plus" size={16} /> {t('Keep in Media')}</button>
             )}
-            {onRemove && <button class="btn btn-quiet btn-s grow danger" onClick={onRemove} aria-label={removeLabel}><Icon name="trash" size={16} /> Remove</button>}
+            {onRemove && <button class="btn btn-quiet btn-s grow danger" onClick={onRemove} aria-label={removeLabel}><Icon name="trash" size={16} /> {t('Remove')}</button>}
           </div>
         </div>
       )}

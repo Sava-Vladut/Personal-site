@@ -1,5 +1,6 @@
 // Books come from Open Library (openlibrary.org): free, no key, called straight from the browser.
 import { getBooks, type Book, type BookStatus, type Entry } from './store';
+import { t } from './i18n';
 
 export interface FoundBook {
   olid: string;
@@ -19,9 +20,9 @@ export async function searchBooks(q: string, page = 1): Promise<{ items: FoundBo
   try {
     res = await fetch(url);
   } catch {
-    throw new Error('Can’t reach Open Library. Check your connection, or add the book by hand.');
+    throw new Error(t('Can’t reach Open Library. Check your connection, or add the book by hand.'));
   }
-  if (!res.ok) throw new Error(`Open Library didn’t answer (${res.status}). Try again in a moment.`);
+  if (!res.ok) throw new Error(t('Open Library didn’t answer ({status}). Try again in a moment.', { status: res.status }));
   const body = await res.json();
   const items = (Array.isArray(body.docs) ? body.docs : [])
     .filter((d: any) => typeof d.key === 'string' && /^\/works\/OL\d+W$/.test(d.key) && typeof d.title === 'string')
@@ -36,7 +37,7 @@ export async function searchBooks(q: string, page = 1): Promise<{ items: FoundBo
   return { items, more: page * 20 < (Number(body.numFound) || 0) };
 }
 
-export const STATUS_LABEL: Record<BookStatus, string> = { reading: 'Reading', want: 'Want to read', read: 'Read', dnf: 'Didn’t finish' };
+export const STATUS_LABEL: Record<BookStatus, string> = { reading: t('Reading'), want: t('Want to read'), read: t('Read'), dnf: t('Didn’t finish') };
 
 /** Percent read, when the book's length and your page are both known. */
 export const progressOf = (b: Book) => (b.pages && b.page !== null ? Math.min(100, Math.round((b.page / b.pages) * 100)) : null);

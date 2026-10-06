@@ -9,6 +9,7 @@ import { Icon, NoteIcon, Sprite } from '../components/icons';
 import { PlaceMap, type Pin } from '../components/PlaceMap';
 import { Sheet } from '../components/Sheet';
 import { WeatherMark, placeLabel, weatherOf } from '../components/weather';
+import { count, t } from '../lib/i18n';
 
 /** Every entry saved with a place, on a map. `?focus=<entry id>` opens it close in on that entry. */
 export function MapView({ query }: { query: URLSearchParams }) {
@@ -39,17 +40,17 @@ export function MapView({ query }: { query: URLSearchParams }) {
     <div class="map-page">
       <PlaceMap pins={pins} focus={focus} onOpen={setOpen} remember={focus ? undefined : 'map'} heat />
       <div class="map-bar">
-        <button class="glass glass-btn round" onClick={() => goBack('stats?tab=weather')} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={() => goBack('stats?tab=weather')} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <div class="glass map-title">
-          <b>Your map</b>
-          <span>{located.length} {located.length === 1 ? 'entry' : 'entries'} with a place</span>
+          <b>{t('Your map')}</b>
+          <span>{t('{count} with a place', { count: count(located.length, 'entry', 'entries') })}</span>
         </div>
       </div>
       {!located.length && (
         <div class="map-empty card">
-          <h2 class="title-s">No places yet</h2>
-          <p>{places ? 'Entries you write from now on will show up here, where you wrote them.' : 'Turn on Places in Settings, and the entries you write will show up here, where you wrote them.'}</p>
-          {!places && <button class="btn btn-primary" onClick={() => navigate('settings')}>Open Settings</button>}
+          <h2 class="title-s">{t('No places yet')}</h2>
+          <p>{places ? t('Entries you write from now on will show up here, where you wrote them.') : t('Turn on Places in Settings, and the entries you write will show up here, where you wrote them.')}</p>
+          {!places && <button class="btn btn-primary" onClick={() => navigate('settings')}>{t('Open Settings')}</button>}
         </div>
       )}
       <Sheet open={!!open} onClose={() => setOpen(null)} title={<span class="row gap-s"><Icon name="map-pin" /> {title}</span>} label={title}>
@@ -65,7 +66,7 @@ function SpotRow({ e, onGo }: { e: Entry; onGo: () => void }) {
   const em = e.emotions[0] ? EMOTION[e.emotions[0]] : null;
   const { heading, preview } = previewOf(plainText(e.text), e.title, 80);
   const feeling = em ? (em.depth === 0 ? shortName(em.id) : em.name) : '';
-  const title = e.kind === 'checkin' ? feeling || 'Check-in' : heading || 'Untitled';
+  const title = e.kind === 'checkin' ? feeling || t('Check-in') : heading || t('Untitled');
   const sub = e.kind === 'checkin' ? preview : [feeling, preview].filter(Boolean).join(' · ');
   const w = weatherOf(e);
   return (
@@ -75,7 +76,7 @@ function SpotRow({ e, onGo }: { e: Entry; onGo: () => void }) {
       </span>
       <span class="spot-main">
         <span class="spot-title">{title}</span>
-        <span class="spot-sub">{sub || (e.kind === 'checkin' ? 'Check-in' : 'Note')}</span>
+        <span class="spot-sub">{sub || (e.kind === 'checkin' ? t('Check-in') : t('Note'))}</span>
       </span>
       <span class="spot-when">
         {w && <WeatherMark w={w} />} {e.dateEnd ? rangeLabel(e.date, e.dateEnd) : `${dayLabel(e.date)} · ${timeLabel(e.time)}`}

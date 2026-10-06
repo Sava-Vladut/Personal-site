@@ -3,6 +3,7 @@ import { coreOf } from '../data/emotions';
 import { blankPerson, savePerson, toast, useEntries, usePeople, type Person } from '../lib/store';
 import { Icon, NoteIcon } from './icons';
 import { Sheet } from './Sheet';
+import { t } from '../lib/i18n';
 
 export function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -30,9 +31,9 @@ export function PersonChip({ p, onRemove, size = 'md' }: { p: Person; onRemove?:
   return (
     <span class={`emo emo-${size} person-chip`}>
       <Avatar p={p} size={size === 'sm' ? 16 : 20} />
-      <span class="emo-name">{p.name || 'Unnamed'}</span>
+      <span class="emo-name">{p.name || t('Unnamed')}</span>
       {onRemove && (
-        <button class="emo-x" onClick={onRemove} aria-label={`Remove ${p.name}`}>
+        <button class="emo-x" onClick={onRemove} aria-label={t('Remove {name}', { name: p.name })}>
           <Icon name="x" size={14} />
         </button>
       )}
@@ -41,7 +42,7 @@ export function PersonChip({ p, onRemove, size = 'md' }: { p: Person; onRemove?:
 }
 
 /** Tagged people plus an "add" chip, for the note editor and check-ins. */
-export function PeopleChips({ ids, onChange, onAdd, label = 'Thinking of' }: {
+export function PeopleChips({ ids, onChange, onAdd, label = t('Thinking of') }: {
   ids: string[];
   onChange: (ids: string[]) => void;
   onAdd: () => void;
@@ -53,14 +54,14 @@ export function PeopleChips({ ids, onChange, onAdd, label = 'Thinking of' }: {
     <>
       {tagged.map((p) => <PersonChip p={p} onRemove={() => onChange(ids.filter((x) => x !== p.id))} />)}
       <button class="chip" onClick={onAdd}>
-        <Icon name="user-plus" size={16} /> {tagged.length ? 'Add' : label}
+        <Icon name="user-plus" size={16} /> {tagged.length ? t('Add') : label}
       </button>
     </>
   );
 }
 
 /** Pick people to tag, or add someone new by typing their name. */
-export function PeopleSheet({ open, onClose, selected, onChange, title = 'Thinking of' }: {
+export function PeopleSheet({ open, onClose, selected, onChange, title = t('Thinking of') }: {
   open: boolean;
   onClose: () => void;
   selected: string[];
@@ -100,36 +101,36 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = 'Thinki
       onChange([...selection.current, p.id].slice(0, 20));
       setQ('');
     } catch {
-      if (n === request.current) toast('Couldn’t save this person. Try again.');
+      if (n === request.current) toast(t('Couldn’t save this person. Try again.'));
     } finally {
       creating.current = false;
     }
   };
 
   return (
-    <Sheet open={open} onClose={() => { setQ(''); onClose(); }} title={title} footer={<button class="btn btn-primary" onClick={() => { setQ(''); onClose(); }}>Done</button>}>
+    <Sheet open={open} onClose={() => { setQ(''); onClose(); }} title={title} footer={<button class="btn btn-primary" onClick={() => { setQ(''); onClose(); }}>{t('Done')}</button>}>
       <form class="search" onSubmit={(e) => { e.preventDefault(); if (exact) toggle(exact.id); else create(); }}>
         <Icon name="search" size={18} />
-        <input type="search" placeholder={people.length ? 'Find or add someone' : 'Type a name to add someone'} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Find or add a person" maxLength={120} />
+        <input type="search" placeholder={people.length ? t('Find or add someone') : t('Type a name to add someone')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Find or add a person')} maxLength={120} />
       </form>
       <div class="person-picks">
         {needle && !exact && (
           <button class="person-pick" onClick={create}>
             <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="user-plus" size={18} /></span>
-            <span class="person-pick-main"><span class="person-pick-name">Add “{q.trim()}”</span><span class="person-pick-sub">New person</span></span>
+            <span class="person-pick-main"><span class="person-pick-name">{t('Add “{name}”', { name: q.trim() })}</span><span class="person-pick-sub">{t('New person')}</span></span>
           </button>
         )}
         {shown.map((p) => (
           <button key={p.id} class="person-pick" aria-pressed={selected.includes(p.id)} onClick={() => toggle(p.id)}>
             <Avatar p={p} size={36} />
             <span class="person-pick-main">
-              <span class="person-pick-name">{p.name || 'Unnamed'}</span>
+              <span class="person-pick-name">{p.name || t('Unnamed')}</span>
               {p.relation && <span class="person-pick-sub">{p.relation}</span>}
             </span>
             <span class="track-check"><Icon name="check" size={16} stroke={2.4} /></span>
           </button>
         ))}
-        {!people.length && !needle && <p class="empty-note center">No one here yet. Type a name above to add them.</p>}
+        {!people.length && !needle && <p class="empty-note center">{t('No one here yet. Type a name above to add them.')}</p>}
       </div>
     </Sheet>
   );

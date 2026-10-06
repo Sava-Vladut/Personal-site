@@ -14,6 +14,7 @@ import { Icon } from '../components/icons';
 import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
+import { count, rich, t } from '../lib/i18n';
 
 type Open = null | 'emotion' | 'from';
 
@@ -28,7 +29,7 @@ function useAutosize(value: string) {
   return ref;
 }
 
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTHS = t('JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC').split(' ');
 /** '2026-09-30' → '30 SEP 2026', as a date stamp prints it */
 const stamped = (k: string) => `${k.slice(8)} ${MONTHS[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
 
@@ -43,7 +44,7 @@ function Stamp({ value, onChange, label, min, red, tilt }: {
 }) {
   return (
     <label class={`stamp-field${value ? '' : ' is-empty'}`}>
-      <span class={`stamp${red ? ' red' : ''}`} style={{ rotate: `${tilt}deg` }}>{value ? stamped(value) : 'Stamp it'}</span>
+      <span class={`stamp${red ? ' red' : ''}`} style={{ rotate: `${tilt}deg` }}>{value ? stamped(value) : t('Stamp it')}</span>
       <input
         type="date"
         value={value ?? ''}
@@ -69,18 +70,18 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
   const rows: preact.JSX.Element[] = [
     <li>
       <span class="due-date"><span class="stamp faint" style={{ rotate: `${tilt(0)}deg` }}>{stamped(keyOf(new Date(b.created)))}</span></span>
-      <span class="due-what">On your shelf</span>
+      <span class="due-what">{t('On your shelf')}</span>
     </li>,
   ];
   if (b.status !== 'want')
     rows.push(
       <li>
-        <Stamp value={b.started} label="Started" tilt={tilt(1)} onChange={(started) => update({ started })} />
-        <span class="due-what">Started</span>
+        <Stamp value={b.started} label={t('Started')} tilt={tilt(1)} onChange={(started) => update({ started })} />
+        <span class="due-what">{t('Started')}</span>
       </li>,
     );
   written.forEach((e, i) => {
-    const name = previewOf(plainText(e.text), e.title, 60).heading || (e.kind === 'checkin' ? 'Check-in' : 'A note');
+    const name = previewOf(plainText(e.text), e.title, 60).heading || (e.kind === 'checkin' ? t('Check-in') : t('A note'));
     rows.push(
       <li>
         <span class="due-date"><span class="stamp faint" style={{ rotate: `${tilt(i + 2)}deg` }}>{stamped(e.date)}</span></span>
@@ -91,18 +92,18 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
   if (done)
     rows.push(
       <li>
-        <Stamp red value={b.finished} min={b.started} label={b.status === 'dnf' ? 'Stopped' : 'Finished'} tilt={tilt(99)} onChange={(finished) => update({ finished })} />
-        <span class="due-what">{b.status === 'dnf' ? 'Put down' : 'Finished'}</span>
+        <Stamp red value={b.finished} min={b.started} label={b.status === 'dnf' ? t('Stopped') : t('Finished')} tilt={tilt(99)} onChange={(finished) => update({ finished })} />
+        <span class="due-what">{b.status === 'dnf' ? t('Put down') : t('Finished')}</span>
       </li>,
     );
   if (b.status === 'reading')
     rows.push(
       <li class="due-pages">
         <span class="due-what">
-          On page
-          <input class="due-input" type="number" inputMode="numeric" min={0} value={b.page ?? ''} onInput={(e) => update({ page: num(e.currentTarget.value, 100_000) })} aria-label="Current page" />
-          of
-          <input class="due-input" type="number" inputMode="numeric" min={1} value={b.pages ?? ''} onInput={(e) => update({ pages: num(e.currentTarget.value, 100_000) })} aria-label="Pages" />
+          {t('On page')}
+          <input class="due-input" type="number" inputMode="numeric" min={0} value={b.page ?? ''} onInput={(e) => update({ page: num(e.currentTarget.value, 100_000) })} aria-label={t('Current page')} />
+          {t('of')}
+          <input class="due-input" type="number" inputMode="numeric" min={1} value={b.pages ?? ''} onInput={(e) => update({ pages: num(e.currentTarget.value, 100_000) })} aria-label={t('Pages')} />
         </span>
         {pct !== null && <span class="stamp" style={{ rotate: `${tilt(98)}deg` }}>{pct}%</span>}
       </li>,
@@ -110,21 +111,21 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
   return (
     <div class="due">
       <div class="due-card">
-        <div class="due-head"><span>My Mind Library</span><span>{STATUS_LABEL[b.status]}</span></div>
+        <div class="due-head"><span>{t('My Mind Library')}</span><span>{STATUS_LABEL[b.status]}</span></div>
         <div class="due-book">
-          <span class="due-title">{b.title.trim() || 'Untitled'}</span>
+          <span class="due-title">{b.title.trim() || t('Untitled')}</span>
           {b.authors && <span class="due-author">{b.authors}</span>}
         </div>
-        <div class="due-cols" aria-hidden="true"><span>Date</span><span>{b.status === 'want' ? 'Wanted' : 'Read'}</span></div>
+        <div class="due-cols" aria-hidden="true"><span>{t('Date')}</span><span>{b.status === 'want' ? t('Wanted') : t('Read')}</span></div>
         <ol class="due-rows">
           {rows}
-          {b.status === 'want' && <li class="due-hint"><span /><span class="due-what">Move it to Reading to stamp the day you start.</span></li>}
+          {b.status === 'want' && <li class="due-hint"><span /><span class="due-what">{t('Move it to Reading to stamp the day you start.')}</span></li>}
           {Array.from({ length: Math.max(2, 6 - rows.length - (b.status === 'want' ? 1 : 0)) }, () => <li class="blank" aria-hidden="true" />)}
         </ol>
       </div>
       <div class="due-pocket" aria-hidden="true">
-        <span>Date due</span>
-        <small>Yours to keep · no fines</small>
+        <span>{t('Date due')}</span>
+        <small>{t('Yours to keep · no fines')}</small>
       </div>
     </div>
   );
@@ -162,13 +163,13 @@ export function BookView({ id }: { id: string }) {
     dirty.current = false;
     const request = ++saveRequest.current;
     const saving = saveBook(d).then(() => {
-      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus('Saved');
+      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus(t('Saved'));
       return true;
     }).catch(() => {
       if (!removing.current && request === saveRequest.current) {
         dirty.current = true;
-        setStatus('Couldn’t save');
-        toast('Couldn’t save this book. Try again.');
+        setStatus(t('Couldn’t save'));
+        toast(t('Couldn’t save this book. Try again.'));
       }
       return false;
     }).finally(() => {
@@ -201,7 +202,7 @@ export function BookView({ id }: { id: string }) {
         const was = shelfBefore.current.find((b) => b.id === id);
         if (kept && !removing.current && d && was && was.title.trim() !== d.title.trim() && d.title.trim())
           return Promise.all(renameMentions(getEntries(), shelfBefore.current, d).map((e) => saveEntry(e)));
-      }).catch(() => toast('Couldn’t update the notes mentioning this book.'));
+      }).catch(() => toast(t('Couldn’t update the notes mentioning this book.')));
     };
   }, []);
 
@@ -226,16 +227,16 @@ export function BookView({ id }: { id: string }) {
     return (
       <div class="page">
         <div class="empty">
-          <h2 class="title-s">This book isn’t on your shelf</h2>
-          <p>It may have been deleted.</p>
-          <button class="btn btn-primary" onClick={() => goBack('media')}>Back to media</button>
+          <h2 class="title-s">{t('This book isn’t on your shelf')}</h2>
+          <p>{t('It may have been deleted.')}</p>
+          <button class="btn btn-primary" onClick={() => goBack('media')}>{t('Back to media')}</button>
         </div>
       </div>
     );
 
   const remove = async () => {
     if (removing.current) return;
-    if (!confirm(`Remove “${draft.title.trim() || 'this book'}” from your shelf? Notes that mention it keep its title.`)) return;
+    if (!confirm(t('Remove “{title}” from your shelf? Notes that mention it keep its title.', { title: draft.title.trim() || t('this book') }))) return;
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;
@@ -243,11 +244,11 @@ export function BookView({ id }: { id: string }) {
     try {
       const removed = await deleteBook(draft.id);
       if (alive.current) goBack('media');
-      if (removed) toast('Book removed', { label: 'Undo', run: () => saveBook(removed) });
+      if (removed) toast(t('Book removed'), { label: t('Undo'), run: () => saveBook(removed) });
     } catch {
       removing.current = false;
       dirty.current = true;
-      toast('Couldn’t remove this book. Try again.');
+      toast(t('Couldn’t remove this book. Try again.'));
     }
   };
 
@@ -270,7 +271,7 @@ export function BookView({ id }: { id: string }) {
     if (s === 'read' && draft.pages) patch.page = draft.pages;
     if (s === 'want') Object.assign(patch, { started: null, finished: null, page: null });
     update(patch);
-    if (s === 'read') toast(`Finished ${draft.title.trim() || 'it'}!`, { label: 'Write about it', run: () => write() });
+    if (s === 'read') toast(draft.title.trim() ? t('Finished {title}!', { title: draft.title.trim() }) : t('Finished it!'), { label: t('Write about it'), run: () => write() });
   };
 
   const addEmotion = (eid: string) => {
@@ -294,10 +295,10 @@ export function BookView({ id }: { id: string }) {
   return (
     <div class="page editor book-page">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={done} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
-        <button class="glass glass-btn round" onClick={remove} aria-label="Remove book"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={done}>Done</button>
+        <button class="glass glass-btn round" onClick={remove} aria-label={t('Remove book')}><Icon name="trash" /></button>
+        <button class="glass glass-btn tinted" onClick={done}>{t('Done')}</button>
       </div>
 
       <div class="book-head" style={{ '--c': main ? `var(--emo-${main})` : undefined }}>
@@ -307,22 +308,22 @@ export function BookView({ id }: { id: string }) {
             ref={titleRef}
             class="title-input"
             rows={1}
-            placeholder="Title"
+            placeholder={t('Title')}
             value={draft.title}
             maxLength={300}
             onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
-            aria-label="Title"
+            aria-label={t('Title')}
           />
-          <input class="relation-input" placeholder="Author" value={draft.authors} maxLength={300} onInput={(e) => update({ authors: e.currentTarget.value })} aria-label="Author" />
+          <input class="relation-input" placeholder={t('Author')} value={draft.authors} maxLength={300} onInput={(e) => update({ authors: e.currentTarget.value })} aria-label={t('Author')} />
           <div class="muted small book-facts">
-            {[draft.year, draft.pages ? `${draft.pages} pages` : ''].filter(Boolean).join(' · ')}
+            {[draft.year, draft.pages ? count(draft.pages, 'page', 'pages') : ''].filter(Boolean).join(' · ')}
             {draft.olid && <> · <a href={`https://openlibrary.org${draft.olid}`} target="_blank" rel="noopener noreferrer">Open Library</a></>}
           </div>
           <Stars value={draft.rating} onChange={(rating) => update({ rating })} size={24} />
         </div>
       </div>
 
-      <div class="seg book-status" role="radiogroup" aria-label="Shelf">
+      <div class="seg book-status" role="radiogroup" aria-label={t('Shelf')}>
         {BOOK_STATUSES.map((s) => (
           <button role="radio" aria-checked={draft.status === s} aria-selected={draft.status === s} onClick={() => setShelf(s)}>{STATUS_LABEL[s]}</button>
         ))}
@@ -330,45 +331,45 @@ export function BookView({ id }: { id: string }) {
 
       <DueCard b={draft} notes={notes} update={update} />
 
-      <div class="eyebrow person-label">How it made you feel</div>
+      <div class="eyebrow person-label">{t('How it made you feel')}</div>
       <div class="meta person-meta">
         {draft.emotions.map((eid) => <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />)}
         {draft.emotions.length < MAX_PERSON_EMOTIONS && (
           <button class="chip" onClick={() => setOpen('emotion')}>
-            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? 'Add' : 'Add a feeling'}
+            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? t('Add') : t('Add a feeling')}
           </button>
         )}
       </div>
       {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition">{EMOTION[draft.emotions[0]].def}</p>}
 
-      <div class="eyebrow person-label">Thinking of</div>
+      <div class="eyebrow person-label">{t('Thinking of')}</div>
       <div class="meta person-meta">
         {from ? (
           <PersonChip p={from} onRemove={() => update({ from: null })} />
         ) : (
-          <button class="chip" onClick={() => setOpen('from')}><Icon name="user-plus" size={16} /> Add someone</button>
+          <button class="chip" onClick={() => setOpen('from')}><Icon name="user-plus" size={16} /> {t('Add someone')}</button>
         )}
       </div>
 
       <MentionText
         class="body-input person-text"
-        placeholder="Your thoughts: what stayed with you, favourite lines, what you’d tell a friend…"
+        placeholder={t('Your thoughts: what stayed with you, favourite lines, what you’d tell a friend…')}
         value={draft.text}
         onChange={(text) => update({ text })}
-        label="Your thoughts"
+        label={t('Your thoughts')}
       />
 
       <section class="section">
         <div class="row between">
-          <h2 class="section-title">In your journal</h2>
+          <h2 class="section-title">{t('In your journal')}</h2>
           {notes.length > 0 && <span class="muted small">{notes.length} {notes.length === 1 ? 'note' : 'notes'}</span>}
         </div>
         <div class="row gap-s person-actions">
-          <button class="btn btn-quiet grow" onClick={write}><Icon name="pencil" size={18} /> Write about it</button>
+          <button class="btn btn-quiet grow" onClick={write}><Icon name="pencil" size={18} /> {t('Write about it')}</button>
         </div>
         {felt.total > 0 && (
           <div class="card person-felt">
-            <div class="chart-title">How your notes about it felt</div>
+            <div class="chart-title">{t('How your notes about it felt')}</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
@@ -382,11 +383,11 @@ export function BookView({ id }: { id: string }) {
             </section>
           ))
         ) : (
-          <p class="empty-note">Mention this book in a note (the <Icon name="books" size={14} /> button while writing) and the note shows up here — a reading journal as you go.</p>
+          <p class="empty-note">{rich('Mention this book in a note (the {icon} button while writing) and the note shows up here — a reading journal as you go.', { icon: <Icon name="books" size={14} /> })}</p>
         )}
       </section>
 
-      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title="How did it make you feel?">
+      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={t('How did it make you feel?')}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
       <PeopleSheet

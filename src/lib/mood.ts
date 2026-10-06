@@ -1,17 +1,18 @@
 // The feeling of a whole day, from its check-ins and notes: which worlds it leaned toward and how it went.
 import { coreOf, shortName } from '../data/emotions';
+import { t } from './i18n';
 import type { Entry } from './store';
 
 /** How a day reads when one world fills most of it. */
 const DAY_WORD: Record<string, string> = {
-  joy: 'A bright day',
-  'hope-interest': 'A hopeful day',
-  'love-connection': 'A tender day',
-  'calm-safety': 'A calm day',
-  sadness: 'A heavy day',
-  fear: 'An uneasy day',
-  anger: 'A tense day',
-  'shame-aversion': 'A raw day',
+  joy: t('A bright day'),
+  'hope-interest': t('A hopeful day'),
+  'love-connection': t('A tender day'),
+  'calm-safety': t('A calm day'),
+  sadness: t('A heavy day'),
+  fear: t('An uneasy day'),
+  anger: t('A tense day'),
+  'shame-aversion': t('A raw day'),
 };
 
 export interface DayMood {
@@ -46,8 +47,8 @@ export function dayMood(list: Entry[]): DayMood | null {
   let word = DAY_WORD[worlds[0]] ?? '';
   if (worlds.length > 1 && weight.get(worlds[0])! / total < 0.55) {
     word = first !== last
-      ? `${shortName(first)}, then ${shortName(last).toLowerCase()}`
-      : `${shortName(worlds[0])} and ${shortName(worlds[1]).toLowerCase()}`;
+      ? t('{a}, then {b}', { a: shortName(first), b: shortName(last).toLowerCase() })
+      : t('{a} and {b}', { a: shortName(worlds[0]), b: shortName(worlds[1]).toLowerCase() });
   }
 
   const at = felt.map((e) => [coreOf(e.emotions[0]).id, Math.round((hourOf(e.time) / 24) * 100)] as const);

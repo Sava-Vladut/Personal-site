@@ -7,25 +7,26 @@ import { Icon } from './icons';
 import { MusicDeck, MusicThing, musicSub } from './music';
 import { Sheet } from './Sheet';
 import { SpotifySheet } from './SpotifySheet';
+import { t } from '../lib/i18n';
 
 const same = (a: Music | null, b: Music) => !!a && a.kind === b.kind && a.id === b.id;
 
 export function ThemeSong({ p, onChange, onConnect }: { p: Person; onChange: (m: Music | null) => void; onConnect: () => void }) {
   const [open, setOpen] = useState<null | 'pick' | 'spotify'>(null);
-  const first = p.name.trim().split(/\s+/)[0] || 'them';
+  const first = p.name.trim().split(/\s+/)[0] || t('them');
   return (
     <>
       <div class="row between person-label theme-head">
-        <div class="eyebrow">Theme song</div>
-        {p.theme && <button class="link small" onClick={() => setOpen('pick')}>Change</button>}
+        <div class="eyebrow">{t('Theme song')}</div>
+        {p.theme && <button class="link small" onClick={() => setOpen('pick')}>{t('Change')}</button>}
       </div>
       {p.theme ? (
         <div class="theme-song">
-          <MusicDeck key={p.theme.kind + p.theme.id} m={p.theme} onRemove={() => onChange(null)} removeLabel={`Remove ${first}’s theme song`} />
+          <MusicDeck key={p.theme.kind + p.theme.id} m={p.theme} onRemove={() => onChange(null)} removeLabel={t('Remove {name}’s theme song', { name: first })} />
         </div>
       ) : (
         <div class="meta person-meta">
-          <button class="chip" onClick={() => setOpen('pick')}><Icon name="vinyl" size={16} /> Add a theme song</button>
+          <button class="chip" onClick={() => setOpen('pick')}><Icon name="vinyl" size={16} /> {t('Add a theme song')}</button>
         </div>
       )}
       <ThemeSheet
@@ -41,7 +42,7 @@ export function ThemeSong({ p, onChange, onConnect }: { p: Person; onChange: (m:
         open={open === 'spotify'}
         onClose={() => setOpen((o) => (o === 'spotify' ? 'pick' : o))}
         onConnect={onConnect}
-        addLabel={() => 'Make it the theme song'}
+        addLabel={() => t('Make it the theme song')}
         onAdd={(list) => { if (list[0]) { onChange(list[0]); setOpen(null); } }}
       />
     </>
@@ -75,29 +76,29 @@ function ThemeSheet({ open, p, first, onClose, onPick, onSpotify }: {
   );
   const a = theirs.filter((s) => match(s.music)), b = rest.filter((s) => match(s.music));
   return (
-    <Sheet open={open} onClose={onClose} tall title={`${first}’s theme song`}>
+    <Sheet open={open} onClose={onClose} tall title={t('{name}’s theme song', { name: first })}>
       <div class="theme-pick">
-        <button class="btn btn-quiet block" onClick={onSpotify}><Icon name="brand-spotify" size={18} /> Find it on Spotify</button>
+        <button class="btn btn-quiet block" onClick={onSpotify}><Icon name="brand-spotify" size={18} /> {t('Find it on Spotify')}</button>
         {songs.length > 4 && (
           <label class="search">
             <Icon name="search" size={18} />
-            <input type="search" placeholder="Search your music" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search your music" />
+            <input type="search" placeholder={t('Search your music')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search your music')} />
           </label>
         )}
         {a.length > 0 && (
           <section>
-            <h3 class="section-title">Brings {first} to mind</h3>
+            <h3 class="section-title">{t('Brings {name} to mind', { name: first })}</h3>
             <div class="book-rows">{a.map((s) => row(s.music))}</div>
           </section>
         )}
         {b.length > 0 && (
           <section>
-            <h3 class="section-title">{a.length ? 'The rest of your music' : 'Your music'}</h3>
+            <h3 class="section-title">{a.length ? t('The rest of your music') : t('Your music')}</h3>
             <div class="book-rows">{b.map((s) => row(s.music))}</div>
           </section>
         )}
-        {!songs.length && <p class="muted small">Nothing in your music yet. Find it on Spotify, or paste a Spotify link there.</p>}
-        {!!songs.length && !a.length && !b.length && <p class="muted small">Nothing matches “{q.trim()}”.</p>}
+        {!songs.length && <p class="muted small">{t('Nothing in your music yet. Find it on Spotify, or paste a Spotify link there.')}</p>}
+        {!!songs.length && !a.length && !b.length && <p class="muted small">{t('Nothing matches “{q}”.', { q: q.trim() })}</p>}
       </div>
     </Sheet>
   );

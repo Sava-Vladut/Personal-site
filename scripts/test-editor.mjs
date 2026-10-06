@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test, { before } from 'node:test';
 import vm from 'node:vm';
 import { rolldown } from 'rolldown';
+import { i18n } from './i18n-stub.mjs';
 
 // Exercise the actual component handlers with deferred photo storage and a small
 // hook renderer. Dependencies are isolated; no browser or user's database is used.
@@ -107,6 +108,7 @@ function harness(code, initial = {}) {
     exports: {},
     require(id) {
       if (id === 'preact/hooks') return hooks;
+      if (id.endsWith('/i18n')) return i18n;
       if (id === 'preact/compat') return { flushSync(fn) { fn(); initial.onFlush?.(); } };
       if (id === 'preact/jsx-runtime') return { jsx: vnode, jsxs: vnode, Fragment: 'fragment' };
       const override = Object.entries(initial.modules ?? {}).find(([suffix]) => id.endsWith(suffix));
@@ -265,7 +267,7 @@ test('person: a new tag waits until the person has been stored', async () => {
   let tree = h.render('PersonView', { id: 'new' });
   find(tree, (n) => n.type === 'textarea' && n.props['aria-label'] === 'Name').props.onInput({ currentTarget: { value: 'Ann' } });
   tree = h.render('PersonView', { id: 'new' });
-  const writing = find(tree, (n) => n.type === 'button' && n.props.children?.includes?.(' Check in')).props.onClick();
+  const writing = find(tree, (n) => n.type === 'button' && n.props.children?.includes?.('Check in')).props.onClick();
   assert.deepEqual(h.navigations, []);
   saving.resolve(person);
   await writing;

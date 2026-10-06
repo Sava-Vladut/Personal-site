@@ -4,6 +4,7 @@ import { here, locationError, searchPlaces, type FoundPlace } from '../lib/weath
 import type { Entry, Place, Weather } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import { t } from '../lib/i18n';
 
 /** The entry's weather, if it's for the entry's own day. */
 export const weatherOf = (e: Entry): Weather | null => (e.weather && e.weather.day === e.date ? e.weather : null);
@@ -25,7 +26,7 @@ const hours = (h: number) => {
 
 /** "Partly cloudy · 21° · 12 h 20 min of daylight · after dark" */
 export const weatherLine = (w: Weather) =>
-  [weatherName(w.code), fmtTemp(w.temp), `${hours(w.daylight)} of daylight`, w.dark === undefined ? '' : w.dark ? 'after dark' : ''].filter(Boolean).join(' · ');
+  [weatherName(w.code), fmtTemp(w.temp), t('{hours} of daylight', { hours: hours(w.daylight) }), w.dark === undefined ? '' : w.dark ? t('after dark') : ''].filter(Boolean).join(' · ');
 
 export const placeLabel = (p: Place) => p.name || `${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}`;
 
@@ -50,13 +51,13 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
     const n = ++asked.current;
     if (!open || term.length < 2) return setFound([]), setBusy(false);
     setBusy(true);
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       searchPlaces(term)
         .then((list) => n === asked.current && (setFound(list), setError('')))
-        .catch(() => n === asked.current && setError('Couldn’t search right now. Check your connection.'))
+        .catch(() => n === asked.current && setError(t('Couldn’t search right now. Check your connection.')))
         .finally(() => n === asked.current && setBusy(false));
     }, 300);
-    return () => { clearTimeout(t); asked.current++; };
+    return () => { clearTimeout(timer); asked.current++; };
   }, [q, open]);
 
   const useHere = async () => {
@@ -76,18 +77,18 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name="home" /> Home</span>} label="Home">
-      <p class="hint">Used for the weather when an entry has no place saved, and to fill in the weather for older entries.</p>
+    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name="home" /> {t('Home')}</span>} label={t('Home')}>
+      <p class="hint">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>
       <button class="person-pick" onClick={useHere} disabled={locating}>
         <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="current-location" size={18} /></span>
         <span class="person-pick-main">
-          <span class="person-pick-name">{locating ? 'Finding you…' : 'Where I am now'}</span>
-          <span class="person-pick-sub">Uses your location once</span>
+          <span class="person-pick-name">{locating ? t('Finding you…') : t('Where I am now')}</span>
+          <span class="person-pick-sub">{t('Uses your location once')}</span>
         </span>
       </button>
       <form class="search home-search" onSubmit={(e) => e.preventDefault()}>
         <Icon name="search" size={18} />
-        <input type="search" placeholder="Search for a town or city" value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label="Search for a town or city" enterkeyhint="search" />
+        <input type="search" placeholder={t('Search for a town or city')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search for a town or city')} enterkeyhint="search" />
       </form>
       {error && <p class="hint danger" role="alert">{error}</p>}
       <div class="person-picks">
@@ -100,9 +101,9 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
             </span>
           </button>
         ))}
-        {!busy && q.trim().length >= 2 && !found.length && !error && <p class="empty-note center">No places match “{q.trim()}”.</p>}
+        {!busy && q.trim().length >= 2 && !found.length && !error && <p class="empty-note center">{t('No places match “{q}”.', { q: q.trim() })}</p>}
       </div>
-      <p class="credit">Place search from Open-Meteo.</p>
+      <p class="credit">{t('Place search from Open-Meteo.')}</p>
     </Sheet>
   );
 }

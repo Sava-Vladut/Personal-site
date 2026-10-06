@@ -5,6 +5,7 @@ import { clock } from '../lib/voiceText';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
 import '../styles/voice.css';
+import { rich, t } from '../lib/i18n';
 
 // keep the note focused (and a phone's keyboard up) while tapping, like the rest of the toolbar
 const keepFocus = {
@@ -27,7 +28,7 @@ export function VoiceButton({ onSetup }: { onSetup: () => void }) {
   if (!voiceSupported()) return null;
   const recording = v.activity === 'recording';
   const working = v.activity === 'transcribing';
-  const label = recording ? 'Stop and write it down' : working ? 'Writing it down' : 'Talk to type';
+  const label = recording ? t('Stop and write it down') : working ? t('Writing it down') : t('Talk to type');
   return (
     <button
       class={`format-btn voice-btn${recording ? ' is-recording' : ''}`}
@@ -56,14 +57,14 @@ export function VoiceButton({ onSetup }: { onSetup: () => void }) {
 export function VoiceModels() {
   const v = useVoice();
   return (
-    <div class="voice-models" role="radiogroup" aria-label="Speech model">
+    <div class="voice-models" role="radiogroup" aria-label={t('Speech model')}>
       {VOICE_MODELS.map((m) => (
         <button class="voice-model" role="radio" aria-checked={v.model === m.id} disabled={v.preparing} onClick={() => chooseModel(m.id)}>
           <span class="voice-model-name">
-            <b>{m.label}</b>
-            <span class="muted small">{m.detail}</span>
+            <b>{t(m.label)}</b>
+            <span class="muted small">{t(m.detail)}</span>
           </span>
-          <span class="muted small">{v.installed.includes(m.id) ? 'On this device' : `${m.mb} MB`}</span>
+          <span class="muted small">{v.installed.includes(m.id) ? t('On this device') : `${m.mb} MB`}</span>
         </button>
       ))}
     </div>
@@ -73,8 +74,8 @@ export function VoiceModels() {
 export function VoiceLanguage() {
   const v = useVoice();
   return (
-    <select class="input input-s" value={v.language} onChange={(e) => chooseLanguage(e.currentTarget.value)} aria-label="Language spoken">
-      {VOICE_LANGUAGES.map(([code, name]) => <option value={code}>{name}</option>)}
+    <select class="input input-s" value={v.language} onChange={(e) => chooseLanguage(e.currentTarget.value)} aria-label={t('Language spoken')}>
+      {VOICE_LANGUAGES.map(([code, name]) => <option value={code}>{t(name)}</option>)}
     </select>
   );
 }
@@ -86,10 +87,10 @@ export function VoiceProgress() {
   const started = v.progress > 0;
   return (
     <div class="voice-progress" role="status">
-      <span class="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={started ? Math.round(v.progress * 100) : undefined} aria-label="Downloading the speech model">
+      <span class="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={started ? Math.round(v.progress * 100) : undefined} aria-label={t('Downloading the speech model')}>
         <i class={started ? '' : 'is-waiting'} style={started ? { width: `${Math.round(v.progress * 100)}%` } : undefined} />
       </span>
-      <span class="muted small">{started ? `${Math.round(v.progress * 100)}%` : 'Getting ready…'}</span>
+      <span class="muted small">{started ? `${Math.round(v.progress * 100)}%` : t('Getting ready…')}</span>
     </div>
   );
 }
@@ -103,25 +104,25 @@ export function VoiceSheet({ open, onClose }: { open: boolean; onClose: () => vo
     <Sheet
       open={open}
       onClose={onClose}
-      title={<span class="row gap-s"><Icon name="microphone" /> Talk to type</span>}
-      label="Talk to type"
+      title={<span class="row gap-s"><Icon name="microphone" /> {t('Talk to type')}</span>}
+      label={t('Talk to type')}
       footer={
         ready ? (
-          <button class="btn btn-primary" onClick={() => { onClose(); void startRecording(); }}>Start talking</button>
+          <button class="btn btn-primary" onClick={() => { onClose(); void startRecording(); }}>{t('Start talking')}</button>
         ) : (
           <button class="btn btn-primary" onClick={() => void downloadModel()} disabled={v.preparing}>
-            {v.preparing ? 'Downloading…' : `Download · ${model.mb} MB`}
+            {v.preparing ? t('Downloading…') : t('Download · {mb} MB', { mb: model.mb })}
           </button>
         )
       }
     >
       <p class="hint">
-        Say it instead of typing it. Your voice is turned into words <b>on this device</b> — the recording is never sent anywhere. It needs a one-time download of a speech model, and works offline after that.
+        {rich('Say it instead of typing it. Your voice is turned into words {here} — the recording is never sent anywhere. It needs a one-time download of a speech model, and works offline after that.', { here: <b>{t('on this device')}</b> })}
       </p>
       <VoiceModels />
       {model.languages && (
         <div class="voice-language">
-          <span>Language</span>
+          <span>{t('Language')}</span>
           <VoiceLanguage />
         </div>
       )}

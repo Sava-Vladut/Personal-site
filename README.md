@@ -50,7 +50,7 @@ Things to know:
 | **Media** | Books and music. **Books**: your shelf as a bookcase, each book a spine in its cover's colour, as thick as it is long, with a call-number sticker, rating dots and, while you're reading it, a bookmark. A book's page has a library card in its pocket with the days you added, started and finished it and wrote about it, stamped in ink (tap a stamp to change it). **Music**: songs, albums, playlists and podcasts from Spotify, kept as records in a wooden shelf and tapes in a rack, with what's on repeat spinning on top. Each has a page to play it, rate it, note how it makes you feel and who it brings to mind, and see the notes it's in. Music added to notes can be kept from there. |
 | **Map** | Every entry saved with a place, as pins in the colour of what you felt. Pinch, drag or scroll to zoom; tap a spot for what you wrote there. From Settings, the Weather tab in Stats, or a note's Feelings page. |
 | **Stats** | A sky header and colour theme taken from the feeling you had most, with charts that animate in as you scroll to them. Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Weather**: mood by sky, temperature, hours of daylight and daylight vs dark, and by place, with a map. **Dex**: every feeling you've named so far. Every chart has a table view. |
-| **Settings** | Light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, voice typing (speech model, language, remove), backup export/import, delete everything. |
+| **Settings** | Language (English or Română), light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, voice typing (speech model, language, remove), backup export/import, delete everything. |
 
 Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant −1), from −5 to +5.
 
@@ -144,6 +144,9 @@ and remaining browser-side and infrastructure scaling limits.
   [Fluent Emoji High Contrast](https://github.com/microsoft/fluentui-emoji) faces, both MIT. About 290 hand-picked ones
   load when the picker opens; the full set loads only when you browse or search all of them.
   Regenerate with `npm run icons`.
+- **Language.** English or Romanian, chosen per device in Settings. The code is written in English and wraps what it
+  shows in `t('…')` (`rich()` when the sentence holds markup, `count()` for numbers with a noun); the Romanian is in
+  `src/data/ro.ts`, keyed by the English. Text without a translation stays in English, and `npm test` lists any missing.
 
 ## Layout
 
@@ -153,6 +156,7 @@ server/static.js         compressed static hosting and bounded asset cache
 server/sync.js           encrypted sync storage and transfer limits
 server/voice.js          fetches and serves voice typing's model files from data/voice
 src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours, sprites
+src/data/ro.ts           the Romanian translation, keyed by the English text (see src/lib/i18n.ts)
 src/lib/                 storage (IndexedDB), stats, dates, router, API clients
 src/components/          sheets, pickers, charts
 src/views/               Journal, Tracker, Editor, Stats, Settings

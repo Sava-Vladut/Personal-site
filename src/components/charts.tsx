@@ -7,6 +7,7 @@ import { CHART_ORDER, CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emo
 import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWeek } from '../lib/dates';
 import { fmtMood, pct, type Bucket } from '../lib/stats';
 import { Icon, Sprite, type UiName } from './icons';
+import { LOCALE, count, noun, t } from '../lib/i18n';
 
 /* ---------- scroll reveal ---------- */
 
@@ -45,21 +46,23 @@ const stagger = (i: number, n: number) => ({ '--t': (n > 1 ? i / (n - 1) : 0).to
 
 /** A figure like "+1.4", "63%" or "12" that counts up from zero when it first appears. */
 export function CountUp({ value }: { value: string | number }) {
-  const text = String(value);
+  // whole numbers are written the local way ("1,234" or "1.234"); other figures come already formatted
+  const whole = typeof value === 'number' && Number.isInteger(value);
+  const text = whole ? value.toLocaleString(LOCALE) : String(value);
   const ref = useRef<HTMLSpanElement>(null);
   const shown = useRef(false);
   useLayoutEffect(() => {
     const el = ref.current!;
-    const m = /^(\D*?)(\d[\d,]*(?:\.(\d+))?)(.*)$/.exec(text);
+    const m = whole ? ([text, '', String(value), undefined, ''] as const) : /^(\D*?)(\d[\d,]*(?:\.(\d+))?)(.*)$/.exec(text);
     // only the first time: later changes (a new range) just swap the number
     if (shown.current || !m || matchMedia('(prefers-reduced-motion: reduce)').matches) {
       el.textContent = text;
       return;
     }
     shown.current = true;
-    const [, pre, num, dec, post] = m;
+    const [, pre, num, dec, post] = m as readonly string[];
     const to = parseFloat(num.replace(/,/g, '')), dp = dec?.length ?? 0, t0 = performance.now();
-    const fmt = (n: number) => (num.includes(',') ? n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : n.toFixed(dp));
+    const fmt = (n: number) => (whole ? Math.round(n).toLocaleString(LOCALE) : num.includes(',') ? n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : n.toFixed(dp));
     let raf = 0;
     const tick = (now: number) => {
       const p = Math.min(1, Math.max(0, (now - t0) / 900)); // a frame's time can be a touch before t0
@@ -160,7 +163,7 @@ export function ChartCard({ title, sub, legend, table, children }: {
           {sub && <p class="chart-sub">{sub}</p>}
         </div>
         {table && (
-          <button class="icon-btn small" aria-pressed={asTable} aria-label={asTable ? 'Show chart' : 'Show as table'} title={asTable ? 'Show chart' : 'Show as table'} onClick={() => setAsTable(!asTable)}>
+          <button class="icon-btn small" aria-pressed={asTable} aria-label={asTable ? t('Show chart') : t('Show as table')} title={asTable ? t('Show chart') : t('Show as table')} onClick={() => setAsTable(!asTable)}>
             <Icon name={asTable ? 'chart-bar' : 'table'} size={18} />
           </button>
         )}
@@ -202,7 +205,7 @@ function useWidth() {
   return [ref, w] as const;
 }
 
-export const bucketLabel = (b: Bucket, step: number) => (step === 1 ? shortDate(b.key) : `Week of ${shortDate(b.key)}`);
+export const bucketLabel = (b: Bucket, step: number) => (step === 1 ? shortDate(b.key) : t('Week of {date}', { date: shortDate(b.key) }));
 
 /** Path for a vertical bar with a 4px rounded data-end and a square base. */
 function barPath(x: number, w: number, base: number, tip: number) {
@@ -251,8 +254,8 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
     return (
       <>
         <div class="tip-title">{bucketLabel(b, step)}</div>
-        <TipRow value={fmtMood(b.mood)} label={b.entries.length ? `mood · ${b.entries.length} ${b.entries.length === 1 ? 'entry' : 'entries'}` : 'no entries'} />
-        <TipRow value={fmtMood(b.rolling)} label={`${step === 1 ? '7-day' : '4-week'} average`} color="var(--ink)" />
+        <TipRow value={fmtMood(b.mood)} label={b.entries.length ? t('mood · {count}', { count: count(b.entries.length, 'entry', 'entries') }) : t('no entries')} />
+        <TipRow value={fmtMood(b.rolling)} label={step === 1 ? t('7-day average') : t('4-week average')} color="var(--ink)" />
       </>
     );
   };
@@ -268,7 +271,7 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
   return (
     <div ref={ref} class="chart drawn">
       {W > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Mood over time, from −5 unpleasant to +5 pleasant">
+        <svg width={W} height={H} role="img" aria-label={t('Mood over time, from −5 unpleasant to +5 pleasant')}>
           <defs>
             <linearGradient id="moodwash" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0" stop-color="var(--ink)" stop-opacity="0.05" />
@@ -311,7 +314,7 @@ export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }
           )}
           <rect
             x={L} y={T} width={pw} height={ph} fill="transparent" tabIndex={0}
-            aria-label="Mood chart — use arrow keys to move between days"
+            aria-label={t('Mood chart — use arrow keys to move between days')}
             onPointerMove={move}
             onPointerDown={move}
             onPointerLeave={(e) => { if (e.pointerType === 'mouse') { setHover(null); hideTip(); } }}
@@ -349,7 +352,7 @@ export function BalanceChart({ buckets, step }: { buckets: Bucket[]; step: numbe
   return (
     <div ref={ref} class="chart">
       {W > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Pleasant and unpleasant entries over time">
+        <svg width={W} height={H} role="img" aria-label={t('Pleasant and unpleasant entries over time')}>
           <line x1={L} x2={L + pw} y1={T} y2={T} class="grid" />
           <line x1={L} x2={L + pw} y1={T + ph} y2={T + ph} class="grid" />
           <text x={L - 8} y={T + 4} class="tick" text-anchor="end">{max}</text>
@@ -361,10 +364,10 @@ export function BalanceChart({ buckets, step }: { buckets: Bucket[]; step: numbe
               <g class="mark" {...tipProps(() => (
                 <>
                   <div class="tip-title">{bucketLabel(b, step)}</div>
-                  <TipRow value={b.pleasant} label="pleasant" color={PLEASANT} />
-                  <TipRow value={b.unpleasant} label="unpleasant" color={UNPLEASANT} />
+                  <TipRow value={b.pleasant} label={t('pleasant')} color={PLEASANT} />
+                  <TipRow value={b.unpleasant} label={t('unpleasant')} color={UNPLEASANT} />
                 </>
-              ), `${bucketLabel(b, step)}: ${b.pleasant} pleasant, ${b.unpleasant} unpleasant`)}>
+              ), `${bucketLabel(b, step)}: ${t('{a} pleasant, {b} unpleasant', { a: b.pleasant, b: b.unpleasant })}`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
                 {b.pleasant > 0 && <path d={barPath(bx, bw, mid - 1, mid - 1 - s(b.pleasant))} fill={PLEASANT} class="bar up" style={stagger(i, n)} />}
                 {b.unpleasant > 0 && <path d={barPath(bx, bw, mid + 1, mid + 1 + s(b.unpleasant))} fill={UNPLEASANT} class="bar down" style={stagger(i, n)} />}
@@ -403,7 +406,7 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
   return (
     <div ref={ref} class="chart">
       {W > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Share of each emotion world over time">
+        <svg width={W} height={H} role="img" aria-label={t('Share of each emotion world over time')}>
           <line x1={L} x2={L + pw} y1={T + ph} y2={T + ph} class="axis" />
           {cols.map((c, i) => {
             const x = L + i * band + (band - bw) / 2;
@@ -413,7 +416,7 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
               <g class="mark" {...tipProps(() => (
                 <>
                   <div class="tip-title">{label(c)}</div>
-                  {c.total ? present.map((id) => <TipRow value={pct(c.cores[id] / c.total)} label={shortName(id)} color={`var(--emo-${id})`} />) : <span>No feelings logged</span>}
+                  {c.total ? present.map((id) => <TipRow value={pct(c.cores[id] / c.total)} label={shortName(id)} color={`var(--emo-${id})`} />) : <span>{t('No feelings logged')}</span>}
                 </>
               ), label(c))}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
@@ -490,7 +493,7 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
   return (
     <div ref={ref} class="chart">
       {W > 0 && (
-        <svg width={W} height={H} role="img" aria-label="Average mood">
+        <svg width={W} height={H} role="img" aria-label={t('Average mood')}>
           <line x1={L} x2={L + pw} y1={T} y2={T} class="grid" />
           <line x1={L} x2={L + pw} y1={T + ph} y2={T + ph} class="grid" />
           <text x={L - 8} y={T + 4} class="tick" text-anchor="end">+5</text>
@@ -503,7 +506,7 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
               <g class="mark" {...tipProps(() => (
                 <>
                   <div class="tip-title">{r.label}</div>
-                  <TipRow value={fmtMood(m)} label={`average mood · ${r.n} ${r.n === 1 ? 'entry' : 'entries'}`} />
+                  <TipRow value={fmtMood(m)} label={t('average mood · {count}', { count: count(r.n, 'entry', 'entries') })} />
                 </>
               ), `${r.label}: ${fmtMood(m)}`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
@@ -535,9 +538,9 @@ export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?
           <li style={{ '--k': i }} {...tipProps(() => (
             <>
               <div class="tip-title">{r.label}</div>
-              <TipRow value={fmtMood(m)} label={`average mood · ${r.n} ${r.n === 1 ? 'entry' : 'entries'}`} />
+              <TipRow value={fmtMood(m)} label={t('average mood · {count}', { count: count(r.n, 'entry', 'entries') })} />
             </>
-          ), `${r.label}: ${fmtMood(m)}, ${r.n} ${r.n === 1 ? 'entry' : 'entries'}`)}>
+          ), `${r.label}: ${fmtMood(m)}, ${count(r.n, 'entry', 'entries')}`)}>
             <span class="mr-label">
               {r.icon ? <Icon name={r.icon} size={15} /> : r.core ? <Sprite core={r.core} size={12} /> : null}
               <span>{r.label}</span>
@@ -558,17 +561,17 @@ export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?
 
 export function IntensityChart({ rows }: { rows: { level: number; pleasant: number; unpleasant: number; total: number }[] }) {
   const max = Math.max(1, ...rows.map((r) => r.total));
-  const NAMES = ['Barely', 'Mild', 'Moderate', 'Strong', 'Intense'];
+  const NAMES = [t('Barely'), t('Mild'), t('Moderate'), t('Strong'), t('Intense')];
   return (
     <div class="intensity-chart">
       {rows.map((r) => (
         <div class="ic-col" style={{ '--k': r.level }} {...tipProps(() => (
           <>
             <div class="tip-title">{r.level} · {NAMES[r.level - 1]}</div>
-            <TipRow value={r.pleasant} label="pleasant" color={PLEASANT} />
-            <TipRow value={r.unpleasant} label="unpleasant" color={UNPLEASANT} />
+            <TipRow value={r.pleasant} label={t('pleasant')} color={PLEASANT} />
+            <TipRow value={r.unpleasant} label={t('unpleasant')} color={UNPLEASANT} />
           </>
-        ), `Intensity ${r.level}: ${r.total}`)}>
+        ), `${t('Intensity')} ${r.level}: ${r.total}`)}>
           <div class="ic-bar">
             {r.pleasant > 0 && <i class="pos" style={{ height: `${(r.pleasant / max) * 100}%` }} />}
             {r.unpleasant > 0 && <i class="neg" style={{ height: `${(r.unpleasant / max) * 100}%` }} />}
@@ -602,7 +605,7 @@ export function RhythmHeatmap({ heat, max }: { heat: number[][]; max: number }) 
 }
 
 export const HeatLegend = () => (
-  <span class="legend-item">Fewer {[1, 2, 3, 4, 5].map((s) => <i class={`heat-cell s${s} swatch`} />)} More</span>
+  <span class="legend-item">{t('Fewer')} {[1, 2, 3, 4, 5].map((s) => <i class={`heat-cell s${s} swatch`} />)} {t('More')}</span>
 );
 
 /* ---------- calendar of dominant feelings ---------- */
@@ -614,21 +617,21 @@ export function MoodCalendar({ calendar, start, end, weekStart }: { calendar: Ma
   const cell = (k: string, inRange: boolean) => {
     const d = calendar.get(k);
     const cls = !inRange ? 'px out' : d ? 'px on' : 'px';
-    const t = Math.min(1, Math.max(0, diffDays(start, k)) / Math.max(1, span - 1));
+    const at = Math.min(1, Math.max(0, diffDays(start, k)) / Math.max(1, span - 1));
     return (
       <span
         class={cls}
-        style={{ '--t': t.toFixed(3), ...(d?.core ? { background: `var(--emo-${d.core})` } : {}) }}
+        style={{ '--t': at.toFixed(3), ...(d?.core ? { background: `var(--emo-${d.core})` } : {}) }}
         {...(inRange ? tipProps(() => (
           <>
             <div class="tip-title">{shortDate(k)}</div>
             {d ? (
               <>
-                {d.core && <TipRow value={shortName(d.core)} label="most felt" color={`var(--emo-${d.core})`} />}
-                <TipRow value={d.n} label={d.n === 1 ? 'entry' : 'entries'} />
-                <TipRow value={fmtMood(d.mood)} label="mood" />
+                {d.core && <TipRow value={shortName(d.core)} label={t('most felt')} color={`var(--emo-${d.core})`} />}
+                <TipRow value={d.n} label={noun(d.n, 'entry', 'entries')} />
+                <TipRow value={fmtMood(d.mood)} label={t('mood')} />
               </>
-            ) : <span>Nothing logged</span>}
+            ) : <span>{t('Nothing logged')}</span>}
           </>
         ), shortDate(k)) : {})}
       />
@@ -711,7 +714,7 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
   return (
     <div ref={ref} class="wheel-chart">
       {W > 0 && (
-        <svg width={size} height={size} role="group" aria-label="Emotion wheel — darker means felt more often">
+        <svg width={size} height={size} role="group" aria-label={t('Emotion wheel — darker means felt more often')}>
           {wedges.map((w) => {
             const v = counts.get(w.id) ?? 0;
             const core = EMOTION[w.id].core;
@@ -736,7 +739,7 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
             </svg>
           ))}
           <text x={c} y={c - 4} text-anchor="middle" class="wheel-num">{sel ? counts.get(sel.id) ?? 0 : total}</text>
-          <text x={c} y={c + 14} text-anchor="middle" class="tick">{sel ? 'times' : 'feelings'}</text>
+          <text x={c} y={c + 14} text-anchor="middle" class="tick">{sel ? noun(counts.get(sel.id) ?? 0, 'time', 'times') : noun(total, 'feeling', 'feelings')}</text>
         </svg>
       )}
     </div>

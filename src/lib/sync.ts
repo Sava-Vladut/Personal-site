@@ -5,6 +5,7 @@
 import { getBooks, getDeleted, getEntries, getPeople, getSongs, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
 import { photoBlob, photoIds, storePhotos, type Photo } from './photos';
 import { resolveIcon } from './icons';
+import { t } from './i18n';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I to mix up; 12 characters = 60 random bits
 const CODE_LEN = 12;
@@ -76,7 +77,7 @@ function keys(code: string) {
   let k = keyCache.get(code);
   if (!k) {
     k = (async () => {
-      if (!crypto.subtle) throw new Error('Sync only works over a secure (https) connection.');
+      if (!crypto.subtle) throw new Error(t('Sync only works over a secure (https) connection.'));
       const base = await crypto.subtle.importKey('raw', enc.encode(code), 'HKDF', false, ['deriveBits', 'deriveKey']);
       const hkdf = (info: string) => ({ name: 'HKDF', hash: 'SHA-256', salt: enc.encode('my-mind sync v1'), info: enc.encode(info) });
       const id = new Uint8Array(await crypto.subtle.deriveBits(hkdf('id'), base, 256));
@@ -108,13 +109,13 @@ async function call(path: string, init?: RequestInit) {
   try {
     return await fetch('/api/sync/' + path, { cache: 'no-store', ...init });
   } catch {
-    throw new Error('Can’t reach the server. It’ll sync when you’re back online.');
+    throw new Error(t('Can’t reach the server. It’ll sync when you’re back online.'));
   }
 }
 
 async function failure(res: Response) {
   const body = await res.json().catch(() => null);
-  return new Error(body?.error || `The server couldn’t sync (${res.status}).`);
+  return new Error(body?.error ? t(body.error) : t('The server couldn’t sync ({status}).', { status: res.status }));
 }
 
 interface Doc {
@@ -202,7 +203,7 @@ async function pass(s: State) {
     if (!rev && s.rev) {
       // It was there and now it's gone: removed from another device.
       stopSync();
-      toast('Sync was turned off from another device');
+      toast(t('Sync was turned off from another device'));
       return;
     }
     if (doc) {
@@ -242,7 +243,7 @@ async function pass(s: State) {
     if (state === s) saveState();
     return;
   }
-  throw new Error('Lots of changes at once. Trying again shortly.');
+  throw new Error(t('Lots of changes at once. Trying again shortly.'));
 }
 
 let running: Promise<void> | null = null;
@@ -292,10 +293,10 @@ export function startSync() {
 /** Links this device to a code from another one: merges what's saved there, then keeps syncing. */
 export async function joinSync(input: string) {
   const code = parseCode(input);
-  if (!code) throw new Error('A code is 12 letters and numbers, like ABCD-EFGH-JKLM.');
+  if (!code) throw new Error(t('A code is 12 letters and numbers, like ABCD-EFGH-JKLM.'));
   const { id, key } = await keys(code);
   const { rev } = await download(id, key, null);
-  if (!rev) throw new Error('Nothing is saved under that code. Check it on the other device.');
+  if (!rev) throw new Error(t('Nothing is saved under that code. Check it on the other device.'));
   const before = new Set(getEntries().map((e) => e.id));
   state = { code, rev: null, dirty: true, last: 0, sent: [] };
   saveState();

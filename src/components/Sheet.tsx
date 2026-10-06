@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { pushBack } from '../lib/router';
 import { Icon } from './icons';
+import { t } from '../lib/i18n';
 
 interface Props {
   open: boolean;
@@ -80,7 +81,7 @@ export function Sheet({ open, onClose, title, children, footer, tall, label }: P
         {title !== undefined && (
           <header class="sheet-head">
             <h2 class="sheet-title">{title}</h2>
-            <button class="icon-btn" onClick={onClose} aria-label="Close">
+            <button class="icon-btn" onClick={onClose} aria-label={t('Close')}>
               <Icon name="x" />
             </button>
           </header>

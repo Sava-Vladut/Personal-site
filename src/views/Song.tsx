@@ -12,6 +12,7 @@ import { MusicEmbed, MusicThing, isTape, musicSub } from '../components/music';
 import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
+import { rich, t } from '../lib/i18n';
 
 type Open = null | 'emotion' | 'from';
 
@@ -47,13 +48,13 @@ export function SongView({ id }: { id: string }) {
     dirty.current = false;
     const request = ++saveRequest.current;
     const saving = saveSong(d).then(() => {
-      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus('Saved');
+      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus(t('Saved'));
       return true;
     }).catch(() => {
       if (!removing.current && request === saveRequest.current) {
         dirty.current = true;
-        setStatus('Couldn’t save');
-        toast('Couldn’t save this music. Try again.');
+        setStatus(t('Couldn’t save'));
+        toast(t('Couldn’t save this music. Try again.'));
       }
       return false;
     }).finally(() => {
@@ -102,9 +103,9 @@ export function SongView({ id }: { id: string }) {
     return (
       <div class="page">
         <div class="empty">
-          <h2 class="title-s">This isn’t in your records</h2>
-          <p>It may have been removed.</p>
-          <button class="btn btn-primary" onClick={() => goBack('media')}>Back to media</button>
+          <h2 class="title-s">{t('This isn’t in your records')}</h2>
+          <p>{t('It may have been removed.')}</p>
+          <button class="btn btn-primary" onClick={() => goBack('media')}>{t('Back to media')}</button>
         </div>
       </div>
     );
@@ -113,7 +114,7 @@ export function SongView({ id }: { id: string }) {
   const tape = isTape(m);
   const remove = async () => {
     if (removing.current) return;
-    if (!confirm(`Remove “${m.title}” from your records? Notes it’s in keep it.`)) return;
+    if (!confirm(t('Remove “{title}” from your records? Notes it’s in keep it.', { title: m.title }))) return;
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;
@@ -121,11 +122,11 @@ export function SongView({ id }: { id: string }) {
     try {
       const removed = await deleteSong(draft.id);
       if (alive.current) goBack('media');
-      if (removed) toast('Removed from your records', { label: 'Undo', run: () => saveSong(removed) });
+      if (removed) toast(t('Removed from your records'), { label: t('Undo'), run: () => saveSong(removed) });
     } catch {
       removing.current = false;
       dirty.current = true;
-      toast('Couldn’t remove this music. Try again.');
+      toast(t('Couldn’t remove this music. Try again.'));
     }
   };
   const done = async () => {
@@ -153,33 +154,33 @@ export function SongView({ id }: { id: string }) {
   return (
     <div class="page editor song-page">
       <div class="editor-bar">
-        <button class="glass glass-btn round" onClick={done} aria-label="Back"><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
-        <button class="glass glass-btn round" onClick={remove} aria-label="Remove from your records"><Icon name="trash" /></button>
-        <button class="glass glass-btn tinted" onClick={done}>Done</button>
+        <button class="glass glass-btn round" onClick={remove} aria-label={t('Remove from your records')}><Icon name="trash" /></button>
+        <button class="glass glass-btn tinted" onClick={done}>{t('Done')}</button>
       </div>
 
       <div class={`song-head${on ? ' is-on' : ''}${draft.repeat && !on ? ' is-repeat' : ''}`} style={{ '--c': main ? `var(--emo-${main})` : undefined }}>
-        <button class="song-thing" onClick={() => setOn(!on)} aria-pressed={on} aria-label={on ? 'Close the player' : tape ? 'Play the tape' : 'Put the record on'}>
+        <button class="song-thing" onClick={() => setOn(!on)} aria-pressed={on} aria-label={on ? t('Close the player') : tape ? t('Play the tape') : t('Put the record on')}>
           <MusicThing m={m} />
         </button>
         <h1 class="song-title">{m.title}</h1>
         <p class="song-sub">{musicSub(m)}</p>
         <Stars value={draft.rating} onChange={(rating) => update({ rating })} size={24} />
         <div class="row gap-s song-actions">
-          <button class="btn btn-primary btn-s" onClick={() => setOn(!on)}><Icon name={on ? 'player-pause' : 'player-play'} size={16} /> {on ? 'Stop' : 'Play'}</button>
-          <button class="btn btn-quiet btn-s" aria-pressed={draft.repeat} onClick={() => update({ repeat: !draft.repeat })}><Icon name="repeat" size={16} /> On repeat</button>
-          <a class="btn btn-quiet btn-s" href={m.link} target="_blank" rel="noopener noreferrer" aria-label="Open in Spotify"><Icon name="brand-spotify" size={16} /></a>
+          <button class="btn btn-primary btn-s" onClick={() => setOn(!on)}><Icon name={on ? 'player-pause' : 'player-play'} size={16} /> {on ? t('Stop') : t('Play')}</button>
+          <button class="btn btn-quiet btn-s" aria-pressed={draft.repeat} onClick={() => update({ repeat: !draft.repeat })}><Icon name="repeat" size={16} /> {t('On repeat')}</button>
+          <a class="btn btn-quiet btn-s" href={m.link} target="_blank" rel="noopener noreferrer" aria-label={t('Open in Spotify')}><Icon name="brand-spotify" size={16} /></a>
         </div>
       </div>
       {on && <div class="song-player"><MusicEmbed m={m} /></div>}
 
-      <div class="eyebrow person-label">How it makes you feel</div>
+      <div class="eyebrow person-label">{t('How it makes you feel')}</div>
       <div class="meta person-meta">
         {draft.emotions.map((eid) => <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />)}
         {draft.emotions.length < MAX_PERSON_EMOTIONS && (
           <button class="chip" onClick={() => setOpen('emotion')}>
-            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? 'Add' : 'Add a feeling'}
+            <Icon name="mood-plus" size={16} /> {draft.emotions.length ? t('Add') : t('Add a feeling')}
           </button>
         )}
       </div>
@@ -191,34 +192,34 @@ export function SongView({ id }: { id: string }) {
         </p>
       )}
 
-      <div class="eyebrow person-label">Thinking of</div>
+      <div class="eyebrow person-label">{t('Thinking of')}</div>
       <div class="meta person-meta">
         {from ? (
           <PersonChip p={from} onRemove={() => update({ from: null })} />
         ) : (
-          <button class="chip" onClick={() => setOpen('from')}><Icon name="user-plus" size={16} /> Add someone</button>
+          <button class="chip" onClick={() => setOpen('from')}><Icon name="user-plus" size={16} /> {t('Add someone')}</button>
         )}
       </div>
 
       <MentionText
         class="body-input person-text"
-        placeholder="What it means to you: where you first heard it, the line that gets you, when you play it…"
+        placeholder={t('What it means to you: where you first heard it, the line that gets you, when you play it…')}
         value={draft.text}
         onChange={(text) => update({ text })}
-        label="What it means to you"
+        label={t('What it means to you')}
       />
 
       <section class="section">
         <div class="row between">
-          <h2 class="section-title">In your journal</h2>
+          <h2 class="section-title">{t('In your journal')}</h2>
           {notes.length > 0 && <span class="muted small">{notes.length} {notes.length === 1 ? 'note' : 'notes'}</span>}
         </div>
         <div class="row gap-s person-actions">
-          <button class="btn btn-quiet grow" onClick={write}><Icon name="pencil" size={18} /> Write about it</button>
+          <button class="btn btn-quiet grow" onClick={write}><Icon name="pencil" size={18} /> {t('Write about it')}</button>
         </div>
         {felt.total > 0 && (
           <div class="card person-felt">
-            <div class="chart-title">How your notes with it felt</div>
+            <div class="chart-title">{t('How your notes with it felt')}</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
@@ -232,11 +233,11 @@ export function SongView({ id }: { id: string }) {
             </section>
           ))
         ) : (
-          <p class="empty-note">Add it to a note (the <Icon name="brand-spotify" size={14} /> button while writing) and the note shows up here.</p>
+          <p class="empty-note">{rich('Add it to a note (the {icon} button while writing) and the note shows up here.', { icon: <Icon name="brand-spotify" size={14} /> })}</p>
         )}
       </section>
 
-      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title="How does it make you feel?">
+      <Sheet open={open === 'emotion'} onClose={() => setOpen(null)} title={t('How does it make you feel?')}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
       <PeopleSheet

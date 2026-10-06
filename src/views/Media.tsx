@@ -11,6 +11,7 @@ import { Sky } from '../components/Sky';
 import { SpotifySheet } from '../components/SpotifySheet';
 import { BooksTab, bookStats } from './Books';
 import { MusicTab, musicStats } from './Music';
+import { t } from '../lib/i18n';
 
 type Tab = 'books' | 'music';
 const TAB_KEY = 'mm-media-tab';
@@ -76,7 +77,7 @@ export function Media({ query }: { query: URLSearchParams }) {
     const sp = query.get('spotify');
     if (sp) {
       setTab('music');
-      toast(sp === 'connected' ? 'Spotify connected' : sp === 'cancelled' ? 'Spotify login cancelled' : 'Couldn’t connect Spotify — try again');
+      toast(sp === 'connected' ? t('Spotify connected') : sp === 'cancelled' ? t('Spotify login cancelled') : t('Couldn’t connect Spotify — try again'));
     }
     if (query.has('add') || sp === 'connected') setAdding(asked === 'music' || sp ? 'music' : tab);
     if ([...query.keys()].length) history.replaceState(history.state, '', '#/media');
@@ -92,9 +93,9 @@ export function Media({ query }: { query: URLSearchParams }) {
         added++;
       }
       if (list.length === 1) return navigateAfterSheet('song/' + findSong(getSongs(), list[0])!.id);
-      toast(added ? `Added ${added} to your records` : 'Those are already in your records');
+      toast(added ? t('Added {n} to your records', { n: added }) : t('Those are already in your records'));
     } catch {
-      toast('Couldn’t save this music. Try again.');
+      toast(t('Couldn’t save this music. Try again.'));
     }
   };
 
@@ -102,7 +103,7 @@ export function Media({ query }: { query: URLSearchParams }) {
   const worlds = useMemo(() => (isBooks ? feltWorlds(books, 'books') : feltWorlds(songs, 'music')), [isBooks, books, songs]);
   const stats = isBooks ? bookStats(books) : musicStats(songs);
   const has = isBooks ? books.length > 0 : songs.length > 0;
-  const noun = isBooks ? 'books' : 'music';
+  const search = isBooks ? t('Search your books') : t('Search your music');
 
   return (
     <div class="page media-page">
@@ -111,20 +112,20 @@ export function Media({ query }: { query: URLSearchParams }) {
         <Sky world={worlds[0]} worlds={worlds} letters={tab} />
         <header class="page-head">
           <div class="row between">
-            <CloudTitle key={tab} text={isBooks ? 'Your shelf' : 'Your records'} />
+            <CloudTitle key={tab} text={isBooks ? t('Your shelf') : t('Your records')} />
             <div class="row">
               {has && (
-                <button class="icon-btn" aria-pressed={searching} aria-label={`Search your ${noun}`} title="Search" onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+                <button class="icon-btn" aria-pressed={searching} aria-label={search} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
                   <Icon name="search" />
                 </button>
               )}
-              <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? 'Add a book' : 'Add music'} title={isBooks ? 'Add a book' : 'Add music'}>
+              <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>
                 <Icon name="plus" />
               </button>
             </div>
           </div>
           {!has && (
-            <p class="subtitle">{isBooks ? 'Keep the books you read, rate them, and mention them in your notes.' : 'Keep the songs, albums and playlists that mean something to you.'}</p>
+            <p class="subtitle">{isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')}</p>
           )}
         </header>
 
@@ -139,15 +140,15 @@ export function Media({ query }: { query: URLSearchParams }) {
           </div>
         )}
 
-        <div class="seg tabs media-tabs" role="tablist" aria-label="Media" style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
-          <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> Books</button>
-          <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> Music</button>
+        <div class="seg tabs media-tabs" role="tablist" aria-label={t('Media')} style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
+          <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
+          <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> {t('Music')}</button>
         </div>
 
         {searching && has && (
           <label class="search">
             <Icon name="search" size={18} />
-            <input type="search" autoFocus placeholder={`Search your ${noun}`} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={`Search your ${noun}`} />
+            <input type="search" autoFocus placeholder={search} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={search} />
           </label>
         )}
       </div>
@@ -162,7 +163,7 @@ export function Media({ query }: { query: URLSearchParams }) {
         onClose={() => setAdding(null)}
         onAdd={keep}
         onConnect={() => connectSpotify('#/media?tab=music')}
-        addLabel={(n) => (n === 1 ? 'Add to your records' : `Add ${n} to your records`)}
+        addLabel={(n) => (n === 1 ? t('Add to your records') : t('Add {n} to your records', { n }))}
       />
     </div>
   );

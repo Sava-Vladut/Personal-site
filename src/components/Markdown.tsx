@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { PersonMention, SongMention, WikiLink } from './mentions';
+import { t } from '../lib/i18n';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
 // strings, so nothing written in a note can run as code.
@@ -138,7 +139,7 @@ function Blocks({ blocks, onTask }: { blocks: Block[]; onTask?: (line: number) =
                     checked={b.done}
                     disabled={!onTask}
                     onClick={(e) => { e.stopPropagation(); onTask?.(b.line); }}
-                    aria-label={b.done ? 'Done' : 'To do'}
+                    aria-label={b.done ? t('Done') : t('To do')}
                   />
                 ) : (
                   <span class="md-marker" aria-hidden="true">{b.kind === 'ol' ? b.marker : '•'}</span>

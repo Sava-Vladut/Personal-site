@@ -3,6 +3,7 @@
 // passkey (Face ID on an iPhone, with its passcode as the fallback). The journal lives on the device, so this
 // is a lock on the app here, not an account: nothing about it is sent to the server.
 import { observable } from './store';
+import { t } from './i18n';
 
 const KEY = 'mm-lock';
 /** Away longer than this and the app locks again; People locks as soon as you leave it or the app. */
@@ -45,7 +46,7 @@ export const unlockName = (() => {
   if (/iPhone|iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'Face ID';
   if (/Macintosh/.test(ua)) return 'Touch ID';
   if (/Windows/.test(ua)) return 'Windows Hello';
-  return 'biometrics';
+  return t('biometrics');
 })();
 
 /** Whether this device has a built-in way to confirm it's you (Face ID, Touch ID, Windows Hello…). */
@@ -97,7 +98,7 @@ async function create(): Promise<string> {
       timeout: 60_000,
     },
   })) as PublicKeyCredential | null;
-  if (!cred || !confirmed(cred.response, challenge, 'webauthn.create')) throw new Error(`${unlockName} didn’t confirm it’s you`);
+  if (!cred || !confirmed(cred.response, challenge, 'webauthn.create')) throw new Error(t('{name} didn’t confirm it’s you', { name: unlockName }));
   return b64url(cred.rawId);
 }
 
@@ -117,7 +118,7 @@ async function verify(): Promise<void> {
     },
   })) as PublicKeyCredential | null;
   if (!cred || b64url(cred.rawId) !== credential || !confirmed(cred.response, challenge, 'webauthn.get')) {
-    throw new Error(`${unlockName} didn’t confirm it’s you`);
+    throw new Error(t('{name} didn’t confirm it’s you', { name: unlockName }));
   }
 }
 
@@ -125,9 +126,9 @@ async function verify(): Promise<void> {
 export function lockError(e: unknown): string | null {
   const name = (e as DOMException)?.name;
   if (name === 'AbortError') return null;
-  if (name === 'NotAllowedError') return `${unlockName} was cancelled or didn’t recognise you.`;
-  if (name === 'InvalidStateError') return 'This device already has a passkey for My Mind.';
-  return (e as Error)?.message || `${unlockName} isn’t available right now.`;
+  if (name === 'NotAllowedError') return t('{name} was cancelled or didn’t recognise you.', { name: unlockName });
+  if (name === 'InvalidStateError') return t('This device already has a passkey for My Mind.');
+  return (e as Error)?.message || t('{name} isn’t available right now.', { name: unlockName });
 }
 
 export async function enableLock() {

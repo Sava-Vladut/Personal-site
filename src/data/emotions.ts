@@ -1,6 +1,7 @@
 // The emotion wheel, carried over from Mindful · Emotion Quest (grimnetwork.srvp.ro):
 // 8 core emotions ("worlds") → 3 families ("zones") each → 2 specific feelings each.
 // Colors are a CVD-validated categorical palette (light, dark) — see README.
+import { t } from '../lib/i18n';
 
 export type Valence = 'pleasant' | 'unpleasant';
 
@@ -221,13 +222,13 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 export const CORES: CoreDef[] = RAW.map(([name, def, valence, fams]) => {
   const id = slug(name);
   return {
-    id, name, def, depth: 0, core: id, parent: null, valence,
+    id, name: t(name), def: t(def), depth: 0, core: id, parent: null, valence,
     color: COLORS[id], sprite: SPRITES[id],
     families: fams.map(([fName, fDef, feels]) => {
       const fid = `${id}/${slug(fName)}`;
       return {
-        id: fid, name: fName, def: fDef, depth: 1, core: id, parent: id,
-        feelings: feels.map(([n, d]) => ({ id: `${fid}/${slug(n)}`, name: n, def: d, depth: 2, core: id, parent: fid }) as EmotionDef),
+        id: fid, name: t(fName), def: t(fDef), depth: 1, core: id, parent: id,
+        feelings: feels.map(([n, d]) => ({ id: `${fid}/${slug(n)}`, name: t(n), def: t(d), depth: 2, core: id, parent: fid }) as EmotionDef),
       } as FamilyDef;
     }),
   };

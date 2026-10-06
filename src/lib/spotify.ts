@@ -1,6 +1,7 @@
 // Talks to our own server (server/index.js), which holds the Spotify client secret and
 // keeps the access token in an encrypted, http-only cookie. The browser never sees either.
 import type { Music } from './store';
+import { t } from './i18n';
 
 export interface SpotifyStatus {
   configured: boolean;   // server has SPOTIFY_CLIENT_ID / SECRET
@@ -19,10 +20,10 @@ async function get<T>(path: string): Promise<T> {
   try {
     res = await fetch('/api/spotify' + path, { credentials: 'same-origin' });
   } catch {
-    throw new Error('Can’t reach the server. Spotify needs the app’s server running (npm start).');
+    throw new Error(t('Can’t reach the server. Spotify needs the app’s server running (npm start).'));
   }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `Spotify request failed (${res.status})`);
+  if (!res.ok) throw new Error(body.error ? t(body.error) : t('Spotify request failed ({status})', { status: res.status }));
   return body as T;
 }
 
@@ -48,5 +49,5 @@ export const embedUrl = (m: Music) => `https://open.spotify.com/embed/${m.kind}/
 export const embedHeight = (m: Music) => (m.kind === 'track' || m.kind === 'episode' ? 152 : 352);
 
 export const KIND_LABEL: Record<Music['kind'], string> = {
-  track: 'Song', album: 'Album', playlist: 'Playlist', episode: 'Episode', show: 'Podcast', artist: 'Artist',
+  track: t('Song'), album: t('Album'), playlist: t('Playlist'), episode: t('Episode'), show: t('Podcast'), artist: t('Artist'),
 };

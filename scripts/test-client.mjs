@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { rolldown } from 'rolldown';
+import { i18n } from './i18n-stub.mjs';
 
 const compiled = new Map();
 async function load(file, mocks = {}, globals = {}) {
@@ -12,7 +13,7 @@ async function load(file, mocks = {}, globals = {}) {
   }
   const module = { exports: {} };
   vm.runInNewContext(compiled.get(file), {
-    module, exports: module.exports, require: (id) => mocks[id] ?? {},
+    module, exports: module.exports, require: (id) => mocks[id] ?? (id.endsWith('/i18n') ? i18n : {}),
     console, Blob, URL, URLSearchParams, atob, Uint8Array, Event, AbortController, setTimeout, clearTimeout,
     ...globals,
   });

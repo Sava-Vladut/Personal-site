@@ -3,6 +3,7 @@
 import { observable, toast } from './store';
 import { VOICE_LANGUAGES, VOICE_MODELS, VOICE_MODEL_CACHE, VOICE_RUNTIME_CACHE, type VoiceModel, type VoiceReply, type VoiceRequest } from './voiceConfig';
 import { cleanTranscript, loudness, toMono16k } from './voiceText';
+import { t } from './i18n';
 
 export interface VoiceState {
   /** The model chosen in Settings, whether or not it has been downloaded. */
@@ -68,9 +69,9 @@ const jobs = new Map<number, { resolve: (text: string) => void; reject: (error: 
 let loading: { repo: string; promise: Promise<void>; resolve: () => void; reject: (error: Error) => void } | null = null;
 
 function friendly(message: string) {
-  if (/fetch|network|import|load failed|offline/i.test(message)) return 'Couldn’t download the speech model. Check your connection and try again.';
-  if (/memory|alloc/i.test(message)) return 'This device ran out of memory. Try the Quick model in Settings.';
-  return 'Voice typing ran into a problem: ' + message;
+  if (/fetch|network|import|load failed|offline/i.test(message)) return t('Couldn’t download the speech model. Check your connection and try again.');
+  if (/memory|alloc/i.test(message)) return t('This device ran out of memory. Try the Quick model in Settings.');
+  return t('Voice typing ran into a problem: {message}', { message });
 }
 
 function crash(error: Error) {
@@ -100,7 +101,7 @@ function connect() {
   };
   w.onerror = (e) => {
     e.preventDefault();
-    crash(new Error('Voice typing couldn’t start in this browser.'));
+    crash(new Error(t('Voice typing couldn’t start in this browser.')));
   };
   return (worker = w);
 }
@@ -151,7 +152,7 @@ export async function downloadModel(id = state$.get().model) {
     const { installed } = state$.get();
     set({ installed: installed.includes(model.id) ? installed : [...installed, model.id] });
   } catch (error) {
-    set({ error: error instanceof Error ? error.message : 'Couldn’t download the speech model.' });
+    set({ error: error instanceof Error ? error.message : t('Couldn’t download the speech model.') });
   } finally {
     set({ preparing: false });
     rest();
@@ -184,10 +185,10 @@ export function setVoiceSink(next: (text: string) => void) {
 
 function microphoneError(error: unknown) {
   const name = (error as { name?: string })?.name;
-  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Microphone access is blocked. Allow it for this site in your browser’s settings.';
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No microphone found.';
-  if (name === 'NotReadableError') return 'The microphone is in use by another app.';
-  return 'Couldn’t start the microphone.';
+  if (name === 'NotAllowedError' || name === 'SecurityError') return t('Microphone access is blocked. Allow it for this site in your browser’s settings.');
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return t('No microphone found.');
+  if (name === 'NotReadableError') return t('The microphone is in use by another app.');
+  return t('Couldn’t start the microphone.');
 }
 
 const stopTracks = (stream: MediaStream) => stream.getTracks().forEach((t) => t.stop());
@@ -218,7 +219,7 @@ export async function startRecording() {
     void loadModel(voiceModel().repo).catch(() => {});
   } catch {
     stopTracks(stream);
-    toast('Couldn’t start recording in this browser.');
+    toast(t('Couldn’t start recording in this browser.'));
   }
 }
 
@@ -253,18 +254,18 @@ export async function stopRecording() {
     });
     stopTracks(s.stream);
     const blob = new Blob(s.chunks, { type: s.recorder.mimeType });
-    if (Date.now() - s.started < 500 || !blob.size) return void toast('Too short — hold on a bit longer.');
+    if (Date.now() - s.started < 500 || !blob.size) return void toast(t('Too short — hold on a bit longer.'));
     const audio = await samples(blob);
-    if (loudness(audio) < QUIET) return void toast('Didn’t hear anything. Is the microphone covered?');
+    if (loudness(audio) < QUIET) return void toast(t('Didn’t hear anything. Is the microphone covered?'));
     const { model, language } = state$.get();
     await loadModel(voiceModel(model).repo);
     const text = cleanTranscript(await recognise(audio, language));
-    if (!text) return void toast('Didn’t catch any words.');
+    if (!text) return void toast(t('Didn’t catch any words.'));
     if (sink) sink(text);
-    else toast('The note was closed before this was ready.', { label: 'Copy', run: () => void navigator.clipboard?.writeText(text) });
+    else toast(t('The note was closed before this was ready.'), { label: t('Copy'), run: () => void navigator.clipboard?.writeText(text) });
   } catch (error) {
     stopTracks(s.stream);
-    toast(error instanceof Error && !/decode/i.test(error.message) ? error.message : 'Couldn’t read that recording. Try again.');
+    toast(error instanceof Error && !/decode/i.test(error.message) ? error.message : t('Couldn’t read that recording. Try again.'));
   } finally {
     set({ activity: 'idle', seconds: 0 });
     rest();

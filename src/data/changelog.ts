@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.41.0',
+    date: '2026-10-06',
+    changes: [
+      'The app now speaks Romanian too: choose English or Română under Settings › Appearance › Language',
+      'In Romanian, every screen, message, feeling and its definition, weather word, stats insight and the text export are translated',
+      'Dates, times and numbers follow the language you pick, and place search answers in it',
+    ],
+  },
+  {
     version: '1.40.1',
     date: '2026-10-05',
     changes: [

@@ -1,16 +1,17 @@
 // WMO weather codes, as Open-Meteo reports them, in words and in the groups the stats compare.
 import type { UiName as IconName } from '../components/icons';
+import { t } from '../lib/i18n';
 
 export type SkyGroup = 'clear' | 'partly' | 'overcast' | 'fog' | 'rain' | 'snow' | 'storm';
 
 export const SKY_GROUPS: { id: SkyGroup; name: string; icon: IconName }[] = [
-  { id: 'clear', name: 'Clear', icon: 'sun' },
-  { id: 'partly', name: 'Partly cloudy', icon: 'haze' },
-  { id: 'overcast', name: 'Overcast', icon: 'cloud' },
-  { id: 'fog', name: 'Fog', icon: 'mist' },
-  { id: 'rain', name: 'Rain', icon: 'cloud-rain' },
-  { id: 'snow', name: 'Snow', icon: 'cloud-snow' },
-  { id: 'storm', name: 'Thunderstorm', icon: 'cloud-storm' },
+  { id: 'clear', name: t('Clear'), icon: 'sun' },
+  { id: 'partly', name: t('Partly cloudy'), icon: 'haze' },
+  { id: 'overcast', name: t('Overcast'), icon: 'cloud' },
+  { id: 'fog', name: t('Fog'), icon: 'mist' },
+  { id: 'rain', name: t('Rain'), icon: 'cloud-rain' },
+  { id: 'snow', name: t('Snow'), icon: 'cloud-snow' },
+  { id: 'storm', name: t('Thunderstorm'), icon: 'cloud-storm' },
 ];
 
 const NAMES: Record<number, string> = {
@@ -32,7 +33,7 @@ export function skyGroup(code: number): SkyGroup {
   return 'rain';
 }
 
-export const weatherName = (code: number) => NAMES[code] ?? SKY_GROUPS.find((g) => g.id === skyGroup(code))!.name;
+export const weatherName = (code: number) => (NAMES[code] ? t(NAMES[code]) : SKY_GROUPS.find((g) => g.id === skyGroup(code))!.name);
 
 /** A clear or partly cloudy sky after dark shows the moon. */
 export function weatherIcon(code: number, dark?: boolean): IconName {

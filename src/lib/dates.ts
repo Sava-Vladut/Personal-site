@@ -1,8 +1,9 @@
+import { LOCALE, t } from './i18n';
+
 // Dates are stored as local calendar keys ('YYYY-MM-DD') so a note written at 23:50
 // stays on that day no matter the timezone the journal is later opened in.
 
 export const DAY = 864e5;
-const LOCALE = 'en-GB';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -37,18 +38,20 @@ export const startOfWeek = (k: string, weekStart: 0 | 1 = 1) => {
   return addDays(k, -((dow - weekStart + 7) % 7));
 };
 
+/** Romanian writes day and month names in lower case; at the start of a label they still take a capital. */
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const fmt = (k: string, o: Intl.DateTimeFormatOptions) => parseKey(k).toLocaleDateString(LOCALE, o);
 
-export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const WEEKDAYS = [t('Mon'), t('Tue'), t('Wed'), t('Thu'), t('Fri'), t('Sat'), t('Sun')];
 
 /** "Today", "Yesterday", "Thu 24 Sep", "Thu 24 Sep 2025" */
 export function dayLabel(k: string) {
-  const t = todayKey();
-  if (k === t) return 'Today';
-  if (k === addDays(t, -1)) return 'Yesterday';
-  if (k === addDays(t, 1)) return 'Tomorrow';
-  const sameYear = k.slice(0, 4) === t.slice(0, 4);
-  return fmt(k, { weekday: 'short', day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) });
+  const today = todayKey();
+  if (k === today) return t('Today');
+  if (k === addDays(today, -1)) return t('Yesterday');
+  if (k === addDays(today, 1)) return t('Tomorrow');
+  const sameYear = k.slice(0, 4) === today.slice(0, 4);
+  return cap(fmt(k, { weekday: 'short', day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) }));
 }
 
 /** "24 Sep" / "24 Sep 2025" */
@@ -70,8 +73,8 @@ export function rangeLabel(start: string, end: string | null) {
   })}`;
 }
 
-export const longToday = () => new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+export const longToday = () => cap(new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' }));
 export const monthLabel = (y: number, m: number) =>
-  new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
-export const monthShort = (y: number, m: number) => new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'short' });
+  cap(new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' }));
+export const monthShort = (y: number, m: number) => cap(new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'short' }));
 export const timeLabel = (ms: number) => new Date(ms).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });

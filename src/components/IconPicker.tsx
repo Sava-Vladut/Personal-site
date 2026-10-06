@@ -3,6 +3,7 @@ import { iconLabel, loadAll, loadCurated, svgInner, viewBoxOf, type IconCategory
 import { rememberIcon } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import { t } from '../lib/i18n';
 
 // Everyday words → the words icon names actually use.
 const SYNONYMS: Record<string, string[]> = {
@@ -61,7 +62,7 @@ export function IconSheet({ open, onClose, value, onChange }: {
       setBodies(c.bodies);
       setError('');
     }).catch(() => {
-      if (active) setError('Couldn’t load icons. Check your connection and try again.');
+      if (active) setError(t('Couldn’t load icons. Check your connection and try again.'));
     });
     return () => { active = false; };
   }, [open, cats]);
@@ -88,7 +89,7 @@ export function IconSheet({ open, onClose, value, onChange }: {
       setAll(a);
       setTab(cats?.length ?? 0);
     } catch {
-      setError('Couldn’t load the full icon set. Check your connection and try again.');
+      setError(t('Couldn’t load the full icon set. Check your connection and try again.'));
     }
     setLoadingAll(false);
   };
@@ -101,28 +102,28 @@ export function IconSheet({ open, onClose, value, onChange }: {
     <Sheet
       open={open}
       onClose={onClose}
-      title="Icon"
+      title={t('Icon')}
       tall
-      footer={value ? <button class="btn btn-quiet" onClick={() => { onChange(null); onClose(); }}>Remove icon</button> : undefined}
+      footer={value ? <button class="btn btn-quiet" onClick={() => { onChange(null); onClose(); }}>{t('Remove icon')}</button> : undefined}
     >
       <label class="search">
         <Icon name="search" size={18} />
         <input
           type="search"
-          placeholder={all ? 'Search all icons' : 'Search icons — try “tired” or “rain”'}
+          placeholder={all ? t('Search all icons') : t('Search icons — try “tired” or “rain”')}
           value={q}
           onInput={(e) => setQ(e.currentTarget.value)}
-          aria-label="Search icons"
+          aria-label={t('Search icons')}
         />
       </label>
       {!results && cats && (
         <div class="chips scroll-x" role="tablist">
           {tabs.map((c, i) => (
-            <button class="chip" role="tab" aria-selected={tab === i} aria-pressed={tab === i} onClick={() => { setTab(i); setLimit(240); }}>{c.name}</button>
+            <button class="chip" role="tab" aria-selected={tab === i} aria-pressed={tab === i} onClick={() => { setTab(i); setLimit(240); }}>{t(c.name)}</button>
           ))}
         </div>
       )}
-      {!cats && <p class="hint">Loading icons…</p>}
+      {!cats && <p class="hint">{t('Loading icons…')}</p>}
       <div class="icon-grid">
         {shown.map((id) => (
           <button key={id} class="icon-cell" aria-pressed={id === value} title={iconLabel(id)} aria-label={iconLabel(id)} onClick={() => pick(id)}>
@@ -131,13 +132,13 @@ export function IconSheet({ open, onClose, value, onChange }: {
         ))}
       </div>
       {list.length > limit && (
-        <div class="center pad"><button class="btn btn-quiet" onClick={() => setLimit(limit + 480)}>Show more</button></div>
+        <div class="center pad"><button class="btn btn-quiet" onClick={() => setLimit(limit + 480)}>{t('Show more')}</button></div>
       )}
-      {results && !results.length && <p class="hint center">No icons match “{q}”{all ? '' : ' here'}.</p>}
+      {results && !results.length && <p class="hint center">{all ? t('No icons match “{q}”.', { q }) : t('No icons match “{q}” here.', { q })}</p>}
       {!all && (
         <div class="center pad">
           <button class="btn btn-quiet" onClick={searchAll} disabled={loadingAll}>
-            {loadingAll ? 'Loading…' : 'Browse all 4,900 icons'}
+            {loadingAll ? t('Loading…') : t('Browse all 4,900 icons')}
           </button>
         </div>
       )}

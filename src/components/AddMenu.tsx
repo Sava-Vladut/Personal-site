@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLens } from '../lib/glass';
 import { navigateAfterSheet, pushBack } from '../lib/router';
 import { Icon, type UiName } from './icons';
+import { t } from '../lib/i18n';
 
 const ADD: [to: string, label: string, sub: string, icon: UiName][] = [
-  ['note/new', 'Note', 'Write about your day', 'pencil'],
-  ['tracker', 'Check-in', 'How you feel right now', 'mood-plus'],
-  ['person/new', 'Person', 'Someone who matters', 'user-plus'],
-  ['media?tab=books&add', 'Book', 'Read, reading or wanted', 'books'],
-  ['media?tab=music&add', 'Music', 'A song, album or playlist', 'vinyl'],
+  ['note/new', t('Note'), t('Write about your day'), 'pencil'],
+  ['tracker', t('Check-in'), t('How you feel right now'), 'mood-plus'],
+  ['person/new', t('Person'), t('Someone who matters'), 'user-plus'],
+  ['media?tab=books&add', t('Book'), t('Read, reading or wanted'), 'books'],
+  ['media?tab=music&add', t('Music'), t('A song, album or playlist'), 'vinyl'],
 ];
 
 const CLOSE_MS = 340;
@@ -34,8 +35,8 @@ export function AddMenu({ open, onOpenChange, label }: { open: boolean; onOpenCh
     if (!wasOpen.current) return;
     wasOpen.current = false;
     setClosing(true);
-    const t = setTimeout(() => setClosing(false), CLOSE_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setClosing(false), CLOSE_MS);
+    return () => clearTimeout(timer);
   }, [open]);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export function AddMenu({ open, onOpenChange, label }: { open: boolean; onOpenCh
         ref={button}
         class="nav-new glass glass-btn tinted"
         onClick={() => onOpenChange(!open)}
-        aria-label="Add"
+        aria-label={t('Add')}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -86,7 +87,7 @@ export function AddMenu({ open, onOpenChange, label }: { open: boolean; onOpenCh
       {(open || closing) && (
         <>
           <div ref={scrim} class={`add-scrim${open ? '' : ' closing'}`} onClick={() => onOpenChange(false)} />
-          <div ref={menu} class={`add-menu${open ? '' : ' closing'}`} role="menu" aria-label="Add" onKeyDown={arrows} style={{ '--n': ADD.length }}>
+          <div ref={menu} class={`add-menu${open ? '' : ' closing'}`} role="menu" aria-label={t('Add')} onKeyDown={arrows} style={{ '--n': ADD.length }}>
             {ADD.map(([to, label, sub, icon], k) => (
               <div class="add-item" role="none" style={{ '--k': k }}>
                 <button class="add-tile glass" role="menuitem" onClick={() => pick(to)}>
