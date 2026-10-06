@@ -256,7 +256,7 @@
   background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 60%, transparent) 40%, transparent);
 }
 .journal-top .icon-btn:hover, .journal-top .icon-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--surface) 70%, transparent); }
-.journal-top .page-head { margin-bottom: 30px; }
+.journal-top .page-head { margin-bottom: 18px; }
 .journal-top .filter-note { margin: 10px 0 0; }
 /* what sits on the sky is frosted, so the clouds show through */
 .journal-top .prompt, .journal-top > .card, .journal-top .search {

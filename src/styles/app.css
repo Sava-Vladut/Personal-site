@@ -255,25 +255,16 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
    Journal
    ============================================================ */
 
-.prompt { padding: 14px 12px 12px; margin: 6px 0 4px; container-type: inline-size; }
-.prompt-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; padding: 0 4px; }
-.prompt-q { font: 500 18px/1.25 var(--serif); letter-spacing: -0.005em; }
-.prompt-sub, .prompt-last { font-size: 12.5px; color: var(--ink-3); }
+.prompt {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 12px 12px 16px; margin: 6px 0 4px; text-align: left;
+  transition: transform 0.15s var(--ease);
+}
+.prompt-q { flex: 1; min-width: 0; font: 500 17px/1.25 var(--serif); letter-spacing: -0.005em; }
+.prompt-sub, .prompt-last { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
 .prompt-last { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
-@media (hover: hover) { .prompt-last:hover { color: var(--ink); } }
-/* the eight worlds, unpleasant then pleasant, each tinted with its own colour; two rows of four when narrow */
-.prompt-worlds { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; margin-top: 12px; }
-@container (max-width: 320px) { .prompt-worlds { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; } }
-.prompt-worlds button {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 10px 0 8px; border-radius: 12px;
-  background: color-mix(in oklab, var(--c) 9%, var(--surface-2));
-  transition: background-color 0.15s, transform 0.15s var(--ease);
-}
-.prompt-worlds span {
-  max-width: 100%; overflow: hidden; white-space: nowrap;
-  font-size: 10px; font-weight: 600; letter-spacing: -0.01em; color: color-mix(in oklab, var(--c) 45%, var(--ink-2));
-}
-@media (hover: hover) { .prompt-worlds button:hover { background: color-mix(in oklab, var(--c) 18%, var(--surface-2)); transform: translateY(-1px); } }
+.prompt > svg { flex: none; color: var(--ink-3); }
+@media (hover: hover) { .prompt:hover .prompt-last, .prompt:hover > svg { color: var(--ink); } }
+.prompt:active { transform: scale(0.985); }
 
 .day { margin-top: 28px; }
 .day-label {
@@ -956,12 +947,12 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 /* ---------- press feedback: things you tap sink a little and spring back ---------- */
 
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick,
-    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .emo-x, .toast-action) {
+    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .emo-x, .toast-action) {
   transition: border-color 0.15s, background-color 0.15s, color 0.15s, box-shadow 0.15s, scale 0.45s var(--spring);
 }
 :is(.note, .checkin, .person-card, .dex-link, .track, .list-row.action, .img-pick) { --press: 0.98; }
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick,
-    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .prompt-worlds button, .emo-x, .toast-action):active:not(:disabled) {
+    .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .emo-x, .toast-action):active:not(:disabled) {
   scale: var(--press, 0.93);
   transition-duration: 0.15s, 0.15s, 0.15s, 0.15s, 0.12s;
 }

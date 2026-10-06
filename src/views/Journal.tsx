@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { usePref } from '../lib/prefs';
-import { CORE, EMOTION, PICKER_ORDER, coreOf, shortName } from '../data/emotions';
+import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { useBooks, useEntries, usePeople, useReady, useSettings, type Entry, type WebImage } from '../lib/store';
@@ -241,32 +241,21 @@ function CheckInRun({ list }: { list: Entry[] }) {
   );
 }
 
-/** The nudge to check in: pick the world that feels closest. Once you have today, it shows how you last felt. */
+/** The nudge to check in, on one line: tap it to pick how you feel. Once you have today, it shows how you last felt. */
 function CheckInPrompt({ entries }: { entries: Entry[] }) {
   const today = todayKey();
   const last = entries.find((e) => e.kind === 'checkin' && e.date === today && e.emotions.length);
   const em = last ? EMOTION[last.emotions[0]] : null;
   return (
-    <section class="prompt card">
-      <div class="prompt-head">
-        <h2 class="prompt-q">{t('How are you feeling?')}</h2>
-        {em ? (
-          <button class="prompt-last" onClick={() => navigate('note/' + last!.id)}>
-            <Sprite core={em.core} size={11} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}
-          </button>
-        ) : (
-          <span class="prompt-sub">{t('Name it to tame it.')}</span>
-        )}
-      </div>
-      <div class="prompt-worlds">
-        {PICKER_ORDER.map((c, i) => (
-          <button data-core={c} style={{ '--c': `var(--emo-${c})` }} aria-label={CORE[c].name} title={CORE[c].name} onClick={() => navigate('tracker?world=' + c)}>
-            <Sprite core={c} size={18} idle delay={i * 370} />
-            <span>{shortName(c)}</span>
-          </button>
-        ))}
-      </div>
-    </section>
+    <button class="prompt card" style={em ? { '--c': `var(--emo-${em.core})` } : undefined} onClick={() => navigate('tracker')}>
+      <h2 class="prompt-q">{t('How are you feeling?')}</h2>
+      {em ? (
+        <span class="prompt-last"><Sprite core={em.core} size={11} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}</span>
+      ) : (
+        <span class="prompt-sub">{t('Name it to tame it.')}</span>
+      )}
+      <Icon name="chevron-right" size={16} />
+    </button>
   );
 }
 

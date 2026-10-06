@@ -113,7 +113,7 @@ function WheelMark() {
   const at = (a: number) => `${(20 + r * Math.sin(rad(a))).toFixed(2)} ${(20 - r * Math.cos(rad(a))).toFixed(2)}`;
   return (
     <span class="nw-mark-wrap" aria-hidden="true">
-      <svg class="nw-mark" width="34" height="34" viewBox="0 0 40 40">
+      <svg class="nw-mark" width="44" height="44" viewBox="0 0 40 40">
         <g class="nw-mark-arcs">
           {tops.map((s, k) => (
             <path
