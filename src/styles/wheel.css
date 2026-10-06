@@ -94,8 +94,9 @@
   animation: nw-sway 13s ease-in-out infinite alternate;
 }
 @keyframes nw-sway { from { --nw-sway: -7deg; } to { --nw-sway: 7deg; } }
+.nw-spin { rotate: var(--spin, 0deg); transform-box: view-box; transform-origin: 200px 200px; }
 .nw-turn { rotate: var(--nw-sway); transform-box: view-box; transform-origin: 200px 200px; }
-.nw-turn .nw-label { rotate: calc(-1 * var(--nw-sway)); transform-box: view-box; }
+.nw-turn .nw-label { rotate: calc(-1 * (var(--nw-sway) + var(--spin, 0deg))); transform-box: view-box; }
 
 .nw-seg {
   --f: var(--nw-seg);

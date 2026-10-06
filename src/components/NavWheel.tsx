@@ -257,10 +257,23 @@ export function NavWheel({ world }: { world?: string | null }) {
       act(s);
     }
   };
+  const spin = useRef({ angle: 0, raf: 0 });
+  useEffect(() => () => cancelAnimationFrame(spin.current.raf), []);
   const outside = (ev: MouseEvent) => {
     const tg = ev.target as Element;
-    if (leaving) return;
-    if (tg === ev.currentTarget || tg.matches('.nw-svg, .nw-stage, .nw-body')) back();
+    if (leaving || !(tg === ev.currentTarget || tg.matches('.nw-svg, .nw-stage, .nw-body'))) return;
+    const g = stage.current?.querySelector<SVGGElement>('.nw-spin');
+    if (!g || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    haptic(5);
+    cancelAnimationFrame(spin.current.raf);
+    const from = spin.current.angle, by = 360 + Math.random() * 360, start = performance.now(), dur = 1800 + by;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / dur);
+      spin.current.angle = from + by * (1 - (1 - p) ** 3);
+      g.style.setProperty('--spin', `${spin.current.angle.toFixed(2)}deg`);
+      if (p < 1) spin.current.raf = requestAnimationFrame(step);
+    };
+    spin.current.raf = requestAnimationFrame(step);
   };
 
   const { z, d0, d1 } = view;
@@ -359,9 +372,11 @@ export function NavWheel({ world }: { world?: string | null }) {
             <Letters r={222} world={sky} class="nw-ring far" />
             <Letters r={208} world={sky} class="nw-ring" />
             {hub > 0.5 && <circle cx={C} cy={C} r={hub} class="nw-hub" onClick={(ev) => { ev.stopPropagation(); close(); }} />}
-            <g class="nw-turn">
-              {shapes}
-              <g class="nw-labels">{labels}</g>
+            <g class="nw-spin" style={{ '--spin': `${spin.current.angle}deg` }}>
+              <g class="nw-turn">
+                {shapes}
+                <g class="nw-labels">{labels}</g>
+              </g>
             </g>
             <g class="nw-labels">
               {hub > 20 && (

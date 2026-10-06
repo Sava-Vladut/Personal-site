@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.48.0',
+    date: '2026-10-06',
+    changes: [
+      'Tap the background around the wheel to give it a spin (the middle, the X and Escape still close it)',
+    ],
+  },
+  {
     version: '1.47.2',
     date: '2026-10-06',
     changes: [
