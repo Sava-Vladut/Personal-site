@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.43.2',
+    date: '2026-10-06',
+    changes: [
+      'The bottom tab bar no longer has Check in; start one from the + New button as before',
+    ],
+  },
+  {
     version: '1.43.1',
     date: '2026-10-06',
     changes: [

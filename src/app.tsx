@@ -30,6 +30,8 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['media', t('Media'), 'library', 'media'],
 ];
 
+const TAB_NAV = NAV.filter(([name]) => name !== 'tracker');
+
 /** Which sidebar item a page belongs under. */
 const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings' };
 
@@ -100,7 +102,7 @@ function TabBar({ active }: { active: RouteName }) {
   const bar = useRef<HTMLDivElement>(null);
   useLens(bar);
   const [adding, setAdding] = useState(false);
-  const i = NAV.findIndex(([name]) => name === active);
+  const i = TAB_NAV.findIndex(([name]) => name === active);
   // The pill's leading edge moves first and the trailing edge catches up, so it stretches like a drop.
   const prev = useRef(i);
   const dir = useRef<'left' | 'right'>('right');
@@ -110,9 +112,9 @@ function TabBar({ active }: { active: RouteName }) {
   }
   return (
     <nav class="nav" aria-label={t('Main')}>
-      <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': NAV.length }} inert={adding}>
+      <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': TAB_NAV.length }} inert={adding}>
         {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
-        {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} label={label} icon={icon} path={path} />)}
+        {TAB_NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} label={label} icon={icon} path={path} />)}
       </div>
       <AddMenu open={adding} onOpenChange={setAdding} />
     </nav>
