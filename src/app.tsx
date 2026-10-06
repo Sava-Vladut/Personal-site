@@ -4,7 +4,7 @@ import { leftPeople, useLock } from './lib/lock';
 import { LockScreen } from './components/Lock';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
-import { AddFan, AddMenu } from './components/AddMenu';
+import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
 import { Toasts } from './components/Toasts';
 import { Icon, type UiName } from './components/icons';
@@ -104,8 +104,8 @@ export function App() {
 function TabBar() {
   const [adding, setAdding] = useState(false);
   return (
-    <nav class="nav fan-nav" aria-label={t('Add')}>
-      <AddFan open={adding} onOpenChange={setAdding} />
+    <nav class="nav add-nav" aria-label={t('Add')}>
+      <AddMenu open={adding} onOpenChange={setAdding} />
     </nav>
   );
 }

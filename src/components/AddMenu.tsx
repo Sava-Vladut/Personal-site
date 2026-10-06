@@ -1,131 +1,32 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { useLens } from '../lib/glass';
 import { navigateAfterSheet, pushBack } from '../lib/router';
 import { Icon, type UiName } from './icons';
 import { haptic } from '../lib/haptics';
-import { t } from '../lib/i18n';
+import { LOCALE, t } from '../lib/i18n';
 
-const ADD: [to: string, label: string, sub: string, icon: UiName][] = [
-  ['note/new', t('Note'), t('Write about your day'), 'pencil'],
-  ['tracker', t('Check-in'), t('How you feel right now'), 'mood-plus'],
-  ['person/new', t('Person'), t('Someone who matters'), 'user-plus'],
-  ['media?tab=books&add', t('Book'), t('Read, reading or wanted'), 'books'],
-  ['media?tab=music&add', t('Music'), t('A song, album or playlist'), 'vinyl'],
-];
-
-const CLOSE_MS = 340;
-
-/**
- * The "+ New" button and the little menu it opens: a stack of glass tiles that unfolds under
- * the button at the top of the desktop sidebar. (On phones it's AddFan, below.)
- */
-export function AddMenu({ open, onOpenChange, label }: { open: boolean; onOpenChange: (open: boolean) => void; label?: string }) {
-  const button = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  const scrim = useRef<HTMLDivElement>(null);
-  const [closing, setClosing] = useState(false);
-  const wasOpen = useRef(false);
-  useLens(button, { strength: 14 });
-
-  useEffect(() => {
-    if (open) {
-      wasOpen.current = true;
-      setClosing(false);
-      return;
-    }
-    if (!wasOpen.current) return;
-    wasOpen.current = false;
-    setClosing(true);
-    const timer = setTimeout(() => setClosing(false), CLOSE_MS);
-    return () => clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const release = pushBack(() => onOpenChange(false));
-    const b = button.current!.getBoundingClientRect();
-    scrim.current?.style.setProperty('--ox', `${b.left + b.width / 2}px`);
-    scrim.current?.style.setProperty('--oy', `${b.top + b.height / 2}px`);
-    const raf = requestAnimationFrame(() => menu.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({ preventScroll: true }));
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOpenChange(false);
-    };
-    addEventListener('keydown', onKey);
-    return () => {
-      release();
-      cancelAnimationFrame(raf);
-      removeEventListener('keydown', onKey);
-      if (menu.current?.contains(document.activeElement)) button.current?.focus({ preventScroll: true });
-    };
-  }, [open]);
-
-  const pick = (to: string) => {
-    navigateAfterSheet(to);
-    onOpenChange(false);
-  };
-  const arrows = (e: KeyboardEvent) => {
-    const step = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
-    if (!step) return;
-    e.preventDefault();
-    const items = [...menu.current!.querySelectorAll<HTMLElement>('[role=menuitem]')];
-    const i = items.indexOf(document.activeElement as HTMLElement);
-    items[(i + step + items.length) % items.length].focus();
-  };
-
-  return (
-    <>
-      <button
-        ref={button}
-        class="nav-new glass glass-btn tinted"
-        onClick={() => onOpenChange(!open)}
-        aria-label={t('Add')}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <span class="nav-plus"><Icon name="plus" size={26} stroke={2} /></span>
-        {label && <span class="nav-new-label">{label}</span>}
-      </button>
-      {(open || closing) && (
-        <>
-          <div ref={scrim} class={`add-scrim${open ? '' : ' closing'}`} onClick={() => onOpenChange(false)} />
-          <div ref={menu} class={`add-menu${open ? '' : ' closing'}`} role="menu" aria-label={t('Add')} onKeyDown={arrows} style={{ '--n': ADD.length }}>
-            {ADD.map(([to, label, sub, icon], k) => (
-              <div class="add-item" role="none" style={{ '--k': k }}>
-                <button class="add-tile glass" role="menuitem" onClick={() => pick(to)}>
-                  <span class="add-icon"><Icon name={icon} size={20} stroke={1.8} /></span>
-                  <span class="add-text"><b>{label}</b><small>{sub}</small></span>
-                  <Icon name="arrow-up-right" size={16} class="add-go" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-
-/* ---------- the fan: the phone's + button, alone in the middle of the bottom ---------- */
-
-// left to right along the arc, the most used in the middle; each wears a world's colour
-const FAN: [to: string, label: string, sub: string, icon: UiName, hue: string][] = [
-  ['person/new', t('Person'), t('Someone who matters'), 'user-plus', 'love-connection'],
-  ['tracker', t('Check-in'), t('How you feel right now'), 'mood-plus', 'calm-safety'],
+// the first is the big one across the top; the rest share a grid. Each wears a world's colour.
+const ADD: [to: string, label: string, sub: string, icon: UiName, hue: string][] = [
   ['note/new', t('Note'), t('Write about your day'), 'pencil', 'hope-interest'],
+  ['tracker', t('Check-in'), t('How you feel right now'), 'mood-plus', 'calm-safety'],
+  ['person/new', t('Person'), t('Someone who matters'), 'user-plus', 'love-connection'],
   ['media?tab=books&add', t('Book'), t('Read, reading or wanted'), 'books', 'sadness'],
   ['media?tab=music&add', t('Music'), t('A song, album or playlist'), 'vinyl', 'fear'],
 ];
-const SPREAD = 140;   // degrees the arc covers, centred straight up
-const PICK_MS = 300;  // the chosen bubble's moment before the page changes
-const SLIDE = 12;     // a finger that moves further than this while pressing is choosing by sliding
+
+const CLOSE_MS = 260;
+const PICK_MS = 320; // the chosen tile's moment before the page changes
+const SLIDE = 12;    // a finger that moves further than this while pressing is choosing by sliding
 
 /**
- * The + button and the fan of bubbles it opens above itself. Tap a bubble, or press the + and slide
- * onto one and let go; arrows move between them from the keyboard.
+ * The + button and the panel it opens: a sheet of glass that grows out of the button, with a note
+ * across the top and the other things to add in a grid below. On phones the + sits alone in the
+ * bottom bar and the panel rises above it; on desktop it's the sidebar's "New" and the panel drops
+ * below it. Tap a tile, or press the + and slide onto one and let go; arrows move from the keyboard.
  */
-export function AddFan({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function AddMenu({ open, onOpenChange, label }: { open: boolean; onOpenChange: (open: boolean) => void; label?: string }) {
   const button = useRef<HTMLButtonElement>(null);
-  const fan = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState(false);
   const [hot, setHot] = useState<number | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
@@ -150,6 +51,15 @@ export function AddFan({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     return () => clearTimeout(timer);
   }, [open]);
 
+  // the panel grows from (and shrinks back into) the button, wherever the two sit
+  useLayoutEffect(() => {
+    if (!open || !panel.current || !button.current) return;
+    const b = button.current.getBoundingClientRect();
+    const p = panel.current.getBoundingClientRect();
+    panel.current.style.setProperty('--ox', `${b.left + b.width / 2 - p.left}px`);
+    panel.current.style.setProperty('--oy', `${b.top + b.height / 2 - p.top}px`);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const release = pushBack(() => onOpenChange(false));
@@ -158,7 +68,7 @@ export function AddFan({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     return () => {
       release();
       removeEventListener('keydown', onKey);
-      if (fan.current?.contains(document.activeElement)) button.current?.focus({ preventScroll: true });
+      if (panel.current?.contains(document.activeElement)) button.current?.focus({ preventScroll: true });
     };
   }, [open]);
 
@@ -167,16 +77,16 @@ export function AddFan({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     haptic(12);
     setPicked(k);
     setHot(k);
-    // the bubble swells and the rest fall away, then the page changes
+    // the tile fills with its colour while the rest fade, then the page changes
     setTimeout(() => {
-      navigateAfterSheet(FAN[k][0]);
+      navigateAfterSheet(ADD[k][0]);
       onOpenChange(false);
     }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : PICK_MS);
   };
 
-  // pressing the +: opens the fan at once, and a finger slid onto a bubble picks it when lifted
+  // pressing the +: opens the panel at once, and a finger slid onto a tile picks it when lifted
   const under = (x: number, y: number) => {
-    const k = document.elementFromPoint(x, y)?.closest('[data-fan]')?.getAttribute('data-fan');
+    const k = document.elementFromPoint(x, y)?.closest('[data-add]')?.getAttribute('data-add');
     return k == null ? null : Number(k);
   };
   const down = (e: PointerEvent) => {
@@ -212,22 +122,43 @@ export function AddFan({ open, onOpenChange }: { open: boolean; onOpenChange: (o
   };
 
   const arrows = (e: KeyboardEvent) => {
-    const step = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
     if (!step) return;
     e.preventDefault();
-    const items = [...fan.current!.querySelectorAll<HTMLElement>('[role=menuitem]')];
+    const items = [...panel.current!.querySelectorAll<HTMLElement>('[role=menuitem]')];
     const i = items.indexOf(document.activeElement as HTMLElement);
     items[(i + step + items.length) % items.length].focus();
   };
 
+  const tile = (k: number) => {
+    const [, name, sub, icon, hue] = ADD[k];
+    return (
+      <button
+        class={`add-tile${k === 0 ? ' add-hero' : ''}${hot === k ? ' hot' : ''}${picked === k ? ' chosen' : ''}`}
+        role="menuitem"
+        data-add={k}
+        style={{ '--k': k, '--c': `var(--emo-${hue})` }}
+        onClick={() => pick(k)}
+        onPointerEnter={(e) => e.pointerType === 'mouse' && setHot(k)}
+        onPointerLeave={(e) => e.pointerType === 'mouse' && setHot((h) => (h === k ? null : h))}
+        onFocus={() => setHot(k)}
+        onBlur={() => setHot((h) => (h === k ? null : h))}
+      >
+        <span class="add-icon"><Icon name={icon} size={k === 0 ? 24 : 21} stroke={1.8} /></span>
+        <span class="add-text"><b>{name}</b><small>{sub}</small></span>
+        {k === 0 && <Icon name="arrow-up-right" size={18} class="add-go" />}
+      </button>
+    );
+  };
+
   const shown = open || closing;
-  const info = hot !== null ? FAN[hot] : null;
+  const today = new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <>
-      {shown && <div class={`fan-scrim${open ? '' : ' closing'}`} onClick={() => onOpenChange(false)} />}
+      {shown && <div class={`add-scrim${open ? '' : ' closing'}`} onClick={() => onOpenChange(false)} />}
       <button
         ref={button}
-        class="nav-new fan-btn glass glass-btn tinted"
+        class="nav-new add-btn glass glass-btn tinted"
         aria-label={open ? t('Close') : t('Add')}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -239,46 +170,27 @@ export function AddFan({ open, onOpenChange }: { open: boolean; onOpenChange: (o
         onClick={(e) => {
           if (e.detail !== 0) return;
           onOpenChange(!open);
-          if (!open) requestAnimationFrame(() => fan.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({ preventScroll: true }));
+          if (!open) requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({ preventScroll: true }));
         }}
       >
-        <span class="nav-plus"><Icon name="plus" size={28} stroke={2} /></span>
+        <span class="nav-plus"><Icon name="plus" size={label ? 20 : 28} stroke={2} /></span>
+        {label && <span class="nav-new-label">{label}</span>}
       </button>
       {shown && (
         <div
-          ref={fan}
-          class={`fan${open ? '' : ' closing'}${picked !== null ? ' picked' : ''}`}
+          ref={panel}
+          class={`add-panel glass${open ? '' : ' closing'}${picked !== null ? ' picked' : ''}`}
           role="menu"
           aria-label={t('Add')}
           onKeyDown={arrows}
-          style={{ '--n': FAN.length }}
         >
-          <div class={`fan-caption glass${info ? ' on' : ''}`} aria-hidden="true">
-            {info ? <><b>{info[1]}</b><small>{info[2]}</small></> : <small>{t('Tap one, or slide from the +')}</small>}
+          <div class="add-head" aria-hidden="true">
+            <small>{today}</small>
+            <b>{t('What would you like to keep?')}</b>
           </div>
-          {FAN.map(([, label, , icon, hue], k) => {
-            const a = ((k / (FAN.length - 1) - 0.5) * SPREAD * Math.PI) / 180;
-            return (
-              <div
-                class={`fan-item${hot === k ? ' hot' : ''}${picked === k ? ' chosen' : ''}`}
-                role="none"
-                style={{ '--x': `calc(${Math.sin(a).toFixed(3)} * var(--r))`, '--y': `calc(${(-Math.cos(a)).toFixed(3)} * var(--r))`, '--k': k, '--d': Math.abs(k - (FAN.length - 1) / 2), '--c': `var(--emo-${hue})` }}
-              >
-                <button
-                  class="fan-bubble glass"
-                  role="menuitem"
-                  data-fan={k}
-                  onClick={() => pick(k)}
-                  onPointerEnter={(e) => e.pointerType === 'mouse' && setHot(k)}
-                  onPointerLeave={(e) => e.pointerType === 'mouse' && setHot((h) => (h === k ? null : h))}
-                  onFocus={() => setHot(k)}
-                >
-                  <Icon name={icon} size={24} stroke={1.8} />
-                </button>
-                <span class="fan-label">{label}</span>
-              </div>
-            );
-          })}
+          {tile(0)}
+          <div class="add-grid" role="none">{ADD.slice(1).map((_, i) => tile(i + 1))}</div>
+          <p class="add-hint" aria-hidden="true">{t('Tap one, or slide from the +')}</p>
         </div>
       )}
     </>

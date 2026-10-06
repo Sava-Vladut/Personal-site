@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.50.0',
+    date: '2026-10-06',
+    changes: [
+      'A new add panel: the + grows into a sheet of glass with a note across the top and check-in, person, book and music in a grid below',
+      'Each choice wears its own colour, and the one you pick fills with it before its page opens',
+      'The same panel drops from New in the desktop sidebar; press the + and slide onto a choice still works on phones',
+    ],
+  },
+  {
     version: '1.49.0',
     date: '2026-10-06',
     changes: [

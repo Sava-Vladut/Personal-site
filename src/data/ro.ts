@@ -1338,6 +1338,7 @@ export const RO: Record<string, string> = {
   'You’re here': 'Ești aici',
   'Your notes and check-ins, day by day': 'Notițele și check-in-urile tale, zi de zi',
   'Your records and your shelf': 'Discurile și raftul tău',
+  'What would you like to keep?': 'Ce vrei să păstrezi?',
   'Tap one, or slide from the +': 'Atinge una sau glisează din +',
 
   // ── Channel points ──

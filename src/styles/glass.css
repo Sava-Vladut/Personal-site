@@ -157,185 +157,128 @@
 
 .nav-new { flex: none; width: 62px; height: 62px; padding: 0; }
 
-/* ---------- add menu: a stack of tiles unfolding from the + button ---------- */
+/* ---------- add: a panel of glass that grows out of the + button ---------- */
 
-.nav-plus { display: grid; transition: rotate 0.55s var(--spring); }
+.nav-plus { display: grid; transition: rotate 0.5s var(--spring); }
 .nav-new[aria-expanded='true'] .nav-plus { rotate: 135deg; }
 
-.add-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  touch-action: none;
-  /* light spilling out from the button, darkening the page around the corner it grows from */
-  background: radial-gradient(circle max(70vmax, 520px) at var(--ox, 100%) var(--oy, 100%), rgb(12 12 11 / 0.46), rgb(12 12 11 / 0.16) 55%, rgb(12 12 11 / 0.05));
-  animation: fade-in 0.3s ease-out;
-}
-.add-scrim.closing { animation: fade-out 0.3s ease-in forwards; pointer-events: none; }
-
-.add-menu {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 12px);
-  display: flex;
-  flex-direction: column-reverse; /* the first item is the one nearest the thumb */
-  align-items: flex-end;
-  gap: 8px;
-  pointer-events: none;
-}
-.add-menu.closing { pointer-events: none; }
-.add-item {
-  pointer-events: auto;
-  transform-origin: right bottom;
-  animation: add-in 0.62s var(--spring) backwards;
-  animation-delay: calc(var(--k) * 55ms);
-}
-.add-menu.closing .add-item {
-  animation: add-out 0.22s cubic-bezier(0.4, 0, 0.9, 0.6) forwards;
-  animation-delay: calc((var(--n) - 1 - var(--k)) * 30ms);
-}
-
-.add-tile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 244px;
-  height: 56px;
-  padding: 0 14px 0 9px;
-  border-radius: 17px;
-  text-align: left;
-  --glass-blur: 26px;
-  background: var(--glass-fill-strong);
-  transition: translate 0.4s var(--spring), scale 0.4s var(--spring);
-}
-.add-tile:active { scale: 0.96; transition-duration: 0.12s; }
-.add-tile:focus-visible { outline-offset: 3px; border-radius: 17px; }
-
-.add-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 13px;
-  color: var(--ink);
-  background: color-mix(in oklab, var(--ink) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 10%, transparent);
-}
-.add-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
-.add-text b { font-size: 15.5px; font-weight: 620; color: var(--ink); }
-.add-text small { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.add-go { flex: none; color: var(--ink-3); transition: translate 0.3s var(--spring), color 0.15s; }
-@media (hover: hover) {
-  .add-tile:hover { translate: -5px 0; }
-  .add-tile:hover .add-go { translate: 2px -2px; color: var(--ink); }
-}
-
-@keyframes add-in {
-  from { opacity: 0; transform: translate(0, calc(var(--k) * 64px + 28px)) rotate(14deg) scale(0.55); }
-}
-@keyframes add-out {
-  to { opacity: 0; transform: translate(0, calc(var(--k) * 64px + 28px)) rotate(8deg) scale(0.55); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nav-plus, .add-tile, .add-go { transition: none; }
-  .add-item { animation: fade-in 0.15s ease-out backwards; animation-delay: 0s; }
-  .add-menu.closing .add-item { animation: fade-out 0.15s ease-in forwards; animation-delay: 0s; }
-}
-.tabbar[inert] { pointer-events: none; }
-
-/* ---------- the fan: the + alone in the middle, its options arcing up out of it ---------- */
-
-.fan-nav { justify-content: center; }
-.fan-btn {
+/* on phones the + sits alone in the middle of the bottom */
+.add-nav { justify-content: center; }
+.add-btn {
   width: 64px; height: 64px; padding: 0; border-radius: 50%;
   touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
-/* a ring of light leaves the button as the fan opens */
-.fan-btn[aria-expanded='true'] { animation: fan-ping 0.65s ease-out; }
-@keyframes fan-ping {
-  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ink) 30%, transparent), var(--glass-shadow); }
-  to { box-shadow: 0 0 0 26px transparent, var(--glass-shadow); }
+/* a ring of light leaves the button as the panel opens */
+.add-btn[aria-expanded='true'] { animation: add-ping 0.6s ease-out; }
+@keyframes add-ping {
+  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ink) 28%, transparent), var(--glass-shadow); }
+  to { box-shadow: 0 0 0 22px transparent, var(--glass-shadow); }
 }
 
-.fan-scrim {
+.add-scrim {
   position: fixed; inset: 0; z-index: -1; touch-action: none;
-  /* the page dims around the button, most at the edges */
-  background: radial-gradient(circle max(60vmax, 480px) at 50% calc(100% - max(var(--safe-b), 8px) - 40px), rgb(12 12 11 / 0.34), rgb(12 12 11 / 0.5) 60%, rgb(12 12 11 / 0.56));
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  animation: fade-in 0.3s ease-out;
+  background: linear-gradient(to top, rgb(12 12 11 / 0.52), rgb(12 12 11 / 0.3) 70%);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  animation: fade-in 0.28s ease-out;
 }
-.fan-scrim.closing { animation: fade-out 0.3s ease-in forwards; pointer-events: none; }
+.add-scrim.closing { animation: fade-out 0.26s ease-in forwards; pointer-events: none; }
 
-/* a point at the button's centre; every bubble sits at its own place on an arc around it */
-.fan { --r: min(128px, 34vw); position: absolute; left: 50%; bottom: 32px; width: 0; height: 0; }
-.fan.closing, .fan.picked { pointer-events: none; }
-.fan-item {
-  position: absolute; left: -32px; top: -32px; width: 64px; height: 64px;
-  translate: var(--x) var(--y);
-  /* from the middle out, so the fan opens like a hand of cards */
-  animation: fan-in 0.62s var(--spring) backwards; animation-delay: calc(30ms + var(--d) * 50ms);
+.add-panel {
+  --rise: 12px;
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 14px);
+  max-width: 400px; margin: 0 auto; padding: 14px;
+  display: grid; gap: 8px;
+  border-radius: 30px;
+  --glass-blur: 30px; background: var(--glass-fill-strong);
+  transform-origin: var(--ox, 50%) var(--oy, 100%);
+  animation: add-grow 0.56s var(--spring), fade-in 0.16s ease-out;
 }
-@keyframes fan-in { from { translate: 0 0; scale: 0.2; opacity: 0; } }
-.fan.closing .fan-item { animation: fan-out 0.26s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; animation-delay: calc((2 - var(--d)) * 25ms); }
-@keyframes fan-out { to { translate: 0 0; scale: 0.2; opacity: 0; } }
+@keyframes add-grow { from { scale: 0.2; } }
+.add-panel.closing { pointer-events: none; animation: add-shrink 0.24s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; }
+@keyframes add-shrink { to { scale: 0.2; opacity: 0; } }
+.add-panel.picked { pointer-events: none; }
+.add-panel.picked.closing { animation: add-leave 0.24s ease-in forwards; }
+@keyframes add-leave { to { scale: 1.04; opacity: 0; } }
 
-.fan-bubble {
-  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
-  --glass-blur: 24px; background: var(--glass-fill-strong);
-  color: color-mix(in oklab, var(--c) 82%, var(--ink));
-  transition: scale 0.35s var(--spring), background-color 0.2s, color 0.2s, box-shadow 0.25s;
-}
-.fan-bubble svg { transition: scale 0.35s var(--spring-bouncy); }
-.fan-bubble:active { scale: 0.94; transition-duration: 0.1s; }
-.fan-bubble:focus-visible { outline-offset: 4px; }
-.fan-item.hot .fan-bubble {
-  scale: 1.17;
-  background: color-mix(in oklab, var(--c) 24%, var(--glass-fill-strong));
-  box-shadow: 0 0 0 0.5px var(--glass-hairline), 0 12px 30px -8px color-mix(in oklab, var(--c) 70%, transparent);
-}
-.fan-item.hot .fan-bubble svg { scale: 1.1; }
-.fan-label {
-  position: absolute; left: 50%; top: 100%; translate: -50% 7px;
-  font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; text-shadow: 0 1px 8px rgb(0 0 0 / 0.55);
-  animation: fade-in 0.3s ease 0.22s backwards; transition: translate 0.35s var(--spring);
-}
-.fan-item.hot .fan-label { translate: -50% 12px; }
+/* what's inside rises into place a beat after the glass, top to bottom */
+.add-head, .add-tile, .add-hint { animation: add-rise 0.5s var(--spring) backwards; animation-delay: calc(70ms + var(--k, 0) * 35ms); }
+.add-head { --k: -1; }
+.add-hint { --k: 6; }
+@keyframes add-rise { from { opacity: 0; translate: 0 var(--rise); } }
 
-/* choosing: the bubble swells with a ring of its colour while the others fall away */
-.fan.picked .fan-item:not(.chosen) { animation: fan-drop 0.28s ease-in forwards; }
-@keyframes fan-drop { to { translate: calc(var(--x) * 0.75) calc(var(--y) * 0.75 + 24px); scale: 0.6; opacity: 0; } }
-.fan-item.chosen .fan-bubble { animation: fan-chosen 0.34s var(--spring-bouncy) forwards, fan-burst 0.55s ease-out; }
-@keyframes fan-chosen { 45% { scale: 1.32; } to { scale: 1.22; } }
-@keyframes fan-burst {
-  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--c) 70%, transparent); }
-  to { box-shadow: 0 0 0 30px transparent; }
-}
-.fan.picked.closing .fan-item.chosen { animation: fan-gone 0.24s ease-in forwards; }
-@keyframes fan-gone { to { scale: 1.5; opacity: 0; } }
+.add-head { display: grid; gap: 2px; padding: 4px 6px 6px; }
+.add-head small { font-size: 12.5px; font-weight: 600; color: var(--ink-3); letter-spacing: 0.01em; }
+.add-head small::first-letter { text-transform: uppercase; }
+.add-head b { font: 500 21px/1.2 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
 
-/* what the bubble under your finger is, above the fan */
-.fan-caption {
-  position: absolute; left: 0; bottom: calc(var(--r) + 66px); translate: -50% 0;
-  min-width: 210px; padding: 9px 16px 10px; border-radius: 18px;
-  display: grid; justify-items: center; gap: 1px; text-align: center; white-space: nowrap;
-  --glass-blur: 24px; background: var(--glass-fill-strong);
-  animation: fan-cap-in 0.5s var(--spring) 0.12s backwards;
-  transition: scale 0.3s var(--spring);
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.add-tile {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  min-width: 0; min-height: 112px; padding: 12px;
+  border-radius: 20px; text-align: left; color: var(--ink);
+  background: color-mix(in oklab, var(--c) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 15%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s, box-shadow 0.2s, scale 0.35s var(--spring), opacity 0.2s;
 }
-.fan-caption.on { scale: 1.04; }
-.fan-caption b { font-size: 15px; font-weight: 650; color: var(--ink); }
-.fan-caption small { font-size: 12.5px; color: var(--ink-2); }
-@keyframes fan-cap-in { from { opacity: 0; translate: -50% 14px; scale: 0.9; } }
-.fan.closing .fan-caption { animation: fade-out 0.2s ease-in forwards; }
+.add-tile:active { scale: 0.97; transition-duration: 0.1s; }
+.add-tile:focus-visible { outline-offset: 2px; border-radius: 20px; }
+.add-tile.hot {
+  background: color-mix(in oklab, var(--c) 15%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 32%, transparent), 0 10px 26px -14px color-mix(in oklab, var(--c) 80%, transparent);
+}
+
+.add-icon {
+  flex: none; display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 13px;
+  color: color-mix(in oklab, var(--c) 85%, var(--ink));
+  background: color-mix(in oklab, var(--c) 17%, transparent);
+  transition: scale 0.4s var(--spring-bouncy), rotate 0.4s var(--spring-bouncy), background-color 0.2s, color 0.2s;
+}
+.add-tile.hot .add-icon { scale: 1.08; rotate: -6deg; }
+.add-text { display: grid; gap: 2px; min-width: 0; line-height: 1.25; }
+.add-text b { font-size: 15.5px; font-weight: 640; }
+.add-text small { font-size: 12.5px; color: var(--ink-2); text-wrap: pretty; }
+
+/* the note: wide across the top, its icon a solid drop of colour */
+.add-tile.add-hero {
+  flex-direction: row; align-items: center; gap: 14px; min-height: 0; padding: 14px 16px 14px 14px;
+  background: linear-gradient(120deg, color-mix(in oklab, var(--c) 18%, transparent), color-mix(in oklab, var(--c) 5%, transparent));
+}
+.add-hero .add-icon { width: 48px; height: 48px; border-radius: 16px; color: #fff; background: var(--c); box-shadow: 0 8px 18px -8px var(--c); }
+.add-hero .add-text { flex: 1; }
+.add-hero .add-text b { font: 500 20px/1.2 var(--serif); letter-spacing: -0.01em; }
+.add-go { flex: none; color: var(--ink-3); transition: translate 0.35s var(--spring), color 0.15s; }
+.add-hero.hot .add-go { translate: 3px -3px; color: var(--ink); }
+
+/* choosing: colour floods the tile from its icon while everything else steps back */
+.add-tile::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--c); clip-path: circle(0 at 32px 32px); opacity: 0;
+}
+.add-tile.chosen::after { opacity: 1; animation: add-flood 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
+@keyframes add-flood { to { clip-path: circle(150% at 32px 32px); } }
+.add-hero.chosen::after { clip-path: circle(0 at 38px 50%); animation-name: add-flood-hero; }
+@keyframes add-flood-hero { to { clip-path: circle(150% at 38px 50%); } }
+.add-tile.chosen { scale: 1.03; }
+.add-tile.chosen, .add-tile.chosen .add-text small, .add-tile.chosen .add-go { color: #fff; transition: color 0.2s 0.08s, scale 0.35s var(--spring); }
+.add-tile.chosen .add-icon { color: #fff; background: rgb(255 255 255 / 0.22); box-shadow: none; }
+.add-panel.picked :is(.add-tile:not(.chosen), .add-head, .add-hint) { opacity: 0.3; }
+.add-panel.picked .add-head, .add-panel.picked .add-hint { transition: opacity 0.2s; }
+
+.add-hint { margin: 2px 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
+@media (pointer: fine) { .add-hint { display: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fan-btn[aria-expanded='true'], .fan-item, .fan.closing .fan-item, .fan.picked .fan-item:not(.chosen), .fan-item.chosen .fan-bubble, .fan-caption, .fan-label {
-    animation: fade-in 0.15s ease-out backwards; animation-delay: 0s;
-  }
-  .fan.closing .fan-item { animation: fade-out 0.15s ease-in forwards; }
-  .fan-bubble, .fan-bubble svg, .fan-label, .fan-caption { transition: none; }
+  .add-btn[aria-expanded='true'], .add-head, .add-tile, .add-hint { animation: none; }
+  .add-panel { animation: fade-in 0.15s ease-out; }
+  .add-panel.closing, .add-panel.picked.closing { animation: fade-out 0.15s ease-in forwards; }
+  .add-tile.chosen::after { animation: none; clip-path: none; }
+  .nav-plus, .add-tile, .add-icon, .add-go { transition: none; }
 }
+.tabbar[inert] { pointer-events: none; }
 
 /* ---------- smaller pieces ---------- */
 
