@@ -3,11 +3,42 @@
 /* the slow sway, shared so the labels can lean back against it and stay upright */
 @property --nw-sway { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
 
-.nw-trigger { position: relative; }
-.nw-mark { animation: nw-spin 36s linear infinite; transition: scale 0.4s var(--spring); }
-.nw-trigger:hover .nw-mark { animation-duration: 9s; }
-.nw-trigger[aria-expanded='true'] .nw-mark { scale: 0.75; }
-.nw-mark-hub { fill: currentColor; opacity: 0.55; }
+.icon-btn.nw-trigger { position: relative; width: 46px; height: 46px; isolation: isolate; }
+/* a soft glow of the categories' colours behind the button, turning and breathing */
+.nw-trigger::before {
+  content: ''; position: absolute; inset: 3px; z-index: -1; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 0deg, var(--emo-calm-safety), var(--emo-hope-interest), var(--emo-love-connection), var(--emo-fear), var(--emo-sadness), var(--emo-calm-safety));
+  filter: blur(9px); opacity: 0.32;
+  animation: nw-spin 14s linear infinite, nw-glow 4.5s ease-in-out infinite alternate;
+  transition: opacity 0.3s, inset 0.4s var(--spring);
+}
+.nw-trigger:hover::before { opacity: 0.55; inset: 0; }
+@keyframes nw-glow { from { scale: 0.86; } to { scale: 1.08; } }
+/* the button itself: frosted, so the glow comes through soft */
+.nw-trigger::after {
+  content: ''; position: absolute; inset: 4px; z-index: -1; border-radius: 50%; pointer-events: none;
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  box-shadow: 0 0 0 0.5px var(--line-2), 0 4px 14px -6px rgb(0 0 0 / 0.25);
+}
+.icon-btn.nw-trigger:hover, .journal-top .icon-btn.nw-trigger:hover { background: none; }
+
+.nw-mark-wrap { display: grid; transition: scale 0.45s var(--spring-bouncy), rotate 0.6s var(--spring); }
+.nw-trigger:hover .nw-mark-wrap { scale: 1.08; }
+.nw-trigger:active .nw-mark-wrap { scale: 0.9; }
+.nw-trigger[aria-expanded='true'] .nw-mark-wrap { scale: 0.8; rotate: 90deg; }
+.nw-mark { overflow: visible; }
+.nw-mark-arcs { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 18s linear infinite; }
+.nw-trigger:hover .nw-mark-arcs { animation-duration: 5s; }
+/* a wave of light running round the ring: each arc swells in turn */
+.nw-mark-arcs path {
+  fill: none; stroke-width: 4.6; stroke-linecap: round;
+  animation: nw-arc 2.8s ease-in-out infinite; animation-delay: calc(var(--k) * 2.8s / var(--n));
+}
+@keyframes nw-arc { 0%, 55%, 100% { stroke-width: 4.6; opacity: 0.85; } 22% { stroke-width: 6.6; opacity: 1; } }
+.nw-mark-orbit { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 4.5s linear infinite reverse; }
+.nw-mark-orbit circle { fill: var(--ink-2); opacity: 0.7; }
+.nw-mark-hub { fill: var(--ink); transform-box: fill-box; transform-origin: center; animation: nw-hub 2.8s ease-in-out infinite; }
+@keyframes nw-hub { 0%, 100% { scale: 0.85; } 50% { scale: 1.1; } }
 
 .nw-layer {
   --sky: var(--emo-hope-interest);
@@ -108,5 +139,5 @@
 .nw-cap-stat { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: color-mix(in oklab, var(--sky) 70%, var(--ink)); font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .nw-mark, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }
+  .nw-trigger::before, .nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }
 }

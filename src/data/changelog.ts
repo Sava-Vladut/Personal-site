@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.45.1',
+    date: '2026-10-06',
+    changes: [
+      'The wheel button is bigger and livelier: a ring of the category colours that turns, with a wave of light running round it, a small spark circling and a soft glow behind',
+      'It speeds up when you point at it and turns a quarter as the wheel opens',
+    ],
+  },
+  {
     version: '1.45.0',
     date: '2026-10-06',
     changes: [

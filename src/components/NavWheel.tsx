@@ -106,14 +106,29 @@ function Letters({ r, world, class: cls }: { r: number; world: string; class: st
   );
 }
 
-/** The little wheel on the button: the categories' colours, turning slowly. */
+/**
+ * The wheel on the button: a ring of the categories' colours that turns, a wave of light running
+ * round it, a spark circling the other way and a glow behind, so it reads as the way into everything.
+ */
 function WheelMark() {
   const tops = layout(WHEEL).filter((s) => s.depth === 0);
+  const r = 13, gap = 9; // gap in degrees between the arcs, so they stay separate at this size
+  const at = (a: number) => `${(20 + r * Math.sin(rad(a))).toFixed(2)} ${(20 - r * Math.cos(rad(a))).toFixed(2)}`;
   return (
-    <svg class="nw-mark" width="24" height="24" viewBox="0 0 400 400" aria-hidden="true">
-      {tops.map((s) => <path d={sector(92, 190, s.a0, s.a1) ?? ''} style={{ fill: `var(--emo-${s.hue})` }} />)}
-      <circle cx={C} cy={C} r={34} class="nw-mark-hub" />
-    </svg>
+    <span class="nw-mark-wrap" aria-hidden="true">
+      <svg class="nw-mark" width="34" height="34" viewBox="0 0 40 40">
+        <g class="nw-mark-arcs">
+          {tops.map((s, k) => (
+            <path
+              d={`M${at(s.a0 + gap / 2)}A${r} ${r} 0 0 1 ${at(s.a1 - gap / 2)}`}
+              style={{ stroke: `var(--emo-${s.hue})`, '--k': k, '--n': tops.length }}
+            />
+          ))}
+        </g>
+        <g class="nw-mark-orbit"><circle cx="20" cy="2.6" r="1.6" /></g>
+        <circle cx="20" cy="20" r="4.2" class="nw-mark-hub" />
+      </svg>
+    </span>
   );
 }
 
