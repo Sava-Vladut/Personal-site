@@ -31,7 +31,8 @@ import { LOCALE, count, t } from '../lib/i18n';
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
 
-export function Journal() {
+/** `?search` or `?calendar` (from the wheel on another page) opens that as the journal appears. */
+export function Journal({ query }: { query?: URLSearchParams }) {
   const entries = useEntries();
   const people = usePeople();
   const ready = useReady();
@@ -40,6 +41,14 @@ export function Journal() {
   const [calOpen, setCalOpen] = usePref<boolean>('journal-calendar', false);
   const [day, setDay] = useState<string | null>(null);
   const compact = useSettings().density === 'compact';
+  useEffect(() => {
+    if (!query) return;
+    const s = query.has('search'), c = query.has('calendar');
+    if (!s && !c) return;
+    if (s) setSearching(true);
+    if (c) setCalOpen(true);
+    history.replaceState(history.state, '', '#/');
+  }, [query]);
 
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>();

@@ -12,6 +12,7 @@ import { EmotionChip } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
 import { Sky } from '../components/Sky';
+import { NavWheel } from '../components/NavWheel';
 import { count, t } from '../lib/i18n';
 
 /** "today", "yesterday", "24 Sep" */
@@ -73,9 +74,12 @@ export function People() {
         <div class="eyebrow">{t('People')}</div>
         <div class="row between">
           <h1 class="title">{t('The people in your life')}</h1>
-          <button class="icon-btn" onClick={() => navigate('person/new')} aria-label={t('Add person')} title={t('Add person')}>
-            <Icon name="user-plus" />
-          </button>
+          <div class="row">
+            <button class="icon-btn" onClick={() => navigate('person/new')} aria-label={t('Add person')} title={t('Add person')}>
+              <Icon name="user-plus" />
+            </button>
+            <NavWheel world="love-connection" />
+          </div>
         </div>
         <p class="subtitle">{t('Write about them, tag them in notes and check-ins, and notice how they make you feel.')}</p>
       </header>

@@ -8,6 +8,7 @@ import { BookSheet } from '../components/books';
 import { CountUp } from '../components/charts';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
+import { NavWheel } from '../components/NavWheel';
 import { DayPicker, SongOfDay, useDayPick } from '../components/SongOfDay';
 import { SpotifySheet } from '../components/SpotifySheet';
 import { BooksTab, bookStats } from './Books';
@@ -118,6 +119,7 @@ export function Media({ query }: { query: URLSearchParams }) {
               <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>
                 <Icon name="plus" />
               </button>
+              <NavWheel world={worlds[0]} />
             </div>
           </div>
           {!has && (

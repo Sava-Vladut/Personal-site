@@ -244,6 +244,99 @@
 }
 .tabbar[inert] { pointer-events: none; }
 
+/* ---------- the fan: the + alone in the middle, its options arcing up out of it ---------- */
+
+.fan-nav { justify-content: center; }
+.fan-btn {
+  width: 64px; height: 64px; padding: 0; border-radius: 50%;
+  touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+/* a ring of light leaves the button as the fan opens */
+.fan-btn[aria-expanded='true'] { animation: fan-ping 0.65s ease-out; }
+@keyframes fan-ping {
+  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ink) 30%, transparent), var(--glass-shadow); }
+  to { box-shadow: 0 0 0 26px transparent, var(--glass-shadow); }
+}
+
+.fan-scrim {
+  position: fixed; inset: 0; z-index: -1; touch-action: none;
+  /* the page dims around the button, most at the edges */
+  background: radial-gradient(circle max(60vmax, 480px) at 50% calc(100% - max(var(--safe-b), 8px) - 40px), rgb(12 12 11 / 0.34), rgb(12 12 11 / 0.5) 60%, rgb(12 12 11 / 0.56));
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  animation: fade-in 0.3s ease-out;
+}
+.fan-scrim.closing { animation: fade-out 0.3s ease-in forwards; pointer-events: none; }
+
+/* a point at the button's centre; every bubble sits at its own place on an arc around it */
+.fan { --r: min(128px, 34vw); position: absolute; left: 50%; bottom: 32px; width: 0; height: 0; }
+.fan.closing, .fan.picked { pointer-events: none; }
+.fan-item {
+  position: absolute; left: -32px; top: -32px; width: 64px; height: 64px;
+  translate: var(--x) var(--y);
+  /* from the middle out, so the fan opens like a hand of cards */
+  animation: fan-in 0.62s var(--spring) backwards; animation-delay: calc(30ms + var(--d) * 50ms);
+}
+@keyframes fan-in { from { translate: 0 0; scale: 0.2; opacity: 0; } }
+.fan.closing .fan-item { animation: fan-out 0.26s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; animation-delay: calc((2 - var(--d)) * 25ms); }
+@keyframes fan-out { to { translate: 0 0; scale: 0.2; opacity: 0; } }
+
+.fan-bubble {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  --glass-blur: 24px; background: var(--glass-fill-strong);
+  color: color-mix(in oklab, var(--c) 82%, var(--ink));
+  transition: scale 0.35s var(--spring), background-color 0.2s, color 0.2s, box-shadow 0.25s;
+}
+.fan-bubble svg { transition: scale 0.35s var(--spring-bouncy); }
+.fan-bubble:active { scale: 0.94; transition-duration: 0.1s; }
+.fan-bubble:focus-visible { outline-offset: 4px; }
+.fan-item.hot .fan-bubble {
+  scale: 1.17;
+  background: color-mix(in oklab, var(--c) 24%, var(--glass-fill-strong));
+  box-shadow: 0 0 0 0.5px var(--glass-hairline), 0 12px 30px -8px color-mix(in oklab, var(--c) 70%, transparent);
+}
+.fan-item.hot .fan-bubble svg { scale: 1.1; }
+.fan-label {
+  position: absolute; left: 50%; top: 100%; translate: -50% 7px;
+  font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; text-shadow: 0 1px 8px rgb(0 0 0 / 0.55);
+  animation: fade-in 0.3s ease 0.22s backwards; transition: translate 0.35s var(--spring);
+}
+.fan-item.hot .fan-label { translate: -50% 12px; }
+
+/* choosing: the bubble swells with a ring of its colour while the others fall away */
+.fan.picked .fan-item:not(.chosen) { animation: fan-drop 0.28s ease-in forwards; }
+@keyframes fan-drop { to { translate: calc(var(--x) * 0.75) calc(var(--y) * 0.75 + 24px); scale: 0.6; opacity: 0; } }
+.fan-item.chosen .fan-bubble { animation: fan-chosen 0.34s var(--spring-bouncy) forwards, fan-burst 0.55s ease-out; }
+@keyframes fan-chosen { 45% { scale: 1.32; } to { scale: 1.22; } }
+@keyframes fan-burst {
+  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--c) 70%, transparent); }
+  to { box-shadow: 0 0 0 30px transparent; }
+}
+.fan.picked.closing .fan-item.chosen { animation: fan-gone 0.24s ease-in forwards; }
+@keyframes fan-gone { to { scale: 1.5; opacity: 0; } }
+
+/* what the bubble under your finger is, above the fan */
+.fan-caption {
+  position: absolute; left: 0; bottom: calc(var(--r) + 66px); translate: -50% 0;
+  min-width: 210px; padding: 9px 16px 10px; border-radius: 18px;
+  display: grid; justify-items: center; gap: 1px; text-align: center; white-space: nowrap;
+  --glass-blur: 24px; background: var(--glass-fill-strong);
+  animation: fan-cap-in 0.5s var(--spring) 0.12s backwards;
+  transition: scale 0.3s var(--spring);
+}
+.fan-caption.on { scale: 1.04; }
+.fan-caption b { font-size: 15px; font-weight: 650; color: var(--ink); }
+.fan-caption small { font-size: 12.5px; color: var(--ink-2); }
+@keyframes fan-cap-in { from { opacity: 0; translate: -50% 14px; scale: 0.9; } }
+.fan.closing .fan-caption { animation: fade-out 0.2s ease-in forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fan-btn[aria-expanded='true'], .fan-item, .fan.closing .fan-item, .fan.picked .fan-item:not(.chosen), .fan-item.chosen .fan-bubble, .fan-caption, .fan-label {
+    animation: fade-in 0.15s ease-out backwards; animation-delay: 0s;
+  }
+  .fan.closing .fan-item { animation: fade-out 0.15s ease-in forwards; }
+  .fan-bubble, .fan-bubble svg, .fan-label, .fan-caption { transition: none; }
+}
+
 /* ---------- smaller pieces ---------- */
 
 .editor-status .glass {

@@ -13,17 +13,21 @@ export interface WheelNode {
   /** The emotion world whose colour it wears; children take their category's. */
   hue?: string;
   to?: string;
-  /** An action the page that holds the wheel provides, like opening its search. */
+  /** An action the page that holds the wheel provides, like opening its search; elsewhere it goes to `to`. */
   run?: string;
   kids?: WheelNode[];
 }
 
 export const WHEEL: WheelNode[] = [
+  // the app's own places, one tap each (they used to be the tab bar)
+  { id: 'journal', name: t('Journal'), sub: t('Your notes and check-ins, day by day'), icon: 'notebook', hue: 'joy', to: '' },
+  { id: 'people', name: t('People'), sub: t('The people in your life'), icon: 'users', hue: 'love-connection', to: 'people' },
+  { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
   {
     id: 'look-back', name: t('Look back'), sub: t('Find a day, a word or a place'), icon: 'clock', hue: 'calm-safety',
     kids: [
-      { id: 'search', name: t('Search'), sub: t('Notes, feelings, people, songs and books'), icon: 'search', run: 'search' },
-      { id: 'calendar', name: t('Calendar'), sub: t('Your days, month by month'), icon: 'calendar', run: 'calendar' },
+      { id: 'search', name: t('Search'), sub: t('Notes, feelings, people, songs and books'), icon: 'search', run: 'search', to: '?search' },
+      { id: 'calendar', name: t('Calendar'), sub: t('Your days, month by month'), icon: 'calendar', run: 'calendar', to: '?calendar' },
       { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', to: 'map' },
     ],
   },
@@ -38,7 +42,7 @@ export const WHEEL: WheelNode[] = [
     ],
   },
   {
-    id: 'you', name: t('You'), sub: t('Check in, write, think'), icon: 'heart', hue: 'love-connection',
+    id: 'you', name: t('You'), sub: t('Check in, write, think'), icon: 'heart', hue: 'shame-aversion',
     kids: [
       { id: 'check-in', name: t('Check in'), sub: t('How you feel right now'), icon: 'mood-plus', to: 'tracker' },
       { id: 'write', name: t('Write'), sub: t('Write about your day'), icon: 'pencil', to: 'note/new' },

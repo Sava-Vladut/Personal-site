@@ -1352,6 +1352,10 @@ export const RO: Record<string, string> = {
   'Who you’ve been watching': 'Pe cine ai urmărit',
   'Lately': 'În ultima vreme',
   'Streaks, raids and spending': 'Serii, raiduri și cheltuieli',
+  'You’re here': 'Ești aici',
+  'Your notes and check-ins, day by day': 'Notițele și check-in-urile tale, zi de zi',
+  'Your records and your shelf': 'Discurile și raftul tău',
+  'Tap one, or slide from the +': 'Atinge una sau glisează din +',
 
   // ── Channel points ──
   'Watching': 'Vizionare',

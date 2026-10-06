@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.46.0',
+    date: '2026-10-06',
+    changes: [
+      'Journal, People and Media moved from the bottom bar onto the wheel, which now shows which page you’re on',
+      'The wheel button is at the top of People, Media and Check in too, so you can get anywhere from there',
+      'Search and Calendar on the wheel work from any page: they take you to the journal and open there',
+      'The bottom bar is now just the + button, in the middle',
+      'New way to add: the + opens a fan of bubbles above it. Tap one, or press the + and slide your finger onto one and let go',
+      'The bubble under your finger grows in its colour and says what it adds; picking one swells it with a ring while the rest fall away',
+    ],
+  },
+  {
     version: '1.45.1',
     date: '2026-10-06',
     changes: [

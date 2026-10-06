@@ -1,7 +1,7 @@
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { WHEEL, type WheelNode } from '../data/wheel';
-import { navigateAfterSheet, pushBack } from '../lib/router';
+import { navigateAfterSheet, pushBack, useRoute } from '../lib/router';
 import { haptic } from '../lib/haptics';
 import { LOCALE, t } from '../lib/i18n';
 import { compact, usePoints } from '../lib/twitch';
@@ -48,11 +48,17 @@ function layout(tree: WheelNode[]): Seg[] {
 /** The tree without the actions this page doesn't offer, and without categories left empty. */
 function prune(list: WheelNode[], runs: Record<string, unknown>): WheelNode[] {
   return list.flatMap((n) => {
-    if (n.run && !runs[n.run]) return [];
+    if (n.run && !runs[n.run] && n.to == null) return [];
     if (!n.kids) return [n];
     const kids = prune(n.kids, runs);
     return kids.length ? [{ ...n, kids }] : [];
   });
+}
+
+/** The page a node's `to` opens, to tell which one you're on. */
+function routeOf(to: string) {
+  const [head, id] = to.split('?')[0].split('/');
+  return head === 'people' && id === 'mind' ? 'mind' : head || 'journal';
 }
 
 /** z: how many levels in. [d0, d1]: the arc of the full wheel that fills the circle. */
@@ -148,6 +154,10 @@ export function NavWheel({ world, runs = {}, active = {} }: {
   const stage = useRef<HTMLDivElement>(null);
   const runKey = Object.keys(runs).sort().join();
   const segs = useMemo(() => layout(prune(WHEEL, runs)), [runKey]);
+  // where you are: the place you're on, and the category it's in
+  const route = useRoute().name;
+  const here = segs.find((s) => s.leaf && s.n.to != null && !s.n.to.includes('?') && routeOf(s.n.to) === route) ?? null;
+  const within = (s: Seg) => { for (let x = here; x; x = x.parent) if (x === s) return true; return false; };
 
   const [focus, setFocus] = useState<string | null>(null);
   const focusSeg = segs.find((s) => s.n.id === focus) ?? null;
@@ -233,10 +243,10 @@ export function NavWheel({ world, runs = {}, active = {} }: {
     haptic(5);
     if (s === focusSeg) return back();
     if (!s.leaf) return setFocus(s.n.id);
-    if (s.n.run) {
-      pending.current = runs[s.n.run] ?? null;
+    if (s.n.run && runs[s.n.run]) {
+      pending.current = runs[s.n.run];
       close();
-    } else if (s.n.to) {
+    } else if (s.n.to != null) {
       navigateAfterSheet(s.n.to);
       close();
     }
@@ -273,7 +283,7 @@ export function NavWheel({ world, runs = {}, active = {} }: {
     shapes.push(
       <path
         d={d}
-        class={`nw-seg${isHub ? ' hub' : ''}${hot === s.n.id ? ' hot' : ''}${on ? ' on' : ''}`}
+        class={`nw-seg${isHub ? ' hub' : ''}${hot === s.n.id ? ' hot' : ''}${on ? ' on' : ''}${s === here ? ' here' : within(s) ? ' has' : ''}`}
         style={style}
         role="button"
         tabIndex={tabbable ? 0 : -1}
@@ -307,6 +317,7 @@ export function NavWheel({ world, runs = {}, active = {} }: {
           <Icon name={s.n.icon} size={26} stroke={1.7} />
         </g>
         <text x={x} y={y + 16} class="nw-name">{s.n.name}</text>
+        {s === here && <text x={x} y={y + 30} class="nw-here">{t('You’re here')}</text>}
         {kids > 0 && (
           // one dot for each thing inside
           <g class="nw-dots">

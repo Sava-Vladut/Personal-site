@@ -1,11 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
-import { useLens } from './lib/glass';
 import { leftPeople, useLock } from './lib/lock';
 import { LockScreen } from './components/Lock';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
-import { AddMenu } from './components/AddMenu';
+import { AddFan, AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
 import { Toasts } from './components/Toasts';
 import { Icon, type UiName } from './components/icons';
@@ -30,8 +29,6 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['people', t('People'), 'users', 'people'],
   ['media', t('Media'), 'library', 'media'],
 ];
-
-const TAB_NAV = NAV.filter(([name]) => name !== 'tracker');
 
 /** Which sidebar item a page belongs under. */
 const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats' };
@@ -87,10 +84,10 @@ export function App() {
         ) : route.name === 'map' ? (
           <MapView key={route.query.get('focus') ?? ''} query={route.query} />
         ) : (
-          <Journal />
+          <Journal query={route.query} />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar active={route.name === 'mind' ? 'people' : route.name} />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar />}
       <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />
       <EntryMenu />
       <Toasts />
@@ -100,26 +97,15 @@ export function App() {
   );
 }
 
-/** iOS-style floating glass tab bar, with the "add" menu as its own glass button. */
-function TabBar({ active }: { active: RouteName }) {
-  const bar = useRef<HTMLDivElement>(null);
-  useLens(bar);
+/**
+ * The phone's bottom bar: just the + in the middle. The places it used to hold (Journal, People,
+ * Media) are on the wheel at the top of each page.
+ */
+function TabBar() {
   const [adding, setAdding] = useState(false);
-  const i = TAB_NAV.findIndex(([name]) => name === active);
-  // The pill's leading edge moves first and the trailing edge catches up, so it stretches like a drop.
-  const prev = useRef(i);
-  const dir = useRef<'left' | 'right'>('right');
-  if (i !== prev.current) {
-    dir.current = i > prev.current ? 'right' : 'left';
-    prev.current = i;
-  }
   return (
-    <nav class="nav" aria-label={t('Main')}>
-      <div ref={bar} class="tabbar glass" data-dir={dir.current} style={{ '--n': TAB_NAV.length }} inert={adding}>
-        {i >= 0 && <span class="tab-pill" style={{ '--i': i }} aria-hidden="true" />}
-        {TAB_NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} label={label} icon={icon} path={path} />)}
-      </div>
-      <AddMenu open={adding} onOpenChange={setAdding} />
+    <nav class="nav fan-nav" aria-label={t('Add')}>
+      <AddFan open={adding} onOpenChange={setAdding} />
     </nav>
   );
 }

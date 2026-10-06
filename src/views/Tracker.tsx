@@ -8,6 +8,7 @@ import { addContext } from '../lib/weather';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
 import { EmotionWheel } from '../components/EmotionWheel';
 import { Sky } from '../components/Sky';
+import { NavWheel } from '../components/NavWheel';
 import { MentionText } from '../components/MentionText';
 import { Icon, Sprite } from '../components/icons';
 import { PeopleChips, PeopleSheet } from '../components/people';
@@ -101,7 +102,10 @@ export function Tracker({ query }: { query: URLSearchParams }) {
       <div class="journal-top track-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
       <Sky world={world} />
       <header class="page-head">
-        <div class="eyebrow">{t('Check in')}</div>
+        <div class="row between">
+          <div class="eyebrow">{t('Check in')}</div>
+          <NavWheel world={world} />
+        </div>
         <h1 class="title">{t('How are you feeling?')}</h1>
         <p class="subtitle">{t('Name it to tame it. Pick a world, then find the word.')}</p>
       </header>
