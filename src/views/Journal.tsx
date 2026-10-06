@@ -18,6 +18,7 @@ import { useHold } from '../components/EntryMenu';
 import { Swipe } from '../components/Swipe';
 import { EmotionChip } from '../components/emotion';
 import { Sky } from '../components/Sky';
+import { NavWheel } from '../components/NavWheel';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
@@ -90,18 +91,22 @@ export function Journal() {
         <div class="row between">
           <h1 class="title">{longToday()}</h1>
           <div class="row">
-            <button class="icon-btn" aria-pressed={searching} aria-label={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
-              <Icon name="search" />
-            </button>
-            <button class="icon-btn" aria-pressed={calOpen} aria-label={t('Calendar')} onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
-              <Icon name="calendar" />
-            </button>
-            <button class="icon-btn" aria-label={t('Stats')} title={t('Stats')} onClick={() => navigate('stats')}>
-              <Icon name="chart-dots" />
-            </button>
-            <button class="icon-btn" aria-label={t('Settings')} title={t('Settings')} onClick={() => navigate('settings')}>
-              <Icon name="settings" />
-            </button>
+            {/* search and the calendar open from the wheel; while open, their button stays here to close them */}
+            {searching && (
+              <button class="icon-btn" aria-pressed="true" aria-label={t('Close search')} title={t('Close search')} onClick={() => { setSearching(false); setQ(''); }}>
+                <Icon name="search" />
+              </button>
+            )}
+            {calOpen && (
+              <button class="icon-btn" aria-pressed="true" aria-label={t('Close the calendar')} title={t('Close the calendar')} onClick={() => { setCalOpen(false); setDay(null); }}>
+                <Icon name="calendar" />
+              </button>
+            )}
+            <NavWheel
+              world={world}
+              runs={{ search: () => setSearching(true), calendar: () => { setCalOpen(!calOpen); if (calOpen) setDay(null); } }}
+              active={{ search: searching, calendar: calOpen }}
+            />
           </div>
         </div>
       </header>

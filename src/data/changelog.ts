@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.44.0',
+    date: '2026-10-06',
+    changes: [
+      'The journal’s four top buttons are now one: a little colour wheel that opens everything else',
+      'The wheel grows out of the button onto a sky of its own, with clouds and letters drifting behind it',
+      'Categories sit in the middle (Look back, Insights, You, Settings) with what’s in them around those; tap one to zoom in, the middle to go back',
+      'The map with its heatmap, each Stats tab, Check in, Write and Mind are all one tap away on the wheel',
+      'The sky behind the wheel takes the colour of the category you open, and the wheel sways gently while it waits',
+      'While search or the calendar is open, its button stays at the top so you can close it',
+    ],
+  },
+  {
     version: '1.43.2',
     date: '2026-10-06',
     changes: [

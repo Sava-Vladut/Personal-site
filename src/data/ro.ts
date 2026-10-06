@@ -1320,4 +1320,27 @@ export const RO: Record<string, string> = {
 
   // ── Mentions ──
   'This note was deleted': 'Notița asta a fost ștearsă',
+
+  // ── The wheel ──
+  'Everything': 'Totul',
+  'Where to?': 'Încotro?',
+  'Tap a colour to open it, the middle to close': 'Atinge o culoare ca s-o deschizi, mijlocul ca să închizi',
+  'Look back': 'Privește înapoi',
+  'Find a day, a word or a place': 'Găsește o zi, un cuvânt sau un loc',
+  'Notes, feelings, people, songs and books': 'Notițe, sentimente, oameni, cântece și cărți',
+  'Your days, month by month': 'Zilele tale, lună de lună',
+  'Where you’ve been, as a heatmap': 'Unde ai fost, ca hartă termică',
+  'Insights': 'Perspective',
+  'What your feelings add up to': 'Ce spun sentimentele tale, adunate',
+  'The shape of the last while': 'Cum a arătat perioada din urmă',
+  'Which worlds you spend time in': 'În ce lumi îți petreci timpul',
+  'What tends to come together': 'Ce tinde să vină împreună',
+  'How the sky and your mood line up': 'Cum se potrivesc cerul și starea ta',
+  'Every feeling you have named': 'Fiecare sentiment pe care l-ai numit',
+  'You': 'Tu',
+  'Check in, write, think': 'Check-in, scris, gânduri',
+  'Who and what is on your mind': 'Cine și ce îți umblă prin minte',
+  'Look, sync, privacy and more': 'Aspect, sincronizare, confidențialitate și altele',
+  'Close search': 'Închide căutarea',
+  'Close the calendar': 'Închide calendarul',
 };
