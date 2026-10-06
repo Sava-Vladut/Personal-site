@@ -7,8 +7,7 @@ const Name = unlockName[0].toUpperCase() + unlockName.slice(1);
 
 /**
  * What shows in place of the app (or of People) until Face ID says it's you. It asks by itself when it
- * appears; on iPhone, where asking without a tap brings up Safari's passkey sheet instead, a tap anywhere
- * on it goes straight to Face ID.
+ * appears; on iPhone a tap anywhere on it asks again, if the system sheet was closed.
  */
 export function LockScreen({ scope }: { scope: 'app' | 'people' }) {
   const [busy, setBusy] = useState(false);
@@ -31,7 +30,7 @@ export function LockScreen({ scope }: { scope: 'app' | 'people' }) {
   };
   const unlock = scope === 'app' ? unlockApp : unlockPeople;
 
-  useEffect(() => { if (!isIOS) void run(unlock, true); }, []);
+  useEffect(() => { void run(unlock, true); }, []);
 
   return (
     <div class={`page lock-page lock-${scope}`} onClick={() => { if (isIOS && !busy) void run(unlock); }}>

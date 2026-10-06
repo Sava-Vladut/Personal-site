@@ -41,10 +41,7 @@ export const getLock = lock$.get;
 const publish = (patch: Partial<LockStatus>) => lock$.set({ ...lock$.get(), ...patch });
 
 const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
-/**
- * iPhone and iPad: Safari only goes straight to Face ID when it's asked from a tap. Asked any other way, it
- * first shows its own "sign in with a passkey" sheet that needs a Continue, so there the lock waits for a tap.
- */
+/** iPhone and iPad, where Safari always shows its own sign-in sheet before Face ID; websites can't skip it. */
 export const isIOS = /iPhone|iPad/.test(ua) || (/Macintosh/.test(ua) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1);
 
 /** What the device calls the way it checks it's you. */

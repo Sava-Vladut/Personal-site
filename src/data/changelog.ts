@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.50.2',
+    date: '2026-10-06',
+    changes: [
+      'On iPhone, the lock asks for Face ID by itself again as soon as it shows, so it\'s one tap on the system sheet instead of two',
+    ],
+  },
+  {
     version: '1.50.1',
     date: '2026-10-06',
     changes: [
