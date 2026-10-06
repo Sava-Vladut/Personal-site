@@ -6,6 +6,7 @@ import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
 import { usePref } from '../lib/prefs';
 import { isTape, MusicThing, musicSub } from '../components/music';
+import { SongOfDay, SongStats } from '../components/SongOfDay';
 import { noun, t } from '../lib/i18n';
 
 type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
@@ -13,7 +14,7 @@ type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
 const KINDS: [Kind, string][] = [['track', t('Songs')], ['album', t('Albums')], ['playlist', t('Playlists')], ['podcast', t('Podcasts')]];
 const kindOf = (m: Music): Kind => (m.kind === 'show' || m.kind === 'episode' ? 'podcast' : m.kind === 'artist' ? 'album' : m.kind);
 
-/** The Media page's music: what's on repeat, your records, your tapes, and what's waiting in your notes. */
+/** The Media page's music: the song of the day, what's on repeat, your records, your tapes, and what's waiting in your notes. */
 export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const songs = useSongs();
   const entries = useEntries();
@@ -67,6 +68,13 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
 
   return (
     <>
+      {songs.length > 0 && !q.trim() && (
+        <>
+          <SongOfDay songs={songs} />
+          <SongStats songs={songs} />
+        </>
+      )}
+
       {songs.length > 0 && (
         <div class="chips scroll-x filters media-filters" role="toolbar" aria-label={t('Kind and order')}>
           <SortChip sort={sort} onSort={setSort} />

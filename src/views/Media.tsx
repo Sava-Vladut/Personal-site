@@ -14,8 +14,7 @@ import { MusicTab, musicStats } from './Music';
 import { t } from '../lib/i18n';
 
 type Tab = 'books' | 'music';
-const TAB_KEY = 'mm-media-tab';
-const TABS: Tab[] = ['books', 'music'];
+const TABS: Tab[] = ['music', 'books'];
 
 // with nothing felt yet: warm paper for the shelf, a late-night glow for the records
 const QUIET: Record<Tab, string[]> = {
@@ -23,12 +22,9 @@ const QUIET: Record<Tab, string[]> = {
   music: ['love-connection', 'sadness', 'hope-interest'],
 };
 
+/** Media always opens on the music; coming back to it (from a book or a song) finds the tab you left it on. */
 function lastTab(): Tab {
-  try {
-    return localStorage.getItem(TAB_KEY) === 'music' ? 'music' : 'books';
-  } catch {
-    return 'books';
-  }
+  return history.state?.mmMediaTab === 'books' ? 'books' : 'music';
 }
 
 /** The sky's colours, from how the books or music on this tab make you feel. */
@@ -53,7 +49,7 @@ function CloudTitle({ text }: { text: string }) {
   );
 }
 
-/** Your books and your music: a shelf and a record collection. `?tab=books|music`, and `?add` opens its picker. */
+/** Your music and your books: a record collection and a shelf. `?tab=books|music`, and `?add` opens its picker. */
 export function Media({ query }: { query: URLSearchParams }) {
   const books = useBooks();
   const songs = useSongs();
@@ -66,9 +62,7 @@ export function Media({ query }: { query: URLSearchParams }) {
   const setTab = (t: Tab) => {
     setTabState(t);
     setQ('');
-    try {
-      localStorage.setItem(TAB_KEY, t);
-    } catch {}
+    history.replaceState({ ...history.state, mmMediaTab: t }, '');
   };
 
   // "+ → Book / Music" land here with ?add; back from logging in to Spotify with ?spotify
@@ -141,8 +135,8 @@ export function Media({ query }: { query: URLSearchParams }) {
         )}
 
         <div class="seg tabs media-tabs" role="tablist" aria-label={t('Media')} style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
-          <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
           <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> {t('Music')}</button>
+          <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
         </div>
 
         {searching && has && (

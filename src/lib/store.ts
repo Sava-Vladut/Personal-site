@@ -131,9 +131,11 @@ export interface Song {
   text: string;             // what it means to you
   emotions: string[];       // how it makes you feel, first one is the main feeling
   from: string | null;      // the person it brings to mind
+  days: string[];           // 'YYYY-MM-DD' days it was your song of the day, oldest first
   created: number;
   updated: number;
 }
+const MAX_SONG_DAYS = 5000;
 
 /* ---------- tiny observable ---------- */
 
@@ -365,13 +367,25 @@ export const getSongs = songs.list$.get;
 
 export function blankSong(music: Music, patch: Partial<Song> = {}): Song {
   const now = Date.now();
-  return { id: uid(), music, repeat: false, rating: 0, text: '', emotions: [], from: null, created: now, updated: now, ...patch };
+  return { id: uid(), music, repeat: false, rating: 0, text: '', emotions: [], from: null, days: [], created: now, updated: now, ...patch };
 }
 export const saveSong = songs.save;
 /** Takes music out of your collection. Notes it's attached to keep it. */
 export const deleteSong = songs.remove;
 /** The kept copy of a piece of music, if it's in your collection. */
 export const findSong = (list: Song[], m: Pick<Music, 'kind' | 'id'>) => list.find((x) => x.music.kind === m.kind && x.music.id === m.id);
+
+/** The song of a day. Two devices picking different ones before syncing: the latest pick wins. */
+export const songOfDay = (list: Song[], day: string) =>
+  list.reduce<Song | null>((best, s) => (s.days.includes(day) && (!best || s.updated > best.updated) ? s : best), null);
+
+/** Makes `song` the song of `day` (taking the day from whichever song had it), or with `song` null, clears the day. */
+export async function pickSongOfDay(song: Song | null, day: string) {
+  const list = getSongs();
+  const fresh = song && list.find((s) => s.id === song.id);
+  for (const s of list) if (s !== fresh && s.days.includes(day)) await saveSong({ ...s, days: s.days.filter((d) => d !== day) });
+  if (fresh && !fresh.days.includes(day)) await saveSong({ ...fresh, days: [...fresh.days, day].sort().slice(-MAX_SONG_DAYS) });
+}
 
 type Collection = ReturnType<typeof collection<any>>;
 const COLLECTIONS: Collection[] = [people, books, songs];
@@ -596,6 +610,7 @@ function normalizeSong(raw: any): Song | null {
     text: typeof raw.text === 'string' ? raw.text : '',
     emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     from: typeof raw.from === 'string' && raw.from.length <= 40 ? raw.from : null,
+    days: Array.isArray(raw.days) ? [...new Set(raw.days.filter(isDateKey) as string[])].sort().slice(-MAX_SONG_DAYS) : [],
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };

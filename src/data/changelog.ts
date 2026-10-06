@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.42.0',
+    date: '2026-10-06',
+    changes: [
+      'Song of the day: pick one of your records for each day, or let the dice choose, and play it right there',
+      'The last two weeks of songs sit under it as little records; tap any day to pick or change its song',
+      'A new “Most picked” panel ranks the songs you choose most, with your streaks and colourful bars',
+      'Media now always opens on Music, which comes first in its tabs',
+    ],
+  },
+  {
     version: '1.41.0',
     date: '2026-10-06',
     changes: [
