@@ -137,9 +137,9 @@
 
 .sotd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
 .sotd-tile {
-  min-width: 0; display: grid; padding: 6px 8px 5px; border-radius: 12px; color: var(--t);
-  background: color-mix(in oklab, var(--t) 14%, color-mix(in oklab, var(--surface) 78%, transparent));
-  border: 1px solid color-mix(in oklab, var(--t) 22%, var(--line));
+  min-width: 0; display: grid; padding: 6px 8px 5px; border-radius: 12px; color: var(--ink-2);
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  border: 1px solid var(--line);
   animation: pop-in 0.45s var(--spring) calc(var(--i) * 60ms + 100ms) backwards;
 }
 .sotd-tile-n { display: flex; align-items: center; gap: 4px; }

@@ -252,7 +252,7 @@ export function SongStats({ songs }: { songs: Song[] }) {
       </header>
       <div class="sotd-tiles">
         {tiles.map(([value, label, icon], i) => (
-          <span class="sotd-tile" style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i + 1]})` }}>
+          <span class="sotd-tile" style={{ '--i': i }}>
             <span class="sotd-tile-n"><Icon name={icon} size={14} stroke={2} /><b><CountUp value={value} /></b></span>
             <small>{label}</small>
           </span>
