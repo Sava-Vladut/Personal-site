@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.47.0',
+    date: '2026-10-06',
+    changes: [
+      'A calmer wheel: five slices instead of eight — Journal, People, Media, Insights and Settings',
+      'Insights holds Stats, the Map and Channel points; the Stats tabs and the Twitch sections are on their own pages instead',
+      'Check in and Write left the wheel, since the + already has them',
+      'Search and the calendar are back as buttons at the top of the journal',
+    ],
+  },
+  {
     version: '1.46.0',
     date: '2026-10-06',
     changes: [

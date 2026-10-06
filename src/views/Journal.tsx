@@ -31,8 +31,7 @@ import { LOCALE, count, t } from '../lib/i18n';
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
 
-/** `?search` or `?calendar` (from the wheel on another page) opens that as the journal appears. */
-export function Journal({ query }: { query?: URLSearchParams }) {
+export function Journal() {
   const entries = useEntries();
   const people = usePeople();
   const ready = useReady();
@@ -41,14 +40,6 @@ export function Journal({ query }: { query?: URLSearchParams }) {
   const [calOpen, setCalOpen] = usePref<boolean>('journal-calendar', false);
   const [day, setDay] = useState<string | null>(null);
   const compact = useSettings().density === 'compact';
-  useEffect(() => {
-    if (!query) return;
-    const s = query.has('search'), c = query.has('calendar');
-    if (!s && !c) return;
-    if (s) setSearching(true);
-    if (c) setCalOpen(true);
-    history.replaceState(history.state, '', '#/');
-  }, [query]);
 
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>();
@@ -100,22 +91,14 @@ export function Journal({ query }: { query?: URLSearchParams }) {
         <div class="row between">
           <h1 class="title">{longToday()}</h1>
           <div class="row">
-            {/* search and the calendar open from the wheel; while open, their button stays here to close them */}
-            {searching && (
-              <button class="icon-btn" aria-pressed="true" aria-label={t('Close search')} title={t('Close search')} onClick={() => { setSearching(false); setQ(''); }}>
-                <Icon name="search" />
-              </button>
-            )}
-            {calOpen && (
-              <button class="icon-btn" aria-pressed="true" aria-label={t('Close the calendar')} title={t('Close the calendar')} onClick={() => { setCalOpen(false); setDay(null); }}>
-                <Icon name="calendar" />
-              </button>
-            )}
-            <NavWheel
-              world={world}
-              runs={{ search: () => setSearching(true), calendar: () => { setCalOpen(!calOpen); if (calOpen) setDay(null); } }}
-              active={{ search: searching, calendar: calOpen }}
-            />
+            {/* searching and the calendar belong to the feed, so they live here; everywhere else is on the wheel */}
+            <button class="icon-btn" aria-pressed={searching} aria-label={t('Search')} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+              <Icon name="search" />
+            </button>
+            <button class="icon-btn" aria-pressed={calOpen} aria-label={t('Calendar')} title={t('Calendar')} onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
+              <Icon name="calendar" />
+            </button>
+            <NavWheel world={world} />
           </div>
         </div>
       </header>

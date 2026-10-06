@@ -84,7 +84,7 @@ export function App() {
         ) : route.name === 'map' ? (
           <MapView key={route.query.get('focus') ?? ''} query={route.query} />
         ) : (
-          <Journal query={route.query} />
+          <Journal />
         )}
       </main>
       {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && <TabBar />}

@@ -45,16 +45,6 @@ function layout(tree: WheelNode[]): Seg[] {
   return out;
 }
 
-/** The tree without the actions this page doesn't offer, and without categories left empty. */
-function prune(list: WheelNode[], runs: Record<string, unknown>): WheelNode[] {
-  return list.flatMap((n) => {
-    if (n.run && !runs[n.run] && n.to == null) return [];
-    if (!n.kids) return [n];
-    const kids = prune(n.kids, runs);
-    return kids.length ? [{ ...n, kids }] : [];
-  });
-}
-
 /** The page a node's `to` opens, to tell which one you're on. */
 function routeOf(to: string) {
   const [head, id] = to.split('?')[0].split('/');
@@ -138,22 +128,14 @@ function WheelMark() {
   );
 }
 
-/**
- * world: the sky's colour while you're on the outer ring (the page's own, usually).
- * runs: what the page can do from the wheel (`run` nodes without one aren't shown); active: which of those are on.
- */
-export function NavWheel({ world, runs = {}, active = {} }: {
-  world?: string | null;
-  runs?: Record<string, () => void>;
-  active?: Record<string, boolean>;
-}) {
+/** world: the sky's colour while you're on the outer ring (the page's own, usually). */
+export function NavWheel({ world }: { world?: string | null }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const runKey = Object.keys(runs).sort().join();
-  const segs = useMemo(() => layout(prune(WHEEL, runs)), [runKey]);
+  const segs = useMemo(() => layout(WHEEL), []);
   // where you are: the place you're on, and the category it's in
   const route = useRoute().name;
   const here = segs.find((s) => s.leaf && s.n.to != null && !s.n.to.includes('?') && routeOf(s.n.to) === route) ?? null;
@@ -174,7 +156,6 @@ export function NavWheel({ world, runs = {}, active = {} }: {
   const back = () => (focusSeg ? setFocus(focusSeg.parent?.n.id ?? null) : close());
   const live = useRef({ back });
   live.current = { back };
-  const pending = useRef<(() => void) | null>(null);
 
   const toggle = () => {
     if (open) return close();
@@ -200,11 +181,7 @@ export function NavWheel({ world, runs = {}, active = {} }: {
       cancelAnimationFrame(raf);
       clearTimeout(done);
       setOpening(false);
-      // an action picked on the wheel runs once it has let go of the focus and its history entry
-      const run = pending.current;
-      pending.current = null;
-      if (run) run();
-      else button.current?.focus({ preventScroll: true });
+      button.current?.focus({ preventScroll: true });
     };
   }, [open]);
 
@@ -243,10 +220,7 @@ export function NavWheel({ world, runs = {}, active = {} }: {
     haptic(5);
     if (s === focusSeg) return back();
     if (!s.leaf) return setFocus(s.n.id);
-    if (s.n.run && runs[s.n.run]) {
-      pending.current = runs[s.n.run];
-      close();
-    } else if (s.n.to != null) {
+    if (s.n.to != null) {
       navigateAfterSheet(s.n.to);
       close();
     }
@@ -278,17 +252,15 @@ export function NavWheel({ world, runs = {}, active = {} }: {
     if (!d) continue;
     const isHub = s === focusSeg;
     const tabbable = settled && (isHub || (Math.round(rel) === 0 && (focusSeg ? s.parent === focusSeg : s.depth === 0)));
-    const on = !!(s.n.run && active[s.n.run]);
     const style = { '--c': `var(--emo-${s.hue})`, '--k': s.k };
     shapes.push(
       <path
         d={d}
-        class={`nw-seg${isHub ? ' hub' : ''}${hot === s.n.id ? ' hot' : ''}${on ? ' on' : ''}${s === here ? ' here' : within(s) ? ' has' : ''}`}
+        class={`nw-seg${isHub ? ' hub' : ''}${hot === s.n.id ? ' hot' : ''}${s === here ? ' here' : within(s) ? ' has' : ''}`}
         style={style}
         role="button"
         tabIndex={tabbable ? 0 : -1}
         aria-label={isHub ? t('Back') : s.n.name}
-        aria-pressed={s.n.run ? on : undefined}
         onClick={(ev) => { ev.stopPropagation(); act(s); }}
         onKeyDown={(ev) => key(ev as KeyboardEvent, s)}
         onPointerEnter={(ev) => ev.pointerType === 'mouse' && setHot(s.n.id)}
@@ -330,7 +302,7 @@ export function NavWheel({ world, runs = {}, active = {} }: {
 
   // the miner's points, for the Twitch category
   const points = usePoints(open).data;
-  const isTwitch = (n?: WheelNode | null) => n?.id === 'twitch' || !!n?.to?.startsWith('twitch');
+  const isTwitch = (n?: WheelNode | null) => !!n?.to?.startsWith('twitch');
   const pointsLine = points && t('{points} points · {gain} today', { points: points.total.toLocaleString(LOCALE), gain: (points.change.day >= 0 ? '+' : '−') + Math.abs(points.change.day).toLocaleString(LOCALE) });
 
   const info = (hot && segs.find((s) => s.n.id === hot)) || focusSeg;

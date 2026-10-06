@@ -1,6 +1,6 @@
 // What the journal's wheel holds: categories around the middle, what's in them around those.
 // A category can hold categories of its own; tapping one zooms in so it fills the wheel.
-// A node with no children is a place to go (`to`, a route) or a thing the page does (`run`).
+// A node with no children is a place to go (`to`, a route).
 import type { UiName } from '../components/icons';
 import { t } from '../lib/i18n';
 
@@ -13,48 +13,21 @@ export interface WheelNode {
   /** The emotion world whose colour it wears; children take their category's. */
   hue?: string;
   to?: string;
-  /** An action the page that holds the wheel provides, like opening its search; elsewhere it goes to `to`. */
-  run?: string;
   kids?: WheelNode[];
 }
 
 export const WHEEL: WheelNode[] = [
-  // the app's own places, one tap each (they used to be the tab bar)
+  // the app's places, one tap each
   { id: 'journal', name: t('Journal'), sub: t('Your notes and check-ins, day by day'), icon: 'notebook', hue: 'joy', to: '' },
   { id: 'people', name: t('People'), sub: t('The people in your life'), icon: 'users', hue: 'love-connection', to: 'people' },
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
+  // everything that's numbers about you, in one place
   {
-    id: 'look-back', name: t('Look back'), sub: t('Find a day, a word or a place'), icon: 'clock', hue: 'calm-safety',
+    id: 'insights', name: t('Insights'), sub: t('Your patterns, your places and your points'), icon: 'chart-dots', hue: 'hope-interest',
     kids: [
-      { id: 'search', name: t('Search'), sub: t('Notes, feelings, people, songs and books'), icon: 'search', run: 'search', to: '?search' },
-      { id: 'calendar', name: t('Calendar'), sub: t('Your days, month by month'), icon: 'calendar', run: 'calendar', to: '?calendar' },
-      { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', to: 'map' },
-    ],
-  },
-  {
-    id: 'insights', name: t('Insights'), sub: t('What your feelings add up to'), icon: 'chart-dots', hue: 'hope-interest',
-    kids: [
-      { id: 'overview', name: t('Overview'), sub: t('The shape of the last while'), icon: 'chart-bar', to: 'stats?tab=overview' },
-      { id: 'emotions', name: t('Emotions'), sub: t('Which worlds you spend time in'), icon: 'chart-pie', to: 'stats?tab=emotions' },
-      { id: 'patterns', name: t('Patterns'), sub: t('What tends to come together'), icon: 'chart-donut-2', to: 'stats?tab=patterns' },
-      { id: 'weather', name: t('Weather'), sub: t('How the sky and your mood line up'), icon: 'cloud', to: 'stats?tab=weather' },
-      { id: 'dex', name: t('Dex'), sub: t('Every feeling you have named'), icon: 'trophy', to: 'stats?tab=dex' },
-    ],
-  },
-  {
-    id: 'you', name: t('You'), sub: t('Check in, write, think'), icon: 'heart', hue: 'shame-aversion',
-    kids: [
-      { id: 'check-in', name: t('Check in'), sub: t('How you feel right now'), icon: 'mood-plus', to: 'tracker' },
-      { id: 'write', name: t('Write'), sub: t('Write about your day'), icon: 'pencil', to: 'note/new' },
-      { id: 'mind', name: t('Mind'), sub: t('Who and what is on your mind'), icon: 'sparkles', to: 'people/mind' },
-    ],
-  },
-  {
-    id: 'twitch', name: t('Twitch'), sub: t('Channel points from the miner'), icon: 'brand-twitch', hue: 'fear',
-    kids: [
-      { id: 'points', name: t('Points'), sub: t('Your balance and how it grew'), icon: 'coins', to: 'twitch' },
-      { id: 'channels', name: t('Channels'), sub: t('Who you’ve been watching'), icon: 'broadcast', to: 'twitch?at=channels' },
-      { id: 'lately', name: t('Lately'), sub: t('Streaks, raids and spending'), icon: 'flame', to: 'twitch?at=recent' },
+      { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to'), icon: 'chart-bar', to: 'stats' },
+      { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', hue: 'calm-safety', to: 'map' },
+      { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
     ],
   },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },
