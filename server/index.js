@@ -8,6 +8,8 @@
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
+//  • GitHub projects: GITHUB_USER's public repositories and their commits, cached in data/github.json
+//    (GITHUB_TOKEN, optional, only raises GitHub's rate limit).
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -20,6 +22,7 @@ import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createVoiceHandler, isVoicePath } from './voice.js';
 import { createTwitchHandler } from './twitch.js';
+import { createGithubHandler } from './github.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -36,6 +39,8 @@ const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 // the miner's settings/channels.json, the channels it watches (writable)
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const GITHUB_USER = (process.env.GITHUB_USER || '').trim();
+const GITHUB_TOKEN = (process.env.GITHUB_TOKEN || '').trim();
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -466,6 +471,7 @@ async function admin(req, res) {
 
 const sync = createSyncHandler({ directory: SYNC_DIR });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
+const github = createGithubHandler({ user: GITHUB_USER, token: GITHUB_TOKEN, cacheFile: join(ROOT, 'data', 'github.json') });
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -478,6 +484,7 @@ async function api(req, res, url) {
     if (p.startsWith('/api/sync/')) return await sync(req, res, p);
     if (p === '/api/admin') return await admin(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
+    if (p === '/api/github' || p.startsWith('/api/github/')) return await github(req, res, p, url);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

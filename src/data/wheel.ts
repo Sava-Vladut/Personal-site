@@ -30,5 +30,14 @@ export const WHEEL: WheelNode[] = [
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
     ],
   },
+  // what you're building on GitHub
+  {
+    id: 'code', name: t('Projects'), sub: t('Your GitHub projects, with notes and to-dos'), icon: 'brand-github', hue: 'calm-safety',
+    kids: [
+      { id: 'projects', name: t('All projects'), sub: t('Every repo, its commits and how it makes you feel'), icon: 'folder', to: 'projects' },
+      { id: 'project-todos', name: t('To-dos'), sub: t('What’s left to do, across projects'), icon: 'list-check', to: 'projects?at=todos' },
+      { id: 'project-commits', name: t('Commits'), sub: t('Every commit, newest first, by day'), icon: 'git-commit', to: 'projects?at=commits' },
+    ],
+  },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },
 ];

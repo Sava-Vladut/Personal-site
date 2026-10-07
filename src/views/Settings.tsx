@@ -91,6 +91,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
         r.people ? count(r.people, 'person', 'people') : '',
         r.books ? count(r.books, 'book', 'books') : '',
         r.songs ? count(r.songs, 'record', 'records') : '',
+        r.projects ? count(r.projects, 'project', 'projects') : '',
         r.photos ? count(r.photos, 'photo', 'photos') : '',
       ].filter(Boolean);
       toast(parts.length ? t('Imported {list}', { list: listOf(parts) }) : t('Nothing new in that backup'));

@@ -14,6 +14,8 @@ import { Mind } from './views/Mind';
 import { People } from './views/People';
 import { MapView } from './views/Places';
 import { PersonView } from './views/Person';
+import { ProjectView } from './views/Project';
+import { Projects } from './views/Projects';
 import { Settings } from './views/Settings';
 import { SongView } from './views/Song';
 import { Stats } from './views/Stats';
@@ -29,10 +31,11 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['tracker', t('Check in'), 'mood-smile', 'tracker'],
   ['people', t('People'), 'users', 'people'],
   ['media', t('Media'), 'library', 'media'],
+  ['projects', t('Projects'), 'brand-github', 'projects'],
 ];
 
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats', project: 'projects' };
 
 export function App() {
   const route = useRoute();
@@ -66,13 +69,17 @@ export function App() {
           <Settings query={route.query} />
         ) : route.name === 'twitch' ? (
           <Twitch query={route.query} />
+        ) : route.name === 'projects' ? (
+          <Projects query={route.query} />
+        ) : route.name === 'project' ? (
+          <ProjectView key={route.id} name={route.id!} />
         ) : route.name === 'map' ? (
           <MapView key={route.query.get('focus') ?? ''} query={route.query} />
         ) : (
           <Journal />
         )}
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && route.name !== 'settings' && <TabBar />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'project' && route.name !== 'map' && route.name !== 'settings' && <TabBar />}
       <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />
       <EntryMenu />
       <Toasts />

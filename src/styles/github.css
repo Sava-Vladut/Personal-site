@@ -1,0 +1,212 @@
+/* ============================================================
+   Projects: your GitHub repositories, under a sky drawn in code (components/Sky.tsx, letters "code").
+   The cards are the stats page's (stats.css) and the channel points page's lists (twitch.css), in GitHub
+   green (--accent, set on the root); a project's own page takes the colour of how it makes you feel.
+   ============================================================ */
+
+/* ---------- the header ---------- */
+
+.journal-top.pj-top { padding-bottom: 14px; }
+.pj-top .page-head { margin-bottom: 12px; }
+.pj-top .media-stat {
+  background: color-mix(in oklab, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+}
+.pj-stats { margin: 0 0 10px; }
+.pj-range { margin: 0; }
+.pj-range button { font-size: 13.5px; }
+.pj-who { display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; min-width: 0; }
+.pj-who b { color: var(--ink); font-weight: 600; }
+.pj-avatar {
+  width: 20px; height: 20px; border-radius: 50%; flex: none; background: var(--surface-2);
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--surface) 80%, transparent);
+  animation: pop 0.5s var(--spring-bouncy) 0.2s backwards;
+}
+.pj-status { flex: 1; min-width: 0; text-align: center; font-size: 12.5px; color: var(--ink-3); animation: fade-in 0.3s ease; }
+.pj-top .cloud-title { overflow-wrap: anywhere; }
+
+/* language, stars, forks, last push: one wrapping line under the description */
+.pj-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+.pj-facts > * { display: inline-flex; align-items: center; gap: 5px; min-width: 0; animation: rise-in 0.4s var(--ease-emph) calc(0.15s + var(--i, 0) * 40ms) backwards; }
+.pj-facts svg { flex: none; color: color-mix(in oklab, var(--accent) 70%, var(--ink-2)); }
+.pj-facts a { color: var(--ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-tag {
+  display: inline-flex; align-items: center; height: 19px; padding: 0 7px; border-radius: 99px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.01em; color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+/* ---------- overview ---------- */
+
+.pj-hero .hero-num { font-size: clamp(40px, 13vw, 58px); font-variant-numeric: tabular-nums; }
+.pj-hero .tw-gains .down b { color: var(--ink-2); }
+.pj-tiles .tile-value.small { font-size: 19px; }
+@media (min-width: 560px) { .pj-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* every day as a square, a column a week, today in the bottom right */
+.pj-grid-wrap { margin-top: 12px; min-height: 1px; }
+.pj-grid {
+  display: grid; gap: 3px; align-items: center;
+  grid-template-columns: 22px repeat(var(--weeks), minmax(0, 1fr));
+  grid-template-rows: 14px repeat(7, auto);
+}
+.pj-month { text-align: left; white-space: nowrap; overflow: visible; line-height: 1; }
+.pj-grid .pj-cell { aspect-ratio: 1; border-radius: 3px; }
+.pj-cell.later { background: none; }
+.pj-grid .heat-cell.pj-cell { animation-duration: 0.35s; animation-delay: calc(0.05s + var(--t, 0) * 0.5s); }
+.pj-grid-note { margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
+
+/* commits over time: bars that rise from the baseline, left to right */
+.pj-bar { outline: none; }
+.pj-bar-fill {
+  fill: var(--accent); transform-box: fill-box; transform-origin: bottom;
+  animation: pj-rise 0.6s var(--ease-emph) calc(0.1s + var(--t, 0) * 0.45s) backwards;
+}
+.pj-bar:hover .pj-bar-fill, .pj-bar:focus-visible .pj-bar-fill { fill: color-mix(in oklab, var(--accent) 75%, var(--ink)); }
+@keyframes pj-rise { from { transform: scaleY(0); } }
+
+/* ---------- the list of projects ---------- */
+
+.pj-list .tw-list-head { flex-wrap: wrap; row-gap: 6px; }
+.pj-sort { margin: 0; gap: 4px; }
+.pj-sort .chip { height: 28px; padding: 0 10px; font-size: 12.5px; }
+.pj-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px;
+  width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; border-radius: 12px; text-align: left;
+  transition: background-color 0.12s, scale 0.25s var(--spring-bouncy);
+}
+.pj-row:active { scale: 0.985; }
+@media (hover: hover) { .pj-row:hover { background: var(--surface-2); } }
+.pj-list li + li .pj-row { border-top: 1px solid var(--line); }
+.pj-list li + li .pj-row:hover, .pj-list li:hover + li .pj-row { border-top-color: transparent; }
+.pj-row-main { display: grid; gap: 2px; min-width: 0; }
+.pj-row-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pj-row-name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-row-name .sprite { flex: none; color: var(--c); }
+.pj-row-desc { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-row-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; color: var(--ink-3); }
+.pj-row-meta:empty { display: none; }
+.pj-row-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.pj-row-meta svg { flex: none; }
+.pj-meta-todo { color: color-mix(in oklab, var(--accent) 70%, var(--ink-2)); font-weight: 600; }
+.pj-row-num { min-width: 3.4em; }
+.pj-row-num small { white-space: nowrap; }
+
+.pj-spark { flex: none; overflow: visible; }
+.pj-spark rect {
+  fill: var(--accent); opacity: 0.9; transform-box: fill-box; transform-origin: bottom;
+  animation: pj-rise 0.5s var(--ease-emph) calc(0.25s + var(--k, 0) * 30ms) backwards;
+}
+.pj-spark rect.none { fill: var(--line-2); opacity: 1; }
+
+.pj-more {
+  display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 38px; margin-top: 6px;
+  border-radius: 11px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); transition: background-color 0.15s;
+}
+.pj-more:hover { background: var(--surface-2); color: var(--ink); }
+.pj-more svg { transition: rotate 0.3s var(--spring); }
+.pj-more[aria-expanded='true'] svg { rotate: 180deg; }
+
+/* ---------- to-dos ---------- */
+
+.pj-todo-group + .pj-todo-group { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--line); }
+.pj-todo-repo {
+  display: inline-flex; align-items: center; gap: 2px; margin-top: 10px;
+  font-size: 12.5px; font-weight: 650; color: var(--ink-3); text-decoration: none;
+}
+.pj-todo-repo:hover { color: var(--ink); }
+.tw-list .pj-todo-list { margin-top: 4px; }
+.pj-todo { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.pj-todo + .pj-todo { border-top: 1px solid var(--line); }
+.pj-check {
+  flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px;
+  border: 1.5px solid var(--line-2); color: var(--on-ink); background: var(--surface);
+  transition: background-color 0.2s, border-color 0.2s, scale 0.3s var(--spring-bouncy);
+}
+.pj-check:active { scale: 0.85; }
+.pj-check svg { scale: 0; transition: scale 0.25s var(--spring-bouncy); }
+.pj-todo.is-done .pj-check { background: var(--accent); border-color: var(--accent); }
+.pj-todo.is-done .pj-check svg { scale: 1; }
+.pj-check.ghost { border-style: dashed; color: var(--ink-3); background: none; }
+.pj-check.ghost svg { scale: 1; }
+.pj-todo-text {
+  flex: 1; min-width: 0; padding: 8px 0; border: 0; background: none; outline: none;
+  font: 400 15px/1.35 var(--sans); color: var(--ink); overflow-wrap: anywhere;
+}
+input.pj-todo-text { text-overflow: ellipsis; }
+.pj-todo-text::placeholder { color: var(--ink-3); }
+.pj-todo .pj-todo-text { background: linear-gradient(var(--ink-3), var(--ink-3)) no-repeat 0 55% / 0 1px; transition: color 0.25s, background-size 0.35s var(--ease-emph); }
+.pj-todo.is-done .pj-todo-text { color: var(--ink-3); background-size: 100% 1px; }
+.pj-todo-x { flex: none; color: var(--ink-3); opacity: 0; transition: opacity 0.15s; }
+.pj-todo:hover .pj-todo-x, .pj-todo-x:focus-visible, .pj-todo:focus-within .pj-todo-x { opacity: 1; }
+@media (hover: none) { .pj-todo-x { opacity: 0.6; } }
+.pj-todo-add { display: flex; align-items: center; gap: 10px; min-height: 44px; border-top: 1px solid var(--line); margin-top: 2px; }
+.pj-todo-list:empty + .pj-todo-add, .pj-progress + .pj-todo-add { border-top: 0; }
+.pj-todo-add .btn { flex: none; animation: pop-in 0.25s var(--spring) backwards; }
+.pj-progress { margin: 10px 0 2px; height: 5px; }
+.pj-progress i { transition: width 0.5s var(--spring); }
+.pj-done-list { opacity: 0.85; animation: rise-in 0.3s var(--ease-emph) backwards; }
+
+/* ---------- the commits: a list that scrolls on its own, a heading for each day ---------- */
+
+.pj-commits {
+  position: relative; max-height: min(460px, 62vh); overflow-y: auto; overscroll-behavior: contain;
+  margin: 10px -16px 0; padding: 0 16px; scrollbar-width: thin; outline: none;
+  mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent);
+}
+.pj-commits:focus-visible { box-shadow: inset 0 0 0 2px var(--line-2); border-radius: 12px; }
+.pj-day-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 8px 0 6px; background: var(--surface); font-size: 12.5px; font-weight: 650; color: var(--ink-2);
+}
+.pj-day-head small { font-weight: 500; color: var(--ink-3); }
+.pj-day ol { list-style: none; margin: 0 0 4px; padding: 0; position: relative; }
+/* a thread down the left that the commits hang on */
+.pj-day ol::before { content: ''; position: absolute; left: 4px; top: 10px; bottom: 10px; width: 1.5px; border-radius: 1px; background: var(--line-2); }
+.pj-commit {
+  display: flex; align-items: flex-start; gap: 12px; padding: 7px 8px 7px 0; border-radius: 10px;
+  color: var(--ink); text-decoration: none; transition: background-color 0.12s;
+}
+@media (hover: hover) { .pj-commit:hover { background: var(--surface-2); } }
+.pj-commit-dot {
+  position: relative; flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%;
+  background: var(--surface); box-shadow: inset 0 0 0 2px var(--accent);
+  animation: pop 0.4s var(--spring-bouncy) calc(0.1s + var(--k, 0) * 35ms) backwards;
+}
+.pj-day:first-child li:first-child .pj-commit-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
+.pj-commit-text { display: grid; gap: 2px; min-width: 0; }
+.pj-commit-text b {
+  font-weight: 500; font-size: 14.5px; line-height: 1.35; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere;
+}
+.pj-commit-text small { display: flex; flex-wrap: wrap; gap: 0 8px; font-size: 12px; color: var(--ink-3); }
+.pj-commit-text code { font: 500 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); }
+.pj-commit-repo { font-weight: 600; color: color-mix(in oklab, var(--accent) 65%, var(--ink-2)); }
+.pj-commits-end { display: grid; place-items: center; min-height: 48px; padding: 8px 0 14px; font-size: 12.5px; color: var(--ink-3); }
+.pj-loading { display: inline-flex; align-items: center; gap: 6px; }
+.pj-loading svg { animation: turn 0.9s linear infinite; }
+
+/* ---------- a project's own page ---------- */
+
+.pj-mine { margin-bottom: 12px; }
+.pj-mind { padding: 16px 16px 12px; }
+.pj-mind .person-meta { margin-top: 0; }
+.pj-mind .definition { margin-top: 10px; }
+.pj-notes-label { margin: 18px 0 0; }
+.pj-notes { margin-top: 4px; min-height: 4.5em; font-size: 16.5px; }
+.pj-todo-card { padding-bottom: 12px; }
+
+/* ---------- desktop: the cards flow into two columns, the wide ones run across ---------- */
+
+@media (min-width: 1024px) {
+  .pj-page > .stack-l.reveal { display: block; column-count: 2; column-gap: 12px; }
+  .pj-page > .stack-l.reveal > * { break-inside: avoid; margin: 0 0 12px; }
+  .pj-page > .stack-l.reveal > :is(.pj-hero, .tiles, .pj-list, .chart-card:has(.pj-grid-wrap)) { column-span: all; }
+  .pj-project .pj-mine { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .pj-commits { max-height: 560px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pj-bar-fill, .pj-spark rect, .pj-commit-dot, .pj-facts > *, .pj-avatar { animation: none; }
+}

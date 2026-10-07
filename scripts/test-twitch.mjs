@@ -26,7 +26,8 @@ await writeFile(join(root, 'someone', 'broken.json'), '{ "series": [');
 
 const call = async (dir, method = 'GET') => {
   let out;
-  await createTwitchHandler({ directory: dir })({ method }, {}, (_res, status, body) => (out = { status, body }));
+  const res = { writeHead: (status) => (out = { status }), end: (body) => (out.body = JSON.parse(body)) };
+  await createTwitchHandler({ directory: dir })({ method }, res, '/api/twitch');
   return out;
 };
 
