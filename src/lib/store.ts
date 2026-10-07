@@ -137,25 +137,6 @@ export interface Song {
 }
 const MAX_SONG_DAYS = 5000;
 
-/** What you keep about one of your GitHub repositories: how it makes you feel, notes, and what's left to do. */
-export interface Project {
-  id: string;               // 'gh:' + the repository's name, lowercased, so every device writes to the same one
-  repo: string;             // the repository's name as GitHub spells it
-  text: string;             // notes
-  emotions: string[];       // how it makes you feel, first one is the main feeling
-  todos: Todo[];
-  created: number;
-  updated: number;
-}
-export interface Todo {
-  id: string;
-  text: string;
-  done: number | null;      // when it was ticked off
-  created: number;
-}
-export const MAX_TODOS = 200;
-export const projectId = (repo: string) => 'gh:' + repo.toLowerCase();
-
 /* ---------- tiny observable ---------- */
 
 export function observable<T>(initial: T) {
@@ -406,19 +387,8 @@ export async function pickSongOfDay(song: Song | null, day: string) {
   if (fresh && !fresh.days.includes(day)) await saveSong({ ...fresh, days: [...fresh.days, day].sort().slice(-MAX_SONG_DAYS) });
 }
 
-const byRepo = (a: Project, b: Project) => a.repo.localeCompare(b.repo, undefined, { sensitivity: 'base' });
-const projects = collection<Project>('projects', normalizeProject, byRepo);
-export const useProjects = projects.list$.use;
-export const getProjects = projects.list$.get;
-
-export function blankProject(repo: string): Project {
-  const now = Date.now();
-  return { id: projectId(repo), repo, text: '', emotions: [], todos: [], created: now, updated: now };
-}
-export const saveProject = projects.save;
-
 type Collection = ReturnType<typeof collection<any>>;
-const COLLECTIONS: Collection[] = [people, books, songs, projects];
+const COLLECTIONS: Collection[] = [people, books, songs];
 let clearRevision = 0;
 let lastClearAt = 0;
 const freshSinceClear = new Set<string>();
@@ -646,36 +616,10 @@ function normalizeSong(raw: any): Song | null {
   };
 }
 
-/** Coerces untrusted input into a valid Project, or null. */
-function normalizeProject(raw: any): Project | null {
-  if (!raw || typeof raw !== 'object' || typeof raw.repo !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(raw.repo)) return null;
-  const now = Date.now();
-  const todos: Todo[] = Array.isArray(raw.todos)
-    ? raw.todos
-        .filter((x: any) => x && typeof x === 'object' && typeof x.text === 'string' && x.text.trim())
-        .map((x: any) => ({
-          id: typeof x.id === 'string' && x.id && x.id.length <= 40 ? x.id : uid(),
-          text: str(x.text, 500),
-          done: Number.isFinite(x.done) ? x.done : null,
-          created: Number.isFinite(x.created) ? x.created : now,
-        }))
-        .slice(0, MAX_TODOS)
-    : [];
-  return {
-    id: projectId(raw.repo),
-    repo: raw.repo,
-    text: typeof raw.text === 'string' ? raw.text : '',
-    emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
-    todos: todos.filter((x, i) => todos.findIndex((y) => y.id === x.id) === i),
-    created: Number.isFinite(raw.created) ? raw.created : now,
-    updated: Number.isFinite(raw.updated) ? raw.updated : now,
-  };
-}
-
 export async function exportJSON() {
   const entries = entries$.get();
   const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
-  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), projects: getProjects(), photos }, null, 1);
+  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), photos }, null, 1);
 }
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
@@ -688,7 +632,7 @@ export async function importJSON(text: string) {
   // Photos can be missing even when the note itself is already up to date. Read the current
   // journal afterwards, so edits made while those photos are loading are kept.
   const restoredPhotos = await importPhotos(data?.photos, new Set(incoming.flatMap((e) => photosOf(e).map((p) => p.id))));
-  const interrupted = () => ({ changed: 0, people: 0, books: 0, songs: 0, projects: 0, photos: restoredPhotos, total: incoming.length, icons: [] as string[] });
+  const interrupted = () => ({ changed: 0, people: 0, books: 0, songs: 0, photos: restoredPhotos, total: incoming.length, icons: [] as string[] });
   const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(data?.[c.key]));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...incomingCollections()])) return interrupted();
   // A stale tab must not replace another tab's newer durable note. Restored deletions count as fresh edits.
@@ -701,11 +645,11 @@ export async function importJSON(text: string) {
   const merged = COLLECTIONS.map((c) => c.merge(data?.[c.key], deleted, true).changed);
   await Promise.all(COLLECTIONS.map((c, i) => merged[i].length && c.write(merged[i])));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()])) return interrupted();
-  const [pChanged, bChanged, sChanged, gChanged] = merged;
+  const [pChanged, bChanged, sChanged] = merged;
 
-  if (changed.length || pChanged.length || bChanged.length || sChanged.length || gChanged.length || restoredPhotos) changeHandler();
+  if (changed.length || pChanged.length || bChanged.length || sChanged.length || restoredPhotos) changeHandler();
   return {
-    changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, projects: gChanged.length, photos: restoredPhotos, total: incoming.length,
+    changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, photos: restoredPhotos, total: incoming.length,
     icons: iconsOf([...changed, ...pChanged]),
   };
 }
@@ -716,7 +660,7 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Merges another device's copy: the newest edit of each entry wins, and a deletion wins over edits made before it.
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
-export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; projects?: unknown; deleted?: unknown }) {
+export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; deleted?: unknown }) {
   const revision = clearRevision;
   const incoming = newestById((Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[]);
   const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
@@ -726,15 +670,15 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   // Local deletions can happen while IndexedDB is busy; neither their tombstones nor their visible removal
   // may be replaced by the snapshot taken when this merge began.
   deleted = combineDeleted(deleted, committedDeleted);
-  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs' | 'projects']));
+  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs']));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()]))
     return { changed: [] as Entry[], removed: removed.length, icons: [] as string[] };
   const current = new Map(newestById([
     ...durable, ...entries$.get(),
   ]).filter((e) => !(deleted[e.id] >= e.updated)).map((e) => [e.id, e]));
 
-  // People, books, songs and projects follow the same rules. Older app versions don't send them: then nothing changes here.
-  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs' | 'projects'], deleted, false) }));
+  // People, books and songs follow the same rules. Older app versions don't send them: then nothing changes here.
+  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs'], deleted, false) }));
 
   const visible = entries$.get();
   if (visible.length !== current.size || visible.some((e) => current.get(e.id) !== e)) entries$.set([...current.values()].sort(byNewest));

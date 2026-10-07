@@ -41,7 +41,7 @@ function feltWorlds(list: { emotions: string[] }[], tab: Tab) {
 }
 
 /** A title that rises out of the clouds a letter at a time. */
-export function CloudTitle({ text }: { text: string }) {
+function CloudTitle({ text }: { text: string }) {
   return (
     <h1 class="title cloud-title" aria-label={text}>
       {[...text].map((ch, i) => (

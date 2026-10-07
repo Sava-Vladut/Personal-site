@@ -127,8 +127,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   haze mist cloud-rain cloud-snow cloud-storm temperature sunrise map map-pin map-pins current-location home minus
   player-play player-pause external-link vinyl library repeat at typography cake heart hourglass
   microphone player-stop loader-2 trophy dice-5 flame crown arrows-shuffle
-  brand-twitch coins gift broadcast trending-up
-  brand-github git-commit git-fork code folder circle-check circle eye lock-open`.split(/\s+/);
+  brand-twitch coins gift broadcast trending-up`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

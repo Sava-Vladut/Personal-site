@@ -321,7 +321,7 @@ test('IndexedDB opens can retry and failed batches abort their earlier writes', 
 function syncMocks() {
   return {
     './store': {
-      getDeleted: () => ({}), getEntries: () => [], getPeople: () => [], getBooks: () => [], getSongs: () => [], getProjects: () => [], mergeSynced: async () => ({ icons: [] }),
+      getDeleted: () => ({}), getEntries: () => [], getPeople: () => [], getBooks: () => [], getSongs: () => [], mergeSynced: async () => ({ icons: [] }),
       observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
       photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
     },
@@ -794,7 +794,7 @@ test('an unchanged sync document still retries a failed photo download', async (
   let documents = 0, attempts = 0;
   const sync = await loadModule('src/lib/sync.ts', {
     './store': {
-      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], getSongs: () => [], getProjects: () => [], mergeSynced: async () => ({ icons: [] }),
+      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], getSongs: () => [], mergeSynced: async () => ({ icons: [] }),
       observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
       photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
     },

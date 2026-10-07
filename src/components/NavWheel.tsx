@@ -3,11 +3,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { WHEEL, type WheelNode } from '../data/wheel';
 import { navigateAfterSheet, pushBack, routeName, transitionsOn } from '../lib/router';
 import { haptic } from '../lib/haptics';
-import { LOCALE, count, t } from '../lib/i18n';
+import { LOCALE, t } from '../lib/i18n';
 import { compact, usePoints } from '../lib/twitch';
-import { allTimes, since, useGithub } from '../lib/github';
-import { addDays, todayKey } from '../lib/dates';
-import { useProjects } from '../lib/store';
 import { Icon } from './icons';
 import { RAMPS, Sky } from './Sky';
 import '../styles/wheel.css';
@@ -380,16 +377,6 @@ export function NavWheel({ world }: { world?: string | null }) {
   const isTwitch = (n?: WheelNode | null) => !!n?.to?.startsWith('twitch');
   const pointsLine = points && t('{points} points · {gain} today', { points: points.total.toLocaleString(LOCALE), gain: (points.change.day >= 0 ? '+' : '−') + Math.abs(points.change.day).toLocaleString(LOCALE) });
 
-  // GitHub, for the Projects category: commits this week and what's left to do
-  const github = useGithub(open).data;
-  const notes = useProjects();
-  const isCode = (n?: WheelNode | null) => n?.id === 'code' || !!n?.to?.startsWith('projects');
-  const todos = notes.reduce((n, p) => n + p.todos.filter((x) => !x.done).length, 0);
-  const codeLine = github && t('{commits} this week · {todos} to-dos open', {
-    commits: count(since(allTimes(github.repos), addDays(todayKey(), -6)).length, 'commit', 'commits'),
-    todos: todos.toLocaleString(LOCALE),
-  });
-
   const info = (hot && segs.find((s) => s.n.id === hot)) || focusSeg;
   const hub = ring(-1 - z)[1];
   const hubName = focusSeg ? Math.max(0, 1 - Math.abs(z - focusSeg.depth - 1)) ** 2 : 0;
@@ -438,7 +425,7 @@ export function NavWheel({ world }: { world?: string | null }) {
                 <g opacity={hubName}>
                   <g transform={`translate(${C - 12} ${C - 30})`}><Icon name={focusSeg.n.icon} size={24} stroke={1.7} /></g>
                   <text x={C} y={C + 10} class="nw-hub-name">{focusSeg.n.name}</text>
-                  <text x={C} y={C + 28} class="nw-hub-text">{isTwitch(focusSeg.n) && points ? compact(points.total) : isCode(focusSeg.n) && github ? count(github.repos.length, 'project', 'projects') : t('Back')}</text>
+                  <text x={C} y={C + 28} class="nw-hub-text">{isTwitch(focusSeg.n) && points ? compact(points.total) : t('Back')}</text>
                 </g>
               )}
             </g>
@@ -451,7 +438,6 @@ export function NavWheel({ world }: { world?: string | null }) {
             <div class="nw-cap-name">{info.n.name}</div>
             <p class="nw-cap-sub">{info.n.sub}</p>
             {isTwitch(info.n) && pointsLine && <p class="nw-cap-stat">{pointsLine}</p>}
-            {isCode(info.n) && codeLine && <p class="nw-cap-stat">{codeLine}</p>}
           </>
         ) : (
           <p class="nw-cap-sub">{t('Tap one to open it, the middle to close')}</p>

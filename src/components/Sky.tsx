@@ -30,8 +30,6 @@ export const RAMPS: Record<string, string[]> = {
   music: [' ', '.', '·', '-', '♩', '♪', '♫', '♬'],
   // channel points: a sky of coins
   twitch: [' ', '.', '·', ':', 'o', '¢', '$', '¤'],
-  // projects: a sky of code
-  code: [' ', '.', ':', ';', '01', '()', '{}', '</>'],
 };
 
 /** The world a sky leans toward; the second colour keeps it from going flat. */

@@ -11,26 +11,10 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
-    version: '1.54.0',
+    version: '1.55.0',
     date: '2026-10-07',
     changes: [
-      'Projects: sign in with GitHub to see your private repos too, with their commits, charts, notes and to-dos',
-      'Private repos only show in browsers signed in with your account; everyone else still sees the public ones',
-      'Private repos are marked with a lock, and signing out takes the access back from GitHub',
-      'Settings has a GitHub row to sign in or out, with step-by-step setup if the server isn’t ready for it yet',
-    ],
-  },
-  {
-    version: '1.53.0',
-    date: '2026-10-07',
-    changes: [
-      'Projects: a new page for your GitHub repositories, under a sky drawn in code, with its own slice on the wheel',
-      'See commits for the last 30 days, 90 days, year or all time, with active days, streaks, your busiest weekday and the projects you worked on',
-      'A year of activity as a grid of days, commits over time, when you code by weekday and hour, and your languages',
-      'Every project as a row with its last 12 weeks, sorted by recent, commits or name',
-      'Each project has its own page: add how it makes you feel, notes and to-dos, and tick to-dos off from the overview too',
-      'Scroll through every commit, grouped by day with its date and time; more load as you reach the end',
-      'Project notes and to-dos sync and go into backups like the rest of your journal',
+      'The Projects (GitHub) section is gone, with its slice on the wheel, its sidebar link and the GitHub row in Settings',
     ],
   },
   {
