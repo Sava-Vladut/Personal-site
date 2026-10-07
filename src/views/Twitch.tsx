@@ -67,7 +67,10 @@ export function Twitch({ query }: { query: URLSearchParams }) {
       <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-fear)' }}>
         <Sky world="fear" letters="twitch" />
         <header class="page-head">
-          <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
+          <div class="row between tw-head-row">
+            <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
+            <button class="btn btn-quiet btn-s tw-edit-btn" onClick={() => setEditing(true)}><Icon name="pencil" size={15} /> {t('Edit channels')}</button>
+          </div>
           <h1 class="title">{t('Channel points')}</h1>
           <p class="subtitle">
             {!data ? t('From the points miner') : live.length ? (

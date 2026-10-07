@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.52.1',
+    date: '2026-10-07',
+    changes: [
+      'Channel points: an Edit channels button at the top of the page, next to Back, so it\'s there without scrolling',
+    ],
+  },
+  {
     version: '1.52.0',
     date: '2026-10-07',
     changes: [

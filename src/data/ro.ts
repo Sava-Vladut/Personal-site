@@ -1362,6 +1362,7 @@ export const RO: Record<string, string> = {
   'that day': 'în ziua aceea',
   'not mined any more': 'nu mai e minat',
   'Mined channels': 'Canale minate',
+  'Edit channels': 'Editează canalele',
   'Signing in…': 'Se conectează…',
   'Sign in': 'Conectează-te',
   'The miner watches these in order: the first ones come first when several are live. Saving restarts it, so it stops for a few seconds.':

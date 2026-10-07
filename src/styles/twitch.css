@@ -75,9 +75,12 @@
 .tw-bars li.down .tw-bar i { background: var(--danger); }
 .tw-bars b { font-weight: 650; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
 
-/* the channel list's head, with its Edit button */
+/* Edit buttons: at the top beside Back, and on the channel list's head */
+.tw-head-row { margin: -4px 0 6px; }
+.tw-head-row .stats-back { margin: 0 0 0 -4px; }
+.tw-edit-btn { background: color-mix(in oklab, var(--surface-2) 70%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .tw-list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.tw-list-head .btn { display: inline-flex; align-items: center; gap: 6px; }
+.tw-list-head .btn, .tw-edit-btn { display: inline-flex; align-items: center; gap: 6px; }
 
 /* editing which channels the miner watches */
 .tw-edit { list-style: none; margin: 0 0 12px; padding: 0; }
