@@ -128,7 +128,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   player-play player-pause external-link vinyl library repeat at typography cake heart hourglass
   microphone player-stop loader-2 trophy dice-5 flame crown arrows-shuffle
   brand-twitch coins gift broadcast trending-up
-  brand-github git-commit git-fork code folder circle-check circle eye`.split(/\s+/);
+  brand-github git-commit git-fork code folder circle-check circle eye lock-open`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

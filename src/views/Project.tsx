@@ -124,6 +124,7 @@ export function ProjectView({ name }: { name: string }) {
               <span><Icon name="star" size={14} stroke={2} />{num(repo.stars)}</span>
               <span><Icon name="git-fork" size={14} stroke={2} />{num(repo.forks)}</span>
               <span><Icon name="clock" size={14} stroke={2} />{t('pushed {when}', { when: ago(repo.pushedAt, data!.now) })}</span>
+              {repo.private && <span class="pj-tag pj-private"><Icon name="lock" size={11} stroke={2.2} />{t('private')}</span>}
               {repo.fork && <span class="pj-tag">{t('fork')}</span>}
               {repo.archived && <span class="pj-tag">{t('archived')}</span>}
               {repo.homepage && (

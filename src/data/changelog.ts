@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.54.0',
+    date: '2026-10-07',
+    changes: [
+      'Projects: sign in with GitHub to see your private repos too, with their commits, charts, notes and to-dos',
+      'Private repos only show in browsers signed in with your account; everyone else still sees the public ones',
+      'Private repos are marked with a lock, and signing out takes the access back from GitHub',
+      'Settings has a GitHub row to sign in or out, with step-by-step setup if the server isn’t ready for it yet',
+    ],
+  },
+  {
     version: '1.53.0',
     date: '2026-10-07',
     changes: [

@@ -18,6 +18,8 @@ export interface Repo {
   size: number;
   fork: boolean;
   archived: boolean;
+  /** only there when this browser is signed in with GitHub */
+  private: boolean;
   branch: string;
   createdAt: number;
   pushedAt: number;
@@ -39,7 +41,13 @@ export interface Github {
   stale: boolean;
   repos: Repo[];
   recent: Commit[];
+  /** the GitHub account this browser is signed in with, whose private repositories are included */
+  viewer: Viewer | null;
+  /** whether the server can sign in with GitHub */
+  signIn: boolean;
 }
+export interface Viewer { login: string; avatar: string }
+export interface AuthStatus { configured: boolean; connected: boolean; viewer: Viewer | null; owner: string | null; redirect: string | null }
 
 type State = { data: Github | null; error: string | null; loading: boolean };
 
@@ -65,17 +73,26 @@ async function call<T>(path: string): Promise<T> {
   return body as T;
 }
 
+let generation = 0; // signing out starts a new one: anything asked for before it is dropped
+
 export function loadGithub(force = false) {
   if (pending || (!force && Date.now() - fetchedAt < FRESH && state.data)) return pending;
   set({ loading: true });
-  pending = call<Github>('/api/github')
+  const gen = generation;
+  const p: Promise<void> = call<Github>('/api/github')
     .then((data) => {
+      if (gen !== generation) return;
       fetchedAt = Date.now();
       set({ data, error: null, loading: false });
     })
-    .catch((e: Error) => set({ error: e.message, loading: false }))
-    .finally(() => (pending = null));
-  return pending;
+    .catch((e: Error) => {
+      if (gen === generation) set({ error: e.message, loading: false });
+    })
+    .finally(() => {
+      if (pending === p) pending = null;
+    });
+  pending = p;
+  return p;
 }
 
 /** The projects, loaded while `on` and refreshed every five minutes the page stays visible. */
@@ -98,6 +115,26 @@ export function useGithub(on = true) {
     };
   }, [on]);
   return s;
+}
+
+/* ---------- signing in, to see private repositories ---------- */
+
+export const githubStatus = () => call<AuthStatus>('/api/github/status');
+
+/** Leaves for GitHub's sign-in; comes back to `back` with ?github=connected (or cancelled, wrong-account, error). */
+export const connectGithub = (back = '#/projects') => {
+  location.href = '/api/github/connect?back=' + encodeURIComponent(back.split('?')[0]);
+};
+
+/** Signs this browser out of GitHub, and forgets the private repositories it was shown. */
+export async function disconnectGithub() {
+  const r = await fetch('/api/github/disconnect', { method: 'POST' }).catch(() => null);
+  if (!r?.ok) throw new Error('Couldn’t sign out of GitHub. Try again.');
+  generation++;
+  pending = null;
+  fetchedAt = 0;
+  set({ data: null, error: null });
+  await loadGithub(true);
 }
 
 export interface CommitPage { commits: Commit[]; next: number | null; total: number }

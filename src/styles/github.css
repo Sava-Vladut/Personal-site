@@ -26,6 +26,26 @@
 .pj-status { flex: 1; min-width: 0; text-align: center; font-size: 12.5px; color: var(--ink-3); animation: fade-in 0.3s ease; }
 .pj-top .cloud-title { overflow-wrap: anywhere; }
 
+/* signing in for the private repositories: one frosted line under the subtitle */
+.pj-auth, .pj-auth-btn { margin-top: 10px; animation: rise-in 0.4s var(--ease-emph) 0.15s backwards; }
+.pj-auth {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: fit-content; max-width: 100%;
+  padding: 3px 3px 3px 12px; border-radius: 12px;
+  background: color-mix(in oklab, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--line) 70%, transparent);
+}
+.pj-auth-who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.pj-auth-who svg { flex: none; color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.pj-auth .btn, .pj-auth-btn { display: inline-flex; align-items: center; gap: 6px; }
+.pj-auth-btn {
+  background: color-mix(in oklab, var(--surface-2) 70%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.pj-tag.pj-private { gap: 3px; color: color-mix(in oklab, var(--accent) 60%, var(--ink-2)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 35%, var(--line-2)); }
+
 /* language, stars, forks, last push: one wrapping line under the description */
 .pj-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
 .pj-facts > * { display: inline-flex; align-items: center; gap: 5px; min-width: 0; animation: rise-in 0.4s var(--ease-emph) calc(0.15s + var(--i, 0) * 40ms) backwards; }

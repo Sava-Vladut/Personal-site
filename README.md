@@ -50,7 +50,7 @@ Things to know:
 | **Media** | Books and music. **Books**: your shelf as a bookcase, each book a spine in its cover's colour, as thick as it is long, with a call-number sticker, rating dots and, while you're reading it, a bookmark. A book's page has a library card in its pocket with the days you added, started and finished it and wrote about it, stamped in ink (tap a stamp to change it). **Music**: songs, albums, playlists and podcasts from Spotify, kept as records in a wooden shelf and tapes in a rack, with what's on repeat spinning on top. Each has a page to play it, rate it, note how it makes you feel and who it brings to mind, and see the notes it's in. Music added to notes can be kept from there. |
 | **Map** | Every entry saved with a place, as pins in the colour of what you felt. Pinch, drag or scroll to zoom; tap a spot for what you wrote there. From Settings, the Weather tab in Stats, or a note's Feelings page. |
 | **Stats** | A sky header and colour theme taken from the feeling you had most, with charts that animate in as you scroll to them. Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Weather**: mood by sky, temperature, hours of daylight and daylight vs dark, and by place, with a map. **Dex**: every feeling you've named so far. Every chart has a table view. |
-| **Projects** | Your public GitHub repositories, on their own slice of the wheel. Commits for 30 days, 90 days, a year or all time, with active days, streaks, the busiest weekday and the projects worked on; a year of activity as a grid of days, commits over time, when you code by weekday and hour, and languages. Every repository as a row with its last 12 weeks. Each has a page for how it makes you feel, notes and to-dos (ticked off there or on the overview), and every commit by day, loading more as you scroll. Notes and to-dos are journal data: they sync and go into backups. |
+| **Projects** | Your public GitHub repositories, on their own slice of the wheel. Commits for 30 days, 90 days, a year or all time, with active days, streaks, the busiest weekday and the projects worked on; a year of activity as a grid of days, commits over time, when you code by weekday and hour, and languages. Every repository as a row with its last 12 weeks. Signed in with GitHub, your private repositories show too, in that browser only. Each has a page for how it makes you feel, notes and to-dos (ticked off there or on the overview), and every commit by day, loading more as you scroll. Notes and to-dos are journal data: they sync and go into backups. |
 | **Settings** | Language (English or Română), light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, voice typing (speech model, language, remove), backup export/import, delete everything. |
 
 Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant −1), from −5 to +5.
@@ -139,7 +139,16 @@ set `ADMIN_PASSWORD`: only browsers signed in with it can save the list.
 The Projects page shows `GITHUB_USER`'s public repositories. The server fetches them from the GitHub API, keeps them in
 `data/github.json` and serves that copy, looking for new pushes every five minutes; after a push it fetches only the new
 commits. Without a token GitHub allows 60 requests an hour, which is enough after the first fetch. Set `GITHUB_TOKEN`
-(a token with no scopes is fine) to raise that to 5,000. Private repositories are never listed.
+(a token with no scopes is fine) to raise that to 5,000. Private repositories are never listed for everyone.
+
+To see your private repositories too, sign in with GitHub on the Projects page (or in Settings). That needs an app on
+GitHub: create an [OAuth App](https://github.com/settings/applications/new) with the callback URL
+`<PUBLIC_URL>/api/github/callback`, generate a client secret, and set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+(A GitHub App works too, and can be limited to read-only *Contents* and *Metadata*, where an OAuth App's `repo` scope
+can also write. Install it on your account for the repositories it should see.) When `GITHUB_USER` is set, only that
+account can sign in. The token is kept only in that browser, in an encrypted http-only cookie. What it fetches stays in
+the server's memory and is only sent to browsers signed in with the same account; it's never written to disk. Signing
+out revokes the token on GitHub.
 
 See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
 and remaining browser-side and infrastructure scaling limits.

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
+import { connectGithub, githubStatus, type AuthStatus } from '../lib/github';
+import { GithubSetup, signInResult, signOutGithub } from '../components/GithubSignIn';
 import { goBack, navigate } from '../lib/router';
 import { exportText } from '../lib/exportText';
 import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
@@ -50,6 +52,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
   const [setup, setSetup] = useState(false);
+  const [gh, setGh] = useState<AuthStatus | null | 'off'>(null);
+  const [ghSetup, setGhSetup] = useState(false);
   const [changelog, setChangelog] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -59,6 +63,12 @@ export function Settings({ query }: { query: URLSearchParams }) {
 
   useEffect(() => {
     spotifyStatus().then(setSp);
+    githubStatus().then(setGh, () => setGh('off'));
+    const g = query.get('github');
+    if (g) {
+      toast(signInResult(g));
+      navigate('settings', true);
+    }
     const s = query.get('spotify');
     if (s) {
       toast(s === 'connected' ? t('Spotify connected') : s === 'cancelled' ? t('Spotify login cancelled') : t('Couldn’t connect Spotify — try again'));
@@ -287,6 +297,29 @@ export function Settings({ query }: { query: URLSearchParams }) {
             ))}
           </div>
         </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">GitHub</h2>
+        <div class="card list">
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="brand-github" size={18} /> {gh && gh !== 'off' && gh.viewer ? t('Signed in as {name}', { name: '@' + gh.viewer.login }) : t('Not signed in')}</div>
+              <div class="muted small">
+                {!gh ? t('Checking…')
+                  : gh === 'off' ? t('The app’s server isn’t running.')
+                  : gh.connected ? t('Projects shows your private repos too, in this browser only.')
+                  : t('Sign in to see your private repos on the Projects page, in this browser only.')}
+              </div>
+            </div>
+            {gh && gh !== 'off' && (gh.connected ? (
+              <button class="btn btn-quiet" onClick={async () => { await signOutGithub(); setGh(await githubStatus().catch(() => 'off' as const)); }}>{t('Sign out')}</button>
+            ) : (
+              <button class="btn btn-primary" onClick={gh.configured ? () => connectGithub('#/settings') : () => setGhSetup(true)}>{t('Sign in')}</button>
+            ))}
+          </div>
+        </div>
+        <GithubSetup open={ghSetup} onClose={() => setGhSetup(false)} redirect={gh && gh !== 'off' ? gh.redirect : null} />
       </section>
 
       {voiceSupported() && <VoiceSettings />}

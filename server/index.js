@@ -9,7 +9,8 @@
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 //  • GitHub projects: GITHUB_USER's public repositories and their commits, cached in data/github.json
-//    (GITHUB_TOKEN, optional, only raises GitHub's rate limit).
+//    (GITHUB_TOKEN, optional, only raises GitHub's rate limit). With GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET,
+//    signing in with GitHub shows that browser the account's private repositories too.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -41,6 +42,9 @@ const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const GITHUB_USER = (process.env.GITHUB_USER || '').trim();
 const GITHUB_TOKEN = (process.env.GITHUB_TOKEN || '').trim();
+const GH_ID = (process.env.GITHUB_CLIENT_ID || '').trim();
+const GH_SECRET = (process.env.GITHUB_CLIENT_SECRET || '').trim();
+const GH_REDIRECT = process.env.GITHUB_REDIRECT_URI || `${PUBLIC_URL}/api/github/callback`;
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -471,7 +475,11 @@ async function admin(req, res) {
 
 const sync = createSyncHandler({ directory: SYNC_DIR });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
-const github = createGithubHandler({ user: GITHUB_USER, token: GITHUB_TOKEN, cacheFile: join(ROOT, 'data', 'github.json') });
+const github = createGithubHandler({
+  user: GITHUB_USER, token: GITHUB_TOKEN, cacheFile: join(ROOT, 'data', 'github.json'),
+  clientId: GH_ID, clientSecret: GH_SECRET, redirectUri: GH_REDIRECT, appUrl: APP_URL,
+  seal, unseal, readCookies: cookies, cookie,
+});
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -522,6 +530,7 @@ const server = http.createServer(async (req, res) => {
   });
 server.listen(PORT, () => {
     console.log(`My Mind → ${PUBLIC_URL}  (listening on :${PORT})`);
+    console.log(GH_ID && GH_SECRET ? `GitHub sign-in: configured · callback URL ${GH_REDIRECT}` : 'GitHub sign-in: off (set GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET in .env to show private repositories)');
     console.log(spConfigured() ? `Spotify: configured · redirect URI ${SP_REDIRECT}` : 'Spotify: links only (set SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in .env to search and browse playlists)');
   });
 

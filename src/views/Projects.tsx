@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { addDays, diffDays, keyOf, shortDate, todayKey, weekday, WEEKDAYS } from '../lib/dates';
-import { allTimes, buckets, languageShares, loadGithub, perDay, RANGE_DAYS, rangeStart, rhythm, since, streaks, useGithub, weekly, type Github, type Range, type Repo, type Step } from '../lib/github';
+import { allTimes, buckets, connectGithub, githubStatus, languageShares, loadGithub, perDay, RANGE_DAYS, rangeStart, rhythm, since, streaks, useGithub, weekly, type Github, type Range, type Repo, type Step } from '../lib/github';
 import { usePref } from '../lib/prefs';
 import { navigate } from '../lib/router';
 import { getProjects, getSettings, projectId, saveProject, toast, useProjects, type Project } from '../lib/store';
@@ -12,6 +12,7 @@ import { Icon, Sprite, type UiName } from '../components/icons';
 import { NavWheel } from '../components/NavWheel';
 import { Sky } from '../components/Sky';
 import { CloudTitle } from './Media';
+import { GithubAccount, signInResult } from '../components/GithubSignIn';
 import { LOCALE, count, t } from '../lib/i18n';
 import '../styles/stats.css';
 import '../styles/twitch.css';
@@ -39,6 +40,14 @@ export function Projects({ query }: { query: URLSearchParams }) {
   const notes = useProjects();
   const [range, setRange] = usePref<Range>('gh-range', '90', RANGE_IDS);
   const at = query.get('at');
+
+  // back from GitHub's sign-in
+  useEffect(() => {
+    const r = query.get('github');
+    if (!r) return;
+    toast(signInResult(r));
+    navigate('projects', true);
+  }, []);
 
   // the wheel can open the page at a section
   useEffect(() => {
@@ -79,6 +88,7 @@ export function Projects({ query }: { query: URLSearchParams }) {
               t('Your GitHub projects, with notes and to-dos')
             )}
           </p>
+          {data && <GithubAccount data={data} />}
         </header>
 
         {data && (
@@ -106,7 +116,10 @@ export function Projects({ query }: { query: URLSearchParams }) {
           <div class="empty">
             <h2 class="title-s">{t('No projects')}</h2>
             <p>{t(error)}</p>
-            <button class="btn btn-quiet" onClick={() => loadGithub(true)}><Icon name="refresh" size={18} /> {t('Try again')}</button>
+            <div class="row gap-s">
+              <button class="btn btn-quiet" onClick={() => loadGithub(true)}><Icon name="refresh" size={18} /> {t('Try again')}</button>
+              <SignInIfPossible />
+            </div>
           </div>
         ) : (
           <p class="empty-note center">{loading ? t('Loading…') : ''}</p>
@@ -116,6 +129,13 @@ export function Projects({ query }: { query: URLSearchParams }) {
       )}
     </div>
   );
+}
+
+/** When there's nothing to show everyone, signing in may still show your own. */
+function SignInIfPossible() {
+  const [can, setCan] = useState(false);
+  useEffect(() => void githubStatus().then((s) => setCan(s.configured && !s.connected), () => {}), []);
+  return can ? <button class="btn btn-primary" onClick={() => connectGithub('#/projects')}><Icon name="brand-github" size={18} /> {t('Sign in with GitHub')}</button> : null;
 }
 
 function Board({ data, range, notes, total }: { data: Github; range: Range; notes: Project[]; total: number }) {
@@ -263,6 +283,7 @@ function RepoRow({ r, p, now, k }: { r: Repo; p?: Project; now: number; k: numbe
             <b>{r.name}</b>
             {r.fork && <span class="pj-tag">{t('fork')}</span>}
             {r.archived && <span class="pj-tag">{t('archived')}</span>}
+            {r.private && <span class="pj-tag pj-private"><Icon name="lock" size={11} stroke={2.2} />{t('private')}</span>}
           </span>
           <small class="pj-row-desc">{r.description || r.last?.m || t('No description')}</small>
           <span class="pj-row-meta">
