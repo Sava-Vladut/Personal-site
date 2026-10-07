@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'preact/hooks';
+import { useLayoutEffect } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
@@ -87,17 +87,15 @@ export function App() {
  * Media) are on the wheel at the top of each page.
  */
 function TabBar() {
-  const [adding, setAdding] = useState(false);
   return (
     <nav class="nav add-nav" aria-label={t('Add')}>
-      <AddMenu open={adding} onOpenChange={setAdding} />
+      <AddMenu />
     </nav>
   );
 }
 
 /** The desktop navigation: a sidebar with the same places as the tab bar, plus Stats and Settings. Hidden below 1024px (desktop.css). */
 function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
-  const [adding, setAdding] = useState(false);
   return (
     <nav class="side" aria-label={t('Main')}>
       <a
@@ -111,7 +109,7 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
         My Mind
       </a>
       <div class="side-add">
-        <AddMenu open={adding} onOpenChange={setAdding} label={t('New')} />
+        <AddMenu label={t('New')} />
       </div>
       <div class="side-links">
         {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} here={here === name} label={label} icon={icon} path={path} />)}

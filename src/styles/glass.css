@@ -157,7 +157,7 @@
 
 .nav-new { flex: none; width: 62px; height: 62px; padding: 0; }
 
-/* ---------- add: a panel of glass that grows out of the + button ---------- */
+/* ---------- add: the + button, which opens the wheel of things to add (components/AddMenu.tsx) ---------- */
 
 .nav-plus { display: grid; transition: rotate 0.5s var(--spring); }
 .nav-new[aria-expanded='true'] .nav-plus { rotate: 135deg; }
@@ -168,115 +168,16 @@
   width: 64px; height: 64px; padding: 0; border-radius: 50%;
   touch-action: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
-/* a ring of light leaves the button as the panel opens */
+/* a ring of light leaves the button as the wheel opens */
 .add-btn[aria-expanded='true'] { animation: add-ping 0.6s ease-out; }
 @keyframes add-ping {
   from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ink) 28%, transparent), var(--glass-shadow); }
   to { box-shadow: 0 0 0 22px transparent, var(--glass-shadow); }
 }
 
-.add-scrim {
-  position: fixed; inset: 0; z-index: -1; touch-action: none;
-  background: linear-gradient(to top, rgb(12 12 11 / 0.52), rgb(12 12 11 / 0.3) 70%);
-  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-  animation: fade-in 0.28s ease-out;
-}
-.add-scrim.closing { animation: fade-out 0.26s ease-in forwards; pointer-events: none; }
-
-.add-panel {
-  --rise: 12px;
-  position: absolute; left: 0; right: 0; bottom: calc(100% + 14px);
-  max-width: 400px; margin: 0 auto; padding: 14px;
-  display: grid; gap: 8px;
-  border-radius: 30px;
-  --glass-blur: 30px; background: var(--glass-fill-strong);
-  transform-origin: var(--ox, 50%) var(--oy, 100%);
-  animation: add-grow 0.56s var(--spring), fade-in 0.16s ease-out;
-}
-@keyframes add-grow { from { scale: 0.2; } }
-.add-panel.closing { pointer-events: none; animation: add-shrink 0.24s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; }
-@keyframes add-shrink { to { scale: 0.2; opacity: 0; } }
-.add-panel.picked { pointer-events: none; }
-.add-panel.picked.closing { animation: add-leave 0.24s ease-in forwards; }
-@keyframes add-leave { to { scale: 1.04; opacity: 0; } }
-
-/* what's inside rises into place a beat after the glass, top to bottom */
-.add-head, .add-tile, .add-hint { animation: add-rise 0.5s var(--spring) backwards; animation-delay: calc(70ms + var(--k, 0) * 35ms); }
-.add-head { --k: -1; }
-.add-hint { --k: 6; }
-@keyframes add-rise { from { opacity: 0; translate: 0 var(--rise); } }
-
-.add-head { display: grid; gap: 2px; padding: 4px 6px 6px; }
-.add-head small { font-size: 12.5px; font-weight: 600; color: var(--ink-3); letter-spacing: 0.01em; }
-.add-head small::first-letter { text-transform: uppercase; }
-.add-head b { font: 500 21px/1.2 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
-
-.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-.add-tile {
-  position: relative; overflow: hidden; isolation: isolate;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
-  min-width: 0; min-height: 112px; padding: 12px;
-  border-radius: 20px; text-align: left; color: var(--ink);
-  background: color-mix(in oklab, var(--c) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 15%, transparent);
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.2s, box-shadow 0.2s, scale 0.35s var(--spring), opacity 0.2s;
-}
-.add-tile:active { scale: 0.97; transition-duration: 0.1s; }
-.add-tile:focus-visible { outline-offset: 2px; border-radius: 20px; }
-.add-tile.hot {
-  background: color-mix(in oklab, var(--c) 15%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 32%, transparent), 0 10px 26px -14px color-mix(in oklab, var(--c) 80%, transparent);
-}
-
-.add-icon {
-  flex: none; display: grid; place-items: center;
-  width: 40px; height: 40px; border-radius: 13px;
-  color: color-mix(in oklab, var(--c) 85%, var(--ink));
-  background: color-mix(in oklab, var(--c) 17%, transparent);
-  transition: scale 0.4s var(--spring-bouncy), rotate 0.4s var(--spring-bouncy), background-color 0.2s, color 0.2s;
-}
-.add-tile.hot .add-icon { scale: 1.08; rotate: -6deg; }
-.add-text { display: grid; gap: 2px; min-width: 0; line-height: 1.25; }
-.add-text b { font-size: 15.5px; font-weight: 640; }
-.add-text small { font-size: 12.5px; color: var(--ink-2); text-wrap: pretty; }
-
-/* the note: wide across the top, its icon a solid drop of colour */
-.add-tile.add-hero {
-  flex-direction: row; align-items: center; gap: 14px; min-height: 0; padding: 14px 16px 14px 14px;
-  background: linear-gradient(120deg, color-mix(in oklab, var(--c) 18%, transparent), color-mix(in oklab, var(--c) 5%, transparent));
-}
-.add-hero .add-icon { width: 48px; height: 48px; border-radius: 16px; color: #fff; background: var(--c); box-shadow: 0 8px 18px -8px var(--c); }
-.add-hero .add-text { flex: 1; }
-.add-hero .add-text b { font: 500 20px/1.2 var(--serif); letter-spacing: -0.01em; }
-.add-go { flex: none; color: var(--ink-3); transition: translate 0.35s var(--spring), color 0.15s; }
-.add-hero.hot .add-go { translate: 3px -3px; color: var(--ink); }
-
-/* choosing: colour floods the tile from its icon while everything else steps back */
-.add-tile::after {
-  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: var(--c); clip-path: circle(0 at 32px 32px); opacity: 0;
-}
-.add-tile.chosen::after { opacity: 1; animation: add-flood 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
-@keyframes add-flood { to { clip-path: circle(150% at 32px 32px); } }
-.add-hero.chosen::after { clip-path: circle(0 at 38px 50%); animation-name: add-flood-hero; }
-@keyframes add-flood-hero { to { clip-path: circle(150% at 38px 50%); } }
-.add-tile.chosen { scale: 1.03; }
-.add-tile.chosen, .add-tile.chosen .add-text small, .add-tile.chosen .add-go { color: #fff; transition: color 0.2s 0.08s, scale 0.35s var(--spring); }
-.add-tile.chosen .add-icon { color: #fff; background: rgb(255 255 255 / 0.22); box-shadow: none; }
-.add-panel.picked :is(.add-tile:not(.chosen), .add-head, .add-hint) { opacity: 0.3; }
-.add-panel.picked .add-head, .add-panel.picked .add-hint { transition: opacity 0.2s; }
-
-.add-hint { margin: 2px 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
-@media (pointer: fine) { .add-hint { display: none; } }
-
 @media (prefers-reduced-motion: reduce) {
-  .add-btn[aria-expanded='true'], .add-head, .add-tile, .add-hint { animation: none; }
-  .add-panel { animation: fade-in 0.15s ease-out; }
-  .add-panel.closing, .add-panel.picked.closing { animation: fade-out 0.15s ease-in forwards; }
-  .add-tile.chosen::after { animation: none; clip-path: none; }
-  .nav-plus, .add-tile, .add-icon, .add-go { transition: none; }
+  .add-btn[aria-expanded='true'] { animation: none; }
+  .nav-plus { transition: none; }
 }
 .tabbar[inert] { pointer-events: none; }
 

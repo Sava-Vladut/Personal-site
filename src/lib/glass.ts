@@ -35,13 +35,13 @@ function displacementMap(w: number, h: number, radius: number, band: number) {
 }
 
 /**
- * Adds refraction to a glass element. `strength` is the largest shift in px at the very edge;
+ * Adds refraction to a glass element (none at strength 0). `strength` is the largest shift in px at the very edge;
  * `blur` is the frost kept on top (less than plain glass, since the bending already reads as glass).
  */
 export function useLens(ref: { current: HTMLElement | null }, { strength = 22, blur = 5 } = {}) {
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!SUPPORTED || !el || matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
+    if (!SUPPORTED || !el || !strength || matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
     const id = `mm-lens-${++count}`;
     const filter = document.createElementNS(NS, 'filter');
     filter.id = id;

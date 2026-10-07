@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { WHEEL, type WheelNode } from '../data/wheel';
@@ -5,6 +6,7 @@ import { navigateAfterSheet, pushBack, routeName, transitionsOn } from '../lib/r
 import { haptic } from '../lib/haptics';
 import { LOCALE, t } from '../lib/i18n';
 import { compact, usePoints } from '../lib/twitch';
+import { useLens } from '../lib/glass';
 import { Icon } from './icons';
 import { RAMPS, Sky } from './Sky';
 import '../styles/wheel.css';
@@ -129,18 +131,35 @@ function WheelMark() {
   );
 }
 
-/** world: the sky's colour while you're on the outer ring (the page's own, usually). */
-export function NavWheel({ world }: { world?: string | null }) {
+/** How a wheel other than the places one (the + button's) dresses its button and its header. */
+export interface WheelLook {
+  /** Under the button's name, for screen readers. */
+  label: string;
+  kicker: string;
+  title: string;
+  hint: string;
+  /** The button's class and what's inside it, given whether the wheel is open. */
+  class: string;
+  mark: (open: boolean) => ComponentChildren;
+}
+
+/**
+ * world: the sky's colour while you're on the outer ring (the page's own, usually).
+ * tree and look: another wheel on the same machinery, like the + button's things to add.
+ */
+export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null; tree?: WheelNode[]; look?: WheelLook }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const leftFrom = useRef(''); // the page it left, so a wheel that outlives the page change (the +'s) lets go once it's gone
   const button = useRef<HTMLButtonElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const segs = useMemo(() => layout(WHEEL), []);
-  // where you are: the place you're on, and the category it's in
+  const segs = useMemo(() => layout(tree), [tree]);
+  useLens(button, { strength: look ? 14 : 0 });
+  // where you are: the place you're on, and the category it's in (the places wheel only)
   const route = routeName();
-  const here = segs.find((s) => s.leaf && s.n.to != null && !s.n.to.includes('?') && routeOf(s.n.to) === route) ?? null;
+  const here = look ? null : segs.find((s) => s.leaf && s.n.to != null && !s.n.to.includes('?') && routeOf(s.n.to) === route) ?? null;
   const within = (s: Seg) => { for (let x = here; x; x = x.parent) if (x === s) return true; return false; };
 
   const [focus, setFocus] = useState<string | null>(null);
@@ -164,6 +183,7 @@ export function NavWheel({ world }: { world?: string | null }) {
     setFocus(null);
     setView(viewOf(null));
     setClosing(false);
+    setLeaving(false);
     setOpening(true);
     setOpen(true);
     haptic(6);
@@ -241,8 +261,9 @@ export function NavWheel({ world }: { world?: string | null }) {
     if (s === focusSeg) return back();
     if (!s.leaf) return setFocus(s.n.id);
     if (s.n.to == null) return;
-    if (s !== here && transitionsOn()) {
+    if (s !== here && location.hash !== '#/' + s.n.to && transitionsOn()) {
       // the wheel dissolves into the page instead of shrinking back into the button first
+      leftFrom.current = location.hash;
       setLeaving(true);
       setOpen(false);
       navigateAfterSheet(s.n.to, 'wheel');
@@ -373,21 +394,21 @@ export function NavWheel({ world }: { world?: string | null }) {
   }
 
   // the miner's points, for the Twitch category
-  const points = usePoints(open).data;
+  const points = usePoints(open && !look).data;
   const isTwitch = (n?: WheelNode | null) => !!n?.to?.startsWith('twitch');
   const pointsLine = points && t('{points} points · {gain} today', { points: points.total.toLocaleString(LOCALE), gain: (points.change.day >= 0 ? '+' : '−') + Math.abs(points.change.day).toLocaleString(LOCALE) });
 
   const info = (hot && segs.find((s) => s.n.id === hot)) || focusSeg;
   const hub = ring(-1 - z)[1];
   const hubName = focusSeg ? Math.max(0, 1 - Math.abs(z - focusSeg.depth - 1)) ** 2 : 0;
-  const layer = (open || closing || leaving) && (
+  const layer = (open || closing || (leaving && location.hash === leftFrom.current)) && (
     <div
       class={`nw-layer${leaving ? ' leaving' : open ? '' : ' closing'}`}
       data-cover=""
       style={{ '--sky': `var(--emo-${sky})` }}
       role="dialog"
       aria-modal="true"
-      aria-label={t('Everything')}
+      aria-label={look?.label ?? t('Everything')}
       onClick={outside}
       onPointerDown={down}
       onPointerMove={move}
@@ -397,14 +418,14 @@ export function NavWheel({ world }: { world?: string | null }) {
       <Sky world={sky} />
       <header class="nw-head">
         <div>
-          <p class="nw-kicker">{focusSeg ? (focusSeg.parent?.n.name ?? t('Everything')) : t('Everything')}</p>
-          <h2 class="nw-title">{focusSeg ? focusSeg.n.name : t('Where to?')}</h2>
+          <p class="nw-kicker">{focusSeg ? (focusSeg.parent?.n.name ?? look?.kicker ?? t('Everything')) : (look?.kicker ?? t('Everything'))}</p>
+          <h2 class="nw-title">{focusSeg ? focusSeg.n.name : (look?.title ?? t('Where to?'))}</h2>
         </div>
         <button class="icon-btn nw-close" onClick={close} aria-label={t('Close')}><Icon name="x" /></button>
       </header>
       <div class="nw-body">
         <div ref={stage} class={`nw nw-stage${opening ? ' opening' : ''}`}>
-          <svg class="nw-svg" viewBox="0 0 400 400" role="group" aria-label={focusSeg ? focusSeg.n.name : t('Everything')}>
+          <svg class="nw-svg" viewBox="0 0 400 400" role="group" aria-label={focusSeg ? focusSeg.n.name : (look?.label ?? t('Everything'))}>
             <Letters r={222} world={sky} class="nw-ring far" />
             <Letters r={208} world={sky} class="nw-ring" />
             {hub > 0.5 && <circle cx={C} cy={C} r={hub} class="nw-hub" onClick={(ev) => { ev.stopPropagation(); close(); }} />}
@@ -440,7 +461,7 @@ export function NavWheel({ world }: { world?: string | null }) {
             {isTwitch(info.n) && pointsLine && <p class="nw-cap-stat">{pointsLine}</p>}
           </>
         ) : (
-          <p class="nw-cap-sub">{t('Tap one to open it, the middle to close')}</p>
+          <p class="nw-cap-sub">{look?.hint ?? t('Tap one to open it, the middle to close')}</p>
         )}
       </div>
     </div>
@@ -450,14 +471,14 @@ export function NavWheel({ world }: { world?: string | null }) {
     <>
       <button
         ref={button}
-        class="icon-btn nw-trigger"
-        aria-label={t('Everything')}
-        title={t('Everything')}
+        class={look?.class ?? 'icon-btn nw-trigger'}
+        aria-label={look ? (open ? t('Close') : look.label) : t('Everything')}
+        title={look ? undefined : t('Everything')}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={toggle}
       >
-        <WheelMark />
+        {look ? look.mark(open) : <WheelMark />}
       </button>
       {layer && createPortal(layer, document.body)}
     </>

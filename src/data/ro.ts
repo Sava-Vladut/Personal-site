@@ -1322,7 +1322,7 @@ export const RO: Record<string, string> = {
   'Your notes and check-ins, day by day': 'Notițele și check-in-urile tale, zi de zi',
   'Your records and your shelf': 'Discurile și raftul tău',
   'What would you like to keep?': 'Ce vrei să păstrezi?',
-  'Tap one, or slide from the +': 'Atinge una sau glisează din +',
+  'Tap one to add it, the middle to close': 'Atinge una ca s-o adaugi, mijlocul ca să închizi',
 
   // ── Channel points ──
   'Watching': 'Vizionare',

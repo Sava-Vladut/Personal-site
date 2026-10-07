@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.56.0',
+    date: '2026-10-07',
+    changes: [
+      'The + button now opens a wheel of things to add (note, check-in, person, book, music), like the wheel for getting around',
+      'The old glass panel of tiles behind the + is gone',
+    ],
+  },
+  {
     version: '1.55.0',
     date: '2026-10-07',
     changes: [

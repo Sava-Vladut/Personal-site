@@ -36,11 +36,6 @@
   }
   .side .nav-item:hover, .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
 
-  /* the add panel drops below the "New" button, over a lighter veil */
-  .side .add-panel { --rise: -10px; top: calc(100% + 10px); bottom: auto; right: auto; width: 340px; margin: 0; }
-  .side .add-scrim { background: rgb(12 12 11 / 0.22); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
-  .side .add-hint { display: none; }
-
   /* the sidebar stays put while the page moves */
   html[data-nav] .side { view-transition-name: side; }
   ::view-transition-group(side) { animation: none; }
