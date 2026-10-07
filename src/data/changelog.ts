@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.52.0',
+    date: '2026-10-07',
+    changes: [
+      'Channel points: an Edit button on the channel list changes which channels the points miner watches',
+      'Add a channel by name or link, reorder them to set who comes first, or remove one; saving restarts the miner with the new list',
+      'Changing the channels needs the admin password; each device stays signed in for 90 days',
+      'Channels the miner no longer watches are marked as such in the list',
+    ],
+  },
+  {
     version: '1.51.0',
     date: '2026-10-06',
     changes: [

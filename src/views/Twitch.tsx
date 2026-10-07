@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { keyOf, shortDate } from '../lib/dates';
 import { compact, loadPoints, usePoints, type Change, type Channel, type Points } from '../lib/twitch';
 import { ChartCard, CountUp, RevealStack, TipRow, tipProps, useWidth } from '../components/charts';
 import { Icon, type UiName } from '../components/icons';
 import { Sky } from '../components/Sky';
+import { ChannelsSheet } from '../components/TwitchChannels';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/stats.css';
 import '../styles/twitch.css';
@@ -50,6 +51,7 @@ export function Twitch({ query }: { query: URLSearchParams }) {
   const pick = query.get('channel');
   const channel = data?.channels.find((c) => c.name === pick) ?? null;
   const at = query.get('at');
+  const [editing, setEditing] = useState(false);
 
   // the wheel can open the page at a section
   useEffect(() => {
@@ -98,13 +100,14 @@ export function Twitch({ query }: { query: URLSearchParams }) {
           <p class="empty-note center">{loading ? t('Loading…') : ''}</p>
         )
       ) : (
-        <Board key={channel?.name ?? 'all'} data={data} channel={channel} onPick={select} />
+        <Board key={channel?.name ?? 'all'} data={data} channel={channel} onPick={select} onEdit={() => setEditing(true)} />
       )}
+      <ChannelsSheet open={editing} onClose={() => setEditing(false)} />
     </div>
   );
 }
 
-function Board({ data, channel, onPick }: { data: Points; channel: Channel | null; onPick: (name: string | null) => void }) {
+function Board({ data, channel, onPick, onEdit }: { data: Points; channel: Channel | null; onPick: (name: string | null) => void; onEdit: () => void }) {
   const balance = channel ? channel.balance : data.total;
   const change = channel ? channel.change : data.change;
   const daily = channel ? channel.daily : data.daily;
@@ -145,7 +148,10 @@ function Board({ data, channel, onPick }: { data: Points; channel: Channel | nul
 
       {!channel && (
         <section class="card tw-list" id="tw-channels">
-          <h3 class="chart-title">{t('Channels')}</h3>
+          <div class="tw-list-head">
+            <h3 class="chart-title">{t('Channels')}</h3>
+            <button class="btn btn-quiet btn-s" onClick={onEdit}><Icon name="pencil" size={15} /> {t('Edit')}</button>
+          </div>
           <ul>
             {data.channels.map((c, i) => (
               <li style={{ '--k': i }}>
@@ -153,7 +159,7 @@ function Board({ data, channel, onPick }: { data: Points; channel: Channel | nul
                   <span class="tw-ch-name">
                     {c.live && <span class="tw-live" aria-label={t('live')} />}
                     <b>{c.name}</b>
-                    <small>{c.live ? t('watching now') : ago(c.lastAt, data.now)}</small>
+                    <small>{c.live ? t('watching now') : data.mining && !data.mining.includes(c.name) ? t('not mined any more') : ago(c.lastAt, data.now)}</small>
                   </span>
                   <Spark values={c.daily.slice(-30)} />
                   <span class="tw-ch-num">

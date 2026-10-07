@@ -130,6 +130,11 @@ retryable 503 when capacity is exhausted. Each encrypted document or photo retai
 `data/` on persistent storage and back it up separately; atomic file replacement is not a backup.
 Spotify upstream calls have a 15-second deadline. SIGTERM/SIGINT drains HTTP requests for up to eight seconds.
 
+The Channel points page reads the Twitch Channel Points Miner's analytics from `TWITCH_ANALYTICS_DIR`. To edit which
+channels it mines from the page, point `TWITCH_CHANNELS_FILE` at a writable `channels.json` (`{"channels": [...]}`)
+that the miner reads on start, restart the miner when that file changes (for example with a systemd `.path` unit), and
+set `ADMIN_PASSWORD`: only browsers signed in with it can save the list.
+
 See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
 and remaining browser-side and infrastructure scaling limits.
 

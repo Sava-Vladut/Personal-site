@@ -19,6 +19,8 @@ export interface Channel {
 export interface Happening { channel: string; at: number; reason: string; delta: number }
 export interface Points {
   user: string;
+  /** the channels the miner is set to watch, lowercased; null when the server can't tell */
+  mining?: string[] | null;
   now: number;
   /** the first day of `daily`, midnight UTC */
   start: number;
@@ -78,6 +80,27 @@ export function usePoints(on = true) {
   }, [on]);
   return s;
 }
+
+/* ---------- the miner's channel list: anyone can read it, the admin can change it ---------- */
+
+export interface Channels { channels: string[]; admin: boolean }
+
+async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  const r = await fetch(path, {
+    method,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(out.error || 'Something went wrong on the server.');
+  return out as T;
+}
+
+export const getChannels = () => call<Channels>('/api/twitch/channels');
+/** Saving makes the miner restart with the new list, a few seconds offline. */
+export const saveChannels = (channels: string[]) => call<Channels>('/api/twitch/channels', 'PUT', { channels });
+export const signIn = (password: string) => call<{ admin: boolean }>('/api/admin', 'POST', { password });
+export const signOut = () => call<{ admin: boolean }>('/api/admin', 'DELETE');
 
 /** 3,460,651 → "3.46M"; 43,454 → "43.5K". */
 export function compact(n: number) {

@@ -1,8 +1,13 @@
 // Channel points, from the Twitch Channel Points Miner's analytics: one JSON file per channel,
 // each a series of { x: time in ms, y: balance, z: why it changed }. The files are read-only here
 // (the miner keeps writing them); a summary is worked out per file and kept until the file changes.
-import { readdir, readFile, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+// The list of channels the miner watches can be read by anyone and changed when signed in as admin.
+import { randomBytes } from 'node:crypto';
+import { readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { HttpError } from './http-error.js';
+import { readJson } from './http-request.js';
+import { json } from './http-response.js';
 
 const DAY = 86_400_000;
 const DAYS = 90;          // how far back the daily balances go
@@ -70,8 +75,70 @@ function summarise(name, data, now) {
   };
 }
 
-export function createTwitchHandler({ directory }) {
+/** Twitch logins are 4–25 letters, digits and underscores; a few old ones are shorter. */
+const LOGIN = /^[A-Za-z0-9_]{2,25}$/;
+const MAX_CHANNELS = 100;
+
+/** The channel list sent to be saved, cleaned up: trimmed, valid, each channel once, in order. */
+function cleanChannels(body) {
+  if (!Array.isArray(body?.channels)) throw new HttpError(400, 'Expected a list of channels.');
+  const seen = new Set();
+  const out = [];
+  for (const raw of body.channels) {
+    const name = String(raw ?? '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?twitch\.tv\//i, '').replace(/\/.*$/, '');
+    if (!name) continue;
+    if (!LOGIN.test(name)) throw new HttpError(400, `“${name.slice(0, 40)}” isn’t a Twitch channel name.`);
+    if (seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(name);
+  }
+  if (!out.length) throw new HttpError(400, 'Keep at least one channel.');
+  if (out.length > MAX_CHANNELS) throw new HttpError(400, `That’s more than ${MAX_CHANNELS} channels.`);
+  return out;
+}
+
+/**
+ * `directory`: the miner's analytics (read-only). `channelsFile`: its settings/channels.json, which the
+ * miner reads on start; a systemd path unit on the host restarts the miner whenever it changes.
+ * `isAdmin(req)` says whether this browser may change it.
+ */
+export function createTwitchHandler({ directory, channelsFile, isAdmin }) {
   const cache = new Map(); // file → { key, summary }
+
+  /** The channels the miner is set to watch, in order, or null when that isn't known here. */
+  async function readChannels() {
+    if (!channelsFile) return null;
+    try {
+      const data = JSON.parse(await readFile(channelsFile, 'utf8'));
+      return Array.isArray(data?.channels) ? data.channels.filter((n) => typeof n === 'string' && n.trim()) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function writeChannels(channels) {
+    // write next to it and swap it in, so the miner never starts on half a file
+    const tmp = join(dirname(channelsFile), `.channels-${randomBytes(6).toString('hex')}.tmp`);
+    try {
+      await writeFile(tmp, JSON.stringify({ channels }, null, 2) + '\n', 'utf8');
+      await rename(tmp, channelsFile);
+    } catch (e) {
+      await unlink(tmp).catch(() => {});
+      throw e;
+    }
+  }
+
+  async function channelsApi(req, res) {
+    if (!channelsFile) throw new HttpError(404, 'Channels can’t be changed on this server.');
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return json(res, 200, { channels: (await readChannels()) ?? [], admin: isAdmin(req) });
+    }
+    if (req.method !== 'PUT') throw new HttpError(405, 'Method not allowed');
+    if (!isAdmin(req)) throw new HttpError(401, 'Sign in to change the channels.');
+    const channels = cleanChannels(await readJson(req));
+    await writeChannels(channels);
+    return json(res, 200, { channels, admin: true });
+  }
 
   /** The miner keeps one folder per account; the first (or only) one is ours. */
   async function account() {
@@ -119,9 +186,11 @@ export function createTwitchHandler({ directory }) {
       return known.length ? known.reduce((s, v) => s + v, 0) : null;
     });
     const recent = channels.flatMap((c) => c.recent).sort((a, b) => b.at - a.at).slice(0, RECENT);
+    const mining = await readChannels();
 
     return {
       user,
+      mining: mining && mining.map((n) => n.toLowerCase()),
       now,
       start: dayOf(now) - (DAYS - 1) * DAY,
       total: sum((c) => c.balance),
@@ -133,7 +202,9 @@ export function createTwitchHandler({ directory }) {
     };
   }
 
-  return async function twitch(req, res, json) {
+  return async function twitch(req, res, path) {
+    if (path === '/api/twitch/channels') return channelsApi(req, res);
+    if (path !== '/api/twitch') throw new HttpError(404, 'Not found');
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
     if (!directory) return json(res, 404, { error: 'Channel points aren’t set up on this server.' });
     let body;

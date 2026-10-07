@@ -6,13 +6,15 @@
 //  • voice typing: hands out the speech model and its WebAssembly runtime, fetched once and kept in data/voice.
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
-//  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only.
+//  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
+//    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HttpError } from './http-error.js';
+import { readJson } from './http-request.js';
 import { json } from './http-response.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
@@ -31,6 +33,9 @@ const SYNC_DIR = join(ROOT, 'data', 'sync');
 const VOICE_DIR = join(ROOT, 'data', 'voice');
 // the miner's analytics folder (the one holding a folder per account)
 const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
+// the miner's settings/channels.json, the channels it watches (writable)
+const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -416,10 +421,51 @@ async function spotify(req, res, url, p, setCookies, out) {
   throw new HttpError(404, 'Not found');
 }
 
+/* ---------------- admin ---------------- */
+
+// ADMIN_PASSWORD unlocks the few things that change the server rather than the journal (the miner's channels).
+// Signing in leaves a sealed cookie; changing the password signs every browser out.
+const ADMIN_COOKIE = 'mm_admin';
+const ADMIN_DAYS = 90;
+const adminHash = ADMIN_PASSWORD && crypto.createHash('sha256').update(ADMIN_PASSWORD).digest();
+const adminVersion = adminHash ? adminHash.toString('base64url').slice(0, 8) : '';
+const attempts = new Map(); // client → { n, until }
+
+function isAdmin(req) {
+  if (!adminHash) return false;
+  const s = unseal(cookies(req)[ADMIN_COOKIE] || '');
+  return !!s && s.v === adminVersion && s.exp > Date.now();
+}
+
+// Caddy sets X-Forwarded-For to the visitor's address; the app is only reachable through it.
+const clientOf = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+
+async function admin(req, res) {
+  if (req.method === 'GET') return json(res, 200, { configured: !!adminHash, admin: isAdmin(req) });
+  if (req.method === 'DELETE') return json(res, 200, { configured: !!adminHash, admin: false }, { 'Set-Cookie': cookie(ADMIN_COOKIE, '', 0, '/api') });
+  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
+  if (!adminHash) throw new HttpError(404, 'There’s no admin password on this server. Set ADMIN_PASSWORD in .env.');
+
+  const who = clientOf(req), now = Date.now();
+  const tries = attempts.get(who);
+  if (tries && tries.until > now && tries.n >= 8) throw new HttpError(429, 'Too many tries. Wait a few minutes.');
+  const { password } = await readJson(req, 1024);
+  const given = crypto.createHash('sha256').update(String(password ?? '')).digest();
+  if (!crypto.timingSafeEqual(given, adminHash)) {
+    attempts.set(who, { n: tries && tries.until > now ? tries.n + 1 : 1, until: now + 15 * 60_000 });
+    if (attempts.size > 1000) attempts.delete(attempts.keys().next().value);
+    await new Promise((r) => setTimeout(r, 400));
+    throw new HttpError(401, 'That’s not the password.');
+  }
+  attempts.delete(who);
+  const value = seal({ v: adminVersion, exp: now + ADMIN_DAYS * 86_400_000 });
+  return json(res, 200, { configured: true, admin: true }, { 'Set-Cookie': cookie(ADMIN_COOKIE, value, ADMIN_DAYS * 86_400, '/api') });
+}
+
 /* ---------------- sync ---------------- */
 
 const sync = createSyncHandler({ directory: SYNC_DIR });
-const twitch = createTwitchHandler({ directory: TWITCH_DIR });
+const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -430,7 +476,8 @@ async function api(req, res, url) {
     if (p === '/api/health') return json(res, 200, { ok: true });
     if (p.startsWith('/api/spotify/')) return await spotify(req, res, url, p, setCookies, out);
     if (p.startsWith('/api/sync/')) return await sync(req, res, p);
-    if (p === '/api/twitch') return await twitch(req, res, json);
+    if (p === '/api/admin') return await admin(req, res);
+    if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

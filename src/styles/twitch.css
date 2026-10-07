@@ -74,3 +74,19 @@
 .tw-bar i { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--accent); transform-origin: left; animation: grow-x 0.8s var(--ease-emph) calc(0.2s + var(--k, 0) * 60ms) backwards; }
 .tw-bars li.down .tw-bar i { background: var(--danger); }
 .tw-bars b { font-weight: 650; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+
+/* the channel list's head, with its Edit button */
+.tw-list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tw-list-head .btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* editing which channels the miner watches */
+.tw-edit { list-style: none; margin: 0 0 12px; padding: 0; }
+.tw-edit li { display: flex; align-items: center; gap: 4px; padding: 6px 0; }
+.tw-edit li + li { border-top: 1px solid var(--line); }
+.tw-edit b { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-edit-n { flex: none; width: 1.8em; color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tw-edit .icon-btn:disabled { opacity: 0.3; }
+.tw-edit-add { display: flex; gap: 8px; }
+.tw-edit-add .input { flex: 1; min-width: 0; }
+.tw-edit-add .btn { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.tw-signout { display: block; margin: 14px 0 2px; }
