@@ -7,7 +7,6 @@ import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
 import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
 import { Icon, type UiName } from '../components/icons';
-import { Brain } from '../components/Brain';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
 import { VoiceLanguage, VoiceModels, VoiceProgress } from '../components/VoiceButton';
@@ -224,8 +223,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
           </div>
         </div>
       </section>
-
-      <Brain />
 
       <section class="section">
         <h2 class="section-title">{t('Weather & places')}</h2>

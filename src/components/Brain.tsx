@@ -1,4 +1,4 @@
-// The brain in Settings: a side view drawn in letters, like the sky. Each emotion world lives in its own region and
+// The brain page: a side view drawn in letters, like the sky. Each emotion world lives in its own region and
 // moves the way its sprite does (the amygdala flickers, the temporal lobe beats like a heart, the brainstem breathes).
 // How brightly a region burns comes from the last seven weeks of the journal; tap one to read about it.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -253,7 +253,6 @@ export function Brain() {
 
   return (
     <section class="section">
-      <h2 class="section-title">{t('Your brain')}</h2>
       <div class="card brain" style={brain.lead ? { '--c': `var(--emo-${brain.lead})` } : undefined}>
         <div class="brain-head">
           <div class="brain-title">{brain.title}</div>

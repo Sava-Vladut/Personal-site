@@ -19,6 +19,7 @@ import { SongView } from './views/Song';
 import { Stats } from './views/Stats';
 import { Tracker } from './views/Tracker';
 import { Twitch } from './views/Twitch';
+import { BrainView } from './views/BrainView';
 import { t } from './lib/i18n';
 
 // the Face ID lock is gone: forget the passkey id it kept
@@ -32,7 +33,7 @@ const NAV: [RouteName, string, UiName, string][] = [
 ];
 
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats', brain: 'stats' };
 
 export function App() {
   const route = useRoute();
@@ -66,6 +67,8 @@ export function App() {
           <Settings query={route.query} />
         ) : route.name === 'twitch' ? (
           <Twitch query={route.query} />
+        ) : route.name === 'brain' ? (
+          <BrainView />
         ) : route.name === 'map' ? (
           <MapView key={route.query.get('focus') ?? ''} query={route.query} />
         ) : (

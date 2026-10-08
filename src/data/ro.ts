@@ -1382,8 +1382,10 @@ export const RO: Record<string, string> = {
   'Too many tries. Wait a few minutes.': 'Prea multe încercări. Așteaptă câteva minute.',
   'Sign in to change the channels.': 'Conectează-te ca să schimbi canalele.',
   'Keep at least one channel.': 'Păstrează cel puțin un canal.',
-  // ── Settings: the brain (components/Brain.tsx, lib/brain.ts) ──
+  // ── The brain page (components/Brain.tsx, lib/brain.ts) ──
   'Your brain': 'Creierul tău',
+  'A brain in letters, glowing with your last 7 weeks': 'Un creier din litere, care strălucește cu ultimele tale 7 săptămâni',
+  'The last 7 weeks of your journal, as a brain.': 'Ultimele 7 săptămâni din jurnalul tău, ca un creier.',
   'Regions': 'Regiuni',
   'Brainwaves, 7 weeks': 'Unde cerebrale, 7 săptămâni',
   'Brightest week: from {a}. Heaviest: from {b}.': 'Cea mai luminoasă săptămână: din {a}. Cea mai grea: din {b}.',
