@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.57.0',
+    date: '2026-10-08',
+    changes: [
+      'Settings has a new Your brain section: a brain drawn in letters, like the sky, that reacts to the last 7 weeks of your journal',
+      'Each of the eight feeling worlds lives in its own region (fear in the amygdala, joy in the reward hub, love in the temporal lobe, calm in the brainstem…) and moves like its sprite does',
+      'Regions glow with how much of that world you felt, recent days counting more and older ones fading like memories; tap a region to read what it does and how it did',
+      'A brainwave of your mood over the 7 weeks, three small counts, and notes from psychology checked against your entries: affect labelling, rumination loops, the peak–end rule, emotional granularity, late-night feelings and more',
+    ],
+  },
+  {
     version: '1.56.0',
     date: '2026-10-07',
     changes: [

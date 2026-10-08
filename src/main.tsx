@@ -4,6 +4,7 @@ import '@fontsource-variable/instrument-sans/index.css';
 import './styles/app.css';
 import './styles/books.css';
 import './styles/glass.css';
+import './styles/brain.css';
 import { App } from './app';
 import './styles/desktop.css';
 import { applyTheme, init } from './lib/store';

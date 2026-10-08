@@ -1,0 +1,49 @@
+/* The brain in Settings: a card with the brain drawn in letters, its regions, a brainwave and a few notes from psychology. */
+.brain { padding: 18px 16px 16px; --c: var(--ink-3); }
+.brain-title { font: 500 24px/1.15 var(--serif); letter-spacing: -0.01em; }
+.brain-head .small { margin-top: 5px; line-height: 1.45; }
+.brain-stage { margin: 8px -6px 2px; position: relative; }
+.brain-canvas { display: block; width: 100%; touch-action: manipulation; cursor: pointer; }
+
+.brain-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 12px; }
+.brain-zone {
+  position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 8px 11px;
+  border-radius: 10px; background: var(--surface-2); color: var(--ink-2); font-size: 12.5px; font-weight: 550; text-align: left;
+  box-shadow: inset 0 0 0 1.5px transparent; transition: background-color 0.15s, box-shadow 0.15s;
+}
+.brain-zone:hover { background: var(--surface-3); }
+.brain-zone[aria-checked='true'] { color: var(--ink); background: color-mix(in oklab, var(--c) 12%, var(--surface-2)); box-shadow: inset 0 0 0 1.5px var(--c); }
+.brain-zone .sprite { flex: none; }
+.brain-zone-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brain-zone-lit { position: absolute; left: 8px; right: 8px; bottom: 4px; height: 3px; border-radius: 3px; background: color-mix(in oklab, var(--ink) 9%, transparent); overflow: hidden; }
+.brain-zone-lit::after { content: ''; position: absolute; inset: 0 auto 0 0; width: calc(var(--lit) * 100%); background: var(--c); border-radius: inherit; transition: width 0.5s var(--ease); }
+
+.brain-detail { padding: 11px 13px 12px; border-radius: 12px; border-left: 3px solid var(--c); background: color-mix(in oklab, var(--c) 7%, var(--surface-2)); }
+.brain-detail-head { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.brain-role { margin: 6px 0 0; font: 400 15px/1.5 var(--serif); color: var(--ink-2); }
+.brain-line { margin: 7px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--ink); font-weight: 550; }
+
+.brain-wave-head { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 0 6px; font-size: 13.5px; font-weight: 600; }
+.brain-wave { display: block; width: 100%; height: auto; overflow: visible; --c: var(--ink-2); animation: brain-sweep 1.6s var(--ease) both; }
+.bw-week { stroke: var(--line); stroke-width: 1; }
+.bw-zero { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 4; }
+.bw-line { fill: none; stroke: var(--c); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+.bw-dot.up { fill: var(--pos-a); }
+.bw-dot.down { fill: var(--neg-a); }
+.brain-arc { margin: 6px 0 0; }
+@keyframes brain-sweep { from { clip-path: inset(-6px 100% -6px 0); } to { clip-path: inset(-6px 0 -6px 0); } }
+
+.brain-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 4px; }
+.brain-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.brain-stats b { font: 600 21px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+.brain-stats b .muted { font-size: 14px; font-weight: 500; }
+
+.brain-notes { display: grid; gap: 14px; margin-top: 18px; }
+.brain-note { padding-left: 12px; border-left: 3px solid var(--c, var(--line-2)); }
+.brain-note b { font-size: 14.5px; }
+.brain-note p { margin: 3px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.brain-more { justify-self: start; }
+.brain-foot { margin: 16px 0 0; line-height: 1.5; }
+
+@media (max-width: 520px) { .brain-zones { grid-template-columns: repeat(2, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .brain-wave { animation: none; } .brain-zone-lit::after { transition: none; } }
