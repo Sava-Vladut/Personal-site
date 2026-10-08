@@ -1,4 +1,4 @@
-// Reads the last seven weeks of the journal as a brain: each emotion world lives in a region, glows with how much it was
+// Reads a stretch of the journal (seven weeks by default; longer, or ending in the past) as a brain: each emotion world lives in a region, glows with how much it was
 // felt (recent days count more, the way memories fade), and a few findings from psychology are checked against what was written.
 import { EMOTION, coreOf, shortName, valence } from '../data/emotions';
 import { addDays, diffDays, keyOf, shortDate, todayKey } from './dates';
@@ -7,8 +7,12 @@ import { count, listOf, t } from './i18n';
 import { dex, moodOf, pct, streaks } from './stats';
 import type { Entry } from './store';
 
-export const SPAN = 49; // seven weeks
-const HALF_LIFE = 21;   // days until a day counts half as much
+export const SPAN = 49; // seven weeks, the shortest stretch
+/** The stretches the page offers; null is everything, from the first entry. */
+export const RANGES: [string, string, number | null][] = [['7w', t('7 weeks'), SPAN], ['13w', t('13 weeks'), 91], ['all', t('All time'), null]];
+/** Days until a day counts half as much: three sevenths of the stretch (21 of 49). */
+const halfLife = (span: number) => (span * 3) / 7;
+const weeksOf = (span: number) => count(Math.round(span / 7), 'week', 'weeks');
 
 /** Where each world lives in the brain, and what that part does. */
 export const ZONES: Record<string, { name: string; role: string }> = {
@@ -44,6 +48,9 @@ export interface Region {
   days: number;
   /** The exact feeling named most. */
   top: string | null;
+  /** Its share of everything felt, 0–1, and the share in the stretch just before (null when there is nothing to compare). */
+  share: number;
+  before: number | null;
 }
 
 export interface Note { id: string; title: string; text: string; core?: string; weight: number }
@@ -51,6 +58,10 @@ export interface Note { id: string; title: string; text: string; core?: string; 
 export interface Day { date: string; mood: number | null; n: number }
 
 export interface BrainState {
+  /** The stretch shown: its length in days, and the first and last day. */
+  span: number;
+  start: string;
+  end: string;
   entries: number;
   activeDays: number;
   longestRun: number;
@@ -58,7 +69,7 @@ export interface BrainState {
   words: number;
   lead: string | null;
   regions: Record<string, Region>;
-  /** How awake the whole brain is, 0–1: the share of the 49 days with something written. */
+  /** How awake the whole brain is, 0–1: the share of the days with something written. */
   alive: number;
   /** How hard the feelings hit, 0–1, from their intensity. */
   force: number;
@@ -78,20 +89,32 @@ function levelWord(share: number) {
   return share >= 0.3 ? t('Dominant') : share >= 0.15 ? t('Busy') : share >= 0.05 ? t('Present') : share > 0 ? t('Faint') : t('Quiet');
 }
 
-export function readBrain(all: Entry[]): BrainState {
-  const today = todayKey();
-  const start = addDays(today, -(SPAN - 1));
-  const list = all.filter((e) => e.date >= start && e.date <= today);
-  const felt = list.filter((e) => e.emotions.length && e.emotions.every((id) => EMOTION[id]));
+const hasFeelings = (e: Entry) => e.emotions.length > 0 && e.emotions.every((id) => EMOTION[id]);
 
-  /* how much each world lit up: a main feeling counts its full intensity, the others half, and older days fade */
+/** How much each world lit up: a main feeling counts its full intensity, the others half, and older days fade. */
+function weigh(felt: Entry[], end: string, span: number) {
   const weight = new Map<string, number>();
-  const seen = new Map<string, { n: number; days: Set<string>; ids: Map<string, number> }>();
   for (const e of felt) {
-    const fade = Math.pow(0.5, Math.max(0, diffDays(e.date, today)) / HALF_LIFE);
+    const fade = Math.pow(0.5, Math.max(0, diffDays(e.date, end)) / halfLife(span));
     e.emotions.forEach((id, i) => {
       const w = coreOf(id).id;
       weight.set(w, (weight.get(w) ?? 0) + e.intensity * (i ? 0.5 : 1) * fade);
+    });
+  }
+  return weight;
+}
+
+/** `span` days of the journal ending on `end` (today by default). `compare` also reads the stretch just before it. */
+export function readBrain(all: Entry[], span = SPAN, end = todayKey(), compare = false): BrainState {
+  const start = addDays(end, -(span - 1));
+  const list = all.filter((e) => e.date >= start && e.date <= end);
+  const felt = list.filter(hasFeelings);
+
+  const weight = weigh(felt, end, span);
+  const seen = new Map<string, { n: number; days: Set<string>; ids: Map<string, number> }>();
+  for (const e of felt) {
+    e.emotions.forEach((id) => {
+      const w = coreOf(id).id;
       const s = seen.get(w) ?? { n: 0, days: new Set<string>(), ids: new Map<string, number>() };
       s.n++;
       s.days.add(e.date);
@@ -100,13 +123,20 @@ export function readBrain(all: Entry[]): BrainState {
     });
   }
   const total = [...weight.values()].reduce((a, b) => a + b, 0);
+  let prevShare: ((world: string) => number) | null = null;
+  if (compare) {
+    const pEnd = addDays(start, -1);
+    const pFelt = all.filter((e) => e.date >= addDays(pEnd, -(span - 1)) && e.date <= pEnd).filter(hasFeelings);
+    const pw = weigh(pFelt, pEnd, span), pTotal = [...pw.values()].reduce((a, b) => a + b, 0);
+    if (pFelt.length >= 3 && pTotal) prevShare = (world) => (pw.get(world) ?? 0) / pTotal;
+  }
   const peak = Math.max(0, ...weight.values());
   const regions: Record<string, Region> = {};
   for (const world of Object.keys(ZONES)) {
     const share = total ? (weight.get(world) ?? 0) / total : 0;
     const s = seen.get(world);
     regions[world] = {
-      world, word: levelWord(share), feelings: s?.n ?? 0, days: s?.days.size ?? 0,
+      world, share, before: prevShare?.(world) ?? null, word: levelWord(share), feelings: s?.n ?? 0, days: s?.days.size ?? 0,
       level: share > 0 ? Math.min(1, 0.2 + 0.8 * Math.pow(share / (peak / total), 0.85)) : 0,
       top: s ? [...s.ids].sort((a, b) => b[1] - a[1])[0][0] : null,
     };
@@ -116,44 +146,48 @@ export function readBrain(all: Entry[]): BrainState {
   /* day by day, and week by week */
   const byDay = new Map<string, Entry[]>();
   for (const e of list) (byDay.get(e.date) ?? byDay.set(e.date, []).get(e.date)!).push(e);
-  const days: Day[] = Array.from({ length: SPAN }, (_, i) => {
+  const days: Day[] = Array.from({ length: span }, (_, i) => {
     const date = addDays(start, i);
     const es = byDay.get(date) ?? [];
     return { date, n: es.length, mood: mean(es.map(moodOf).filter((m): m is number => m !== null)) };
   });
   const moodsOf = (from: number, to: number) => days.slice(from, to).flatMap((d) => (byDay.get(d.date) ?? []).map(moodOf)).filter((m): m is number => m !== null);
-  const recent = moodsOf(SPAN - 21, SPAN), earlier = moodsOf(0, SPAN - 21);
-  const weeks = Array.from({ length: 7 }, (_, w) => ({ start: days[w * 7].date, moods: moodsOf(w * 7, w * 7 + 7) })).filter((w) => w.moods.length >= 2);
+  const split = span - Math.round((span * 3) / 7);
+  const recent = moodsOf(split, span), earlier = moodsOf(0, split);
+  const weeks = Array.from({ length: Math.ceil(span / 7) }, (_, w) => ({ start: days[w * 7].date, moods: moodsOf(w * 7, w * 7 + 7) })).filter((w) => w.moods.length >= 2);
   const weekMood = weeks.map((w) => ({ start: w.start, mood: mean(w.moods)! }));
   const high = weekMood.reduce((a, b) => (b.mood > a.mood ? b : a), weekMood[0]);
   const low = weekMood.reduce((a, b) => (b.mood < a.mood ? b : a), weekMood[0]);
   const arc = weekMood.length >= 3 && high.mood - low.mood >= 0.6 ? { high, low } : null;
 
   const activeDays = byDay.size;
-  const alive = activeDays / SPAN;
+  const alive = activeDays / span;
   const force = felt.length ? felt.reduce((s, e) => s + e.intensity, 0) / felt.length / 5 : 0;
 
   let sub: string;
-  if (!list.length) sub = t('Nothing in the last 7 weeks yet. Write a note or check in and it wakes up.');
+  const period = weeksOf(span);
+  if (!list.length) sub = t('Nothing in these {span} yet. Write a note or check in and it wakes up.', { span: period });
   else if (recent.length < 3 || earlier.length < 3) sub = t('Still learning your patterns. A few more entries sharpen the picture.');
   else {
     const d = mean(recent)! - mean(earlier)!;
-    sub = d >= 0.6 ? t('Lighter lately than it was earlier in these 7 weeks.') : d <= -0.6 ? t('Heavier lately than it was earlier in these 7 weeks.') : t('Steady across these 7 weeks.');
+    sub = d >= 0.6 ? t('Lighter lately than it was earlier in these {span}.', { span: period }) : d <= -0.6 ? t('Heavier lately than it was earlier in these {span}.', { span: period }) : t('Steady across these {span}.', { span: period });
   }
 
   return {
+    span, start, end,
     entries: list.length, activeDays, longestRun: streaks(list).longest,
     named: new Set(felt.flatMap((e) => e.emotions).filter((id) => EMOTION[id].depth === 2)).size,
     words: list.reduce((s, e) => s + wordCount(plainText(e.text)), 0),
     lead, regions, alive, force,
     title: lead ? TITLE[lead] : list.length ? t('Quiet') : t('Asleep'),
     sub, days, arc,
-    notes: list.length ? notesFor(all, list, felt, start) : [],
+    notes: list.length ? notesFor(all, list, felt, start, span) : [],
   };
 }
 
 /** What psychology would say about this stretch, checked against what was written. Strongest first. */
-function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string): Note[] {
+function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string, span: number): Note[] {
+  const period = weeksOf(span);
   const out: Note[] = [];
   const add = (id: string, weight: number, title: string, text: string, core?: string) => out.push({ id, weight, title, text, core });
 
@@ -194,8 +228,8 @@ function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string): No
     const name = (e: Entry) => `${label(e.emotions[0])}, ${shortDate(e.date)}`;
     add('peakend', 80, t('The peak–end rule'),
       peak.id === end.id
-        ? t('Your latest entry is also the most intense of the 7 weeks: {moment}. Memory keeps the peak and the end of a stretch far more than its average.', { moment: name(peak) })
-        : t('You will probably remember these 7 weeks by their peak ({peak}) and their end ({end}). Memory keeps those two moments far more than the average (Kahneman).', { peak: name(peak), end: name(end) }),
+        ? t('Your latest entry is also the most intense of these {span}: {moment}. Memory keeps the peak and the end of a stretch far more than its average.', { span: period, moment: name(peak) })
+        : t('You will probably remember these {span} by their peak ({peak}) and their end ({end}). Memory keeps those two moments far more than the average (Kahneman).', { span: period, peak: name(peak), end: name(end) }),
       coreOf(peak.emotions[0]).id);
   }
 
@@ -253,16 +287,25 @@ function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string): No
   const run = streaks(list).longest;
   const active = new Set(list.map((e) => e.date)).size;
   add('habit', 45, t('Habit loop'),
-    t('You showed up on {days} of 49 days, with a longest run of {run}. A new habit takes about 66 days on average to feel automatic (Lally, 2009); the basal ganglia are still learning.', { days: active, run }),
+    t('You showed up on {days} of {span} days, with a longest run of {run}. A new habit takes about 66 days on average to feel automatic (Lally, 2009); the basal ganglia are still learning.', { days: active, span, run }),
     'hope-interest');
 
   return out.sort((a, b) => b.weight - a.weight);
 }
 
 /** A sentence about one region, for when it is tapped. */
-export function regionLine(r: Region): string {
-  if (!r.feelings) return t('Quiet for 7 weeks. Nothing you wrote lives here.');
+export function regionLine(r: Region, span: number): string {
+  if (!r.feelings) return t('Quiet across these {span}. Nothing you wrote lives here.', { span: weeksOf(span) });
   return t('{word}: {feelings} across {days}. Named most: {top}.', {
     word: r.word, feelings: count(r.feelings, 'feeling', 'feelings'), days: count(r.days, 'day', 'days'), top: r.top ? label(r.top) : '—',
   });
+}
+
+/** How a region compares with the stretch just before, when that is worth saying. */
+export function shiftLine(r: Region, span: number): string | null {
+  if (r.before === null || Math.abs(r.share - r.before) < 0.05) return null;
+  const v = { now: Math.round(r.share * 100), before: Math.round(r.before * 100), span: weeksOf(span) };
+  return r.share > r.before
+    ? t('Up: {now}% of what you felt, from {before}% in the {span} before.', v)
+    : t('Down: {now}% of what you felt, from {before}% in the {span} before.', v);
 }

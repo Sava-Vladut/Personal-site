@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.58.0',
+    date: '2026-10-08',
+    changes: [
+      'Your brain can look at 7 weeks, 13 weeks or all of your journal, with the choice remembered',
+      'A slider under the brain takes it back in time: drag it to see how the brain looked on any past day, or press play to watch it change from the start of your journal to today',
+      'Over the 7 and 13 week views, each region also says whether it grew or shrank compared with the stretch just before',
+      'The brainwave, counts and notes follow the stretch you picked (long stretches are drawn week by week)',
+    ],
+  },
+  {
     version: '1.57.1',
     date: '2026-10-08',
     changes: [

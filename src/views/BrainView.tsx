@@ -20,7 +20,7 @@ export function BrainView() {
         <header class="page-head">
           <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
           <h1 class="title">{t('Your brain')}</h1>
-          <p class="subtitle">{t('The last 7 weeks of your journal, as a brain.')}</p>
+          <p class="subtitle">{t('Your journal, as a brain.')}</p>
         </header>
       </div>
       <Brain />

@@ -1,15 +1,17 @@
 // The brain page: a side view drawn in letters, like the sky. Each emotion world lives in its own region and
 // moves the way its sprite does (the amygdala flickers, the temporal lobe beats like a heart, the brainstem breathes).
-// How brightly a region burns comes from the last seven weeks of the journal; tap one to read about it.
+// How brightly a region burns comes from a stretch of the journal (7 or 13 weeks, or all of it, ending today or on any past day:
+// slide it back, or press play to watch the brain change); tap a region to read about it.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { PICKER_ORDER, shortName } from '../data/emotions';
-import { SPAN, ZONES, readBrain, regionLine, type BrainState, type Day } from '../lib/brain';
+import { RANGES, SPAN, ZONES, readBrain, regionLine, shiftLine, type BrainState, type Day } from '../lib/brain';
 import { BOX_H, BOX_W, BOX_Y0, PATCHES, folds, grooveDist, partAt, patchAt } from '../lib/brainShape';
-import { shortDate } from '../lib/dates';
+import { addDays, diffDays, shortDate, todayKey } from '../lib/dates';
 import { watchView } from '../lib/inView';
+import { usePref } from '../lib/prefs';
 import { useEntries } from '../lib/store';
 import { count, t } from '../lib/i18n';
-import { Sprite } from './icons';
+import { Icon, Sprite } from './icons';
 import { RAMPS } from './Sky';
 
 const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -227,26 +229,65 @@ function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected:
   return <canvas ref={cv} class="brain-canvas" role="img" aria-label={`${brain.title}. ${brain.sub}`} onPointerDown={tap} />;
 }
 
-/** Mood day by day over the 7 weeks, drawn as a brainwave: flat on days nothing was written, a swell up for good days and down for heavy ones. */
+/** Mood day by day, drawn as a brainwave: flat on days nothing was written, a swell up for good days and down for heavy ones. Past 14 weeks it is week by week. */
 function Waves({ days, lead }: { days: Day[]; lead: string | null }) {
   const W = SPAN * 10, H = 70, mid = H / 2;
-  const y = (d: Day) => (d.mood === null ? mid : mid - (d.mood / 5) * (mid - 7));
-  const path = days.map((d, i) => `${i ? 'L' : 'M'}${(i * 10 + 5).toFixed(1)} ${y(d).toFixed(1)}`).join(' ');
+  const weekly = days.length > 98;
+  const pts: (number | null)[] = weekly
+    ? Array.from({ length: Math.ceil(days.length / 7) }, (_, w) => {
+        const ms = days.slice(w * 7, w * 7 + 7).map((d) => d.mood).filter((m): m is number => m !== null);
+        return ms.length ? ms.reduce((a, b) => a + b, 0) / ms.length : null;
+      })
+    : days.map((d) => d.mood);
+  const step = W / pts.length;
+  const y = (m: number | null) => (m === null ? mid : mid - (m / 5) * (mid - 7));
+  const path = pts.map((m, i) => `${i ? 'L' : 'M'}${(i * step + step / 2).toFixed(1)} ${y(m).toFixed(1)}`).join(' ');
+  const every = weekly ? 4 : 7; // a faint line per week, or per four weeks
+  const lines = Math.floor((pts.length - 1) / every) + 1;
   return (
     <svg class="brain-wave" viewBox={`0 0 ${W} ${H}`} aria-hidden="true" style={lead ? { '--c': `var(--emo-${lead})` } : undefined}>
-      {[...Array(8)].map((_, i) => <line class="bw-week" x1={i * 70} x2={i * 70} y1="0" y2={H} />)}
+      {[...Array(lines)].map((_, i) => <line class="bw-week" x1={i * every * step} x2={i * every * step} y1="0" y2={H} />)}
       <line class="bw-zero" x1="0" x2={W} y1={mid} y2={mid} />
       <path class="bw-line" d={path} />
-      {days.map((d, i) => d.mood !== null && <circle class={d.mood >= 0 ? 'bw-dot up' : 'bw-dot down'} cx={i * 10 + 5} cy={y(d)} r="2.2" />)}
+      {step > 3 && pts.map((m, i) => m !== null && <circle class={m >= 0 ? 'bw-dot up' : 'bw-dot down'} cx={i * step + step / 2} cy={y(m)} r={step > 6 ? 2.2 : 1.6} />)}
     </svg>
   );
 }
 
 export function Brain() {
   const entries = useEntries();
-  const brain = useMemo(() => readBrain(entries), [entries]);
+  const [range, setRange] = usePref('brain-range', '7w', RANGES.map((r) => r[0]));
+  const [back, setBack] = useState(0); // days the stretch's last day is back from today
+  const [playing, setPlaying] = useState(false);
+  const today = todayKey();
+  // the furthest back worth going: a stretch ending a week after the first entry
+  const maxBack = useMemo(() => {
+    const first = entries.reduce((m, e) => (e.date < m ? e.date : m), today);
+    return Math.max(0, diffDays(first, today) - 6);
+  }, [entries, today]);
+  const at = Math.min(back, maxBack);
+  const end = addDays(today, -at);
+  const fixed = RANGES.find((r) => r[0] === range)![2];
+  const first = useMemo(() => entries.reduce((m, e) => (e.date < m ? e.date : m), end), [entries, end]);
+  const span = fixed ?? Math.max(SPAN, diffDays(first, end) + 1);
+  const brain = useMemo(() => readBrain(entries, span, end, fixed !== null), [entries, span, end, fixed]);
   const [pick, setPick] = useState<string | null>(null);
   const [more, setMore] = useState(false);
+
+  // play: walk the stretch from the oldest day to today in about six seconds
+  useEffect(() => {
+    if (!playing) return;
+    const stride = Math.max(1, Math.ceil(maxBack / 50));
+    let at = maxBack;
+    setBack(at);
+    const id = setInterval(() => {
+      at = Math.max(0, at - stride);
+      setBack(at);
+      if (!at) { clearInterval(id); setPlaying(false); }
+    }, 120);
+    return () => clearInterval(id);
+  }, [playing]);
+  const scrub = (v: number) => { setPlaying(false); setBack(maxBack - v); };
   const world = pick ?? brain.lead ?? 'hope-interest';
   const zone = ZONES[world], region = brain.regions[world];
   const notes = more ? brain.notes : brain.notes.slice(0, 3);
@@ -258,7 +299,26 @@ export function Brain() {
           <div class="brain-title">{brain.title}</div>
           <div class="muted small">{brain.sub}</div>
         </div>
+        <div class="chips brain-ranges" role="toolbar" aria-label={t('Time range')}>
+          {RANGES.map(([id, name]) => <button class="chip" aria-pressed={range === id} onClick={() => setRange(id)}>{name}</button>)}
+        </div>
         <div class="brain-stage"><BrainCanvas brain={brain} selected={pick ?? brain.lead} onPick={setPick} /></div>
+
+        {maxBack > 0 && (
+          <div class="brain-scrub">
+            <button
+              class="btn btn-quiet btn-s brain-play" onClick={() => setPlaying(!playing)}
+              aria-label={playing ? t('Pause') : t('Replay the brain through time')}
+            >
+              <Icon name={playing ? 'player-pause' : 'player-play'} size={16} />
+            </button>
+            <input
+              type="range" min="0" max={maxBack} step="1" value={maxBack - at} onInput={(e) => scrub(+(e.target as HTMLInputElement).value)}
+              aria-label={t('Where in time')} aria-valuetext={at ? shortDate(end) : t('today')}
+            />
+            <span class="brain-when small">{at ? t('Until {date}', { date: shortDate(end) }) : t('Until today')}</span>
+          </div>
+        )}
 
         <div class="brain-zones" role="radiogroup" aria-label={t('Regions')}>
           {PICKER_ORDER.map((id) => (
@@ -276,12 +336,13 @@ export function Brain() {
         <div class="brain-detail" style={{ '--c': `var(--emo-${world})` }}>
           <div class="brain-detail-head"><Sprite core={world} size={18} idle /> <b>{zone.name}</b></div>
           <p class="brain-role">{zone.role}</p>
-          <p class="brain-line">{regionLine(region)}</p>
+          <p class="brain-line">{regionLine(region, brain.span)}</p>
+          {shiftLine(region, brain.span) && <p class="brain-shift muted small">{shiftLine(region, brain.span)}</p>}
         </div>
 
         <div class="brain-wave-head">
-          <span>{t('Brainwaves, 7 weeks')}</span>
-          <span class="muted small">{shortDate(brain.days[0].date)} – {t('today')}</span>
+          <span>{t('Brainwaves, {span}', { span: count(Math.round(brain.span / 7), 'week', 'weeks') })}</span>
+          <span class="muted small">{shortDate(brain.start)} – {at ? shortDate(brain.end) : t('today')}</span>
         </div>
         <Waves days={brain.days} lead={brain.lead} />
         {brain.arc && (
@@ -291,7 +352,7 @@ export function Brain() {
         )}
 
         <div class="brain-stats">
-          <div><b>{brain.activeDays}<span class="muted"> / {SPAN}</span></b><span class="muted small">{t('days awake')}</span></div>
+          <div><b>{brain.activeDays}<span class="muted"> / {brain.span}</span></b><span class="muted small">{t('days awake')}</span></div>
           <div><b>{brain.named}</b><span class="muted small">{t('exact feelings')}</span></div>
           <div><b>{brain.longestRun}</b><span class="muted small">{t('day streak')}</span></div>
         </div>
