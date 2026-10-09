@@ -12,7 +12,11 @@ async function load(file, mocks = {}, globals = {}) {
     finally { await bundle.close(); }
   }
   const module = { exports: {} };
-  vm.runInNewContext(compiled.get(file), {
+  // Supply lazy screen modules through the same boundary mocks as static imports.
+  const code = file === 'src/lib/views.ts'
+    ? compiled.get(file).replace(/\bimport\((['"])([^'"]+)\1\)/g, 'Promise.resolve().then(() => require("$2"))')
+    : compiled.get(file);
+  vm.runInNewContext(code, {
     module, exports: module.exports, require: (id) => mocks[id] ?? (id.endsWith('/i18n') ? i18n : {}),
     console, Blob, URL, URLSearchParams, atob, Uint8Array, Event, AbortController, setTimeout, clearTimeout,
     ...globals,
@@ -453,6 +457,7 @@ test('a failed database startup offers recovery without rendering an empty journ
     preact: { render: (node) => rendered.push(node) },
     'preact/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     './app': { App }, './lib/db': { onBlocked() {} },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView() {} },
     './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
   }, {
     console: { error() {} }, navigator: {}, addEventListener() {},
@@ -462,6 +467,42 @@ test('a failed database startup offers recovery without rendering an empty journ
   assert.equal(rendered.length, 1);
   assert.equal(rendered[0].type, 'div');
   assert.match(JSON.stringify(rendered[0]), /Couldn’t open your journal/);
+});
+
+test('startup keeps the app unmounted until the current deep link screen is loaded', async () => {
+  const rendered = [], journal = deferred(), brain = deferred();
+  let route = 'journal', weather = 0, sync = 0;
+  function App() {}
+  await load('src/main.tsx', {
+    preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    './app': { App }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+    './lib/router': { routeName: () => route },
+    './lib/views': { prepareView: name => ({ journal, brain }[name].promise) },
+    './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ },
+  }, {
+    navigator: {}, addEventListener() {}, setTimeout: () => 0,
+    document: { documentElement: { classList: { add() {}, remove() {} } }, getElementById: () => ({}) },
+  });
+  route = 'brain'; journal.resolve(); await settle();
+  assert.equal(rendered.length, 0, 'loading the old deep link cannot render the new screen before it is ready');
+  brain.resolve(); await settle();
+  assert.equal(rendered[0].type, App); assert.equal(weather, 1); assert.equal(sync, 1);
+});
+
+test('a failed initial screen load reports a connection problem and offers a reload', async () => {
+  const rendered = [];
+  await load('src/main.tsx', {
+    preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+    './lib/router': { routeName: () => 'journal' },
+    './lib/views': { prepareView: () => Promise.reject(new Error('Offline')) },
+  }, {
+    console: { error() {} }, navigator: {}, addEventListener() {},
+    document: { documentElement: { classList: { add() {}, remove() {} } }, getElementById: () => ({}) },
+  });
+  await settle();
+  assert.match(JSON.stringify(rendered[0]), /Check your connection/);
+  assert.doesNotMatch(JSON.stringify(rendered[0]), /storage is unavailable/);
 });
 
 test('a rejected page transition still clears navigation state and tolerates infinite animations', async () => {
@@ -594,4 +635,164 @@ test('writing again soon after uses the last location instead of asking the brow
   forgetFix();
   await locate(ten);
   assert.equal(asked, 4, 'nothing is reused once forgotten');
+});
+
+test('reused date formatters preserve English and Romanian labels, including invalid dates', async () => {
+  for (const locale of ['en-GB', 'ro-RO']) {
+    let made = 0;
+    class DateTimeFormat extends Intl.DateTimeFormat { constructor(...args) { super(...args); made++; } }
+    const dates = await load('src/lib/dates.ts', { './i18n': { ...i18n, LOCALE: locale } }, { Intl: { DateTimeFormat } });
+    const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+    for (const date of [new Date(2024, 1, 29, 0, 1), new Date(2025, 11, 31, 23, 59), new Date(2026, 9, 9, 12, 30)]) {
+      for (let i = 0; i < 50; i++) {
+        assert.equal(dates.timeLabel(+date), date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }));
+        assert.equal(dates.formatDate(date, options), date.toLocaleDateString(locale, options));
+      }
+    }
+    assert.equal(made, 2, 'one formatter per distinct format, shared by all rows');
+    assert.equal(dates.timeLabel(NaN), new Date(NaN).toLocaleTimeString(locale));
+    assert.equal(dates.formatDate(new Date(NaN), options), 'Invalid Date');
+  }
+});
+
+test('lazy screens share pending loads, keep loaded screens synchronous and retry failures', async () => {
+  let attempts = 0;
+  const screen = deferred();
+  function Journal() {}
+  function Settings() {}
+  const views = await load('src/lib/views.ts', {
+    '../views/Journal': screen.promise,
+    '../views/Settings': { get Settings() { if (++attempts === 1) throw new Error('Offline'); return Settings; } },
+  });
+  const first = views.prepareView('journal');
+  assert.equal(views.prepareView('journal'), first);
+  screen.resolve({ Journal });
+  await first;
+  assert.equal(views.viewFor('journal'), Journal);
+  assert.equal(views.prepareView('journal'), undefined);
+  await assert.rejects(views.prepareView('settings'), /Offline/);
+  await views.prepareView('settings');
+  assert.equal(views.viewFor('settings'), Settings);
+  assert.equal(attempts, 2);
+});
+
+test('navigation waits for a screen and discards stale or unmounted loads', async () => {
+  const h = componentHooks(), listeners = new Map(), location = { hash: '#/' };
+  const journal = deferred(), settings = deferred(), brain = deferred();
+  let failures = 0;
+  const { useRoute } = await load('src/lib/router.ts', { 'preact/hooks': h.hooks }, {
+    location, matchMedia: () => ({ matches: true }), console: { error() {} },
+    document: {},
+    history: { state: {}, replaceState(_state, _title, hash) { location.hash = hash; } },
+    addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name),
+  });
+  const prepare = name => ({ journal, settings, brain }[name]?.promise);
+  const render = () => h.render(() => useRoute(prepare, () => failures++));
+  assert.equal(render().name, 'journal');
+  location.hash = '#/settings'; listeners.get('hashchange')();
+  assert.equal(render().name, 'journal', 'the current screen stays mounted while loading');
+  location.hash = '#/brain'; listeners.get('hashchange')();
+  settings.resolve(); await settle();
+  assert.equal(render().name, 'journal', 'an older slow navigation cannot replace the latest request');
+  brain.resolve(); await settle();
+  assert.equal(render().name, 'brain');
+  location.hash = '#/note/new'; listeners.get('hashchange')();
+  assert.equal(render().name, 'note', 'an already available screen navigates synchronously');
+  // The pending request must also be discarded if the router unmounts.
+  location.hash = '#/'; listeners.get('hashchange')();
+  h.dispose(); journal.resolve(); await settle();
+  assert.equal(listeners.has('hashchange'), false);
+  assert.equal(failures, 0);
+});
+
+test('a failed screen load restores the current address and permits a retry', async () => {
+  const h = componentHooks(), listeners = new Map(), location = { hash: '#/people' };
+  let failures = 0, attempt = 0;
+  const { useRoute } = await load('src/lib/router.ts', { 'preact/hooks': h.hooks }, {
+    location, matchMedia: () => ({ matches: true }), console: { error() {} }, document: {},
+    history: { state: { mmInApp: 1 }, replaceState(_state, _title, hash) { location.hash = hash; } },
+    addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener() {},
+  });
+  const prepare = () => ++attempt === 1 ? Promise.reject(new Error('Offline')) : Promise.resolve();
+  const render = () => h.render(() => useRoute(prepare, () => failures++));
+  render();
+  location.hash = '#/settings'; listeners.get('hashchange')(); await settle();
+  assert.equal(render().name, 'people'); assert.equal(location.hash, '#/people'); assert.equal(failures, 1);
+  location.hash = '#/settings'; listeners.get('hashchange')(); await settle();
+  assert.equal(render().name, 'settings');
+  h.dispose();
+});
+
+test('offscreen photos defer database reads but remain responsive to arriving photos once visible', async () => {
+  const h = componentHooks(), records = new Map();
+  let reads = 0;
+  const photos = await load('src/lib/photos.ts', {
+    'preact/hooks': h.hooks,
+    './db': { db: {
+      photo: async id => { reads++; return records.get(id); },
+      putPhotos: async list => list.forEach(photo => records.set(photo.id, photo)),
+    } },
+  });
+  const render = active => h.render(() => photos.usePhotoUrl('p1234567', active));
+  assert.equal(render(false), null); await settle(); assert.equal(reads, 0);
+  render(true); await settle(); assert.equal(reads, 1);
+  await photos.storePhotos([{ id: 'p1234567', w: 20, h: 10, blob: new Blob(['photo']) }]);
+  assert.match(render(true), /^blob:/);
+  h.dispose();
+});
+
+test('people indexes are shared across cards and refreshed when the people collection changes', async () => {
+  let people = [{ id: 'a', name: 'Ada' }];
+  const h1 = componentHooks(), h2 = componentHooks();
+  let currentHooks = h1.hooks;
+  const { usePeopleById } = await load('src/components/people.tsx', {
+    'preact/hooks': { useMemo: (...args) => currentHooks.useMemo(...args) },
+    '../lib/store': { usePeople: () => people },
+  });
+  const first = h1.render(usePeopleById);
+  currentHooks = h2.hooks;
+  assert.equal(h2.render(usePeopleById), first, 'all cards reuse the same lookup');
+  people = [{ id: 'a', name: 'Ada updated' }];
+  const updated = h2.render(usePeopleById);
+  assert.notEqual(updated, first); assert.equal(updated.get('a').name, 'Ada updated');
+});
+
+test('the brain stops drawing while covered, hidden or out of view and releases all animation work', async () => {
+  const effects = [], listeners = new Map(), frames = new Map(), observers = [];
+  let nextFrame = 0, viewed, covered = false, draws = 0, resize;
+  const root = { hasAttribute: () => covered };
+  const document = { documentElement: root, hidden: false, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) };
+  const context = { setTransform() {}, clearRect() { draws++; }, fillText() {} };
+  const canvas = { getContext: () => context, parentElement: { getBoundingClientRect: () => ({ width: 320 }) }, style: {} };
+  const shape = await load('src/lib/brainShape.ts');
+  let ref = 0;
+  const { BrainCanvas } = await load('src/components/Brain.tsx', {
+    'preact/hooks': { useRef: value => ({ current: ref++ === 0 ? canvas : value }), useEffect: fn => effects.push(fn) },
+    'preact/jsx-runtime': { jsx, jsxs: jsx },
+    '../lib/brainShape': shape,
+    '../lib/brain': { ZONES: Object.fromEntries(shape.PATCHES.map(p => [p.world, {}])) },
+    '../lib/inView': { watchView: (_el, cb) => { viewed = cb; return () => { viewed = null; }; } },
+    './Sky': { RAMPS: Object.fromEntries(['default', ...shape.PATCHES.map(p => p.world)].map(world => [world, [' ', '.', '#']])) },
+  }, {
+    document, devicePixelRatio: 1, performance: { now: () => 100 },
+    getComputedStyle: () => ({ getPropertyValue: () => '#808080' }),
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    requestAnimationFrame: fn => { frames.set(++nextFrame, fn); return nextFrame; }, cancelAnimationFrame: id => frames.delete(id),
+    ResizeObserver: class { constructor(fn) { resize = fn; } observe() {} disconnect() {} },
+    MutationObserver: class { constructor(fn) { observers.push(fn); } observe() {} disconnect() {} },
+  });
+  const regions = Object.fromEntries(shape.PATCHES.map(p => [p.world, { level: 0 }]));
+  BrainCanvas({ brain: { lead: null, entries: 0, alive: 0, force: 0, regions }, selected: null, onPick() {} });
+  const cleanups = effects.map(fn => fn());
+  assert.equal(frames.size, 0);
+  const drawn = draws; resize(); assert.equal(draws, drawn, 'unchanged size does not rebuild or redraw the brain');
+  viewed(true); assert.equal(frames.size, 1);
+  covered = true; observers[0]([{ attributeName: 'data-covered' }]); assert.equal(frames.size, 0);
+  covered = false; observers[0]([{ attributeName: 'data-covered' }]); assert.equal(frames.size, 1);
+  document.hidden = true; listeners.get('visibilitychange')(); assert.equal(frames.size, 0);
+  document.hidden = false; listeners.get('visibilitychange')(); assert.equal(frames.size, 1);
+  viewed(false); assert.equal(frames.size, 0);
+  viewed(true);
+  cleanups.forEach(cleanup => cleanup?.());
+  assert.equal(frames.size, 0); assert.equal(listeners.size, 0); assert.equal(viewed, null);
 });

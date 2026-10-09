@@ -95,9 +95,10 @@ export function photoUrl(id: string) {
   return p;
 }
 
-export function usePhotoUrl(id: string) {
+export function usePhotoUrl(id: string, active = true) {
   const [url, setUrl] = useState(() => loaded.get(id) ?? null);
   useEffect(() => {
+    if (!active && !loaded.has(id)) { setUrl(null); return; }
     let live = true;
     let request = 0;
     const refresh = () => {
@@ -114,7 +115,7 @@ export function usePhotoUrl(id: string) {
       subs.delete(refresh);
       if (!subs.size) listeners.delete(id);
     };
-  }, [id]);
+  }, [id, active]);
   return url;
 }
 

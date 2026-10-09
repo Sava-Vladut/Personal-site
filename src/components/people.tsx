@@ -21,9 +21,14 @@ export function Avatar({ p, size = 40 }: { p: Person; size?: number }) {
   );
 }
 
+const peopleIndexes = new WeakMap<Person[], Map<string, Person>>();
 export function usePeopleById() {
   const people = usePeople();
-  return useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+  return useMemo(() => {
+    let index = peopleIndexes.get(people);
+    if (!index) { index = new Map(people.map((p) => [p.id, p])); peopleIndexes.set(people, index); }
+    return index;
+  }, [people]);
 }
 
 /** A tagged person: avatar and name, with an optional remove button. */

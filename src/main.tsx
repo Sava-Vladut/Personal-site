@@ -5,6 +5,17 @@ import './styles/app.css';
 import './styles/books.css';
 import './styles/glass.css';
 import './styles/brain.css';
+// Keep the original cascade (desktop last), even though screen code now loads separately.
+import './styles/objects.css';
+import './styles/mentions.css';
+import './styles/wheel.css';
+import './styles/notes.css';
+import 'photoswipe/style.css';
+import './styles/voice.css';
+import './styles/sotd.css';
+import './styles/map.css';
+import './styles/stats.css';
+import './styles/twitch.css';
 import { App } from './app';
 import './styles/desktop.css';
 import { applyTheme, init } from './lib/store';
@@ -12,6 +23,8 @@ import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
 import { startWeather } from './lib/weather';
 import { t } from './lib/i18n';
+import { routeName } from './lib/router';
+import { prepareView } from './lib/views';
 
 applyTheme();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
@@ -34,20 +47,29 @@ onBlocked(() =>
     document.getElementById('app')!,
   ),
 );
-init().then(
+// Start storage and the first screen together. Other screens load only when visited;
+// the service worker still precaches every screen for offline use.
+let databaseError = false;
+const database = init().catch((error) => { databaseError = true; throw error; });
+Promise.all([database, prepareView(routeName())]).then(async () => {
+  // A deep link may change while storage or a screen is loading.
+  let name;
+  do { name = routeName(); await prepareView(name); } while (name !== routeName());
+}).then(
   () => {
     render(<App />, document.getElementById('app')!);
     setTimeout(() => document.documentElement.classList.remove('booting'), 1000);
     startWeather();
     initSync();
+    enableOffline();
   },
   (e) => {
-    console.error('Could not open the journal database', e);
+    console.error('Could not start My Mind', e);
     document.documentElement.classList.remove('booting');
     render(
       <div class="page"><div class="empty">
         <h2 class="title-s">{t('Couldn’t open your journal')}</h2>
-        <p>{t('Your browser’s storage is unavailable. Try reopening the app or reloading this page.')}</p>
+        <p>{databaseError ? t('Your browser’s storage is unavailable. Try reopening the app or reloading this page.') : t('Couldn’t load the app. Check your connection and try again.')}</p>
         <button class="btn" onClick={() => location.reload()}>{t('Try again')}</button>
       </div></div>,
       document.getElementById('app')!,
@@ -55,7 +77,9 @@ init().then(
   },
 );
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+function enableOffline() {
+  // Precaching other screens must not compete with loading the first screen.
+  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
   const register = () => navigator.serviceWorker.register('/sw.js').catch((e) => console.error('Could not enable offline access', e));
   if (document.readyState === 'complete') void register();
   else addEventListener('load', register, { once: true });

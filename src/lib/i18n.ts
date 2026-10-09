@@ -42,7 +42,8 @@ export function rich<T>(en: string, parts: Record<string, T>): (string | T)[] {
 }
 
 /** "a, b and c" in the app's language. */
-export const listOf = (items: string[]) => new Intl.ListFormat(LOCALE, { type: 'conjunction' }).format(items);
+const lists = new Intl.ListFormat(LOCALE, { type: 'conjunction' });
+export const listOf = (items: string[]) => lists.format(items);
 
 const rules = lang === 'ro' ? new Intl.PluralRules('ro-RO') : null;
 

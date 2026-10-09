@@ -40,7 +40,17 @@ export const startOfWeek = (k: string, weekStart: 0 | 1 = 1) => {
 
 /** Romanian writes day and month names in lower case; at the start of a label they still take a capital. */
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const fmt = (k: string, o: Intl.DateTimeFormatOptions) => parseKey(k).toLocaleDateString(LOCALE, o);
+// Constructing a formatter for every row is much more expensive than formatting it.
+// The locale is fixed until reload; this cache only holds the few formats used by the app.
+const formats = new Map<string, Intl.DateTimeFormat>();
+export function formatDate(date: Date | number, options: Intl.DateTimeFormatOptions) {
+  if (!Number.isFinite(typeof date === 'number' ? date : date.getTime())) return 'Invalid Date';
+  const key = JSON.stringify(options);
+  let format = formats.get(key);
+  if (!format) { format = new Intl.DateTimeFormat(LOCALE, options); formats.set(key, format); }
+  return format.format(date);
+}
+const fmt = (k: string, o: Intl.DateTimeFormatOptions) => formatDate(parseKey(k), o);
 
 export const WEEKDAYS = [t('Mon'), t('Tue'), t('Wed'), t('Thu'), t('Fri'), t('Sat'), t('Sun')];
 
@@ -73,8 +83,8 @@ export function rangeLabel(start: string, end: string | null) {
   })}`;
 }
 
-export const longToday = () => cap(new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' }));
+export const longToday = () => cap(formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' }));
 export const monthLabel = (y: number, m: number) =>
-  cap(new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' }));
-export const monthShort = (y: number, m: number) => cap(new Date(y, m, 1).toLocaleDateString(LOCALE, { month: 'short' }));
-export const timeLabel = (ms: number) => new Date(ms).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+  cap(formatDate(new Date(y, m, 1), { month: 'long', year: 'numeric' }));
+export const monthShort = (y: number, m: number) => cap(formatDate(new Date(y, m, 1), { month: 'short' }));
+export const timeLabel = (ms: number) => formatDate(ms, { hour: '2-digit', minute: '2-digit' });

@@ -16,7 +16,12 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => (k.startsWith('mm-app-') || k.startsWith('mm-img-')) && k !== APP && k !== IMG).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => {
+      // An open tab can still import a screen from the preceding build after an update.
+      // Keep that build's immutable assets until the next update, with a bounded two-build cache.
+      const previous = keys.filter((k) => k.startsWith('mm-app-') && k !== APP).at(-1);
+      return Promise.all(keys.filter((k) => (k.startsWith('mm-app-') || k.startsWith('mm-img-')) && k !== APP && k !== previous && k !== IMG).map((k) => caches.delete(k)));
+    }).then(() => self.clients.claim()),
   );
 });
 
@@ -32,8 +37,14 @@ async function remember(req, res, name) {
   catch { /* Keep the network response usable when offline storage is unavailable. */ }
 }
 
-async function cacheFirst(req, name) {
-  const hit = await cached(req, name);
+async function cacheFirst(req, name, previousBuild = false) {
+  let hit = await cached(req, name);
+  if (!hit && previousBuild) {
+    try {
+      const previous = (await caches.keys()).filter((k) => k.startsWith('mm-app-') && k !== APP).at(-1);
+      if (previous) hit = await cached(req, previous);
+    } catch { /* Network remains usable when cache storage is unavailable. */ }
+  }
   if (hit) return hit;
   const res = await fetch(req);
   if (res.ok || res.type === 'opaque') await remember(req, res, name);
@@ -60,7 +71,10 @@ self.addEventListener('fetch', (e) => {
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/voice/models/')) return;
     if (/^\/voice\/(?:transformers-|ort-)/.test(url.pathname)) return e.respondWith(cacheFirst(req, VOICE));
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/'));
-    if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) return e.respondWith(cacheFirst(req, APP));
+    if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) {
+      const fingerprinted = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/.test(url.pathname);
+      return e.respondWith(cacheFirst(req, APP, fingerprinted));
+    }
     return e.respondWith(networkFirst(req));
   }
   if (url.hostname === 'i.pinimg.com' || (url.hostname === 'api.openverse.org' && url.pathname.endsWith('/thumb/'))) e.respondWith(cacheFirst(req, IMG));

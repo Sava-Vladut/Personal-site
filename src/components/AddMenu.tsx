@@ -1,5 +1,6 @@
 import type { WheelNode } from '../data/wheel';
-import { LOCALE, t } from '../lib/i18n';
+import { t } from '../lib/i18n';
+import { formatDate } from '../lib/dates';
 import { Icon } from './icons';
 import { NavWheel } from './NavWheel';
 
@@ -18,7 +19,7 @@ const ADD: WheelNode[] = [
  * sidebar's "New".
  */
 export function AddMenu({ label }: { label?: string }) {
-  const today = new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+  const today = formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <NavWheel
       world="hope-interest"

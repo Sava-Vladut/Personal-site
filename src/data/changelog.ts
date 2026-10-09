@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.58.1',
+    date: '2026-10-09',
+    changes: [
+      'The app opens faster by loading screens as you visit them, while keeping them available offline',
+      'Long journals render faster and load photos as they approach the screen',
+      'The brain rests while hidden behind the wheel, with the same appearance and animations',
+    ],
+  },
+  {
     version: '1.58.0',
     date: '2026-10-08',
     changes: [

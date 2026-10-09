@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { usePref } from '../lib/prefs';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
-import { dayLabel, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
+import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { useBooks, useEntries, usePeople, useReady, useSettings, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
@@ -26,7 +26,7 @@ import { WeatherMark, weatherOf } from '../components/weather';
 import { MiniMusic } from '../components/music';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
-import { LOCALE, count, t } from '../lib/i18n';
+import { count, t } from '../lib/i18n';
 
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
@@ -319,7 +319,7 @@ function ComingUp() {
               <span class="coming-icon"><Icon name={u.date.kind === 'birthday' ? 'cake' : u.date.kind === 'anniversary' ? 'heart' : 'calendar-event'} size={18} /></span>
               <span class="book-row-main">
                 <span class="book-row-title">{what}</span>
-                <span class="book-row-sub">{[whenLabel(u.days), u.days > 1 ? u.on.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' }) : '', years].filter(Boolean).join(' · ')}</span>
+                <span class="book-row-sub">{[whenLabel(u.days), u.days > 1 ? formatDate(u.on, { weekday: 'short', day: 'numeric', month: 'short' }) : '', years].filter(Boolean).join(' · ')}</span>
               </span>
             </button>
             <button class="icon-btn small" onClick={() => hide(u)} aria-label={t('Put away until next time')} title={t('Put away')}>

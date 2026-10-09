@@ -84,7 +84,7 @@ function lay(width: number): Grid {
   return g;
 }
 
-function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected: string | null; onPick: (world: string) => void }) {
+export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected: string | null; onPick: (world: string) => void }) {
   const cv = useRef<HTMLCanvasElement>(null);
   const live = useRef({ brain, selected });
   live.current = { brain, selected };
@@ -97,13 +97,15 @@ function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected:
     const el = cv.current!;
     const ctx = el.getContext('2d')!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-    let w = 0, h = 0, dpr = 1, raf = 0, last = 0, visible = true, ink = [0, 0, 0], colors: Record<string, number[]> = {};
+    let w = 0, h = 0, dpr = 1, raf = 0, last = 0, visible = false, ink = [0, 0, 0], colors: Record<string, number[]> = {};
+    let regionColors: Record<string, string> = {};
     const t0 = performance.now();
 
     const palette = () => {
       const css = getComputedStyle(el);
       ink = rgb(css.getPropertyValue('--ink'));
       colors = Object.fromEntries(Object.keys(ZONES).map((k) => [k, rgb(css.getPropertyValue(`--emo-${k}`))]));
+      regionColors = Object.fromEntries(Object.entries(colors).map(([k, c]) => [k, c.join(',')]));
     };
 
     const draw = () => {
@@ -114,6 +116,7 @@ function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected:
       const s = reduced.matches ? 2.4 : (now - t0) / 1000;
       const lead = brain.lead ? colors[brain.lead] : ink;
       const cortexRgb = mixRgb(ink, lead, 0.5);
+      const cerebellumRgb = mixRgb(ink, lead, 0.2);
       const mute = 0.35 + 0.65 * Math.sqrt(brain.alive);   // a brain with little written in it burns low
       const rp = ripple.current;
       const rr = rp ? (now - rp.at) / 900 : 2;
@@ -138,18 +141,18 @@ function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected:
             const world = PATCHES[p].world;
             const reg = brain.regions[world];
             ramp = RAMPS[world];
-            const beat = pulse(world, s, ph, x, y);
+            const beat = reg.level > 0 ? pulse(world, s, ph, x, y) : 0;
             const chosen = world === selected;
             level = reg.level > 0 ? (0.12 + reg.level * (0.28 + 0.6 * beat)) * (0.55 + 0.45 * brain.force + 0.15) : 0.1;
             level = Math.min(1, level + ring * 0.4 + (chosen ? 0.12 : 0));
-            color = colors[world].join(',');
+            color = regionColors[world];
             alpha = reg.level > 0 ? Math.min(1, 0.3 + level * 0.8) * (chosen || !selected ? 1 : 0.8) : 0.16;
             if (reg.level > 0) alpha *= 0.55 + 0.45 * mute;
           } else {
             const f = g.fold[i];
             if (part === 2) {
               level = 0.15 + 0.4 * f;
-              color = mixRgb(ink, lead, 0.2);
+              color = cerebellumRgb;
               alpha = (0.2 + 0.2 * (0.5 + 0.5 * Math.sin(s * 0.7 + x * 5))) * mute;
             } else {
               if (f === 0) { if (g.edge[i]) continue; level = 0.1; } else level = 0.12 + 0.5 * f;
@@ -173,8 +176,10 @@ function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected:
     const size = () => {
       const r = el.parentElement!.getBoundingClientRect();
       if (!r.width) return;
+      const ratio = Math.min(devicePixelRatio || 1, 2);
+      if (r.width === w && ratio === dpr) return;
       w = r.width;
-      dpr = Math.min(devicePixelRatio || 1, 2);
+      dpr = ratio;
       grid.current = lay(w);
       h = w * (BOX_H / BOX_W);
       el.width = Math.round(w * dpr);
@@ -185,30 +190,38 @@ function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; selected:
     };
     const frame = (now: number) => {
       raf = 0;
-      if (!visible || document.hidden || reduced.matches) return;
+      if (!visible || document.hidden || reduced.matches || document.documentElement.hasAttribute('data-covered')) return;
       if (now - last >= 42) { last = now; draw(); }
       raf = requestAnimationFrame(frame);
     };
-    const kick = () => { if (!raf && visible && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame); };
+    const resume = () => {
+      const on = visible && !document.hidden && !reduced.matches && !document.documentElement.hasAttribute('data-covered');
+      if (on) { if (!raf) raf = requestAnimationFrame(frame); }
+      else { cancelAnimationFrame(raf); raf = 0; }
+    };
+    const onMotion = () => { resume(); if (reduced.matches) draw(); };
 
     const ro = new ResizeObserver(size);
     ro.observe(el.parentElement!);
-    const stop = watchView(el, (on) => { visible = on; if (on) kick(); });
-    const theme = new MutationObserver(() => { palette(); draw(); });
-    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    const stop = watchView(el, (on) => { visible = on; resume(); });
+    const theme = new MutationObserver((records) => {
+      if (records.some((r) => r.attributeName === 'data-theme')) { palette(); draw(); }
+      if (records.some((r) => r.attributeName === 'data-covered')) resume();
+    });
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-covered'] });
     const dark = matchMedia('(prefers-color-scheme: dark)');
     const onScheme = () => { palette(); draw(); };
     dark.addEventListener('change', onScheme);
-    reduced.addEventListener('change', kick);
-    document.addEventListener('visibilitychange', kick);
+    reduced.addEventListener('change', onMotion);
+    document.addEventListener('visibilitychange', resume);
     size();
-    kick();
+    resume();
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect(); stop(); theme.disconnect();
       dark.removeEventListener('change', onScheme);
-      reduced.removeEventListener('change', kick);
-      document.removeEventListener('visibilitychange', kick);
+      reduced.removeEventListener('change', onMotion);
+      document.removeEventListener('visibilitychange', resume);
       redraw.current = undefined;
     };
   }, []);

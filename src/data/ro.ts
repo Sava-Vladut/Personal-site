@@ -463,6 +463,8 @@ export const RO: Record<string, string> = {
   'Finishing an update': 'Se termină o actualizare',
   'My Mind is open somewhere else on this device (another tab or the installed app). Close it and this page will continue by itself.': 'My Mind e deschis și în altă parte pe acest dispozitiv (alt tab sau aplicația instalată). Închide-l, iar pagina asta va continua singură.',
   'Couldn’t open your journal': 'Jurnalul nu s-a putut deschide',
+  'Couldn’t open this page. Try again.': 'Pagina nu s-a putut deschide. Încearcă din nou.',
+  'Couldn’t load the app. Check your connection and try again.': 'Aplicația nu s-a putut încărca. Verifică conexiunea și încearcă din nou.',
   'Your browser’s storage is unavailable. Try reopening the app or reloading this page.': 'Spațiul de stocare al browserului nu e disponibil. Redeschide aplicația sau reîncarcă pagina.',
   'Try again': 'Încearcă din nou',
 

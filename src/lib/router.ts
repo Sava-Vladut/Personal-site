@@ -50,50 +50,68 @@ addEventListener('popstate', (e) => {
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let transitions = 0;
 
-export function useRoute() {
+export function useRoute(prepare?: (name: RouteName) => Promise<void> | undefined, onError?: () => void) {
   const [route, setRoute] = useState(parse);
   const current = useRef(route);
   current.current = route;
   const rendered = useRef<(() => void) | null>(null);
+  const committedHash = useRef(location.hash);
   // The transition snapshots the new page as soon as it has rendered.
   useLayoutEffect(() => {
     rendered.current?.();
     rendered.current = null;
   }, [route]);
   useEffect(() => {
+    let request = 0;
     const f = () => {
+      const version = ++request;
       const next = parse();
-      const motion = uaAnimated || reduced.matches || !document.startViewTransition ? null : (asked ?? motionFor(current.current, next));
+      const skipMotion = uaAnimated || reduced.matches || !document.startViewTransition;
+      const requestedMotion = asked;
+      const hash = location.hash;
       uaAnimated = false;
       asked = null;
-      if (!motion) return setRoute(next);
-      const root = document.documentElement;
-      const n = ++transitions;
-      root.dataset.nav = motion;
-      const t = document.startViewTransition(
-        () =>
-          new Promise<void>((done) => {
-            rendered.current = done;
-            setRoute(next);
-            setTimeout(done, 300); // never hold the page frozen if the render is slow
-          }),
-      );
-      const finish = () => {
-        if (n !== transitions) return;
-        delete root.dataset.nav;
-        // The page's own entrance animations were held off while it slid in. Letting them go now would
-        // play them a second time, like a refresh, so skip them to the end before the next paint.
-        for (const a of document.getAnimations()) {
-          const el = a.effect instanceof KeyframeEffect ? a.effect.target : null;
-          if (a instanceof CSSAnimation && el?.matches('.page, .page > *')) {
-            try { a.finish(); } catch {} // Infinite or canceled animations cannot be finished.
+      const commit = () => {
+        if (version !== request) return;
+        committedHash.current = hash;
+        const motion = skipMotion ? null : (requestedMotion ?? motionFor(current.current, next));
+        if (!motion) return setRoute(next);
+        const root = document.documentElement;
+        const n = ++transitions;
+        root.dataset.nav = motion;
+        const t = document.startViewTransition(
+          () =>
+            new Promise<void>((done) => {
+              rendered.current = done;
+              setRoute(next);
+              setTimeout(done, 300); // never hold the page frozen if the render is slow
+            }),
+        );
+        const finish = () => {
+          if (n !== transitions) return;
+          delete root.dataset.nav;
+          // The page's own entrance animations were held off while it slid in. Letting them go now would
+          // play them a second time, like a refresh, so skip them to the end before the next paint.
+          for (const a of document.getAnimations()) {
+            const el = a.effect instanceof KeyframeEffect ? a.effect.target : null;
+            if (a instanceof CSSAnimation && el?.matches('.page, .page > *')) {
+              try { a.finish(); } catch {} // Infinite or canceled animations cannot be finished.
+            }
           }
-        }
+        };
+        void t.finished.then(finish, finish);
       };
-      void t.finished.then(finish, finish);
+      const loading = prepare?.(next.name);
+      if (!loading) commit();
+      else void loading.then(commit, (error) => {
+        if (version !== request) return;
+        console.error('Could not load page', error);
+        history.replaceState(history.state, '', committedHash.current || '#/');
+        onError?.();
+      });
     };
     addEventListener('hashchange', f);
-    return () => removeEventListener('hashchange', f);
+    return () => { request++; removeEventListener('hashchange', f); };
   }, []);
   return route;
 }

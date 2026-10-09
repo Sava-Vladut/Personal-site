@@ -108,10 +108,10 @@ test('successful HTML navigation refreshes the offline shell without asset navig
   assert.equal(await (await app.request('/journal', 'navigate')).text(), 'fresh shell');
 });
 
-test('activation removes old app caches and keeps unrelated origin caches', async () => {
-  const app = worker({ entries: { 'mm-app-old': {}, 'mm-app-dev': {}, 'mm-img-v1': {}, 'another-app': {} } });
+test('activation keeps the preceding build for open tabs, removes older builds and keeps unrelated origin caches', async () => {
+  const app = worker({ entries: { 'mm-app-older': {}, 'mm-app-old': {}, 'mm-app-dev': {}, 'mm-img-v1': {}, 'another-app': {} } });
   await app.activate();
-  assert.deepEqual([...app.stores.keys()], ['mm-app-dev', 'mm-img-v1', 'another-app']);
+  assert.deepEqual([...app.stores.keys()], ['mm-app-old', 'mm-app-dev', 'mm-img-v1', 'another-app']);
   assert.equal(app.claimed(), true);
 });
 
@@ -137,5 +137,19 @@ test('voice typing: the runtime is cached on first use in its own cache, model f
   assert.equal(app.stores.get('mm-app-dev').size, 0);
 
   await app.activate();
-  assert.deepEqual([...app.stores.keys()], ['mm-app-dev', 'mm-voice-v1']);
+  assert.deepEqual([...app.stores.keys()], ['mm-app-old', 'mm-app-dev', 'mm-voice-v1']);
+});
+
+test('open tabs can import a preceding build screen offline without using its shell or mutable icons', async () => {
+  const app = worker({
+    entries: {
+      'mm-app-old': { '/assets/Editor-12345678.js': 'old screen', '/': 'old shell', '/icons/book.svg': 'old icon' },
+      'mm-app-dev': { '/': 'current shell' },
+    },
+    fetch: async () => { throw new Error('Offline'); },
+  });
+  await app.activate();
+  assert.equal(await (await app.request('/assets/Editor-12345678.js')).text(), 'old screen');
+  assert.equal(await (await app.request('/', 'navigate')).text(), 'current shell');
+  await assert.rejects(app.request('/icons/book.svg'), /Offline/);
 });

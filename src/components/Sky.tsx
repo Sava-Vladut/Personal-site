@@ -332,6 +332,7 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
       const r = host.getBoundingClientRect();
       if (!r.width || !r.height) return;
       rect = r;
+      if (r.width === w && r.height === h && layers.every((L) => L.dpr === Math.min(devicePixelRatio || 1, L.spec.res))) return;
       const first = !w;
       w = r.width; h = r.height;
       const small = w < 720 ? 0 : 1;
