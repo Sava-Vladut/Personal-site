@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.59.0',
+    date: '2026-10-10',
+    changes: [
+      'New in Settings › Privacy: Blur notes & people blurs your notes, check-in notes and the people in your lists, so no one can read them over your shoulder',
+      'Opening a note still shows it clearly, and on a computer pointing at something brings it into focus',
+    ],
+  },
+  {
     version: '1.58.1',
     date: '2026-10-09',
     changes: [

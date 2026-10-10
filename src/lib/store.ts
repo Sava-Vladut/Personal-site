@@ -716,6 +716,7 @@ export interface Settings {
   weather: boolean;         // add the weather to entries
   places: boolean;          // save where you are with new entries
   home: Place | null;       // the weather's place when yours isn't saved, and for older entries
+  blur: boolean;            // blur notes and people on screen, for when someone's looking over your shoulder
 }
 const SETTINGS_KEY = 'mm-settings';
 function loadSettings(): Settings {
@@ -726,7 +727,7 @@ function loadSettings(): Settings {
   } catch {}
   return {
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards',
-    weather: s.weather === true, places: s.places === true, home: normalizePlace(s.home),
+    weather: s.weather === true, places: s.places === true, home: normalizePlace(s.home), blur: s.blur === true,
   };
 }
 const settings$ = observable<Settings>(loadSettings());
@@ -745,6 +746,7 @@ export function applyTheme() {
   const t = settings$.get().theme;
   const dark = t === 'dark' || (t === 'system' && darkMq.matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.toggleAttribute('data-blur', settings$.get().blur);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#141413' : '#fafaf9');
 }
 darkMq.addEventListener('change', applyTheme);

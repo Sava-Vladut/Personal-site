@@ -225,6 +225,19 @@ export function Settings({ query }: { query: URLSearchParams }) {
       </section>
 
       <section class="section">
+        <h2 class="section-title">{t('Privacy')}</h2>
+        <div class="card list">
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="eye-off" size={18} /> {t('Blur notes & people')}</div>
+              <div class="muted small">{t('Blurs your notes and the people in your lists, so no one can read them over your shoulder. Open a note to read it, or point at it on a computer.')}</div>
+            </div>
+            <button class="switch" role="switch" aria-checked={settings.blur} aria-label={t('Blur notes & people')} onClick={() => setSettings({ blur: !settings.blur })} />
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
         <h2 class="section-title">{t('Weather & places')}</h2>
         <div class="card list">
           <div class="list-row">

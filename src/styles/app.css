@@ -1332,3 +1332,17 @@ html[data-nav='wheel']::view-transition-new(root) { animation: 0.5s var(--ease-e
 .theme-pick .song-row[aria-pressed='true'] { background: var(--surface-2); }
 .theme-of { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 14px 2px 0; font-size: 14px; color: var(--ink-3); }
 .theme-of a { color: var(--ink); font-weight: 600; }
+
+/* Settings › Blur notes & people: what you've written and who's in it, out of focus until you open it (or point at it) */
+:root[data-blur] :is(
+  .note-title, .note-text, .note-hero, .note-imgs, .note-cover, .note-music,
+  .note-row .row-title, .note-row .row-text, .checkin-meta, .on-this-day .book-row-sub, .mind-card-quote,
+  .avatar:not(.new), .person-card-name, .person-card-sub, .quiet-chip .book-row-title, .mind-card-name, .mind-row-name, .mind-summary b,
+  .person-chip .emo-name, .person-pick-name, .person-pick-sub
+), :root[data-blur] .mention:not(.editor .mention) {
+  filter: blur(6px); transition: filter 0.25s var(--ease);
+}
+@media (hover: hover) {
+  :root[data-blur] :is(.note, .note-row, .checkin, .person-card, .quiet-chip, .on-this-day, .mind-card, .mind-row, .mind-summary, .person-pick, .person-chip, .mention):hover :is(*, .mention),
+  :root[data-blur] .mention:not(.editor .mention):hover { filter: none; }
+}
