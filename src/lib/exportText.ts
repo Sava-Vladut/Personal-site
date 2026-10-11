@@ -9,7 +9,7 @@ import { noteLabel, resolveNote } from './links';
 import { PERSON, SONG, resolvePerson, resolveSong } from './mentions';
 import { dateName, peopleIn } from './people';
 import { todayKey } from './dates';
-import { getBooks, getEntries, getPeople, getSongs, type Book, type Entry, type Person, type Song } from './store';
+import { getBooks, getEntries, getPeople, getRepos, getSongs, type Book, type Entry, type Person, type Repo, type Song } from './store';
 import { LOCALE, count, t } from './i18n';
 
 const longDate = (k: string) =>
@@ -115,12 +115,24 @@ function song(s: Song, people: Map<string, Person>, books: Book[]) {
   return lines.join('\n');
 }
 
-/** Markdown: people, books, music, then the journal from oldest to newest. No images are included, only placeholders and captions. */
+function repo(r: Repo) {
+  const lines = [`### ${r.name}`];
+  const facts = [r.private ? t('private') : t('public'), r.language, r.rating ? t('rated {n}/5', { n: r.rating }) : ''].filter(Boolean);
+  lines.push(`- ${facts.join(' · ')}`);
+  if (r.description) lines.push(`- ${r.description}`);
+  if (r.emotions.length) lines.push(`- ${t('How it makes me feel')}: ${feelings(r.emotions)}`);
+  if (r.url) lines.push(`- ${r.url}`);
+  if (r.text.trim()) lines.push('', r.text.trim());
+  return lines.join('\n');
+}
+
+/** Markdown: people, books, music, repos, then the journal from oldest to newest. No images are included, only placeholders and captions. */
 export function exportText() {
   const entries = [...getEntries()].sort((a, b) => a.date === b.date ? a.time - b.time : a.date < b.date ? -1 : 1);
   const people = getPeople();
   const books = getBooks();
   const songs = getSongs();
+  const repos = getRepos();
   const byId = new Map(people.map((p) => [p.id, p]));
   const counts = new Map<string, number>();
   for (const e of entries)
@@ -129,7 +141,7 @@ export function exportText() {
   const out = [
     '# ' + t('My Mind: journal export'),
     '',
-    t('Exported {date}. This is my personal journal: the people in my life, the books I read, the music I keep, and my notes and check-ins in date order. Feelings are named on an emotion wheel as Core › Family › Feeling. Pictures aren’t included; [{photo}] and [{image}: …] mark where they were.', { date: longDate(todayKey()), photo: t('Photo'), image: t('Image') }),
+    t('Exported {date}. This is my personal journal: the people in my life, the books I read, the music I keep, the repos I work on, and my notes and check-ins in date order. Feelings are named on an emotion wheel as Core › Family › Feeling. Pictures aren’t included; [{photo}] and [{image}: …] mark where they were.', { date: longDate(todayKey()), photo: t('Photo'), image: t('Image') }),
   ];
   if (people.length) {
     out.push('', `## ${t('People')} (${people.length})`);
@@ -142,6 +154,10 @@ export function exportText() {
   if (songs.length) {
     out.push('', `## ${t('Music')} (${songs.length})`);
     songs.forEach((s) => out.push('', song(s, byId, books)));
+  }
+  if (repos.length) {
+    out.push('', `## ${t('Repos')} (${repos.length})`);
+    repos.forEach((r) => out.push('', repo(r)));
   }
   out.push('', `## ${t('Journal')} (${count(entries.length, 'entry', 'entries')})`);
   entries.forEach((e) => out.push('', entry(e, byId, books)));

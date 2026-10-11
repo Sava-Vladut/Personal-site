@@ -10,6 +10,8 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   mind: () => import('../views/Mind').then((m) => m.Mind),
   book: () => import('../views/Book').then((m) => m.BookView),
   media: () => import('../views/Media').then((m) => m.Media),
+  repos: () => import('../views/Repos').then((m) => m.Repos),
+  repo: () => import('../views/Repo').then((m) => m.RepoView),
   song: () => import('../views/Song').then((m) => m.SongView),
   tracker: () => import('../views/Tracker').then((m) => m.Tracker),
   stats: () => import('../views/Stats').then((m) => m.Stats),

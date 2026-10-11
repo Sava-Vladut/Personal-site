@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'brain';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'brain' | 'repos' | 'repo';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -17,9 +17,10 @@ function parse(visit = ++visits): Route {
   if (head === 'person') return { name: 'person', id: id || 'new', query, visit };
   if (head === 'book' && id) return { name: 'book', id, query, visit };
   if (head === 'song' && id) return { name: 'song', id, query, visit };
+  if (head === 'repo' && /^gh\d+$/.test(id ?? '')) return { name: 'repo', id, query, visit };
   if (head === 'books') return { name: 'media', query, visit }; // where the shelf used to live
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'brain') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'brain' || head === 'repos') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 
@@ -31,7 +32,7 @@ function parse(visit = ++visits): Route {
 export type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade' | 'wheel';
 /** The move the next navigation asked for, instead of the one its pages would pick. */
 let asked: Motion | null = null;
-const TABS: RouteName[] = ['journal', 'tracker', 'people', 'media'];
+const TABS: RouteName[] = ['journal', 'tracker', 'people', 'media', 'repos'];
 const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
 
 function motionFor(a: Route, b: Route): Motion | null {

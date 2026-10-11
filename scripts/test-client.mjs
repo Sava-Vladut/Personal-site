@@ -796,3 +796,48 @@ test('the brain stops drawing while covered, hidden or out of view and releases 
   cleanups.forEach(cleanup => cleanup?.());
   assert.equal(frames.size, 0); assert.equal(listeners.size, 0); assert.equal(viewed, null);
 });
+
+test('a README is shown as elements: pictures and links stay on GitHub, and nothing in it can run', async () => {
+  const jsx = (type, props) => ({ type, props });
+  const { Readme } = await load('src/components/Readme.tsx', { 'preact/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' } });
+  // flatten the element tree into one list of what it shows
+  const walk = (n, out = []) => {
+    if (Array.isArray(n)) n.forEach((x) => walk(x, out));
+    else if (n && typeof n === 'object') {
+      if (typeof n.type === 'function') walk(n.type(n.props), out);
+      else { out.push(n); walk(n.props?.children, out); }
+    } else if (typeof n === 'string') out.push(n);
+    return out;
+  };
+  const show = (text, base = { repo: 'octo/hello', branch: 'main', private: false }) => walk(Readme({ text, base }));
+  const tags = (list, type) => list.filter((n) => n?.type === type);
+
+  const doc = show(`# Hello
+
+Some **bold** and a [link](docs/guide.md) and [bad](javascript:alert(1)) and ![logo](./img/logo.png)
+
+<img src="https://example.com/a.png" alt="badge">
+<script>alert(1)</script>
+
+| a | b |
+|---|---|
+| 1 | 2 |
+
+- [x] done
+- item
+
+\`\`\`js
+const x = 1;
+\`\`\``);
+  const links = tags(doc, 'a').map((a) => a.props.href);
+  assert.deepEqual(links, ['https://github.com/octo/hello/blob/main/docs/guide.md'], 'a javascript: address is never a link');
+  assert.deepEqual(tags(doc, 'img').map((i) => i.props.src), ['https://raw.githubusercontent.com/octo/hello/main/img/logo.png', 'https://example.com/a.png']);
+  assert.equal(tags(doc, 'script').length, 0, 'tags are dropped, not passed on');
+  assert.equal(tags(doc, 'table').length, 1);
+  assert.equal(tags(doc, 'pre')[0].props['data-lang'], 'js');
+  assert.ok(doc.includes('const x = 1;'));
+
+  // a private repo's own pictures can't be fetched without its token, so only their text is left
+  const secret = show('![diagram](docs/a.png) and ![logo](https://example.com/l.png) and ![plain](http://example.com/l.png)', { repo: 'octo/hello', branch: 'main', private: true });
+  assert.deepEqual(tags(secret, 'img').map((i) => i.props.src), ['https://example.com/l.png'], 'https pictures from elsewhere stay; http and relative ones are dropped');
+});

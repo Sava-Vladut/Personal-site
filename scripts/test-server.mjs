@@ -375,3 +375,59 @@ test('GitHub status reports public and private repo counts, and whether private 
   assert.equal(out.status, 204);
   assert.match(out.headers['Set-Cookie'], /^mm_gh=; .*Max-Age=0/);
 });
+
+test('GitHub repos, commits and README are read with the sign-in cookie and trimmed down', async () => {
+  const cookie = sealedCookie({ a: 'gho_secret' }, 'mm_gh');
+  const repo = (id, name, extra = {}) => ({ id, name, full_name: 'octo/' + name, owner: { login: 'octo' }, description: 'd', language: 'Go', private: false, stargazers_count: 3, pushed_at: '2026-10-01T00:00:00Z', default_branch: 'main', html_url: `https://github.com/octo/${name}`, token: 'leak', ...extra });
+  const seen = [];
+  globalThis.fetch = async (raw, options) => {
+    const url = new URL(raw);
+    seen.push(url.pathname + url.search);
+    assert.equal(url.origin, 'https://api.github.com');
+    assert.equal(options.headers.Authorization, 'Bearer gho_secret');
+    if (url.pathname === '/user/repos') {
+      // two full pages, then a short one: every page is read
+      const page = Number(url.searchParams.get('page'));
+      assert.equal(url.searchParams.get('affiliation'), 'owner');
+      return Response.json(Array.from({ length: page < 3 ? 100 : 1 }, (_, i) => repo(page * 1000 + i, 'r' + i, i === 0 ? { private: true } : {})));
+    }
+    if (url.pathname === '/repositories/42/commits') {
+      return Response.json([{ sha: 'a'.repeat(40), html_url: 'https://github.com/octo/x/commit/a', commit: { message: 'Fix it\n\nbecause', author: { name: 'Octo', date: '2026-10-01T10:00:00Z' } } }], { headers: { link: '<https://api.github.com/x?page=2>; rel="next"' } });
+    }
+    if (url.pathname === '/repositories/43/commits') return Response.json({ message: 'Git Repository is empty.' }, { status: 409 });
+    if (url.pathname === '/repositories/42/readme') {
+      assert.equal(options.headers.Accept, 'application/vnd.github.raw+json');
+      return new Response('# Hello', { status: 200 });
+    }
+    if (url.pathname === '/repositories/44/readme') return Response.json({ message: 'Not Found' }, { status: 404 });
+    if (url.pathname === '/repositories/42') return Response.json(repo(42, 'x'));
+    return Response.json({ message: 'Not Found' }, { status: 404 });
+  };
+
+  const list = await raw('/api/github/repos', cookie);
+  assert.equal(list.status, 200);
+  assert.equal(list.body.items.length, 201);
+  assert.equal(list.body.items[0].private, true);
+  assert.equal(list.body.items[0].token, undefined, 'only the fields the app uses are passed on');
+  assert.deepEqual(Object.keys(list.body.items[1]).sort(), ['archived', 'branch', 'description', 'fork', 'id', 'language', 'name', 'owner', 'private', 'pushed', 'stars', 'url']);
+
+  assert.equal((await raw('/api/github/repos/42', cookie)).body.name, 'x');
+  const commits = await raw('/api/github/repos/42/commits?page=1', cookie);
+  assert.deepEqual([commits.body.items[0].author, commits.body.items[0].sha.length, commits.body.next], ['Octo', 40, 2]);
+  assert.deepEqual((await raw('/api/github/repos/43/commits', cookie)).body, { items: [] }, 'an empty repo has no commits to list');
+  assert.equal((await raw('/api/github/repos/42/readme', cookie)).body.text, '# Hello');
+  assert.deepEqual((await raw('/api/github/repos/44/readme', cookie)).body, { text: null });
+
+  // not signed in, and ids that aren't numbers, never reach GitHub
+  const before = seen.length;
+  assert.equal((await raw('/api/github/repos')).status, 401);
+  assert.equal((await raw('/api/github/repos/../../user', cookie)).status, 404);
+  assert.equal((await raw('/api/github/repos/42/commits?page=0', cookie)).status, 400);
+  assert.equal(seen.length, before);
+
+  // a refused token signs this browser out
+  globalThis.fetch = async () => Response.json({ message: 'Bad credentials' }, { status: 401 });
+  const refused = await raw('/api/github/repos', cookie);
+  assert.equal(refused.status, 401);
+  assert.match(refused.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+});

@@ -18,17 +18,18 @@ const NAV: [RouteName, string, UiName, string][] = [
   ['tracker', t('Check in'), 'mood-smile', 'tracker'],
   ['people', t('People'), 'users', 'people'],
   ['media', t('Media'), 'library', 'media'],
+  ['repos', t('Repos'), 'git-branch', 'repos'],
 ];
 
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', map: 'settings', twitch: 'stats', brain: 'stats' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos', map: 'settings', twitch: 'stats', brain: 'stats' };
 
 export function App() {
   const route = useRoute(prepareView, () => toast(t('Couldn’t open this page. Try again.')));
   const View = viewFor(route.name);
   const key = route.name === 'note' || route.name === 'person'
     ? route.id === 'new' ? `new-${route.visit}` : route.id
-    : route.name === 'book' || route.name === 'song' ? route.id
+    : route.name === 'book' || route.name === 'song' || route.name === 'repo' ? route.id
     : route.name === 'media' ? route.query.has('add') ? route.visit : 'media'
     : route.name === 'tracker' ? `${route.query.get('world') ?? ''}|${route.query.get('person') ?? ''}`
     : route.name === 'map' ? route.query.get('focus') ?? '' : undefined;
@@ -42,7 +43,7 @@ export function App() {
       <main class={`app route-${route.name}`}>
         <View key={key} id={route.id!} query={route.query} />
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'map' && route.name !== 'settings' && <TabBar />}
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'repo' && route.name !== 'map' && route.name !== 'settings' && <TabBar />}
       <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />
       <EntryMenu />
       <Toasts />

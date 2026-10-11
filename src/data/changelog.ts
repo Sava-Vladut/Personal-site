@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.66.0',
+    date: '2026-10-11',
+    changes: [
+      'New Repos section: your GitHub repos, public and private, listed like a folder tree under a sky of code, with filters for All, Journaled, Public and Private',
+      'Open a repo to rate it, say how working on it feels and write your thoughts about it; they sync and back up with the rest of your journal',
+      'A repo’s page shows its commit history, drawn like a git log with a star for each commit, and its README in a terminal-style window',
+      'Repos is in the sidebar and on the wheel; backups, sync, the text export and Delete all include it',
+    ],
+  },
+  {
     version: '1.65.2',
     date: '2026-10-11',
     changes: [

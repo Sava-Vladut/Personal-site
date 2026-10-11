@@ -432,13 +432,14 @@ async function spotify(req, res, url, p, setCookies, out) {
 const ghConfigured = () => Boolean(GH_ID && GH_SECRET);
 const ghCookie = (name, value, maxAge) => cookie(name, value, maxAge, '/api/github');
 
-async function ghRequest(url, options = {}) {
+async function ghRequest(url, options = {}, text = false) {
   try {
     const res = await fetch(url, {
       ...options,
       signal: AbortSignal.timeout(15_000),
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': UA, ...options.headers },
     });
+    if (text) return { res, body: res.ok ? await res.text() : '' };
     const body = await res.json().catch(() => ({}));
     return { res, body: body && typeof body === 'object' ? body : {} };
   } catch (error) {
@@ -454,6 +455,101 @@ async function privateRepos(token) {
   if (!res.ok) return undefined;
   const last = (res.headers.get('link') || '').match(/[?&]page=(\d+)>;\s*rel="last"/);
   return last ? Number(last[1]) : Array.isArray(body) ? body.length : undefined;
+}
+
+const ghToken = (req, setCookies) => {
+  const s = ghConfigured() ? unseal(cookies(req).mm_gh || '') : null;
+  if (!s?.a) throw new HttpError(401, 'Log in with GitHub in Settings first.');
+  return s.a;
+};
+
+/** Asks GitHub for something of the signed-in account's; a refused token signs this browser out. */
+async function ghGet(token, path, setCookies, text = false) {
+  const { res, body } = await ghRequest('https://api.github.com' + path, {
+    headers: { Authorization: `Bearer ${token}`, ...(text ? { Accept: 'application/vnd.github.raw+json' } : {}) },
+  }, text);
+  if (res.status === 401) {
+    setCookies.push(ghCookie('mm_gh', '', 0));
+    throw new HttpError(401, 'Your GitHub connection expired. Log in again in Settings.');
+  }
+  if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') throw new HttpError(429, 'GitHub asked us to slow down. Try again in a few minutes.');
+  return { res, body };
+}
+
+const ghUrl = (v) => (typeof v === 'string' && v.startsWith('https://github.com/') ? v.slice(0, 500) : '');
+const ghText = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+
+function repoOut(r) {
+  if (!r || !Number.isSafeInteger(r.id) || typeof r.full_name !== 'string') return null;
+  return {
+    id: r.id,
+    name: ghText(r.name, 100),
+    owner: ghText(r.owner?.login, 60),
+    description: ghText(r.description, 400),
+    language: ghText(r.language, 40),
+    private: r.private === true,
+    fork: r.fork === true,
+    archived: r.archived === true,
+    stars: Number.isSafeInteger(r.stargazers_count) ? r.stargazers_count : 0,
+    pushed: ghText(r.pushed_at, 40),
+    branch: ghText(r.default_branch, 100) || 'main',
+    url: ghUrl(r.html_url),
+  };
+}
+
+function commitOut(c) {
+  if (!c || typeof c.sha !== 'string') return null;
+  return {
+    sha: ghText(c.sha, 40),
+    message: ghText(c.commit?.message, 4000),
+    author: ghText(c.commit?.author?.name || c.author?.login, 120),
+    date: ghText(c.commit?.author?.date || c.commit?.committer?.date, 40),
+    url: ghUrl(c.html_url),
+  };
+}
+
+async function githubRepos(req, p, url, setCookies, out) {
+  const token = ghToken(req, setCookies);
+
+  if (p === '/api/github/repos') {
+    // The repos you own, public and private, most recently pushed first (up to 1000).
+    const items = [];
+    for (let page = 1; page <= 10; page++) {
+      const { res, body } = await ghGet(token, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, setCookies);
+      if (!res.ok || !Array.isArray(body)) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
+      items.push(...body.map(repoOut).filter(Boolean));
+      if (body.length < 100) break;
+    }
+    return out({ items });
+  }
+
+  const m = p.match(/^\/api\/github\/repos\/(\d{1,15})(?:\/(commits|readme))?$/);
+  if (!m) throw new HttpError(404, 'Not found');
+  const [, id, what] = m;
+
+  if (!what) {
+    const { res, body } = await ghGet(token, `/repositories/${id}`, setCookies);
+    if (res.status === 404) throw new HttpError(404, 'That repo isn’t available.');
+    const repo = res.ok ? repoOut(body) : null;
+    if (!repo) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
+    return out(repo);
+  }
+
+  if (what === 'commits') {
+    const page = Number(url.searchParams.get('page') || 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000) throw new HttpError(400, 'Invalid page.');
+    const { res, body } = await ghGet(token, `/repositories/${id}/commits?per_page=30&page=${page}`, setCookies);
+    // an empty repo has no commits to list (409), and one that's gone says 404
+    if (res.status === 409) return out({ items: [] });
+    if (res.status === 404) throw new HttpError(404, 'That repo isn’t available.');
+    if (!res.ok || !Array.isArray(body)) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
+    return out({ items: body.map(commitOut).filter(Boolean), next: /rel="next"/.test(res.headers.get('link') || '') ? page + 1 : undefined });
+  }
+
+  const { res, body } = await ghGet(token, `/repositories/${id}/readme`, setCookies, true);
+  if (res.status === 404) return out({ text: null });
+  if (!res.ok) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
+  return out({ text: body.slice(0, 200_000) });
 }
 
 async function github(req, res, url, p, setCookies, out) {
@@ -483,6 +579,8 @@ async function github(req, res, url, p, setCookies, out) {
       privateVisible: priv !== undefined,
     });
   }
+
+  if (p === '/api/github/repos' || p.startsWith('/api/github/repos/')) return githubRepos(req, p, url, setCookies, out);
 
   if (p === '/api/github/connect') {
     if (!ghConfigured()) throw new HttpError(400, 'GitHub isn’t configured on this server.');

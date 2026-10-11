@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
-import { connectGithub, disconnectGithub, githubStatus, type GithubStatus } from '../lib/github';
+import { connectGithub, disconnectGithub, forgetRepos, githubStatus, type GithubStatus } from '../lib/github';
 import { goBack, navigate } from '../lib/router';
 import { exportText } from '../lib/exportText';
-import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
+import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useRepos, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { shortDate, todayKey } from '../lib/dates';
 import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
@@ -45,6 +45,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const people = usePeople();
   const books = useBooks();
   const songs = useSongs();
+  const repos = useRepos();
   const sync = useSync();
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
@@ -97,6 +98,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
         r.people ? count(r.people, 'person', 'people') : '',
         r.books ? count(r.books, 'book', 'books') : '',
         r.songs ? count(r.songs, 'record', 'records') : '',
+        r.repos ? count(r.repos, 'repo', 'repos') : '',
         r.photos ? count(r.photos, 'photo', 'photos') : '',
       ].filter(Boolean);
       toast(parts.length ? t('Imported {list}', { list: listOf(parts) }) : t('Nothing new in that backup'));
@@ -107,7 +109,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const wipe = async () => {
     const what = listOf([
       count(entries.length, 'entry', 'entries'), people.length ? count(people.length, 'person', 'people') : '', books.length ? count(books.length, 'book', 'books') : '',
-      songs.length ? count(songs.length, 'record', 'records') : '',
+      songs.length ? count(songs.length, 'record', 'records') : '', repos.length ? count(repos.length, 'repo', 'repos') : '',
     ].filter(Boolean));
     const question = sync.on
       ? t('Delete all {what} from this device and every device synced with it? This can’t be undone — export a backup first if you might want them.', { what })
@@ -329,7 +331,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
               )}
             </div>
             {gh && !gh.offline && (gh.connected ? (
-              <button class="btn btn-quiet" onClick={async () => { await disconnectGithub(); setGh(await githubStatus()); toast(t('GitHub disconnected')); }}>{t('Disconnect')}</button>
+              <button class="btn btn-quiet" onClick={async () => { await disconnectGithub(); forgetRepos(); setGh(await githubStatus()); toast(t('GitHub disconnected')); }}>{t('Disconnect')}</button>
             ) : gh.configured && (
               <button class="btn btn-primary" onClick={connectGithub}>{t('Log in')}</button>
             ))}
@@ -344,7 +346,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <div>
               <div class="row gap-s"><Icon name={sync.on ? 'devices' : 'lock'} size={18} /> {sync.on ? t('Synced across your devices') : t('Stored on this device only')}</div>
               <div class="muted small">
-                {[count(notes, 'note', 'notes'), count(entries.length - notes, 'check-in', 'check-ins'), count(people.length, 'person', 'people'), count(books.length, 'book', 'books'), count(songs.length, 'record', 'records')].join(' · ')}.{' '}
+                {[count(notes, 'note', 'notes'), count(entries.length - notes, 'check-in', 'check-ins'), count(people.length, 'person', 'people'), count(books.length, 'book', 'books'), count(songs.length, 'record', 'records'), ...(repos.length ? [count(repos.length, 'repo', 'repos')] : [])].join(' · ')}.{' '}
                 {sync.on ? t('The server keeps an encrypted copy that only devices with your code can read.') : t('Nothing is uploaded unless you turn on saving to the server.')}
               </div>
             </div>
@@ -376,7 +378,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <button class="list-row action" onClick={() => setJoining(true)}><span class="row gap-s"><Icon name="key" size={18} /> {t('Load with a code')}</span><Icon name="chevron-right" size={18} /></button>
           )}
           <button class="list-row action" onClick={download}><span class="row gap-s"><Icon name="download" size={18} /> {t('Export backup')}</span><Icon name="chevron-right" size={18} /></button>
-          <button class="list-row action" onClick={downloadText} disabled={!entries.length && !people.length && !books.length && !songs.length}>
+          <button class="list-row action" onClick={downloadText} disabled={!entries.length && !people.length && !books.length && !songs.length && !repos.length}>
             <span class="grow">
               <span class="row gap-s"><Icon name="download" size={18} /> {t('Export as text')}</span>
               <div class="muted small">{t('Your journal, feelings, people, books, music and picture captions in one file, without the pictures. Handy for asking an AI about your life. It can’t be imported back.')}</div>
@@ -384,7 +386,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <Icon name="chevron-right" size={18} />
           </button>
           <button class="list-row action" onClick={() => file.current?.click()}><span class="row gap-s"><Icon name="upload" size={18} /> {t('Import backup')}</span><Icon name="chevron-right" size={18} /></button>
-          <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length && !books.length && !songs.length}><span class="row gap-s"><Icon name="trash" size={18} /> {t('Delete all entries')}</span></button>
+          <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length && !books.length && !songs.length && !repos.length}><span class="row gap-s"><Icon name="trash" size={18} /> {t('Delete all entries')}</span></button>
           {sync.on && (
             <button class="list-row action danger" onClick={removeServer}><span class="row gap-s"><Icon name="cloud" size={18} /> {t('Delete server copy')}</span></button>
           )}

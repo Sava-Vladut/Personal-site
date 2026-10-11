@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { coreOf } from '../data/emotions';
 import { navigateAfterSheet } from '../lib/router';
 import { connectSpotify } from '../lib/spotify';
-import { skyWorlds } from '../lib/stats';
 import { blankSong, findSong, getSongs, saveSong, toast, useBooks, useSongs, type Music } from '../lib/store';
 import { BookSheet } from '../components/books';
 import { CountUp } from '../components/charts';
+import { CloudTitle, feltWorlds } from '../components/cloud';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
 import { NavWheel } from '../components/NavWheel';
@@ -27,28 +26,6 @@ const QUIET: Record<Tab, string[]> = {
 /** Media always opens on the music; coming back to it (from a book or a song) finds the tab you left it on. */
 function lastTab(): Tab {
   return history.state?.mmMediaTab === 'books' ? 'books' : 'music';
-}
-
-/** The sky's colours, from how the books or music on this tab make you feel. */
-function feltWorlds(list: { emotions: string[] }[], tab: Tab) {
-  const counts = new Map<string, number>();
-  for (const x of list) {
-    const core = x.emotions[0] && coreOf(x.emotions[0])?.id;
-    if (core) counts.set(core, (counts.get(core) ?? 0) + 1);
-  }
-  const worlds = skyWorlds([...counts].map(([id, count]) => ({ id, count })));
-  return worlds.length ? worlds : QUIET[tab];
-}
-
-/** A title that rises out of the clouds a letter at a time. */
-function CloudTitle({ text }: { text: string }) {
-  return (
-    <h1 class="title cloud-title" aria-label={text}>
-      {[...text].map((ch, i) => (
-        <span aria-hidden="true" style={{ '--i': i }}>{ch === ' ' ? ' ' : ch}</span>
-      ))}
-    </h1>
-  );
 }
 
 /** Your music and your books: a record collection and a shelf. `?tab=books|music`, and `?add` opens its picker. */
@@ -97,7 +74,7 @@ export function Media({ query }: { query: URLSearchParams }) {
   };
 
   const isBooks = tab === 'books';
-  const worlds = useMemo(() => (isBooks ? feltWorlds(books, 'books') : feltWorlds(songs, 'music')), [isBooks, books, songs]);
+  const worlds = useMemo(() => (isBooks ? feltWorlds(books, QUIET.books) : feltWorlds(songs, QUIET.music)), [isBooks, books, songs]);
   const stats = isBooks ? bookStats(books) : musicStats(songs);
   const has = isBooks ? books.length > 0 : songs.length > 0;
   const search = isBooks ? t('Search your books') : t('Search your music');

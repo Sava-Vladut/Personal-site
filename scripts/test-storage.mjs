@@ -321,7 +321,7 @@ test('IndexedDB opens can retry and failed batches abort their earlier writes', 
 function syncMocks() {
   return {
     './store': {
-      getDeleted: () => ({}), getEntries: () => [], getPeople: () => [], getBooks: () => [], getSongs: () => [], mergeSynced: async () => ({ icons: [] }),
+      getDeleted: () => ({}), getEntries: () => [], getPeople: () => [], getBooks: () => [], getSongs: () => [], getRepos: () => [], mergeSynced: async () => ({ icons: [] }),
       observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
       photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
     },
@@ -794,7 +794,7 @@ test('an unchanged sync document still retries a failed photo download', async (
   let documents = 0, attempts = 0;
   const sync = await loadModule('src/lib/sync.ts', {
     './store': {
-      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], getSongs: () => [], mergeSynced: async () => ({ icons: [] }),
+      getDeleted: () => ({}), getEntries: () => [note], getPeople: () => [], getBooks: () => [], getSongs: () => [], getRepos: () => [], mergeSynced: async () => ({ icons: [] }),
       observable: (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value }),
       photosOf: (e) => e.photos, onLocalChange() {}, toast() {},
     },
@@ -863,6 +863,32 @@ test('kept music is cleaned on load, survives a backup, and follows synced delet
 
   await copy.mergeSynced({ deleted: { song: 10 } });
   assert.equal(copy.getSongs().length, 0, 'a newer deletion from another device removes it');
+});
+
+test('repos you write about are cleaned on load, survive a backup, and follow synced deletions', async () => {
+  const db = memoryDB();
+  await db.set('repos', [
+    { id: 'gh123', name: 'octo/hello', description: 'Says hi', language: 'Go', private: true, url: 'https://github.com/octo/hello', rating: 9, text: 'Learned a lot.', emotions: [], updated: 5, created: 5 },
+    { id: 'gh456', name: 'octo/odd', url: 'https://evil.example/x', private: 'yes', updated: 5, created: 5 },
+    { id: 'not-a-repo', name: 'octo/bad', updated: 5, created: 5 },
+  ]);
+  const store = await loadModule('src/lib/store.ts', storeMocks(db));
+  await store.init();
+  const kept = JSON.parse(JSON.stringify(store.getRepos()));
+  assert.deepEqual(kept.map((r) => r.id).sort(), ['gh123', 'gh456'], 'an id that isn’t GitHub’s own number is dropped');
+  const hello = kept.find((r) => r.id === 'gh123');
+  assert.deepEqual([hello.rating, hello.private, hello.url], [5, true, 'https://github.com/octo/hello']);
+  const odd = kept.find((r) => r.id === 'gh456');
+  assert.deepEqual([odd.url, odd.private], ['', false], 'only GitHub addresses are kept, and private means exactly true');
+  assert.equal(store.repoIdOf(789), 'gh789');
+
+  const copy = await loadModule('src/lib/store.ts', storeMocks(memoryDB()));
+  const result = await copy.importJSON(await store.exportJSON());
+  assert.equal(result.repos, 2);
+  assert.equal(copy.getRepos().find((r) => r.id === 'gh123').text, 'Learned a lot.');
+
+  await copy.mergeSynced({ deleted: { gh123: 10 } });
+  assert.deepEqual([...copy.getRepos().map((r) => r.id)], ['gh456'], 'a newer deletion from another device removes it');
 });
 
 test('@tags are spotted while typing, suggested across people, books and music, and follow a rename', async () => {
@@ -946,7 +972,7 @@ test('text exports follow journal dates and resolve tags consistently across col
     entry({ id: 'earlier', title: 'Earlier day', date: '2026-09-30', time: 2, text: 'With @[Ana]' }),
   ];
   const exporter = await loadModule('src/lib/exportText.ts', {
-    './store': { getEntries: () => entries, getPeople: () => people, getBooks: () => books, getSongs: () => songs },
+    './store': { getEntries: () => entries, getPeople: () => people, getBooks: () => books, getSongs: () => songs, getRepos: () => [] },
   });
   const text = exporter.exportText();
   assert.ok(text.indexOf('Earlier day') < text.indexOf('Later day'), 'backdated notes retain calendar order');

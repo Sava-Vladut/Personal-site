@@ -122,6 +122,22 @@ export interface Book {
 }
 export const BOOK_STATUSES: BookStatus[] = ['reading', 'want', 'read', 'dnf'];
 
+/** A GitHub repo you rate and write about. Its commits and README are read live from GitHub, never kept here. */
+export interface Repo {
+  id: string;               // 'gh' + GitHub's own number for it, so it stays the same when the repo is renamed or moved
+  name: string;             // 'owner/name' as last seen
+  description: string;
+  language: string;
+  private: boolean;
+  url: string;              // https://github.com/owner/name
+  rating: number;           // 0 (not rated) to 5
+  text: string;             // what the work is, what you learned
+  emotions: string[];       // how working on it feels, first one is the main feeling
+  created: number;
+  updated: number;
+}
+export const repoIdOf = (githubId: number) => 'gh' + githubId;
+
 /** Music you keep: a song, album, playlist or podcast from Spotify, rated and written about like a book. */
 export interface Song {
   id: string;
@@ -387,8 +403,21 @@ export async function pickSongOfDay(song: Song | null, day: string) {
   if (fresh && !fresh.days.includes(day)) await saveSong({ ...fresh, days: [...fresh.days, day].sort().slice(-MAX_SONG_DAYS) });
 }
 
+const byRepoName = (a: Repo, b: Repo) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+const repos = collection<Repo>('repos', normalizeRepo, byRepoName);
+export const useRepos = repos.list$.use;
+export const getRepos = repos.list$.get;
+
+export function blankRepo(patch: Partial<Repo> & Pick<Repo, 'id'>): Repo {
+  const now = Date.now();
+  return { name: '', description: '', language: '', private: false, url: '', rating: 0, text: '', emotions: [], created: now, updated: now, ...patch };
+}
+export const saveRepo = repos.save;
+/** Takes a repo out of your journal. The repo itself on GitHub is untouched. */
+export const deleteRepo = repos.remove;
+
 type Collection = ReturnType<typeof collection<any>>;
-const COLLECTIONS: Collection[] = [people, books, songs];
+const COLLECTIONS: Collection[] = [people, books, songs, repos];
 let clearRevision = 0;
 let lastClearAt = 0;
 const freshSinceClear = new Set<string>();
@@ -616,10 +645,29 @@ function normalizeSong(raw: any): Song | null {
   };
 }
 
+/** Coerces untrusted input into a valid Repo, or null. */
+function normalizeRepo(raw: any): Repo | null {
+  if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^gh\d{1,15}$/.test(raw.id)) return null;
+  const now = Date.now();
+  return {
+    id: raw.id,
+    name: str(raw.name, 200),
+    description: str(raw.description, 400),
+    language: str(raw.language, 40),
+    private: raw.private === true,
+    url: typeof raw.url === 'string' && raw.url.startsWith('https://github.com/') ? raw.url.slice(0, 500) : '',
+    rating: Math.min(5, Math.max(0, Math.round(Number(raw.rating) || 0))),
+    text: typeof raw.text === 'string' ? raw.text : '',
+    emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
+    created: Number.isFinite(raw.created) ? raw.created : now,
+    updated: Number.isFinite(raw.updated) ? raw.updated : now,
+  };
+}
+
 export async function exportJSON() {
   const entries = entries$.get();
   const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
-  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), photos }, null, 1);
+  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), photos }, null, 1);
 }
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
@@ -632,7 +680,7 @@ export async function importJSON(text: string) {
   // Photos can be missing even when the note itself is already up to date. Read the current
   // journal afterwards, so edits made while those photos are loading are kept.
   const restoredPhotos = await importPhotos(data?.photos, new Set(incoming.flatMap((e) => photosOf(e).map((p) => p.id))));
-  const interrupted = () => ({ changed: 0, people: 0, books: 0, songs: 0, photos: restoredPhotos, total: incoming.length, icons: [] as string[] });
+  const interrupted = () => ({ changed: 0, people: 0, books: 0, songs: 0, repos: 0, photos: restoredPhotos, total: incoming.length, icons: [] as string[] });
   const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(data?.[c.key]));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...incomingCollections()])) return interrupted();
   // A stale tab must not replace another tab's newer durable note. Restored deletions count as fresh edits.
@@ -645,11 +693,11 @@ export async function importJSON(text: string) {
   const merged = COLLECTIONS.map((c) => c.merge(data?.[c.key], deleted, true).changed);
   await Promise.all(COLLECTIONS.map((c, i) => merged[i].length && c.write(merged[i])));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()])) return interrupted();
-  const [pChanged, bChanged, sChanged] = merged;
+  const [pChanged, bChanged, sChanged, rChanged] = merged;
 
-  if (changed.length || pChanged.length || bChanged.length || sChanged.length || restoredPhotos) changeHandler();
+  if (changed.length || pChanged.length || bChanged.length || sChanged.length || rChanged.length || restoredPhotos) changeHandler();
   return {
-    changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, photos: restoredPhotos, total: incoming.length,
+    changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, repos: rChanged.length, photos: restoredPhotos, total: incoming.length,
     icons: iconsOf([...changed, ...pChanged]),
   };
 }
@@ -660,7 +708,7 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Merges another device's copy: the newest edit of each entry wins, and a deletion wins over edits made before it.
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
-export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; deleted?: unknown }) {
+export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; repos?: unknown; deleted?: unknown }) {
   const revision = clearRevision;
   const incoming = newestById((Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[]);
   const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
@@ -670,15 +718,15 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   // Local deletions can happen while IndexedDB is busy; neither their tombstones nor their visible removal
   // may be replaced by the snapshot taken when this merge began.
   deleted = combineDeleted(deleted, committedDeleted);
-  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs']));
+  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs' | 'repos']));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()]))
     return { changed: [] as Entry[], removed: removed.length, icons: [] as string[] };
   const current = new Map(newestById([
     ...durable, ...entries$.get(),
   ]).filter((e) => !(deleted[e.id] >= e.updated)).map((e) => [e.id, e]));
 
-  // People, books and songs follow the same rules. Older app versions don't send them: then nothing changes here.
-  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs'], deleted, false) }));
+  // People, books, songs and repos follow the same rules. Older app versions don't send them: then nothing changes here.
+  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs' | 'repos'], deleted, false) }));
 
   const visible = entries$.get();
   if (visible.length !== current.size || visible.some((e) => current.get(e.id) !== e)) entries$.set([...current.values()].sort(byNewest));
