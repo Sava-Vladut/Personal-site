@@ -6,24 +6,25 @@
 .icon-btn.nw-trigger { position: relative; width: 60px; height: 60px; margin: -7px -4px -7px 2px; isolation: isolate; }
 /* a soft glow of the categories' colours behind the button, turning and breathing */
 .nw-trigger::before {
-  content: ''; position: absolute; inset: 3px; z-index: -1; border-radius: 50%; pointer-events: none;
+  content: ''; position: absolute; inset: 1px; z-index: -1; border-radius: 50%; pointer-events: none;
   background: conic-gradient(from 0deg, var(--emo-calm-safety), var(--emo-hope-interest), var(--emo-love-connection), var(--emo-fear), var(--emo-sadness), var(--emo-calm-safety));
-  filter: blur(9px); opacity: 0.32;
-  animation: nw-spin 14s linear infinite, nw-glow 4.5s ease-in-out infinite alternate;
-  transition: opacity 0.3s, inset 0.4s var(--spring);
+  filter: blur(9px); opacity: 0.46;
+  animation: nw-spin 9.3s linear infinite, nw-glow 2.4s ease-in-out infinite alternate;
+  transition: opacity 0.2s, inset 0.27s var(--spring);
 }
-.nw-trigger:hover::before { opacity: 0.55; inset: 0; }
-@keyframes nw-glow { from { scale: 0.86; } to { scale: 1.08; } }
-/* every few seconds the mark gives a twirl, and a ring of light rolls out from it */
-.nw-mark { animation: nw-twirl 7s var(--spring) infinite; }
-@keyframes nw-twirl { 0%, 82% { rotate: 0deg; scale: 1; } 90% { scale: 1.12; } 100% { rotate: 360deg; scale: 1; } }
+.nw-trigger:hover::before { opacity: 0.72; inset: -3px; }
+@keyframes nw-glow { from { scale: 0.82; } to { scale: 1.16; } }
+/* every few seconds the mark gives a twirl, and rings of light roll out from it */
+.nw-mark { animation: nw-twirl 4.67s var(--spring) infinite; }
+@keyframes nw-twirl { 0%, 78% { rotate: 0deg; scale: 1; } 88% { scale: 1.16; } 100% { rotate: 360deg; scale: 1; } }
 .nw-mark-wrap { position: relative; }
-.nw-mark-wrap::after {
+.nw-mark-wrap::before, .nw-mark-wrap::after {
   content: ''; position: absolute; inset: 5px; border-radius: 50%; pointer-events: none;
   border: 1.5px solid color-mix(in oklab, var(--emo-hope-interest) 70%, transparent);
-  opacity: 0; animation: nw-ripple 3.5s ease-out infinite;
+  opacity: 0; animation: nw-ripple 2.33s ease-out infinite;
 }
-@keyframes nw-ripple { 0% { scale: 0.7; opacity: 0.7; } 70%, 100% { scale: 1.55; opacity: 0; } }
+.nw-mark-wrap::before { border-color: color-mix(in oklab, var(--emo-love-connection) 70%, transparent); animation-delay: 1.17s; }
+@keyframes nw-ripple { 0% { scale: 0.7; opacity: 0.75; } 70%, 100% { scale: 1.6; opacity: 0; } }
 /* the button itself: frosted, so the glow comes through soft */
 .nw-trigger::after {
   content: ''; position: absolute; inset: 4px; z-index: -1; border-radius: 50%; pointer-events: none;
@@ -32,26 +33,87 @@
 }
 .icon-btn.nw-trigger:hover, .journal-top .icon-btn.nw-trigger:hover { background: none; }
 
-.nw-mark-wrap { display: grid; transition: scale 0.45s var(--spring-bouncy), rotate 0.6s var(--spring); }
-.nw-trigger:hover .nw-mark-wrap { scale: 1.08; }
-.nw-trigger:active .nw-mark-wrap { scale: 0.9; }
+.nw-mark-wrap { display: grid; transition: scale 0.3s var(--spring-bouncy), rotate 0.4s var(--spring); }
+.nw-trigger:hover .nw-mark-wrap { scale: 1.12; }
+.nw-trigger:active .nw-mark-wrap { scale: 0.88; }
 .nw-trigger[aria-expanded='true'] .nw-mark-wrap { scale: 0.8; rotate: 90deg; }
 .nw-mark { overflow: visible; }
-.nw-mark-arcs { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 18s linear infinite; }
-.nw-trigger:hover .nw-mark-arcs { animation-duration: 5s; }
+.nw-mark-arcs { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 12s linear infinite; }
+.nw-trigger:hover .nw-mark-arcs { animation-duration: 3.3s; }
 /* a wave of light running round the ring: each arc swells in turn */
 .nw-mark-arcs path {
   fill: none; stroke-width: 4.6; stroke-linecap: round;
-  animation: nw-arc 2.8s ease-in-out infinite; animation-delay: calc(var(--k) * 2.8s / var(--n));
+  animation: nw-arc 1.87s ease-in-out infinite; animation-delay: calc(var(--k) * 1.87s / var(--n));
 }
-@keyframes nw-arc { 0%, 55%, 100% { stroke-width: 4.6; opacity: 0.85; } 22% { stroke-width: 6.6; opacity: 1; } }
-.nw-mark-orbit { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 4.5s linear infinite reverse; }
-.nw-mark-orbit circle { fill: var(--ink-2); opacity: 0.7; }
-.nw-mark-hub { fill: var(--ink); transform-box: fill-box; transform-origin: center; animation: nw-hub 2.8s ease-in-out infinite; }
-@keyframes nw-hub { 0%, 100% { scale: 0.85; } 50% { scale: 1.1; } }
+@keyframes nw-arc { 0%, 55%, 100% { stroke-width: 4.6; opacity: 0.85; } 22% { stroke-width: 7; opacity: 1; } }
+/* fine ticks turning against the ring, and a thin ring inside it */
+.nw-mark-ticks, .nw-mark-inner { fill: none; transform-box: view-box; transform-origin: 20px 20px; }
+.nw-mark-ticks { stroke: var(--ink-3); stroke-width: 1; stroke-linecap: round; stroke-dasharray: 0.1 2.4704; opacity: 0.8; animation: nw-spin 22s linear infinite reverse; }
+.nw-mark-inner { stroke: var(--ink-2); stroke-width: 0.8; stroke-dasharray: 3.2 2.3; opacity: 0.55; animation: nw-spin 6s linear infinite; }
+/* a comet with a tail, round the outside */
+.nw-mark-orbit { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 3s linear infinite reverse; }
+.nw-mark-orbit circle { fill: var(--ink); }
+.nw-mark-orbit .head { filter: drop-shadow(0 0 2px var(--ink)); }
+.nw-mark-hub { fill: var(--ink); transform-box: fill-box; transform-origin: center; animation: nw-hub 1.2s ease-in-out infinite; }
+.nw-mark-halo { fill: none; stroke: var(--ink); stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: nw-halo 1.87s ease-out infinite; }
+@keyframes nw-hub { 0%, 100% { scale: 0.82; } 50% { scale: 1.15; } }
+@keyframes nw-halo { 0% { scale: 0.8; opacity: 0.55; } 100% { scale: 2.2; opacity: 0; } }
+
+/* sparks of the categories' colours leaving the ring, twisting out as they go, and stars that twinkle around it */
+.nw-fx { position: absolute; inset: -14px; pointer-events: none; }
+.nw-fx i {
+  position: absolute; left: 50%; top: 50%; width: var(--z); height: var(--z); margin: calc(var(--z) / -2) 0 0 calc(var(--z) / -2);
+  border-radius: 50%; background: var(--h); box-shadow: 0 0 5px 1px var(--h); opacity: 0;
+  animation: nw-fly var(--d) cubic-bezier(0.2, 0.6, 0.3, 1) var(--w) infinite;
+}
+@keyframes nw-fly {
+  0% { transform: rotate(var(--a)) translateY(-14px) scale(0.4); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: rotate(calc(var(--a) + var(--tw))) translateY(calc(-1 * var(--r))) scale(0.15); opacity: 0; }
+}
+/* the extra ones that join in while it's pointed at */
+.nw-fx .more { display: none; }
+.nw-trigger:hover .nw-fx .more, .nw-trigger:focus-visible .nw-fx .more { display: block; }
+.nw-fx b {
+  position: absolute; left: var(--x); top: var(--y); width: var(--z); height: var(--z); margin: calc(var(--z) / -2) 0 0 calc(var(--z) / -2);
+  background: var(--ink); opacity: 0; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: nw-twinkle 1.6s ease-in-out var(--w) infinite;
+}
+@keyframes nw-twinkle { 0%, 100% { scale: 0; rotate: 0deg; opacity: 0; } 45% { scale: 1; rotate: 90deg; opacity: 0.95; } 70% { scale: 0.3; rotate: 140deg; opacity: 0.4; } }
+/* tapping it: a ring bursts out and a handful of sparks shoot off */
+.nw-pops { position: absolute; inset: -14px; pointer-events: none; }
+.nw-pops::before { content: ''; position: absolute; inset: 14px; border-radius: 50%; border: 2px solid var(--ink); animation: nw-shock 0.4s ease-out both; }
+.nw-pops u {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: var(--h);
+  box-shadow: 0 0 6px 1px var(--h); animation: nw-pop 0.43s cubic-bezier(0.1, 0.7, 0.3, 1) both;
+}
+@keyframes nw-shock { from { scale: 0.6; opacity: 0.9; } to { scale: 1.9; opacity: 0; border-width: 0.5px; } }
+@keyframes nw-pop { from { transform: rotate(var(--a)) translateY(-12px); } to { transform: rotate(var(--a)) translateY(-40px) scale(0.2); opacity: 0; } }
+
+/* until someone has opened the wheel once: it hops, calls out with rings, and a little label points at it */
+.nw-beckon .nw-mark-wrap { animation: nw-hop 3.3s ease-in-out 1s infinite; }
+.nw-beckon .nw-mark-wrap::before, .nw-beckon .nw-mark-wrap::after { border-width: 2px; animation-duration: 1.4s; }
+.nw-beckon .nw-mark-wrap::before { animation-delay: 0.7s; }
+@keyframes nw-hop { 0%, 60%, 100% { translate: 0 0; } 68% { translate: 0 -5px; } 76% { translate: 0 0; } 83% { translate: 0 -2.5px; } 90% { translate: 0 0; } }
+.nw-hint {
+  position: absolute; z-index: 4; top: calc(100% - 4px); right: -2px; padding: 5px 11px; border-radius: 999px;
+  background: var(--ink); color: var(--bg); font: 650 12px/1.2 var(--sans); letter-spacing: 0.01em; white-space: nowrap; pointer-events: none;
+  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5); transform-origin: calc(100% - 22px) 0;
+  animation: nw-hint 7s var(--spring) 1.1s both;
+}
+.nw-hint::before { content: ''; position: absolute; top: -3px; right: 20px; width: 8px; height: 8px; rotate: 45deg; border-radius: 2px; background: inherit; }
+@keyframes nw-hint {
+  0% { opacity: 0; scale: 0.5; translate: 0 -6px; }
+  7%, 90% { opacity: 1; scale: 1; translate: 0 0; }
+  14%, 28%, 42% { translate: 0 2px; }
+  21%, 35%, 49% { translate: 0 0; }
+  100% { opacity: 0; scale: 0.85; translate: 0 -4px; }
+}
+
 /* the mark's SVG repaints every frame, so it rests while the open wheel covers it */
-:root[data-covered] .nw-trigger::before, :root[data-covered] .nw-mark-wrap::after, :root[data-covered] .nw-mark,
-:root[data-covered] .nw-mark :is(.nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub) { animation-play-state: paused; }
+:root[data-covered] .nw-trigger::before, :root[data-covered] .nw-mark-wrap::before, :root[data-covered] .nw-mark-wrap::after, :root[data-covered] .nw-mark-wrap, :root[data-covered] .nw-mark,
+:root[data-covered] .nw-fx :is(i, b), :root[data-covered] .nw-hint,
+:root[data-covered] .nw-mark :is(.nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub, .nw-mark-halo, .nw-mark-ticks, .nw-mark-inner) { animation-play-state: paused; }
 
 .nw-layer {
   --sky: var(--emo-hope-interest);
@@ -65,20 +127,20 @@
     radial-gradient(70% 50% at 50% 46%, color-mix(in oklab, var(--sky) 8%, transparent), transparent 75%),
     linear-gradient(180deg, color-mix(in oklab, var(--sky) 7%, var(--bg)), var(--bg) 75%);
   touch-action: none; overscroll-behavior: contain;
-  animation: fade-in 0.4s ease-out;
+  animation: fade-in 0.27s ease-out;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .nw-layer { --nw-seg: color-mix(in oklab, var(--surface-2) 88%, transparent); } }
 :root[data-theme='dark'] .nw-layer { --nw-seg: color-mix(in oklab, var(--surface-2) 88%, transparent); }
-.nw-layer.closing { animation: fade-out 0.34s ease-in forwards; pointer-events: none; }
+.nw-layer.closing { animation: fade-out 0.23s ease-in forwards; pointer-events: none; }
 /* on its way to a page: it waits, untouchable, for the page change to dissolve it (lib/router.ts) */
 .nw-layer.leaving > * { pointer-events: none; }
-.nw-layer > .sky { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; animation: nw-sky-in 1.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.nw-layer > .sky { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; animation: nw-sky-in 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
 @keyframes nw-sky-in { from { scale: 1.3; opacity: 0; } }
 
 .nw-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   width: 100%; max-width: 560px; margin: 0 auto;
-  animation: nw-rise 0.55s var(--spring) 0.08s backwards;
+  animation: nw-rise 0.37s var(--spring) 0.05s backwards;
 }
 .nw-kicker { margin: 0 0 3px; font-size: 11.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .nw-title { margin: 0; font: 400 34px/1.1 var(--serif); color: var(--ink); }
@@ -89,9 +151,9 @@
 .nw-stage {
   position: relative;
   width: min(84vw, 470px, calc(100dvh - 320px)); aspect-ratio: 1; min-width: 220px;
-  animation: nw-in 0.8s var(--spring);
+  animation: nw-in 0.53s var(--spring);
 }
-.nw-layer.closing .nw-stage { animation: nw-out 0.34s cubic-bezier(0.5, 0, 0.75, 0.3) forwards; }
+.nw-layer.closing .nw-stage { animation: nw-out 0.23s cubic-bezier(0.5, 0, 0.75, 0.3) forwards; }
 /* a soft shadow under the disc, so it floats over the sky like the glass does */
 .nw-stage::before { content: ''; position: absolute; inset: 1%; border-radius: 50%; box-shadow: var(--glass-shadow); pointer-events: none; }
 @keyframes nw-in { from { translate: var(--dx, 0) var(--dy, 0); scale: 0.06; rotate: -160deg; opacity: 0; } }
@@ -101,7 +163,7 @@
   display: block; width: 100%; height: 100%; overflow: visible;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-  animation: nw-sway 13s ease-in-out infinite alternate;
+  animation: nw-sway 8.67s ease-in-out infinite alternate;
 }
 @keyframes nw-sway { from { --nw-sway: -7deg; } to { --nw-sway: 7deg; } }
 .nw-spin { rotate: var(--spin, 0deg); transform-box: view-box; transform-origin: 200px 200px; }
@@ -112,7 +174,7 @@
   --f: var(--nw-seg);
   fill: var(--f); stroke: var(--f);
   stroke-width: 3; stroke-linejoin: round; cursor: pointer; outline: none;
-  transition: fill 0.15s, stroke 0.15s, filter 0.2s;
+  transition: fill 0.1s, stroke 0.1s, filter 0.13s;
 }
 .nw-seg.hub { --f: color-mix(in oklab, var(--c) 10%, var(--nw-seg)); }
 .nw-seg.hot, .nw-seg:active { --f: color-mix(in oklab, var(--c) 12%, var(--nw-seg)); filter: drop-shadow(0 4px 14px color-mix(in oklab, var(--c) 30%, transparent)); }
@@ -133,8 +195,8 @@
 .nw-svg .nw-hub-name { font: 500 17px var(--serif); fill: var(--ink); }
 
 /* the letters drifting around the rim, in the sky's own alphabet */
-.nw-ring { transform-box: view-box; transform-origin: 200px 200px; animation: nw-spin 150s linear infinite; pointer-events: none; }
-.nw-ring.far { animation-duration: 240s; animation-direction: reverse; }
+.nw-ring { transform-box: view-box; transform-origin: 200px 200px; animation: nw-spin 100s linear infinite; pointer-events: none; }
+.nw-ring.far { animation-duration: 160s; animation-direction: reverse; }
 .nw-svg .nw-ring text {
   text-anchor: start; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
   fill: color-mix(in oklab, var(--sky) 35%, var(--ink-3)); opacity: 0.55;
@@ -143,19 +205,21 @@
 @keyframes nw-spin { to { rotate: 360deg; } }
 
 /* opening: the categories fan in one after another, then the words */
-.nw.opening :is(.nw-seg, .nw-rim) { transform-box: view-box; transform-origin: 200px 200px; animation: nw-seg-in 0.65s var(--spring) backwards; animation-delay: calc(150ms + var(--k) * 70ms); }
-.nw.opening .nw-turn > .nw-labels { animation: fade-in 0.5s ease-out 0.5s backwards; }
-.nw.opening .nw-ring text { animation: fade-in 1s ease-out 0.4s backwards; }
+.nw.opening :is(.nw-seg, .nw-rim) { transform-box: view-box; transform-origin: 200px 200px; animation: nw-seg-in 0.43s var(--spring) backwards; animation-delay: calc(100ms + var(--k) * 47ms); }
+.nw.opening .nw-turn > .nw-labels { animation: fade-in 0.33s ease-out 0.33s backwards; }
+.nw.opening .nw-ring text { animation: fade-in 0.67s ease-out 0.27s backwards; }
 @keyframes nw-seg-in { from { scale: 0.5; rotate: -40deg; opacity: 0; } }
 
 .nw-caption {
   width: 100%; max-width: 420px; min-height: 66px; margin: 0 auto; text-align: center;
-  animation: nw-rise 0.55s var(--spring) 0.22s backwards;
+  animation: nw-rise 0.37s var(--spring) 0.15s backwards;
 }
 .nw-cap-name { font: 500 19px/1.25 var(--serif); }
 .nw-cap-sub { margin: 4px 0 0; color: var(--ink-3); font-size: 14px; text-wrap: balance; }
 .nw-cap-stat { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: color-mix(in oklab, var(--sky) 70%, var(--ink)); font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .nw-trigger::before, .nw-mark, .nw-mark-wrap::after, .nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }
+  .nw-fx, .nw-pops { display: none; }
+  .nw-beckon .nw-mark-wrap, .nw-beckon .nw-mark-wrap::before, .nw-beckon .nw-mark-wrap::after { animation: none; }
+  .nw-trigger::before, .nw-mark, .nw-mark-wrap, .nw-mark-wrap::before, .nw-mark-wrap::after, .nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub, .nw-mark-halo, .nw-mark-ticks, .nw-mark-inner, .nw-hint, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }
 }

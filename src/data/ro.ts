@@ -1370,8 +1370,10 @@ export const RO: Record<string, string> = {
   'Edit channels': 'Editează canalele',
   'Signing in…': 'Se conectează…',
   'Sign in': 'Conectează-te',
-  'The miner watches these in order: the first ones come first when several are live. Saving restarts it, so it stops for a few seconds.':
-    'Minerul le urmărește în ordine: primele au prioritate când mai multe sunt live. Salvarea îl repornește, așa că se oprește câteva secunde.',
+  'Twitch only counts two live channels at a time, and the miner takes them in this order, so move a channel up to have it watched first. Saving restarts it, so it stops for a few seconds.': 'Twitch numără doar două canale live odată, iar minerul le ia în această ordine, așa că mută un canal mai sus ca să fie urmărit primul. Salvarea îl repornește, deci se oprește câteva secunde.',
+  'live · waiting for a free slot': 'live · așteaptă un loc liber',
+  'mining starts when it goes live': 'mineritul începe când intră live',
+  'Tap for the menu': 'Atinge pentru meniu',
   'Move {name} up': 'Mută {name} mai sus',
   'Move {name} down': 'Mută {name} mai jos',
   'Stop mining {name}': 'Nu mai mina {name}',

@@ -21,6 +21,8 @@ export interface Points {
   user: string;
   /** the channels the miner is set to watch, lowercased; null when the server can't tell */
   mining?: string[] | null;
+  /** channels the miner was given that have no points yet, so no history to show */
+  waiting?: string[];
   now: number;
   /** the first day of `daily`, midnight UTC */
   start: number;

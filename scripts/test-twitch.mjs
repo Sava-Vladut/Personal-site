@@ -53,3 +53,13 @@ test('says when it is not set up, and only answers GET', async () => {
   assert.equal((await call(join(root, 'missing'))).status, 404);
   assert.equal((await call(root, 'POST')).status, 405);
 });
+
+test('lists channels the miner was given that have no points yet', async () => {
+  const channelsFile = join(root, 'channels.json');
+  await writeFile(channelsFile, JSON.stringify({ channels: ['Alpha', 'Newcomer', 'beta'] }));
+  let out;
+  const res = { writeHead: (status) => (out = { status }), end: (body) => (out.body = JSON.parse(body)) };
+  await createTwitchHandler({ directory: root, channelsFile })({ method: 'GET' }, res, '/api/twitch');
+  assert.deepEqual(out.body.waiting, ['Newcomer']);
+  assert.deepEqual(out.body.mining, ['alpha', 'newcomer', 'beta']);
+});

@@ -44,6 +44,8 @@
 }
 .tw-channel:hover { background: var(--surface-2); }
 .tw-list li + li .tw-channel, .tw-list li + li.tw-event { border-top: 1px solid var(--line); }
+.tw-waiting .tw-channel { grid-template-columns: minmax(0, 1fr); opacity: 0.75; }
+.tw-waiting .tw-channel:hover { background: none; }
 .tw-ch-name { display: flex; align-items: center; flex-wrap: wrap; min-width: 0; }
 .tw-ch-name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
 .tw-ch-name small, .tw-ch-num small, .tw-ev-text small, .tw-ev-num small { display: block; width: 100%; font-size: 12.5px; color: var(--ink-3); }
@@ -86,7 +88,9 @@
 .tw-edit { list-style: none; margin: 0 0 12px; padding: 0; }
 .tw-edit li { display: flex; align-items: center; gap: 4px; padding: 6px 0; }
 .tw-edit li + li { border-top: 1px solid var(--line); }
-.tw-edit b { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-edit-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tw-edit b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-edit-name small { color: var(--ink-3); font-size: 12px; }
 .tw-edit-n { flex: none; width: 1.8em; color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
 .tw-edit .icon-btn:disabled { opacity: 0.3; }
 .tw-edit-add { display: flex; gap: 8px; }

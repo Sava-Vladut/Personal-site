@@ -21,9 +21,9 @@ import '../styles/wheel.css';
 
 const C = 200;
 const GAP = 3;
-const MS = 480;
-const CLOSE_MS = 340;
-const COVER_MS = 450; // the layer's fade-in (0.4s), and a little to spare
+const MS = 320;
+const CLOSE_MS = 230;
+const COVER_MS = 300; // the layer's fade-in (0.27s), and a little to spare
 const OUT = 196;
 // The rings, by how many levels below the one in view: gone, the middle, the ring, and everything deeper (hidden at the rim)
 const STOPS: [number, number][] = [[0, 0], [0, 58], [64, OUT], [OUT, OUT]];
@@ -105,17 +105,44 @@ function Letters({ r, world, class: cls }: { r: number; world: string; class: st
   );
 }
 
+/** Opening the wheel once, ever, ends the nudges that point at its button. */
+const SEEN = 'mm-wheel-seen';
+const HINTS = 'mm-wheel-hints';
+const MAX_HINTS = 6; // sessions in which the label shows before it gives up
+let hinted = false; // and once per session, whichever page the button is on
+const seen = () => { try { return localStorage.getItem(SEEN) === '1'; } catch { return true; } };
+
 /**
- * The wheel on the button: a ring of the categories' colours that turns, a wave of light running
- * round it, a spark circling the other way and a glow behind, so it reads as the way into everything.
+ * The wheel on the button: a ring of the categories' colours that turns, a wave of light running round it,
+ * a comet circling the other way, sparks of its colours leaving it and stars twinkling around it, so it
+ * reads as the way into everything. Pointing at it brings more sparks; tapping it bursts.
  */
-function WheelMark() {
+function WheelMark({ pop }: { pop: number }) {
   const tops = layout(WHEEL).filter((s) => s.depth === 0);
   const r = 13, gap = 9; // gap in degrees between the arcs, so they stay separate at this size
   const at = (a: number) => `${(20 + r * Math.sin(rad(a))).toFixed(2)} ${(20 - r * Math.cos(rad(a))).toFixed(2)}`;
+  const hue = (i: number) => `var(--emo-${tops[i % tops.length].hue})`;
+  // each spark has its own heading, size, reach, twist and speed, spread out so they never move in step
+  const spark = (i: number, n: number, more = false) => {
+    const f = (i * 0.618034) % 1;
+    return (
+      <i
+        class={more ? 'more' : undefined}
+        style={{ '--a': `${((i / n) * 360 + (i % 3) * 7).toFixed(1)}deg`, '--h': hue(i), '--z': `${(2 + f * 2.4).toFixed(1)}px`, '--r': `${(27 + f * 11).toFixed(1)}px`, '--tw': `${(i % 2 ? 1 : -1) * (30 + f * 40)}deg`, '--d': `${(1.5 + f * 1.3).toFixed(2)}s`, '--w': `${(-i * 0.37).toFixed(2)}s` }}
+      />
+    );
+  };
+  const stars = [[16, 50, 0], [86, 22, 0.5], [78, 86, 1], [12, 14, 1.4]]; // x, y as a percentage of the sparks' box, and when it twinkles
   return (
     <span class="nw-mark-wrap" aria-hidden="true">
+      <span class="nw-fx">
+        {Array.from({ length: 12 }, (_, i) => spark(i, 12))}
+        {Array.from({ length: 8 }, (_, i) => spark(i + 20, 8, true))}
+        {stars.map(([x, y, w], i) => <b style={{ '--x': `${x}%`, '--y': `${y}%`, '--z': `${i % 2 ? 7 : 9}px`, '--w': `${w}s` }} />)}
+      </span>
       <svg class="nw-mark" width="44" height="44" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="18" class="nw-mark-ticks" />
+        <circle cx="20" cy="20" r="8.4" class="nw-mark-inner" />
         <g class="nw-mark-arcs">
           {tops.map((s, k) => (
             <path
@@ -124,9 +151,20 @@ function WheelMark() {
             />
           ))}
         </g>
-        <g class="nw-mark-orbit"><circle cx="20" cy="2.6" r="1.6" /></g>
+        <g class="nw-mark-orbit">
+          <circle cx="20" cy="2.2" r="1.7" class="head" />
+          <circle cx="20" cy="2.2" r="1.3" opacity="0.55" transform="rotate(-13 20 20)" />
+          <circle cx="20" cy="2.2" r="0.95" opacity="0.32" transform="rotate(-26 20 20)" />
+          <circle cx="20" cy="2.2" r="0.6" opacity="0.16" transform="rotate(-39 20 20)" />
+        </g>
+        <circle cx="20" cy="20" r="4.2" class="nw-mark-halo" />
         <circle cx="20" cy="20" r="4.2" class="nw-mark-hub" />
       </svg>
+      {pop > 0 && (
+        <span class="nw-pops" key={pop}>
+          {Array.from({ length: 10 }, (_, i) => <u style={{ '--a': `${i * 36 + 9}deg`, '--h': hue(i) }} />)}
+        </span>
+      )}
     </span>
   );
 }
@@ -152,6 +190,13 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [pop, setPop] = useState(0); // counts the taps, so each one bursts afresh
+  // until the wheel has been opened once the button asks for it: it hops and rings, and a label points at it (the + button doesn't need to)
+  const [beckon, setBeckon] = useState(() => !look && !seen());
+  const [hint, setHint] = useState(() => {
+    if (look || hinted || seen()) return false;
+    try { return Number(localStorage.getItem(HINTS) || 0) < MAX_HINTS; } catch { return false; }
+  });
   const leftFrom = useRef(''); // the page it left, so a wheel that outlives the page change (the +'s) lets go once it's gone
   const button = useRef<HTMLButtonElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -178,8 +223,22 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
   const live = useRef({ back });
   live.current = { back };
 
+  useEffect(() => {
+    if (!hint) return;
+    hinted = true;
+    try { localStorage.setItem(HINTS, String(Number(localStorage.getItem(HINTS) || 0) + 1)); } catch {}
+    const timer = setTimeout(() => setHint(false), 8200); // its own animation (7s after a short pause) is over by then
+    return () => clearTimeout(timer);
+  }, [hint]);
+
   const toggle = () => {
+    setPop((n) => n + 1);
     if (open) return close();
+    if (beckon) {
+      setBeckon(false);
+      setHint(false);
+      try { localStorage.setItem(SEEN, '1'); } catch {}
+    }
     setFocus(null);
     setView(viewOf(null));
     setClosing(false);
@@ -196,7 +255,7 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && live.current.back();
     addEventListener('keydown', onKey);
     const raf = requestAnimationFrame(() => stage.current?.querySelector<SVGElement>('.nw-seg[tabindex="0"]')?.focus({ preventScroll: true }));
-    const done = setTimeout(() => setOpening(false), 1100);
+    const done = setTimeout(() => setOpening(false), 735);
     return () => {
       release();
       removeEventListener('keydown', onKey);
@@ -221,7 +280,7 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
   // going somewhere: the wheel holds still until the page change takes it (lib/router.ts, 'wheel'), which unmounts it
   useEffect(() => {
     if (!leaving) return;
-    const timer = setTimeout(() => setLeaving(false), 1000); // never left standing if the page didn't change
+    const timer = setTimeout(() => setLeaving(false), 700); // never left standing if the page didn't change
     return () => clearTimeout(timer);
   }, [leaving]);
 
@@ -471,14 +530,15 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
     <>
       <button
         ref={button}
-        class={look?.class ?? 'icon-btn nw-trigger'}
+        class={look?.class ?? `icon-btn nw-trigger${beckon ? ' nw-beckon' : ''}`}
         aria-label={look ? (open ? t('Close') : look.label) : t('Everything')}
         title={look ? undefined : t('Everything')}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={toggle}
       >
-        {look ? look.mark(open) : <WheelMark />}
+        {look ? look.mark(open) : <WheelMark pop={pop} />}
+        {hint && <span class="nw-hint" aria-hidden="true">{t('Tap for the menu')}</span>}
       </button>
       {layer && createPortal(layer, document.body)}
     </>

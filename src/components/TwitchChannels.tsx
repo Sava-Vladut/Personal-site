@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Sheet } from './Sheet';
 import { Icon } from './icons';
-import { getChannels, loadPoints, saveChannels, signIn, signOut } from '../lib/twitch';
+import { getChannels, loadPoints, saveChannels, signIn, signOut, usePoints } from '../lib/twitch';
 import { toast } from '../lib/store';
 import { t } from '../lib/i18n';
 
@@ -14,6 +14,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const points = usePoints(false).data;
 
   useEffect(() => {
     if (!open) return;
@@ -43,14 +44,27 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
     if (password) run(async () => (await signIn(password), setAdmin(true), setPassword('')));
   };
 
+  /** What was typed, as a channel name; null when it's empty or isn't one. */
+  const typed = () => {
+    const n = name.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?twitch\.tv\//i, '').replace(/\/.*$/, '');
+    if (!n) return null;
+    if (!/^[A-Za-z0-9_]{2,25}$/.test(n)) throw new Error(t('“{name}” isn’t a Twitch channel name.', { name: n }));
+    return n;
+  };
+  /** The list with the typed name in it: a new channel goes first, since the miner only watches two live channels at a time and takes the first ones in the list. */
+  const withTyped = (n: string | null) => (n && !list.some((c) => c.toLowerCase() === n.toLowerCase()) ? [n, ...list] : list);
+
   const add = (e?: Event) => {
     e?.preventDefault();
-    const n = name.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?twitch\.tv\//i, '').replace(/\/.*$/, '');
-    if (!n) return;
-    if (!/^[A-Za-z0-9_]{2,25}$/.test(n)) return setError(t('“{name}” isn’t a Twitch channel name.', { name: n }));
-    setError('');
-    setName('');
-    if (!list.some((c) => c.toLowerCase() === n.toLowerCase())) setList([...list, n]);
+    try {
+      const n = typed();
+      if (!n) return;
+      setError('');
+      setName('');
+      setList(withTyped(n));
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   const move = (i: number, by: number) => {
@@ -59,16 +73,23 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
     setList(next);
   };
 
-  const changed = !!saved && list.join('\n') !== saved.join('\n');
+  // a name typed but not added yet counts: it's easy to type one and go straight to Save
+  const pending = !!name.trim();
+  const changed = pending || (!!saved && list.join('\n') !== saved.join('\n'));
   const save = () =>
     run(async () => {
-      const c = await saveChannels(list);
+      const c = await saveChannels(withTyped(typed()));
       setSaved(c.channels);
       setList(c.channels);
       toast(t('Saved · the miner restarts with {n} channels', { n: c.channels.length }));
       loadPoints(true);
       onClose();
     });
+
+  // which of the channels are live, and so which two the miner is actually watching (it takes them in list order)
+  const liveNow = new Set((points?.channels ?? []).filter((c) => c.live).map((c) => c.name.toLowerCase()));
+  const watching = new Set(list.filter((c) => liveNow.has(c.toLowerCase())).slice(0, 2).map((c) => c.toLowerCase()));
+  const status = (c: string) => (watching.has(c.toLowerCase()) ? t('watching now') : liveNow.has(c.toLowerCase()) ? t('live · waiting for a free slot') : '');
 
   return (
     <Sheet
@@ -84,12 +105,12 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
     >
       {admin ? (
         <>
-          <p class="hint">{t('The miner watches these in order: the first ones come first when several are live. Saving restarts it, so it stops for a few seconds.')}</p>
+          <p class="hint">{t('Twitch only counts two live channels at a time, and the miner takes them in this order, so move a channel up to have it watched first. Saving restarts it, so it stops for a few seconds.')}</p>
           <ol class="tw-edit">
             {list.map((c, i) => (
               <li key={c}>
                 <span class="tw-edit-n">{i + 1}</span>
-                <b>{c}</b>
+                <span class="tw-edit-name"><b>{c}</b>{status(c) && <small>{status(c)}</small>}</span>
                 <button class="icon-btn small" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('Move {name} up', { name: c })}><Icon name="arrow-up" size={17} /></button>
                 <button class="icon-btn small" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label={t('Move {name} down', { name: c })}><Icon name="arrow-down" size={17} /></button>
                 <button class="icon-btn small" onClick={() => setList(list.filter((x) => x !== c))} disabled={list.length === 1} aria-label={t('Stop mining {name}', { name: c })}><Icon name="trash" size={17} /></button>
@@ -108,7 +129,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
               spellcheck={false}
               enterkeyhint="done"
             />
-            <button class="btn btn-quiet" type="submit" disabled={!name.trim()}><Icon name="plus" size={18} /> {t('Add')}</button>
+            <button class="btn btn-quiet" type="submit" disabled={!pending}><Icon name="plus" size={18} /> {t('Add')}</button>
           </form>
           {error && <p class="hint danger" role="alert">{error}</p>}
           <button class="link small muted tw-signout" onClick={() => run(async () => (await signOut(), setAdmin(false)))}>{t('Sign out on this device')}</button>

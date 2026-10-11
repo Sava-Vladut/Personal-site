@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.60.0',
+    date: '2026-10-11',
+    changes: [
+      'A new wheel button: a ring of sparks in the categories’ colours leaves it, a comet circles it, stars twinkle around it, and more sparks join in when you point at it or tap it',
+      'Until you open the wheel for the first time, its button hops and sends out rings, and a “Tap for the menu” label points at it',
+      'Every animation on the wheel is 1.5× faster: opening, closing, zooming in and out, and leaving for a page',
+      'Mined channels: a name typed in the box now counts when you press Save, a new channel goes to the top so the miner watches it first, and each channel says if it is being watched or waiting for a free slot',
+      'Channel points: a channel the miner was just given shows in the list straight away, instead of only after its first points',
+    ],
+  },
+  {
     version: '1.59.0',
     date: '2026-10-10',
     changes: [

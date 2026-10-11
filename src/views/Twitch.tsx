@@ -172,6 +172,13 @@ function Board({ data, channel, onPick, onEdit }: { data: Points; channel: Chann
                 </button>
               </li>
             ))}
+            {data.waiting?.map((name) => (
+              <li class="tw-waiting">
+                <span class="tw-channel">
+                  <span class="tw-ch-name"><b>{name}</b><small>{t('mining starts when it goes live')}</small></span>
+                </span>
+              </li>
+            ))}
           </ul>
         </section>
       )}

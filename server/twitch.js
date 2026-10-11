@@ -187,10 +187,14 @@ export function createTwitchHandler({ directory, channelsFile, isAdmin }) {
     });
     const recent = channels.flatMap((c) => c.recent).sort((a, b) => b.at - a.at).slice(0, RECENT);
     const mining = await readChannels();
+    // a channel the miner was just given has no file until it earns its first points: say it's on its way
+    const known = new Set(channels.map((c) => c.name.toLowerCase()));
+    const waiting = (mining ?? []).filter((n) => !known.has(n.toLowerCase()));
 
     return {
       user,
       mining: mining && mining.map((n) => n.toLowerCase()),
+      waiting,
       now,
       start: dayOf(now) - (DAYS - 1) * DAY,
       total: sum((c) => c.balance),

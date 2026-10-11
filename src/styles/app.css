@@ -1011,8 +1011,8 @@ html[data-nav='fade']::view-transition-old(root) { animation: 0.16s ease-in both
 html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-emph) both page-in; }
 /* leaving the wheel for a page: the wheel (which covers everything, tab bar too) lifts away and fades,
    and the page settles in from just behind it; nothing slides sideways, as the wheel wasn't a page */
-html[data-nav='wheel']::view-transition-old(root) { z-index: 1; animation: 0.36s cubic-bezier(0.4, 0, 0.7, 0.4) both vt-wheel-out; }
-html[data-nav='wheel']::view-transition-new(root) { animation: 0.5s var(--ease-emph) both vt-wheel-in; }
+html[data-nav='wheel']::view-transition-old(root) { z-index: 1; animation: 0.24s cubic-bezier(0.4, 0, 0.7, 0.4) both vt-wheel-out; }
+html[data-nav='wheel']::view-transition-new(root) { animation: 0.33s var(--ease-emph) both vt-wheel-in; }
 
 /* on wide screens a full-width slide is a lot of movement: keep it short */
 @media (min-width: 720px) {
