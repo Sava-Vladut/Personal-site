@@ -461,7 +461,7 @@ test('a failed database startup offers recovery without rendering an empty journ
     './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
   }, {
     console: { error() {} }, navigator: {}, addEventListener() {},
-    document: { documentElement: { classList: { add() {}, remove() {} } }, getElementById: () => ({}) },
+    document: { getElementById: () => ({}) },
   });
   await settle();
   assert.equal(rendered.length, 1);
@@ -470,7 +470,7 @@ test('a failed database startup offers recovery without rendering an empty journ
 });
 
 test('startup keeps the app unmounted until the current deep link screen is loaded', async () => {
-  const rendered = [], journal = deferred(), brain = deferred();
+  const rendered = [], journal = deferred(), brain = deferred(), timers = [], attributes = new Map();
   let route = 'journal', weather = 0, sync = 0;
   function App() {}
   await load('src/main.tsx', {
@@ -480,13 +480,18 @@ test('startup keeps the app unmounted until the current deep link screen is load
     './lib/views': { prepareView: name => ({ journal, brain }[name].promise) },
     './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ },
   }, {
-    navigator: {}, addEventListener() {}, setTimeout: () => 0,
-    document: { documentElement: { classList: { add() {}, remove() {} } }, getElementById: () => ({}) },
+    navigator: {}, addEventListener() {}, setTimeout: fn => timers.push(fn),
+    document: {
+      getElementById: () => ({}),
+      querySelector: () => ({ setAttribute: (name, value) => attributes.set(name, value) }),
+    },
   });
   route = 'brain'; journal.resolve(); await settle();
   assert.equal(rendered.length, 0, 'loading the old deep link cannot render the new screen before it is ready');
   brain.resolve(); await settle();
   assert.equal(rendered[0].type, App); assert.equal(weather, 1); assert.equal(sync, 1);
+  timers.forEach(fn => fn());
+  assert.ok(attributes.has('data-boot'), 'the initial page keeps its entrance style after startup timers settle');
 });
 
 test('a failed initial screen load reports a connection problem and offers a reload', async () => {
@@ -498,7 +503,7 @@ test('a failed initial screen load reports a connection problem and offers a rel
     './lib/views': { prepareView: () => Promise.reject(new Error('Offline')) },
   }, {
     console: { error() {} }, navigator: {}, addEventListener() {},
-    document: { documentElement: { classList: { add() {}, remove() {} } }, getElementById: () => ({}) },
+    document: { getElementById: () => ({}) },
   });
   await settle();
   assert.match(JSON.stringify(rendered[0]), /Check your connection/);

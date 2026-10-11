@@ -28,8 +28,6 @@ import { prepareView } from './lib/views';
 applyTheme();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
 addEventListener('touchstart', () => {}, { passive: true });
-// The first page to show rises in piece by piece; later pages use the route transitions instead.
-document.documentElement.classList.add('booting');
 // Pictures aren't meant to be dragged: dropped on a text box, the browser writes the image's address into the note.
 addEventListener('dragstart', (e) => {
   if (e.target instanceof HTMLImageElement) e.preventDefault();
@@ -57,14 +55,15 @@ Promise.all([database, prepareView(routeName())]).then(async () => {
 }).then(
   () => {
     render(<App />, document.getElementById('app')!);
-    setTimeout(() => document.documentElement.classList.remove('booting'), 1000);
+    // Keep the entrance style on this page for its lifetime. Removing it after a
+    // timeout starts the normal page-in animation and briefly hides the page again.
+    document.querySelector('.app .page')?.setAttribute('data-boot', '');
     startWeather();
     initSync();
     enableOffline();
   },
   (e) => {
     console.error('Could not start My Mind', e);
-    document.documentElement.classList.remove('booting');
     render(
       <div class="page"><div class="empty">
         <h2 class="title-s">{t('Couldn’t open your journal')}</h2>

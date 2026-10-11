@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.66.2',
+    date: '2026-10-11',
+    changes: [
+      'Fixed a brief flicker after the opening animation when entering the app',
+    ],
+  },
+  {
     version: '1.66.1',
     date: '2026-10-11',
     changes: [
