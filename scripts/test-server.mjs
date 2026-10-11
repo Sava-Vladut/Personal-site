@@ -15,6 +15,7 @@ Object.assign(process.env, {
   SPOTIFY_CLIENT_SECRET: 'test-secret',
   GITHUB_CLIENT_ID: 'gh-client',
   GITHUB_CLIENT_SECRET: 'gh-secret',
+  GITHUB_REDIRECT_URI: 'https://example.test/api/github/callback',
   PUBLIC_URL: 'https://example.test',
 });
 let handler;
