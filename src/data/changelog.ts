@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.65.1',
+    date: '2026-10-11',
+    changes: [
+      'GitHub login works from either of the site’s domains: it always finishes on the one set as the GitHub callback',
+    ],
+  },
+  {
     version: '1.65.0',
     date: '2026-10-11',
     changes: [

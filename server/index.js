@@ -48,6 +48,8 @@ const GH_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
 // `repo` is the only scope that lets an OAuth App see private repositories (it also allows writing to them).
 const GH_SCOPES = 'repo';
 const GH_REDIRECT = process.env.GITHUB_REDIRECT_URI || `${PUBLIC_URL}/api/github/callback`;
+// GitHub allows one callback host and cookies are per host, so the whole login happens there.
+const GH_ORIGIN = new URL(GH_REDIRECT).origin;
 
 /* ---------------- config helpers ---------------- */
 
@@ -471,6 +473,8 @@ async function github(req, res, url, p, setCookies, out) {
 
   if (p === '/api/github/connect') {
     if (!ghConfigured()) throw new HttpError(400, 'GitHub isn’t configured on this server.');
+    // Started from the site's other domain: move to the callback's domain first, so the state cookie lands where GitHub returns.
+    if (req.headers.host && `${SECURE ? 'https' : 'http'}://${req.headers.host}` !== GH_ORIGIN && GH_ORIGIN.startsWith('https://')) return redirect(res, `${GH_ORIGIN}/api/github/connect`);
     const state = crypto.randomBytes(16).toString('hex');
     const auth = new URL('https://github.com/login/oauth/authorize');
     auth.search = new URLSearchParams({ client_id: GH_ID, redirect_uri: GH_REDIRECT, scope: GH_SCOPES, state }).toString();
@@ -480,7 +484,7 @@ async function github(req, res, url, p, setCookies, out) {
   if (p === '/api/github/callback') {
     const st = unseal(cookies(req).mm_gstate || '');
     const clear = ghCookie('mm_gstate', '', 0);
-    const back = `${APP_URL}/#/settings?github=`;
+    const back = `${GH_ORIGIN}/#/settings?github=`;
     if (!st || !sameState(url.searchParams.get('state'), st.s)) return redirect(res, back + 'error', [clear]);
     const code = url.searchParams.get('code');
     if (!code) return redirect(res, back + (url.searchParams.get('error') === 'access_denied' ? 'cancelled' : 'error'), [clear]);

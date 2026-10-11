@@ -291,9 +291,9 @@ test('SIGTERM lets an in-flight API response finish before exiting', { timeout: 
   assert.deepEqual(await exited, [0, null]);
 });
 
-async function raw(url, cookie = '', method = 'GET') {
+async function raw(url, cookie = '', method = 'GET', host) {
   const result = { status: 0, headers: {}, body: null };
-  await handler({ url, method, headers: { cookie } }, {
+  await handler({ url, method, headers: { cookie, host } }, {
     setHeader(name, value) { result.headers[name] = value; },
     writeHead(status, headers) { this.headersSent = true; result.status = status; Object.assign(result.headers, headers); },
     end(body) { result.body = body ? JSON.parse(body) : null; },
@@ -302,7 +302,12 @@ async function raw(url, cookie = '', method = 'GET') {
 }
 
 test('GitHub login sends you to GitHub asking for repo access, then stores the token only in a cookie', async () => {
-  const go = await raw('/api/github/connect');
+  // started from another domain: hop to the callback's domain first
+  const hop = await raw('/api/github/connect', '', 'GET', 'other.test');
+  assert.equal(hop.headers.Location, 'https://example.test/api/github/connect');
+  assert.equal(hop.headers['Set-Cookie'].length, 0);
+
+  const go = await raw('/api/github/connect', '', 'GET', 'example.test');
   assert.equal(go.status, 302);
   const auth = new URL(go.headers.Location);
   assert.equal(auth.origin + auth.pathname, 'https://github.com/login/oauth/authorize');
