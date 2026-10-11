@@ -3,6 +3,8 @@
 //  • Spotify: resolves pasted song/album/playlist links (no key needed) and, when a client id is
 //    configured, runs the authorization-code flow and proxies search and playlist listing.
 //    Access tokens live in encrypted http-only cookies — per browser, never in JS, never on disk.
+//  • GitHub: signs you in (authorization-code flow) and reports how many public and private repos your account has.
+//    The access token lives in an encrypted http-only cookie, like Spotify's.
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
@@ -41,6 +43,11 @@ const SP_SCOPES = 'playlist-read-private playlist-read-collaborative user-read-c
 const SP_REDIRECT = process.env.SPOTIFY_REDIRECT_URI || `${PUBLIC_URL.replace('://localhost', '://127.0.0.1')}/api/spotify/callback`;
 const SP_API = 'https://api.spotify.com/v1';
 const UA = 'Mozilla/5.0 (compatible; MyMind/1.0)';
+const GH_ID = process.env.GITHUB_CLIENT_ID || '';
+const GH_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
+// `repo` is the only scope that lets an OAuth App see private repositories (it also allows writing to them).
+const GH_SCOPES = 'repo';
+const GH_REDIRECT = process.env.GITHUB_REDIRECT_URI || `${PUBLIC_URL}/api/github/callback`;
 
 /* ---------------- config helpers ---------------- */
 
@@ -418,6 +425,87 @@ async function spotify(req, res, url, p, setCookies, out) {
   throw new HttpError(404, 'Not found');
 }
 
+/* ---------------- GitHub ---------------- */
+
+const ghConfigured = () => Boolean(GH_ID && GH_SECRET);
+const ghCookie = (name, value, maxAge) => cookie(name, value, maxAge, '/api/github');
+
+async function ghRequest(url, options = {}) {
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(15_000),
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': UA, ...options.headers },
+    });
+    const body = await res.json().catch(() => ({}));
+    return { res, body: body && typeof body === 'object' && !Array.isArray(body) ? body : {} };
+  } catch (error) {
+    throw new HttpError(error?.name === 'TimeoutError' ? 504 : 502, error?.name === 'TimeoutError' ? 'GitHub took too long to respond. Try again.' : 'Could not reach GitHub. Try again.');
+  }
+}
+
+const repoCount = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : undefined);
+
+async function github(req, res, url, p, setCookies, out) {
+  if (p === '/api/github/status') {
+    const status = { configured: ghConfigured(), connected: false };
+    const s = ghConfigured() ? unseal(cookies(req).mm_gh || '') : null;
+    if (!s?.a) return out(status);
+    const { res: r, body } = await ghRequest('https://api.github.com/user', { headers: { Authorization: `Bearer ${s.a}` } });
+    if (r.status === 401) {
+      setCookies.push(ghCookie('mm_gh', '', 0));
+      return out(status);
+    }
+    if (!r.ok || typeof body.login !== 'string') return out({ ...status, connected: true, error: 'GitHub didn’t answer. Try again.' });
+    // GitHub only reports private repo counts when the token may read private repos.
+    const priv = repoCount(body.owned_private_repos);
+    return out({
+      ...status,
+      connected: true,
+      user: { name: body.login },
+      public: repoCount(body.public_repos),
+      private: priv,
+      privateVisible: priv !== undefined,
+    });
+  }
+
+  if (p === '/api/github/connect') {
+    if (!ghConfigured()) throw new HttpError(400, 'GitHub isn’t configured on this server.');
+    const state = crypto.randomBytes(16).toString('hex');
+    const auth = new URL('https://github.com/login/oauth/authorize');
+    auth.search = new URLSearchParams({ client_id: GH_ID, redirect_uri: GH_REDIRECT, scope: GH_SCOPES, state }).toString();
+    return redirect(res, auth.href, [ghCookie('mm_gstate', seal({ s: state }), 600)]);
+  }
+
+  if (p === '/api/github/callback') {
+    const st = unseal(cookies(req).mm_gstate || '');
+    const clear = ghCookie('mm_gstate', '', 0);
+    const back = `${APP_URL}/#/settings?github=`;
+    if (!st || !sameState(url.searchParams.get('state'), st.s)) return redirect(res, back + 'error', [clear]);
+    const code = url.searchParams.get('code');
+    if (!code) return redirect(res, back + (url.searchParams.get('error') === 'access_denied' ? 'cancelled' : 'error'), [clear]);
+    try {
+      const { body } = await ghRequest('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: GH_ID, client_secret: GH_SECRET, code, redirect_uri: GH_REDIRECT }),
+      });
+      if (typeof body.access_token !== 'string' || !body.access_token) throw new HttpError(502, body.error_description || 'GitHub returned no token.');
+      return redirect(res, back + 'connected', [clear, ghCookie('mm_gh', seal({ a: body.access_token }), 365 * 86400)]);
+    } catch (e) {
+      console.error('GitHub token exchange failed:', e.message);
+      return redirect(res, back + 'error', [clear]);
+    }
+  }
+
+  if (p === '/api/github/disconnect' && req.method === 'POST') {
+    res.writeHead(204, { 'Set-Cookie': ghCookie('mm_gh', '', 0) });
+    return res.end();
+  }
+
+  throw new HttpError(404, 'Not found');
+}
+
 /* ---------------- admin ---------------- */
 
 // ADMIN_PASSWORD unlocks the few things that change the server rather than the journal (the miner's channels).
@@ -472,6 +560,7 @@ async function api(req, res, url) {
   try {
     if (p === '/api/health') return json(res, 200, { ok: true });
     if (p.startsWith('/api/spotify/')) return await spotify(req, res, url, p, setCookies, out);
+    if (p.startsWith('/api/github/')) return await github(req, res, url, p, setCookies, out);
     if (p.startsWith('/api/sync/')) return await sync(req, res, p);
     if (p === '/api/admin') return await admin(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
@@ -510,6 +599,7 @@ const server = http.createServer(async (req, res) => {
   });
 server.listen(PORT, () => {
     console.log(`My Mind → ${PUBLIC_URL}  (listening on :${PORT})`);
+    console.log(ghConfigured() ? `GitHub: configured · callback URL ${GH_REDIRECT}` : 'GitHub: login off (set GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET in .env)');
     console.log(spConfigured() ? `Spotify: configured · redirect URI ${SP_REDIRECT}` : 'Spotify: links only (set SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in .env to search and browse playlists)');
   });
 

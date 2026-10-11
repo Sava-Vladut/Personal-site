@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
+import { connectGithub, disconnectGithub, githubStatus, type GithubStatus } from '../lib/github';
 import { goBack, navigate } from '../lib/router';
 import { exportText } from '../lib/exportText';
 import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
@@ -47,6 +48,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const sync = useSync();
   const [joining, setJoining] = useState(false);
   const [sp, setSp] = useState<SpotifyStatus | null>(null);
+  const [gh, setGh] = useState<GithubStatus | null>(null);
   const [setup, setSetup] = useState(false);
   const [changelog, setChangelog] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -57,9 +59,15 @@ export function Settings({ query }: { query: URLSearchParams }) {
 
   useEffect(() => {
     spotifyStatus().then(setSp);
+    githubStatus().then(setGh);
     const s = query.get('spotify');
     if (s) {
       toast(s === 'connected' ? t('Spotify connected') : s === 'cancelled' ? t('Spotify login cancelled') : t('Couldn’t connect Spotify — try again'));
+      navigate('settings', true);
+    }
+    const g = query.get('github');
+    if (g) {
+      toast(g === 'connected' ? t('GitHub connected') : g === 'cancelled' ? t('GitHub login cancelled') : t('Couldn’t connect GitHub — try again'));
       navigate('settings', true);
     }
   }, []);
@@ -294,6 +302,36 @@ export function Settings({ query }: { query: URLSearchParams }) {
               <button class="btn btn-quiet" onClick={async () => { await disconnectSpotify(); setSp(await spotifyStatus()); toast(t('Spotify disconnected')); }}>{t('Disconnect')}</button>
             ) : (
               <button class="btn btn-primary" onClick={sp.configured ? () => connectSpotify('#/settings') : () => setSetup(true)}>{t('Log in')}</button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">GitHub</h2>
+        <div class="card list">
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="brand-github" size={18} /> {gh?.connected ? (gh.user ? t('Connected as {name}', { name: gh.user.name }) : t('Connected')) : t('Not connected')}</div>
+              <div class="muted small">
+                {!gh ? t('Checking…')
+                  : gh.offline ? t('The app’s server isn’t running, so GitHub isn’t available.')
+                  : gh.error ? t(gh.error)
+                  : !gh.configured ? t('GitHub login isn’t set up on this server.')
+                  : !gh.connected ? t('Log in to see how many public and private repos you have.')
+                  : [
+                      gh.public !== undefined && count(gh.public, 'public repo', 'public repos'),
+                      gh.private !== undefined && count(gh.private, 'private repo', 'private repos'),
+                    ].filter(Boolean).join(' · ')}
+              </div>
+              {gh?.connected && !gh.error && (
+                <div class="muted small">{gh.privateVisible ? t('Private repos are visible.') : t('Private repos aren’t visible. Disconnect and log in again to allow them.')}</div>
+              )}
+            </div>
+            {gh && !gh.offline && (gh.connected ? (
+              <button class="btn btn-quiet" onClick={async () => { await disconnectGithub(); setGh(await githubStatus()); toast(t('GitHub disconnected')); }}>{t('Disconnect')}</button>
+            ) : gh.configured && (
+              <button class="btn btn-primary" onClick={connectGithub}>{t('Log in')}</button>
             ))}
           </div>
         </div>

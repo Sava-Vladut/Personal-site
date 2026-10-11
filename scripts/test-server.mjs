@@ -13,6 +13,9 @@ Object.assign(process.env, {
   SESSION_SECRET: 'server-regression-test',
   SPOTIFY_CLIENT_ID: 'test-client',
   SPOTIFY_CLIENT_SECRET: 'test-secret',
+  GITHUB_CLIENT_ID: 'gh-client',
+  GITHUB_CLIENT_SECRET: 'gh-secret',
+  PUBLIC_URL: 'https://example.test',
 });
 let handler;
 http.createServer = (callback) => {
@@ -31,11 +34,11 @@ after(() => {
 });
 
 const key = crypto.createHash('sha256').update(process.env.SESSION_SECRET).digest();
-function sealedCookie(session) {
+function sealedCookie(session, name = 'mm_sp') {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const sealed = Buffer.concat([cipher.update(JSON.stringify(session)), cipher.final()]);
-  return 'mm_sp=' + Buffer.concat([iv, cipher.getAuthTag(), sealed]).toString('base64url');
+  return name + '=' + Buffer.concat([iv, cipher.getAuthTag(), sealed]).toString('base64url');
 }
 const sessionCookie = sealedCookie({ a: 'test-token', e: Date.now() + 3600_000, u: 'test-user' });
 
@@ -286,4 +289,75 @@ test('SIGTERM lets an in-flight API response finish before exiting', { timeout: 
   assert.equal(result.status, 200);
   assert.deepEqual(await result.json(), { items: [] });
   assert.deepEqual(await exited, [0, null]);
+});
+
+async function raw(url, cookie = '', method = 'GET') {
+  const result = { status: 0, headers: {}, body: null };
+  await handler({ url, method, headers: { cookie } }, {
+    setHeader(name, value) { result.headers[name] = value; },
+    writeHead(status, headers) { this.headersSent = true; result.status = status; Object.assign(result.headers, headers); },
+    end(body) { result.body = body ? JSON.parse(body) : null; },
+  });
+  return result;
+}
+
+test('GitHub login sends you to GitHub asking for repo access, then stores the token only in a cookie', async () => {
+  const go = await raw('/api/github/connect');
+  assert.equal(go.status, 302);
+  const auth = new URL(go.headers.Location);
+  assert.equal(auth.origin + auth.pathname, 'https://github.com/login/oauth/authorize');
+  assert.equal(auth.searchParams.get('client_id'), 'gh-client');
+  assert.equal(auth.searchParams.get('scope'), 'repo');
+  assert.equal(auth.searchParams.get('redirect_uri'), 'https://example.test/api/github/callback');
+  const state = auth.searchParams.get('state');
+  const stateCookie = go.headers['Set-Cookie'][0].split(';')[0];
+
+  // a callback whose state doesn't match is refused without contacting GitHub
+  globalThis.fetch = async () => assert.fail('must not exchange a code for a bad state');
+  const forged = await raw('/api/github/callback?code=abc&state=nope', stateCookie);
+  assert.match(forged.headers.Location, /\?github=error$/);
+
+  globalThis.fetch = async (url, options) => {
+    assert.equal(String(url), 'https://github.com/login/oauth/access_token');
+    assert.equal(new URLSearchParams(options.body).get('code'), 'abc');
+    return Response.json({ access_token: 'gho_secret', scope: 'repo' });
+  };
+  const back = await raw(`/api/github/callback?code=abc&state=${state}`, stateCookie);
+  assert.match(back.headers.Location, /#\/settings\?github=connected$/);
+  const login = back.headers['Set-Cookie'].find((c) => c.startsWith('mm_gh='));
+  assert.ok(login && !login.includes('gho_secret'), 'the token is sealed');
+  assert.match(login, /HttpOnly/);
+
+  const cancelled = await raw(`/api/github/callback?error=access_denied&state=${state}`, stateCookie);
+  assert.match(cancelled.headers.Location, /\?github=cancelled$/);
+});
+
+test('GitHub status reports public and private repo counts, and whether private ones are visible', async () => {
+  const cookie = sealedCookie({ a: 'gho_secret' }, 'mm_gh');
+  assert.deepEqual((await raw('/api/github/status')).body, { configured: true, connected: false });
+
+  globalThis.fetch = async (url, options) => {
+    assert.equal(String(url), 'https://api.github.com/user');
+    assert.equal(options.headers.Authorization, 'Bearer gho_secret');
+    return Response.json({ login: 'octo', public_repos: 12, owned_private_repos: 5 });
+  };
+  assert.deepEqual((await raw('/api/github/status', cookie)).body, {
+    configured: true, connected: true, user: { name: 'octo' }, public: 12, private: 5, privateVisible: true,
+  });
+
+  // a token without the repo scope gets no private numbers from GitHub
+  globalThis.fetch = async () => Response.json({ login: 'octo', public_repos: 12 });
+  const limited = (await raw('/api/github/status', cookie)).body;
+  assert.equal(limited.privateVisible, false);
+  assert.equal(limited.private, undefined);
+
+  // a revoked token signs the browser out
+  globalThis.fetch = async () => Response.json({ message: 'Bad credentials' }, { status: 401 });
+  const revoked = await raw('/api/github/status', cookie);
+  assert.equal(revoked.body.connected, false);
+  assert.match(revoked.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+
+  const out = await raw('/api/github/disconnect', cookie, 'POST');
+  assert.equal(out.status, 204);
+  assert.match(out.headers['Set-Cookie'], /^mm_gh=; .*Max-Age=0/);
 });
