@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.61.0',
+    date: '2026-10-11',
+    changes: [
+      'On a wide screen, the Journal now shows the song of the day in a card under the day’s panel: play it, shuffle, change it, or pick a song for any of the last two weeks',
+    ],
+  },
+  {
     version: '1.60.0',
     date: '2026-10-11',
     changes: [

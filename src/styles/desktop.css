@@ -6,6 +6,8 @@
    ============================================================ */
 
 .side { display: none; }
+/* the journal's panel and its song card share one right-hand column on wide screens; elsewhere it adds no box */
+.journal-side { display: contents; }
 
 @media (min-width: 1024px) {
   :root {
@@ -49,7 +51,7 @@
   .page.editor { max-width: 860px; }
 
   /* the sky panels stop being full-width banners and become cards inside the page */
-  .app .page > .journal-top {
+  .app .page > .journal-top, .route-journal .page > .journal-side > .journal-top {
     margin: 0 0 18px; padding: 26px 28px 20px;
     border: 1px solid var(--line); border-radius: 24px;
   }
@@ -109,11 +111,14 @@
 
   /* journal: the panel floats at the right and follows you down; every other block clears room for it */
   .route-journal .page { display: flow-root; }
-  .route-journal .page > .journal-top {
-    float: right; width: 380px; margin: 0 0 24px 32px; padding: 22px 22px 18px;
+  .route-journal .page > .journal-side {
+    display: grid; align-content: start; gap: 14px;
+    float: right; width: 380px; margin: 0 0 24px 32px;
     position: sticky; top: 18px; max-height: calc(100dvh - 36px); overflow-y: auto; scrollbar-width: none;
   }
-  .route-journal .page > :not(.journal-top) { margin-right: 412px; }
+  .route-journal .page > .journal-side > .journal-top { margin: 0; padding: 22px 22px 18px; }
+  .route-journal .page > .journal-side > .sotd { margin: 0; }
+  .route-journal .page > :not(.journal-side) { margin-right: 412px; }
   .route-journal .page > section.day:first-of-type { margin-top: 0; }
 
   /* tracker: the picker on the left, today and the feelings count beside it */

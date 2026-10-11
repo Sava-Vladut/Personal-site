@@ -3,7 +3,7 @@ import { usePref } from '../lib/prefs';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { useBooks, useEntries, usePeople, useReady, useSettings, type Entry, type WebImage } from '../lib/store';
+import { useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
 import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
 import { bodyOf, itemsOf, plainText } from '../lib/body';
@@ -24,6 +24,7 @@ import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
 import { WeatherMark, weatherOf } from '../components/weather';
 import { MiniMusic } from '../components/music';
+import { DayPicker, SongOfDay, useDayPick, type DayPick } from '../components/SongOfDay';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 import { count, t } from '../lib/i18n';
@@ -40,6 +41,7 @@ export function Journal() {
   const [calOpen, setCalOpen] = usePref<boolean>('journal-calendar', false);
   const [day, setDay] = useState<string | null>(null);
   const compact = useSettings().density === 'compact';
+  const picker = useDayPick();
 
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>();
@@ -85,6 +87,7 @@ export function Journal() {
   return (
     <div class="page">
       {/* the day and the check-in, set apart from the notes below on a panel of their own */}
+      <aside class="journal-side">
       <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
       <Sky world={world} />
       <header class="page-head">
@@ -142,6 +145,9 @@ export function Journal() {
         </div>
       )}
       </div>
+      <JournalSong picker={picker} />
+      </aside>
+      <JournalSongPicker picker={picker} />
 
       {ready && !entries.length && (
         <div class="empty">
@@ -239,6 +245,31 @@ function CheckInRun({ list }: { list: Entry[] }) {
       {open && list.map((e) => <Swipe key={e.id} e={e}><CheckInRow e={e} /></Swipe>)}
     </div>
   );
+}
+
+/** True while the screen is wide enough for the desktop layout's right-hand column (desktop.css). */
+function useWide() {
+  const [wide, setWide] = useState(() => matchMedia('(min-width: 1280px)').matches);
+  useEffect(() => {
+    const q = matchMedia('(min-width: 1280px)');
+    const on = () => setWide(q.matches);
+    on();
+    q.addEventListener('change', on);
+    return () => q.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
+
+/** Desktop only: today's song under the day's panel. Its day picker is a sheet, so it sits outside the panel (JournalSongPicker). */
+function JournalSong({ picker }: { picker: DayPick }) {
+  const songs = useSongs();
+  const wide = useWide();
+  return wide && songs.length ? <SongOfDay songs={songs} picker={picker} /> : null;
+}
+
+function JournalSongPicker({ picker }: { picker: DayPick }) {
+  const songs = useSongs();
+  return <DayPicker songs={songs} picker={picker} />;
 }
 
 /** The nudge to check in, on one line: tap it to pick how you feel. Once you have today, it shows how you last felt. */
