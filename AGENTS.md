@@ -28,6 +28,6 @@
 
 ## After pushing
 
-- Always redeploy the live site (https://grimnetwork.srvp.ro) after every pushed change:
+- Always redeploy the live site (https://savavlad.com) after every pushed change:
   `cd /root/Personal-site && git pull --ff-only && cd /root/deploy && docker compose up -d --build`
 - Then check `docker logs personal-site-app-1` and curl the public URL to confirm it's up.

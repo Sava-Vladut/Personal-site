@@ -1,4 +1,4 @@
-// The emotion wheel, carried over from Mindful · Emotion Quest (grimnetwork.srvp.ro):
+// The emotion wheel, carried over from Mindful · Emotion Quest (savavlad.com):
 // 8 core emotions ("worlds") → 3 families ("zones") each → 2 specific feelings each.
 // Colors are a CVD-validated categorical palette (light, dark) — see README.
 import { t } from '../lib/i18n';

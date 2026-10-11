@@ -2,7 +2,7 @@
 
 A private, mobile-first journal: notes, an emotion tracker, and stats about the patterns between them.
 White and graphite, a serif for the writing, and the eight pixel "worlds" from
-[Mindful · Emotion Quest](https://grimnetwork.srvp.ro/).
+[Mindful · Emotion Quest](https://savavlad.com/).
 
 ## Run it
 

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.66.1',
+    date: '2026-10-11',
+    changes: [
+      'Spotify login now always finishes on savavlad.com, so it no longer fails when you start it from another address',
+      'The site now lives only at savavlad.com',
+    ],
+  },
+  {
     version: '1.66.0',
     date: '2026-10-11',
     changes: [

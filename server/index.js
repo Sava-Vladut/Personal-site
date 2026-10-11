@@ -41,6 +41,8 @@ const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
 const SP_SCOPES = 'playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-recently-played';
 // Spotify only accepts https or a loopback IP as a redirect URI — never "localhost".
 const SP_REDIRECT = process.env.SPOTIFY_REDIRECT_URI || `${PUBLIC_URL.replace('://localhost', '://127.0.0.1')}/api/spotify/callback`;
+// Cookies are per host, so the whole login happens on the redirect URI's domain.
+const SP_ORIGIN = new URL(SP_REDIRECT).origin;
 const SP_API = 'https://api.spotify.com/v1';
 const UA = 'Mozilla/5.0 (compatible; MyMind/1.0)';
 const GH_ID = process.env.GITHUB_CLIENT_ID || '';
@@ -342,6 +344,8 @@ async function spotify(req, res, url, p, setCookies, out) {
 
   if (p === '/api/spotify/connect') {
     if (!spConfigured()) throw new HttpError(400, 'Spotify isn’t configured on this server.');
+    // Started from another domain (or the loopback address): move to the redirect URI's domain first, so the state cookie lands where Spotify returns.
+    if (req.headers.host && `${SECURE ? 'https' : 'http'}://${req.headers.host}` !== SP_ORIGIN && SP_ORIGIN.startsWith('https://')) return redirect(res, `${SP_ORIGIN}/api/spotify/connect${url.search}`);
     const state = crypto.randomBytes(16).toString('hex');
     const back = url.searchParams.get('back') || '';
     const auth = new URL('https://accounts.spotify.com/authorize');
@@ -350,8 +354,8 @@ async function spotify(req, res, url, p, setCookies, out) {
   }
 
   if (p === '/api/spotify/callback') {
-    // Spotify lands here on 127.0.0.1, which may not be the address the app runs on (cookies are per host),
-    // so the result is sealed and handed to /finish on the app's own address, where the state cookie is checked.
+    // Spotify may land here on a different address than the app's own (cookies are per host),
+    // so the result is sealed and handed to /finish on the app's address, where the state cookie is checked.
     const done = { st: url.searchParams.get('state') || '', x: Date.now() + 120_000 };
     const code = url.searchParams.get('code');
     if (!code) done.err = url.searchParams.get('error') === 'access_denied' ? 'cancelled' : 'error';

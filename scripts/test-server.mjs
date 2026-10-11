@@ -302,6 +302,18 @@ async function raw(url, cookie = '', method = 'GET', host) {
   return result;
 }
 
+test('Spotify login hops to the redirect URI’s domain first, so the state cookie lands where Spotify returns', async () => {
+  const hop = await raw('/api/spotify/connect?back=%23%2Fmedia', '', 'GET', 'other.test');
+  assert.equal(hop.headers.Location, 'https://example.test/api/spotify/connect?back=%23%2Fmedia');
+  assert.equal(hop.headers['Set-Cookie'].length, 0);
+
+  const go = await raw('/api/spotify/connect?back=%23%2Fmedia', '', 'GET', 'example.test');
+  const auth = new URL(go.headers.Location);
+  assert.equal(auth.origin, 'https://accounts.spotify.com');
+  assert.equal(auth.searchParams.get('redirect_uri'), 'https://example.test/api/spotify/callback');
+  assert.equal(go.headers['Set-Cookie'].length, 1);
+});
+
 test('GitHub login sends you to GitHub asking for repo access, then stores the token only in a cookie', async () => {
   // started from another domain: hop to the callback's domain first
   const hop = await raw('/api/github/connect', '', 'GET', 'other.test');
