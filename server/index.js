@@ -440,13 +440,21 @@ async function ghRequest(url, options = {}) {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': UA, ...options.headers },
     });
     const body = await res.json().catch(() => ({}));
-    return { res, body: body && typeof body === 'object' && !Array.isArray(body) ? body : {} };
+    return { res, body: body && typeof body === 'object' ? body : {} };
   } catch (error) {
     throw new HttpError(error?.name === 'TimeoutError' ? 504 : 502, error?.name === 'TimeoutError' ? 'GitHub took too long to respond. Try again.' : 'Could not reach GitHub. Try again.');
   }
 }
 
 const repoCount = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : undefined);
+
+/** Counts the account's own private repos by asking for one per page and reading the last page number. */
+async function privateRepos(token) {
+  const { res, body } = await ghRequest('https://api.github.com/user/repos?affiliation=owner&visibility=private&per_page=1', { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return undefined;
+  const last = (res.headers.get('link') || '').match(/[?&]page=(\d+)>;\s*rel="last"/);
+  return last ? Number(last[1]) : Array.isArray(body) ? body.length : undefined;
+}
 
 async function github(req, res, url, p, setCookies, out) {
   if (p === '/api/github/status') {
@@ -459,8 +467,13 @@ async function github(req, res, url, p, setCookies, out) {
       return out(status);
     }
     if (!r.ok || typeof body.login !== 'string') return out({ ...status, connected: true, error: 'GitHub didn’t answer. Try again.' });
-    // GitHub only reports private repo counts when the token may read private repos.
-    const priv = repoCount(body.owned_private_repos);
+    // Private repos are only readable with the `repo` scope; GitHub lists the scopes it granted in a header.
+    const scopes = (r.headers.get('x-oauth-scopes') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    let priv;
+    if (scopes.includes('repo')) {
+      priv = repoCount(body.owned_private_repos);
+      if (priv === undefined) priv = await privateRepos(s.a);
+    } else console.log(`GitHub token has no repo scope (granted: ${scopes.join(', ') || 'none'})`);
     return out({
       ...status,
       connected: true,

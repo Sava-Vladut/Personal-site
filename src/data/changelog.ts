@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.65.2',
+    date: '2026-10-11',
+    changes: [
+      'GitHub: private repos are now counted from GitHub’s own list and checked against the access it granted, instead of relying on one profile field',
+    ],
+  },
+  {
     version: '1.65.1',
     date: '2026-10-11',
     changes: [

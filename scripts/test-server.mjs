@@ -342,17 +342,25 @@ test('GitHub status reports public and private repo counts, and whether private 
   const cookie = sealedCookie({ a: 'gho_secret' }, 'mm_gh');
   assert.deepEqual((await raw('/api/github/status')).body, { configured: true, connected: false });
 
+  const scoped = { headers: { 'x-oauth-scopes': 'repo' } };
   globalThis.fetch = async (url, options) => {
     assert.equal(String(url), 'https://api.github.com/user');
     assert.equal(options.headers.Authorization, 'Bearer gho_secret');
-    return Response.json({ login: 'octo', public_repos: 12, owned_private_repos: 5 });
+    return Response.json({ login: 'octo', public_repos: 12, owned_private_repos: 5 }, scoped);
   };
   assert.deepEqual((await raw('/api/github/status', cookie)).body, {
     configured: true, connected: true, user: { name: 'octo' }, public: 12, private: 5, privateVisible: true,
   });
 
-  // a token without the repo scope gets no private numbers from GitHub
-  globalThis.fetch = async () => Response.json({ login: 'octo', public_repos: 12 });
+  // repo scope but no count in the profile: count the private repos themselves
+  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user'
+    ? Response.json({ login: 'octo', public_repos: 12 }, scoped)
+    : (assert.match(String(url), /\/user\/repos\?affiliation=owner&visibility=private&per_page=1$/),
+      Response.json([{}], { headers: { link: '<https://api.github.com/user/repos?per_page=1&page=7>; rel="last"' } }));
+  assert.equal((await raw('/api/github/status', cookie)).body.private, 7);
+
+  // a token without the repo scope can't see private repos, whatever the profile says
+  globalThis.fetch = async () => Response.json({ login: 'octo', public_repos: 12, owned_private_repos: 5 }, { headers: { 'x-oauth-scopes': 'read:user' } });
   const limited = (await raw('/api/github/status', cookie)).body;
   assert.equal(limited.privateVisible, false);
   assert.equal(limited.private, undefined);
