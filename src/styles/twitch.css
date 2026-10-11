@@ -97,3 +97,21 @@
 .tw-edit-add .input { flex: 1; min-width: 0; }
 .tw-edit-add .btn { flex: none; display: inline-flex; align-items: center; gap: 4px; }
 .tw-signout { display: block; margin: 14px 0 2px; }
+
+/* the journal's small card (desktop): the total, today's gain and the last month as a line */
+.tw-mini {
+  --accent: var(--emo-fear);
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; text-align: left; border-radius: 20px;
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--line));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 12%, var(--surface)), var(--surface));
+  box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--accent) 85%, transparent);
+  transition: border-color 0.2s, translate 0.35s var(--spring);
+}
+.tw-mini:hover { border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); translate: 0 -1px; }
+.tw-mini-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; border-radius: 12px; background: var(--accent); color: #fff; }
+.tw-mini-main { display: grid; gap: 1px; min-width: 0; margin-right: auto; }
+.tw-mini-main small { font-size: 11.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
+.tw-mini-main b { font: 600 22px/1.1 var(--serif); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.tw-mini-sub { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-mini-spark { flex: none; width: 92px; height: auto; }
+.tw-mini-spark path { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }

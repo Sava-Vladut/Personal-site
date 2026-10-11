@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.62.0',
+    date: '2026-10-11',
+    changes: [
+      'On a wide screen, the Journal now has a small channel points card under the song of the day: your total, today’s gain, a line of the last month, and who is being watched now. Tap it for the full page',
+    ],
+  },
+  {
     version: '1.61.0',
     date: '2026-10-11',
     changes: [

@@ -27,7 +27,8 @@ import { MiniMusic } from '../components/music';
 import { DayPicker, SongOfDay, useDayPick, type DayPick } from '../components/SongOfDay';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
-import { count, t } from '../lib/i18n';
+import { usePoints } from '../lib/twitch';
+import { count, LOCALE, t } from '../lib/i18n';
 
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
@@ -146,6 +147,7 @@ export function Journal() {
       )}
       </div>
       <JournalSong picker={picker} />
+      <JournalPoints />
       </aside>
       <JournalSongPicker picker={picker} />
 
@@ -265,6 +267,40 @@ function JournalSong({ picker }: { picker: DayPick }) {
   const songs = useSongs();
   const wide = useWide();
   return wide && songs.length ? <SongOfDay songs={songs} picker={picker} /> : null;
+}
+
+/** Desktop only: the channel points total under the song, a tap away from the full page. */
+function JournalPoints() {
+  const wide = useWide();
+  const { data } = usePoints(wide);
+  if (!wide || !data) return null;
+  const { total, change, daily, channels } = data;
+  const live = channels.filter((c) => c.live);
+  const tail = daily.slice(-30);
+  const known = tail.filter((v): v is number => v !== null);
+  const lo = Math.min(...known), hi = Math.max(...known);
+  const W = 120, H = 34;
+  let d = '';
+  tail.forEach((v, i) => {
+    if (v === null) return;
+    const px = (i / (tail.length - 1)) * W, py = H - 2 - ((v - lo) / (hi - lo || 1)) * (H - 4);
+    d += `${d ? 'L' : 'M'}${px.toFixed(1)},${py.toFixed(1)}`;
+  });
+  return (
+    <button class="tw-mini" onClick={() => navigate('twitch')} aria-label={t('Channel points')}>
+      <span class="tw-mini-ico"><Icon name="brand-twitch" size={18} /></span>
+      <span class="tw-mini-main">
+        <small>{t('Channel points')}</small>
+        <b>{total.toLocaleString(LOCALE)}</b>
+        <span class="tw-mini-sub">
+          {live.length > 0 && <span class="tw-live" aria-hidden="true" />}
+          {live.length ? t('Watching {names} now', { names: live.map((c) => c.name).join(', ') }) : `${change.day > 0 ? '+' : ''}${change.day.toLocaleString(LOCALE)} ${t('today')}`}
+        </span>
+      </span>
+      {known.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}
+      <Icon name="chevron-right" size={16} />
+    </button>
+  );
 }
 
 function JournalSongPicker({ picker }: { picker: DayPick }) {
