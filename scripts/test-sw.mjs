@@ -121,23 +121,10 @@ test('API and non-GET requests remain outside the service worker', async () => {
   assert.equal(await app.request('/journal', 'cors', 'POST'), undefined);
 });
 
-test('voice typing: the runtime is cached on first use in its own cache, model files pass through, and updates keep the cache', async () => {
-  let calls = 0;
-  const app = worker({ entries: { 'mm-app-old': {}, 'mm-app-dev': {}, 'mm-voice-v1': {} }, fetch: async () => { calls++; return new Response('runtime'); } });
-  for (const path of ['/voice/transformers-4.3.0.js', '/voice/ort-4.3.0/ort-wasm-simd-threaded.wasm']) {
-    assert.equal(await (await app.request(path)).text(), 'runtime');
-    assert.equal(await (await app.request(path)).text(), 'runtime');
-  }
-  assert.equal(calls, 2);
-  assert.equal(app.stores.get('mm-voice-v1').size, 2);
-  assert.equal(app.stores.get('mm-app-dev').size, 0);
-
-  // the model's weights are large; the page keeps them itself, so the worker neither answers for them nor copies them
-  assert.equal(await app.request('/voice/models/onnx-community/whisper-tiny.en/resolve/main/onnx/encoder_model_quantized.onnx'), undefined);
-  assert.equal(app.stores.get('mm-app-dev').size, 0);
-
+test('caches left by the removed voice typing are deleted on activation', async () => {
+  const app = worker({ entries: { 'mm-app-dev': {}, 'mm-voice-v1': {}, 'transformers-cache': {} } });
   await app.activate();
-  assert.deepEqual([...app.stores.keys()], ['mm-app-old', 'mm-app-dev', 'mm-voice-v1']);
+  assert.deepEqual([...app.stores.keys()], ['mm-app-dev']);
 });
 
 test('open tabs can import a preceding build screen offline without using its shell or mutable icons', async () => {

@@ -11,7 +11,6 @@ import './styles/mentions.css';
 import './styles/wheel.css';
 import './styles/notes.css';
 import 'photoswipe/style.css';
-import './styles/voice.css';
 import './styles/sotd.css';
 import './styles/map.css';
 import './styles/stats.css';

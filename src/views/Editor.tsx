@@ -5,12 +5,11 @@ import { goBack, navigate } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { editable, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
-import { listKey, replace, toggleTask } from '../lib/markdown';
+import { listKey, toggleTask } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { linkedFrom, linkOf, linkRanges, noteLabel, suggestLinks, typedLink, type LinkSuggestion } from '../lib/links';
 import { connectSpotify } from '../lib/spotify';
-import { spaceBefore } from '../lib/voiceText';
 import {
   blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
   type Book, type Entry, type Person,
@@ -30,11 +29,10 @@ import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarge
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
-import { useDictation, VoiceButton, VoiceSheet } from '../components/VoiceButton';
 import '../styles/notes.css';
 import { t } from '../lib/i18n';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'voice';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book';
 /** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
 type Typed = { start: number; end: number; q: string; link?: boolean };
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
@@ -239,8 +237,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const cancelMove = useRef<(() => void) | null>(null);
   // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
   const where = useRef({ seg: -1, pos: 0 });
-  const dictate = useRef<(text: string) => void>(() => {});
-  useDictation((text) => dictate.current(text));
 
   // Once a new note is saved, point the URL at it so a reload reopens it. Never rewrite a sheet's history entry.
   const syncUrl = () => {
@@ -876,17 +872,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const isCheckin = draft.kind === 'checkin';
   const body = bodyOf(draft);
 
-  /** Writes what was said at the caret (or the end of the note, when reading), spaced like typed text. */
-  dictate.current = (text) => {
-    const wasReading = reading;
-    if (wasReading) flushSync(() => setReading(false));
-    const last = areas.current[body.texts.length - 1];
-    const box = wasReading && last ? editable(last) : target();
-    if (!box) return;
-    const end = box.value.length;
-    const from = wasReading ? end : box.selectionStart;
-    replace(box, from, wasReading ? end : box.selectionEnd, spaceBefore(box.value.slice(0, from), text) + text);
-  };
   const last = body.texts.length - 1;
   const selIndex = reading || !sel ? -1 : body.media.findIndex((m) => mediaKey(m) === sel);
 
@@ -1087,7 +1072,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <button class="format-btn" onClick={() => setOpen('book')} aria-label={t('Mention a book')} title={t('Mention a book')}>
           <Icon name="books" size={19} />
         </button>
-        <VoiceButton onSetup={() => setOpen('voice')} />
       </FormatBar>
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
@@ -1101,7 +1085,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           update({ images: [...draft.images, ...fresh], text: place(body, fresh.map((i) => ({ kind: 'image', url: i.url }))) });
         }}
       />
-      <VoiceSheet open={open === 'voice'} onClose={close} />
       <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title={t('Mention a book')} status="reading" />
       <SpotifySheet
         open={open === 'spotify'}

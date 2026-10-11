@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.64.0',
+    date: '2026-10-11',
+    changes: [
+      'Voice typing is gone: the microphone button in the note toolbar and the Voice typing section in Settings are removed',
+      'Speech models already downloaded to a device are cleared the next time the app updates there',
+    ],
+  },
+  {
     version: '1.63.0',
     date: '2026-10-11',
     changes: [

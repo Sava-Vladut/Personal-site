@@ -1,13 +1,12 @@
 // Offline support. The whole build is cached on install. Pages: network first, cached copy when offline.
 // Hashed assets: cache first. Web images (Openverse thumbnails, older Pinterest images): cache first, so notes keep their pictures offline.
-// Voice typing's runtime and WebAssembly (/voice/transformers-*, /voice/ort-*) are cached first the first time they are used, in a cache of their
-// own that updates never clear. Its model files (/voice/models/) are large and are kept by the page itself, so they pass straight through.
 // VERSION and PRECACHE are filled in by the build (see vite.config.ts).
 const VERSION = 'dev';
 const PRECACHE = [];
 const APP = 'mm-app-' + VERSION;
 const IMG = 'mm-img-v1';
-const VOICE = 'mm-voice-v1';
+// caches of the removed voice typing, cleared from devices that still have them
+const RETIRED = ['mm-voice-v1', 'transformers-cache'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(PRECACHE.length ? PRECACHE : ['/', '/theme.js', '/manifest.webmanifest', '/icon.svg'])));
@@ -20,7 +19,7 @@ self.addEventListener('activate', (e) => {
       // An open tab can still import a screen from the preceding build after an update.
       // Keep that build's immutable assets until the next update, with a bounded two-build cache.
       const previous = keys.filter((k) => k.startsWith('mm-app-') && k !== APP).at(-1);
-      return Promise.all(keys.filter((k) => (k.startsWith('mm-app-') || k.startsWith('mm-img-')) && k !== APP && k !== previous && k !== IMG).map((k) => caches.delete(k)));
+      return Promise.all(keys.filter((k) => RETIRED.includes(k) || ((k.startsWith('mm-app-') || k.startsWith('mm-img-')) && k !== APP && k !== previous && k !== IMG)).map((k) => caches.delete(k)));
     }).then(() => self.clients.claim()),
   );
 });
@@ -68,8 +67,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/voice/models/')) return;
-    if (/^\/voice\/(?:transformers-|ort-)/.test(url.pathname)) return e.respondWith(cacheFirst(req, VOICE));
+    if (url.pathname.startsWith('/api/')) return;
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/'));
     if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) {
       const fingerprinted = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/.test(url.pathname);
