@@ -29,8 +29,24 @@
   .side-add .nav-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 44px; border-radius: 14px; }
   .side-add .nav-plus svg { width: 20px; height: 20px; }
   .nav-new-label { font-size: 15px; font-weight: 620; }
+  .side-add .nav-new { overflow: hidden; }
+  .side-add .nav-plus, .side-add .nav-new-label { position: relative; z-index: 2; }
+
+  /* the New button's sky: pastel clouds and letters over the button, the letters lit to match its colours (Sky.tsx reads --ink and --surface from here) */
+  .nav-new-sky {
+    --ink: #ffffff; --surface: #1a1a19;
+    position: absolute; inset: 0; z-index: 0; border-radius: inherit; overflow: hidden; pointer-events: none;
+    animation: fade-in 0.8s ease 0.2s backwards;
+  }
+  :root[data-theme='dark'] .nav-new-sky { --ink: #141413; --surface: #f3f3f1; }
+  .nav-new-sky > .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* a soft patch of the button's own colour keeps the label easy to read over the letters */
+  .nav-new-sky::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(60% 90% at 50% 50%, var(--glass-tint) 25%, transparent 100%);
+    opacity: 0.8;
+  }
   .side-links { display: grid; gap: 2px; }
-  .side-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
   .side .nav-item {
     flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
     height: 42px; padding: 0 12px; border-radius: 12px; font-size: 15px;

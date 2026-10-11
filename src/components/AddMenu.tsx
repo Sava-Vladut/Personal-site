@@ -3,6 +3,7 @@ import { t } from '../lib/i18n';
 import { formatDate } from '../lib/dates';
 import { Icon } from './icons';
 import { NavWheel } from './NavWheel';
+import { Sky } from './Sky';
 
 // the things to add, round the wheel; each wears a world's colour
 const ADD: WheelNode[] = [
@@ -32,6 +33,8 @@ export function AddMenu({ label }: { label?: string }) {
         class: 'nav-new add-btn glass glass-btn tinted',
         mark: () => (
           <>
+            {/* the sidebar's button carries a little sky of its own: clouds drifting behind letters */}
+            {label && <span class="nav-new-sky" aria-hidden="true"><Sky world="hope-interest" small /></span>}
             <span class="nav-plus"><Icon name="plus" size={label ? 20 : 28} stroke={2} /></span>
             {label && <span class="nav-new-label">{label}</span>}
           </>

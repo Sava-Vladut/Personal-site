@@ -83,8 +83,6 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
       </div>
       <div class="side-links">
         {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} here={here === name} label={label} icon={icon} path={path} />)}
-      </div>
-      <div class="side-links side-foot">
         <NavItem active={active === 'stats'} here={here === 'stats'} label={t('Stats')} icon="chart-dots" path="stats" />
         <NavItem active={active === 'settings'} here={here === 'settings'} label={t('Settings')} icon="settings" path="settings" />
       </div>

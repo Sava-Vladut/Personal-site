@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.63.0',
+    date: '2026-10-11',
+    changes: [
+      'On a wide screen, the sidebar’s New button now has a little sky of its own: clouds drift behind letters in the button’s colours',
+      'Stats and Settings moved up into the sidebar’s main list, right under the other places',
+    ],
+  },
+  {
     version: '1.62.0',
     date: '2026-10-11',
     changes: [
