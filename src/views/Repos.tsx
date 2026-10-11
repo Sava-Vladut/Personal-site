@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { navigate } from '../lib/router';
-import { ago, connectGithub, forgetRepos, githubStatus, listGhRepos, repoFullName, useLoad, type GhRepo } from '../lib/github';
+import { ago, connectGithub, forgetRepos, getReadme, githubStatus, listGhRepos, repoFullName, useLoad, type GhRepo } from '../lib/github';
+import { watchView } from '../lib/inView';
+import { readmeExcerpt } from '../components/Readme';
 import { usePref } from '../lib/prefs';
 import { repoIdOf, useReady, useRepos, type Repo } from '../lib/store';
 import { CountUp } from '../components/charts';
@@ -26,14 +28,30 @@ interface Row { id: string; name: string; description: string; language: string;
 
 const journaled = (r: Repo | null) => !!r && (r.rating > 0 || r.emotions.length > 0 || r.text.trim() !== '');
 
-function RepoRow({ row, last, i }: { row: Row; last: boolean; i: number }) {
+function RepoRow({ row, last, i, connected }: { row: Row; last: boolean; i: number; connected: boolean }) {
+  const card = useRef<HTMLButtonElement>(null);
+  const [excerpt, setExcerpt] = useState('');
+  useEffect(() => {
+    if (!connected || !card.current) return;
+    let alive = true;
+    let started = false;
+    const load = (visible: boolean) => {
+      if (!visible || started) return;
+      started = true;
+      getReadme(row.id.slice(2)).then(({ text }) => {
+        if (alive) setExcerpt(text ? readmeExcerpt(text) : '');
+      }).catch(() => {}); // A preview is optional; the repo page offers retry and sign-in.
+    };
+    const stop = typeof IntersectionObserver === 'undefined' ? (load(true), () => {}) : watchView(card.current, load);
+    return () => { alive = false; stop(); };
+  }, [row.id, connected]);
   const r = row.saved;
   const [owner, name] = row.name.includes('/') ? [row.name.slice(0, row.name.indexOf('/') + 1), row.name.slice(row.name.indexOf('/') + 1)] : ['', row.name];
   const main = r?.emotions[0] ? coreOf(r.emotions[0]).id : null;
   return (
     <li class={`repo-item${last ? ' is-last' : ''}${main ? ' is-felt' : ''}`} style={{ '--i': Math.min(i, 14), '--c': main ? `var(--emo-${main})` : undefined }}>
       <span class="repo-branch" aria-hidden="true">{last ? '└─' : '├─'}</span>
-      <button class="repo-card card" onClick={() => navigate('repo/' + row.id)}>
+      <button ref={card} class="repo-card card" onClick={() => navigate('repo/' + row.id)}>
         <span class="repo-line">
           <span class="repo-name"><small>{owner}</small>{name}</span>
           {row.private && <Icon name="lock" size={14} />}
@@ -45,6 +63,7 @@ function RepoRow({ row, last, i }: { row: Row; last: boolean; i: number }) {
           {row.pushed && <span>{ago(row.pushed)}</span>}
           {r?.emotions.slice(0, 3).map((id, k) => <EmotionChip id={id} size="sm" idle="view" delay={(r.created + k * 380) % 1300} />)}
         </span>
+        {excerpt && <span class="repo-readme"><span class="repo-readme-label">README.md</span><span class="repo-readme-text">{excerpt}</span></span>}
       </button>
     </li>
   );
@@ -57,6 +76,7 @@ export function Repos() {
   const [filter, setFilter] = usePref<Filter>('repos-filter', 'all', FILTERS);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
+  const [revision, setRevision] = useState(0);
   const live = useLoad(async () => {
     const status = await githubStatus();
     return { status, items: status.connected ? await listGhRepos() : ([] as GhRepo[]) };
@@ -91,7 +111,7 @@ export function Repos() {
     ? [[rows.length, t('repos')], ...(connected ? [[rows.filter((r) => r.private).length, t('private')] as [number, string]] : []), [rows.filter((r) => journaled(r.saved)).length, t('journaled')]]
     : [];
 
-  const refresh = () => { forgetRepos(); live.reload(); };
+  const refresh = () => { forgetRepos(); setRevision((n) => n + 1); live.reload(); };
 
   return (
     <div class="page media-page repos-page">
@@ -173,7 +193,7 @@ export function Repos() {
 
         {shown.length > 0 && (
           <ol class="repo-tree" key={filter + q}>
-            {shown.map((row, i) => <RepoRow key={row.id} row={row} last={i === shown.length - 1} i={i} />)}
+            {shown.map((row, i) => <RepoRow key={`${row.id}:${revision}`} row={row} last={i === shown.length - 1} i={i} connected={connected} />)}
           </ol>
         )}
         {shown.length > 0 && <p class="repo-count muted small">{shown.length} {noun(shown.length, 'repo', 'repos')}</p>}

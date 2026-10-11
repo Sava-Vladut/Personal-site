@@ -59,7 +59,20 @@ async function get<T>(path: string): Promise<T> {
 export const repoFullName = (r: Pick<GhRepo, 'owner' | 'name'>) => `${r.owner}/${r.name}`;
 export const getGhRepo = (id: number | string) => get<GhRepo>(`/repos/${id}`);
 export const listCommits = (id: number | string, page = 1) => get<{ items: GhCommit[]; next?: number }>(`/repos/${id}/commits?page=${page}`);
-export const getReadme = (id: number | string) => get<{ text: string | null }>(`/repos/${id}/readme`);
+const readmes = new Map<string, Promise<{ text: string | null }>>();
+export const getReadme = (id: number | string) => {
+  const key = String(id);
+  let request = readmes.get(key);
+  if (!request) {
+    request = get<{ text: string | null }>(`/repos/${id}/readme`).catch((error) => {
+      if (readmes.get(key) === request) readmes.delete(key);
+      throw error;
+    });
+    if (readmes.size >= 100) readmes.delete(readmes.keys().next().value!);
+    readmes.set(key, request);
+  }
+  return request;
+};
 
 // Your repos are listed once per visit and kept in memory (never on disk): going into a repo and back is instant.
 let cached: { items: GhRepo[]; at: number } | null = null;
@@ -67,7 +80,7 @@ let inflight: Promise<GhRepo[]> | null = null;
 const FRESH = 5 * 60_000;
 
 /** The repo list's cache lives only as long as the page: disconnecting forgets it. */
-export const forgetRepos = () => { cached = null; };
+export const forgetRepos = () => { cached = null; readmes.clear(); };
 
 export const listGhRepos = (force = false): Promise<GhRepo[]> => {
   if (!force && cached && Date.now() - cached.at < FRESH) return Promise.resolve(cached.items);

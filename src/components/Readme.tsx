@@ -139,6 +139,21 @@ function inline(text: string, base: ReadmeBase): ComponentChildren[] {
 
 const lines = (text: string, base: ReadmeBase) => text.split('\n').map((l, i) => <>{i > 0 && <br />}{inline(l, base)}</>);
 
+/** A compact text-only introduction: skip badges, code and tables in list cards. */
+export function readmeExcerpt(text: string): string {
+  const plain = (value: string): string => value.replace(INLINE, (...args) => {
+    const m = args as string[];
+    if (m[4] !== undefined || m[12] !== undefined) return '';
+    return plain(m[2] ?? m[5] ?? m[7] ?? m[8] ?? m[9] ?? m[10] ?? m[11] ?? '');
+  }).replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1').replace(/\s+/g, ' ').trim();
+  const blocks = parse(text.slice(0, 80_000)
+    .replace(/^\s*\[[^\]]+\]:.*$/gm, '')
+    .replace(/^\s*=+\s*$/gm, ''));
+  const prose = blocks.flatMap((b) => b.t === 'p' || b.t === 'li' || b.t === 'quote' ? [plain(b.text)] : []).filter(Boolean);
+  const excerpt = prose.join(' ') || blocks.flatMap((b) => b.t === 'h' ? [plain(b.text)] : []).filter(Boolean).join(' ');
+  return excerpt.length > 280 ? excerpt.slice(0, 277).trimEnd() + '…' : excerpt;
+}
+
 /** A README, formatted. */
 export function Readme({ text, base }: { text: string; base: ReadmeBase }) {
   return (

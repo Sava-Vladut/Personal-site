@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.67.0',
+    date: '2026-10-11',
+    changes: [
+      'Repo cards now show a small README preview, loaded as you scroll',
+    ],
+  },
+  {
     version: '1.66.2',
     date: '2026-10-11',
     changes: [

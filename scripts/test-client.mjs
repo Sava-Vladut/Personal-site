@@ -802,6 +802,28 @@ test('the brain stops drawing while covered, hidden or out of view and releases 
   assert.equal(frames.size, 0); assert.equal(listeners.size, 0); assert.equal(viewed, null);
 });
 
+test('README card excerpts keep prose without badges, code, tables or interactive markup', async () => {
+  const { readmeExcerpt } = await load('src/components/Readme.tsx');
+  assert.equal(readmeExcerpt('# Project\n\n[![Build](https://example.com/badge.svg)](https://example.com)\n\nA **small** tool with [docs](guide.md) and `code`.\n\n```sh\nnpm install\n```\n\n| A | B |\n|---|---|\n| 1 | 2 |'), 'A small tool with docs and code.');
+  assert.equal(readmeExcerpt('<!-- hidden -->\n<img src="https://example.com/a.png">'), '');
+  assert.equal(readmeExcerpt('# Only a title'), 'Only a title');
+  assert.equal(readmeExcerpt('<p>Hello <b>world</b></p>'), 'Hello world');
+  assert.equal(readmeExcerpt('Read [the guide][docs].\n\n[docs]: https://example.com'), 'Read the guide.');
+  assert.ok(readmeExcerpt('Long introduction '.repeat(100)).length <= 280);
+});
+
+test('README requests share memory cache and forget it on refresh or disconnect', async () => {
+  let calls = 0;
+  const { getReadme, forgetRepos } = await load('src/lib/github.ts', {}, {
+    fetch: async () => { calls++; return { ok: true, json: async () => ({ text: '# Hello' }) }; },
+  });
+  await Promise.all([getReadme(1), getReadme('1')]);
+  assert.equal(calls, 1);
+  forgetRepos();
+  await getReadme(1);
+  assert.equal(calls, 2);
+});
+
 test('a README is shown as elements: pictures and links stay on GitHub, and nothing in it can run', async () => {
   const jsx = (type, props) => ({ type, props });
   const { Readme } = await load('src/components/Readme.tsx', { 'preact/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' } });
