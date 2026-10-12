@@ -46,12 +46,24 @@ onBlocked(() =>
     document.getElementById('app')!,
   ),
 );
-// A device that's signed in opens the journal at once and checks with the server in the background; one that isn't
+// A public note's link opens just that note, for anyone: no sign-in and nothing of the journal is loaded.
+// Otherwise, a device that's signed in opens the journal at once and checks with the server in the background; one that isn't
 // (or no longer is) gets the intro, which boots the journal once you sign in.
-if (signedInHere()) {
+const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
+if (shared) void bootShared(shared[1]);
+else if (signedInHere()) {
   boot();
   void stillSignedIn().then((ok) => ok || location.reload());
 } else void gate();
+
+async function bootShared(token: string) {
+  try {
+    const { Shared } = await import('./views/Shared');
+    render(<Shared token={token} />, document.getElementById('app')!);
+  } catch (e) {
+    failed(e, false);
+  }
+}
 
 /** Signed out here: the intro, unless the server has no password to ask for or this browser's cookie is still good. */
 async function gate() {

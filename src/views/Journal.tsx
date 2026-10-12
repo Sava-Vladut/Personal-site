@@ -475,7 +475,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
           {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" />}
         </div>
       )}
-      {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0 || !!e.place?.name) && (
+      {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0 || !!e.place?.name || !!e.share) && (
         <div class="note-foot">
           <div class="note-emos">
             {e.emotions.map((id, i) => <EmotionChip id={id} size="sm" idle="view" delay={stagger(e.time) + i * 380} />)}
@@ -489,6 +489,11 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
             {e.place?.name && (
               <span class="note-music" title={e.place.name}>
                 <Icon name="map-pin" size={14} /> <span>{e.place.name}</span>
+              </span>
+            )}
+            {e.share && (
+              <span class="note-public" title={t('This note is public')}>
+                <Icon name="world" size={14} /> <span>{t('Public')}</span>
               </span>
             )}
           </div>

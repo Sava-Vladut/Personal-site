@@ -20,6 +20,8 @@ import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
 import { FormatBar } from '../components/FormatBar';
+import { ShareSheet } from '../components/ShareSheet';
+import { takeDown } from '../lib/share';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
@@ -32,7 +34,7 @@ import { SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 import { t } from '../lib/i18n';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share';
 /** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
 type Typed = { start: number; end: number; q: string; link?: boolean };
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
@@ -401,8 +403,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     await pending;
     try {
       const removed = saved.current || pending ? await deleteEntry(draft.id) : null;
+      takeDown(removed);
       if (alive.current) goBack();
-      if (removed) toast(removed.kind === 'checkin' ? t('Check-in deleted') : t('Note deleted'), { label: t('Undo'), run: () => saveEntry(removed) });
+      if (removed) toast(removed.kind === 'checkin' ? t('Check-in deleted') : t('Note deleted'), { label: t('Undo'), run: () => saveEntry({ ...removed, share: null }) });
     } catch {
       removing.current = false;
       dirty.current = true;
@@ -894,6 +897,17 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         >
           <Icon name={reading ? 'pencil' : 'book'} />
         </button>
+        {!isCheckin && (
+          <button
+            class={`glass glass-btn round${draft.share ? ' is-public' : ''}`}
+            onClick={() => setOpen('share')}
+            disabled={!draft.share && isEmpty(draft)}
+            aria-label={draft.share ? t('Public link') : t('Make public')}
+            title={draft.share ? t('This note is public') : t('Make public')}
+          >
+            <Icon name="world" />
+          </button>
+        )}
         <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? t('Delete check-in') : t('Delete note')}><Icon name="trash" /></button>
         <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>{t('Done')}</button>
       </div>
@@ -1075,6 +1089,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       </FormatBar>
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
+      {!isCheckin && <ShareSheet open={open === 'share'} onClose={close} entry={draft} onChange={(share) => update({ share })} />}
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />
       <NoteDetails open={details} onClose={() => setDetails(false)} draft={draft} update={update} uploadCover={uploadCover} uploadingCover={coverAdding} />
       <ImageSearchSheet

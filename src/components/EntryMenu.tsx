@@ -4,6 +4,7 @@ import { plainText } from '../lib/body';
 import { rangeLabel, timeLabel, dayLabel } from '../lib/dates';
 import { stripMarkdown } from '../lib/markdown';
 import { navigate } from '../lib/router';
+import { takeDown } from '../lib/share';
 import { deleteEntry, observable, saveEntry, toast, uid, type Entry } from '../lib/store';
 import { Icon, type UiName } from './icons';
 import { Sheet } from './Sheet';
@@ -88,7 +89,9 @@ function swallowLiftClick() {
 /** Deletes an entry, with a toast to bring it back. */
 export async function removeEntry(e: Entry) {
   const removed = await deleteEntry(e.id);
-  if (removed) toast(e.kind === 'note' ? t('Note deleted') : t('Check-in deleted'), { label: t('Undo'), run: () => saveEntry(removed) });
+  takeDown(removed);
+  // a note brought back by Undo is private again: its public copy is gone
+  if (removed) toast(e.kind === 'note' ? t('Note deleted') : t('Check-in deleted'), { label: t('Undo'), run: () => saveEntry({ ...removed, share: null }) });
 }
 
 /** Pins a note to the top of the journal, or lets it go back to its day. */
@@ -123,7 +126,7 @@ export function EntryMenu() {
 
   const duplicate = async () => {
     const now = Date.now();
-    const copy = await saveEntry({ ...entry, id: uid(), title: entry.title.trim() ? t('{title} (copy)', { title: entry.title.trim() }) : '', time: entry.time + 1, created: now, updated: now });
+    const copy = await saveEntry({ ...entry, share: null, id: uid(), title: entry.title.trim() ? t('{title} (copy)', { title: entry.title.trim() }) : '', time: entry.time + 1, created: now, updated: now });
     toast(t('Note duplicated'), { label: t('Open'), run: () => navigate('note/' + copy.id) });
   };
   const copyText = async () => {

@@ -140,3 +140,13 @@ test('open tabs can import a preceding build screen offline without using its sh
   assert.equal(await (await app.request('/', 'navigate')).text(), 'current shell');
   await assert.rejects(app.request('/icons/book.svg'), /Offline/);
 });
+
+test('a public note page never replaces the offline app shell', async () => {
+  const html = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
+  const token = 'a'.repeat(32);
+  const app = worker({ entries: { 'mm-app-dev': { '/': 'app shell' } }, fetch: async () => new Response('note page with a title', html) });
+  assert.equal(await (await app.request(`/s/${token}`, 'navigate')).text(), 'note page with a title');
+  assert.equal(await app.stores.get('mm-app-dev').get(new URL('/', origin).href).text(), 'app shell');
+  const offline = worker({ entries: { 'mm-app-dev': { '/': 'app shell' } }, fetch: async () => { throw new Error('Offline'); } });
+  assert.equal(await (await offline.request(`/s/${token}`, 'navigate')).text(), 'app shell');
+});

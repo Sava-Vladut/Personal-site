@@ -1,0 +1,51 @@
+/* ============================================================
+   Public notes: the sheet that shares a note, and the page
+   anyone with its link reads. See lib/share.ts.
+   ============================================================ */
+
+/* ---------- the sheet ---------- */
+
+.share-sheet { display: flex; flex-direction: column; gap: 14px; padding: 2px 2px 8px; }
+.share-lead { color: var(--ink-2); line-height: 1.5; }
+.share-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.share-facts li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.45; color: var(--ink-2); }
+.share-facts svg { flex: none; margin-top: 2px; color: var(--ink-3); }
+.share-main { width: 100%; height: 48px; justify-content: center; }
+.share-link { display: flex; gap: 8px; align-items: center; }
+.share-link .input { flex: 1; min-width: 0; font-size: 14px; }
+.share-link .btn { flex: none; gap: 6px; }
+.share-changed {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px;
+  background: var(--surface-2); font-size: 14.5px; line-height: 1.45; color: var(--ink-2);
+}
+.share-ok { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-3); }
+.share-stop { width: 100%; justify-content: center; }
+.share-error { color: var(--danger, #c0392b); font-size: 14px; line-height: 1.4; }
+.glass-btn.is-public { color: var(--ink); }
+.glass-btn.is-public svg { stroke-width: 2.2; }
+
+/* ---------- the public page ---------- */
+
+.route-shared { padding-bottom: calc(var(--safe-b) + 40px); }
+.shared { padding-top: calc(var(--safe-t) + 28px); }
+.shared-head { position: relative; isolation: isolate; overflow: hidden; margin-bottom: 18px; padding: 4px 2px 14px; border-bottom: 1px solid var(--line); }
+.shared-head.has-cover { padding: 18px 16px 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.shared-cover {
+  position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; opacity: 0.26; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 5%, #000 85%); mask-image: linear-gradient(90deg, transparent 5%, #000 85%);
+}
+.shared-title { font: 500 clamp(26px, 7.4vw, 34px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
+.shared-when { margin-top: 8px; font-size: 13.5px; color: var(--ink-3); }
+.shared-body { margin-top: 0; font: 400 17.5px/1.65 var(--serif); }
+.shared-media { margin-block: 12px; }
+.shared-media .media-pic { cursor: zoom-in; }
+.shared-media .media-pic img { pointer-events: auto; }
+.shared-credit { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+.shared-foot { margin-top: 44px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); text-align: center; clear: both; }
+
+/* ---------- Settings: the notes that are public ---------- */
+
+.public-row { align-items: flex-start; }
+.public-main { min-width: 0; flex: 1; }
+.public-title { font-weight: 500; overflow-wrap: anywhere; }
+.public-actions { display: flex; gap: 6px; flex: none; }

@@ -288,3 +288,6 @@
 .backlink-title { font: 550 16px/1.3 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .backlink-when { font-size: 12.5px; color: var(--ink-3); }
 .backlink-context { margin-top: 4px; font: 400 14px/1.45 var(--serif); color: var(--ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* the small globe on a public note's card in the journal */
+.note-public { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font-size: 12.5px; }

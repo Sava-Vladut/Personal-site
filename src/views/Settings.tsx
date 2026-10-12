@@ -3,9 +3,9 @@ import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } 
 import { connectGithub, disconnectGithub, forgetRepos, githubStatus, type GithubStatus } from '../lib/github';
 import { goBack, navigate } from '../lib/router';
 import { exportText } from '../lib/exportText';
-import { deleteAll, exportJSON, getSettings, importJSON, setSettings, toast, useBooks, useEntries, usePeople, useRepos, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
+import { deleteAll, exportJSON, getSettings, importJSON, saveEntry, setSettings, toast, useBooks, useEntries, usePeople, useRepos, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
-import { shortDate, todayKey } from '../lib/dates';
+import { rangeLabel, shortDate, todayKey } from '../lib/dates';
 import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
@@ -15,6 +15,8 @@ import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
 import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18n';
 import { signOut, signedInHere } from '../lib/auth';
+import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
+import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
 let installEvent: (Event & { prompt: () => Promise<void> }) | null = null;
@@ -116,6 +118,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
       ? t('Delete all {what} from this device and every device synced with it? This can’t be undone — export a backup first if you might want them.', { what })
       : t('Delete all {what} from this device? This can’t be undone — export a backup first if you might want them.', { what });
     if (!confirm(question)) return;
+    entries.forEach(takeDown); // a public note's page goes with it
     await deleteAll();
     forgetFix();
     toast(t('All entries deleted'));
@@ -270,6 +273,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
           <button class="list-row action" onClick={() => navigate('intro')}><span class="row gap-s"><Icon name="brain" size={18} /> {t('See the intro')}</span><Icon name="chevron-right" size={18} /></button>
         </div>
       </section>
+
+      <PublicNotes />
 
       <section class="section">
         <h2 class="section-title">{t('Weather & places')}</h2>
@@ -515,5 +520,61 @@ function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void 
         </section>
       ))}
     </Sheet>
+  );
+}
+
+/** Every note that's public right now, from the server, so any of them can be switched off even if the note itself is gone. */
+function PublicNotes() {
+  const entries = useEntries();
+  const [items, setItems] = useState<SharedItem[] | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    listShared().then((list) => setItems(list), (e) => setError((e as Error).message));
+  }, []);
+
+  const stop = async (n: SharedItem) => {
+    if (!confirm(t('Stop sharing “{title}”? Its link will stop working for everyone.', { title: n.title || t('Untitled') }))) return;
+    try {
+      await unpublish(n.token);
+    } catch (e) {
+      return toast((e as Error).message);
+    }
+    for (const e of entries.filter((x) => x.share?.token === n.token)) await saveEntry({ ...e, share: null });
+    setItems((list) => list && list.filter((x) => x.token !== n.token));
+    toast(t('Not public anymore'));
+  };
+  const copyLink = (n: SharedItem) => copy(shareUrl(n.token));
+
+  return (
+    <section class="section">
+      <h2 class="section-title">{t('Public notes')}</h2>
+      <div class="card list">
+        {error ? (
+          <div class="list-row"><div class="muted small">{error}</div></div>
+        ) : !items ? (
+          <div class="list-row"><div class="muted small">{t('Loading…')}</div></div>
+        ) : !items.length ? (
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="world" size={18} /> {t('No note is public')}</div>
+              <div class="muted small">{t('Open a note and tap the globe to share just that one with a link.')}</div>
+            </div>
+          </div>
+        ) : (
+          items.map((n) => (
+            <div class="list-row public-row" key={n.token}>
+              <div class="public-main">
+                <div class="public-title">{n.title || n.excerpt || t('Untitled')}</div>
+                <div class="muted small">{rangeLabel(n.date, n.dateEnd)}</div>
+              </div>
+              <div class="public-actions">
+                <button class="btn btn-quiet btn-s" onClick={() => copyLink(n)}><Icon name="copy" size={15} /> {t('Copy link')}</button>
+                <button class="btn btn-quiet btn-s" onClick={() => stop(n)}>{t('Stop')}</button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
   );
 }

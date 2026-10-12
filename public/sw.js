@@ -68,6 +68,8 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (url.pathname.startsWith('/api/')) return;
+    // A public note's page carries that note's title in its head: never keep it as the app's own offline page.
+    if (req.mode === 'navigate' && url.pathname.startsWith('/s/')) return e.respondWith(fetch(req).catch(async () => (await cached('/', APP)) || Response.error()));
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/'));
     if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) {
       const fingerprinted = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/.test(url.pathname);

@@ -13,13 +13,15 @@ async function load(file, mocks = {}, globals = {}) {
   }
   const module = { exports: {} };
   // Supply lazy screen modules through the same boundary mocks as static imports.
-  const code = file === 'src/lib/views.ts'
+  const code = file === 'src/lib/views.ts' || file === 'src/main.tsx'
     ? compiled.get(file).replace(/\bimport\((['"])([^'"]+)\1\)/g, 'Promise.resolve().then(() => require("$2"))')
     : compiled.get(file);
   vm.runInNewContext(code, {
     module, exports: module.exports, require: (id) => mocks[id] ?? (id.endsWith('/i18n') ? i18n : {}),
     console, Blob, URL, URLSearchParams, atob, Uint8Array, Event, AbortController, setTimeout, clearTimeout,
     ...globals,
+    // the start-up code reads the page's address to tell a public note's link from the app
+    ...(file === 'src/main.tsx' ? { location: { pathname: '/', ...globals.location } } : {}),
   });
   return module.exports;
 }
@@ -1064,4 +1066,28 @@ const x = 1;
   // a private repo's own pictures can't be fetched without its token, so only their text is left
   const secret = show('![diagram](docs/a.png) and ![logo](https://example.com/l.png) and ![plain](http://example.com/l.png)', { repo: 'octo/hello', branch: 'main', private: true });
   assert.deepEqual(tags(secret, 'img').map((i) => i.props.src), ['https://example.com/l.png'], 'https pictures from elsewhere stay; http and relative ones are dropped');
+});
+
+test('a public note’s link opens just that note: no sign-in check, no journal storage', async () => {
+  const rendered = [];
+  const touched = [];
+  const token = 'Ab_-'.repeat(8);
+  function Shared() {}
+  await load('src/main.tsx', {
+    preact: { render: (tree) => rendered.push(tree) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    './app': { App() {} }, './lib/db': { onBlocked() {} },
+    './lib/weather': { startWeather: () => touched.push('weather') }, './lib/sync': { initSync: () => touched.push('sync') },
+    './lib/store': { applyTheme() {}, init: async () => touched.push('init') },
+    './lib/auth': { signedInHere: () => touched.push('signedInHere'), authStatus: async () => touched.push('authStatus'), opensOn: () => 'intro' },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView: () => touched.push('views') },
+    './views/Shared': { Shared },
+  }, {
+    navigator: {}, addEventListener() {}, location: { pathname: `/s/${token}` },
+    document: { getElementById: () => ({}), querySelector: () => null },
+  });
+  await settle(); await settle();
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].type, Shared);
+  assert.equal(rendered[0].props.token, token);
+  assert.deepEqual(touched, []);
 });

@@ -9,6 +9,8 @@
 //    was revoked or lost when signing in elsewhere picks up the newest one instead of dropping the connection.
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
+//  • public notes: a note you choose to share is copied to data/shared/ and read by anyone with its /s/<token> link
+//    (server/share.js). Only the admin (ADMIN_PASSWORD) can publish, update or stop sharing one.
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 import http from 'node:http';
@@ -20,6 +22,7 @@ import { createAccountStore } from './accounts.js';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
 import { json } from './http-response.js';
+import { createShareHandler } from './share.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createTwitchHandler } from './twitch.js';
@@ -33,6 +36,7 @@ const APP_URL = (process.env.APP_URL || PUBLIC_URL).replace(/\/+$/, ''); // wher
 const SECURE = PUBLIC_URL.startsWith('https://');
 const DIST = join(ROOT, 'dist');
 const SYNC_DIR = join(ROOT, 'data', 'sync');
+const SHARE_DIR = process.env.SHARE_DIR || join(ROOT, 'data', 'shared');
 // the miner's analytics folder (the one holding a folder per account)
 const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 // the miner's settings/channels.json, the channels it watches (writable)
@@ -770,6 +774,7 @@ async function admin(req, res) {
 /* ---------------- sync ---------------- */
 
 const sync = createSyncHandler({ directory: SYNC_DIR });
+const share = createShareHandler({ directory: SHARE_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
 
 async function api(req, res, url) {
@@ -783,6 +788,7 @@ async function api(req, res, url) {
     if (p.startsWith('/api/github/')) return await github(req, res, url, p, setCookies, out);
     if (p.startsWith('/api/sync/')) return await sync(req, res, p);
     if (p === '/api/admin') return await admin(req, res);
+    if (p === '/api/share' || p.startsWith('/api/share/')) return await share.api(req, res, p);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
     throw new HttpError(404, 'Not found');
   } finally {
@@ -808,6 +814,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.pathname.startsWith('/api/')) return await api(req, res, url);
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
+      if (url.pathname.startsWith('/s/')) return await share.page(req, res, url.pathname);
       return await serveStatic(req, res, url.pathname);
     } catch (e) {
       if (req.aborted || res.destroyed) return;

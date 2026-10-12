@@ -50,6 +50,9 @@ export interface Weather {
   dark?: boolean;           // whether it was dark out at the time, when that's known
 }
 
+/** A note that's been made public: the secret part of its link, and a fingerprint of what the public copy holds. */
+export interface Share { token: string; hash: string }
+
 export interface Entry {
   id: string;
   kind: 'note' | 'checkin';
@@ -67,6 +70,7 @@ export interface Entry {
   people: string[];         // ids of the people it's about or who were there
   cover: Cover | null;
   pinned: boolean;          // kept at the top of the journal
+  share: Share | null;      // set while the note is public: its link and what was published (see share.ts)
   place: Place | null;
   weather: Weather | null;
   created: number;
@@ -198,7 +202,7 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   const now = Date.now();
   return {
     id: uid(), kind, title: '', icon: null, text: '', emotions: [], intensity: 3,
-    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, place: null, weather: null,
+    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, share: null, place: null, weather: null,
     created: now, updated: now,
   };
 }
@@ -534,6 +538,12 @@ function normalizeMusic(m: any): Music | null {
   };
 }
 
+function normalizeShare(raw: any): Share | null {
+  return raw && typeof raw.token === 'string' && /^[A-Za-z0-9_-]{32}$/.test(raw.token) && typeof raw.hash === 'string' && raw.hash.length <= 40
+    ? { token: raw.token, hash: raw.hash }
+    : null;
+}
+
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
   if (!raw || typeof raw !== 'object' || !isDateKey(raw.date)) return null;
@@ -561,6 +571,7 @@ function normalize(raw: any): Entry | null {
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
     cover: coverPic && (coverCrop ? { ...coverPic, crop: coverCrop } : coverPic),
     pinned: raw.kind !== 'checkin' && raw.pinned === true,
+    share: raw.kind !== 'checkin' ? normalizeShare(raw.share) : null,
     place: normalizePlace(raw.place),
     weather: normalizeWeather(raw.weather),
     created,

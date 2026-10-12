@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.70.0',
+    date: '2026-10-12',
+    changes: [
+      'Share a single note with the world: tap the globe at the top of a note to get a link anyone can open without signing in',
+      'Each note is its own choice. Nothing is public until you turn it on for that note, and only you, signed in, can do it',
+      'Only the title, text, pictures and day are shared. Feelings, people, place, weather and music stay private',
+      'The link can’t be guessed and the page is hidden from search engines. “Stop sharing” takes the page down at once',
+      'If you edit a public note, the sheet says so and “Update public copy” brings the page up to date',
+      'Public notes show a small “Public” mark in the journal, and Settings lists every public note so you can copy or stop any of them',
+      'Deleting a public note, or all entries, takes its public page down too',
+    ],
+  },
+  {
     version: '1.69.0',
     date: '2026-10-12',
     changes: [
