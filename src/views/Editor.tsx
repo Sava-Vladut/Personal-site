@@ -5,7 +5,7 @@ import { goBack, navigate } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { editable, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
-import { listKey, toggleTask } from '../lib/markdown';
+import { deleteKey, listKey, toggleTask, toggleTaskAt } from '../lib/markdown';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { linkedFrom, linkOf, linkRanges, noteLabel, suggestLinks, typedLink, type LinkSuggestion } from '../lib/links';
@@ -92,6 +92,7 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
     const el = ref.current;
     if (!el || document.activeElement !== el) return;
     const box = editable(el);
+    if (!composing.current) box.settle();
     const start = box.selectionStart;
     handlers.current.onCaret(start);
     handlers.current.onMention(!composing.current && getSelection()?.isCollapsed !== false && start === box.selectionEnd ? typedMention(box.value, start) ?? typedLink(box.value, start) : null);
@@ -121,6 +122,7 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
   const caret = (e: Event) => {
     const el = e.currentTarget as HTMLDivElement;
     if (e.type === 'blur') {
+      editable(el).settle();
       onMention(null);
       cancelAnimationFrame(frame.current);
     }
@@ -130,6 +132,15 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       readCaret();
       queueCaret();
     }
+  };
+  const pressed = useRef<HTMLElement | null>(null); // a task's box, while a finger is on it
+  const taskAt = (e: Event) => (e.target as Element | null)?.closest?.('.md-task-mark') as HTMLElement | null;
+  const tick = (e: Event) => {
+    const mark = taskAt(e);
+    const el = ref.current;
+    if (!mark || !el) return;
+    const box = editable(el);
+    toggleTaskAt(box, box.offsetOf(mark), document.activeElement === el);
   };
   return (
     <div
@@ -160,8 +171,14 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
         caret(e);
       }}
       onBeforeInput={(e) => {
+        if (composing.current || e.isComposing) return;
+        // Backspace and Delete act on what shows, not on the hidden markers
+        if ((e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') && deleteKey(editable(e.currentTarget), e.inputType === 'deleteContentBackward')) {
+          e.preventDefault();
+          return;
+        }
         // browsers without plain-text editing: no bold, lists or pasted formatting, and Enter makes a line break
-        if (PLAIN || composing.current || e.isComposing) return;
+        if (PLAIN) return;
         if (e.inputType.startsWith('format')) e.preventDefault();
         else if (e.inputType === 'insertParagraph') {
           e.preventDefault();
@@ -176,6 +193,17 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       onKeyDown={(e) => !composing.current && !e.isComposing && e.keyCode !== 229 && (onKey(e) || listKey(editable(e.currentTarget), e)) && e.preventDefault()}
       onKeyUp={(e) => !['Enter', 'Tab', 'Escape'].includes(e.key) && caret(e)}
       onPointerUp={caret}
+      // a task's box ticks it, without moving the caret or bringing the keyboard up
+      onMouseDown={(e) => taskAt(e) && e.preventDefault()}
+      onTouchStart={(e) => {
+        pressed.current = taskAt(e);
+        if (pressed.current) e.preventDefault();
+      }}
+      onTouchEnd={(e) => {
+        if (pressed.current && pressed.current === taskAt(e)) tick(e);
+        pressed.current = null;
+      }}
+      onClick={(e) => taskAt(e) && tick(e)}
       onFocus={caret}
       onBlur={caret}
     />
@@ -550,21 +578,27 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const ox = e.clientX - r.left, oy = e.clientY - r.top;
     Object.assign(ghost.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', transformOrigin: `${ox}px ${oy}px` });
     document.body.append(ghost);
+    // it lifts off the page, shrinking smoothly about the finger, then follows it without delay
+    requestAnimationFrame(() => (ghost.style.scale = String(scale)));
 
     let target: DropTarget | null = null;
     let side: Side = 'center';
     let onto: string | null = null;
     let x = e.clientX, y = e.clientY;
     let frame = 0;
+    let picked = false;
     const pick = () => {
       const col = bodyEl.getBoundingClientRect();
       const at = y + scrollY;
-      target = targets.reduce((a, b) => (Math.abs(b.y - at) < Math.abs(a.y - at) ? b : a));
-      side = sideAt(x, col);
+      // the nearest place to land; the one it's at holds on until another is clearly nearer
+      const near = targets.reduce((a, b) => (Math.abs(b.y - at) < Math.abs(a.y - at) ? b : a));
+      if (!target || Math.abs(near.y - at) + 14 < Math.abs(target.y - at)) target = near;
+      side = sideAt(x, col, picked ? side : undefined);
+      picked = true;
       // over another picture of this note (the copy under the finger lets touches through)
       const over = document.elementFromPoint(x, y)?.closest<HTMLElement>('.media');
       onto = over && over.parentElement === bodyEl && over.dataset.key !== key ? over.dataset.key! : null;
-      ghost.style.transform = `translate(${x - e.clientX}px, ${y - e.clientY}px) scale(${scale})`;
+      ghost.style.translate = `${x - e.clientX}px ${y - e.clientY}px`;
       ghost.classList.toggle('is-merging', !!onto);
       setMoving({ key, y: target.y - (col.top + scrollY), side, layout: dropLayout(m, side), ratio, onto });
     };
@@ -592,8 +626,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       removeEventListener('pointercancel', cancel);
       removeEventListener('keydown', esc, true);
       document.documentElement.classList.remove('is-moving');
+      const from = ghost.getBoundingClientRect();
       ghost.remove();
       setMoving(null);
+      settle(key, from);
       const now = latest.current;
       if (!drop || !target || !now) return;
       const b = bodyOf(now);
@@ -631,6 +667,21 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     setSel(key);
     pick();
     frame = requestAnimationFrame(tick);
+  };
+
+  /** Glides a dropped picture from where it was let go (`from`, on screen) into its place in the note. */
+  const settle = (key: string, from: DOMRect) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = bodyRef.current?.querySelector<HTMLElement>(`:scope > .media[data-key="${CSS.escape(key)}"]`);
+      if (!el || !el.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const to = el.getBoundingClientRect();
+      if (!to.width || !to.height) return;
+      const dx = from.left - to.left, dy = from.top - to.top;
+      el.animate(
+        [{ transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px) scale(${from.width / to.width}, ${from.height / to.height})` }, { transformOrigin: '0 0', transform: 'none' }],
+        { duration: 340, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+      );
+    }));
   };
 
   /** Opens the note's pictures full screen — every picture, albums opened out — at picture `k` of picture or album `i`. */
@@ -1045,6 +1096,16 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, l)) })}
             onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), selIndex, dir))}
             onOpen={() => view(selIndex)}
+            onWrite={() => {
+              // beside a picture on a side; a picture on its own line moves to the left first, half as wide
+              const m = body.media[selIndex];
+              if ((m.size ?? 100) >= 100 || !m.align) update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, dropLayout(m, 'left'))) });
+              setSel(null);
+              const el = areas.current[selIndex + 1];
+              if (!el) return;
+              el.focus({ preventScroll: true });
+              editable(el).setSelectionRange(0, 0);
+            }}
             onRemove={() => removePicture(body.media[selIndex])}
             onUngroup={() => {
               const b = ungroup(bodyOf(latest.current!), selIndex);

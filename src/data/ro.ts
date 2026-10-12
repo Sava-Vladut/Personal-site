@@ -643,6 +643,12 @@ export const RO: Record<string, string> = {
   'Formatting': 'Formatare',
   'Add to the note': 'Adaugă în notiță',
   'Hide formatting': 'Ascunde formatarea',
+  'Checklist': 'Listă de bifat',
+  'Move out': 'Mută spre stânga',
+  'Move in': 'Mută spre dreapta',
+  'Hide keyboard': 'Ascunde tastatura',
+  'Size': 'Mărime',
+  'Write next to it': 'Scrie lângă ea',
   'Language': 'Limba',
 
   // ── Theme song, home, weather ──

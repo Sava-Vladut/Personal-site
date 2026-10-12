@@ -2,6 +2,7 @@
 // # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers and #tags.
 // This file has the editing side: formatting commands for the text boxes, and the plain words for excerpts.
 // Reading it back is components/Markdown.tsx.
+import { hiddenRanges } from './liveMarkdown';
 
 /* ---------- block prefixes ---------- */
 
@@ -172,7 +173,13 @@ export function listKey(el: TextBox, e: KeyboardEvent) {
     indentLines(el, e.shiftKey);
     return true;
   }
-  if (e.key !== 'Enter' || e.shiftKey || s !== el.selectionEnd || !kind || kind[0] === 'h' || s < ls + m[0].length) return false;
+  if (e.key !== 'Enter' || e.shiftKey || s !== el.selectionEnd || !kind || s < ls + m[0].length) return false;
+  // Enter before an item's (or a heading's) first word opens a plain line above it, and the line stays what it is.
+  if (s === ls + m[0].length && line.slice(m[0].length).trim()) {
+    replace(el, ls, ls, '\n', s + 1);
+    return true;
+  }
+  if (kind[0] === 'h') return false;
   if (!line.slice(m[0].length).trim()) {
     // an empty item: step out a level, or end the list
     if (m[1] && inList) indentLines(el, true);
@@ -184,6 +191,82 @@ export function listKey(el: TextBox, e: KeyboardEvent) {
   if (kind === 'ol') marker = marker.replace(/\d+/, (d) => String(+d + 1));
   replace(el, s, s, '\n' + m[1] + marker);
   return true;
+}
+
+/** The character at `i`, two code units long when it's an emoji or another character from beyond the first plane. */
+const charAt = (v: string, i: number, back: boolean) =>
+  back ? (i >= 2 && /[\uDC00-\uDFFF]/.test(v[i - 1]) && /[\uD800-\uDBFF]/.test(v[i - 2]) ? [i - 2, i] : [i - 1, i])
+    : /[\uD800-\uDBFF]/.test(v[i]) && /[\uDC00-\uDFFF]/.test(v[i + 1] ?? '') ? [i, i + 2] : [i, i + 1];
+
+/** Takes out [a, b), and the markers around it as well when that leaves them with nothing between. */
+function cutOut(el: TextBox, v: string, a: number, b: number) {
+  for (const mark of ['**', '~~', '==', '*', '`']) {
+    const n = mark.length;
+    if (v.slice(a - n, a) === mark && v.slice(b, b + n) === mark && (mark !== '*' || (v[a - n - 1] !== '*' && v[b + n] !== '*')))
+      return replace(el, a - n, b + n, '');
+  }
+  replace(el, a, b, '');
+}
+
+/**
+ * Backspace and Delete next to the markers that are hidden while writing (lib/liveMarkdown.ts), so they act on what
+ * shows. At the start of a heading, list item or quote, Backspace turns it back into plain text (a nested item steps
+ * out a level first); beside a hidden ** or ~~ they take out the letter next to it, not the marker. Returns true when
+ * it handled the key.
+ */
+export function deleteKey(el: TextBox, back: boolean) {
+  const v = el.value;
+  const s = el.selectionStart;
+  if (s !== el.selectionEnd) return false;
+  const ranges = hiddenRanges(v);
+  const ls = lineStart(v, s);
+  const m = v.slice(ls, lineEnd(v, s)).match(PREFIX)!;
+  if (back) {
+    const head = !!m[2] && ranges.some(([a, b]) => b === s && a === ls + m[1].length);
+    if ((m[2] && s === ls + m[0].length) || head) {
+      const kind = kindOf(m[2]);
+      if (m[1] && (kind === 'ul' || kind === 'ol' || kind === 'task')) indentLines(el, true);
+      else {
+        // a callout's [!note] goes with its quote marker
+        const callout = kind === 'quote' ? v.slice(ls + m[0].length).match(/^\[![\w-]+\][+-]?[ \t]*/)?.[0] ?? '' : '';
+        replace(el, ls, ls + m[0].length + callout.length, '');
+      }
+      return true;
+    }
+    // past the hidden markers right before the caret, to the letter that shows
+    let q = s;
+    for (let r = ranges.find(([a, b]) => b === q && a < q); r; r = ranges.find(([a, b]) => b === q && a < q)) q = r[0];
+    if (q === s) return false;
+    if (q > 0) {
+      const [a, b] = charAt(v, q, true);
+      cutOut(el, v, a, b);
+    }
+    return true;
+  }
+  let q = s;
+  for (let r = ranges.find(([a, b]) => a === q && b > q); r; r = ranges.find(([a, b]) => a === q && b > q)) q = r[1];
+  if (v[q] === '\n') {
+    // joining the next line on: its own marker goes with the line break
+    const r = ranges.find(([a]) => a === q + 1);
+    if (r) return replace(el, q, r[1], ''), true;
+  }
+  if (q === s) return false;
+  if (q < v.length) {
+    const [a, b] = charAt(v, q, false);
+    cutOut(el, v, a, b);
+  }
+  return true;
+}
+
+/** Ticks or unticks the task at character `at` of a text box (its hidden marker), leaving the caret where it was. */
+export function toggleTaskAt(el: TextBox, at: number, focused: boolean) {
+  const v = el.value;
+  const i = v.indexOf('[', at);
+  if (i < 0 || v[i + 2] !== ']' || !/[ xX]/.test(v[i + 1])) return;
+  const c = v[i + 1] === ' ' ? 'x' : ' ';
+  if (focused) return replace(el, i + 1, i + 2, c, el.selectionStart, el.selectionEnd);
+  el.setRangeText(c, i + 1, i + 2);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 /* ---------- reading ---------- */

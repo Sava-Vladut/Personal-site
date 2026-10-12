@@ -219,7 +219,7 @@ test('Markdown is styled while writing without changing the text or the caret', 
   const kinds = [];
   const visit = (node) => { if (node.className) kinds.push(node.className); node.childNodes.forEach(visit); };
   visit(root);
-  for (const c of ['md-h md-h1', 'md-b', 'md-i', 'md-hl', 'md-li-mark md-task-mark', 'md-done', 'md-quote', 'md-mark md-callout-mark']) assert.ok(kinds.includes(c), c);
+  for (const c of ['md-h md-h1', 'md-b', 'md-i', 'md-hl', 'md-li-mark md-task-mark is-done', 'md-done', 'md-quote', 'md-mark md-callout-mark']) assert.ok(kinds.includes(c), c);
   // tags stay plain text, for their own highlight
   assert.ok(!kinds.some((c) => c.includes('link')));
   const at = source.indexOf('bold') + 2;

@@ -525,7 +525,7 @@ function mockEditable(value) {
   const el = {};
   return {
     el, value, selectionStart: value.length, selectionEnd: value.length,
-    focus() {}, tidy() {},
+    focus() {}, tidy() {}, settle() {},
     setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
     setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); },
     range() { return { getBoundingClientRect: () => ({ width: 0 }) }; },

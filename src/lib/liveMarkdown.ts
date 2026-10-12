@@ -1,6 +1,7 @@
 // The note's Markdown, styled while it's written: the text stays exactly as typed (every * and # is still there, so
-// the caret and the commands work as before), but bold reads bold, headings are big, quotes have their bar and the
-// markers fade back. lib/editable.ts lays these pieces out as spans in the editable blocks.
+// the caret and the commands work as before), but bold reads bold, headings are big, quotes have their bar, and the
+// markers themselves are tucked away: bullets and tasks show a dot or a box in their place, the rest don't show at
+// all. lib/editable.ts lays these pieces out as spans in the editable blocks and keeps the caret out of the hidden ones.
 
 /** A run of text, or a styled span (class `c`) around more of them. */
 export type Deco = string | { c: string; k: Deco[] };
@@ -10,7 +11,7 @@ const FENCE = /^\s*(```|~~~)/;
 const HEAD = /^(#{1,6}[ \t]+)(.*)$/;
 const ITEM = /^([ \t]*)([-*+][ \t]+\[([ xX])\][ \t]+|[-*+][ \t]+|\d{1,9}[.)][ \t]+)(.*)$/;
 const QUOTE = /^([ \t]*>[ \t]?)(.*)$/;
-const CALLOUT = /^(\[![\w-]+\][+-]?)(.*)$/;
+const CALLOUT = /^(\[![\w-]+\][+-]?[ \t]*)(.*)$/;
 
 // The same inline syntax the reading view shows (components/Markdown.tsx). Tags and book links stay plain text here:
 // they glow in their own colours instead.
@@ -69,8 +70,10 @@ function line(l: string, fence: { open: string | null }): Deco[] {
   if ((m = l.match(HEAD))) return [span(`md-h md-h${Math.min(3, m[1].trim().length)}`, mark(m[1]), ...inline(m[2]))];
   if ((m = l.match(ITEM))) {
     const task = m[3] !== undefined;
+    const done = /[xX]/.test(m[3] ?? '');
     const rest = inline(m[4]);
-    return [m[1], span(task ? 'md-li-mark md-task-mark' : 'md-li-mark', m[2]), ...(/[xX]/.test(m[3] ?? '') ? [span('md-done', ...rest)] : rest)];
+    const c = task ? 'md-li-mark md-task-mark' + (done ? ' is-done' : '') : /^\d/.test(m[2]) ? 'md-li-mark md-num' : 'md-li-mark md-bullet';
+    return [m[1], span(c, m[2]), ...(done ? [span('md-done', ...rest)] : rest)];
   }
   if ((m = l.match(QUOTE))) {
     const c = m[2].match(CALLOUT);
@@ -92,6 +95,29 @@ function tidy(list: Deco[]): Deco[] {
       if (k.length) out.push({ c: d.c, k });
     }
   }
+  return out;
+}
+
+/** The pieces of a styled text that don't show while writing: its Markdown markers (bullets and tasks draw their own). */
+const HIDDEN = /(^| )(md-mark|md-bullet|md-task-mark)( |$)/;
+
+/** Where a text's hidden markers are, as [start, end) ranges, with neighbouring ones joined. */
+export function hiddenRanges(text: string) {
+  const out: [number, number][] = [];
+  let at = 0;
+  const walk = (list: Deco[], hidden: boolean) => {
+    for (const d of list) {
+      if (typeof d === 'string') {
+        if (hidden && d) {
+          const last = out[out.length - 1];
+          if (last && last[1] === at) last[1] += d.length;
+          else out.push([at, at + d.length]);
+        }
+        at += d.length;
+      } else walk(d.k, hidden || HIDDEN.test(d.c));
+    }
+  };
+  walk(decorate(text), false);
   return out;
 }
 

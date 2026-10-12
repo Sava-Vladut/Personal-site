@@ -7,17 +7,10 @@ import { Icon } from './icons';
 import { PhotoImg } from './Photo';
 import { t } from '../lib/i18n';
 
-const SIZES = [100, 75, 50, 33];
-/** The next preset down from `size`, back to full width after the smallest. */
-const nextSize = (size: number) => SIZES.find((s) => s < size - 1) ?? 100;
-
 export type Side = 'left' | 'center' | 'right';
 
-/** A size in % of the column, from a width in px. Close to full width snaps to it. */
-function pctOf(w: number, col: number) {
-  const p = Math.round(Math.min(100, Math.max(MIN_SIZE, (w / col) * 100)));
-  return p >= 96 ? 100 : p;
-}
+/** A size in % of the column, from a width in px: any size in between, no steps. */
+const pctOf = (w: number, col: number) => Math.round(Math.min(100, Math.max(MIN_SIZE, (w / col) * 100)));
 
 const itemRatio = (it: Item, draft: Entry) => {
   if (it.kind === 'photo') {
@@ -171,7 +164,7 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
           if (gesture.current !== cur || cur.kind !== 'press' || cur.pts.size !== 1) return;
           navigator.vibrate?.(10);
           pickUp(cur.last);
-        }, 420);
+        }, 300);
     }
     g.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     // Two fingers on the selected picture resize it.
@@ -268,7 +261,7 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
 }
 
 /** The toolbar for the selected picture, in place of the formatting buttons. */
-export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup }: {
+export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup, onWrite }: {
   m: Media;
   canUp: boolean;
   canDown: boolean;
@@ -277,44 +270,83 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
   onStep: (dir: -1 | 1) => void;
   onOpen: () => void;
   onRemove: () => void;
+  onWrite: () => void;
 }) {
   const size = m.size ?? 100;
   const align = size < 100 ? m.align : undefined;
   const side = (s: Side) => onLayout(s === 'center' ? { size } : dropLayout(m, s));
+  const [live, setLive] = useState<number | null>(null); // the size while the slider moves
+  const shown = live ?? size;
+  // The slider resizes the picture as it moves (straight on the page, without a round trip through the note),
+  // and the note keeps the size it's let go at.
+  const pic = () => document.querySelector<HTMLElement>(`.note-body > .media[data-key="${CSS.escape(mediaKey(m))}"]`);
+  const slide = (v: number) => {
+    setLive(v);
+    const el = pic();
+    if (el) {
+      el.classList.add('is-resizing');
+      el.style.width = v + '%';
+    }
+  };
+  const commit = (v: number) => {
+    setLive(null);
+    pic()?.classList.remove('is-resizing');
+    if (v !== size) onLayout({ size: v, align: m.align });
+  };
   return (
     <>
-      <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label={t('Left, text wraps around it')} title={t('Left, text wraps around it')}>
-        <Icon name="float-left" size={19} />
-      </button>
-      <button class="format-btn" onClick={() => side('center')} aria-pressed={!align} aria-label={t('Centre, on its own line')} title={t('Centre, on its own line')}>
-        <Icon name="float-center" size={19} />
-      </button>
-      <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label={t('Right, text wraps around it')} title={t('Right, text wraps around it')}>
-        <Icon name="float-right" size={19} />
-      </button>
-      <span class="format-sep" />
-      <button class="format-btn media-size" onClick={() => onLayout({ size: nextSize(size), align: m.align })} aria-label={t('Size: {size}. Change size', { size: size === 100 ? t('full width') : size + '%' })} title={t('Change size')}>
-        {size === 100 ? t('Full') : size + '%'}
-      </button>
-      <span class="format-sep" />
-      <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label={t('Move up')} title={t('Move up')}>
-        <Icon name="arrow-up" size={19} />
-      </button>
-      <button class="format-btn" onClick={() => onStep(1)} disabled={!canDown} aria-label={t('Move down')} title={t('Move down')}>
-        <Icon name="arrow-down" size={19} />
-      </button>
-      <span class="format-sep" />
-      {m.kind === 'album' && (
-        <button class="format-btn" onClick={onUngroup} aria-label={t('Ungroup the album')} title={t('Ungroup the album')}>
-          <Icon name="layout-grid-remove" size={19} />
+      <div class="format-group">
+        <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label={t('Left, text wraps around it')} title={t('Left, text wraps around it')}>
+          <Icon name="float-left" size={19} />
         </button>
-      )}
-      <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
-        <Icon name="maximize" size={19} />
-      </button>
-      <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? t('Remove the album') : t('Remove')} title={m.kind === 'album' ? t('Remove the album') : t('Remove')}>
-        <Icon name="trash" size={19} />
-      </button>
+        <button class="format-btn" onClick={() => side('center')} aria-pressed={!align} aria-label={t('Centre, on its own line')} title={t('Centre, on its own line')}>
+          <Icon name="float-center" size={19} />
+        </button>
+        <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label={t('Right, text wraps around it')} title={t('Right, text wraps around it')}>
+          <Icon name="float-right" size={19} />
+        </button>
+      </div>
+      <label class="format-group media-size" title={t('Size')}>
+        <input
+          type="range"
+          min={MIN_SIZE}
+          max={100}
+          step={1}
+          value={shown}
+          aria-label={t('Size')}
+          aria-valuetext={shown === 100 ? t('Full width') : shown + '%'}
+          style={{ '--v': ((shown - MIN_SIZE) / (100 - MIN_SIZE)) * 100 + '%' }}
+          onInput={(e) => slide(+e.currentTarget.value)}
+          onChange={(e) => commit(+e.currentTarget.value)}
+        />
+        <span class="media-size-value" aria-hidden="true">{shown === 100 ? t('Full') : shown + '%'}</span>
+      </label>
+      <div class="format-group">
+        <button class="format-btn" onClick={onWrite} aria-label={t('Write next to it')} title={t('Write next to it')}>
+          <Icon name="cursor-text" size={19} />
+        </button>
+        <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
+          <Icon name="maximize" size={19} />
+        </button>
+      </div>
+      <div class="format-group">
+        <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label={t('Move up')} title={t('Move up')}>
+          <Icon name="arrow-up" size={19} />
+        </button>
+        <button class="format-btn" onClick={() => onStep(1)} disabled={!canDown} aria-label={t('Move down')} title={t('Move down')}>
+          <Icon name="arrow-down" size={19} />
+        </button>
+      </div>
+      <div class="format-group">
+        {m.kind === 'album' && (
+          <button class="format-btn" onClick={onUngroup} aria-label={t('Ungroup the album')} title={t('Ungroup the album')}>
+            <Icon name="layout-grid-remove" size={19} />
+          </button>
+        )}
+        <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? t('Remove the album') : t('Remove')} title={m.kind === 'album' ? t('Remove the album') : t('Remove')}>
+          <Icon name="trash" size={19} />
+        </button>
+      </div>
     </>
   );
 }
@@ -352,8 +384,14 @@ export function dropTargets(areas: (HTMLElement | null)[]): DropTarget[] {
   return out;
 }
 
-/** Which side of the column a point is over: its left or right third, or the middle. */
-export function sideAt(x: number, col: DOMRect): Side {
+/**
+ * Which side of the column a point is over: its left or right third, or the middle. Given the side it was over, it
+ * stays there until the point is well into another, so a picture held near a border doesn't flicker between them.
+ */
+export function sideAt(x: number, col: DOMRect, was?: Side): Side {
   const f = (x - col.left) / col.width;
-  return f < 0.34 ? 'left' : f > 0.66 ? 'right' : 'center';
+  const give = 0.06;
+  const left = 0.34 + (was === 'left' ? give : was ? -give : 0);
+  const right = 0.66 - (was === 'right' ? give : was ? -give : 0);
+  return f < left ? 'left' : f > right ? 'right' : 'center';
 }

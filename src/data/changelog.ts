@@ -11,6 +11,23 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.71.0',
+    date: '2026-10-12',
+    changes: [
+      'Writing a note is seamless: no more #, * or other symbols. Words just turn bold, big or highlighted',
+      'Bullets show as clean dots and checklists as round boxes you tap to tick, right while you write',
+      'Backspace at the start of a heading, bullet or checklist item turns it back into plain text',
+      'Enter at the start of a heading or list item adds a line above it',
+      'Tap Bold or another style with nothing selected, and what you type next takes that style',
+      'A calmer, slimmer toolbar above the keyboard, with a Checklist button right on it',
+      'Text tools in small groups, plus Move in and Move out while you’re in a list',
+      'A button to put the keyboard away when you’re done writing',
+      'Pictures resize smoothly with a slider or their corners, to any size, with no jumps',
+      'Dragging a picture is smoother: it lifts off, glides into place and doesn’t flicker between spots',
+      '“Write next to it” moves a picture to the side and puts the cursor right beside it',
+    ],
+  },
+  {
     version: '1.70.0',
     date: '2026-10-12',
     changes: [

@@ -2,7 +2,7 @@
 // so text in it can never wrap around a picture beside it. This gives such a block the bits of the textarea API the
 // Markdown commands use (value, selection, replacing text), so they work on either. Its text is laid out in spans
 // that style the Markdown as it's written (lib/liveMarkdown.ts); reading it back only ever sees the characters.
-import { decorate, type Deco } from './liveMarkdown';
+import { decorate, hiddenRanges, type Deco } from './liveMarkdown';
 import type { TextBox } from './markdown';
 
 /** Browsers without plain-text editing (Firefox before 136) get rich editing, kept to plain text by the editor. */
@@ -52,15 +52,29 @@ function read(el: HTMLElement, at?: { node: Node; offset: number }) {
   return { text, found: found < 0 ? text.length : Math.min(found, text.length) };
 }
 
-/** The DOM point at character `pos` of a block. */
+/** Whether a text node is a Markdown marker that's tucked away while writing (lib/liveMarkdown.ts). */
+function hiddenText(n: Node) {
+  const p = n.nodeType === Node.TEXT_NODE ? n.parentElement : null;
+  if (!p?.closest?.('.md-mark, .md-bullet, .md-task-mark') || typeof getComputedStyle !== 'function') return false;
+  return getComputedStyle(p).fontSize === '0px';
+}
+
+/**
+ * The DOM point at character `pos` of a block. Where two pieces meet, a hidden marker's edge gives way to the visible
+ * text beside it, so the caret takes that text's size and style.
+ */
 function locate(el: HTMLElement, pos: number): [Node, number] {
   let at = 0;
   let newline = false;
+  let edge: [Node, number] | null = null;
   const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   for (let n = tw.nextNode(); n; n = tw.nextNode()) {
     if (n.nodeType === Node.TEXT_NODE) {
       const len = (n as Text).data.length;
-      if (pos <= at + len) return [n, pos - at];
+      if (pos <= at + len && pos >= at) {
+        if (!len || (pos > at && pos < at + len) || !hiddenText(n)) return [n, pos - at];
+        edge ??= [n, pos - at];
+      } else if (pos < at) break;
       at += len;
       if (len) newline = (n as Text).data.endsWith('\n');
     } else if (n.nodeName === 'BR') {
@@ -75,9 +89,20 @@ function locate(el: HTMLElement, pos: number): [Node, number] {
       newline = true;
     }
   }
+  if (edge) return edge;
   const last = el.lastChild;
   return [el, el.childNodes.length - (last?.nodeName === 'BR' ? 1 : 0)];
 }
+
+/** One letter on from `i` (back, with -1), a whole emoji at once; never across a line break. */
+function step(v: string, i: number, dir: 1 | -1) {
+  const c = dir > 0 ? v[i] : v[i - 1];
+  if (c === undefined || c === '\n') return i;
+  const pair = dir > 0 ? /[\uD800-\uDBFF]/.test(c) : /[\uDC00-\uDFFF]/.test(c);
+  return i + dir * (pair ? 2 : 1);
+}
+
+const lineHead = (v: string, i: number) => /^[ \t]*$/.test(v.slice(v.lastIndexOf('\n', i - 1) + 1, i));
 
 /** Whether a node already shows a piece of the styled text. */
 const same = (n: Node | undefined, d: Deco): boolean =>
@@ -179,6 +204,46 @@ export class Editable implements TextBox {
     r.setStart(...locate(this.el, start));
     r.setEnd(...locate(this.el, end));
     return r;
+  }
+
+  /** Where a node inside the block starts, in characters. */
+  offsetOf(node: Node) {
+    return read(this.el, { node, offset: 0 }).found;
+  }
+
+  /**
+   * Keeps a caret out of the hidden markers. One that lands inside them goes on to the text the way it was moving (or
+   * back), and always after a line's own marker — so typing at the start of a heading or a list item stays in it.
+   */
+  settle() {
+    const s = getSelection();
+    const n = s?.anchorNode;
+    if (!s || !n || document.activeElement !== this.el || !this.el.contains(n)) return this.reveal(null);
+    // a link shows its address while the caret is in it
+    this.reveal((n.nodeType === Node.ELEMENT_NODE ? (n as Element) : n.parentElement)?.closest?.('.md-link') ?? null);
+    if (!s.isCollapsed) return;
+    const was = this.last.start;
+    if (!hiddenText(n)) return void this.sel();
+    const v = this.value;
+    const p = read(this.el, { node: n, offset: s.anchorOffset }).found;
+    const r = hiddenRanges(v).find(([a, b]) => p >= a && p <= b);
+    let to = p;
+    if (r) {
+      const [a, b] = r;
+      const ls = v.lastIndexOf('\n', a - 1) + 1;
+      // arrowing back out of a line's marker goes on to the end of the line above
+      if (lineHead(v, a)) to = was === b && p < b && ls > 0 ? ls - 1 : b;
+      // an arrow press that only stepped into hidden markers goes on one letter more, so every press moves
+      else if (p > a && p < b) to = was === a ? step(v, b, 1) : was === b ? step(v, a, -1) : was < p ? b : a;
+    }
+    const [node] = locate(this.el, to);
+    if (to === p && (node === n || hiddenText(node))) return void this.sel();
+    this.setSelectionRange(to, to);
+  }
+
+  private reveal(link: Element | null) {
+    for (const l of this.el.querySelectorAll?.('.md-link[data-active]') ?? []) if (l !== link) l.removeAttribute('data-active');
+    if (link && this.el.contains(link) && !link.hasAttribute('data-active')) link.setAttribute('data-active', '');
   }
 
   /** Lays the block out again as its styled text (whatever the browser's editing left in it), keeping the caret. */
