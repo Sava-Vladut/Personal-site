@@ -18,6 +18,7 @@ import { useHold } from '../components/EntryMenu';
 import { Swipe } from '../components/Swipe';
 import { EmotionChip } from '../components/emotion';
 import { Sky } from '../components/Sky';
+import { AsciiCloud } from '../components/cloud';
 import { NavWheel } from '../components/NavWheel';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
@@ -195,6 +196,7 @@ function Day({ date, list, compact }: { date: string; list: Entry[]; compact: bo
       <h2 class="day-label">
         {mood && <Sprite core={mood.worlds[0]} size={12} idle="view" delay={stagger(+date.replace(/-/g, ''))} />}
         <span>{dayLabel(date)}</span>
+        {mood && <AsciiCloud world={mood.worlds[0]} seed={stagger(+date.replace(/-/g, ''))} />}
         {mood && <span class="day-mood">{mood.word}</span>}
         {mood && <i class="day-ribbon" style={{ background: mood.ribbon }} aria-hidden="true" />}
       </h2>
