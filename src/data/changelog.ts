@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.68.0',
+    date: '2026-10-12',
+    changes: [
+      'A new intro for anyone who isn’t signed in: a 3D brain drawn in letters, turning in a sky of letter clouds',
+      'Its regions take turns lighting up, sparks run between them and a ring of feelings orbits around it',
+      'Drag the brain to spin it, point at it to move the light, tap a region to light it up',
+      'Sign in with the admin password and the brain bursts toward you as your journal comes in',
+      'Settings: see whether this device is signed in, sign out, or look at the intro again',
+    ],
+  },
+  {
     version: '1.67.1',
     date: '2026-10-12',
     changes: [

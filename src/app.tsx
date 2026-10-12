@@ -43,8 +43,8 @@ export function App() {
       <main class={`app route-${route.name}`}>
         <View key={key} id={route.id!} query={route.query} />
       </main>
-      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'repo' && route.name !== 'map' && route.name !== 'settings' && <TabBar />}
-      <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />
+      {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'repo' && route.name !== 'map' && route.name !== 'settings' && route.name !== 'intro' && <TabBar />}
+      {route.name !== 'intro' && <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />}
       <EntryMenu />
       <Toasts />
       <TooltipLayer />

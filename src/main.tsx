@@ -1,4 +1,4 @@
-import { render } from 'preact';
+import { render, type ComponentType } from 'preact';
 import '@fontsource-variable/source-serif-4/wght.css';
 import '@fontsource-variable/instrument-sans/index.css';
 import './styles/app.css';
@@ -23,7 +23,9 @@ import { initSync } from './lib/sync';
 import { startWeather } from './lib/weather';
 import { t } from './lib/i18n';
 import { routeName } from './lib/router';
-import { prepareView } from './lib/views';
+import { prepareView, viewFor } from './lib/views';
+import { authStatus, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
+import type { IntroProps } from './views/Intro';
 
 applyTheme();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
@@ -44,36 +46,73 @@ onBlocked(() =>
     document.getElementById('app')!,
   ),
 );
-// Start storage and the first screen together. Other screens load only when visited;
-// the service worker still precaches every screen for offline use.
-let databaseError = false;
-const database = init().catch((error) => { databaseError = true; throw error; });
-Promise.all([database, prepareView(routeName())]).then(async () => {
-  // A deep link may change while storage or a screen is loading.
-  let name;
-  do { name = routeName(); await prepareView(name); } while (name !== routeName());
-}).then(
-  () => {
-    render(<App />, document.getElementById('app')!);
-    // Keep the entrance style on this page for its lifetime. Removing it after a
-    // timeout starts the normal page-in animation and briefly hides the page again.
-    document.querySelector('.app .page')?.setAttribute('data-boot', '');
-    startWeather();
-    initSync();
-    enableOffline();
-  },
-  (e) => {
-    console.error('Could not start My Mind', e);
-    render(
-      <div class="page"><div class="empty">
-        <h2 class="title-s">{t('Couldn’t open your journal')}</h2>
-        <p>{databaseError ? t('Your browser’s storage is unavailable. Try reopening the app or reloading this page.') : t('Couldn’t load the app. Check your connection and try again.')}</p>
-        <button class="btn" onClick={() => location.reload()}>{t('Try again')}</button>
-      </div></div>,
-      document.getElementById('app')!,
-    );
-  },
-);
+// A device that's signed in opens the journal at once and checks with the server in the background; one that isn't
+// (or no longer is) gets the intro, which boots the journal once you sign in.
+if (signedInHere()) {
+  boot();
+  void stillSignedIn().then((ok) => ok || location.reload());
+} else void gate();
+
+/** Signed out here: the intro, unless the server has no password to ask for or this browser's cookie is still good. */
+async function gate() {
+  const intro = prepareView('intro');
+  intro?.catch(() => {}); // only waited for below, when the intro is what opens
+  const status = await authStatus();
+  if (opensOn(status) === 'app') {
+    if (status?.admin) rememberSignedIn(true);
+    return boot();
+  }
+  try {
+    await intro;
+  } catch (e) {
+    return failed(e, false);
+  }
+  const Intro = viewFor('intro') as ComponentType<IntroProps>;
+  render(
+    <Intro
+      onEnter={(dive) => {
+        if (routeName() === 'intro') history.replaceState(history.state, '', '#/');
+        boot(dive);
+      }}
+    />,
+    document.getElementById('app')!,
+  );
+}
+
+/** Start storage and the first screen together (and the intro's dive, when coming from it). Other screens load only
+ * when visited; the service worker still precaches every screen for offline use. */
+function boot(dive?: Promise<void>) {
+  let databaseError = false;
+  const database = init().catch((error) => { databaseError = true; throw error; });
+  Promise.all([database, prepareView(routeName()), dive]).then(async () => {
+    // A deep link may change while storage or a screen is loading.
+    let name;
+    do { name = routeName(); await prepareView(name); } while (name !== routeName());
+  }).then(
+    () => {
+      render(<App />, document.getElementById('app')!);
+      // Keep the entrance style on this page for its lifetime. Removing it after a
+      // timeout starts the normal page-in animation and briefly hides the page again.
+      document.querySelector('.app .page')?.setAttribute('data-boot', '');
+      startWeather();
+      initSync();
+      enableOffline();
+    },
+    (e) => failed(e, databaseError),
+  );
+}
+
+function failed(e: unknown, databaseError: boolean) {
+  console.error('Could not start My Mind', e);
+  render(
+    <div class="page"><div class="empty">
+      <h2 class="title-s">{t('Couldn’t open your journal')}</h2>
+      <p>{databaseError ? t('Your browser’s storage is unavailable. Try reopening the app or reloading this page.') : t('Couldn’t load the app. Check your connection and try again.')}</p>
+      <button class="btn" onClick={() => location.reload()}>{t('Try again')}</button>
+    </div></div>,
+    document.getElementById('app')!,
+  );
+}
 
 function enableOffline() {
   // Precaching other screens must not compete with loading the first screen.

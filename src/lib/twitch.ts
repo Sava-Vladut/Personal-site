@@ -83,7 +83,7 @@ export function usePoints(on = true) {
   return s;
 }
 
-/* ---------- the miner's channel list: anyone can read it, the admin can change it ---------- */
+/* ---------- the miner's channel list: anyone can read it, the admin can change it (signing in: lib/auth) ---------- */
 
 export interface Channels { channels: string[]; admin: boolean }
 
@@ -101,8 +101,6 @@ async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T>
 export const getChannels = () => call<Channels>('/api/twitch/channels');
 /** Saving makes the miner restart with the new list, a few seconds offline. */
 export const saveChannels = (channels: string[]) => call<Channels>('/api/twitch/channels', 'PUT', { channels });
-export const signIn = (password: string) => call<{ admin: boolean }>('/api/admin', 'POST', { password });
-export const signOut = () => call<{ admin: boolean }>('/api/admin', 'DELETE');
 
 /** 3,460,651 → "3.46M"; 43,454 → "43.5K". */
 export function compact(n: number) {

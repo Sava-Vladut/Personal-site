@@ -47,3 +47,53 @@ test('a region is compared with the stretch before when asked, and only when tha
   assert.match(shiftLine(cmp.regions.joy, cmp.span), /^Up/);
   assert.equal(readBrain([entry(3, 'joy')], SPAN, undefined, true).regions.joy.before, null);
 });
+
+/* ---------- the intro's brain in three dimensions ---------- */
+
+const bundle3 = await rolldown({ input: new URL('../src/lib/brain3d.ts', import.meta.url).pathname });
+const { output: output3 } = await bundle3.generate({ format: 'esm' });
+const { buildBrain, insideBrain, CORTEX, CEREBELLUM, STEM } = await import('data:text/javascript;base64,' + Buffer.from(output3[0].code).toString('base64'));
+await bundle3.close();
+const shape = await import('data:text/javascript;base64,' + Buffer.from((await (await rolldown({ input: new URL('../src/lib/brainShape.ts', import.meta.url).pathname })).generate({ format: 'esm' })).output[0].code).toString('base64'));
+
+test('the 3D brain is about as many points as asked, all its parts, and the same every time', () => {
+  const b = buildBrain(12000);
+  assert.ok(b.n > 8000 && b.n < 12000, `${b.n} points`);
+  const parts = [0, 0, 0];
+  for (const p of b.part) parts[p]++;
+  assert.ok(parts[CORTEX] > parts[CEREBELLUM] && parts[CEREBELLUM] > parts[STEM] && parts[STEM] > 0, String(parts));
+  const again = buildBrain(12000);
+  assert.deepEqual(again.pos, b.pos);
+});
+
+test('the 3D brain has two matching hemispheres and every region shows on its surface', () => {
+  const b = buildBrain(12000);
+  let left = 0, right = 0;
+  for (let i = 0; i < b.n; i++) {
+    const z = b.pos[i * 3 + 2];
+    if (z > 0.1) left++;
+    else if (z < -0.1) right++;
+  }
+  assert.ok(Math.abs(left - right) / (left + right) < 0.05, `${left} vs ${right}`);
+  const seen = new Set(b.region);
+  shape.PATCHES.forEach((_, r) => assert.ok(seen.has(r), `${shape.PATCHES[r].world} has points`));
+  // and each region's middle (where sparks run between) is on the +z side, near its patch in the side view
+  shape.PATCHES.forEach((p, r) => {
+    assert.ok(b.centres[r * 3 + 2] > 0);
+    assert.ok(Math.abs(b.centres[r * 3] + 0.76 - p.x) < 0.25, p.world);
+  });
+});
+
+test('the 3D brain faces outward: a step along each point\'s direction leaves it, a step back stays in', () => {
+  const b = buildBrain(12000);
+  let out = 0, inside = 0;
+  for (let i = 0; i < b.n; i++) {
+    const [x, y, z] = [b.pos[i * 3], b.pos[i * 3 + 1], b.pos[i * 3 + 2]];
+    const [nx, ny, nz] = [b.nrm[i * 3], b.nrm[i * 3 + 1], b.nrm[i * 3 + 2]];
+    assert.ok(Math.abs(Math.hypot(nx, ny, nz) - 1) < 1e-3);
+    if (!insideBrain(x + nx * 0.03, y + ny * 0.03, z + nz * 0.03)) out++;
+    if (insideBrain(x - nx * 0.03, y - ny * 0.03, z - nz * 0.03)) inside++;
+  }
+  assert.ok(out / b.n > 0.9, `${(out / b.n).toFixed(3)} face out`);
+  assert.ok(inside / b.n > 0.98, `${(inside / b.n).toFixed(3)} sit on the surface`);
+});

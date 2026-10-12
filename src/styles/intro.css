@@ -1,0 +1,95 @@
+/* The intro: always dark, a full screen of letter clouds with the brain turning in the middle (views/Intro.tsx). */
+.intro {
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  position: fixed; inset: 0; z-index: 60; isolation: isolate;
+  display: flex; flex-direction: column; align-items: center;
+  padding: calc(var(--safe-t) + 14px) 20px calc(var(--safe-b) + 16px);
+  overflow: hidden auto; overscroll-behavior: contain;
+  color: var(--ink);
+  background:
+    radial-gradient(70% 55% at 50% 38%, color-mix(in oklab, var(--emo-fear) 16%, transparent), transparent 70%),
+    radial-gradient(120% 90% at 50% 30%, #15151c, #09090c 72%);
+}
+.intro-sky { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.7; }
+.intro-sky > .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* the bottom fades to the background so the words below stay easy to read */
+.intro::after {
+  content: ''; position: fixed; inset: auto 0 0; height: 45%; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, transparent, #09090c 85%);
+}
+
+.intro-top {
+  width: 100%; max-width: 1100px; display: flex; align-items: center; justify-content: space-between;
+  font: 500 12px/1 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+  animation: rise-in 0.6s var(--ease-emph) 0.2s backwards;
+}
+.intro-cursor { animation: intro-blink 1.1s steps(1) infinite; color: var(--emo-hope-interest); }
+@keyframes intro-blink { 50% { opacity: 0; } }
+.intro-langs { display: flex; gap: 2px; }
+.intro-langs button {
+  padding: 7px 9px; border-radius: 8px; font: inherit; letter-spacing: 0.14em; color: var(--ink-3);
+  transition: color 0.15s, background-color 0.15s;
+}
+.intro-langs button:hover { color: var(--ink); }
+.intro-langs button[aria-pressed='true'] { color: var(--ink); background: color-mix(in oklab, var(--ink) 9%, transparent); }
+
+.intro-stage { position: relative; flex: none; width: min(100%, 1040px); height: clamp(260px, min(56dvh, 92vw), 640px); margin: 2px 0 6px; }
+.intro-brain { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; }
+.intro-brain:active { cursor: grabbing; }
+.intro-spot {
+  position: absolute; left: 0; right: 0; bottom: -6px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 18px; font: 500 12px/1.4 var(--mono); letter-spacing: 0.06em; color: color-mix(in oklab, var(--c, var(--ink)) 55%, var(--ink));
+  transition: color 0.4s;
+}
+.intro-spot i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.intro-spot span { color: var(--ink-3); }
+
+.intro-copy { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 520px; text-align: center; }
+.intro .cloud-title { font: 500 clamp(42px, 10vw, 76px)/1 var(--serif); letter-spacing: -0.025em; }
+.intro .cloud-title span { animation-delay: calc(0.5s + var(--i) * 55ms); }
+.intro-tag {
+  max-width: 34ch; font: 400 17px/1.45 var(--serif); color: var(--ink-2); text-wrap: balance;
+  animation: rise-in 0.6s var(--ease-emph) 0.9s backwards;
+}
+.intro-actions, .intro-form { display: flex; gap: 8px; justify-content: center; animation: rise-in 0.5s var(--ease-emph) 1.05s backwards; }
+.intro-form { width: 100%; max-width: 380px; animation-delay: 0s; }
+.intro-form .input { flex: 1; min-width: 0; background: color-mix(in oklab, var(--surface) 80%, transparent); backdrop-filter: blur(8px); }
+.intro-form.shake { animation: intro-shake 0.4s; }
+@keyframes intro-shake { 20%, 60% { translate: -7px 0; } 40%, 80% { translate: 7px 0; } }
+.intro-go { gap: 8px; padding-inline: 22px; box-shadow: 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent), 0 8px 40px -8px color-mix(in oklab, var(--emo-hope-interest) 55%, transparent); }
+.intro-error { margin: 0; font-size: 14px; color: var(--emo-anger); }
+
+.intro-about-toggle {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px;
+  font-size: 13.5px; color: var(--ink-3); transition: color 0.15s;
+  animation: rise-in 0.5s var(--ease-emph) 1.15s backwards;
+}
+.intro-about-toggle:hover, .intro-about-toggle[aria-expanded='true'] { color: var(--ink); }
+.intro-about {
+  display: grid; gap: 9px; width: 100%; margin: 0; padding: 14px 16px; list-style: none; text-align: left;
+  border-radius: 14px; font-size: 14px; line-height: 1.45; color: var(--ink-2);
+  background: color-mix(in oklab, var(--surface) 72%, transparent); backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px var(--line);
+  animation: rise-in 0.35s var(--ease-emph);
+}
+.intro-about b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+
+.intro-foot {
+  margin-top: auto; padding-top: 18px; font: 11px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
+  opacity: 0.7; animation: rise-in 0.6s var(--ease-emph) 1.4s backwards;
+}
+
+/* going in: everything but the brain steps aside while it bursts toward you */
+.intro.diving :is(.intro-top, .intro-spot, .intro-copy, .intro-foot) {
+  opacity: 0; translate: 0 14px; filter: blur(6px); pointer-events: none;
+  transition: opacity 0.45s, translate 0.45s var(--ease-emph), filter 0.45s;
+}
+.intro.diving .intro-sky { opacity: 0.35; transition: opacity 1s; }
+
+@media (min-width: 1024px) {
+  .intro { padding-inline: 40px; }
+  .intro-stage { height: clamp(360px, 60dvh, 680px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-cursor, .intro-top, .intro-tag, .intro-actions, .intro-form, .intro-about-toggle, .intro-about, .intro-foot { animation: none; }
+}

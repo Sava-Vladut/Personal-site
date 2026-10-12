@@ -456,7 +456,7 @@ test('a failed database startup offers recovery without rendering an empty journ
   await load('src/main.tsx', {
     preact: { render: (node) => rendered.push(node) },
     'preact/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
-    './app': { App }, './lib/db': { onBlocked() {} },
+    './app': { App }, './lib/db': { onBlocked() {} }, './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, 
     './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView() {} },
     './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
   }, {
@@ -476,7 +476,7 @@ test('startup keeps the app unmounted until the current deep link screen is load
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
-    './lib/router': { routeName: () => route },
+    './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, './lib/router': { routeName: () => route },
     './lib/views': { prepareView: name => ({ journal, brain }[name].promise) },
     './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ },
   }, {
@@ -498,7 +498,7 @@ test('a failed initial screen load reports a connection problem and offers a rel
   const rendered = [];
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-    './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+    './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} }, './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, 
     './lib/router': { routeName: () => 'journal' },
     './lib/views': { prepareView: () => Promise.reject(new Error('Offline')) },
   }, {
@@ -508,6 +508,185 @@ test('a failed initial screen load reports a connection problem and offers a rel
   await settle();
   assert.match(JSON.stringify(rendered[0]), /Check your connection/);
   assert.doesNotMatch(JSON.stringify(rendered[0]), /storage is unavailable/);
+});
+
+test('a signed-out device opens on the intro without touching storage, and the journal comes in after the dive', async () => {
+  const rendered = [], dive = deferred(), replaced = [];
+  let inits = 0, remembered = null;
+  function App() {}
+  function Intro() {}
+  await load('src/main.tsx', {
+    preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => { inits++; } },
+    './lib/auth': {
+      signedInHere: () => false, authStatus: async () => ({ configured: true, admin: false }),
+      opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
+    },
+    './lib/router': { routeName: () => 'intro' },
+    './lib/views': { prepareView: () => Promise.resolve(), viewFor: (name) => (name === 'intro' ? Intro : null) },
+  }, {
+    navigator: {}, addEventListener() {},
+    history: { state: null, replaceState: (_s, _t, hash) => replaced.push(hash) },
+    document: { getElementById: () => ({}), querySelector: () => null },
+  });
+  await settle();
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].type, Intro);
+  assert.equal(inits, 0, 'the journal stays closed behind the intro');
+  assert.equal(remembered, null);
+
+  rendered[0].props.onEnter(dive.promise);
+  await settle();
+  assert.equal(inits, 1, 'storage opens while the brain dives');
+  assert.deepEqual(replaced, ['#/'], 'signing in from #/intro lands on the journal');
+  assert.equal(rendered.length, 1, 'the app waits for the dive to finish');
+  dive.resolve(); await settle();
+  assert.equal(rendered[1].type, App);
+});
+
+test('a device without the note goes straight in when its cookie is still good, or the server has no password', async () => {
+  for (const [status, note] of [[{ configured: true, admin: true }, true], [{ configured: false, admin: false }, null]]) {
+    const rendered = [];
+    let remembered = null;
+    function App() {}
+    await load('src/main.tsx', {
+      preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+      './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+      './lib/auth': {
+        signedInHere: () => false, authStatus: async () => status,
+        opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
+      },
+      './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView: () => undefined, viewFor() {} },
+    }, {
+      navigator: {}, addEventListener() {},
+      document: { getElementById: () => ({}), querySelector: () => null },
+    });
+    await settle(); await settle();
+    assert.equal(rendered[0]?.type, App);
+    assert.equal(remembered, note);
+  }
+});
+
+test('a signed-in device reloads into the intro once the server says it was signed out', async () => {
+  let reloads = 0;
+  await load('src/main.tsx', {
+    preact: { render() {} }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+    './lib/auth': { signedInHere: () => true, stillSignedIn: async () => false },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView: () => undefined },
+  }, {
+    navigator: {}, addEventListener() {}, location: { reload: () => reloads++ },
+    document: { getElementById: () => ({}), querySelector: () => null },
+  });
+  await settle();
+  assert.equal(reloads, 1);
+});
+
+test('sign-in state: the note opens the app at once, and only a clear no from the server signs a device out', async () => {
+  const store = new Map();
+  const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
+  let answer = null;
+  const fetch = async (_url, init = {}) => {
+    if (answer === 'offline') throw new TypeError('Failed to fetch');
+    if (init.method === 'POST') {
+      const ok = JSON.parse(init.body).password === 'right';
+      return { ok, json: async () => (ok ? { configured: true, admin: true } : { error: 'That’s not the password.' }) };
+    }
+    if (init.method === 'DELETE') return { ok: true, json: async () => ({ configured: true, admin: false }) };
+    return { ok: true, json: async () => answer };
+  };
+  const auth = await load('src/lib/auth.ts', {}, { localStorage, fetch, AbortController, setTimeout, clearTimeout });
+
+  assert.equal(auth.opensOn(null), 'intro', 'offline with no note: the intro');
+  assert.equal(auth.opensOn({ configured: true, admin: false }), 'intro');
+  assert.equal(auth.opensOn({ configured: true, admin: true }), 'app');
+  assert.equal(auth.opensOn({ configured: false, admin: false }), 'app');
+
+  await assert.rejects(auth.signIn('wrong'), /not the password/);
+  assert.equal(auth.signedInHere(), false);
+  await auth.signIn('right');
+  assert.equal(auth.signedInHere(), true);
+
+  answer = 'offline';
+  assert.equal(await auth.stillSignedIn(), true, 'offline it stays signed in');
+  answer = { configured: true, admin: true };
+  assert.equal(await auth.stillSignedIn(), true);
+  answer = { configured: true, admin: false };
+  assert.equal(await auth.stillSignedIn(), false);
+  assert.equal(auth.signedInHere(), false);
+
+  await auth.signIn('right');
+  await auth.signOut();
+  assert.equal(auth.signedInHere(), false);
+  answer = 'offline';
+  await assert.rejects(auth.signIn('right'), /reach the server/);
+});
+
+test('the intro brain flies in out of the sky, settles into a lit brain with a ring of words, flinches, and bursts away', async () => {
+  const shape = await load('src/lib/brainShape.ts');
+  const brain3d = await load('src/lib/brain3d.ts', { './brainShape': shape });
+  const draws = [];
+  const ctx = new Proxy({}, { get: (_t, name) => (name === 'drawImage' ? (...a) => draws.push(a) : () => {}), set: () => true });
+  const atlas = { width: 0, height: 0, getContext: () => ({ fillText() {} }) };
+  const listeners = new Map();
+  const el = {
+    width: 0, height: 0, getContext: () => ctx, setPointerCapture() {},
+    parentElement: { getBoundingClientRect: () => ({ width: 600, height: 360 }) },
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 600, height: 360 }),
+    addEventListener: (n, fn) => listeners.set(n, fn), removeEventListener: (n) => listeners.delete(n),
+  };
+  const timers = [];
+  let frame = null, now = 1000, seeded = false;
+  const { hooks, render, dispose } = componentHooks();
+  const { AsciiBrain } = await load('src/components/AsciiBrain.tsx', {
+    'preact/hooks': { ...hooks, useRef: (v) => { const r = hooks.useRef(v); if (!seeded) { r.current = el; seeded = true; } return r; } },
+    '../lib/brainShape': shape, '../lib/brain3d': brain3d,
+    '../lib/inView': { watchView: (_el, cb) => (cb(true), () => {}) },
+    'preact/jsx-runtime': { jsx: () => null, jsxs: () => null },
+  }, {
+    document: { createElement: () => atlas, hidden: false, addEventListener() {}, removeEventListener() {} },
+    getComputedStyle: () => ({ getPropertyValue: () => '#808080' }),
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    ResizeObserver: class { observe() {} disconnect() {} },
+    requestAnimationFrame: (fn) => { frame = fn; return 1; }, cancelAnimationFrame() {},
+    setTimeout: (fn) => timers.push(fn), clearTimeout() {},
+    performance: { now: () => now }, devicePixelRatio: 1, innerWidth: 600,
+  });
+  const spots = [];
+  const props = { words: [{ text: 'calm', world: 'calm-safety' }, { text: 'curious', world: 'hope-interest' }], label: 'brain', flinch: 0, diving: false, onSpot: (w) => spots.push(w) };
+  render(AsciiBrain, props);
+  assert.equal(draws.length, 0, 'nothing is built or drawn before the page has painted');
+  timers.splice(0).forEach((fn) => fn());
+  const run = (n) => { let drawn = 0; for (let i = 0; i < n; i++) { draws.length = 0; const f = frame; frame = null; f((now += 34)); drawn = draws.length; } return drawn; };
+  const rows = () => new Set(draws.map((a) => a[2] / a[3]));
+
+  assert.ok(run(15) > 50, 'letters are flying in');
+  const settled = run(60);
+  assert.ok(settled > 600, `a whole brain of letters: ${settled}`);
+  assert.ok([...rows()].some((r) => r >= 3), 'a region glows in its own colour');
+  assert.ok(spots.length >= 1 && spots.every((w) => shape.PATCHES.some((p) => p.world === w)), 'the spotlight names real regions');
+  assert.ok(draws.every((a) => Number.isFinite(a[5]) && Number.isFinite(a[6])));
+
+  run(200); // a few seconds: the spotlight moves on, sparks fly
+  assert.ok(new Set(spots).size >= 3, `the regions take turns: ${spots.join(', ')}`);
+
+  render(AsciiBrain, { ...props, flinch: 1 });
+  run(3);
+  const anger = 3 + shape.PATCHES.findIndex((p) => p.world === 'anger');
+  assert.ok(draws.filter((a) => a[2] / a[3] === anger).length > 200, 'a wrong password turns the brain red');
+
+  // a tap lights the region under it
+  const tapAt = draws.find((a) => a[2] / a[3] >= 3);
+  listeners.get('pointerdown')({ pointerId: 1, clientX: tapAt[5] + 4, clientY: tapAt[6] + 6 });
+  listeners.get('pointerup')({ pointerId: 1, clientX: tapAt[5] + 4, clientY: tapAt[6] + 6 });
+  run(2);
+
+  render(AsciiBrain, { ...props, flinch: 1, diving: true });
+  const before = run(1);
+  const after = run(30);
+  assert.ok(after < before / 3, `the letters burst away and fade: ${before} → ${after}`);
+  dispose();
+  assert.equal(listeners.size, 0, 'cleaned up');
 });
 
 test('a rejected page transition still clears navigation state and tolerates infinite animations', async () => {

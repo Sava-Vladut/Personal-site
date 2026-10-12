@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Sheet } from './Sheet';
 import { Icon } from './icons';
-import { getChannels, loadPoints, saveChannels, signIn, signOut, usePoints } from '../lib/twitch';
+import { getChannels, loadPoints, saveChannels, usePoints } from '../lib/twitch';
+import { signIn, signOut } from '../lib/auth';
 import { toast } from '../lib/store';
 import { t } from '../lib/i18n';
 

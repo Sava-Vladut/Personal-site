@@ -14,6 +14,7 @@ import { HomeSheet, placeLabel } from '../components/weather';
 import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
 import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18n';
+import { signOut, signedInHere } from '../lib/auth';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
 let installEvent: (Event & { prompt: () => Promise<void> }) | null = null;
@@ -119,6 +120,17 @@ export function Settings({ query }: { query: URLSearchParams }) {
     forgetFix();
     toast(t('All entries deleted'));
   };
+  const signedIn = signedInHere();
+  const leave = async () => {
+    if (!confirm(t('Sign out on this device? It opens on the intro until you sign in again.'))) return;
+    try {
+      await signOut();
+      location.reload();
+    } catch (e) {
+      toast(t((e as Error).message));
+    }
+  };
+
   const toggleSync = () => {
     if (!sync.on) return startSync();
     if (!confirm(t('Stop syncing this device?\n\nYour entries stay here, and the copy on the server stays for your other devices. To reconnect, load with your code: {code}', { code: formatCode(sync.code!) }))) return;
@@ -242,6 +254,20 @@ export function Settings({ query }: { query: URLSearchParams }) {
             </div>
             <button class="switch" role="switch" aria-checked={settings.blur} aria-label={t('Blur notes & people')} onClick={() => setSettings({ blur: !settings.blur })} />
           </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">{t('Sign-in')}</h2>
+        <div class="card list">
+          <div class="list-row">
+            <div>
+              <div class="row gap-s"><Icon name="lock" size={18} /> {signedIn ? t('Signed in on this device') : t('No sign-in needed here')}</div>
+              <div class="muted small">{t('Anyone who isn’t signed in sees the intro instead of your journal.')}</div>
+            </div>
+            {signedIn && <button class="btn btn-quiet" onClick={leave}>{t('Sign out')}</button>}
+          </div>
+          <button class="list-row action" onClick={() => navigate('intro')}><span class="row gap-s"><Icon name="brain" size={18} /> {t('See the intro')}</span><Icon name="chevron-right" size={18} /></button>
         </div>
       </section>
 

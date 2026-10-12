@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { PICKER_ORDER, shortName } from '../data/emotions';
 import { RANGES, SPAN, ZONES, readBrain, regionLine, shiftLine, type BrainState, type Day } from '../lib/brain';
-import { BOX_H, BOX_W, BOX_Y0, PATCHES, folds, grooveDist, partAt, patchAt } from '../lib/brainShape';
+import { BOX_H, BOX_W, BOX_Y0, PATCHES, folds, grooveDist, partAt, patchAt, pulse } from '../lib/brainShape';
 import { addDays, diffDays, shortDate, todayKey } from '../lib/dates';
 import { watchView } from '../lib/inView';
 import { usePref } from '../lib/prefs';
@@ -24,23 +24,6 @@ const rgb = (css: string): [number, number, number] => {
   return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) || 0) as [number, number, number];
 };
 const mixRgb = (a: number[], b: number[], k: number) => a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',');
-
-/** How strongly each world's region is lit at one moment (0–1), moving like that world's sprite does. */
-function pulse(world: string, t: number, ph: number, x: number, y: number): number {
-  switch (world) {
-    case 'fear': return 0.5 + 0.5 * Math.sin(t * 11 + ph * 6.3) * Math.sin(t * 7.3 + ph * 3);
-    case 'anger': return 0.3 + 0.7 * Math.pow(Math.abs(Math.sin(t * 3.2 + ph * 1.5)), 3);
-    case 'joy': return 0.45 + 0.55 * Math.abs(Math.sin(t * 2.6 + ph * 2));
-    case 'love-connection': {
-      const k = ((t + ph * 0.06) % 1.15) / 1.15;
-      return 0.4 + 0.6 * Math.min(1, Math.exp(-(((k - 0.08) / 0.06) ** 2)) + 0.7 * Math.exp(-(((k - 0.3) / 0.07) ** 2)));
-    }
-    case 'calm-safety': return 0.55 + 0.45 * Math.sin(t * 0.9 + x * 2);
-    case 'sadness': return 0.25 + 0.75 * (1 - ((t * 0.5 + ph) % 1));
-    case 'hope-interest': return 0.5 + 0.5 * Math.sin(t * 2 - y * 18 + ph * 2);
-    default: { const k = t % 3.6; return k < 0.3 ? 0.2 : 0.6 + 0.2 * Math.sin(t + ph * 3); } // shame: looks away now and then
-  }
-}
 
 interface Grid {
   cols: number; rows: number; cw: number; ch: number;

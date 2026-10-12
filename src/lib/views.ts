@@ -19,6 +19,7 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   twitch: () => import('../views/Twitch').then((m) => m.Twitch),
   brain: () => import('../views/BrainView').then((m) => m.BrainView),
   map: () => import('../views/Places').then((m) => m.MapView),
+  intro: () => import('../views/Intro').then((m) => m.Intro),
 };
 const loaded = new Map<RouteName, View>();
 const pending = new Map<RouteName, Promise<void>>();
