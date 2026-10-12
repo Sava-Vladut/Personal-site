@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { LOCALE, t } from './i18n';
+import { retry } from './retry';
 
 // Talks to our own server (server/index.js), which holds the GitHub client secret and
 // keeps the access token in an encrypted, http-only cookie. The browser never sees either.
@@ -13,11 +14,6 @@ export interface GithubStatus {
   error?: string;
   offline?: boolean;
 }
-
-export const githubStatus = () =>
-  fetch('/api/github/status', { credentials: 'same-origin' })
-    .then((r) => (r.ok ? (r.json() as Promise<GithubStatus>) : Promise.reject()))
-    .catch(() => ({ configured: false, connected: false, offline: true }) as GithubStatus);
 
 /** Leaves for GitHub's sign-in; comes back to Settings with ?github=connected. */
 export const connectGithub = () => {
@@ -44,7 +40,10 @@ export interface GhRepo {
 }
 export interface GhCommit { sha: string; message: string; author: string; date: string; url: string }
 
-async function get<T>(path: string): Promise<T> {
+// Every request here only reads, so one that couldn't get through is safely tried again.
+const get = <T>(path: string) => retry(() => once<T>(path));
+
+async function once<T>(path: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch('/api/github' + path, { credentials: 'same-origin' });
@@ -55,6 +54,9 @@ async function get<T>(path: string): Promise<T> {
   if (!res.ok) throw Object.assign(new Error(body.error ? t(body.error) : t('GitHub request failed ({status})', { status: res.status })), { status: res.status });
   return body as T;
 }
+
+export const githubStatus = () =>
+  get<GithubStatus>('/status').catch(() => ({ configured: false, connected: false, offline: true }) as GithubStatus);
 
 export const repoFullName = (r: Pick<GhRepo, 'owner' | 'name'>) => `${r.owner}/${r.name}`;
 export const getGhRepo = (id: number | string) => get<GhRepo>(`/repos/${id}`);

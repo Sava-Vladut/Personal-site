@@ -2,6 +2,7 @@
 // keeps the access token in an encrypted, http-only cookie. The browser never sees either.
 import type { Music } from './store';
 import { t } from './i18n';
+import { retry } from './retry';
 
 export interface SpotifyStatus {
   configured: boolean;   // server has SPOTIFY_CLIENT_ID / SECRET
@@ -15,7 +16,10 @@ export interface Playlist { id: string; name: string; count: number; cover?: str
 export interface Page<T> { items: T[]; next?: number }
 export interface NowPlaying { current?: Music; playing?: boolean; recent: Music[]; reconnect?: boolean }
 
-async function get<T>(path: string): Promise<T> {
+// Every request here only reads, so one that couldn't get through is safely tried again.
+const get = <T>(path: string) => retry(() => once<T>(path));
+
+async function once<T>(path: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch('/api/spotify' + path, { credentials: 'same-origin' });
@@ -23,7 +27,7 @@ async function get<T>(path: string): Promise<T> {
     throw new Error(t('Can’t reach the server. Spotify needs the app’s server running (npm start).'));
   }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ? t(body.error) : t('Spotify request failed ({status})', { status: res.status }));
+  if (!res.ok) throw Object.assign(new Error(body.error ? t(body.error) : t('Spotify request failed ({status})', { status: res.status })), { status: res.status });
   return body as T;
 }
 

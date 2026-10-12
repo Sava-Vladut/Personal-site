@@ -3,13 +3,19 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { after, test } from 'node:test';
 
 // Exercise the real HTTP handler without opening a port or contacting Spotify.
 const originalCreateServer = http.createServer;
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
+// Saved sign-ins go to a scratch folder, never the app's data/.
+const scratch = mkdtempSync(join(tmpdir(), 'mymind-server-'));
 Object.assign(process.env, {
+  ACCOUNTS_FILE: join(scratch, 'accounts'),
   SESSION_SECRET: 'server-regression-test',
   SPOTIFY_CLIENT_ID: 'test-client',
   SPOTIFY_CLIENT_SECRET: 'test-secret',
@@ -29,6 +35,7 @@ try {
   http.createServer = originalCreateServer;
 }
 after(() => {
+  rmSync(scratch, { recursive: true, force: true });
   globalThis.fetch = originalFetch;
   for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key];
   Object.assign(process.env, originalEnv);
@@ -136,7 +143,7 @@ test('malformed unrelated cookies do not break a valid Spotify session', async (
 });
 
 test('concurrent expired sessions share one refresh and each receive the new cookie', async () => {
-  const cookie = sealedCookie({ a: 'expired', r: 'shared-refresh', e: 1, u: 'test-user' });
+  const cookie = sealedCookie({ a: 'expired', r: 'shared-refresh', e: 1, u: 'concurrent-user' });
   let exchanges = 0;
   globalThis.fetch = async (url, options) => {
     if (String(url).startsWith('https://accounts.spotify.com/')) {
@@ -314,7 +321,7 @@ test('Spotify login hops to the redirect URI’s domain first, so the state cook
   assert.equal(go.headers['Set-Cookie'].length, 1);
 });
 
-test('GitHub login sends you to GitHub asking for repo access, then stores the token only in a cookie', async () => {
+test('GitHub login sends you to GitHub asking for repo access, then stores the token in a sealed cookie', async () => {
   // started from another domain: hop to the callback's domain first
   const hop = await raw('/api/github/connect', '', 'GET', 'other.test');
   assert.equal(hop.headers.Location, 'https://example.test/api/github/connect');
@@ -336,6 +343,8 @@ test('GitHub login sends you to GitHub asking for repo access, then stores the t
   assert.match(forged.headers.Location, /\?github=error$/);
 
   globalThis.fetch = async (url, options) => {
+    // the account's id is asked for, so other devices can fall back on this sign-in
+    if (String(url) === 'https://api.github.com/user') return Response.json({ id: 7, login: 'octo' });
     assert.equal(String(url), 'https://github.com/login/oauth/access_token');
     assert.equal(new URLSearchParams(options.body).get('code'), 'abc');
     return Response.json({ access_token: 'gho_secret', scope: 'repo' });
@@ -442,4 +451,98 @@ test('GitHub repos, commits and README are read with the sign-in cookie and trim
   const refused = await raw('/api/github/repos', cookie);
   assert.equal(refused.status, 401);
   assert.match(refused.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+});
+
+test('a Spotify access token refused before its expiry is renewed and the request tried again', async () => {
+  const cookie = sealedCookie({ a: 'revoked-early', r: 'early-refresh', e: Date.now() + 3600_000, u: 'early-user', sc: 'x' });
+  let exchanges = 0;
+  globalThis.fetch = async (url, options) => {
+    if (String(url).startsWith('https://accounts.spotify.com/')) {
+      exchanges++;
+      assert.equal(new URLSearchParams(options.body).get('refresh_token'), 'early-refresh');
+      return Response.json({ access_token: 'fresh', expires_in: 3600 });
+    }
+    if (options.headers.Authorization === 'Bearer revoked-early') return Response.json({ error: { message: 'expired' } }, { status: 401 });
+    return Response.json({ id: 'early-user', display_name: 'Early' });
+  };
+  const status = await raw('/api/spotify/status', cookie);
+  assert.equal(exchanges, 1);
+  assert.equal(status.body.connected, true);
+  assert.equal(status.body.user.name, 'Early');
+  assert.ok(status.headers['Set-Cookie'].some((c) => c.startsWith('mm_sp=') && !c.includes('Max-Age=0')), 'the renewed session replaces the cookie');
+});
+
+test('a Spotify cookie whose refresh token was lost carries on with the account’s newest sign-in', async () => {
+  // the phone renews its session; its answer is what the server now remembers for the account
+  globalThis.fetch = async (url, options) => String(url).startsWith('https://accounts.spotify.com/')
+    ? (assert.equal(new URLSearchParams(options.body).get('refresh_token'), 'phone-refresh'), Response.json({ access_token: 'phone-new', refresh_token: 'phone-rotated', expires_in: 3600 }))
+    : Response.json({ tracks: { items: [] } });
+  const phone = sealedCookie({ a: 'phone-old', r: 'phone-refresh', e: 1, u: 'shared-user' });
+  assert.equal((await request('/api/spotify/search?q=x', phone)).status, 200);
+
+  // the desktop's own tokens have since been turned down by Spotify
+  const desktop = sealedCookie({ a: 'desktop-old', r: 'desktop-refresh', e: 1, u: 'shared-user' });
+  const headers = {};
+  globalThis.fetch = async (url, options) => {
+    assert.ok(!String(url).startsWith('https://accounts.spotify.com/'), 'the newest sign-in is still valid, so nothing is renewed');
+    assert.equal(options.headers.Authorization, 'Bearer phone-new');
+    return Response.json({ tracks: { items: [] } });
+  };
+  assert.equal((await request('/api/spotify/search?q=x', desktop, headers)).status, 200);
+  assert.ok(headers['Set-Cookie']?.[0].startsWith('mm_sp='), 'the desktop is handed the newest sign-in');
+
+  // a cookie for another account never borrows it
+  const stranger = sealedCookie({ a: 'other-old', r: 'other-refresh', e: 1, u: 'other-user' });
+  globalThis.fetch = async () => Response.json({ error: 'invalid_grant' }, { status: 400 });
+  assert.equal((await request('/api/spotify/search?q=x', stranger)).status, 401);
+});
+
+test('Spotify being unreachable while renewing reports the sign-in as kept, not signed out', async () => {
+  const cookie = sealedCookie({ a: 'expired', r: 'flaky-refresh', e: 1, u: 'flaky-user' });
+  globalThis.fetch = async () => { throw new TypeError('fetch failed'); };
+  const status = await raw('/api/spotify/status', cookie);
+  assert.equal(status.status, 200);
+  assert.equal(status.body.connected, true);
+  assert.match(status.body.error, /reach Spotify/);
+  assert.ok(!status.headers['Set-Cookie']?.some((c) => c.startsWith('mm_sp=')), 'the cookie is left alone');
+});
+
+test('a GitHub token revoked by newer sign-ins elsewhere is swapped for the account’s newest one', async () => {
+  // the phone signs in: the newest token for account 99
+  const go = await raw('/api/github/connect', '', 'GET', 'example.test');
+  const state = new URL(go.headers.Location).searchParams.get('state');
+  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user'
+    ? Response.json({ id: 99, login: 'octo' })
+    : Response.json({ access_token: 'gho_phone' });
+  await raw(`/api/github/callback?code=abc&state=${state}`, go.headers['Set-Cookie'][0].split(';')[0]);
+
+  // the desktop's older token has been revoked by GitHub
+  const desktop = sealedCookie({ a: 'gho_desktop', u: '99' }, 'mm_gh');
+  globalThis.fetch = async (url, options) => options.headers.Authorization === 'Bearer gho_phone'
+    ? Response.json({ id: 99, login: 'octo', public_repos: 1 }, { headers: { 'x-oauth-scopes': 'repo' } })
+    : Response.json({ message: 'Bad credentials' }, { status: 401 });
+  const status = await raw('/api/github/status', desktop);
+  assert.equal(status.body.connected, true);
+  assert.equal(status.body.user.name, 'octo');
+  assert.ok(status.headers['Set-Cookie'].some((c) => c.startsWith('mm_gh=') && !c.includes('Max-Age=0')), 'the desktop is handed the newest token');
+
+  // once every token for the account is refused, the browser is signed out and the saved one forgotten
+  globalThis.fetch = async () => Response.json({ message: 'Bad credentials' }, { status: 401 });
+  const gone = await raw('/api/github/repos', desktop);
+  assert.equal(gone.status, 401);
+  assert.match(gone.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  let asked = 0;
+  globalThis.fetch = async () => (asked++, Response.json({ message: 'Bad credentials' }, { status: 401 }));
+  await raw('/api/github/repos', desktop);
+  assert.equal(asked, 1, 'nothing saved is left to try');
+});
+
+test('GitHub being unreachable reports the sign-in as kept, not signed out', async () => {
+  const cookie = sealedCookie({ a: 'gho_secret', u: '5' }, 'mm_gh');
+  globalThis.fetch = async () => { throw new TypeError('fetch failed'); };
+  const status = await raw('/api/github/status', cookie);
+  assert.equal(status.status, 200);
+  assert.equal(status.body.connected, true);
+  assert.match(status.body.error, /reach GitHub/);
+  assert.ok(!status.headers['Set-Cookie']?.length, 'the cookie is left alone');
 });

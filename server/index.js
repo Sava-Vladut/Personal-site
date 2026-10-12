@@ -2,9 +2,11 @@
 //  • serves the built app from dist/ (compressed, cached, with security headers)
 //  • Spotify: resolves pasted song/album/playlist links (no key needed) and, when a client id is
 //    configured, runs the authorization-code flow and proxies search and playlist listing.
-//    Access tokens live in encrypted http-only cookies — per browser, never in JS, never on disk.
+//    Access tokens live in encrypted http-only cookies — per browser, never in JS.
 //  • GitHub: signs you in (authorization-code flow) and reports how many public and private repos your account has.
 //    The access token lives in an encrypted http-only cookie, like Spotify's.
+//  • Each account's newest sign-in is also kept sealed in data/ (server/accounts.js), so a device whose token
+//    was revoked or lost when signing in elsewhere picks up the newest one instead of dropping the connection.
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
@@ -14,6 +16,7 @@ import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createAccountStore } from './accounts.js';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
 import { json } from './http-response.js';
@@ -52,6 +55,9 @@ const GH_SCOPES = 'repo';
 const GH_REDIRECT = process.env.GITHUB_REDIRECT_URI || `${PUBLIC_URL}/api/github/callback`;
 // GitHub allows one callback host and cookies are per host, so the whole login happens there.
 const GH_ORIGIN = new URL(GH_REDIRECT).origin;
+const YEAR = 365 * 86400;
+// Long enough to sign in on a phone, switching apps for a password or a 2FA code.
+const STATE_AGE = 30 * 60;
 
 /* ---------------- config helpers ---------------- */
 
@@ -110,6 +116,14 @@ function cookies(req) {
 const cookie = (name, value, maxAge, path) =>
   `${name}=${encodeURIComponent(value)}; Path=${path}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${SECURE ? '; Secure' : ''}`;
 
+/** Queues a Set-Cookie, replacing one queued earlier for the same cookie (concurrent renewals in one request). */
+function queueCookie(setCookies, value) {
+  const name = value.slice(0, value.indexOf('=') + 1);
+  const i = setCookies.findIndex((c) => c.startsWith(name));
+  if (i >= 0) setCookies[i] = value;
+  else setCookies.push(value);
+}
+
 /* ---------------- sealed session cookie (AES-256-GCM) ---------------- */
 
 function seal(obj) {
@@ -129,6 +143,8 @@ function unseal(str) {
     return null;
   }
 }
+
+const accounts = createAccountStore({ file: process.env.ACCOUNTS_FILE || join(ROOT, 'data', 'accounts'), seal, unseal });
 
 /* ---------------- OAuth ---------------- */
 
@@ -193,37 +209,59 @@ const toSession = (t, prevRefresh) => ({
 const pendingRefreshes = new Map();
 const MAX_PENDING_REFRESHES = 128;
 
-/** Returns a valid session (refreshing it if expired) or null. May queue a Set-Cookie. */
-async function session(req, setCookies, name, path, refresh) {
-  const s = unseal(cookies(req)[name] || '');
-  if (!s?.a) return null;
-  if (s.e > Date.now()) return s;
-  if (!s.r) return null;
-  try {
-    const refreshKey = crypto.createHash('sha256').update(name + '\0' + s.r).digest('hex');
-    let pending = pendingRefreshes.get(refreshKey);
-    if (!pending) {
-      if (pendingRefreshes.size >= MAX_PENDING_REFRESHES) throw new HttpError(503, 'Spotify is busy. Try again shortly.');
-      pending = Promise.resolve().then(() => refresh({ grant_type: 'refresh_token', refresh_token: s.r }))
-        .finally(() => pendingRefreshes.delete(refreshKey));
-      pendingRefreshes.set(refreshKey, pending);
-    }
-    const next = { sc: s.sc, ...toSession(await pending, s.r), u: s.u };
-    setCookies.push(cookie(name, seal(next), 365 * 86400, path));
-    return next;
-  } catch (error) {
-    // A transient upstream failure must not look like a disconnected Spotify account.
-    if (error instanceof HttpError && error.status >= 500) throw error;
-    return null;
+/** Swaps a refresh token for a new session, sharing one exchange between concurrent requests. */
+function renew(name, s, refresh) {
+  const refreshKey = crypto.createHash('sha256').update(name + '\0' + s.r).digest('hex');
+  let pending = pendingRefreshes.get(refreshKey);
+  if (!pending) {
+    if (pendingRefreshes.size >= MAX_PENDING_REFRESHES) throw new HttpError(503, 'Spotify is busy. Try again shortly.');
+    pending = Promise.resolve().then(() => refresh({ grant_type: 'refresh_token', refresh_token: s.r }))
+      .then((t) => ({ sc: s.sc, ...toSession(t, s.r), u: s.u }))
+      .finally(() => pendingRefreshes.delete(refreshKey));
+    pendingRefreshes.set(refreshKey, pending);
   }
+  return pending;
 }
 
 /* ---------------- Spotify ---------------- */
 
 const spConfigured = () => Boolean(SP_ID && SP_SECRET);
 const spToken = (params) => tokenRequest(params, 'https://accounts.spotify.com/api/token', SP_ID, SP_SECRET);
-const spSession = (req, setCookies) => session(req, setCookies, 'mm_sp', '/api/spotify', spToken);
 const spCookie = (name, value, maxAge) => cookie(name, value, maxAge, '/api/spotify');
+
+/** Makes `next` this browser's Spotify session, and the account's newest sign-in if nothing newer is saved. */
+function keepSp(setCookies, own, next) {
+  if (next !== own) queueCookie(setCookies, spCookie('mm_sp', seal(next), YEAR));
+  if (next.u && !(accounts.get('spotify', next.u)?.e >= next.e)) accounts.set('spotify', next.u, next);
+  return next;
+}
+
+/**
+ * This browser's Spotify session, renewed when it has expired (or Spotify `refused` its access token), or null when signed out.
+ * When this cookie's tokens are refused, the account's newest sign-in takes over: another device signed in,
+ * or a renewal's new cookie never reached this browser (a phone put the page away mid-request).
+ */
+async function spSession(req, setCookies, refused) {
+  const own = unseal(cookies(req).mm_sp || '');
+  if (!own?.a) return null;
+  const saved = accounts.get('spotify', own.u);
+  const options = saved?.a && saved.a !== own.a ? [own, saved] : [own];
+  const live = options.find((x) => x.e > Date.now() && x.a !== refused?.a);
+  if (live) return keepSp(setCookies, own, live);
+  let transient;
+  for (const x of options) {
+    if (!x.r || (x === saved && x.r === own.r)) continue;
+    try {
+      return keepSp(setCookies, own, await renew('mm_sp', x, spToken));
+    } catch (error) {
+      // A transient upstream failure must not look like a disconnected Spotify account.
+      if (error instanceof HttpError && error.status >= 500) transient ??= error;
+      else if (x === saved) accounts.forget('spotify', own.u, (v) => v.r === x.r);
+    }
+  }
+  if (transient) throw transient;
+  return null;
+}
 const SP_KINDS = new Set(['track', 'album', 'playlist', 'episode', 'show', 'artist']);
 const SP_SHORT = /^(spotify\.link|spotify\.app\.link)$/;
 
@@ -311,10 +349,24 @@ async function resolveSpotify(raw, s) {
 }
 
 async function spotify(req, res, url, p, setCookies, out) {
+  let current = null;
   const need = async () => {
-    const s = await spSession(req, setCookies);
-    if (!s) throw new HttpError(401, 'Connect Spotify in Settings first.');
-    return s;
+    current ??= await spSession(req, setCookies);
+    if (!current) throw new HttpError(401, 'Connect Spotify in Settings first.');
+    return current;
+  };
+  // A refused access token gets one more try, renewed or swapped for the account's newest sign-in,
+  // before this browser counts as signed out.
+  const api = async (path) => {
+    const s = await need();
+    try {
+      return await spApi(s, path);
+    } catch (e) {
+      if (e.status !== 401) throw e;
+      current = await spSession(req, setCookies, s);
+      if (!current) throw e;
+      return spApi(current, path);
+    }
   };
   // Spotify limits search and playlist listings differently; playlist items have no documented cap.
   // Reject out-of-range offsets instead of clamping them and repeating the previous page.
@@ -324,21 +376,23 @@ async function spotify(req, res, url, p, setCookies, out) {
 
   if (p === '/api/spotify/status') {
     const status = { configured: spConfigured(), connected: false, redirect: SP_REDIRECT };
-    const s = spConfigured() ? await spSession(req, setCookies) : null;
-    if (s) {
-      try {
-        const u = await spApi(s, '/me');
-        Object.assign(status, { connected: true, user: { name: u.display_name || u.id, image: pickImage(u.images) } });
-      } catch (e) {
-        if (e.status === 401) setCookies.push(spCookie('mm_sp', '', 0));
-        else Object.assign(status, { connected: true, error: e.message });
-      }
+    if (!spConfigured() || !cookies(req).mm_sp) return out(status);
+    try {
+      const u = await api('/me');
+      Object.assign(status, { connected: true, user: { name: u.display_name || u.id, image: pickImage(u.images) } });
+      // Signed in before accounts were remembered: note whose this is, so it can recover later.
+      if (current && !current.u && typeof u.id === 'string') keepSp(setCookies, null, { ...current, u: u.id });
+    } catch (e) {
+      // Only a refusal signs this browser out; Spotify being slow or down is reported, and the sign-in kept.
+      if (e.status === 401) queueCookie(setCookies, spCookie('mm_sp', '', 0));
+      else Object.assign(status, { connected: true, error: e.message });
     }
     return out(status);
   }
 
   if (p === '/api/spotify/resolve') {
-    const s = spConfigured() ? await spSession(req, setCookies) : null;
+    // Links resolve without a sign-in too, so a Spotify hiccup only means using the public endpoint.
+    const s = spConfigured() ? await spSession(req, setCookies).catch(() => null) : null;
     return out(await resolveSpotify(url.searchParams.get('url'), s));
   }
 
@@ -350,7 +404,7 @@ async function spotify(req, res, url, p, setCookies, out) {
     const back = url.searchParams.get('back') || '';
     const auth = new URL('https://accounts.spotify.com/authorize');
     auth.search = new URLSearchParams({ client_id: SP_ID, response_type: 'code', redirect_uri: SP_REDIRECT, scope: SP_SCOPES, state }).toString();
-    return redirect(res, auth.href, [spCookie('mm_sstate', seal({ s: state, b: /^#\/[\w/-]*$/.test(back) ? back : '#/settings' }), 600)]);
+    return redirect(res, auth.href, [spCookie('mm_sstate', seal({ s: state, b: /^#\/[\w/-]*$/.test(back) ? back : '#/settings' }), STATE_AGE)]);
   }
 
   if (p === '/api/spotify/callback') {
@@ -381,25 +435,29 @@ async function spotify(req, res, url, p, setCookies, out) {
     if (!d || !st || !(d.x > Date.now()) || !sameState(d.st, st.s)) return redirect(res, `${APP_URL}/#/settings?spotify=error`, [clear]);
     const back = `${APP_URL}/${st.b}${st.b.includes('?') ? '&' : '?'}spotify=`;
     if (!d.t) return redirect(res, back + d.err, [clear]);
-    return redirect(res, back + 'connected', [clear, spCookie('mm_sp', seal(d.t), 365 * 86400)]);
+    if (d.t.u) accounts.set('spotify', d.t.u, d.t);
+    return redirect(res, back + 'connected', [clear, spCookie('mm_sp', seal(d.t), YEAR)]);
   }
 
   if (p === '/api/spotify/disconnect' && req.method === 'POST') {
+    // Other devices keep their own sign-ins; this one's is forgotten if it's the one saved.
+    const own = unseal(cookies(req).mm_sp || '');
+    if (own?.u) accounts.forget('spotify', own.u, (v) => v.a === own.a || (own.r && v.r === own.r));
     res.writeHead(204, { 'Set-Cookie': spCookie('mm_sp', '', 0) });
     return res.end();
   }
 
   if (p === '/api/spotify/playlists') {
-    const s = await need();
-    const body = await spApi(s, `/me/playlists?limit=50&offset=${offset}`);
+    const body = await api(`/me/playlists?limit=50&offset=${offset}`);
+    const { u } = await need();
     // Spotify only lets apps read the songs of playlists you own or collaborate on, so only those are listed.
-    const items = (body.items || []).filter((pl) => pl?.id && (pl.collaborative || !s.u || pl.owner?.id === s.u)).map(playlistOut);
+    const items = (body.items || []).filter((pl) => pl?.id && (pl.collaborative || !u || pl.owner?.id === u)).map(playlistOut);
     return out({ items, next: nextOffset(body, maxOffset) });
   }
 
   const pm = p.match(/^\/api\/spotify\/playlists\/([A-Za-z0-9]{10,40})\/items$/);
   if (pm) {
-    const body = await spApi(await need(), `/playlists/${pm[1]}/items?limit=50&offset=${offset}&additional_types=track,episode`);
+    const body = await api(`/playlists/${pm[1]}/items?limit=50&offset=${offset}&additional_types=track,episode`);
     return out({ items: (body.items || []).map((it) => musicOut(it?.item ?? it?.track)).filter(Boolean), next: nextOffset(body) });
   }
 
@@ -408,8 +466,8 @@ async function spotify(req, res, url, p, setCookies, out) {
     // Connected before listening history was asked for: Spotify needs a fresh sign-in to grant it.
     if (!/user-read-currently-playing/.test(s.sc || '') || !/user-read-recently-played/.test(s.sc || '')) return out({ reconnect: true, recent: [] });
     const [cur, rec] = await Promise.all([
-      spApi(s, '/me/player/currently-playing?additional_types=track,episode'),
-      spApi(s, '/me/player/recently-played?limit=30'),
+      api('/me/player/currently-playing?additional_types=track,episode'),
+      api('/me/player/recently-played?limit=30'),
     ]);
     const current = musicOut(cur?.item);
     const seen = new Set(current ? [current.id] : []);
@@ -424,7 +482,7 @@ async function spotify(req, res, url, p, setCookies, out) {
   if (p === '/api/spotify/search') {
     const q = (url.searchParams.get('q') || '').trim().slice(0, 200);
     if (!q) return out({ items: [] });
-    const body = await spApi(await need(), `/search?type=track&limit=10&offset=${offset}&q=${encodeURIComponent(q)}`);
+    const body = await api(`/search?type=track&limit=10&offset=${offset}&q=${encodeURIComponent(q)}`);
     return out({ items: (body.tracks?.items || []).map(musicOut).filter(Boolean), next: nextOffset(body.tracks, maxOffset) });
   }
 
@@ -455,29 +513,47 @@ const repoCount = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : undefined);
 
 /** Counts the account's own private repos by asking for one per page and reading the last page number. */
 async function privateRepos(token) {
-  const { res, body } = await ghRequest('https://api.github.com/user/repos?affiliation=owner&visibility=private&per_page=1', { headers: { Authorization: `Bearer ${token}` } });
+  const { res, body } = await ghRequest('https://api.github.com/user/repos?affiliation=owner&visibility=private&per_page=1', { headers: { Authorization: `Bearer ${token}` } })
+    .catch(() => ({ res: { ok: false } }));
   if (!res.ok) return undefined;
   const last = (res.headers.get('link') || '').match(/[?&]page=(\d+)>;\s*rel="last"/);
   return last ? Number(last[1]) : Array.isArray(body) ? body.length : undefined;
 }
 
-const ghToken = (req, setCookies) => {
+/** This browser's GitHub sign-in ({ a: token, u: account id }), or null. */
+const ghSession = (req) => {
   const s = ghConfigured() ? unseal(cookies(req).mm_gh || '') : null;
-  if (!s?.a) throw new HttpError(401, 'Log in with GitHub in Settings first.');
-  return s.a;
+  return s?.a ? s : null;
 };
 
-/** Asks GitHub for something of the signed-in account's; a refused token signs this browser out. */
-async function ghGet(token, path, setCookies, text = false) {
-  const { res, body } = await ghRequest('https://api.github.com' + path, {
+/**
+ * Asks GitHub for something of the signed-in account's. GitHub keeps only an account's ten newest tokens,
+ * so signing in on other devices can revoke this browser's: then the account's newest token takes over,
+ * and only if that's refused too is this browser signed out. Returns the session the answer came with.
+ */
+async function ghGet(s, path, setCookies, text = false) {
+  if (!s) throw new HttpError(401, 'Log in with GitHub in Settings first.');
+  const ask = (token) => ghRequest('https://api.github.com' + path, {
     headers: { Authorization: `Bearer ${token}`, ...(text ? { Accept: 'application/vnd.github.raw+json' } : {}) },
   }, text);
+  let { res, body } = await ask(s.a);
   if (res.status === 401) {
-    setCookies.push(ghCookie('mm_gh', '', 0));
-    throw new HttpError(401, 'Your GitHub connection expired. Log in again in Settings.');
+    const saved = accounts.get('github', s.u);
+    if (saved?.a && saved.a !== s.a) {
+      ({ res, body } = await ask(saved.a));
+      if (res.status !== 401) {
+        s = { ...saved, u: s.u };
+        queueCookie(setCookies, ghCookie('mm_gh', seal(s), YEAR));
+      }
+    }
+    if (res.status === 401) {
+      accounts.forget('github', s.u, (v) => v.a === s.a || v.a === saved?.a);
+      queueCookie(setCookies, ghCookie('mm_gh', '', 0));
+      throw new HttpError(401, 'Your GitHub connection expired. Log in again in Settings.');
+    }
   }
   if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') throw new HttpError(429, 'GitHub asked us to slow down. Try again in a few minutes.');
-  return { res, body };
+  return { res, body, s };
 }
 
 const ghUrl = (v) => (typeof v === 'string' && v.startsWith('https://github.com/') ? v.slice(0, 500) : '');
@@ -513,13 +589,19 @@ function commitOut(c) {
 }
 
 async function githubRepos(req, p, url, setCookies, out) {
-  const token = ghToken(req, setCookies);
+  // Requests made in parallel each recover on their own; later ones in this request use what the first settled on.
+  let s = ghSession(req);
+  const get = async (path, text) => {
+    const answer = await ghGet(s, path, setCookies, text);
+    s = answer.s;
+    return answer;
+  };
 
   if (p === '/api/github/repos') {
     // The repos you own, public and private, most recently pushed first (up to 1000).
     const items = [];
     for (let page = 1; page <= 10; page++) {
-      const { res, body } = await ghGet(token, `/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`, setCookies);
+      const { res, body } = await get(`/user/repos?affiliation=owner&sort=pushed&per_page=100&page=${page}`);
       if (!res.ok || !Array.isArray(body)) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
       items.push(...body.map(repoOut).filter(Boolean));
       if (body.length < 100) break;
@@ -532,7 +614,7 @@ async function githubRepos(req, p, url, setCookies, out) {
   const [, id, what] = m;
 
   if (!what) {
-    const { res, body } = await ghGet(token, `/repositories/${id}`, setCookies);
+    const { res, body } = await get(`/repositories/${id}`);
     if (res.status === 404) throw new HttpError(404, 'That repo isn’t available.');
     const repo = res.ok ? repoOut(body) : null;
     if (!repo) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
@@ -542,7 +624,7 @@ async function githubRepos(req, p, url, setCookies, out) {
   if (what === 'commits') {
     const page = Number(url.searchParams.get('page') || 1);
     if (!Number.isSafeInteger(page) || page < 1 || page > 1000) throw new HttpError(400, 'Invalid page.');
-    const { res, body } = await ghGet(token, `/repositories/${id}/commits?per_page=30&page=${page}`, setCookies);
+    const { res, body } = await get(`/repositories/${id}/commits?per_page=30&page=${page}`);
     // an empty repo has no commits to list (409), and one that's gone says 404
     if (res.status === 409) return out({ items: [] });
     if (res.status === 404) throw new HttpError(404, 'That repo isn’t available.');
@@ -550,7 +632,7 @@ async function githubRepos(req, p, url, setCookies, out) {
     return out({ items: body.map(commitOut).filter(Boolean), next: /rel="next"/.test(res.headers.get('link') || '') ? page + 1 : undefined });
   }
 
-  const { res, body } = await ghGet(token, `/repositories/${id}/readme`, setCookies, true);
+  const { res, body } = await get(`/repositories/${id}/readme`, true);
   if (res.status === 404) return out({ text: null });
   if (!res.ok) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
   return out({ text: body.slice(0, 200_000) });
@@ -559,14 +641,23 @@ async function githubRepos(req, p, url, setCookies, out) {
 async function github(req, res, url, p, setCookies, out) {
   if (p === '/api/github/status') {
     const status = { configured: ghConfigured(), connected: false };
-    const s = ghConfigured() ? unseal(cookies(req).mm_gh || '') : null;
-    if (!s?.a) return out(status);
-    const { res: r, body } = await ghRequest('https://api.github.com/user', { headers: { Authorization: `Bearer ${s.a}` } });
-    if (r.status === 401) {
-      setCookies.push(ghCookie('mm_gh', '', 0));
-      return out(status);
+    let s = ghSession(req);
+    if (!s) return out(status);
+    let r, body;
+    try {
+      ({ res: r, body, s } = await ghGet(s, '/user', setCookies));
+    } catch (e) {
+      // Only a refusal signs this browser out; GitHub being slow or down is reported, and the sign-in kept.
+      if (e.status === 401) return out(status);
+      return out({ ...status, connected: true, error: e.message });
     }
     if (!r.ok || typeof body.login !== 'string') return out({ ...status, connected: true, error: 'GitHub didn’t answer. Try again.' });
+    // Signed in before accounts were remembered: note whose this is, so it can recover later.
+    if (!s.u && Number.isSafeInteger(body.id)) {
+      s = { ...s, u: String(body.id) };
+      queueCookie(setCookies, ghCookie('mm_gh', seal(s), YEAR));
+    }
+    if (s.u && !accounts.get('github', s.u)) accounts.set('github', s.u, { a: s.a });
     // Private repos are only readable with the `repo` scope; GitHub lists the scopes it granted in a header.
     const scopes = (r.headers.get('x-oauth-scopes') || '').split(',').map((x) => x.trim()).filter(Boolean);
     let priv;
@@ -593,7 +684,7 @@ async function github(req, res, url, p, setCookies, out) {
     const state = crypto.randomBytes(16).toString('hex');
     const auth = new URL('https://github.com/login/oauth/authorize');
     auth.search = new URLSearchParams({ client_id: GH_ID, redirect_uri: GH_REDIRECT, scope: GH_SCOPES, state }).toString();
-    return redirect(res, auth.href, [ghCookie('mm_gstate', seal({ s: state }), 600)]);
+    return redirect(res, auth.href, [ghCookie('mm_gstate', seal({ s: state }), STATE_AGE)]);
   }
 
   if (p === '/api/github/callback') {
@@ -610,7 +701,14 @@ async function github(req, res, url, p, setCookies, out) {
         body: new URLSearchParams({ client_id: GH_ID, client_secret: GH_SECRET, code, redirect_uri: GH_REDIRECT }),
       });
       if (typeof body.access_token !== 'string' || !body.access_token) throw new HttpError(502, body.error_description || 'GitHub returned no token.');
-      return redirect(res, back + 'connected', [clear, ghCookie('mm_gh', seal({ a: body.access_token }), 365 * 86400)]);
+      const s = { a: body.access_token };
+      try {
+        const { res: r, body: user } = await ghRequest('https://api.github.com/user', { headers: { Authorization: `Bearer ${s.a}` } });
+        if (r.ok && Number.isSafeInteger(user.id)) s.u = String(user.id);
+      } catch {}
+      // The newest sign-in is the one GitHub will keep longest, so other devices fall back on it.
+      if (s.u) accounts.set('github', s.u, { a: s.a });
+      return redirect(res, back + 'connected', [clear, ghCookie('mm_gh', seal(s), YEAR)]);
     } catch (e) {
       console.error('GitHub token exchange failed:', e.message);
       return redirect(res, back + 'error', [clear]);
@@ -618,6 +716,9 @@ async function github(req, res, url, p, setCookies, out) {
   }
 
   if (p === '/api/github/disconnect' && req.method === 'POST') {
+    // Other devices keep their own sign-ins; this one's is forgotten if it's the one saved.
+    const own = ghSession(req);
+    if (own?.u) accounts.forget('github', own.u, (v) => v.a === own.a);
     res.writeHead(204, { 'Set-Cookie': ghCookie('mm_gh', '', 0) });
     return res.end();
   }

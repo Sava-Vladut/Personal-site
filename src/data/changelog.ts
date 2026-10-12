@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.67.1',
+    date: '2026-10-12',
+    changes: [
+      'Signing in to Spotify or GitHub on one device no longer disconnects your others',
+      'Spotify renews an expired session and tries again instead of signing you out',
+      'A brief network drop or a slow Spotify or GitHub no longer shows you as disconnected',
+      'More time to finish signing in on a phone',
+    ],
+  },
+  {
     version: '1.67.0',
     date: '2026-10-11',
     changes: [

@@ -814,7 +814,7 @@ test('README card excerpts keep prose without badges, code, tables or interactiv
 
 test('README requests share memory cache and forget it on refresh or disconnect', async () => {
   let calls = 0;
-  const { getReadme, forgetRepos } = await load('src/lib/github.ts', {}, {
+  const { getReadme, forgetRepos } = await load('src/lib/github.ts', { './retry': await load('src/lib/retry.ts') }, {
     fetch: async () => { calls++; return { ok: true, json: async () => ({ text: '# Hello' }) }; },
   });
   await Promise.all([getReadme(1), getReadme('1')]);
@@ -822,6 +822,24 @@ test('README requests share memory cache and forget it on refresh or disconnect'
   forgetRepos();
   await getReadme(1);
   assert.equal(calls, 2);
+});
+
+test('reads are tried again when the server can’t be reached, but not when it answered', async () => {
+  const { retry } = await load('src/lib/retry.ts', {}, { navigator: { onLine: true }, setTimeout: (fn) => setImmediate(fn) });
+  let calls = 0;
+  const flaky = (failures, status) => () => (++calls <= failures ? Promise.reject(Object.assign(new Error('x'), { status })) : Promise.resolve('ok'));
+  assert.equal(await retry(flaky(2)), 'ok', 'a network failure (no status) is retried');
+  assert.equal(calls, 3);
+  calls = 0;
+  assert.equal(await retry(flaky(1, 502)), 'ok', 'a redeploy’s bad gateway is retried');
+  for (const status of [401, 404, 429, 504]) {
+    calls = 0;
+    await assert.rejects(retry(flaky(1, status)));
+    assert.equal(calls, 1, `${status} is answered at once`);
+  }
+  calls = 0;
+  await assert.rejects(retry(flaky(9)));
+  assert.equal(calls, 4, 'gives up after three more tries');
 });
 
 test('a README is shown as elements: pictures and links stay on GitHub, and nothing in it can run', async () => {
