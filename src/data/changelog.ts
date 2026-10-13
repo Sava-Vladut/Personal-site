@@ -11,22 +11,22 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
-    version: '1.77.1',
-    date: '2026-10-13',
-    changes: [
-      'The mood background is calmer: faint, blurred clouds drift slowly behind the page, with soft out-of-focus letters thickening where the clouds are',
-      'Each mood keeps its own colours and letters, and its own gentle drift: joy and hope rise, sadness sinks in long curtains, calm stretches into mist',
-      'Letters blend smoothly into one another instead of flickering, and the whole thing moves at a slow 20 frames a second',
-    ],
-  },
-  {
-    version: '1.77.0',
+    version: '1.78.0',
     date: '2026-10-13',
     changes: [
       'Notes give the words the whole screen: the header card is gone, leaving a bare title and one quiet line beneath it with the date, weather, place, feeling and people',
       'The songs of a note collapse into one small “♪ 3 songs” chip on that line; tap it to see and play them in a sheet instead of a strip under the text',
       'The top bar is just Back, ⋯ and Done; reading view, making a note public, its icon and delete moved into the ⋯ menu',
       'The toolbar at the bottom only appears while you’re writing',
+    ],
+  },
+  {
+    version: '1.77.1',
+    date: '2026-10-13',
+    changes: [
+      'The mood background is calmer: faint, blurred clouds drift slowly behind the page, with soft out-of-focus letters thickening where the clouds are',
+      'Each mood keeps its own colours and letters, and its own gentle drift: joy and hope rise, sadness sinks in long curtains, calm stretches into mist',
+      'Letters blend smoothly into one another instead of flickering, and the whole thing moves at a slow 20 frames a second',
     ],
   },
   {
