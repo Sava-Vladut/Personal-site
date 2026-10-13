@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.76.0',
+    date: '2026-10-13',
+    changes: [
+      'The little cloud beside each journal day now shows the weather of the day: rain when sadness led, thunder and lightning when anger did, a shining sun when joy did',
+      'The mood line reacts too: it flashes with each lightning strike, glows in the sun and sways in the rain',
+      'Tap the cloud for more: a downpour, a lightning strike, or a burst of sunshine',
+    ],
+  },
+  {
     version: '1.75.1',
     date: '2026-10-13',
     changes: [
