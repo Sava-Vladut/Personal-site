@@ -80,7 +80,8 @@
 
   .app { padding-top: 10px; padding-left: var(--side-w); }
   .page { max-width: 1320px; }
-  .page.editor { max-width: 860px; }
+  /* a note fills the screen beside the sidebar, like a document in a word processor, with wide margins either side */
+  .page.editor { max-width: none; padding-inline: clamp(36px, 5vw, 96px); }
 
   /* the sky panels stop being full-width banners and become cards inside the page */
   .app .page > .journal-top, .route-journal .page > .journal-side > .journal-top {

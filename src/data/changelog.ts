@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.78.2',
+    date: '2026-10-13',
+    changes: [
+      'On desktop a note fills the whole screen beside the sidebar, like a document, instead of a narrow column in the middle',
+    ],
+  },
+  {
     version: '1.78.1',
     date: '2026-10-13',
     changes: [
