@@ -12,7 +12,7 @@ const bundle = await rolldown({
     resolveId: (id) => (id === 'review:markdown' ? '\0' + id : null),
     load: (id) => id === '\0review:markdown' ? `
       export * from '${new URL('../src/lib/markdown.ts', import.meta.url).pathname}';
-      export { hiddenRanges } from '${new URL('../src/lib/liveMarkdown.ts', import.meta.url).pathname}';
+      export { hiddenRanges, styleSpans } from '${new URL('../src/lib/liveMarkdown.ts', import.meta.url).pathname}';
     ` : null,
   }],
 });
@@ -102,4 +102,91 @@ test('ticking a task keeps the caret where it was', () => {
   md.toggleTaskAt(away, 0, false);
   assert.equal(away.value, '- [ ] done');
   assert.equal(away.inputs, 1);
+});
+
+/** A text box with « and » around the selected text. */
+function pick(text) {
+  const s = text.indexOf('«'), e = text.indexOf('»') - 1;
+  const b = box(text.replace('«', '').replace('»', ''));
+  b.selectionStart = s;
+  b.selectionEnd = e;
+  return b;
+}
+const picked = (b) => b.value.slice(0, b.selectionStart) + '«' + b.value.slice(b.selectionStart, b.selectionEnd) + '»' + b.value.slice(b.selectionEnd);
+const wrapped = (text, mark) => {
+  const b = text.includes('«') ? pick(text) : box(text);
+  const did = md.toggleWrap(b, mark);
+  return [picked(b), did];
+};
+
+test('styling keeps out of a line’s own marker, however the selection starts', () => {
+  // dragging from the very start of a heading takes its hidden "### " into the selection
+  assert.equal(wrapped('«### test»', '==')[0], '### ==«test»==');
+  assert.equal(wrapped('«- item»', '**')[0], '- **«item»**');
+  assert.equal(wrapped('«- [ ] item»', '*')[0], '- [ ] *«item»*');
+  assert.equal(wrapped('«> [!note] hello there»', '==')[0], '> [!note] ==«hello there»==');
+  assert.equal(wrapped('«1. one»', '~~')[0], '1. ~~«one»~~');
+  // and a second press takes it off again
+  assert.equal(wrapped('### ==«test»==', '==')[0], '### «test»');
+  assert.equal(wrapped('«### ==test==»', '==')[0], '### «test»');
+});
+
+test('each selected line gets its own markers', () => {
+  assert.equal(wrapped('«# Title\n- item two\nplain»', '**')[0], '# **«Title**\n- **item two**\n**plain»**');
+  assert.equal(wrapped('# **«Title**\n- **item two**\n**plain»**', '**')[0], '# «Title\n- item two\nplain»');
+  assert.equal(wrapped('«one\n\ntwo»', '==')[0], '==«one==\n\n==two»==');
+});
+
+test('a caret in a word styles the word, and not a line’s marker', () => {
+  assert.equal(wrapped('say hel|lo there', '**')[0], 'say **«hello»** there');
+  assert.equal(wrapped('say **hel|lo** there', '**')[0], 'say «hello» there');
+  assert.equal(wrapped('- |item', '**')[0], '- **«item»**');
+  assert.equal(wrapped('### |', '==')[1], false);
+  assert.equal(wrapped('a | b', '==')[1], false);
+  assert.equal(wrapped('«  »', '==')[1], false);
+});
+
+test('styling fits in with what is there already', () => {
+  // part of a styled span comes out of it
+  assert.equal(wrapped('==t«es»t==', '==')[0], '==t==«es»==t==');
+  assert.equal(wrapped('==«te»st==', '==')[0], '«te»==st==');
+  assert.equal(wrapped('==te«st»==', '==')[0], '==te==«st»');
+  // a span the selection touches or holds is merged
+  assert.equal(wrapped('«a ==b== c»', '==')[0], '==«a b c»==');
+  assert.equal(wrapped('==a== «b»', '==')[0], '==a== ==«b»==');
+  assert.equal(wrapped('«ab ==cd==» ef', '==')[0], '==«ab cd»== ef');
+  assert.equal(wrapped('ab ==c«d== e»f', '==')[0], 'ab ==c«d e»==f');
+  // a span the selection covers entirely goes
+  assert.equal(wrapped('x «==bold==» y', '==')[0], 'x «bold» y');
+});
+
+test('styles nest, so the markers never cross', () => {
+  assert.equal(wrapped('**bo«ld** te»xt', '==')[0], '**bo==«ld==** ==te»==xt');
+  assert.equal(wrapped('«a **b** c»', '*')[0], '*«a* ***b*** *c»*');
+  assert.equal(wrapped('«a *i*»', '**')[0], '**«a** ***i*»**');
+  assert.equal(wrapped('**«bold»**', '*')[0], '***«bold»***');
+  assert.equal(wrapped('***«bold»***', '*')[0], '**«bold»**');
+  assert.equal(wrapped('«`x` and y»', '==')[0], '==«`x` and y»==');
+  assert.equal(wrapped('`a«b»c`', '**')[1], false);
+  assert.equal(wrapped('```\n«code»\n```', '**')[1], false);
+});
+
+test('the styled text reads back as the same words, and the same marks apply', () => {
+  for (const [text, mark] of [['«### test»', '=='], ['«a **b** c»', '*'], ['**bo«ld** te»xt', '=='], ['«# T\n- a ==b== c»', '**']]) {
+    const b = pick(text);
+    md.toggleWrap(b, mark);
+    const plain = (s) => s.replace(/==|\*\*|\*|~~/g, '');
+    assert.equal(plain(b.value), plain(text.replace(/[«»]/g, '')));
+    const once = b.value;
+    md.toggleWrap(b, mark);
+    md.toggleWrap(b, mark);
+    assert.equal(b.value, once, 'on, off, on gives the same text');
+  }
+});
+
+test('bold italic reads as both, and plain bold and italic still read as one', () => {
+  const classes = (t) => md.styleSpans(t).map((s) => s.c).filter((c) => c !== 'md-mark').sort().join(' ');
+  assert.equal(classes('***both***'), 'md-b md-i');
+  assert.equal(classes('**bold** and *italic*'), 'md-b md-i');
+  assert.equal(classes('**a *i* b**'), 'md-b md-i');
 });

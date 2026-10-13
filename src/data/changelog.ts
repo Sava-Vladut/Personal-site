@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.75.2',
+    date: '2026-10-13',
+    changes: [
+      'Bold, italic, strike and highlight now work like in a word processor: they style the words only, never a heading’s, list’s or quote’s own marker, so a highlighted heading no longer turns into raw ### ==text==',
+      'Styling a selection over several lines gives each line its own markers, and spaces stay outside them',
+      'Styling part of text that is already styled splits it, styling over styled text merges it, and pressing again takes it all off',
+      'Styles that overlap are cut so they always nest, and bold italic (***text***) now shows as both',
+    ],
+  },
+  {
     version: '1.76.0',
     date: '2026-10-13',
     changes: [

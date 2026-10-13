@@ -2,7 +2,7 @@
 // # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers and #tags.
 // This file has the editing side: formatting commands for the text boxes, and the plain words for excerpts.
 // Reading it back is components/Markdown.tsx.
-import { hiddenRanges } from './liveMarkdown';
+import { hiddenRanges, styleSpans } from './liveMarkdown';
 
 /* ---------- block prefixes ---------- */
 
@@ -60,30 +60,135 @@ const lineEnd = (v: string, i: number) => {
 };
 const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}_'’-]/u.test(c);
 
-/** Bold, italic, strike, highlight or code around the selection — or off again if it's already there. */
+/** The inline styles by marker: the class each one's span has in the styled text (lib/liveMarkdown.ts). */
+const STYLE: Record<string, string> = { '**': 'md-b', '*': 'md-i', '~~': 'md-s', '==': 'md-hl', '`': 'md-code' };
+/** Spans whose words other styles can sit inside. */
+const HOLDS = ['md-b', 'md-i', 'md-s', 'md-hl', 'md-link'];
+
+/** Where a line's words start: after its heading, list, task or quote marker (and a callout's [!type]). */
+function wordsFrom(line: string) {
+  const p = line.match(PREFIX)![0].length;
+  const c = /^[ \t]*>/.test(line) ? line.slice(p).match(/^\[![\w-]+\][+-]?[ \t]*/) : null;
+  return p + (c ? c[0].length : 0);
+}
+
+/**
+ * Bold, italic, strike, highlight or code on the selection — or off again if it's all there already — the way a word
+ * processor does it. It styles the words only: a line's heading, list or quote marker stays out of it, each line gets
+ * its own markers, and spaces stay outside them. Where the selection meets styling already there it fits in: text
+ * inside a span is split out of it, a span it touches is merged, and one that only partly overlaps another style is
+ * cut so the markers always nest. A caret in a word styles the word. Returns false when there was nothing to style.
+ */
 export function toggleWrap(el: TextBox, mark: string) {
   const v = el.value;
-  let s = el.selectionStart, e = el.selectionEnd;
-  const n = mark.length;
-  // A caret inside a word formats the whole word.
-  if (s === e) {
-    while (s > 0 && isWordChar(v[s - 1])) s--;
-    while (e < v.length && isWordChar(v[e])) e++;
+  const style = STYLE[mark];
+  const spans = styleSpans(v);
+  const own = spans.filter((p) => p.c === style);
+  const blank = (i: number) => /\s/.test(v[i]);
+
+  /** [a, b) as the pieces that can wear the markers without breaking how the other spans nest. */
+  const pieces = (a: number, b: number): [number, number][] => {
+    while (a < b && blank(a)) a++;
+    while (b > a && blank(b - 1)) b--;
+    if (a >= b) return [];
+    for (const p of spans) {
+      if (p.x >= b || p.y <= a || p.c === style) continue;
+      const holds = a >= p.cx && b <= p.cy;
+      const whole = a <= p.x && b >= p.y;
+      let cut: [number, number][];
+      if (p.c === 'md-pre' || p.c === 'md-hr') return []; // a code or divider line takes no styling
+      else if (p.c === 'md-code' && mark !== '`') {
+        if (holds) return []; // code is one piece: styled around, never inside
+        if (whole) continue;
+        cut = [[a, p.x], [p.y, b]];
+      } else if (HOLDS.includes(p.c) && !holds && !whole) cut = [[a, p.x], [Math.max(a, p.cx), Math.min(b, p.cy)], [p.y, b]];
+      // an italic can't hold a bold's asterisks, nor a bold an italic's beside its own: they get theirs on their own
+      else if (whole && (a !== p.x || b !== p.y) && ((mark === '*' && p.c === 'md-b') || (mark === '**' && p.c === 'md-i' && (a === p.x || b === p.y)))) cut = [[a, p.x], [p.x, p.y], [p.y, b]];
+      else continue;
+      return cut.flatMap(([s, e]) => (s < e ? pieces(s, e) : []));
+    }
+    return [[a, b]];
+  };
+
+  const segs: [number, number][] = [];
+  for (let ls = lineStart(v, el.selectionStart); ls <= el.selectionEnd; ls = lineEnd(v, ls) + 1) {
+    const le = lineEnd(v, ls);
+    const cs = ls + wordsFrom(v.slice(ls, le));
+    let a = Math.max(el.selectionStart, cs), b = Math.min(el.selectionEnd, le);
+    if (el.selectionStart === el.selectionEnd) {
+      b = a;
+      while (a > cs && isWordChar(v[a - 1])) a--;
+      while (b < le && isWordChar(v[b])) b++;
+    }
+    segs.push(...pieces(a, b));
+    if (le >= v.length) break;
   }
-  // Markers can't sit against spaces, so leave those outside.
-  while (s < e && /\s/.test(v[s])) s++;
-  while (e > s && /\s/.test(v[e - 1])) e--;
-  const sel = v.slice(s, e);
-  // `*` next to `**` is part of the bold, not an italic.
-  const around = (at: number) => v.slice(at, at + n) === mark && (mark !== '*' || (v[at - 1] !== '*' && v[at + 1] !== '*') || v.slice(at - 2, at + 1) === '***' || v.slice(at, at + 3) === '***');
-  if (sel.length >= 2 * n && sel.startsWith(mark) && sel.endsWith(mark) && !(mark === '*' && sel.startsWith('**') && !sel.startsWith('***'))) {
-    return replace(el, s, e, sel.slice(n, -n), s, e - 2 * n);
+  if (!segs.length) return false;
+
+  // Off when all of it is styled already (markers don't count, they don't show); otherwise on, for all of it.
+  const hidden = new Uint8Array(v.length);
+  for (const p of spans) (hidden.fill(1, p.x, p.cx), hidden.fill(1, p.cy, p.y));
+  const covered = ([a, b]: [number, number]) => {
+    let any = false;
+    for (let i = a; i < b; i++) {
+      if (hidden[i]) continue;
+      if (!own.some((p) => i >= p.cx && i < p.cy)) return false;
+      any = true;
+    }
+    return any;
+  };
+  const off = segs.every(covered);
+
+  const edits = new Map<number, { del: number; ins: string }>();
+  const edit = (at: number, del: number, ins = '') => {
+    const e = edits.get(at) ?? { del: 0, ins: '' };
+    edits.set(at, { del: Math.max(e.del, del), ins: e.ins + ins });
+  };
+  const unmark = (p: { x: number; y: number; cx: number; cy: number }) => (edit(p.x, p.cx - p.x), edit(p.cy, p.y - p.cy));
+  for (const [a, b] of segs) {
+    if (!off) {
+      const hit = own.filter((p) => p.x <= b && p.y >= a);
+      hit.forEach(unmark);
+      edit(Math.min(a, ...hit.map((p) => p.x)), 0, mark);
+      edit(Math.max(b, ...hit.map((p) => p.y)), 0, mark);
+      continue;
+    }
+    for (const p of own.filter((q) => q.x < b && q.y > a)) {
+      // the part of the span before the selection keeps its markers (not around spaces); with none left, it's gone
+      let at = a;
+      while (at > p.cx && blank(at - 1)) at--;
+      if (at <= p.cx) edit(p.x, p.cx - p.x);
+      else edit(at, 0, mark);
+      at = b;
+      while (at < p.cy && blank(at)) at++;
+      if (at >= p.cy) edit(p.cy, p.y - p.cy);
+      else edit(at, 0, mark);
+    }
   }
-  if (s >= n && around(s - n) && around(e)) {
-    return replace(el, s - n, e + n, sel, s - n, e - n);
+
+  const list = [...edits].sort((x, y) => x[0] - y[0]);
+  /** Where a place in the text goes once the edits are made; `after` keeps it past text added right there. */
+  const moved = (p: number, after: boolean) => {
+    let shift = 0;
+    for (const [at, e] of list) {
+      if (at > p || (at === p && !after)) break;
+      if (at + e.del > p) return at + shift + e.ins.length;
+      shift += e.ins.length - e.del;
+    }
+    return p + shift;
+  };
+  const lo = list[0][0];
+  const hi = Math.max(...list.map(([at, e]) => at + e.del));
+  let out = '', pos = lo;
+  for (const [at, e] of list) {
+    out += v.slice(pos, at) + e.ins;
+    pos = Math.max(pos, at + e.del);
   }
-  if (s === e) return replace(el, s, e, mark + mark, s + n);
-  replace(el, s, e, mark + sel + mark, s + n, e + n);
+  out += v.slice(pos, hi);
+  const first = segs[0][0], last = segs[segs.length - 1][1];
+  if (out === v.slice(lo, hi)) el.setSelectionRange(first, last);
+  else replace(el, lo, hi, out, moved(first, true), moved(last, false));
+  return true;
 }
 
 /**

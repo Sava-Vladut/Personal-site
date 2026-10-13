@@ -20,7 +20,7 @@ const INLINE = new RegExp(
     /(?<tick>`+)(?<code>[^`\n]+?)\k<tick>/.source,
     /(?<plain>\[\[[^\]\n]+\]\]|@\[[^\]\n]+\]|♪\[[^\]\n]+\])/.source,
     /\[(?<text>[^\]\n]+)\]\((?<url>[^)\s]*)\)/.source,
-    /\*\*(?<b>\S(?:[^\n]*?\S)?)\*\*/.source,
+    /\*\*(?<b>\S(?:[^\n]*?\S)?)\*\*(?!\*)/.source,
     /~~(?<s>\S(?:[^\n]*?\S)?)~~/.source,
     /==(?<hl>\S(?:[^\n]*?\S)?)==/.source,
     /\*(?<i>\S(?:[^*\n]*?\S)?)\*/.source,
@@ -119,6 +119,32 @@ export function hiddenRanges(text: string) {
   };
   walk(decorate(text), false);
   return out;
+}
+
+/** A styled span's place in a text: all of it [x, y), and just what's between its markers [cx, cy). */
+export interface Span { c: string; x: number; y: number; cx: number; cy: number }
+
+/** Every styled span in a text (bold, highlight, a link, a code line…), by class `c`, as the editor reads it. */
+export function styleSpans(text: string) {
+  const out: Span[] = [];
+  let at = 0;
+  const size = (d: Deco): number => (typeof d === 'string' ? d.length : d.k.reduce((n, k) => n + size(k), 0));
+  const marker = (d: Deco | undefined, other: boolean) => (typeof d === 'object' && other && d.c.startsWith('md-mark') ? size(d) : 0);
+  const walk = (list: Deco[]) => {
+    for (const d of list) {
+      if (typeof d === 'string') {
+        at += d.length;
+        continue;
+      }
+      const x = at;
+      const lead = marker(d.k[0], d.k.length > 1);
+      const trail = marker(d.k[d.k.length - 1], d.k.length > 1);
+      walk(d.k);
+      out.push({ c: d.c, x, y: at, cx: x + lead, cy: at - trail });
+    }
+  };
+  walk(decorate(text));
+  return out.sort((a, b) => a.x - b.x || b.y - a.y);
 }
 
 /** A block's text in styled pieces, ending with the line break that keeps its last line open (see editable.ts). */

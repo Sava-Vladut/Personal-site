@@ -69,7 +69,7 @@ const INLINE = new RegExp(
     /(`+)([^`\n]+?)\1/.source, //                                        1, 2 code
     /\[\[(?:([^\]|\n]+)\|)?([^\]\n]+)\]\]/.source, //                    3, 4 wiki link: a book on the shelf, a note, else text
     /\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/.source, //       5, 6 link
-    /\*\*(\S(?:[^\n]*?\S)?)\*\*/.source, //                               7 bold
+    /\*\*(\S(?:[^\n]*?\S)?)\*\*(?!\*)/.source, //                               7 bold
     /~~(\S(?:[^\n]*?\S)?)~~/.source, //                                   8 strike
     /==(\S(?:[^\n]*?\S)?)==/.source, //                                   9 highlight
     /\*(\S(?:[^*\n]*?\S)?)\*/.source, //                                  10 italic

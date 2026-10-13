@@ -24,8 +24,6 @@ const LINES: [UiName, string, Action, string][] = [
   ['blockquote', t('Quote'), (el) => toggleLines(el, 'quote'), 'quote'],
 ];
 
-const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}_'’-]/u.test(c);
-
 /** The note's text box the selection is in, if it is in one. */
 function boxOf(s: Selection | null) {
   const n = s?.anchorNode;
@@ -218,17 +216,13 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
   const wrap = (mark: string) => {
     const el = target();
     if (!el) return;
-    const v = el.value;
-    const s = el.selectionStart;
-    if (s === el.selectionEnd && !isWordChar(v[s - 1]) && !isWordChar(v[s])) {
-      if (pend.current?.mark === mark) return drop();
-      el.focus({ preventScroll: true });
-      pend.current = { mark, box: el, pos: s, len: v.length };
-      setPending(mark);
-      return;
-    }
+    const caret = el.selectionStart === el.selectionEnd;
+    if (caret && pend.current?.mark === mark) return drop();
     drop();
-    toggleWrap(el, mark);
+    if (toggleWrap(el, mark) || !caret) return;
+    el.focus({ preventScroll: true });
+    pend.current = { mark, box: el, pos: el.selectionStart, len: el.value.length };
+    setPending(mark);
   };
   const showTools = format && tools;
   const lit = styles.split(' ');
