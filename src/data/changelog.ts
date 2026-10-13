@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.78.3',
+    date: '2026-10-13',
+    changes: [
+      'On desktop the records page uses the full width: the song of the day sits beside the numbers and tabs instead of under them',
+      'On desktop Most picked shows its numbers in a square beside the ranking',
+      'Fixed the missing space in page titles like “Your records”',
+    ],
+  },
+  {
     version: '1.78.2',
     date: '2026-10-13',
     changes: [

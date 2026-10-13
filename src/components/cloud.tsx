@@ -9,7 +9,7 @@ export function CloudTitle({ text }: { text: string }) {
   return (
     <h1 class="title cloud-title" aria-label={text}>
       {[...text].map((ch, i) => (
-        <span aria-hidden="true" style={{ '--i': i }}>{ch === ' ' ? ' ' : ch}</span>
+        <span aria-hidden="true" style={{ '--i': i }}>{ch === ' ' ? '\u00a0' : ch}</span>
       ))}
     </h1>
   );

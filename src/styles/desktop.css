@@ -110,6 +110,30 @@
 
   /* ---------- media ---------- */
 
+  /* the sky: title across the top, numbers and tabs on the left, the song of the day filling the right */
+  .media-top {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); column-gap: 20px; align-content: start;
+  }
+  .media-top > :is(.page-head, .search) { grid-column: 1 / -1; }
+  .media-top > :is(.media-stats, .media-tabs) { grid-column: 1; }
+  .media-top > .seg.media-tabs { max-width: none; align-self: start; }
+  .media-top > .sotd { grid-column: 2; grid-row: 2 / span 2; max-width: none; margin-top: 0; align-self: start; }
+  .media-top > .search { max-width: none; }
+  .media-top .media-stats { margin-bottom: 10px; }
+  .media-top .media-stat { padding: 10px 14px 8px; }
+  .media-top .media-stat b { font-size: 24px; }
+  .media-top .media-stat small { font-size: 12px; }
+  /* no song card (the shelf, or searching): numbers and tabs share one row */
+  .media-top:not(:has(> .sotd)) > .media-tabs { grid-column: 2; grid-row: 2; }
+  .media-top:not(:has(> .sotd)) > .media-stats { margin-bottom: 0; }
+
+  /* most picked: the four numbers in a square on the left, the ranking beside them */
+  .sotd-stats { display: grid; grid-template-columns: 300px minmax(0, 1fr); column-gap: 14px; padding: 14px; }
+  .sotd-stats > .sotd-stats-head { grid-column: 1 / -1; }
+  .sotd-stats > .sotd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; align-content: start; }
+  .sotd-stats .sotd-tile { padding: 10px 12px 8px; }
+  .sotd-stats .sotd-tile b { font-size: 22px; }
+
   .media-panel .reading-list {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); overflow: visible;
     margin-inline: 0; padding: 2px 0 4px;
