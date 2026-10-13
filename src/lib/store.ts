@@ -779,6 +779,7 @@ export interface Settings {
   weather: boolean;         // add the weather to entries
   places: boolean;          // save where you are with new entries
   home: Place | null;       // the weather's place when yours isn't saved, and for older entries
+  moodBg: boolean;          // a faint background that takes the world of your latest mood
   blur: boolean;            // blur notes and people on screen, for when someone's looking over your shoulder
 }
 const SETTINGS_KEY = 'mm-settings';
@@ -790,7 +791,7 @@ function loadSettings(): Settings {
   } catch {}
   return {
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system', weekStart: s.weekStart === 0 ? 0 : 1, picker: s.picker === 'wheel' ? 'wheel' : 'grid', density: s.density === 'compact' ? 'compact' : 'cards',
-    weather: s.weather === true, places: s.places === true, home: normalizePlace(s.home), blur: s.blur === true,
+    weather: s.weather === true, places: s.places === true, home: normalizePlace(s.home), moodBg: s.moodBg !== false, blur: s.blur === true,
   };
 }
 const settings$ = observable<Settings>(loadSettings());

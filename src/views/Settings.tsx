@@ -217,6 +217,13 @@ export function Settings({ query }: { query: URLSearchParams }) {
             </div>
           </div>
           <div class="list-row">
+            <div>
+              <div>{t('Mood background')}</div>
+              <div class="muted small">{t('A faint background that takes the world of your latest mood: a warm glow for joy, waves for calm, light rain for sadness.')}</div>
+            </div>
+            <button class="switch" role="switch" aria-checked={settings.moodBg} aria-label={t('Mood background')} onClick={() => setSettings({ moodBg: !settings.moodBg })} />
+          </div>
+          <div class="list-row">
             <span>{t('Week starts on')}</span>
             <div class="seg compact" role="radiogroup" aria-label={t('Week starts on')}>
               {([[1, t('Monday')], [0, t('Sunday')]] as const).map(([v, l]) => (

@@ -56,3 +56,10 @@ export function dayMood(list: Entry[]): DayMood | null {
   const ribbon = `linear-gradient(90deg, transparent ${Math.max(0, at[0][1] - 14)}%, ${stops.join(', ')}, transparent ${Math.min(100, at[at.length - 1][1] + 14)}%)`;
   return { worlds, word, ribbon };
 }
+
+/** The world of the latest feeling you logged, and how strong it was (1–5); null before the first one. */
+export function latestMood(list: Entry[]): { world: string; intensity: number } | null {
+  let best: Entry | null = null;
+  for (const e of list) if (e.emotions.length && coreOf(e.emotions[0]) && (!best || e.time > best.time)) best = e;
+  return best ? { world: coreOf(best.emotions[0]).id, intensity: best.intensity } : null;
+}

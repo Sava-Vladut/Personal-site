@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.77.0',
+    date: '2026-10-13',
+    changes: [
+      'New mood background: behind every page, a faint field of letters takes the world of your latest mood',
+      'Joy is a warm glow with twinkling sparks, calm a swell of ≈ waves, sadness a light rain of drops, anger rising embers, fear patches that flicker, shame brackets closing in, hope drifts rising upward, love two softly beating glows',
+      'It fades from one world to the next when you log a new feeling, and stronger feelings show a little stronger',
+      'Turn it off in Settings › Appearance › Mood background',
+    ],
+  },
+  {
     version: '1.75.2',
     date: '2026-10-13',
     changes: [
