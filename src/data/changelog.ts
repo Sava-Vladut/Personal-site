@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.75.0',
+    date: '2026-10-13',
+    changes: [
+      'On desktop, the sidebar can be hidden with the arrow on its edge, and brought back with the same arrow',
+      'The page widens to use the freed space, and the choice is remembered',
+    ],
+  },
+  {
     version: '1.74.0',
     date: '2026-10-13',
     changes: [

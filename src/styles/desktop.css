@@ -54,6 +54,22 @@
   }
   .side .nav-item:hover, .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
 
+  /* the arrow on the sidebar's edge hides it; hidden, the sidebar slides away and the arrow stays at the screen's edge to bring it back */
+  .side { transition: transform 0.25s ease; }
+  .side-toggle {
+    position: absolute; top: 28px; left: 100%; margin-left: -14px; z-index: 2;
+    display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+    border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink-2, var(--ink));
+    cursor: pointer; opacity: 0; transition: opacity 0.15s, background-color 0.15s;
+  }
+  .side:hover .side-toggle, .side-toggle:focus-visible, :root[data-side='hidden'] .side-toggle { opacity: 1; }
+  .side-toggle:hover { background: var(--surface-2); color: var(--ink); }
+  :root[data-side='hidden'] { --side-w: 0px; }
+  :root[data-side='hidden'] .side { transform: translateX(-100%); border-right-color: transparent; }
+  /* off-screen links stay out of the tab order */
+  :root[data-side='hidden'] .side > :not(.side-toggle) { visibility: hidden; transition: visibility 0s 0.25s; }
+  :root[data-side='hidden'] .side-toggle { margin-left: 8px; }
+
   /* the sidebar stays put while the page moves */
   html[data-nav] .side { view-transition-name: side; }
   ::view-transition-group(side) { animation: none; }

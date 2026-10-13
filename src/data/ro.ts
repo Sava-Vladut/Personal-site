@@ -460,6 +460,8 @@ export const RO: Record<string, string> = {
   'People': 'Oameni',
   'Media': 'Media',
   'Main': 'Principal',
+  'Hide sidebar': 'Ascunde bara laterală',
+  'Show sidebar': 'Arată bara laterală',
   'New': 'Nou',
   'Stats': 'Statistici',
   'Settings': 'Setări',

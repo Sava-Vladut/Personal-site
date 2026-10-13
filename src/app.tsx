@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'preact/hooks';
+import { useLayoutEffect, useState } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
@@ -57,6 +57,17 @@ export function App() {
  * The phone's bottom bar: just the + in the middle. The places it used to hold (Journal, People,
  * Media) are on the wheel at the top of each page.
  */
+const SIDE_KEY = 'mm-side-hidden';
+
+/** Apply the saved sidebar state before the first paint, so a hidden sidebar never flashes open. */
+function readSideHidden() {
+  let hidden = false;
+  try { hidden = localStorage.getItem(SIDE_KEY) === '1'; } catch {}
+  if (hidden) document.documentElement.dataset.side = 'hidden';
+  return hidden;
+}
+const sideHiddenAtStart = readSideHidden();
+
 function TabBar() {
   return (
     <nav class="nav add-nav" aria-label={t('Add')}>
@@ -67,6 +78,14 @@ function TabBar() {
 
 /** The desktop navigation: a sidebar with the same places as the tab bar, plus Stats and Settings. Hidden below 1024px (desktop.css). */
 function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
+  const [hidden, setHidden] = useState(sideHiddenAtStart);
+  const toggle = () => {
+    const next = !hidden;
+    setHidden(next);
+    if (next) document.documentElement.dataset.side = 'hidden';
+    else delete document.documentElement.dataset.side;
+    try { localStorage.setItem(SIDE_KEY, next ? '1' : '0'); } catch {}
+  };
   return (
     <nav class="side" aria-label={t('Main')}>
       <a
@@ -87,6 +106,9 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
         <NavItem active={active === 'stats'} here={here === 'stats'} label={t('Stats')} icon="chart-dots" path="stats" />
         <NavItem active={active === 'settings'} here={here === 'settings'} label={t('Settings')} icon="settings" path="settings" />
       </div>
+      <button class="side-toggle" onClick={toggle} aria-expanded={!hidden} aria-label={hidden ? t('Show sidebar') : t('Hide sidebar')}>
+        <Icon name={hidden ? 'chevron-right' : 'chevron-left'} size={16} stroke={2} />
+      </button>
     </nav>
   );
 }
