@@ -428,6 +428,13 @@ function ReadingNow() {
 }
 
 /** The first picture in a note's text, big enough to see on its card. */
+/** A picture keeps its own shape on the card: close to square or wide it fills the frame, a banner or a sliver is shown whole, and a small one isn't blown up. */
+function heroShape(p: Photo) {
+  const raw = p.w > 0 && p.h > 0 ? p.w / p.h : 16 / 9;
+  const ar = Math.min(2.4, Math.max(0.8, raw));
+  return { '--ar': ar, '--mw': `${Math.max(160, p.w)}px`, '--fit': raw === ar ? 'cover' : 'contain' };
+}
+
 function heroOf(e: Entry): { photo: Photo } | { image: WebImage } | null {
   const first = bodyOf(e).media.flatMap(itemsOf)[0];
   if (!first) return null;
@@ -471,7 +478,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
       </div>
       {preview && <p class="note-text">{preview}</p>}
       {hero && (
-        <div class="note-hero">
+        <div class={`note-hero${'photo' in hero ? ' is-photo' : ''}`} style={'photo' in hero ? heroShape(hero.photo) : undefined}>
           {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" />}
         </div>
       )}

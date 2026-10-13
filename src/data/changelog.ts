@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.75.1',
+    date: '2026-10-13',
+    changes: [
+      'Pictures in the feed keep their own shape instead of being cropped into a wide box',
+      'Banners and tall slivers are shown whole, and small pictures are no longer blown up',
+    ],
+  },
+  {
     version: '1.75.0',
     date: '2026-10-13',
     changes: [
