@@ -50,8 +50,12 @@ export interface Weather {
   dark?: boolean;           // whether it was dark out at the time, when that's known
 }
 
-/** A note that's been made public: the secret part of its link, and a fingerprint of what the public copy holds. */
-export interface Share { token: string; hash: string }
+/** Details of a note that stay private unless chosen, note by note, for its public page. */
+export type SharePart = 'feelings' | 'people' | 'place' | 'weather' | 'music';
+export const SHARE_PARTS: SharePart[] = ['feelings', 'people', 'place', 'weather', 'music'];
+
+/** A note that's been made public: the secret part of its link, a fingerprint of what the public copy holds, and which details it shows. */
+export interface Share { token: string; hash: string; parts?: SharePart[] }
 
 export interface Entry {
   id: string;
@@ -540,7 +544,7 @@ function normalizeMusic(m: any): Music | null {
 
 function normalizeShare(raw: any): Share | null {
   return raw && typeof raw.token === 'string' && /^[A-Za-z0-9_-]{32}$/.test(raw.token) && typeof raw.hash === 'string' && raw.hash.length <= 40
-    ? { token: raw.token, hash: raw.hash }
+    ? { token: raw.token, hash: raw.hash, ...(Array.isArray(raw.parts) && { parts: SHARE_PARTS.filter((p) => raw.parts.includes(p)) }) }
     : null;
 }
 

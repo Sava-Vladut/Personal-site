@@ -25,6 +25,7 @@ import { takeDown } from '../lib/share';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
+import { SaveStatus, type SaveState } from '../components/SaveStatus';
 import { Markdown } from '../components/Markdown';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
 import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarget, type Side } from '../components/NoteMedia';
@@ -224,7 +225,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
   });
   const [open, setOpen] = useState<Open>(null);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState<SaveState>('');
   const [adding, setAdding] = useState(0);
   const [coverAdding, setCoverAdding] = useState(false);
   const [dropping, setDropping] = useState(false);
@@ -280,7 +281,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (removing.current || !d) return Promise.resolve(false);
     if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
     dirty.current = false;
-    if (!saved.current && isEmpty(d)) return Promise.resolve(false); // don't keep blank notes
+    if (!saved.current && isEmpty(d)) { if (alive.current) setStatus(''); return Promise.resolve(false); } // don't keep blank notes
     const request = ++saveRequest.current;
     const saving = saveEntry(d).then(() => {
       if (removing.current) return false;
@@ -291,13 +292,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       saved.current = true;
       if (alive.current) {
         syncUrl();
-        if (request === saveRequest.current && !dirty.current) setStatus(t('Saved'));
+        if (request === saveRequest.current && !dirty.current) setStatus('saved');
       }
       return true;
     }).catch(() => {
       if (removing.current || request !== saveRequest.current) return false;
       dirty.current = true;
-      if (alive.current) setStatus(t('Couldn’t save'));
+      if (alive.current) setStatus('error');
       toast(t('Couldn’t save this note. Try again.'));
       return false;
     }).finally(() => {
@@ -331,7 +332,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
-    setStatus('');
+    setStatus('saving');
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, 500);
   };
@@ -939,7 +940,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     >
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} disabled={adding > 0 || coverAdding} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
+        <SaveStatus state={status} />
         <button
           class="glass glass-btn round"
           onClick={() => (reading ? write() : setReading(true))}

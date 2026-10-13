@@ -11,6 +11,7 @@ import { BookCover, Stars } from '../components/books';
 import { EmotionChip, EmotionPicker } from '../components/emotion';
 import { MentionText } from '../components/MentionText';
 import { Icon } from '../components/icons';
+import { SaveStatus, type SaveState } from '../components/SaveStatus';
 import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
@@ -139,7 +140,7 @@ const num = (v: string, max: number) => {
 export function BookView({ id }: { id: string }) {
   const [draft, setDraft] = useState<Book | null>(() => getBooks().find((b) => b.id === id) ?? null);
   const [open, setOpen] = useState<Open>(null);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState<SaveState>('');
   const dirty = useRef(false);
   const alive = useRef(true);
   const removing = useRef(false);
@@ -163,12 +164,12 @@ export function BookView({ id }: { id: string }) {
     dirty.current = false;
     const request = ++saveRequest.current;
     const saving = saveBook(d).then(() => {
-      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus(t('Saved'));
+      if (alive.current && !removing.current && request === saveRequest.current && !dirty.current) setStatus('saved');
       return true;
     }).catch(() => {
       if (!removing.current && request === saveRequest.current) {
         dirty.current = true;
-        setStatus(t('Couldn’t save'));
+        setStatus('error');
         toast(t('Couldn’t save this book. Try again.'));
       }
       return false;
@@ -184,7 +185,7 @@ export function BookView({ id }: { id: string }) {
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
-    setStatus('');
+    setStatus('saving');
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, 500);
   };
@@ -296,7 +297,7 @@ export function BookView({ id }: { id: string }) {
     <div class="page editor book-page">
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <span class="editor-status" aria-live="polite">{status && <span class="glass">{status}</span>}</span>
+        <SaveStatus state={status} />
         <button class="glass glass-btn round" onClick={remove} aria-label={t('Remove book')}><Icon name="trash" /></button>
         <button class="glass glass-btn tinted" onClick={done}>{t('Done')}</button>
       </div>

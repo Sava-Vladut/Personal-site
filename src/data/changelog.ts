@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.71.1',
+    date: '2026-10-13',
+    changes: [
+      'The Saved pill no longer blinks while you type: it stays put and changes in place',
+      'A small spinning circle shows while a change is saving, then turns into a tick once it’s saved',
+    ],
+  },
+  {
     version: '1.71.0',
     date: '2026-10-12',
     changes: [
