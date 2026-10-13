@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.78.1',
+    date: '2026-10-13',
+    changes: [
+      'Removed the mood background and its Settings switch: pages are plain again',
+    ],
+  },
+  {
     version: '1.78.0',
     date: '2026-10-13',
     changes: [

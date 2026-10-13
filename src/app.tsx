@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from 'preact/hooks';
+import { useLayoutEffect, useState } from 'preact/hooks';
 import { navigate, useRoute, type RouteName } from './lib/router';
 import { TooltipLayer } from './components/charts';
 import { PeekLayer } from './components/mentions';
@@ -7,9 +7,7 @@ import { EntryMenu } from './components/EntryMenu';
 import { Toasts } from './components/Toasts';
 import { Icon, type UiName } from './components/icons';
 import { prepareView, viewFor } from './lib/views';
-import { toast, useEntries, useSettings } from './lib/store';
-import { latestMood } from './lib/mood';
-import { MoodBackdrop } from './components/MoodBackdrop';
+import { toast } from './lib/store';
 import { t } from './lib/i18n';
 
 // the Face ID lock is gone: forget the passkey id it kept
@@ -40,13 +38,8 @@ export function App() {
     if (!history.state?.mmSheet) scrollTo(0, 0);
   }, [route.name, route.id]);
 
-  const { moodBg } = useSettings();
-  const entries = useEntries();
-  const mood = useMemo(() => latestMood(entries), [entries]);
-
   return (
     <>
-      {moodBg && mood && route.name !== 'intro' && route.name !== 'map' && <MoodBackdrop world={mood.world} strength={(mood.intensity - 1) / 4} />}
       <main class={`app route-${route.name}`}>
         <View key={key} id={route.id!} query={route.query} />
       </main>

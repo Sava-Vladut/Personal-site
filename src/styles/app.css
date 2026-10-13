@@ -104,10 +104,6 @@ code { font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-
    ============================================================ */
 
 /* overflow-x: clip keeps any stray wide content from making the whole page scroll sideways (unlike hidden, it doesn't break sticky) */
-/* the mood background: letters behind everything, never in the way */
-.mood-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
-.mood-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-
 .app { min-height: 100dvh; overflow-x: clip; padding-bottom: calc(var(--nav-h) + var(--safe-b) + 28px); }
 .app.route-note, .app.route-person, .app.route-settings { padding-bottom: calc(var(--safe-b) + 40px); }
 .page {

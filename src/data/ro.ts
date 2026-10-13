@@ -1167,8 +1167,6 @@ export const RO: Record<string, string> = {
   'Compact': 'Compact',
   'Appearance': 'Aspect',
   'Theme': 'Temă',
-  'Mood background': 'Fundal după stare',
-  'A faint background that takes the world of your latest mood: a warm glow for joy, waves for calm, light rain for sadness.': 'Un fundal discret care ia lumea ultimei tale stări: o strălucire caldă pentru bucurie, valuri pentru calm, ploaie ușoară pentru tristețe.',
   'Week starts on': 'Săptămâna începe',
   'Monday': 'Luni',
   'Sunday': 'Duminică',
