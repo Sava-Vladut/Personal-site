@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { fmtTemp, weatherIcon, weatherName } from '../data/weather';
-import { here, locationError, searchPlaces, type FoundPlace } from '../lib/weather';
-import type { Entry, Place, Weather } from '../lib/store';
+import { here, locationError, placeName, searchPlaces, type FoundPlace } from '../lib/weather';
+import { normalizePlace, type Entry, type Place, type Weather } from '../lib/store';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
 import { t } from '../lib/i18n';
@@ -30,8 +30,18 @@ export const weatherLine = (w: Weather) =>
 
 export const placeLabel = (p: Place) => p.name || `${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}`;
 
-/** Pick a home: where you are now, or a town found by name. */
-export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (p: Place) => void }) {
+/** Latitude and longitude typed or pasted as "46.77, 23.59" (a map app's copied position, or "46.77 N 23.59 E"). */
+export function parseCoords(q: string): { lat: number; lon: number } | null {
+  const m = /^\s*(-?\d{1,3}(?:[.,]\d+)?)\s*°?\s*([NS])?\s*[,;\s]\s*(-?\d{1,3}(?:[.,]\d+)?)\s*°?\s*([EW])?\s*$/i.exec(q);
+  if (!m) return null;
+  const lat = parseFloat(m[1].replace(',', '.')) * (m[2]?.toUpperCase() === 'S' ? -1 : 1);
+  const lon = parseFloat(m[3].replace(',', '.')) * (m[4]?.toUpperCase() === 'W' ? -1 : 1);
+  const p = normalizePlace({ lat, lon, name: '' });
+  return p && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat: p.lat, lon: p.lon } : null;
+}
+
+/** Pick a place: where you are now, a town found by name, or exact coordinates. Used for the home and for a note's place. */
+export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: boolean; onClose: () => void; onPick: (p: Place) => void; kind?: 'home' | 'place' }) {
   const [q, setQ] = useState('');
   const [found, setFound] = useState<FoundPlace[]>([]);
   const [busy, setBusy] = useState(false);
@@ -60,6 +70,19 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
     return () => { clearTimeout(timer); asked.current++; };
   }, [q, open]);
 
+  const coords = parseCoords(q);
+  const useCoords = async () => {
+    if (!coords) return;
+    const n = ++located.current;
+    setLocating(true);
+    setError('');
+    const name = await placeName(coords.lat, coords.lon).catch(() => '');
+    if (n !== located.current) return;
+    setLocating(false);
+    onPick({ ...coords, name });
+    onClose();
+  };
+
   const useHere = async () => {
     const n = ++located.current;
     setLocating(true);
@@ -77,8 +100,8 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name="home" /> {t('Home')}</span>} label={t('Home')}>
-      <p class="hint">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>
+    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name={kind === 'home' ? 'home' : 'map-pin'} /> {kind === 'home' ? t('Home') : t('Place')}</span>} label={kind === 'home' ? t('Home') : t('Place')}>
+      {kind === 'home' && <p class="hint">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>}
       <button class="person-pick" onClick={useHere} disabled={locating}>
         <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="current-location" size={18} /></span>
         <span class="person-pick-main">
@@ -88,10 +111,19 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
       </button>
       <form class="search home-search" onSubmit={(e) => e.preventDefault()}>
         <Icon name="search" size={18} />
-        <input type="search" placeholder={t('Search for a town or city')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search for a town or city')} enterkeyhint="search" />
+        <input type="search" placeholder={t('Search for a town or city, or type coordinates')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search for a town or city, or type coordinates')} enterkeyhint="search" />
       </form>
       {error && <p class="hint danger" role="alert">{error}</p>}
       <div class="person-picks">
+        {coords && (
+          <button class="person-pick" onClick={useCoords} disabled={locating}>
+            <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="map-pin" size={18} /></span>
+            <span class="person-pick-main">
+              <span class="person-pick-name">{t('Use these coordinates')}</span>
+              <span class="person-pick-sub">{coords.lat.toFixed(3)}, {coords.lon.toFixed(3)}</span>
+            </span>
+          </button>
+        )}
         {found.map((p) => (
           <button class="person-pick" onClick={() => { onPick({ lat: p.lat, lon: p.lon, name: p.name }); onClose(); }}>
             <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="map-pin" size={18} /></span>
@@ -101,7 +133,7 @@ export function HomeSheet({ open, onClose, onPick }: { open: boolean; onClose: (
             </span>
           </button>
         ))}
-        {!busy && q.trim().length >= 2 && !found.length && !error && <p class="empty-note center">{t('No places match “{q}”.', { q: q.trim() })}</p>}
+        {!busy && q.trim().length >= 2 && !found.length && !coords && !error && <p class="empty-note center">{t('No places match “{q}”.', { q: q.trim() })}</p>}
       </div>
       <p class="credit">{t('Place search from Open-Meteo.')}</p>
     </Sheet>

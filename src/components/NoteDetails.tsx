@@ -14,7 +14,7 @@ import { ImageSearchSheet } from './ImageSearchSheet';
 import { PeopleChips, PeopleSheet, PersonChip, usePeopleById } from './people';
 import { PhotoImg } from './Photo';
 import { Sheet } from './Sheet';
-import { WeatherMark, placeLabel, weatherLine, weatherOf } from './weather';
+import { HomeSheet, WeatherMark, placeLabel, weatherLine, weatherOf } from './weather';
 import { t } from '../lib/i18n';
 
 /**
@@ -65,7 +65,7 @@ function Bars({ n }: { n: number }) {
   );
 }
 
-type Open = null | 'date' | 'emotion' | 'people' | 'cover-search' | 'cover-crop';
+type Open = null | 'date' | 'emotion' | 'people' | 'cover-search' | 'cover-crop' | 'place';
 
 /**
  * The Feelings page: everything about a note apart from its words — how it felt and how strongly, who it's about,
@@ -197,6 +197,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
             <div class="meta-row place-row">
               <span class="row gap-s grow"><Icon name="map-pin" size={16} /> <span class="place-name">{placeLabel(draft.place)}</span></span>
               <span class="row">
+                <button class="btn btn-quiet btn-s" onClick={() => setSheet('place')}>{t('Change')}</button>
                 <button class="btn btn-quiet btn-s" onClick={() => { navigateAfterSheet('map?focus=' + draft.id); onClose(); }}>{t('Map')}</button>
                 <button class="icon-btn small" onClick={() => update({ place: null })} aria-label={t('Remove the place')} title={t('Remove the place')}><Icon name="trash" size={16} /></button>
               </span>
@@ -205,6 +206,9 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
             <div class="meta">
               <button class="chip" onClick={addHere} disabled={locating}>
                 <Icon name="current-location" size={16} /> {locating ? t('Finding you…') : t('Add where I am')}
+              </button>
+              <button class="chip" onClick={() => setSheet('place')}>
+                <Icon name="map-pin" size={16} /> {t('Choose a place')}
               </button>
             </div>
           )}
@@ -244,6 +248,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
       <Sheet open={sheet === 'emotion'} onClose={close} title={t('How does it feel?')}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
+      <HomeSheet kind="place" open={sheet === 'place'} onClose={close} onPick={(place) => update(draft.place && (draft.place.lat !== place.lat || draft.place.lon !== place.lon) ? { place, weather: null } : { place })} />
       <PeopleSheet open={sheet === 'people'} onClose={close} selected={draft.people} onChange={(people) => update({ people })} />
       <CoverCropSheet open={sheet === 'cover-crop'} onClose={close} cover={draft.cover} onSave={(crop) => draft.cover && update({ cover: { ...draft.cover, crop } })} />
       <ImageSearchSheet open={sheet === 'cover-search'} onClose={close} single action={t('Use as cover')} onAdd={([image]) => image && update({ cover: { image } })} />

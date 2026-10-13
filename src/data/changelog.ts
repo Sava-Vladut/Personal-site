@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.73.0',
+    date: '2026-10-13',
+    changes: [
+      'Add a note’s place by hand: “Choose a place” lets you search for a town or city, or type coordinates',
+      'A note’s place can now be changed, not just removed',
+      'Home in Settings also accepts coordinates, such as one copied from a map app',
+    ],
+  },
+  {
     version: '1.72.0',
     date: '2026-10-13',
     changes: [
