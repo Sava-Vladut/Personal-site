@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION } from '../data/emotions';
 import { dayLabel, keyOf } from '../lib/dates';
-import { ago, cachedRepo, connectGithub, getGhRepo, getReadme, listCommits, repoFullName, useLoad, type GhCommit, type GhRepo } from '../lib/github';
+import { ago, cachedRepo, cloneRepo, connectGithub, getGhRepo, getReadme, githubStatus, listClones, listCommits, repoFullName, useLoad, type CloneJob, type GhCommit, type GhRepo } from '../lib/github';
 import { goBack } from '../lib/router';
 import { MAX_PERSON_EMOTIONS, blankRepo, deleteRepo, getRepos, saveRepo, toast, useRepos, type Repo } from '../lib/store';
 import { Stars } from '../components/books';
@@ -133,6 +133,51 @@ function ReadmeFrame({ id, base }: { id: string; base: { repo: string; branch: s
           {tall && <button class="rd-expand" aria-expanded={whole} onClick={() => setWhole(!whole)}>{whole ? t('Show less') : t('Show the whole README')}</button>}
         </>
       )}
+    </div>
+  );
+}
+
+/** For the site's owner only: copies the repo onto the server with git clone, and follows it until it's done. */
+function CloneToServer({ id }: { id: string }) {
+  const [can, setCan] = useState(false);
+  const [job, setJob] = useState<CloneJob | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const find = () => listClones().then((r) => { const j = r.items.find((x) => String(x.id) === id); if (j) setJob(j); }, () => {});
+
+  useEffect(() => {
+    let live = true;
+    setJob(null);
+    setError('');
+    githubStatus().then((s) => { if (live && s.canClone) { setCan(true); find(); } });
+    return () => { live = false; };
+  }, [id]);
+
+  // a clone in progress is checked on every couple of seconds
+  useEffect(() => {
+    if (job?.state !== 'running') return;
+    const timer = setInterval(find, 2000);
+    return () => clearInterval(timer);
+  }, [job?.state, id]);
+
+  if (!can) return null;
+  const start = async () => {
+    setBusy(true);
+    setError('');
+    try { setJob(await cloneRepo(id)); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  const running = busy || job?.state === 'running';
+  return (
+    <div class="repo-clone">
+      {job?.state !== 'done' && (
+        <button class="btn btn-quiet btn-s" onClick={start} disabled={running}>
+          {running ? <><Spin /> {t('Cloning onto the server…')}</> : <><Icon name="download" size={15} /> {job?.state === 'failed' ? t('Try the clone again') : t('Clone to the server')}</>}
+        </button>
+      )}
+      {job?.state === 'done' && <p class="muted small"><Icon name="check" size={14} /> {t('Cloned to {path}', { path: job.path })}</p>}
+      {(error || (job?.state === 'failed' && job.error)) && <p class="muted small">{error || t(job!.error!)}</p>}
     </div>
   );
 }
@@ -288,6 +333,7 @@ export function RepoView({ id }: { id: string }) {
         <h1 class="repo-title"><small>{owner}</small>{short}</h1>
         {description && <p class="repo-about">{description}</p>}
         {url && <a class="repo-open" href={url} target="_blank" rel="noopener noreferrer"><Icon name="external-link" size={15} /> {t('Open on GitHub')}</a>}
+        <CloneToServer id={number} />
         <Stars value={draft.rating} onChange={(rating) => update({ rating })} size={24} />
       </div>
 

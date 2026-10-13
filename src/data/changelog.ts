@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.74.0',
+    date: '2026-10-13',
+    changes: [
+      'Clone one of your GitHub repos onto the server, right from its page',
+      'Only the site’s owner sees the button, signed in to the site and to GitHub',
+      'The page shows the clone as it runs, then where it landed or what went wrong',
+    ],
+  },
+  {
     version: '1.73.0',
     date: '2026-10-13',
     changes: [

@@ -11,6 +11,7 @@ export interface GithubStatus {
   public?: number;           // public repos
   private?: number;          // private repos (only when GitHub lets us see them)
   privateVisible?: boolean;
+  canClone?: boolean;        // the site's owner, signed in as admin: can clone repos onto the server
   error?: string;
   offline?: boolean;
 }
@@ -43,10 +44,10 @@ export interface GhCommit { sha: string; message: string; author: string; date: 
 // Every request here only reads, so one that couldn't get through is safely tried again.
 const get = <T>(path: string) => retry(() => once<T>(path));
 
-async function once<T>(path: string): Promise<T> {
+async function once<T>(path: string, method = 'GET'): Promise<T> {
   let res: Response;
   try {
-    res = await fetch('/api/github' + path, { credentials: 'same-origin' });
+    res = await fetch('/api/github' + path, { method, credentials: 'same-origin' });
   } catch {
     throw new Error(t('Can’t reach the server. GitHub needs the app’s server running (npm start).'));
   }
@@ -61,6 +62,12 @@ export const githubStatus = () =>
 export const repoFullName = (r: Pick<GhRepo, 'owner' | 'name'>) => `${r.owner}/${r.name}`;
 export const getGhRepo = (id: number | string) => get<GhRepo>(`/repos/${id}`);
 export const listCommits = (id: number | string, page = 1) => get<{ items: GhCommit[]; next?: number }>(`/repos/${id}/commits?page=${page}`);
+
+/** A clone onto the server (server/clone.js), as it's going. */
+export interface CloneJob { id: number; name: string; path: string; state: 'running' | 'done' | 'failed'; error?: string; startedAt: number; endedAt?: number }
+/** Starting a clone changes the server, so it's sent once and never retried. */
+export const cloneRepo = (id: number | string) => once<CloneJob>(`/repos/${id}/clone`, 'POST');
+export const listClones = () => get<{ items: CloneJob[] }>('/clones');
 const readmes = new Map<string, Promise<{ text: string | null }>>();
 export const getReadme = (id: number | string) => {
   const key = String(id);

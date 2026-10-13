@@ -67,6 +67,8 @@
 .repo-title small { display: block; font: 400 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0; color: var(--ink-3); }
 .repo-about { color: var(--ink-2); font-size: 15px; line-height: 1.45; }
 .repo-open { display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.repo-clone { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.repo-clone p { display: inline-flex; align-items: center; gap: 5px; margin: 0; overflow-wrap: anywhere; }
 .repo-head .stars.is-input { margin: 2px 0 0 -4px; }
 .repo-trouble { display: grid; gap: 8px; justify-items: start; padding: 10px 2px; }
 .repo-trouble p { margin: 0; }

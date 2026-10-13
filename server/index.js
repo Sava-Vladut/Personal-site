@@ -706,7 +706,7 @@ async function github(req, res, url, p, setCookies, out) {
       ...status,
       connected: true,
       user: { name: body.login },
-      canClone: cloner.isOwner(body.id) && isAdmin(req),
+      ...(cloner.isOwner(body.id) && isAdmin(req) ? { canClone: true } : {}),
       public: repoCount(body.public_repos),
       private: priv,
       privateVisible: priv !== undefined,
