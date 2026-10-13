@@ -1,40 +1,76 @@
-// The page's background takes the world of your latest mood: a faint field of letters behind everything.
-// Joy is a warm glow with sparkles, calm a swell of ≈ waves, sadness a light rain of ' and ., anger rising
-// embers, and so on. Each world is a small function that says how strong the field is at a spot; the
-// letters come from the same ramps as the journal's sky. When the mood changes, the old world fades out
-// and the new one fades in.
+// The page's background takes the world of your latest mood: faint, blurred clouds drifting very slowly
+// behind everything, with out-of-focus letters that thicken where the clouds are and thin to dust between.
+// Every world uses the same gentle field; what changes is its colour, its letters (the same ramps as the
+// journal's sky) and which way and how it drifts: joy and hope rise, sadness sinks in long curtains, calm
+// stretches into mist. When the mood changes, the old world fades out and the new one fades in.
 import { useEffect, useRef } from 'preact/hooks';
-import { RAMPS } from './Sky';
+import { COMPANION, RAMPS } from './Sky';
 
 const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
-const FRAME = 33;      // ~30fps is plenty for a slow, faint field
-const FADE_OUT = 350;  // ms
-const FADE_IN = 900;
+const FRAME = 50;      // 20fps: the field moves so slowly that more would only cost battery
+const FADE_OUT = 600;  // ms
+const FADE_IN = 1800;
+const CLOUD_PX = 10;   // the clouds are painted at 1/10 size and stretched up by the browser, so they stay soft
+const BLUR = [0.8, 2, 4]; // how out of focus a letter is (shadow blur, px): sharp-ish, soft, dreamy
+const BLUR_GAIN = [1, 1.15, 1.4]; // blurrier letters spread thin, so they get a little more ink
 
 type RGB = [number, number, number];
+interface Feel {
+  vx: number; vy: number; // drift, px per second
+  stretch: number;        // < 1 pulls the clouds out sideways into mist, > 1 into upright curtains
+  cover: number;          // > 0 for more sky under cloud
+  evolve: number;         // how fast the shapes slowly change as they drift
+}
+const FEEL: Record<string, Feel> = {
+  joy: { vx: 5, vy: -3, stretch: 1, cover: 0, evolve: 0.05 },
+  'hope-interest': { vx: 2, vy: -6, stretch: 1, cover: 0, evolve: 0.05 },
+  'love-connection': { vx: 4, vy: -1, stretch: 0.85, cover: 0.04, evolve: 0.04 },
+  'calm-safety': { vx: 7, vy: 0, stretch: 0.55, cover: 0.02, evolve: 0.03 },
+  sadness: { vx: -2, vy: 7, stretch: 1.5, cover: 0.07, evolve: 0.04 },
+  fear: { vx: 3, vy: 2, stretch: 1, cover: 0.02, evolve: 0.1 },
+  anger: { vx: 3, vy: -8, stretch: 1.1, cover: 0.03, evolve: 0.07 },
+  'shame-aversion': { vx: -3, vy: 3, stretch: 1, cover: 0.04, evolve: 0.04 },
+};
+
 interface Grid {
   w: number; h: number; sp: number; cols: number; rows: number;
-  rnd: Float32Array; // three fixed random numbers per cell
+  rnd: Float32Array; // three fixed random numbers per cell: dust, depth of focus, wobble
   calm: Float32Array; // per column: how much to hush it, so the middle (where the page's text is) stays quieter
 }
-/** Strength 0…1 at a cell's centre (x, y); fields may also set `shake`. */
-type Field = (g: Grid, i: number, c: number, r: number, x: number, y: number, t: number) => number;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-const fract = (v: number) => v - Math.floor(v);
-const hash = (n: number) => fract(Math.sin(n * 127.1 + 311.7) * 43758.5453);
 const smooth = (a: number, b: number, v: number) => {
   const x = clamp((v - a) / (b - a), 0, 1);
   return x * x * (3 - 2 * x);
 };
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
-const lattice = (i: number, j: number) => hash(i * 57.3 + j * 113.9);
+
+// a repeating 256×256 table of random numbers, so the clouds can drift for hours without running out
+const TABLE = new Float32Array(256 * 256);
+{
+  let seed = 90210;
+  for (let k = 0; k < TABLE.length; k++) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    TABLE[k] = seed / 4294967296;
+  }
+}
 /** Smooth value noise, 0…1. */
 function noise(x: number, y: number) {
   const xi = Math.floor(x), yi = Math.floor(y);
   const xf = x - xi, yf = y - yi;
   const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-  return lerp(lerp(lattice(xi, yi), lattice(xi + 1, yi), u), lerp(lattice(xi, yi + 1), lattice(xi + 1, yi + 1), u), v);
+  const x0 = xi & 255, x1 = (xi + 1) & 255, y0 = (yi & 255) << 8, y1 = ((yi + 1) & 255) << 8;
+  return lerp(lerp(TABLE[y0 + x0], TABLE[y0 + x1], u), lerp(TABLE[y1 + x0], TABLE[y1 + x1], u), v);
+}
+
+/** How much cloud there is at (x, y) px, 0…1: big slow shapes with a little finer detail. */
+function cloud(x: number, y: number, t: number, f: Feel, cover: number) {
+  const ox = f.vx * t + Math.sin(t * f.evolve) * 70;
+  const oy = f.vy * t + Math.cos(t * f.evolve * 0.8) * 50;
+  const sx = f.stretch / 380, sy = 1 / 380;
+  const a = noise((x - ox) * sx, (y - oy) * sy);
+  const b = noise((x - ox * 1.4) * sx * 2.6 + 31, (y - oy * 1.4) * sy * 2.6 + 17);
+  return smooth(0.42 - cover, 0.74 - cover, a * 0.72 + b * 0.28);
 }
 
 function hex(s: string): RGB {
@@ -45,114 +81,42 @@ function hex(s: string): RGB {
 }
 const mix = (a: RGB, b: RGB, t: number): RGB => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)) as RGB;
 
-/** A letter's sideways and downward tremble this frame, for the fields that shiver. */
-const shake = { x: 0, y: 0 };
-
-const FIELDS: Record<string, Field> = {
-  // a low sun in the corner, rays turning slowly, and a few letters that twinkle
-  joy(g, i, _c, _r, x, y, t) {
-    const dx = x - g.w * 0.08, dy = y + g.h * 0.05;
-    const d = Math.hypot(dx, dy) / (Math.max(g.w, g.h) * 0.85);
-    const glow = Math.max(0, 1 - d) ** 1.6 * (0.85 + 0.15 * Math.sin(t * 0.6));
-    const ray = 0.5 + 0.5 * Math.sin(Math.atan2(dy, dx) * 9 + t * 0.35);
-    let twinkle = 0;
-    if (g.rnd[i * 3] > 0.86) twinkle = Math.max(0, Math.sin(t * (0.8 + g.rnd[i * 3 + 1] * 1.4) + g.rnd[i * 3 + 2] * 6.283)) ** 10 * 0.8;
-    return Math.max(glow * (0.35 + 0.65 * ray) * 0.85, twinkle);
-  },
-  // upward drifts, brightest toward the top, like the first light
-  'hope-interest'(g, _i, _c, _r, x, y, t) {
-    const n = noise(x * 0.008, y * 0.01 + t * 0.28) * 0.65 + noise(x * 0.02 + 9, y * 0.022 + t * 0.5) * 0.35;
-    return smooth(0.35, 0.95, n) * (0.35 + 0.65 * (1 - y / g.h));
-  },
-  // two soft glows that wander and pulse like a heartbeat
-  'love-connection'(g, _i, _c, _r, x, y, t) {
-    const m = Math.max(g.w, g.h);
-    const beat = 1 + 0.1 * Math.max(0, Math.sin(t * 1.7)) ** 3;
-    const d1 = Math.hypot(x - g.w * (0.28 + 0.1 * Math.sin(t * 0.11)), y - g.h * (0.32 + 0.1 * Math.cos(t * 0.13))) / (m * 0.3 * beat);
-    const d2 = Math.hypot(x - g.w * (0.72 + 0.08 * Math.cos(t * 0.09)), y - g.h * (0.7 + 0.08 * Math.sin(t * 0.12))) / (m * 0.3 * beat);
-    const ring = 0.8 + 0.2 * Math.sin(Math.min(d1, d2) * 5 - t * 1.3);
-    return clamp(Math.exp(-d1 * d1 * 1.6) + Math.exp(-d2 * d2 * 1.6), 0, 1) * ring * 0.85;
-  },
-  // a slow swell of waves, deeper toward the bottom
-  'calm-safety'(g, _i, _c, r, x, y, t) {
-    const sea = 0.35 + 0.65 * (y / g.h);
-    const swell = 0.6 + 0.4 * Math.sin(r * 0.33 - t * 0.22);
-    const v = Math.sin(x * 0.011 + t * 0.5 + Math.sin(r * 0.55 + t * 0.17) * 1.6);
-    return clamp(0.5 + 0.4 * v * swell, 0, 1) * sea;
-  },
-  // a light rain: thin slanted drops with short tails
-  sadness(g, _i, c, r, _x, _y, t) {
-    const col = c + Math.floor(r * 0.18);
-    let level = 0;
-    for (let k = 0; k < 2; k++) {
-      const key = col * 2 + k;
-      if (hash(key * 1.7 + 0.3) > 0.3) continue;
-      const speed = 7 + hash(key + 5.5) * 9;
-      const trail = 5 + hash(key + 9.1) * 7;
-      const span = g.rows + trail + 6 + hash(key + 2.2) * 14;
-      const behind = ((t * speed + hash(key + 7.7) * span) % span) - r;
-      if (behind >= 0 && behind < trail) level = Math.max(level, (1 - behind / trail) ** 1.6 * 0.5);
-    }
-    return level;
-  },
-  // patches of unease that jump and tremble
-  fear(g, i, _c, _r, x, y, t) {
-    const step = Math.floor(t * 2.2);
-    const s = smooth(0.7, 1, fract(t * 2.2));
-    const a = noise(x * 0.014 + step * 5.3, y * 0.014 + step * 2.9);
-    const b = s > 0 ? noise(x * 0.014 + (step + 1) * 5.3, y * 0.014 + (step + 1) * 2.9) : a;
-    const v = smooth(0.55, 0.88, lerp(a, b, s)) * 0.9;
-    if (v > 0) {
-      shake.x = Math.sin(t * 11 + g.rnd[i * 3 + 2] * 40) * 1.4;
-      shake.y = Math.cos(t * 9 + g.rnd[i * 3 + 1] * 40) * 1.4;
-    }
-    return v;
-  },
-  // embers rising from the bottom, flickering hot
-  anger(g, i, _c, _r, x, y, t) {
-    const heat = (y / g.h) ** 2;
-    const n = noise(x * 0.018, y * 0.03 - t * 1.5) * 0.7 + noise(x * 0.05 + 3, y * 0.07 - t * 3.1) * 0.3;
-    const flick = hash(i + Math.floor(t * 7) * 0.37) * 0.12;
-    return clamp(heat * (0.2 + 1.1 * n) - 0.08 + flick * heat, 0, 0.88);
-  },
-  // brackets closing in from the edges, breathing slowly
-  'shame-aversion'(g, _i, _c, _r, x, y, t) {
-    const d = Math.hypot((x - g.w / 2) / g.w, (y - g.h / 2) / g.h);
-    const edge = smooth(0.32 - 0.05 * Math.sin(t * 0.3), 0.7, d);
-    return edge * (0.75 + 0.25 * noise(x * 0.02, y * 0.02 + t * 0.1)) * 0.9;
-  },
-};
-
 /** `world`: the emotion world to show (a core id), `strength`: 0…1, how strong the feeling was. */
 export function MoodBackdrop({ world, strength }: { world: string; strength: number }) {
-  const cv = useRef<HTMLCanvasElement>(null);
+  const clouds = useRef<HTMLCanvasElement>(null);
+  const letters = useRef<HTMLCanvasElement>(null);
   const latest = useRef({ world, strength });
   const poke = useRef<() => void>();
   latest.current = { world, strength };
   useEffect(() => poke.current?.(), [world, strength]);
 
   useEffect(() => {
-    const canvas = cv.current!;
-    const ctx = canvas.getContext('2d')!;
+    const cloudCv = clouds.current!, glyphCv = letters.current!;
+    const cloudCtx = cloudCv.getContext('2d')!, ctx = glyphCv.getContext('2d')!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const atlas = document.createElement('canvas');
     let g: Grid | null = null;
+    let img: ImageData | null = null;
     let dpr = 1, font = 12, tile = 0;
     let shown: string | null = null, fade = 0;
-    let dark = false, color: RGB = [128, 128, 128];
+    let dark = false, color: RGB = [128, 128, 128], tint: [RGB, RGB] = [[128, 128, 128], [128, 128, 128]];
+    let feel = FEEL.joy;
     let glyphs: string[] = [];
     let ramp = RAMPS.default;
     let glyphIdx: number[][] = [];
     let atlasDirty = true;
     let raf = 0, last = 0, clock = 0;
 
-    /** Colours and letters of the world on show. */
+    /** Colours, letters and drift of the world on show. */
     const tune = () => {
       if (!shown) return;
       const css = getComputedStyle(document.documentElement);
       const v = (name: string) => hex(css.getPropertyValue(name));
       dark = document.documentElement.dataset.theme === 'dark';
-      color = mix(v(`--emo-${shown}`), v('--ink'), dark ? 0.2 : 0.35);
+      const accent = v(`--emo-${shown}`);
+      color = mix(accent, v('--ink'), dark ? 0.25 : 0.4);
+      tint = [accent, v(`--emo-${COMPANION[shown] ?? shown}`)];
+      feel = FEEL[shown] ?? FEEL.joy;
       ramp = RAMPS[shown] ?? RAMPS.default;
       glyphs = [];
       glyphIdx = ramp.map((level) =>
@@ -161,16 +125,24 @@ export function MoodBackdrop({ world, strength }: { world: string; strength: num
       atlasDirty = true;
     };
 
+    /** Every letter at three degrees of blur, painted once; drawing a letter is then a small copy. */
     const buildAtlas = () => {
-      tile = Math.ceil(font * 1.6 * dpr);
+      const pad = Math.ceil(5 * dpr);
+      tile = Math.ceil(font * 1.4 * dpr) + pad * 2;
       atlas.width = Math.max(1, glyphs.length) * tile;
-      atlas.height = tile;
+      atlas.height = BLUR.length * tile;
       const a = atlas.getContext('2d')!;
       a.font = `${font * dpr}px ${FONT}`;
       a.textAlign = 'center';
       a.textBaseline = 'middle';
-      a.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
-      glyphs.forEach((ch, gi) => a.fillText(ch, gi * tile + tile / 2, tile / 2));
+      const off = atlas.width + 200; // the letter itself is drawn off to the side: only its blurred shadow lands in the tile
+      a.fillStyle = '#000';
+      a.shadowColor = `rgb(${color[0]},${color[1]},${color[2]})`;
+      a.shadowOffsetX = off;
+      BLUR.forEach((blur, bi) => {
+        a.shadowBlur = blur * dpr;
+        glyphs.forEach((ch, gi) => a.fillText(ch, gi * tile + tile / 2 - off, bi * tile + tile / 2));
+      });
       atlasDirty = false;
     };
 
@@ -180,11 +152,14 @@ export function MoodBackdrop({ world, strength }: { world: string; strength: num
       const sp = narrow ? 18 : 22;
       font = narrow ? 12 : 14;
       dpr = Math.min(devicePixelRatio || 1, 2);
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
+      glyphCv.width = Math.round(w * dpr);
+      glyphCv.height = Math.round(h * dpr);
+      cloudCv.width = Math.ceil(w / CLOUD_PX);
+      cloudCv.height = Math.ceil(h / CLOUD_PX);
+      img = cloudCtx.createImageData(cloudCv.width, cloudCv.height);
       const cols = Math.ceil(w / sp) + 1, rows = Math.ceil(h / sp) + 1;
       const rnd = new Float32Array(cols * rows * 3);
-      for (let k = 0; k < rnd.length; k++) rnd[k] = hash(k * 0.7311 + 1.3);
+      for (let k = 0; k < rnd.length; k++) rnd[k] = TABLE[(k * 7919) & 0xffff];
       // the page's column sits in the middle: keep the field quieter there
       const half = Math.min(w / 2, 320);
       const calm = new Float32Array(cols);
@@ -206,42 +181,88 @@ export function MoodBackdrop({ world, strength }: { world: string; strength: num
       if (shown === want) fade = Math.min(1, fade + dt / FADE_IN);
     };
 
-    const draw = () => {
+    const paintClouds = (t: number, cover: number) => {
+      if (!g || !img) return;
+      const { data, width, height } = img;
+      const peak = (dark ? 0.17 : 0.2) * fade * 255;
+      const [c1, c2] = tint;
+      const half = Math.min(g.w / 2, 320);
+      for (let py = 0, o = 0; py < height; py++) {
+        const y = (py + 0.5) * CLOUD_PX;
+        for (let px = 0; px < width; px++, o += 4) {
+          const x = (px + 0.5) * CLOUD_PX;
+          const d = cloud(x, y, t, feel, cover);
+          if (d < 0.004) { data[o + 3] = 0; continue; }
+          // the colour slides from the world toward its companion across the sky
+          const m = clamp(x / g.w * 0.5 + y / g.h * 0.5, 0, 1) * 0.7;
+          data[o] = c1[0] + (c2[0] - c1[0]) * m;
+          data[o + 1] = c1[1] + (c2[1] - c1[1]) * m;
+          data[o + 2] = c1[2] + (c2[2] - c1[2]) * m;
+          data[o + 3] = peak * d * (1 - 0.4 * (1 - smooth(half * 0.6, half * 1.4, Math.abs(x - g.w / 2))));
+        }
+      }
+      cloudCtx.putImageData(img, 0, 0);
+    };
+
+    const paintLetters = (t: number, cover: number) => {
       if (!g) return;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const field = shown && FIELDS[shown];
-      if (!field || fade <= 0) return;
+      ctx.clearRect(0, 0, glyphCv.width, glyphCv.height);
       if (atlasDirty) buildAtlas();
-      const { sp, cols, rows, calm } = g;
-      const t = clock / 1000;
+      const { sp, cols, rows, calm, rnd } = g;
       const top = ramp.length - 1;
       const half = tile / 2;
-      const gain = (dark ? 0.34 : 0.3) * fade * (0.7 + 0.3 * latest.current.strength);
-      ctx.imageSmoothingEnabled = false;
+      const gain = (dark ? 0.4 : 0.32) * fade;
+      ctx.imageSmoothingEnabled = true;
       for (let r = 0, i = 0; r < rows; r++) {
         const y = r * sp + sp / 2, shift = (r & 1) * (sp / 3);
         for (let c = 0; c < cols; c++, i++) {
           const x = c * sp + shift;
-          shake.x = shake.y = 0;
-          const level = field(g, i, c, r, x, y, t);
-          const idx = Math.min(top, Math.floor(level * top));
-          if (idx <= 0) continue;
-          const variants = glyphIdx[idx];
-          const glyph = variants[variants.length === 1 ? 0 : (c * 3 + r * 5) % variants.length];
-          ctx.globalAlpha = Math.min(0.5, gain * (0.3 + 0.7 * level) * calm[c]);
-          ctx.drawImage(atlas, glyph * tile, 0, tile, tile, Math.round((x + shake.x) * dpr - half), Math.round((y + shake.y) * dpr - half), tile, tile);
+          // letters thicken where the cloud is, with a little dust between
+          const level = cloud(x, y, t, feel, cover) * 0.8 + (rnd[i * 3] > 0.7 ? 0.05 : 0);
+          if (level <= 0.01) continue;
+          const at = Math.min(level, 1) * top;
+          const idx = Math.min(top - 1, Math.floor(at));
+          const into = at - idx; // the letter hands over to the next one smoothly instead of popping
+          const depth = rnd[i * 3 + 1] < 0.3 ? 0 : rnd[i * 3 + 1] < 0.7 ? 1 : 2;
+          const wobble = rnd[i * 3 + 2] * 6.283;
+          const px = (x + Math.sin(t * 0.35 + wobble) * 1.6) * dpr - half;
+          const py = (y + Math.cos(t * 0.3 + wobble) * 1.6) * dpr - half;
+          const alpha = gain * BLUR_GAIN[depth] * calm[c];
+          for (let k = 0; k < 2; k++) {
+            const lvl = idx + k;
+            const share = k ? into : 1 - into;
+            const variants = glyphIdx[lvl];
+            if (!variants.length || share < 0.02) continue;
+            const glyph = variants[variants.length === 1 ? 0 : (c * 3 + r * 5) % variants.length];
+            ctx.globalAlpha = Math.min(0.5, alpha * share * (0.25 + 0.75 * level));
+            ctx.drawImage(atlas, glyph * tile, depth * tile, tile, tile, px, py, tile, tile);
+          }
         }
       }
       ctx.globalAlpha = 1;
     };
 
+    const draw = () => {
+      if (!g) return;
+      if (!shown || fade <= 0) {
+        cloudCtx.clearRect(0, 0, cloudCv.width, cloudCv.height);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, glyphCv.width, glyphCv.height);
+        return;
+      }
+      const t = clock / 1000;
+      const cover = feel.cover + (latest.current.strength - 0.5) * 0.06; // a stronger feeling fills a little more sky
+      paintClouds(t, cover);
+      paintLetters(t, cover);
+    };
+
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       const dt = last ? now - last : FRAME;
-      if (dt < FRAME - 2) return;
+      if (dt < FRAME - 4) return;
       last = now;
-      step(Math.min(dt, 100));
+      step(Math.min(dt, 120));
       draw();
     };
     const start = () => {
@@ -249,7 +270,7 @@ export function MoodBackdrop({ world, strength }: { world: string; strength: num
       last = 0;
       if (!reduced.matches && !document.hidden) raf = requestAnimationFrame(tick);
     };
-    /** Still skies (reduced motion) have no loop: jump straight to the new world and paint once. */
+    /** A still sky (reduced motion) has no loop: jump straight to the new world and paint once. */
     const settle = () => {
       if (!reduced.matches) return;
       step(5000);
@@ -289,5 +310,10 @@ export function MoodBackdrop({ world, strength }: { world: string; strength: num
     };
   }, []);
 
-  return <canvas ref={cv} class="mood-bg" aria-hidden="true" />;
+  return (
+    <div class="mood-bg" aria-hidden="true">
+      <canvas ref={clouds} />
+      <canvas ref={letters} />
+    </div>
+  );
 }

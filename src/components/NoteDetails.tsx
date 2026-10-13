@@ -15,7 +15,7 @@ import { PeopleChips, PeopleSheet, PersonChip, usePeopleById } from './people';
 import { PhotoImg } from './Photo';
 import { Sheet } from './Sheet';
 import { HomeSheet, WeatherMark, placeLabel, weatherLine, weatherOf } from './weather';
-import { t } from '../lib/i18n';
+import { count, t } from '../lib/i18n';
 
 /**
  * A note's cover picture, filling whatever box it's put in, cropped the way it was adjusted. The crop's point sits at the
@@ -36,24 +36,31 @@ export function CoverImg({ cover, class: cls }: { cover: Cover; class?: string }
   );
 }
 
-/** The one-line summary of a note's details at its top: when, how it felt, who it's about. Tap for the Feelings page. */
-export function DetailsSummary({ draft, onOpen }: { draft: Entry; onOpen: () => void }) {
+/**
+ * The one muted line under a note's title: when, how it felt, who it's about. Tap it for the Feelings page. The music
+ * attached to the note is a small chip at its end, "♪ 3 songs", which opens the songs.
+ */
+export function DetailsSummary({ draft, onOpen, onMusic }: { draft: Entry; onOpen: () => void; onMusic: () => void }) {
   const byId = usePeopleById();
   const people = draft.people.map((id) => byId.get(id)!).filter(Boolean);
   const w = weatherOf(draft);
   return (
-    <button class="details-summary" onClick={onOpen} aria-label={t('Feelings, people, date, place and cover')}>
-      <span class="details-chips">
-        <span class="details-date"><Icon name="calendar-event" size={15} /> {rangeLabel(draft.date, draft.dateEnd)}</span>
-        {w && <span class="details-date"><WeatherMark w={w} size={15} /></span>}
-        {draft.place?.name && <span class="details-date details-place"><Icon name="map-pin" size={15} /> <span>{draft.place.name}</span></span>}
+    <div class="details-line">
+      <button class="details-summary" onClick={onOpen} aria-label={t('Feelings, people, date, place and cover')}>
+        <span class="details-date"><Icon name="calendar-event" size={14} /> {rangeLabel(draft.date, draft.dateEnd)}</span>
+        {w && <span class="details-date"><WeatherMark w={w} size={14} /></span>}
+        {draft.place?.name && <span class="details-date details-place"><Icon name="map-pin" size={14} /> <span>{draft.place.name}</span></span>}
         {draft.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
         {draft.emotions.length > 0 && <Bars n={draft.intensity} />}
         {people.map((p) => <PersonChip p={p} size="sm" />)}
-        {!draft.emotions.length && <span class="details-add"><Icon name="mood-plus" size={15} /> {t('How does it feel?')}</span>}
-      </span>
-      <Icon name="chevron-right" size={18} class="details-go" />
-    </button>
+        {!draft.emotions.length && <span class="details-add"><Icon name="mood-plus" size={14} /> {t('How does it feel?')}</span>}
+      </button>
+      {draft.music.length > 0 && (
+        <button class="details-music" onClick={onMusic} aria-label={t('Music in this note')}>
+          <Icon name="music" size={14} /> {count(draft.music.length, 'song', 'songs')}
+        </button>
+      )}
+    </div>
   );
 }
 

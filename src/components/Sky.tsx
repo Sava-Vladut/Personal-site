@@ -35,7 +35,7 @@ export const RAMPS: Record<string, string[]> = {
 };
 
 /** The world a sky leans toward; the second colour keeps it from going flat. */
-const COMPANION: Record<string, string> = {
+export const COMPANION: Record<string, string> = {
   joy: 'hope-interest',
   'hope-interest': 'love-connection',
   'love-connection': 'fear',

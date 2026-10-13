@@ -25,6 +25,7 @@ import { takeDown } from '../lib/share';
 import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
+import { Sheet } from '../components/Sheet';
 import { SaveStatus, type SaveState } from '../components/SaveStatus';
 import { Markdown } from '../components/Markdown';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
@@ -35,7 +36,7 @@ import { SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 import { t } from '../lib/i18n';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music';
 /** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
 type Typed = { start: number; end: number; q: string; link?: boolean };
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
@@ -941,26 +942,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} disabled={adding > 0 || coverAdding} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <SaveStatus state={status} />
-        <button
-          class="glass glass-btn round"
-          onClick={() => (reading ? write() : setReading(true))}
-          aria-label={reading ? t('Edit') : t('Reading view')}
-          title={reading ? t('Edit') : t('Reading view')}
-        >
-          <Icon name={reading ? 'pencil' : 'book'} />
-        </button>
-        {!isCheckin && (
-          <button
-            class={`glass glass-btn round${draft.share ? ' is-public' : ''}`}
-            onClick={() => setOpen('share')}
-            disabled={!draft.share && isEmpty(draft)}
-            aria-label={draft.share ? t('Public link') : t('Make public')}
-            title={draft.share ? t('This note is public') : t('Make public')}
-          >
-            <Icon name="world" />
-          </button>
-        )}
-        <button class="glass glass-btn round" onClick={remove} aria-label={isCheckin ? t('Delete check-in') : t('Delete note')}><Icon name="trash" /></button>
+        <button class="glass glass-btn round" onClick={() => setOpen('more')} aria-label={t('More')} title={t('More')}><Icon name="dots" /></button>
         <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>{t('Done')}</button>
       </div>
 
@@ -968,9 +950,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         {draft.cover && <CoverImg cover={draft.cover} class="note-head-cover" />}
         {isCheckin && <div class="eyebrow">Check-in · {timeLabel(draft.time)}</div>}
         <div class="editor-top">
-          <button class={`icon-pick${draft.icon ? '' : ' is-empty'}`} onClick={() => setOpen('icon')} aria-label={draft.icon ? t('Change icon') : t('Add icon')}>
-            {draft.icon ? <NoteIcon id={draft.icon} size={24} /> : <Icon name="mood-plus" size={20} />}
-          </button>
+          {draft.icon && (
+            <button class="icon-pick" onClick={() => setOpen('icon')} aria-label={t('Change icon')}>
+              <NoteIcon id={draft.icon} size={26} />
+            </button>
+          )}
           <textarea
             ref={titleRef}
             class="title-input"
@@ -983,7 +967,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             aria-label={t('Title')}
           />
         </div>
-        <DetailsSummary draft={draft} onOpen={() => setDetails(true)} />
+        <DetailsSummary draft={draft} onOpen={() => setDetails(true)} onMusic={() => setOpen('music')} />
       </section>
 
       <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef}>
@@ -1053,13 +1037,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         {reading && <button class="read-tail" onClick={() => write(last)} aria-label={t('Keep writing')} tabIndex={-1} />}
       </div>
 
-      {draft.music.length > 0 && (
-        <div class="tracks">
-          {draft.music.map((m) => (
-            <MusicDeck key={m.kind + m.id} m={m} onRemove={() => update({ music: (latest.current ?? draft).music.filter((x) => !(x.kind === m.kind && x.id === m.id)) })} />
-          ))}
-        </div>
-      )}
       {backlinks.length > 0 && (
         <section class="backlinks" aria-label={t('Linked from')}>
           <h2 class="eyebrow">{t('Linked from')}</h2>
@@ -1152,6 +1129,31 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
       {!isCheckin && <ShareSheet open={open === 'share'} onClose={close} entry={draft} onChange={(share) => update({ share })} />}
+      <Sheet open={open === 'more'} onClose={close} title={t('More')}>
+        <div class="card list menu-list">
+          <button class="list-row action" onClick={() => { close(); reading ? write() : setReading(true); }}>
+            <span class="row gap-s"><Icon name={reading ? 'pencil' : 'book'} size={18} /> {reading ? t('Edit') : t('Reading view')}</span>
+          </button>
+          {!isCheckin && (draft.share || !isEmpty(draft)) && (
+            <button class="list-row action" onClick={() => setOpen('share')}>
+              <span class="row gap-s"><Icon name="world" size={18} /> {draft.share ? t('Public link') : t('Make public')}</span>
+            </button>
+          )}
+          <button class="list-row action" onClick={() => setOpen('icon')}>
+            <span class="row gap-s"><Icon name="mood-plus" size={18} /> {draft.icon ? t('Change icon') : t('Add icon')}</span>
+          </button>
+          <button class="list-row action danger" aria-label={isCheckin ? t('Delete check-in') : t('Delete note')} onClick={() => { close(); return remove(); }}>
+            <span class="row gap-s"><Icon name="trash" size={18} /> {isCheckin ? t('Delete check-in') : t('Delete note')}</span>
+          </button>
+        </div>
+      </Sheet>
+      <Sheet open={open === 'music'} onClose={close} title={t('Music in this note')}>
+        <div class="tracks note-music">
+          {draft.music.map((m) => (
+            <MusicDeck key={m.kind + m.id} m={m} onRemove={() => update({ music: (latest.current ?? draft).music.filter((x) => !(x.kind === m.kind && x.id === m.id)) })} />
+          ))}
+        </div>
+      </Sheet>
       <IconSheet open={open === 'icon'} onClose={close} value={draft.icon} onChange={(icon) => update({ icon })} />
       <NoteDetails open={details} onClose={() => setDetails(false)} draft={draft} update={update} uploadCover={uploadCover} uploadingCover={coverAdding} />
       <ImageSearchSheet

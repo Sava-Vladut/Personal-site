@@ -1535,6 +1535,7 @@ export const RO: Record<string, string> = {
   'Not public anymore': 'Nu mai este publică',
   'Link copied': 'Link copiat',
   'Public link': 'Link public',
+  'Music in this note': 'Muzica din notiță',
   'Anyone with the link can read this note without signing in. Only this note is shared, and you can stop at any time.': 'Oricine are linkul poate citi această notiță fără să se conecteze. Se partajează doar această notiță și poți opri oricând.',
   'Always shared: the title, the text, the pictures and the day.': 'Se partajează mereu: titlul, textul, pozele și ziua.',
   'Also show': 'Arată și',

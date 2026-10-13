@@ -65,7 +65,8 @@ interface Pending { mark: string; box: TextBox; pos: number; len: number }
  * in or out (while in a list); link and divider. Selecting text brings the text tools up by themselves (and puts
  * them away again after); the tools for how the text at the caret is styled are lit. A style tapped with nothing
  * selected waits at the caret and styles what's typed next. Scrolling down through a note, not writing, tucks the
- * bar away until you scroll back up. With `swap` (a selected picture's tools, or what an @ suggests), it shows those.
+ * bar away until you scroll back up. The bar only shows while writing (the caret in the title or the text, or a button
+ * of the bar tapped); otherwise the page is just the note. With `swap` (a selected picture's tools, or what an @ suggests), it shows those.
  */
 export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'), children }: {
   target: () => TextBox | null;
@@ -79,6 +80,7 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
   const [styles, setStyles] = useState('');
   const [tucked, setTucked] = useState(false);
   const [writing, setWriting] = useState(false);
+  const [onBar, setOnBar] = useState(false); // a button of the bar has the focus: tapping one mustn't put the bar away
   const [pending, setPending] = useState<string | null>(null);
   const pend = useRef<Pending | null>(null);
   const toolsShown = useRef(tools);
@@ -174,11 +176,12 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
     };
   }, []);
 
-  // Whether a note's words are being written: the bar then offers to put the keyboard away.
+  // Whether a note's words are being written: the bar then offers to put the keyboard away, and it shows at all.
   useEffect(() => {
     const text = (n: EventTarget | null) => !!(n as Element | null)?.closest?.('.body-input, .title-input');
-    const into = (e: FocusEvent) => setWriting(text(e.target));
-    const out = (e: FocusEvent) => setWriting(text(e.relatedTarget));
+    const bar = (n: EventTarget | null) => !!(n as Element | null)?.closest?.('.format-bar');
+    const into = (e: FocusEvent) => { setWriting(text(e.target)); setOnBar(bar(e.target)); };
+    const out = (e: FocusEvent) => { setWriting(text(e.relatedTarget)); setOnBar(bar(e.relatedTarget)); };
     document.addEventListener('focusin', into);
     document.addEventListener('focusout', out);
     return () => {
@@ -263,12 +266,13 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
 
   // Page entrance transforms temporarily turn fixed descendants into page-relative
   // elements. Keep this keyboard accessory at the document level throughout editing.
+  const away = tucked || !(writing || onBar);
   const bar = swap ? (
       <div ref={ref} class="format-bar glass is-swapped" role="toolbar" aria-label={swapLabel}>
         <div class="format-scroll">{swap}</div>
       </div>
     ) : (
-    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${tucked ? ' is-tucked' : ''}`} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')}>
+    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${away ? ' is-tucked' : ''}`} inert={away} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')}>
       {toggle}
       {showTools ? (
         <div class="format-scroll">
