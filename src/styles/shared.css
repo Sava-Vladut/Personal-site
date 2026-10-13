@@ -19,6 +19,16 @@
   background: var(--surface-2); font-size: 14.5px; line-height: 1.45; color: var(--ink-2);
 }
 .share-ok { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-3); }
+.share-parts { display: flex; flex-direction: column; gap: 2px; padding: 6px 0 2px; border-top: 1px solid var(--line); }
+.share-parts-head { padding: 8px 0 6px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.share-part { display: flex; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; }
+.share-part > svg { flex: none; color: var(--ink-3); }
+.share-part-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.share-part-name { font-size: 15px; font-weight: 500; }
+.share-part-value { font-size: 13px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share-part .switch { flex: none; }
+.share-parts-note { display: flex; gap: 7px; align-items: flex-start; padding-top: 6px; font-size: 13px; line-height: 1.45; color: var(--ink-3); }
+.share-parts-note svg { flex: none; margin-top: 2px; }
 .share-stop { width: 100%; justify-content: center; }
 .share-error { color: var(--danger, #c0392b); font-size: 14px; line-height: 1.4; }
 .glass-btn.is-public { color: var(--ink); }
@@ -36,6 +46,10 @@
 }
 .shared-title { font: 500 clamp(26px, 7.4vw, 34px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
 .shared-when { margin-top: 8px; font-size: 13.5px; color: var(--ink-3); }
+.shared-details { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.shared-detail { display: inline-flex; align-items: center; gap: 5px; height: 24px; margin-right: 2px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.shared-intensity { font-size: 12.5px; color: var(--ink-3); margin-right: 2px; }
+.shared-music { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; clear: both; }
 .shared-body { margin-top: 0; font: 400 17.5px/1.65 var(--serif); }
 .shared-media { margin-block: 12px; }
 .shared-media .media-pic { cursor: zoom-in; }

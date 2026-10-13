@@ -2,9 +2,14 @@ import { useEffect, useState } from 'preact/hooks';
 import { bodyOf, itemKey, itemsOf, type Item, type Media } from '../lib/body';
 import { rangeLabel } from '../lib/dates';
 import { imageSrc } from '../lib/images';
-import { readShared, type PublicNote } from '../lib/share';
-import type { Entry } from '../lib/store';
+import { readShared, type PublicDetails, type PublicNote } from '../lib/share';
+import type { Entry, Music, Person } from '../lib/store';
+import { EmotionChip, INTENSITY } from '../components/emotion';
+import { Icon } from '../components/icons';
 import { Markdown } from '../components/Markdown';
+import { MusicEmbed, MusicThing, isTape, musicSub } from '../components/music';
+import { Avatar } from '../components/people';
+import { WeatherMark } from '../components/weather';
 import { t } from '../lib/i18n';
 import '../styles/shared.css';
 
@@ -62,6 +67,7 @@ export function Shared({ token }: { token: string }) {
           )}
           {note.title && <h1 class="shared-title">{note.title}</h1>}
           <div class="shared-when">{rangeLabel(note.date, note.dateEnd)}</div>
+          {note.details && <Details d={note.details} date={note.date} />}
         </header>
         <div class="note-body is-reading shared-body">
           {body.texts.map((text, i) => (
@@ -71,6 +77,11 @@ export function Shared({ token }: { token: string }) {
             </>
           ))}
         </div>
+        {note.details?.music && (
+          <section class="shared-music">
+            {note.details.music.map((m) => <Deck key={m.kind + m.id} m={m} />)}
+          </section>
+        )}
         <footer class="shared-foot">{t('Shared from My Mind')}</footer>
       </article>
     </main>
@@ -112,5 +123,47 @@ function Pic({ m, note, src }: { m: Media; note: Note; src: (it: Item, size: 'th
       </a>
       {credit?.credit && <figcaption class="shared-credit">{credit.credit}</figcaption>}
     </figure>
+  );
+}
+
+/** The details the writer chose to show: how it felt, who was there, where, and the sky. */
+function Details({ d, date }: { d: PublicDetails; date: string }) {
+  const f = d.feelings;
+  return (
+    <div class="shared-details">
+      {d.weather && <span class="shared-detail"><WeatherMark w={{ ...d.weather, day: date }} size={15} /></span>}
+      {d.place && <span class="shared-detail"><Icon name="map-pin" size={15} /> <span>{d.place.name}</span></span>}
+      {f?.emotions.map((id) => <EmotionChip key={id} id={id} size="sm" />)}
+      {f && <span class="shared-intensity">{INTENSITY[f.intensity - 1]}</span>}
+      {d.people?.map((p, i) => (
+        <span key={i} class="emo emo-sm person-chip">
+          <Avatar p={{ name: p.name, icon: p.icon, emotions: [] } as unknown as Person} size={16} />
+          <span class="emo-name">{p.name}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Music in a public note: tap to open Spotify's player beneath. */
+function Deck({ m }: { m: Music }) {
+  const [on, setOn] = useState(false);
+  return (
+    <div class={`deck${on ? ' is-on' : ''}${isTape(m) ? ' is-tape' : ''}`}>
+      <button class="deck-main" aria-expanded={on} onClick={() => setOn(!on)} aria-label={on ? t('Close the player for {title}', { title: m.title }) : t('Play {title}', { title: m.title })}>
+        <MusicThing m={m} />
+        <span class="track-main">
+          <span class="track-title">{m.title}</span>
+          <span class="track-sub">{musicSub(m)}</span>
+        </span>
+        <span class="deck-button"><Icon name={on ? 'player-pause' : 'player-play'} size={18} stroke={2} /></span>
+      </button>
+      {on && (
+        <div class="deck-player">
+          <MusicEmbed m={m} />
+          <a class="btn btn-quiet btn-s" href={m.link} target="_blank" rel="noopener noreferrer"><Icon name="brand-spotify" size={16} /> Spotify</a>
+        </div>
+      )}
+    </div>
   );
 }

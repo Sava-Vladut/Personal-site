@@ -6,7 +6,7 @@ import { rolldown } from 'rolldown';
 // The real src/lib/share.ts, with the browser's storage, toasts and fetch supplied in memory.
 const mocks = {
   './photos': { photoBlob: async (id) => (id === 'pmissing01' ? undefined : new Blob([id], { type: 'image/webp' })) },
-  './store': { toast: (text) => toasts.push(text) },
+  './store': { toast: (text) => toasts.push(text), getPeople: () => [{ id: 'p1', name: 'Ana', icon: 't:heart', relation: 'Friend', text: 'secret about Ana' }, { id: 'p2', name: '  ', icon: null }] },
   './i18n': { t: (s) => s },
 };
 const bundle = await rolldown({
@@ -37,12 +37,12 @@ const context = {
 context.globalThis = context;
 const module = { exports: {} };
 vm.runInNewContext(code, { ...context, module, exports: module.exports });
-const { plainTags, publicNote, fingerprint, changedSince, publish, takeDown, shareUrl } = module.exports;
+const { plainTags, publicNote, partsOf, fingerprint, changedSince, publish, takeDown, shareUrl } = module.exports;
 
 const TOKEN = 'T'.repeat(32);
 const entry = (extra = {}) => ({
   id: 'e1', kind: 'note', title: ' A walk ', icon: 't:sun', text: 'Walked with @[Ana]', emotions: ['joy'], intensity: 4, date: '2026-10-12', dateEnd: null, time: 1,
-  images: [], photos: [], music: [{ id: 'm' }], people: ['p1'], cover: null, pinned: false, share: null, place: { lat: 1, lon: 2, name: 'Home' }, weather: { code: 1 }, created: 1, updated: 1, ...extra,
+  images: [], photos: [], music: [{ id: 'm' }], people: ['p1'], cover: null, pinned: false, share: null, place: { lat: 1, lon: 2, name: 'Home' }, weather: { day: '2026-10-12', code: 1, temp: 20, daylight: 11 }, created: 1, updated: 1, ...extra,
 });
 
 test('tags in the text become the plain words they stand for, pictures stay', () => {
@@ -61,6 +61,25 @@ test('the public copy holds the words, pictures and day, and nothing about how y
   assert.ok(!JSON.stringify(pub).includes('joy') && !JSON.stringify(pub).includes('Home') && !JSON.stringify(pub).includes('p1'));
 });
 
+test('details are shared only when chosen, and only in their narrow public shape', () => {
+  const e = entry({ people: ['p1', 'p2', 'gone'], music: [{ kind: 'track', id: 'abcdefghij', title: 'Blue', link: 'https://open.spotify.com/track/abcdefghij' }] });
+  assert.deepEqual(partsOf(e), ['feelings', 'people', 'place', 'weather', 'music']);
+  assert.deepEqual(partsOf(entry({ emotions: [], people: [], place: { lat: 1, lon: 2, name: '' }, weather: { day: '2026-01-01', code: 1 }, music: [] })), []);
+  assert.equal(publicNote(e).details, undefined); // nothing chosen
+  const pub = publicNote(e, ['feelings', 'people', 'place', 'weather', 'music']);
+  assert.equal(JSON.stringify(pub.details), JSON.stringify({
+    feelings: { emotions: ['joy'], intensity: 4 },
+    people: [{ name: 'Ana', icon: 't:heart' }],
+    place: { name: 'Home' },
+    weather: { code: 1, temp: 20, daylight: 11 },
+    music: [{ kind: 'track', id: 'abcdefghij', title: 'Blue', link: 'https://open.spotify.com/track/abcdefghij' }],
+  }));
+  const json = JSON.stringify(publicNote(e, ['people', 'place']));
+  assert.ok(!json.includes('p1') && !json.includes('Friend') && !json.includes('secret') && !json.includes('"lat"') && !json.includes('joy'));
+  // a chosen detail the note no longer has is simply left out
+  assert.equal(publicNote(entry({ place: null, emotions: [] }), ['place', 'feelings']).details, undefined);
+});
+
 test('a note knows when it has changed since it was made public', () => {
   const e = entry();
   const shared = { ...e, share: { token: TOKEN, hash: fingerprint(publicNote(e)) } };
@@ -70,6 +89,10 @@ test('a note knows when it has changed since it was made public', () => {
   assert.equal(changedSince({ ...shared, title: 'Another' }), true);
   assert.equal(changedSince(entry()), false); // never shared
   assert.equal(shareUrl(TOKEN), `https://example.test/s/${TOKEN}`);
+  const withFeelings = { ...e, share: { token: TOKEN, hash: fingerprint(publicNote(e, ['feelings'])), parts: ['feelings'] } };
+  assert.equal(changedSince(withFeelings), false);
+  assert.equal(changedSince({ ...withFeelings, emotions: ['sad'] }), true); // a shown detail counts
+  assert.equal(changedSince({ ...withFeelings, place: null }), false); // a hidden one doesn't
 });
 
 test('publishing sends only the public copy, then the photos the server is missing', async () => {
@@ -83,6 +106,20 @@ test('publishing sends only the public copy, then the photos the server is missi
   const sent = JSON.parse(calls[0].body);
   assert.deepEqual(Object.keys(sent).sort(), ['cover', 'date', 'dateEnd', 'images', 'photos', 'text', 'title']);
   assert.equal(calls[1].type, 'image/webp');
+});
+
+test('publishing with details sends them and remembers the choice', async () => {
+  calls.length = 0;
+  reply = () => ({ status: 200, body: { token: TOKEN, missing: [] } });
+  const e = entry();
+  const share = await publish(e, ['place']);
+  assert.deepEqual([...share.parts], ['place']);
+  assert.equal(share.hash, fingerprint(publicNote(e, ['place'])));
+  assert.deepEqual(JSON.parse(calls[0].body).details, { place: { name: 'Home' } });
+  // updating keeps the details it was published with
+  calls.length = 0;
+  await publish({ ...e, share });
+  assert.deepEqual(JSON.parse(calls[0].body).details, { place: { name: 'Home' } });
 });
 
 test('updating a note that is already public keeps its link; a link the server forgot is replaced', async () => {

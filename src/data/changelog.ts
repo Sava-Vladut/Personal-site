@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.72.0',
+    date: '2026-10-13',
+    changes: [
+      'Choose what else a public note shows: feelings, people, place, weather and music each have their own switch',
+      'Everything starts off, and each switch shows exactly what it would share',
+      'People appear by name only and a place by its name only, never where it is on a map',
+      'Music you share can be played right on the public page',
+      'Changing the switches on a public note offers “Update public copy”, just like editing it',
+    ],
+  },
+  {
     version: '1.71.1',
     date: '2026-10-13',
     changes: [

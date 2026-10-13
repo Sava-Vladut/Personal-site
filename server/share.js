@@ -1,4 +1,5 @@
 // Public notes: a note you choose to share is copied here as plain text and pictures, and anyone with its link can read it.
+// Feelings, people (by name), a place's name, the weather and music go too, but only those chosen for that note.
 // Nothing else leaves the journal. Publishing, updating and stopping need the admin password; reading needs only the link.
 //   data/shared/<token>/note.json     what the public page shows (rebuilt from a whitelist, whatever the browser sent)
 //   data/shared/<token>/<photo>.<ext> the note's photos, as uploaded
@@ -61,7 +62,53 @@ function cropOf(raw) {
   return x === null || y === null || zoom === null ? undefined : { x, y, zoom };
 }
 
-/** The public copy of a note: only these fields, only these shapes. Feelings, people, place, weather and music never get here. */
+const EMOTION_ID = /^[a-z0-9-]+(?:\/[a-z0-9-]+){0,2}$/;
+const ICON_ID = /^[te]:[a-z0-9-]{1,60}$/;
+const MUSIC_KINDS = ['track', 'album', 'playlist', 'episode', 'show', 'artist'];
+
+function musicOf(raw) {
+  if (!raw || !MUSIC_KINDS.includes(raw.kind) || typeof raw.id !== 'string' || !/^[A-Za-z0-9]{1,64}$/.test(raw.id)) return null;
+  const title = text(raw.title, 300).trim();
+  if (!title) return null;
+  const out = { kind: raw.kind, id: raw.id, title, link: `https://open.spotify.com/${raw.kind}/${raw.id}` };
+  const sub = text(raw.sub, 300), image = https(raw.image);
+  if (sub) out.sub = sub;
+  if (image) out.image = image;
+  return out;
+}
+
+/** The details chosen for the public page, each in its own narrow shape: names but no ids, a place's name but no coordinates. */
+export function cleanDetails(raw) {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out = {};
+  const f = raw.feelings;
+  if (f && Array.isArray(f.emotions)) {
+    const emotions = f.emotions.filter((id) => typeof id === 'string' && id.length <= 80 && EMOTION_ID.test(id)).slice(0, 3);
+    const intensity = Number.isInteger(f.intensity) && f.intensity >= 1 && f.intensity <= 5 ? f.intensity : 3;
+    if (emotions.length) out.feelings = { emotions, intensity };
+  }
+  if (Array.isArray(raw.people)) {
+    const people = raw.people
+      .map((p) => ({ name: text(p?.name, 80).trim(), icon: typeof p?.icon === 'string' && ICON_ID.test(p.icon) ? p.icon : null }))
+      .filter((p) => p.name)
+      .slice(0, 30);
+    if (people.length) out.people = people;
+  }
+  const place = text(raw.place?.name, 200).trim();
+  if (place) out.place = { name: place };
+  const w = raw.weather;
+  if (w && Number.isInteger(w.code) && w.code >= 0 && w.code < 100 && typeof w.temp === 'number' && Math.abs(w.temp) < 100) {
+    const daylight = typeof w.daylight === 'number' && w.daylight >= 0 && w.daylight <= 24 ? w.daylight : 0;
+    out.weather = { code: w.code, temp: Math.round(w.temp * 10) / 10, daylight, ...(typeof w.dark === 'boolean' && { dark: w.dark }) };
+  }
+  if (Array.isArray(raw.music)) {
+    const music = raw.music.map(musicOf).filter(Boolean).slice(0, 20);
+    if (music.length) out.music = music;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** The public copy of a note: only these fields, only these shapes. Feelings, people, place, weather and music only as cleanDetails allows. */
 export function cleanNote(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.date !== 'string' || !DAY.test(raw.date)) throw new HttpError(400, 'That note can’t be shared.');
   if (typeof raw.text === 'string' && raw.text.length > MAX_TEXT) throw new HttpError(413, 'That note is too long to share.');
@@ -77,6 +124,7 @@ export function cleanNote(raw) {
     else if (img) cover = { image: img, ...(crop && { crop }) };
   }
   if (cover?.photo && !unique.some((p) => p.id === cover.photo.id) && unique.length < MAX_PHOTOS) unique.push(cover.photo);
+  const details = cleanDetails(raw.details);
   return {
     title: text(raw.title, 300),
     text: text(raw.text, MAX_TEXT),
@@ -85,6 +133,7 @@ export function cleanNote(raw) {
     images,
     photos: unique,
     cover,
+    ...(details && { details }),
   };
 }
 

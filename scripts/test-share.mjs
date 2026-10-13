@@ -78,6 +78,33 @@ test('a published note is readable by anyone, and only holds what the whitelist 
   await send('DELETE', '/api/share/' + token, { headers: admin });
 });
 
+test('chosen details are kept in their narrow shape, and anything else in them is dropped', async () => {
+  const details = {
+    feelings: { emotions: ['joy', 'fear/anxiety/worried', '<script>', 5], intensity: 9, secret: 1 },
+    people: [{ name: ' Ana ', icon: 't:heart', id: 'p1', text: 'private' }, { name: 'Bo', icon: 'javascript:x' }, { name: '' }, 'p2'],
+    place: { name: 'Home', lat: 44.4, lon: 26.1 },
+    weather: { code: 3, temp: 21.44, daylight: 11.5, dark: true, day: '2026-10-12', extra: 1 },
+    music: [
+      { kind: 'track', id: 'abcdefghij', title: 'Blue', sub: 'Someone', image: 'https://i.scdn.co/a.jpg', link: 'https://evil.example/' },
+      { kind: 'bad', id: 'abcdefghij', title: 'X' },
+      { kind: 'album', id: '../../x', title: 'Y' },
+    ],
+    mood: 'secret',
+  };
+  const { token } = await (await send('POST', '/api/share', { headers: admin, body: note({ details }) })).json();
+  const body = await (await send('GET', '/api/share/' + token)).json();
+  assert.deepEqual(body.details, {
+    feelings: { emotions: ['joy', 'fear/anxiety/worried'], intensity: 3 },
+    people: [{ name: 'Ana', icon: 't:heart' }, { name: 'Bo', icon: null }],
+    place: { name: 'Home' },
+    weather: { code: 3, temp: 21.4, daylight: 11.5, dark: true },
+    music: [{ kind: 'track', id: 'abcdefghij', title: 'Blue', link: 'https://open.spotify.com/track/abcdefghij', sub: 'Someone', image: 'https://i.scdn.co/a.jpg' }],
+  });
+  assert.equal(cleanNote(note({ details: { place: { name: ' ' }, people: [] } })).details, undefined);
+  assert.equal('details' in cleanNote(note()), false);
+  await send('DELETE', '/api/share/' + token, { headers: admin });
+});
+
 test('links that were not issued (or are malformed) show nothing', async () => {
   for (const path of ['/api/share/' + 'b'.repeat(32), '/api/share/short', '/api/share/..%2f..%2fsecret', '/api/share/' + 'b'.repeat(32) + '/pabcdef12']) {
     assert.equal((await send('GET', path)).status, 404, path);

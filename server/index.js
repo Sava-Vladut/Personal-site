@@ -10,7 +10,9 @@
 //  • sync: keeps an end-to-end encrypted copy of the journal, found by an id the browser derives from its sync code.
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 //  • public notes: a note you choose to share is copied to data/shared/ and read by anyone with its /s/<token> link
-//    (server/share.js). Only the admin (ADMIN_PASSWORD) can publish, update or stop sharing one.
+//    (server/share.js); feelings, people, place, weather and music only if chosen for that note. Only the admin (ADMIN_PASSWORD) can publish, update or stop sharing one.
+//  • cloning: the site's owner (CLONE_GITHUB_ID, signed in as admin too) can clone one of their repos into CLONE_DIR
+//    on the server, from the repo's page (server/clone.js).
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 import http from 'node:http';
@@ -19,6 +21,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAccountStore } from './accounts.js';
+import { createCloner } from './clone.js';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
 import { json } from './http-response.js';
@@ -42,6 +45,9 @@ const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 // the miner's settings/channels.json, the channels it watches (writable)
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+// where repos are cloned on the server, and the numeric GitHub user id of the only account allowed to clone
+const CLONE_DIR = process.env.CLONE_DIR || '';
+const CLONE_GITHUB_ID = process.env.CLONE_GITHUB_ID || '';
 const KEY = crypto.createHash('sha256').update(sessionSecret()).digest();
 const SP_ID = process.env.SPOTIFY_CLIENT_ID || '';
 const SP_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
@@ -642,6 +648,33 @@ async function githubRepos(req, p, url, setCookies, out) {
   return out({ text: body.slice(0, 200_000) });
 }
 
+const cloner = createCloner({ directory: CLONE_DIR, ownerId: CLONE_GITHUB_ID, shownDirectory: process.env.CLONE_HOST_DIR || CLONE_DIR });
+
+/** POST …/repos/:id/clone starts a clone; GET …/clones says how the recent ones went. Owner and admin only. */
+async function githubClone(req, id, setCookies, out) {
+  if (!cloner.enabled()) throw new HttpError(404, 'Cloning isn’t set up on this server.');
+  if (!isAdmin(req)) throw new HttpError(403, 'Sign in to the site to clone repos onto the server.');
+  let s = ghSession(req);
+  if (!s) throw new HttpError(401, 'Log in with GitHub to clone repos.');
+  if (!id) {
+    if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed');
+    // the account id in the sealed cookie is the one GitHub named at sign-in
+    if (!cloner.isOwner(s.u)) throw new HttpError(403, 'Only the site’s owner can clone repos onto the server.');
+    return out({ items: cloner.list() });
+  }
+  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
+  // it changes the server, so it must come from the site's own pages
+  if (![PUBLIC_URL, APP_URL, GH_ORIGIN].includes(req.headers.origin)) throw new HttpError(403, 'That request didn’t come from this site.');
+  // ask GitHub who the token belongs to now, rather than trusting what the cookie remembers
+  const who = await ghGet(s, '/user', setCookies);
+  s = who.s;
+  if (!who.res.ok || !cloner.isOwner(who.body.id)) throw new HttpError(403, 'Only the site’s owner can clone repos onto the server.');
+  const { res, body } = await ghGet(s, `/repositories/${id}`, setCookies);
+  if (res.status === 404) throw new HttpError(404, 'That repo isn’t available.');
+  if (!res.ok) throw new HttpError(502, 'GitHub didn’t answer. Try again.');
+  return out(await cloner.start({ user: who.body, repo: body, token: s.a }));
+}
+
 async function github(req, res, url, p, setCookies, out) {
   if (p === '/api/github/status') {
     const status = { configured: ghConfigured(), connected: false };
@@ -673,12 +706,15 @@ async function github(req, res, url, p, setCookies, out) {
       ...status,
       connected: true,
       user: { name: body.login },
+      canClone: cloner.isOwner(body.id) && isAdmin(req),
       public: repoCount(body.public_repos),
       private: priv,
       privateVisible: priv !== undefined,
     });
   }
 
+  const clone = p.match(/^\/api\/github\/repos\/(\d{1,15})\/clone$/);
+  if (clone || p === '/api/github/clones') return githubClone(req, clone?.[1], setCookies, out);
   if (p === '/api/github/repos' || p.startsWith('/api/github/repos/')) return githubRepos(req, p, url, setCookies, out);
 
   if (p === '/api/github/connect') {
