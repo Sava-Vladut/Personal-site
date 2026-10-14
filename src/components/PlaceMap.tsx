@@ -1,6 +1,7 @@
 // A small map drawn by hand: OpenStreetMap's tiles under a pin for each entry, in the colour
 // of the world it was felt in. Drag to move, pinch or scroll to zoom, double-tap to zoom in, arrow keys and +/− too.
 // Pins that would overlap gather into one with a count; tapping it zooms in until they part, then opens them.
+// Given a marker, it's a place picker too: a tap drops the marker there, and the marker can be dragged.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Icon, Sprite } from './icons';
 import { MapHeat, type HeatPoint } from './MapHeat';
@@ -21,6 +22,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 export function project(lat: number, lon: number) {
   const s = Math.sin((clamp(lat, -85, 85) * Math.PI) / 180);
   return { x: (lon + 180) / 360, y: 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) };
+}
+
+/** The other way round: a world point back to latitude and longitude. */
+export function unproject(x: number, y: number) {
+  const lon = clamp(x, 0, 1) * 360 - 180;
+  const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * clamp(y, 0, 1)))) * 180) / Math.PI;
+  return { lat: clamp(lat, -85, 85), lon: clamp(lon, -180, 180) };
 }
 
 /** The view that shows every point with some room around them, no closer than maxZ. */
@@ -55,10 +63,10 @@ const tileUrl = (z: number, x: number, y: number) => `https://tile.openstreetmap
 /** Where each remembered map was left, so coming back from a note finds it as it was. */
 const remembered = new Map<string, View>();
 
-export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, class: cls }: {
+export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, marker, onMarker, class: cls }: {
   pins: Pin[];
-  /** start close in on this spot, instead of showing every pin */
-  focus?: { lat: number; lon: number } | null;
+  /** start close in on this spot (at zoom z, 15 by default), instead of showing every pin */
+  focus?: { lat: number; lon: number; z?: number } | null;
   /** pins tapped that can't be pulled apart any further */
   onOpen?: (ids: string[]) => void;
   /** a still map is a preview: it doesn't move, and a tap anywhere calls this */
@@ -67,6 +75,9 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
   remember?: string;
   /** lay a heat map of the pins' feelings over the tiles (components/MapHeat.tsx) */
   heat?: boolean;
+  /** a place being picked: shown as a marker, moved by tapping the map or dragging it */
+  marker?: { lat: number; lon: number } | null;
+  onMarker?: (p: { lat: number; lon: number }) => void;
   class?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -105,7 +116,7 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
   // the first view, once the box has a size; later resizes keep the centre
   if (dims.w && dims.h) {
     if (!view.current) {
-      const start = focus ? { ...project(focus.lat, focus.lon), z: 15 } : (remember && remembered.get(remember)) || fitView(points, dims.w, dims.h);
+      const start = focus ? { ...project(focus.lat, focus.lon), z: focus.z ?? 15 } : (remember && remembered.get(remember)) || fitView(points, dims.w, dims.h);
       view.current = bounded(start, dims.w, dims.h);
     } else view.current = bounded(view.current, dims.w, dims.h);
   }
@@ -137,12 +148,17 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
   /* ---------- gestures ---------- */
 
   const ptrs = useRef(new Map<number, { x: number; y: number }>());
-  const gesture = useRef<{ moved: boolean; x: number; y: number; pinch?: { d: number; mx: number; my: number; v: View } } | null>(null);
+  const gesture = useRef<{ moved: boolean; x: number; y: number; marker?: boolean; pinch?: { d: number; mx: number; my: number; v: View } } | null>(null);
   const dragged = useRef(false);
   const lastTap = useRef({ t: 0, x: 0, y: 0 });
   const rel = (e: PointerEvent) => {
     const r = box.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  /** The latitude and longitude under a point in the box. */
+  const at = (p: { x: number; y: number }) => {
+    const v = view.current!, k = worldPx(v.z);
+    return unproject(v.x + (p.x - size.current.w / 2) / k, v.y + (p.y - size.current.h / 2) / k);
   };
   const startPinch = () => {
     const [a, b] = [...ptrs.current.values()];
@@ -156,8 +172,11 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
     const p = rel(e);
     ptrs.current.set(e.pointerId, p);
     if (ptrs.current.size === 1) {
-      gesture.current = { moved: false, x: p.x, y: p.y };
+      // the marker is picked up and carried, instead of the map moving
+      const marker = !!onMarker && !!(e.target as Element).closest('.map-marker');
+      gesture.current = { moved: false, x: p.x, y: p.y, marker };
       dragged.current = false;
+      if (marker) box.current!.setPointerCapture?.(e.pointerId);
     } else if (ptrs.current.size === 2) {
       startPinch();
       for (const id of ptrs.current.keys()) box.current!.setPointerCapture?.(id);
@@ -182,6 +201,12 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
       set({ x: at.x - ((a.x + b.x) / 2 - s.mx) / k, y: at.y - ((a.y + b.y) / 2 - s.my) / k, z });
       return;
     }
+    if (g.marker) {
+      if (!g.moved && Math.hypot(p.x - g.x, p.y - g.y) < 3) return;
+      g.moved = true;
+      onMarker?.(at(p));
+      return;
+    }
     if (!g.moved) {
       if (Math.hypot(p.x - g.x, p.y - g.y) < 6) return;
       g.moved = true;
@@ -200,9 +225,10 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
     }
     if (ptrs.current.size) return;
     gesture.current = null;
-    if (e.type !== 'pointerup' || !g || g.moved || (e.target as Element).closest('.map-pin, .map-tools, .map-credit')) return;
+    if (e.type !== 'pointerup' || !g || g.moved || g.marker || (e.target as Element).closest('.map-pin, .map-tools, .map-credit')) return;
     const now = performance.now();
     const p = rel(e);
+    if (onMarker && view.current) onMarker(at(p));
     if (now - lastTap.current.t < 320 && Math.hypot(p.x - lastTap.current.x, p.y - lastTap.current.y) < 30) {
       lastTap.current.t = 0;
       zoomBy(1, p);
@@ -233,6 +259,7 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
     if (moves[e.key]) fly({ ...v, x: v.x + moves[e.key][0], y: v.y + moves[e.key][1] });
     else if (e.key === '+' || e.key === '=') zoomBy(1);
     else if (e.key === '-' || e.key === '_') zoomBy(-1);
+    else if (onMarker && (e.key === 'Enter' || e.key === ' ')) onMarker(at({ x: size.current.w / 2, y: size.current.h / 2 }));
     else return;
     e.preventDefault();
   };
@@ -285,6 +312,12 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
       clusters.push({ key: cell, x: c.sx / c.ids.length, y: c.sy / c.ids.length, ids: c.ids, members: c.members, core: [...c.cores].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null });
   }
 
+  let markerAt: { x: number; y: number } | null = null;
+  if (v && w && h && marker) {
+    const k = worldPx(v.z), m = project(marker.lat, marker.lon);
+    markerAt = { x: (m.x - v.x) * k + w / 2, y: (m.y - v.y) * k + h / 2 };
+  }
+
   const open = (c: (typeof clusters)[number]) => {
     if (dragged.current || !view.current) return;
     const to = bounded(fitView(c.members, w, h, MAX_Z - 1), w, h);
@@ -298,7 +331,8 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
       class={`map${still ? ' is-still' : ''} ${cls ?? ''}`}
       tabIndex={0}
       role={still ? 'button' : 'application'}
-      aria-label={still ? t('Open the map') : t('Map of your entries. Drag or use the arrow keys to move, + and − to zoom.')}
+      aria-label={still ? t('Open the map') : onMarker ? t('Map. Tap to put the pin there, or drag it. With the keyboard: arrow keys move the map, Enter puts the pin in the middle.') : t('Map of your entries. Drag or use the arrow keys to move, + and − to zoom.')}
+      data-own-gestures
       onClick={still ? onTap : undefined}
       onKeyDown={still ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onTap?.()) : key}
       onPointerDown={still ? undefined : down}
@@ -327,6 +361,11 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, cl
           </button>
         );
       })}
+      {markerAt && (
+        <span class="map-marker" style={{ transform: `translate(${Math.round(markerAt.x)}px, ${Math.round(markerAt.y)}px)` }} aria-hidden="true">
+          <span class="map-marker-head"><Icon name="map-pin" size={18} stroke={2} /></span>
+        </span>
+      )}
       {!still && (
         <div class="map-tools">
           <button class="glass glass-btn round" onClick={() => zoomBy(1)} aria-label={t('Zoom in')}><Icon name="plus" size={18} /></button>

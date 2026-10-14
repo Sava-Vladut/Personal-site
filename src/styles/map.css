@@ -83,3 +83,28 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 .map-heat { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .map-heat-clouds { opacity: 0.8; mix-blend-mode: multiply; }
 :root[data-theme='dark'] .map-heat-clouds { opacity: 0.9; mix-blend-mode: screen; }
+
+/* the marker of a place being picked: its tip on the spot, picked up and carried by a drag */
+.map-marker {
+  position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; cursor: grab; touch-action: none;
+}
+.map-marker::before { /* a wider grip than the pin itself, for fingers */
+  content: ''; position: absolute; left: -24px; top: -56px; width: 48px; height: 60px;
+}
+.map-marker-head {
+  position: absolute; left: -18px; top: -44px; width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50% 50% 50% 0; rotate: -45deg;
+  background: var(--ink); color: var(--surface); border: 2px solid var(--surface);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25), 0 8px 18px -6px rgb(0 0 0 / 0.45);
+  animation: pin-in 0.35s var(--spring-bouncy) both;
+}
+.map-marker-head svg { rotate: 45deg; }
+.map-marker::after { /* the spot itself */
+  content: ''; position: absolute; left: -4px; top: -2px; width: 8px; height: 4px; border-radius: 50%;
+  background: rgb(0 0 0 / 0.35);
+}
+.map:active .map-marker { cursor: grabbing; }
+
+/* picking a place in its sheet */
+.place-map { height: min(52vh, 420px); border-radius: var(--r-m); }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { navigateAfterSheet } from '../lib/router';
 import { connectSpotify } from '../lib/spotify';
-import { blankSong, findSong, getSongs, saveSong, toast, useBooks, useSongs, type Music } from '../lib/store';
+import { blankSong, findSong, getSongs, saveSongs, toast, useBooks, useSongs, type Music } from '../lib/store';
 import { BookSheet } from '../components/books';
 import { CountUp } from '../components/charts';
 import { feltWorlds } from '../components/cloud';
@@ -59,15 +59,13 @@ export function Media({ query }: { query: URLSearchParams }) {
 
   /** Keeps what was picked; one piece of music opens its page, like a book does. */
   const keep = async (list: Music[]) => {
-    let added = 0;
     try {
-      for (const m of list) {
-        if (findSong(getSongs(), m)) continue;
-        await saveSong(blankSong(m));
-        added++;
-      }
+      // each once, in the order picked: the first comes out on top
+      const now = Date.now();
+      const fresh = list.filter((m, i) => !findSong(getSongs(), m) && list.findIndex((x) => x.kind === m.kind && x.id === m.id) === i);
+      await saveSongs(fresh.map((m, i) => blankSong(m, { created: now - i, updated: now })));
       if (list.length === 1) return navigateAfterSheet('song/' + findSong(getSongs(), list[0])!.id);
-      toast(added ? t('Added {n} to your records', { n: added }) : t('Those are already in your records'));
+      toast(fresh.length ? t('Added {n} to your records', { n: fresh.length }) : t('Those are already in your records'));
     } catch {
       toast(t('Couldn’t save this music. Try again.'));
     }
@@ -138,6 +136,7 @@ export function Media({ query }: { query: URLSearchParams }) {
         onAdd={keep}
         onConnect={() => connectSpotify('#/media?tab=music')}
         addLabel={(n) => (n === 1 ? t('Add to your records') : t('Add {n} to your records', { n }))}
+        whole
       />
     </div>
   );

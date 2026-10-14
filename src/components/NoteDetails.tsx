@@ -255,7 +255,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
       <Sheet open={sheet === 'emotion'} onClose={close} title={t('How does it feel?')}>
         <EmotionPicker onPick={addEmotion} selected={draft.emotions} />
       </Sheet>
-      <HomeSheet kind="place" open={sheet === 'place'} onClose={close} onPick={(place) => update(draft.place && (draft.place.lat !== place.lat || draft.place.lon !== place.lon) ? { place, weather: null } : { place })} />
+      <HomeSheet kind="place" open={sheet === 'place'} current={draft.place} onClose={close} onPick={(place) => update(draft.place && (draft.place.lat !== place.lat || draft.place.lon !== place.lon) ? { place, weather: null } : { place })} />
       <PeopleSheet open={sheet === 'people'} onClose={close} selected={draft.people} onChange={(people) => update({ people })} />
       <CoverCropSheet open={sheet === 'cover-crop'} onClose={close} cover={draft.cover} onSave={(crop) => draft.cover && update({ cover: { ...draft.cover, crop } })} />
       <ImageSearchSheet open={sheet === 'cover-search'} onClose={close} single action={t('Use as cover')} onAdd={([image]) => image && update({ cover: { image } })} />

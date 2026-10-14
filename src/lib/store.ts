@@ -322,6 +322,14 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
     changeHandler();
     return list.find((item) => item.id === x.id)!;
   };
+  /** Saves many at once, in one write (a whole playlist kept in one go). */
+  const saveMany = async (xs: T[]) => {
+    if (!xs.length) return;
+    const revision = clearRevision;
+    await write(xs, {}, false, true, true);
+    if (revision && revision === clearRevision) xs.forEach((x) => freshSinceClear.add(x.id));
+    changeHandler();
+  };
   const remove = async (id: string) => {
     freshSinceClear.delete(id);
     let removed = list$.get().find((x) => x.id === id);
@@ -352,7 +360,7 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
       .map((x) => (restore && gone[x.id] >= x.updated ? { ...x, updated: Math.max(stamp, gone[x.id] + 1) } : x));
     return { changed, removed };
   };
-  return { key, list$, normalizeAll, write, save, remove, merge, channel };
+  return { key, list$, normalizeAll, write, save, saveMany, remove, merge, channel };
 }
 
 const byName = (a: Person, b: Person) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
@@ -394,6 +402,7 @@ export function blankSong(music: Music, patch: Partial<Song> = {}): Song {
   return { id: uid(), music, repeat: false, rating: 0, text: '', emotions: [], from: null, days: [], created: now, updated: now, ...patch };
 }
 export const saveSong = songs.save;
+export const saveSongs = songs.saveMany;
 /** Takes music out of your collection. Notes it's attached to keep it. */
 export const deleteSong = songs.remove;
 /** The kept copy of a piece of music, if it's in your collection. */

@@ -28,12 +28,14 @@ export function MusicRow({ m, pressed, onClick, end }: { m: Music; pressed?: boo
   );
 }
 
-export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) => (n === 1 ? t('Add to note') : t('Add {n} to note', { n })) }: {
+export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) => (n === 1 ? t('Add to note') : t('Add {n} to note', { n })), whole }: {
   open: boolean;
   onClose: () => void;
   onAdd: (m: Music[]) => void;
   onConnect: () => void;
   addLabel?: (n: number) => string;
+  /** an opened playlist offers to add every song on it at once */
+  whole?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>('now');
   const [status, setStatus] = useState<SpotifyStatus | null>(null);
@@ -91,7 +93,7 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
         <>
           <div hidden={tab !== 'now'}><NowTab row={row} active={tab === 'now'} onConnect={onConnect} /></div>
           <div hidden={tab !== 'search'}><SearchTab row={row} /></div>
-          <div hidden={tab !== 'playlists'}><PlaylistsTab row={row} /></div>
+          <div hidden={tab !== 'playlists'}><PlaylistsTab row={row} onAddAll={whole ? add : undefined} /></div>
         </>
       )}
       <p class="attribution"><Icon name="brand-spotify" size={14} /> {t('Music and artwork from Spotify')}</p>
@@ -242,10 +244,36 @@ function NowTab({ row, active, onConnect }: { row: (m: Music) => preact.JSX.Elem
   );
 }
 
-function PlaylistsTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
+function PlaylistsTab({ row, onAddAll }: { row: (m: Music) => preact.JSX.Element; onAddAll?: (m: Music[]) => void }) {
   const [open, setOpen] = useState<Playlist | null>(null);
   const lists = usePaged<Playlist>();
   const songs = usePaged<Music>();
+  const [all, setAll] = useState<{ got: number; error?: string } | null>(null);
+  const allReq = useRef(0);
+  useEffect(() => () => { allReq.current++; }, []);
+  useEffect(() => { allReq.current++; setAll(null); }, [open?.id]);
+
+  /** Every song on the open playlist, page by page, then adds them all. */
+  const addAll = async () => {
+    if (!open || !onAddAll) return;
+    const n = ++allReq.current;
+    const got: Music[] = [];
+    setAll({ got: 0 });
+    try {
+      for (let offset: number | undefined = 0; offset !== undefined; ) {
+        const page: { items: Music[]; next?: number } = await listPlaylistItems(open.id, offset || undefined);
+        if (n !== allReq.current) return;
+        got.push(...page.items);
+        setAll({ got: got.length });
+        offset = page.items.length ? page.next : undefined;
+      }
+    } catch (e) {
+      if (n === allReq.current) setAll({ got: got.length, error: (e as Error).message });
+      return;
+    }
+    if (got.length) onAddAll(got);
+    else setAll({ got: 0, error: t('This playlist is empty.') });
+  };
 
   useEffect(() => {
     lists.load(listPlaylists);
@@ -259,6 +287,13 @@ function PlaylistsTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
     return (
       <div class="stack">
         <button class="back-link" onClick={() => setOpen(null)}><Icon name="chevron-left" size={18} /> {open.name}</button>
+        {onAddAll && open.count > 0 && (
+          <button class="btn btn-primary block" onClick={addAll} disabled={!!all && !all.error}>
+            <Icon name="playlist" size={18} />{' '}
+            {all && !all.error ? t('Getting the songs… {got} of {n}', { got: all.got, n: open.count }) : t('Add all {n} songs', { n: open.count })}
+          </button>
+        )}
+        {all?.error && <p class="error">{all.error}</p>}
         <div class="tracks">{songs.items.map(row)}</div>
         {songs.busy && <p class="hint center">{t('Loading…')}</p>}
         {songs.error && <p class="error">{songs.error}</p>}

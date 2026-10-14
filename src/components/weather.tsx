@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { fmtTemp, weatherIcon, weatherName } from '../data/weather';
-import { here, locationError, placeName, searchPlaces, type FoundPlace } from '../lib/weather';
-import { normalizePlace, type Entry, type Place, type Weather } from '../lib/store';
+import { here, locate, locationError, placeName, searchPlaces, type FoundPlace } from '../lib/weather';
+import { getSettings, normalizePlace, type Entry, type Place, type Weather } from '../lib/store';
 import { Icon } from './icons';
+import { PlaceMap } from './PlaceMap';
 import { Sheet } from './Sheet';
 import { t } from '../lib/i18n';
 
@@ -40,9 +41,25 @@ export function parseCoords(q: string): { lat: number; lon: number } | null {
   return p && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat: p.lat, lon: p.lon } : null;
 }
 
-/** Pick a place: where you are now, a town found by name, or exact coordinates. Used for the home and for a note's place. */
-export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: boolean; onClose: () => void; onPick: (p: Place) => void; kind?: 'home' | 'place' }) {
+type Spot = { lat: number; lon: number };
+
+/**
+ * Pick a place: where you are now, a town found by name, exact coordinates, or a pin dropped on the map.
+ * On the map, the others move the pin instead of picking, so it can be set just so. Used for the home and for a note's place.
+ */
+export function HomeSheet({ open, onClose, onPick, kind = 'home', current }: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (p: Place) => void;
+  kind?: 'home' | 'place';
+  /** the place picked now, where the map starts */
+  current?: Place | null;
+}) {
   const [q, setQ] = useState('');
+  const [onMap, setOnMap] = useState(false);
+  const [pin, setPin] = useState<Spot | null>(null);
+  // where the map is centred: a new one (a found town, where you are) remounts it there
+  const [view, setView] = useState<{ at: (Spot & { z: number }) | null; n: number }>({ at: null, n: 0 });
   const [found, setFound] = useState<FoundPlace[]>([]);
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -51,7 +68,7 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: bool
   const located = useRef(0);
 
   useEffect(() => {
-    if (open) setQ(''), setFound([]), setError('');
+    if (open) setQ(''), setFound([]), setError(''), setOnMap(false);
     setLocating(false);
     return () => { located.current++; };
   }, [open]);
@@ -71,23 +88,44 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: bool
   }, [q, open]);
 
   const coords = parseCoords(q);
-  const useCoords = async () => {
-    if (!coords) return;
+  const movePin = (to: Spot, z = 15) => {
+    setPin(to);
+    setView((v) => ({ at: { ...to, z }, n: v.n + 1 }));
+    setQ('');
+  };
+  const openMap = () => {
+    const start = current ?? getSettings().home;
+    setPin(current ? { lat: current.lat, lon: current.lon } : null);
+    setView((v) => ({ at: start ? { lat: start.lat, lon: start.lon, z: current ? 15 : 12 } : null, n: v.n + 1 }));
+    setQ('');
+    setError('');
+    setOnMap(true);
+  };
+  /** Names a spot and picks it. */
+  const pickSpot = async (spot: Spot) => {
+    const p = normalizePlace({ ...spot, name: '' });
+    if (!p) return;
     const n = ++located.current;
     setLocating(true);
     setError('');
-    const name = await placeName(coords.lat, coords.lon).catch(() => '');
+    const name = await placeName(p.lat, p.lon).catch(() => '');
     if (n !== located.current) return;
     setLocating(false);
-    onPick({ ...coords, name });
+    onPick({ ...p, name });
     onClose();
   };
+  const useCoords = () => coords && (onMap ? movePin(coords) : pickSpot(coords));
 
   const useHere = async () => {
     const n = ++located.current;
     setLocating(true);
     setError('');
     try {
+      if (onMap) {
+        const spot = await locate();
+        if (n === located.current) movePin(spot);
+        return;
+      }
       const place = await here();
       if (n !== located.current) return;
       onPick(place);
@@ -100,8 +138,21 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: bool
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name={kind === 'home' ? 'home' : 'map-pin'} /> {kind === 'home' ? t('Home') : t('Place')}</span>} label={kind === 'home' ? t('Home') : t('Place')}>
-      {kind === 'home' && <p class="hint">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>}
+    <Sheet
+      open={open}
+      onClose={onClose}
+      tall={onMap}
+      title={<span class="row gap-s"><Icon name={kind === 'home' ? 'home' : 'map-pin'} /> {kind === 'home' ? t('Home') : t('Place')}</span>}
+      label={kind === 'home' ? t('Home') : t('Place')}
+      footer={onMap ? (
+        <>
+          <span class="foot-note">{pin ? `${pin.lat.toFixed(3)}, ${pin.lon.toFixed(3)}` : t('Tap the map to put the pin there')}</span>
+          <button class="btn btn-primary" disabled={!pin || locating} onClick={() => pin && pickSpot(pin)}>{locating ? t('Finding it…') : t('Use this place')}</button>
+        </>
+      ) : undefined}
+    >
+      {onMap && <button class="back-link" onClick={() => setOnMap(false)}><Icon name="chevron-left" size={18} /> {t('Back')}</button>}
+      {kind === 'home' && !onMap && <p class="hint">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>}
       <button class="person-pick" onClick={useHere} disabled={locating}>
         <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="current-location" size={18} /></span>
         <span class="person-pick-main">
@@ -109,6 +160,15 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: bool
           <span class="person-pick-sub">{t('Uses your location once')}</span>
         </span>
       </button>
+      {!onMap && (
+        <button class="person-pick" onClick={openMap}>
+          <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="map" size={18} /></span>
+          <span class="person-pick-main">
+            <span class="person-pick-name">{t('Pick on the map')}</span>
+            <span class="person-pick-sub">{t('Put a pin exactly where it was')}</span>
+          </span>
+        </button>
+      )}
       <form class="search home-search" onSubmit={(e) => e.preventDefault()}>
         <Icon name="search" size={18} />
         <input type="search" placeholder={t('Search for a town or city, or type coordinates')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search for a town or city, or type coordinates')} enterkeyhint="search" />
@@ -125,7 +185,7 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: bool
           </button>
         )}
         {found.map((p) => (
-          <button class="person-pick" onClick={() => { onPick({ lat: p.lat, lon: p.lon, name: p.name }); onClose(); }}>
+          <button class="person-pick" onClick={() => (onMap ? movePin(p, 13) : (onPick({ lat: p.lat, lon: p.lon, name: p.name }), onClose()))}>
             <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="map-pin" size={18} /></span>
             <span class="person-pick-main">
               <span class="person-pick-name">{p.name}</span>
@@ -135,6 +195,7 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home' }: { open: bool
         ))}
         {!busy && q.trim().length >= 2 && !found.length && !coords && !error && <p class="empty-note center">{t('No places match “{q}”.', { q: q.trim() })}</p>}
       </div>
+      {onMap && <PlaceMap key={view.n} pins={[]} focus={view.at} marker={pin} onMarker={setPin} class="place-map" />}
       <p class="credit">{t('Place search from Open-Meteo.')}</p>
     </Sheet>
   );

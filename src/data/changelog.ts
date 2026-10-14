@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.80.0',
+    date: '2026-10-14',
+    changes: [
+      'Add a whole Spotify playlist to your records at once: open it under Playlists and tap “Add all songs”',
+      'Pick a place on the map: drop a pin with a tap and drag it to just the right spot, for a note’s place or your home',
+      'While picking on the map, searching for a town, typing coordinates or “Where I am now” moves the pin there',
+    ],
+  },
+  {
     version: '1.79.1',
     date: '2026-10-14',
     changes: ['Visiting savavlad.com/game no longer replaces the journal’s offline copy'],

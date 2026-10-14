@@ -445,7 +445,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
       </p>
 
       <ConnectSetup redirect={sp?.redirect} open={setup} onClose={() => setSetup(false)} />
-      <HomeSheet open={homeOpen} onClose={() => setHomeOpen(false)} onPick={setHome} />
+      <HomeSheet open={homeOpen} current={settings.home} onClose={() => setHomeOpen(false)} onPick={setHome} />
       <JoinSheet open={joining} onClose={() => setJoining(false)} />
       <ChangelogSheet open={changelog} onClose={() => setChangelog(false)} />
     </div>
