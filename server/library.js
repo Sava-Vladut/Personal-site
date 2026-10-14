@@ -1,11 +1,13 @@
-// Docs: the PDFs in LIBRARY_DIR (docs/ by default), searchable page by page. Their text comes from poppler's
-// pdftotext and is cached in CACHE_DIR until a file changes; pages are drawn by pdftoppm when they're opened and
-// cached too. Everything here is for the signed-in admin only: the files never leave the server otherwise.
+// Docs: the PDFs and Windows help files (.chm) in LIBRARY_DIR (docs/ by default), searchable page by page.
+// A PDF's text comes from poppler's pdftotext and its pages are drawn by pdftoppm when they're opened; a help file is
+// unpacked by 7-Zip (server/help.js) and its topics served as they are. All of it is cached in CACHE_DIR until a file
+// changes. Everything here is for the signed-in admin only: the files never leave the server otherwise.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, relative, sep } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { extractHelp } from './help.js';
 import { HttpError } from './http-error.js';
 import { json } from './http-response.js';
 
@@ -13,6 +15,7 @@ const RESULTS = 300;   // pages returned for one search, at most
 const PER_DOC = 60;    // of which from one document
 const SNIPPET = 90;    // characters either side of the first match
 const PAGE_PX = 1400;  // the longer side of a drawn page
+const ZOOM_PX = 2600;  // and of one drawn sharper, for zooming in
 const RESCAN_MS = 30_000;
 
 /** Lowercase, without accents (Romanian ș, ț, ă, î, â match s, t, a, i), ligatures split. */
@@ -80,7 +83,12 @@ const oneAtATime = (job) => {
   return next;
 };
 
-async function pdfFiles(root, dir = root) {
+const KINDS = { '.pdf': 'pdf', '.chm': 'help' };
+/** What a help topic may load: its pages, styles and pictures, never scripts. */
+const HELP_TYPES = { '.htm': 'text/html', '.html': 'text/html', '.css': 'text/css', '.gif': 'image/gif', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.bmp': 'image/bmp' };
+const HELP_POLICY = "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'self'; sandbox allow-same-origin";
+
+async function libraryFiles(root, dir = root) {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -91,8 +99,8 @@ async function pdfFiles(root, dir = root) {
   for (const e of entries) {
     if (e.name.startsWith('.')) continue;
     const full = join(dir, e.name);
-    if (e.isDirectory()) out.push(...(await pdfFiles(root, full)));
-    else if (e.isFile() && /\.pdf$/i.test(e.name)) out.push(full);
+    if (e.isDirectory()) out.push(...(await libraryFiles(root, full)));
+    else if (e.isFile() && KINDS[extname(e.name).toLowerCase()]) out.push(full);
   }
   return out;
 }
@@ -108,15 +116,18 @@ function pageSizes(info) {
 export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
   const indexFile = join(cacheDir, 'index.json');
   const pagesDir = join(cacheDir, 'pages');
-  /** path → { id, path, title, folder, size, mtime, sizes, text, folded } */
+  const helpDir = (id) => join(cacheDir, 'help', id);
+  /** path → { id, path, kind, title, folder, size, mtime, text, folded, and sizes (PDF) or files, topics, toc (help) } */
   let docs = new Map();
   let loaded = false;
   let scanning = null;
   let scannedAt = 0;
   let tools = null;
 
+  /** Which kinds this server can read: PDFs need poppler, help files 7-Zip. */
   const hasTools = async () => {
-    if (tools === null) tools = await run('pdftotext', ['-v']).then(() => true, (e) => e.code !== 'ENOENT');
+    const has = (cmd, args) => run(cmd, args).then(() => true, (e) => e.code !== 'ENOENT');
+    if (tools === null) tools = { pdf: await has('pdftotext', ['-v']), help: await has('7z', ['i']) };
     return tools;
   };
 
@@ -125,7 +136,7 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
     loaded = true;
     try {
       const saved = JSON.parse(await readFile(indexFile, 'utf8'));
-      for (const d of saved.docs ?? []) docs.set(d.path, { ...d, folded: d.text.map(fold) });
+      for (const d of saved.docs ?? []) docs.set(d.path, { kind: 'pdf', ...d, folded: d.text.map(fold) });
     } catch {}
   }
 
@@ -153,7 +164,7 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
     if (!force && Date.now() - scannedAt < RESCAN_MS) return Promise.resolve();
     scanning = (async () => {
       await load();
-      const files = await pdfFiles(directory);
+      const files = await libraryFiles(directory);
       const next = new Map();
       let changed = files.length !== docs.size;
       for (const path of files) {
@@ -161,21 +172,25 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
         const s = await stat(path).catch(() => null);
         if (!s) continue;
         const old = docs.get(rel);
-        if (old && old.size === s.size && old.mtime === s.mtimeMs) {
+        const kind = KINDS[extname(rel).toLowerCase()];
+        const id = createHash('sha256').update(rel).digest('base64url').slice(0, 12);
+        if (old && old.size === s.size && old.mtime === s.mtimeMs && (kind !== 'help' || existsSync(helpDir(id)))) {
           next.set(rel, old);
           continue;
         }
+        if (!tools[kind]) continue;
         changed = true;
         try {
-          const { pages, sizes } = await oneAtATime(() => extract(path));
+          const { pages, ...read } = kind === 'help' ? await oneAtATime(() => extractHelp(path, helpDir(id), run)) : await oneAtATime(() => extract(path));
           next.set(rel, {
-            id: createHash('sha256').update(rel).digest('base64url').slice(0, 12),
+            ...read,
+            id,
             path: rel,
-            title: basename(rel).replace(/\.pdf$/i, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim(),
+            kind,
+            title: basename(rel).replace(/\.(pdf|chm)$/i, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim(),
             folder: dirname(rel) === '.' ? '' : dirname(rel),
             size: s.size,
             mtime: s.mtimeMs,
-            sizes,
             text: pages,
             folded: pages.map(fold),
           });
@@ -194,7 +209,10 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
     for (const d of docs.values()) if (d.id === id) return d;
     throw new HttpError(404, 'That document isn’t here any more.');
   };
-  const summary = (d) => ({ id: d.id, title: d.title, folder: d.folder, pages: d.text.length, size: d.size, ratio: d.sizes[0] ? d.sizes[0][1] / d.sizes[0][0] : 1.414 });
+  const summary = (d) => ({
+    id: d.id, kind: d.kind, title: d.title, folder: d.folder, pages: d.text.length, size: d.size,
+    ...(d.kind === 'help' ? { topics: d.topics, files: d.files, toc: d.toc } : { ratio: d.sizes[0] ? d.sizes[0][1] / d.sizes[0][0] : 1.414 }),
+  });
 
   function search(q, only) {
     const words = terms(q);
@@ -250,12 +268,12 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
     return out.slice(0, 400);
   }
 
-  async function image(d, page) {
-    const file = join(pagesDir, `${d.id}-${Math.round(d.mtime)}-${page}.jpg`);
+  async function image(d, page, px) {
+    const file = join(pagesDir, `${d.id}-${Math.round(d.mtime)}-${page}${px === PAGE_PX ? '' : '-' + px}.jpg`);
     if (!existsSync(file)) {
       await mkdir(pagesDir, { recursive: true });
-      const prefix = join(pagesDir, `.tmp-${d.id}-${page}-${process.pid}`);
-      await oneAtATime(() => run('pdftoppm', ['-q', '-jpeg', '-jpegopt', 'quality=82', '-scale-to', String(PAGE_PX), '-singlefile', '-f', String(page), '-l', String(page), join(directory, d.path), prefix]));
+      const prefix = join(pagesDir, `.tmp-${d.id}-${page}-${px}-${process.pid}`);
+      await oneAtATime(() => run('pdftoppm', ['-q', '-jpeg', '-jpegopt', 'quality=82', '-scale-to', String(px), '-singlefile', '-f', String(page), '-l', String(page), join(directory, d.path), prefix]));
       await rename(prefix + '.jpg', file);
     }
     return file;
@@ -285,11 +303,12 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
     createReadStream(file, { start, end }).pipe(res);
   }
 
-  /** GET /api/library, …/search?q=&doc=, …/:id/file, …/:id/page/:n?q=, …/:id/page/:n/image */
+  /** GET /api/library, …/search?q=&doc=, …/:id/file, …/:id/page/:n?q=, …/:id/page/:n/image?size=zoom, …/:id/files/<a help file's page> */
   return async function library(req, res, p, url) {
     if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
     if (!isAdmin(req)) throw new HttpError(403, 'Sign in to the site to read the docs.');
-    if (!(await hasTools())) throw new HttpError(503, 'This server can’t read PDFs: install poppler-utils (pdftotext, pdftoppm).');
+    const can = await hasTools();
+    if (!can.pdf && !can.help) throw new HttpError(503, 'This server can’t read the docs: install poppler-utils (for PDFs) and 7zip (for help files).');
     const parts = p.split('/').slice(3); // after /api/library
     await scan(parts.length === 0 && url.searchParams.has('fresh'));
 
@@ -304,13 +323,36 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
     const d = byId(parts[0]);
     if (parts[1] === 'file' && parts.length === 2) {
       const name = basename(d.path).replace(/[^\w .()-]/g, '_');
+      if (d.kind === 'help') {
+        return sendFile(req, res, join(directory, d.path), 'application/vnd.ms-htmlhelp', d.size, {
+          'Content-Disposition': `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(basename(d.path))}`,
+        });
+      }
       // the browser's own PDF viewer runs scripts of its own, which the app's policy would stop
       res.removeHeader('Content-Security-Policy');
       return sendFile(req, res, join(directory, d.path), 'application/pdf', d.size, {
         'Content-Disposition': `inline; filename="${name}"; filename*=UTF-8''${encodeURIComponent(basename(d.path))}`,
       });
     }
-    if (parts[1] === 'page' && /^\d+$/.test(parts[2] ?? '')) {
+    if (d.kind === 'help' && parts[1] === 'files' && parts.length > 2) {
+      // a topic, or what it loads; inside the Docs page's frame, with no scripts and nothing from elsewhere
+      let rel;
+      try {
+        rel = parts.slice(2).map(decodeURIComponent).join('/');
+      } catch {
+        throw new HttpError(400, 'Bad path');
+      }
+      const root = helpDir(d.id);
+      const file = resolve(root, rel);
+      const type = HELP_TYPES[extname(file).toLowerCase()];
+      if (!type || !file.startsWith(root + sep) || /[\\/][#$]/.test(file.slice(root.length))) throw new HttpError(404, 'Not found');
+      const s = await stat(file).catch(() => null);
+      if (!s?.isFile()) throw new HttpError(404, 'Not found');
+      res.setHeader('Content-Security-Policy', HELP_POLICY);
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+      return sendFile(req, res, file, type, s.size);
+    }
+    if (d.kind === 'pdf' && parts[1] === 'page' && /^\d+$/.test(parts[2] ?? '')) {
       const page = Number(parts[2]);
       if (page < 1 || page > d.text.length) throw new HttpError(404, 'There’s no such page.');
       if (parts.length === 3) {
@@ -318,7 +360,7 @@ export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
         return json(res, 200, { page, ratio: h / w, boxes: await boxes(d, page, url.searchParams.get('q') ?? '') }, { 'Cache-Control': 'no-store' });
       }
       if (parts[3] === 'image' && parts.length === 4) {
-        const file = await image(d, page);
+        const file = await image(d, page, url.searchParams.get('size') === 'zoom' ? ZOOM_PX : PAGE_PX);
         const s = await stat(file);
         return sendFile(req, res, file, 'image/jpeg', s.size);
       }

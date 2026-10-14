@@ -5,3 +5,4 @@ dist
 *.log
 # PDFs for the Docs page stay on this machine only: the repo is public
 docs/**/*.pdf
+docs/**/*.chm

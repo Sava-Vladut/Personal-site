@@ -128,7 +128,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   player-play player-pause external-link vinyl library repeat at typography cake heart hourglass
   microphone player-stop loader-2 trophy dice-5 flame crown arrows-shuffle
   brand-twitch brand-github git-branch git-commit coins gift broadcast trending-up brain eye-off world
-  indent-increase indent-decrease keyboard-hide h-1 h-2 h-3 letter-case cursor-text file-search file-text`.split(/\s+/);
+  indent-increase indent-decrease keyboard-hide h-1 h-2 h-3 letter-case cursor-text file-search file-text help list-tree minimize`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

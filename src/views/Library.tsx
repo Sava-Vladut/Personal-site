@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
-import { fileSize, listDocs, pageImage, searchDocs, type Doc, type Found, type Library as Lib, type Run } from '../lib/library';
+import { fileSize, fold, listDocs, pageImage, searchDocs, type Doc, type Found, type Library as Lib, type Run } from '../lib/library';
 import { CountUp } from '../components/charts';
 import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
@@ -8,7 +8,6 @@ import { Sky } from '../components/Sky';
 import { count, noun, t } from '../lib/i18n';
 import '../styles/library.css';
 
-const fold = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
 const docLink = (id: string, page?: number, q?: string) =>
   `doc/${id}${page || q ? '?' : ''}${[page && `p=${page}`, q && `q=${encodeURIComponent(q)}`].filter(Boolean).join('&')}`;
 
@@ -16,16 +15,26 @@ export function Snippet({ runs }: { runs: Run[] }) {
   return <>{runs.map(([text, hit]) => (hit ? <mark>{text}</mark> : text))}</>;
 }
 
+/** "235 pages", or for a help file "58 topics". */
+export const amount = (d: Doc) => d.kind === 'help' ? count(d.pages, 'topic', 'topics') : count(d.pages, 'page', 'pages');
+
 function Cover({ doc, i }: { doc: Doc; i: number }) {
   const [shown, setShown] = useState(false);
   return (
     <li style={{ '--i': Math.min(i, 14) }}>
       <button class="doc-cover" onClick={() => navigate(docLink(doc.id))}>
-        <span class={`doc-cover-page${shown ? ' is-shown' : ''}`} style={{ aspectRatio: `1 / ${Math.min(Math.max(doc.ratio, 0.5), 1.6)}` }}>
-          <img src={pageImage(doc.id, 1)} alt="" loading="lazy" decoding="async" onLoad={() => setShown(true)} />
-        </span>
+        {doc.kind === 'help' ? (
+          <span class="doc-cover-page is-help" style={{ aspectRatio: '1 / 1.3' }}>
+            <Icon name="help" size={30} />
+            <small>{doc.topics?.[0]}</small>
+          </span>
+        ) : (
+          <span class={`doc-cover-page${shown ? ' is-shown' : ''}`} style={{ aspectRatio: `1 / ${Math.min(Math.max(doc.ratio ?? 1.414, 0.5), 1.6)}` }}>
+            <img src={pageImage(doc.id, 1)} alt="" loading="lazy" decoding="async" onLoad={() => setShown(true)} />
+          </span>
+        )}
         <span class="doc-cover-title">{doc.title}</span>
-        <span class="doc-cover-meta">{doc.pages} {noun(doc.pages, 'page', 'pages')} · {fileSize(doc.size)}</span>
+        <span class="doc-cover-meta">{amount(doc)} · {fileSize(doc.size)}</span>
       </button>
     </li>
   );
@@ -129,7 +138,7 @@ export function Library({ query }: { query: URLSearchParams }) {
             <h2 class="section-title">{t('Documents')}</h2>
             <ul class="doc-names">
               {named.map((d) => (
-                <li><button class="doc-name" onClick={() => navigate(docLink(d.id))}><Icon name="file-text" size={18} /> <span>{d.title}</span> <small>{d.pages} {noun(d.pages, 'page', 'pages')}</small></button></li>
+                <li><button class="doc-name" onClick={() => navigate(docLink(d.id))}><Icon name="file-text" size={18} /> <span>{d.title}</span> <small>{amount(d)}</small></button></li>
               ))}
             </ul>
           </section>
@@ -150,7 +159,7 @@ export function Library({ query }: { query: URLSearchParams }) {
                     {r.pages.map((h) => (
                       <li>
                         <button class="hit" onClick={() => navigate(docLink(r.doc.id, h.page, q.trim()))}>
-                          <span class="hit-page">{t('p. {n}', { n: h.page })}</span>
+                          <span class={`hit-page${r.doc.kind === 'help' ? ' is-topic' : ''}`}>{r.doc.kind === 'help' ? r.doc.topics?.[h.page - 1] : t('p. {n}', { n: h.page })}</span>
                           <span class="hit-text"><Snippet runs={h.snippet} /></span>
                         </button>
                       </li>

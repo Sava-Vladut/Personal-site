@@ -106,7 +106,7 @@ const SECURITY_HEADERS = {
     "style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; manifest-src 'self'; " +
     "connect-src 'self' https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
     'https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; ' +
-    "worker-src 'self'; frame-src https://open.spotify.com; " +
+    "worker-src 'self'; frame-src 'self' https://open.spotify.com; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
 

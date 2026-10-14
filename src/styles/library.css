@@ -61,48 +61,125 @@
   background: color-mix(in oklab, var(--emo-joy) 38%, transparent);
 }
 
-/* ---------- one document ---------- */
-
-.doc-page .page-head .title { font-size: clamp(22px, 5.6vw, 30px); overflow-wrap: anywhere; }
-.doc-bar {
-  position: sticky; top: calc(var(--safe-t) + 8px); z-index: 3;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; padding: 6px;
-  border-radius: var(--r-l); background: color-mix(in oklab, var(--bg) 82%, transparent);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+/* help files have no page to show: a plain cover with the help mark */
+.doc-cover-page.is-help {
+  display: grid; place-content: center; justify-items: center; gap: 10px; padding: 14px; text-align: center;
+  color: var(--emo-fear); background: linear-gradient(160deg, color-mix(in oklab, var(--emo-fear) 12%, var(--surface)), var(--surface));
 }
-.doc-bar .search { flex: 1 1 220px; margin: 0; }
-.doc-hitnav { display: flex; align-items: center; gap: 2px; }
-.doc-hitnav-count { min-width: 78px; text-align: center; font-size: var(--text-m); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.doc-snippet { margin: 0 2px 12px; font-size: var(--text-m); line-height: 1.5; color: var(--ink-3); }
+.doc-cover-page.is-help small { font-size: var(--text-s); color: var(--ink-2); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.hit-page.is-topic { white-space: normal; grid-column: 1 / -1; color: var(--ink-2); }
+.hit:has(.is-topic) { grid-template-columns: 1fr; gap: 3px; }
 
+/* ---------- one document: a reader that fills the screen ----------
+   On a phone it covers everything; on a computer it fills the page beside the sidebar until you go full screen.
+   The page is fitted whole into the stage (container units), and zooms inside it. */
+
+.page.doc-page {
+  position: fixed; inset: 0; z-index: 40; max-width: none; margin: 0;
+  display: flex; flex-direction: column; padding: calc(var(--safe-t) + 8px) 0 0; background: var(--bg);
+}
+.doc-top { display: flex; align-items: center; gap: 10px; padding: 0 10px 8px; }
+.doc-heading { flex: 1; min-width: 0; }
+.doc-title { font: 500 var(--text-l)/1.2 var(--serif); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-sub { font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.doc-actions { display: flex; align-items: center; flex: none; }
+@media (max-width: 479px) { .doc-wide-only { display: none; } }
+
+.doc-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 0 10px 8px; }
+.doc-bar .search { flex: 1 1 200px; margin: 0; }
+.doc-hitnav { display: flex; align-items: center; gap: 2px; }
+.doc-hitnav-count { min-width: 74px; text-align: center; font-size: var(--text-m); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.doc-snippet {
+  flex-basis: 100%; margin: 0 2px; font-size: var(--text-s); line-height: 1.45; color: var(--ink-3);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.doc-body { flex: 1; min-height: 0; display: flex; position: relative; }
+.doc-stage {
+  position: relative; flex: 1; min-width: 0; overflow: hidden; container-type: size;
+  display: grid; place-items: center; background: var(--surface-2); touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.doc-zoom { transform-origin: center; transition: transform var(--dur-2) var(--ease); will-change: transform; }
+.doc-stage[data-live] .doc-zoom { transition: none; }
 .doc-sheet {
-  position: relative; overflow: hidden; margin: 0 auto; max-width: 980px;
-  border-radius: var(--r-s); border: 1px solid var(--line); background: #fff; box-shadow: var(--shadow);
+  --pad: 8px;
+  position: relative; overflow: hidden; margin: 0; background: #fff; box-shadow: var(--shadow);
+  width: min(calc(100cqw - 2 * var(--pad)), calc((100cqh - 2 * var(--pad)) / var(--ratio)));
+  aspect-ratio: 1 / var(--ratio);
 }
 .doc-sheet::before {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(100deg, transparent 30%, rgb(0 0 0 / 0.04) 50%, transparent 70%) 0 0 / 200% 100%;
+  background: linear-gradient(100deg, transparent 30%, rgb(0 0 0 / 0.05) 50%, transparent 70%) 0 0 / 200% 100%;
   animation: doc-wait 1.2s linear infinite;
 }
 .doc-sheet.is-drawn::before { display: none; }
 @keyframes doc-wait { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-.doc-sheet img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity var(--dur-2) var(--ease); }
-.doc-sheet.is-drawn img { opacity: 1; }
+.doc-sheet img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity var(--dur-2) var(--ease); pointer-events: none; }
+.doc-sheet.is-drawn img:not(.doc-sharp), .doc-sheet img.doc-sharp.is-in { opacity: 1; }
 .doc-mark {
   position: absolute; margin: -1px -2px; padding: 1px 2px; box-sizing: content-box; border-radius: 2px;
   background: color-mix(in oklab, var(--emo-joy) 42%, transparent); mix-blend-mode: multiply; pointer-events: none;
   animation: pop-in 0.35s var(--spring) backwards;
 }
-/* tap the left or right edge of the page to turn it */
-.doc-turn { position: absolute; top: 0; bottom: 0; width: 22%; cursor: pointer; }
-.doc-turn:disabled { cursor: default; }
-.doc-turn.is-prev { left: 0; }
-.doc-turn.is-next { right: 0; }
-.doc-turn:focus-visible { outline-offset: -4px; }
 
-.doc-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; }
+/* a help topic: its own page in a frame, scrolling inside the stage */
+.doc-page.is-help .doc-stage { display: block; touch-action: auto; user-select: auto; -webkit-user-select: auto; background: #fff; }
+.doc-stage iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.doc-toc {
+  flex: none; width: min(320px, 86vw); overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 24px;
+  border-right: 1px solid var(--line); background: var(--bg);
+}
+.doc-toc ol { display: grid; gap: 1px; }
+.doc-toc li { padding-left: calc(var(--d) * 12px); }
+.doc-toc-item, .doc-toc-head { display: block; width: 100%; padding: 7px 10px; border-radius: var(--r-s); text-align: left; font-size: var(--text-m); line-height: 1.35; }
+.doc-toc-item { color: var(--ink-2); transition: background-color var(--dur-1); }
+.doc-toc-item:hover { background: var(--surface-2); color: var(--ink); }
+.doc-toc-item[aria-current='page'] { background: color-mix(in oklab, var(--emo-fear) 14%, var(--surface)); color: var(--ink); font-weight: 600; }
+.doc-toc-head { font-size: var(--text-xs); font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); padding-top: 12px; }
+/* on a phone the contents slide over the topic */
+@media (max-width: 1023px) {
+  .doc-toc { position: absolute; inset: 0 auto 0 0; z-index: 2; box-shadow: 18px 0 40px -20px rgb(0 0 0 / 0.35); animation: doc-toc-in var(--dur-2) var(--ease-emph); }
+}
+@keyframes doc-toc-in { from { translate: -100% 0; } }
+
+.doc-pager {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 6px 10px calc(var(--safe-b) + 6px); border-top: 1px solid var(--line); background: var(--bg);
+}
 .doc-pager-at { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: var(--text-base); font-variant-numeric: tabular-nums; }
 .doc-pager-at input {
-  width: 64px; height: var(--h-s); border: 1px solid var(--line); border-radius: var(--r-s); background: var(--surface);
+  width: 60px; height: var(--h-s); border: 1px solid var(--line); border-radius: var(--r-s); background: var(--surface);
   text-align: center; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.doc-zoom-btns { display: flex; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1px solid var(--line); }
+
+/* full screen: the page gets the whole screen and the controls float over it; a tap in the middle hides them */
+.doc-page.is-full { z-index: 75; padding: 0; background: #1b1b1a; }
+.doc-page.is-full .doc-stage { background: #1b1b1a; }
+.doc-page.is-full.is-help .doc-stage { background: #fff; }
+.doc-page.is-full .doc-sheet { --pad: 0px; box-shadow: none; }
+.doc-page.is-full :is(.doc-top, .doc-bar, .doc-pager) {
+  position: absolute; left: 0; right: 0; z-index: 3;
+  background: color-mix(in oklab, var(--bg) 84%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  transition: opacity var(--dur-2) var(--ease), translate var(--dur-2) var(--ease);
+}
+.doc-page.is-full .doc-top { top: 0; padding-top: calc(var(--safe-t) + 8px); }
+.doc-page.is-full .doc-bar { top: calc(var(--safe-t) + 60px); padding-top: 4px; }
+.doc-page.is-full .doc-pager { bottom: 0; border-top: 0; }
+.doc-page.is-full.is-bare .doc-top, .doc-page.is-full.is-bare .doc-bar { opacity: 0; translate: 0 -12px; pointer-events: none; }
+.doc-page.is-full.is-bare .doc-pager { opacity: 0; translate: 0 12px; pointer-events: none; }
+.doc-page.is-full.is-help .doc-body { padding: calc(var(--safe-t) + 60px) 0 calc(var(--safe-b) + 56px); }
+
+@media (min-width: 1024px) {
+  .page.doc-page:not(.is-full) {
+    position: relative; inset: auto; z-index: auto; height: calc(100dvh - 10px);
+    padding: 8px 24px 0; background: none;
+  }
+  .app.route-doc { padding-bottom: 0; }
+  .doc-page:not(.is-full) .doc-top { padding-inline: 0; }
+  .doc-page:not(.is-full) .doc-bar { padding-inline: 0; }
+  .doc-page:not(.is-full) .doc-body { border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+  .doc-page:not(.is-full) .doc-pager { border-top: 0; background: none; }
+  .doc-sheet { --pad: 20px; }
+  .doc-page.is-full .doc-sheet { --pad: 0px; }
 }

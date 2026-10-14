@@ -28,6 +28,7 @@ export const RO_PLURAL: Record<string, [string, string]> = {
   photo: ['fotografie', 'fotografii'],
   document: ['document', 'documente'],
   folder: ['dosar', 'dosare'],
+  topic: ['subiect', 'subiecte'],
 };
 
 export const RO: Record<string, string> = {
@@ -1612,4 +1613,12 @@ export const RO: Record<string, string> = {
   'p. {n}': 'p. {n}',
   '{pages} more in this document': 'încă {pages} în acest document',
   'Nothing found. Try fewer or shorter words.': 'Nimic găsit. Încearcă mai puține cuvinte sau mai scurte.',
+  Contents: 'Cuprins',
+  'Download the help file': 'Descarcă fișierul de ajutor',
+  'Full screen': 'Ecran complet',
+  'Leave full screen': 'Ieși din ecran complet',
+  'Previous topic': 'Subiectul anterior',
+  'Next topic': 'Subiectul următor',
+  Topic: 'Subiectul',
+  Topics: 'Subiecte',
 };

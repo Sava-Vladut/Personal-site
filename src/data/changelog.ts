@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.0',
+    date: '2026-10-14',
+    changes: [
+      'Docs now include Windows help files (.chm), like the CPA help: read them a topic at a time with their contents beside them, and search them with everything else',
+      'The three new CPA PDFs are in Docs too',
+      'Reading a document on your phone now fills the whole screen, with the whole page in view',
+      'Pinch or double-tap to zoom into a page, and drag to move around it; pages get sharper as you zoom in',
+      'Swipe, or tap the left or right edge of a page, to turn it',
+      'Full screen button: the page gets the whole screen and a tap in the middle hides or shows the controls',
+      'On a computer the reader fills the window too, with zoom buttons, ctrl-scroll or trackpad pinch to zoom, and F for full screen',
+    ],
+  },
+  {
     version: '1.81.0',
     date: '2026-10-14',
     changes: [

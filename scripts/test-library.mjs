@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { HttpError } from '../server/http-error.js';
+import { decodeHtml, htmlText, parseToc } from '../server/help.js';
 import { createLibraryHandler, snippet, terms } from '../server/library.js';
 
 test('search words fold accents and case, and keep quoted phrases', () => {
@@ -17,6 +18,27 @@ test('snippets mark matches in the original text, accents and all', () => {
   const runs = snippet('Noțiuni despre unde radio și propagare', ['notiuni', 'si']);
   assert.deepEqual(runs.filter(([, hit]) => hit).map(([s]) => s), ['Noțiuni', 'și']);
   assert.equal(runs.map(([s]) => s).join(''), 'Noțiuni despre unde radio și propagare');
+});
+
+test('reads a help file’s contents: headings, nested topics, encoded names, merged files left out', () => {
+  const hhc = `<ul>
+    <li><object type="text/sitemap"><param name="Name" value="Help &amp; Support"></object>
+    <ul>
+      <li><object type="text/sitemap"><param name="Name" value="Welcome"><param name="Local" value="cpa%20welcome.htm#top"></object>
+      <li><object type="text/sitemap"><param name="Name" value="Keys"><param name="Local" value="other.chm::/Keys/Load.htm"></object>
+    </ul>
+  </ul>
+  <object type="text/sitemap"><param name="Name" value="x.chm::/x.hhc"><param name="Merge" value="x.chm::/x.hhc"></object>`;
+  assert.deepEqual(parseToc(hhc), [['Help & Support', 0, ''], ['Welcome', 1, 'cpa welcome.htm'], ['Keys', 1, 'Keys/Load.htm']]);
+});
+
+test('reads a help topic’s title and text in its own encoding, without scripts or styles', () => {
+  const page = Buffer.concat([
+    Buffer.from('<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Radio&#39;s keys</title><style>p{}</style></head><body><script>x()</script><h1>Load</h1><p>The radio'),
+    Buffer.from([0x92]),
+    Buffer.from('s key &amp; fill</p><!-- hidden --></body></html>'),
+  ]);
+  assert.deepEqual(htmlText(decodeHtml(page)), { title: 'Radio\'s keys', text: 'Load The radio’s key & fill' });
 });
 
 let tools = true;
