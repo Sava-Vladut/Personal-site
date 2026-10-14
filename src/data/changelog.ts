@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.4',
+    date: '2026-10-14',
+    changes: [
+      'The back button on a document now always takes you to the Docs page',
+    ],
+  },
+  {
     version: '1.82.3',
     date: '2026-10-14',
     changes: [

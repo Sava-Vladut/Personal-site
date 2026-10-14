@@ -1,6 +1,6 @@
 import type { RefObject } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { goBack } from '../lib/router';
+import { navigate } from '../lib/router';
 import { fileSize, fileUrl, fold, helpUrl, listDocs, pageImage, pageInfo, searchDocs, terms, type Doc, type PageHit, type PageInfo } from '../lib/library';
 import { Icon } from '../components/icons';
 import { Snippet, amount } from './Library';
@@ -350,7 +350,8 @@ export function DocView({ id, query }: { id: string; query: URLSearchParams }) {
   useEffect(() => {
     if (zoom.z.s >= 1.6) setSharp(zoomSrc);
   }, [zoom.z.s >= 1.6, zoomSrc]);
-  const back = () => goBack(q.trim() ? `library?q=${encodeURIComponent(q.trim())}` : 'library');
+  // always to the Docs page itself, not whatever came before in history
+  const back = () => navigate(q.trim() ? `library?q=${encodeURIComponent(q.trim())}` : 'library', true, 'pop');
   const label = help ? t('Topic') : t('Page');
 
   return (
