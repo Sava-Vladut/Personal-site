@@ -24,11 +24,11 @@
     display: flex; flex-direction: column; gap: 14px; padding: 24px 14px 18px;
     background: var(--surface); border-right: 1px solid var(--line);
   }
-  .side-brand { padding: 2px 10px 4px; font: 500 23px/1.2 var(--serif); letter-spacing: -0.015em; color: var(--ink); text-decoration: none; }
+  .side-brand { padding: 2px 10px 4px; font: 500 var(--text-xl)/1.2 var(--serif); letter-spacing: -0.015em; color: var(--ink); text-decoration: none; }
   .side-add { position: relative; z-index: 3; }
-  .side-add .nav-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 44px; border-radius: 14px; }
+  .side-add .nav-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 44px; border-radius: var(--r-m); }
   .side-add .nav-plus svg { width: 20px; height: 20px; }
-  .nav-new-label { font-size: 15px; font-weight: 620; }
+  .nav-new-label { font-size: var(--text-base); font-weight: 620; }
   .side-add .nav-new { overflow: hidden; }
   .side-add .nav-plus, .side-add .nav-new-label { position: relative; z-index: 2; }
 
@@ -49,25 +49,25 @@
   .side-links { display: grid; gap: 2px; }
   .side .nav-item {
     flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
-    height: 42px; padding: 0 12px; border-radius: 12px; font-size: 15px;
-    transition: background-color 0.15s, color 0.15s;
+    height: 42px; padding: 0 12px; border-radius: var(--r-m); font-size: var(--text-base);
+    transition: background-color var(--dur-1), color var(--dur-1);
   }
   .side .nav-item:hover, .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
 
   /* the arrow on the sidebar's edge hides it; hidden, the sidebar slides away and the arrow stays at the screen's edge to bring it back */
-  .side { transition: transform 0.25s ease; }
+  .side { transition: transform var(--dur-2) ease; }
   .side-toggle {
     position: absolute; top: 28px; left: 100%; margin-left: -14px; z-index: 2;
     display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
     border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink-2, var(--ink));
-    cursor: pointer; opacity: 0; transition: opacity 0.15s, background-color 0.15s;
+    cursor: pointer; opacity: 0; transition: opacity var(--dur-1), background-color var(--dur-1);
   }
   .side:hover .side-toggle, .side-toggle:focus-visible, :root[data-side='hidden'] .side-toggle { opacity: 1; }
   .side-toggle:hover { background: var(--surface-2); color: var(--ink); }
   :root[data-side='hidden'] { --side-w: 0px; }
   :root[data-side='hidden'] .side { transform: translateX(-100%); border-right-color: transparent; }
   /* off-screen links stay out of the tab order */
-  :root[data-side='hidden'] .side > :not(.side-toggle) { visibility: hidden; transition: visibility 0s 0.25s; }
+  :root[data-side='hidden'] .side > :not(.side-toggle) { visibility: hidden; transition: visibility 0s var(--dur-2); }
   :root[data-side='hidden'] .side-toggle { margin-left: 8px; }
 
   /* the sidebar stays put while the page moves */
@@ -86,7 +86,7 @@
   /* the sky panels stop being full-width banners and become cards inside the page */
   .app .page > .journal-top, .route-journal .page > .journal-side > .journal-top {
     margin: 0 0 18px; padding: 26px 28px 20px;
-    border: 1px solid var(--line); border-radius: 24px;
+    border: 1px solid var(--line); border-radius: var(--r-l);
   }
 
   .toasts, .route-note ~ .toasts, .route-person ~ .toasts { left: calc(50% + var(--side-w) / 2); bottom: 22px; }
@@ -120,9 +120,9 @@
   .media-top > .sotd { grid-column: 2; grid-row: 2 / span 2; max-width: none; margin-top: 0; align-self: start; }
   .media-top > .search { max-width: none; }
   .media-top .media-stats { margin-bottom: 10px; }
-  .media-top .media-stat { padding: 10px 14px 8px; }
-  .media-top .media-stat b { font-size: 24px; }
-  .media-top .media-stat small { font-size: 12px; }
+  .media-top .stat { padding: 10px 14px 8px; }
+  .media-top .stat b { font-size: 24px; }
+  .media-top .stat small { font-size: var(--text-s); }
   /* no song card (the shelf, or searching): numbers and tabs share one row */
   .media-top:not(:has(> .sotd)) > .media-tabs { grid-column: 2; grid-row: 2; }
   .media-top:not(:has(> .sotd)) > .media-stats { margin-bottom: 0; }
@@ -131,8 +131,8 @@
   .sotd-stats { display: grid; grid-template-columns: 300px minmax(0, 1fr); column-gap: 14px; padding: 14px; }
   .sotd-stats > .sotd-stats-head { grid-column: 1 / -1; }
   .sotd-stats > .sotd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; align-content: start; }
-  .sotd-stats .sotd-tile { padding: 10px 12px 8px; }
-  .sotd-stats .sotd-tile b { font-size: 22px; }
+  .sotd-stats .stat { padding: 10px 12px 8px; }
+  .sotd-stats .stat b { font-size: var(--text-xl); }
 
   .media-panel .reading-list {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); overflow: visible;

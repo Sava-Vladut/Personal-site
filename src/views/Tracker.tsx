@@ -8,8 +8,8 @@ import { addContext } from '../lib/weather';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
 import { EmotionWheel } from '../components/EmotionWheel';
 import { Sky } from '../components/Sky';
-import { NavWheel } from '../components/NavWheel';
 import { MentionText } from '../components/MentionText';
+import { PageHead } from '../components/PageHead';
 import { Icon, Sprite } from '../components/icons';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
@@ -101,14 +101,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
     <div class="page">
       <div class="journal-top track-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
       <Sky world={world} />
-      <header class="page-head">
-        <div class="row between">
-          <div class="eyebrow">{t('Check in')}</div>
-          <NavWheel world={world} />
-        </div>
-        <h1 class="title">{t('How are you feeling?')}</h1>
-        <p class="subtitle">{t('Name it to tame it. Pick a world, then find the word.')}</p>
-      </header>
+      <PageHead title={t('How are you feeling?')} subtitle={t('Name it to tame it. Pick a world, then find the word.')} wheel world={world} />
 
       {p ? (
         <div class="card confirm" style={{ '--c': `var(--emo-${p.core})` }}>
@@ -180,7 +173,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
 
       <button class="card dex-link" onClick={() => navigate('stats?tab=dex')}>
         <div>
-          <div class="section-title">{t('Feelings named')}</div>
+          <h2 class="section-title">{t('Feelings named')}</h2>
           <div class="muted small">{t('{n} of {total} found', { n: named.size, total: FEELINGS.length })}</div>
         </div>
         <div class="meter" aria-hidden="true"><i style={{ width: `${(named.size / FEELINGS.length) * 100}%` }} /></div>

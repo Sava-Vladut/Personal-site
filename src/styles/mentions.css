@@ -7,18 +7,18 @@
 .mention {
   --tone: var(--c, var(--ink-3));
   position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
-  margin: 0 1px; padding: 1px 9px 1px 3px; border-radius: 999px; vertical-align: baseline; translate: 0 -1px;
+  margin: 0 1px; padding: 1px 9px 1px 3px; border-radius: var(--r-pill); vertical-align: baseline; translate: 0 -1px;
   font: 600 0.84em/1.55 var(--sans); color: var(--ink); text-decoration: none;
   background: color-mix(in oklab, var(--tone) 14%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 32%, transparent);
-  transition: scale 0.3s var(--spring-bouncy), box-shadow 0.2s, background-color 0.2s;
+  transition: scale var(--dur-2) var(--spring-bouncy), box-shadow var(--dur-2), background-color var(--dur-2);
 }
 .mention > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mention .avatar { flex: none; font-size: 8px !important; }
-.mention.is-book { border-radius: 7px; padding-left: 4px; }
+.mention.is-book { border-radius: var(--r-s); padding-left: 4px; }
 .mention.is-book .book-cover { border-radius: 2px; box-shadow: none; }
 .mention.is-book .book-cover-title { display: none; }
-.mention.is-note { border-radius: 7px; padding-left: 5px; }
+.mention.is-note { border-radius: var(--r-s); padding-left: 5px; }
 .mention.is-note > svg { flex: none; color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
 /* a sheen runs across each tag as the note opens */
 .mention::after {
@@ -41,7 +41,7 @@
 
 .peek {
   position: fixed; z-index: 75; display: grid; gap: 12px; padding: 14px; isolation: isolate;
-  border-radius: 20px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 22px 48px -18px rgb(0 0 0 / 0.45);
   transform-origin: var(--tail) 0; animation: peek-in 0.24s var(--ease-emph);
 }
@@ -61,21 +61,21 @@
 @keyframes peek-in { from { opacity: 0.6; scale: 0.96; } }
 .peek-head { display: flex; align-items: center; gap: 13px; }
 .peek-who { display: grid; gap: 2px; min-width: 0; }
-.peek-name { font: 600 17.5px/1.25 var(--serif); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.peek-sub { font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peek-name { font: 600 var(--text-l)/1.25 var(--serif); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.peek-sub { font-size: var(--text-m); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peek-head > .avatar { flex: none; box-shadow: 0 0 0 4px color-mix(in oklab, var(--c, transparent) 22%, transparent); }
 .peek-head > :is(.record, .cassette, .book-cover) { flex: none; }
 .peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
 .peek-actions { display: flex; gap: 8px; }
 .peek .progress { margin: -4px 0 0; }
 .peek-note-icon {
-  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 13px;
+  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--r-m);
   color: color-mix(in oklab, var(--c, var(--ink-3)) 70%, var(--ink));
   background: color-mix(in oklab, var(--c, var(--ink-3)) 16%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c, var(--ink-3)) 30%, transparent);
 }
 .peek-text {
-  margin: 0; font: 400 14.5px/1.5 var(--serif); color: var(--ink-2); white-space: pre-line;
+  margin: 0; font: 400 var(--text-base)/1.5 var(--serif); color: var(--ink-2); white-space: pre-line;
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
 }
 
@@ -83,16 +83,16 @@
 
 .mention-strip { flex: none; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 2px 4px; touch-action: pan-x; }
 .mention-at {
-  flex: none; width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  font: 700 15px/1 var(--sans); color: var(--on-ink); background: var(--ink);
+  flex: none; width: 30px; height: 30px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center;
+  font: 700 var(--text-base)/1 var(--sans); color: var(--on-ink); background: var(--ink);
 }
 .mention-pick {
   --tone: var(--c, var(--ink-3));
   flex: none; display: inline-flex; align-items: center; gap: 8px; max-width: 220px; height: 40px; padding: 0 13px 0 6px;
-  border-radius: 999px; text-align: left;
+  border-radius: var(--r-pill); text-align: left;
   background: color-mix(in oklab, var(--tone) 12%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 24%, transparent);
-  transition: background-color 0.15s, box-shadow 0.2s;
+  transition: background-color var(--dur-1), box-shadow var(--dur-2);
 }
 .mention-pick[aria-selected='true'] {
   background: color-mix(in oklab, var(--tone) 20%, var(--surface));
@@ -106,11 +106,11 @@
 .mention-thumb .book-cover-title { display: none; }
 .mention-pick.is-song[aria-selected='true'] .mini-record { animation: turn 1.8s linear infinite; }
 .mention-text { display: grid; min-width: 0; line-height: 1.15; }
-.mention-text b { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mention-text small { font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-text b { font-size: var(--text-m); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-text small { font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mention-pick.is-new { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); }
 .mention-pick.is-new[aria-selected='true'] { box-shadow: inset 0 0 0 2px var(--ink); }
-.mention-empty { padding: 0 6px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+.mention-empty { padding: 0 6px; font-size: var(--text-m); color: var(--ink-3); white-space: nowrap; }
 
 /* ---------- writing: a new tag lands with a ring and a burst of dots ---------- */
 
@@ -118,11 +118,11 @@
 .mention-burst { position: absolute; z-index: 90; width: 0; height: 0; pointer-events: none; }
 .mention-burst::before {
   content: ''; position: absolute; left: calc(var(--w) / -2 - 5px); top: calc(var(--h) / -2 - 3px);
-  width: calc(var(--w) + 10px); height: calc(var(--h) + 6px); border-radius: 999px; border: 2px solid var(--c);
+  width: calc(var(--w) + 10px); height: calc(var(--h) + 6px); border-radius: var(--r-pill); border: 2px solid var(--c);
   animation: burst-ring 0.6s ease-out forwards;
 }
 .mention-burst i {
-  position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 99px; background: var(--c);
+  position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--c);
   animation: burst-dot 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 @keyframes burst-ring { from { opacity: 0.9; scale: 0.85; } to { opacity: 0; scale: 1.2; } }

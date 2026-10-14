@@ -3,6 +3,7 @@ import { goBack, navigate } from '../lib/router';
 import { keyOf, shortDate } from '../lib/dates';
 import { compact, loadPoints, usePoints, type Change, type Channel, type Points } from '../lib/twitch';
 import { ChartCard, CountUp, RevealStack, TipRow, tipProps, useWidth } from '../components/charts';
+import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { Sky } from '../components/Sky';
 import { ChannelsSheet } from '../components/TwitchChannels';
@@ -66,20 +67,16 @@ export function Twitch({ query }: { query: URLSearchParams }) {
     <div class="page stats-page tw-page">
       <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-fear)' }}>
         <Sky world="fear" letters="twitch" />
-        <header class="page-head">
-          <div class="row between tw-head-row">
-            <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
-            <button class="btn btn-quiet btn-s tw-edit-btn" onClick={() => setEditing(true)}><Icon name="pencil" size={15} /> {t('Edit channels')}</button>
-          </div>
-          <h1 class="title">{t('Channel points')}</h1>
-          <p class="subtitle">
-            {!data ? t('From the points miner') : live.length ? (
-              <><span class="tw-live" aria-hidden="true" /> {t('Watching {names} now', { names: live.map((c) => c.name).join(', ') })}</>
-            ) : (
-              t('{user} · last points {when}', { user: data.user, when: ago(Math.max(...data.channels.map((c) => c.lastAt)), data.now) })
-            )}
-          </p>
-        </header>
+        <PageHead
+          title={t('Channel points')}
+          back={() => goBack()}
+          actions={<button class="icon-btn" onClick={() => setEditing(true)} aria-label={t('Edit channels')} title={t('Edit channels')}><Icon name="pencil" /></button>}
+          subtitle={!data ? t('From the points miner') : live.length ? (
+            <><span class="tw-live" aria-hidden="true" /> {t('Watching {names} now', { names: live.map((c) => c.name).join(', ') })}</>
+          ) : (
+            t('{user} · last points {when}', { user: data.user, when: ago(Math.max(...data.channels.map((c) => c.lastAt)), data.now) })
+          )}
+        />
         {data && data.channels.length > 1 && (
           <div class="chips filters scroll-x" role="toolbar" aria-label={t('Channel')}>
             <button class="chip" aria-pressed={!channel} onClick={() => select(null)}>{t('All channels')}</button>

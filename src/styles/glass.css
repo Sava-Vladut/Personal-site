@@ -2,6 +2,8 @@
    Liquid glass — the material for things that float above content:
    the tab bar, toolbar buttons, sheets, toasts and tooltips.
    Content (cards, notes, charts) stays solid so it stays legible.
+   The one exception is a sky banner (.journal-top): what sits on its clouds (search, stats, the song card)
+   is frosted with a plain blur so the letters show through, but it is still content, so it has no rim or lens.
    ============================================================ */
 
 :root {
@@ -82,15 +84,15 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 44px;
+  height: var(--h-m);
   padding: 0 18px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--text-base);
   font-weight: 600;
   transition: transform 0.16s var(--ease-out);
 }
-.glass-btn.round { width: 44px; padding: 0; }
+.glass-btn.round { width: var(--h-m); padding: 0; }
 .glass-btn.tinted { color: var(--glass-on-tint); }
 .glass-btn:active { transform: scale(1.07); }
 .glass-btn:active::after { opacity: 1; }
@@ -118,7 +120,7 @@
   display: flex;
   height: 62px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
 .tab-pill {
   position: absolute;
@@ -126,7 +128,7 @@
   bottom: 4px;
   left: calc(4px + var(--i) * var(--seg));
   right: calc(4px + (var(--n, 4) - 1 - var(--i)) * var(--seg));
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--glass-pill);
   box-shadow: inset 0 0.5px 0 var(--glass-rim-hi);
 }
@@ -144,10 +146,10 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   color: var(--ink-2);
   text-decoration: none;
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   font-weight: 550;
   white-space: nowrap;
   transition: color 0.15s ease;
@@ -189,8 +191,8 @@
   gap: 6px;
   height: 30px;
   padding: 0 12px 0 10px;
-  border-radius: 999px;
-  font-size: 12.5px;
+  border-radius: var(--r-pill);
+  font-size: var(--text-s);
   color: var(--ink-2);
 }
 /* always mounted: it fades in once and then only its icon and word change, so typing never makes it blink */

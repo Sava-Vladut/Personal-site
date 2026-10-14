@@ -7,10 +7,10 @@ import { readmeExcerpt } from '../components/Readme';
 import { usePref } from '../lib/prefs';
 import { repoIdOf, useReady, useRepos, type Repo } from '../lib/store';
 import { CountUp } from '../components/charts';
-import { CloudTitle, feltWorlds } from '../components/cloud';
+import { feltWorlds } from '../components/cloud';
 import { EmotionChip } from '../components/emotion';
+import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
-import { NavWheel } from '../components/NavWheel';
 import { Sky } from '../components/Sky';
 import { Stars } from '../components/books';
 import { Spin, languageColor } from '../components/repos';
@@ -117,30 +117,28 @@ export function Repos() {
     <div class="page media-page repos-page">
       <div class="journal-top media-top" style={{ '--sky': `var(--emo-${worlds[0]})` }}>
         <Sky world={worlds[0]} worlds={worlds} letters="repos" />
-        <header class="page-head">
-          <div class="row between">
-            <CloudTitle text={t('Your repos')} />
-            <div class="row">
-              {rows.length > 0 && (
-                <button class="icon-btn" aria-pressed={searching} aria-label={t('Search your repos')} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
-                  <Icon name="search" />
-                </button>
-              )}
-              {connected && (
-                <button class="icon-btn" onClick={refresh} aria-label={t('Reload from GitHub')} title={t('Reload from GitHub')} disabled={live.loading}>
-                  <Icon name="refresh" />
-                </button>
-              )}
-              <NavWheel world={worlds[0]} />
-            </div>
-          </div>
-          {!rows.length && <p class="subtitle">{t('Rate the things you build, say how they make you feel, and read their story in commits.')}</p>}
-        </header>
+        <PageHead
+          title={t('Your repos')}
+          subtitle={!rows.length ? t('Rate the things you build, say how they make you feel, and read their story in commits.') : undefined}
+          wheel world={worlds[0]}
+          actions={<>
+            {rows.length > 0 && (
+              <button class="icon-btn" aria-pressed={searching} aria-label={t('Search your repos')} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+                <Icon name="search" />
+              </button>
+            )}
+            {connected && (
+              <button class="icon-btn" onClick={refresh} aria-label={t('Reload from GitHub')} title={t('Reload from GitHub')} disabled={live.loading}>
+                <Icon name="refresh" />
+              </button>
+            )}
+          </>}
+        />
 
         {stats.length > 0 && (
           <div class="media-stats">
             {stats.map(([value, label], i) => (
-              <span class="media-stat" style={{ '--i': i }}>
+              <span class="stat" style={{ '--i': i }}>
                 <b><CountUp value={value} /></b>
                 <small>{label}</small>
               </span>

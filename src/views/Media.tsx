@@ -4,10 +4,10 @@ import { connectSpotify } from '../lib/spotify';
 import { blankSong, findSong, getSongs, saveSong, toast, useBooks, useSongs, type Music } from '../lib/store';
 import { BookSheet } from '../components/books';
 import { CountUp } from '../components/charts';
-import { CloudTitle, feltWorlds } from '../components/cloud';
+import { feltWorlds } from '../components/cloud';
+import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
-import { NavWheel } from '../components/NavWheel';
 import { DayPicker, SongOfDay, useDayPick } from '../components/SongOfDay';
 import { SpotifySheet } from '../components/SpotifySheet';
 import { BooksTab, bookStats } from './Books';
@@ -84,30 +84,26 @@ export function Media({ query }: { query: URLSearchParams }) {
       {/* the shelf and the records under a sky of their own: letters over the books, notes over the music */}
       <div class="journal-top media-top" style={{ '--sky': `var(--emo-${worlds[0]})` }}>
         <Sky world={worlds[0]} worlds={worlds} letters={tab} />
-        <header class="page-head">
-          <div class="row between">
-            <CloudTitle key={tab} text={isBooks ? t('Your shelf') : t('Your records')} />
-            <div class="row">
-              {has && (
-                <button class="icon-btn" aria-pressed={searching} aria-label={search} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
-                  <Icon name="search" />
-                </button>
-              )}
-              <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>
-                <Icon name="plus" />
+        <PageHead
+          title={isBooks ? t('Your shelf') : t('Your records')}
+          subtitle={!has ? (isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')) : undefined}
+          wheel world={worlds[0]}
+          actions={<>
+            {has && (
+              <button class="icon-btn" aria-pressed={searching} aria-label={search} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+                <Icon name="search" />
               </button>
-              <NavWheel world={worlds[0]} />
-            </div>
-          </div>
-          {!has && (
-            <p class="subtitle">{isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')}</p>
-          )}
-        </header>
+            )}
+            <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>
+              <Icon name="plus" />
+            </button>
+          </>}
+        />
 
         {stats.length > 0 && (
           <div class="media-stats" key={tab}>
             {stats.map(([value, label], i) => (
-              <span class="media-stat" style={{ '--i': i }}>
+              <span class="stat" style={{ '--i': i }}>
                 <b><CountUp value={value} /></b>
                 <small>{label}</small>
               </span>

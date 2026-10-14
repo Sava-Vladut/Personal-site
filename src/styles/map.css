@@ -4,15 +4,14 @@
 
 .map {
   position: relative; overflow: hidden; isolation: isolate;
-  background: #eceae6; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  background: var(--surface-2); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   outline: none; cursor: grab;
 }
-:root[data-theme='dark'] .map { background: #262626; }
 .map:active { cursor: grabbing; }
 .map:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); }
 .map.is-still { cursor: pointer; touch-action: auto; }
 .map-tiles { position: absolute; inset: 0; pointer-events: none; }
-.map-tile { position: absolute; left: 0; top: 0; max-width: none; opacity: 0; transition: opacity 0.25s; }
+.map-tile { position: absolute; left: 0; top: 0; max-width: none; opacity: 0; transition: opacity var(--dur-2); }
 .map-tile.is-in { opacity: 1; }
 /* OpenStreetMap's colours, quietened to the app's white and graphite (and turned over for the dark theme) */
 .map-tiles { filter: grayscale(0.9) contrast(0.88) brightness(1.04); }
@@ -21,7 +20,7 @@
 .map-pin {
   position: absolute; left: 0; top: 0; z-index: 1;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 999px; color: var(--c);
+  border-radius: var(--r-pill); color: var(--c);
   background: color-mix(in oklab, var(--c) 14%, var(--surface));
   border: 2px solid color-mix(in oklab, var(--c) 50%, var(--surface));
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 12px -4px rgb(0 0 0 / 0.35);
@@ -29,9 +28,9 @@
 }
 .map-pin-count {
   position: absolute; top: -7px; right: -9px; min-width: 19px; height: 19px; padding: 0 5px;
-  display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
-  background: var(--c); color: #fff; border: 2px solid var(--surface);
-  font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-pill);
+  background: var(--c); color: var(--on-color); border: 2px solid var(--surface);
+  font-size: var(--text-xs); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
 }
 button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .map.is-still .map-pin { pointer-events: none; }
@@ -40,12 +39,12 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 .map-tools { position: absolute; top: 12px; right: 12px; z-index: 2; display: grid; gap: 8px; }
 .map-credit {
   position: absolute; right: 0; bottom: 0; z-index: 2; padding: 2px 7px; border-top-left-radius: 8px;
-  font-size: 10.5px; color: var(--ink-2); background: color-mix(in oklab, var(--surface) 78%, transparent);
+  font-size: var(--text-xs); color: var(--ink-2); background: color-mix(in oklab, var(--surface) 78%, transparent);
 }
 .map-credit a { color: inherit; }
 
 /* the stats preview */
-.map-preview { height: 220px; margin-top: 12px; border-radius: 12px; }
+.map-preview { height: 220px; margin-top: 12px; border-radius: var(--r-m); }
 
 /* the map page: the map fills the screen, with a bar over its top */
 .app.route-map { padding-bottom: 0; }
@@ -58,27 +57,27 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
   display: flex; align-items: center; gap: 10px; padding: calc(var(--safe-t) + 12px) 12px 0; pointer-events: none;
 }
 .map-bar > * { pointer-events: auto; }
-.map-title { display: grid; padding: 6px 16px; border-radius: 999px; line-height: 1.25; }
-.map-title b { font: 500 17px/1.2 var(--serif); }
-.map-title span { font-size: 12px; color: var(--ink-3); }
+.map-title { display: grid; padding: 6px 16px; border-radius: var(--r-pill); line-height: 1.25; }
+.map-title b { font: 500 var(--text-l)/1.2 var(--serif); }
+.map-title span { font-size: var(--text-s); color: var(--ink-3); }
 .map-empty {
   position: absolute; z-index: 3; left: 16px; right: 16px; bottom: calc(var(--safe-b) + 28px);
   max-width: 420px; margin: 0 auto; padding: 16px; display: grid; gap: 10px; box-shadow: var(--shadow);
 }
-.map-empty p { color: var(--ink-2); font-size: 14px; }
+.map-empty p { color: var(--ink-2); font-size: var(--text-base); }
 
 /* entries at a spot, in the sheet */
 .spot-list { display: grid; gap: 2px; }
 .spot-row {
   display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px;
-  width: 100%; text-align: left; padding: 9px 8px; border-radius: 12px; transition: background-color 0.12s;
+  width: 100%; text-align: left; padding: 9px 8px; border-radius: var(--r-m); transition: background-color var(--dur-1);
 }
 .spot-row:hover { background: var(--surface-2); }
 .spot-ico { display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
 .spot-main { display: grid; min-width: 0; }
-.spot-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.spot-sub { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.spot-when { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.spot-title { font-weight: 600; font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-when { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* the heat map (MapHeat): a soft colour layer, stretched up from 1/4 size, under the letters */
 .map-heat { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }

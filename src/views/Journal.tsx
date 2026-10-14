@@ -19,13 +19,13 @@ import { Swipe } from '../components/Swipe';
 import { EmotionChip } from '../components/emotion';
 import { Sky } from '../components/Sky';
 import { AsciiCloud } from '../components/cloud';
-import { NavWheel } from '../components/NavWheel';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
 import { WeatherMark, weatherOf } from '../components/weather';
 import { MiniMusic } from '../components/music';
 import { DayPicker, SongOfDay, useDayPick, type DayPick } from '../components/SongOfDay';
+import { PageHead } from '../components/PageHead';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 import { usePoints } from '../lib/twitch';
@@ -92,21 +92,19 @@ export function Journal() {
       <aside class="journal-side">
       <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
       <Sky world={world} />
-      <header class="page-head">
-        <div class="row between">
-          <h1 class="title">{longToday()}</h1>
-          <div class="row">
-            {/* searching and the calendar belong to the feed, so they live here; everywhere else is on the wheel */}
-            <button class="icon-btn" aria-pressed={searching} aria-label={t('Search')} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
-              <Icon name="search" />
-            </button>
-            <button class="icon-btn" aria-pressed={calOpen} aria-label={t('Calendar')} title={t('Calendar')} onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
-              <Icon name="calendar" />
-            </button>
-            <NavWheel world={world} />
-          </div>
-        </div>
-      </header>
+      <PageHead
+        title={longToday()}
+        wheel world={world}
+        actions={<>
+          {/* searching and the calendar belong to the feed, so they live here; everywhere else is on the wheel */}
+          <button class="icon-btn" aria-pressed={searching} aria-label={t('Search')} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
+            <Icon name="search" />
+          </button>
+          <button class="icon-btn" aria-pressed={calOpen} aria-label={t('Calendar')} title={t('Calendar')} onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
+            <Icon name="calendar" />
+          </button>
+        </>}
+      />
 
       {searching && (
         <label class="search">

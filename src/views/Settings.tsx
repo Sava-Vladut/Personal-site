@@ -7,6 +7,7 @@ import { deleteAll, exportJSON, getSettings, importJSON, saveEntry, setSettings,
 import { resolveIcon } from '../lib/icons';
 import { rangeLabel, shortDate, todayKey } from '../lib/dates';
 import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
+import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
@@ -190,10 +191,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
 
   return (
     <div class="page">
-      <header class="page-head">
-        <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
-        <h1 class="title">{t('Settings')}</h1>
-      </header>
+      <PageHead title={t('Settings')} back={() => goBack()} />
 
       <section class="section">
         <h2 class="section-title">{t('Appearance')}</h2>

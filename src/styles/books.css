@@ -17,24 +17,24 @@
 .stars svg.on { color: var(--emo-joy); }
 .stars svg.on g { fill: currentColor; }
 .stars.is-input { gap: 2px; margin-top: 8px; margin-left: -4px; }
-.stars.is-input button { padding: 4px; border-radius: 8px; transition: scale 0.35s var(--spring-bouncy); }
+.stars.is-input button { padding: 4px; border-radius: var(--r-s); transition: scale 0.35s var(--spring-bouncy); }
 .stars.is-input button:active { scale: 0.85; transition-duration: 0.1s; }
 
 .book-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
-.book-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 7px 10px 7px 7px; border-radius: 14px; transition: background-color 0.12s; }
+.book-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 7px 10px 7px 7px; border-radius: var(--r-m); transition: background-color var(--dur-1); }
 .book-row:hover { background: var(--surface-2); }
 .book-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; justify-items: start; }
-.book-row-title { max-width: 100%; font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.book-row-sub { max-width: 100%; font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.book-row-title { max-width: 100%; font-weight: 600; font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.book-row-sub { max-width: 100%; font-size: var(--text-m); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .book-sheet-label { display: block; margin: 16px 2px 6px; }
 
 
-.progress { display: block; width: 100%; height: 4px; margin-top: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
-.progress i { display: block; height: 100%; border-radius: inherit; background: var(--ink); transition: width 0.4s var(--ease); }
+.progress { display: block; width: 100%; height: 4px; margin-top: 4px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.progress i { display: block; height: 100%; border-radius: inherit; background: var(--ink); transition: width var(--dur-3) var(--ease); }
 
 .reading-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .reading-card { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 10px 14px 10px 10px; }
-.reading-card .book-row-title { font: 550 16px/1.3 var(--serif); }
+.reading-card .book-row-title { font: 550 var(--text-l)/1.3 var(--serif); }
 
 .reading-strip { display: flex; gap: 8px; overflow-x: auto; margin: 10px calc(-1 * var(--gutter)) 0; padding: 2px var(--gutter); scrollbar-width: none; }
 .reading-strip::-webkit-scrollbar { display: none; }
@@ -50,5 +50,5 @@
 .book-facts { margin-top: 2px; }
 .book-facts a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .book-status { margin-top: 18px; }
-.book-status button { font-size: 13px; }
+.book-status button { font-size: var(--text-m); }
 .reading-now { margin-bottom: 14px; }

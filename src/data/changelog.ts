@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.79.0',
+    date: '2026-10-14',
+    changes: [
+      'One page header everywhere: the title in serif, the controls on the right, and a round glass back arrow on pages you open from another (Settings, Patterns, What’s on your mind, Your brain, Channel points)',
+      'Your shelf, Your records and Your repos now use the same plain title as every other page',
+      'One set of sizes for text, corners and button heights across the whole app, so cards, chips and buttons line up',
+      'Section headings, chart titles and the small uppercase labels now share one look',
+      'The small number boxes on Records, Repos and Most picked are now the same box',
+      'Repos keeps monospace only for code, hashes and branch lines; names and labels use the app’s own type',
+      'The library card and stamps use shared colours instead of one-off ones, and the map’s background follows the theme',
+    ],
+  },
+  {
     version: '1.78.3',
     date: '2026-10-13',
     changes: [

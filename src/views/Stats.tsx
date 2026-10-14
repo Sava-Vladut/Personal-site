@@ -4,7 +4,7 @@ import { shortDate } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
 import { RANGES, computeStats, coreCounts, skyWorlds, type RangeKey } from '../lib/stats';
 import { useEntries, useSettings } from '../lib/store';
-import { Icon } from '../components/icons';
+import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { Dex } from './stats/Dex';
 import { Emotions } from './stats/Emotions';
@@ -60,13 +60,11 @@ export function Stats({ query }: { query: URLSearchParams }) {
     <div class="page stats-page">
       <div class="journal-top stats-top" style={{ '--sky': `var(--emo-${lead ?? 'hope-interest'})` }}>
         <Sky world={lead} worlds={sky} />
-        <header class="page-head">
-          <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
-          <h1 class="title">{t('Your patterns')}</h1>
-          <p class="subtitle">
-            {tab === 'dex' ? t('Every feeling you have named, all time.') : lead ? <>{t('Mostly')} <b>{shortName(lead)}</b> {RANGE_PHRASE[range]}.</> : t('Your feelings, over time.')}
-          </p>
-        </header>
+        <PageHead
+          title={t('Your patterns')}
+          back={() => goBack()}
+          subtitle={tab === 'dex' ? t('Every feeling you have named, all time.') : lead ? <>{t('Mostly')} <b>{shortName(lead)}</b> {RANGE_PHRASE[range]}.</> : t('Your feelings, over time.')}
+        />
 
         <div class="seg tabs" role="tablist" style={{ '--at': TABS.findIndex((t) => t[0] === tab), '--tabs': TABS.length }}>
           {TABS.map(([id, name]) => (

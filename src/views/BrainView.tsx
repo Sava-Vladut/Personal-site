@@ -3,7 +3,7 @@ import { goBack } from '../lib/router';
 import { readBrain } from '../lib/brain';
 import { useEntries } from '../lib/store';
 import { Brain } from '../components/Brain';
-import { Icon } from '../components/icons';
+import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { t } from '../lib/i18n';
 import '../styles/stats.css';
@@ -17,11 +17,7 @@ export function BrainView() {
     <div class="page stats-page">
       <div class="journal-top stats-top" style={{ '--sky': `var(--emo-${lead ?? 'hope-interest'})` }}>
         <Sky world={lead} />
-        <header class="page-head">
-          <button class="back-link stats-back" onClick={() => goBack()}><Icon name="chevron-left" size={18} /> {t('Back')}</button>
-          <h1 class="title">{t('Your brain')}</h1>
-          <p class="subtitle">{t('Your journal, as a brain.')}</p>
-        </header>
+        <PageHead title={t('Your brain')} subtitle={t('Your journal, as a brain.')} back={() => goBack()} />
       </div>
       <Brain />
     </div>

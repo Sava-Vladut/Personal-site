@@ -5,6 +5,7 @@ import { plainText } from '../lib/body';
 import { DAY } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
 import { usePeople, useReady, type Entry, type Person } from '../lib/store';
+import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
 import { Avatar } from '../components/people';
 import { CountUp } from '../components/charts';
@@ -126,11 +127,7 @@ export function Mind() {
       {/* the same sky as the journal, its clouds coloured by the people you think of most */}
       <div class="journal-top mind-top" style={topWorld ? { '--sky': `var(--emo-${topWorld})` } : undefined}>
         <Sky world={topWorld} worlds={worlds} />
-        <header class="page-head">
-          <button class="back-link stats-back" onClick={() => goBack('people')}><Icon name="chevron-left" size={18} /> {t('People')}</button>
-          <h1 class="title">{t('What’s on your mind')}</h1>
-          <p class="subtitle">{t('Who takes up your thoughts, by how often you tag them in notes and check-ins, and how strongly you feel it.')}</p>
-        </header>
+        <PageHead title={t('What’s on your mind')} subtitle={t('Who takes up your thoughts, by how often you tag them in notes and check-ins, and how strongly you feel it.')} back={() => goBack('people')} />
 
         {people.length > 0 && (
           <div class="chips filters" role="toolbar" aria-label={t('Time range')}>

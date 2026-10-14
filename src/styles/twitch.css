@@ -17,7 +17,7 @@
 .tw-hero .hero-row { align-items: center; justify-content: space-between; }
 .tw-hero .hero-num { font-size: clamp(40px, 13vw, 58px); font-variant-numeric: tabular-nums; }
 .tw-mark { color: var(--accent); flex: none; }
-.tw-gains { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: var(--ink-3); }
+.tw-gains { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: var(--text-m); color: var(--ink-3); }
 .tw-gains b { font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .tw-gains .up b { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
 .tw-gains .down b { color: var(--danger); }
@@ -39,8 +39,8 @@
 
 .tw-channel {
   width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px;
-  padding: 10px 8px; margin: 0 -8px; width: calc(100% + 16px); border-radius: 12px; text-align: left;
-  transition: background-color 0.12s;
+  padding: 10px 8px; margin: 0 -8px; width: calc(100% + 16px); border-radius: var(--r-m); text-align: left;
+  transition: background-color var(--dur-1);
 }
 .tw-channel:hover { background: var(--surface-2); }
 .tw-list li + li .tw-channel, .tw-list li + li.tw-event { border-top: 1px solid var(--line); }
@@ -48,7 +48,7 @@
 .tw-waiting .tw-channel:hover { background: none; }
 .tw-ch-name { display: flex; align-items: center; flex-wrap: wrap; min-width: 0; }
 .tw-ch-name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
-.tw-ch-name small, .tw-ch-num small, .tw-ev-text small, .tw-ev-num small { display: block; width: 100%; font-size: 12.5px; color: var(--ink-3); }
+.tw-ch-name small, .tw-ch-num small, .tw-ev-text small, .tw-ev-num small { display: block; width: 100%; font-size: var(--text-s); color: var(--ink-3); }
 .tw-ch-num { text-align: right; font-variant-numeric: tabular-nums; }
 .tw-ch-num b { font-weight: 650; }
 .tw-ch-num small.up { color: color-mix(in oklab, var(--accent) 70%, var(--ink-2)); }
@@ -57,7 +57,7 @@
 
 .tw-event { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
 .tw-ev-ico {
-  flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px;
+  flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-s);
   background: color-mix(in oklab, var(--accent) 14%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 72%, var(--ink));
 }
 .tw-ev-ico.down { background: color-mix(in oklab, var(--danger) 12%, var(--surface-2)); color: var(--danger); }
@@ -69,20 +69,17 @@
 .tw-ev-num b.down { color: var(--danger); }
 
 .tw-bars { display: grid; gap: 10px; padding-bottom: 6px !important; }
-.tw-bars li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13.5px; }
+.tw-bars li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: var(--text-m); }
 .tw-bar-label { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 .tw-bar-label svg { flex: none; color: color-mix(in oklab, var(--accent) 70%, var(--ink-2)); }
-.tw-bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.tw-bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
 .tw-bar i { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--accent); transform-origin: left; animation: grow-x 0.8s var(--ease-emph) calc(0.2s + var(--k, 0) * 60ms) backwards; }
 .tw-bars li.down .tw-bar i { background: var(--danger); }
 .tw-bars b { font-weight: 650; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
 
-/* Edit buttons: at the top beside Back, and on the channel list's head */
-.tw-head-row { margin: -4px 0 6px; }
-.tw-head-row .stats-back { margin: 0 0 0 -4px; }
-.tw-edit-btn { background: color-mix(in oklab, var(--surface-2) 70%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+/* the edit button on the channel list's head */
 .tw-list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.tw-list-head .btn, .tw-edit-btn { display: inline-flex; align-items: center; gap: 6px; }
+.tw-list-head .btn { display: inline-flex; align-items: center; gap: 6px; }
 
 /* editing which channels the miner watches */
 .tw-edit { list-style: none; margin: 0 0 12px; padding: 0; }
@@ -90,8 +87,8 @@
 .tw-edit li + li { border-top: 1px solid var(--line); }
 .tw-edit-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tw-edit b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tw-edit-name small { color: var(--ink-3); font-size: 12px; }
-.tw-edit-n { flex: none; width: 1.8em; color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tw-edit-name small { color: var(--ink-3); font-size: var(--text-s); }
+.tw-edit-n { flex: none; width: 1.8em; color: var(--ink-3); font-size: var(--text-m); font-variant-numeric: tabular-nums; }
 .tw-edit .icon-btn:disabled { opacity: 0.3; }
 .tw-edit-add { display: flex; gap: 8px; }
 .tw-edit-add .input { flex: 1; min-width: 0; }
@@ -101,17 +98,17 @@
 /* the journal's small card (desktop): the total, today's gain and the last month as a line */
 .tw-mini {
   --accent: var(--emo-fear);
-  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; text-align: left; border-radius: 20px;
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; text-align: left; border-radius: var(--r-l);
   border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--line));
-  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 12%, var(--surface)), var(--surface));
+  background: linear-gradient(120deg, color-mix(in oklab, var(--accent) 12%, var(--surface)), var(--surface) 70%);
   box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--accent) 85%, transparent);
-  transition: border-color 0.2s, translate 0.35s var(--spring);
+  transition: border-color var(--dur-2), translate 0.35s var(--spring);
 }
 .tw-mini:hover { border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); translate: 0 -1px; }
-.tw-mini-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; border-radius: 12px; background: var(--accent); color: #fff; }
+.tw-mini-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-m); background: var(--accent); color: var(--on-color); }
 .tw-mini-main { display: grid; gap: 1px; min-width: 0; margin-right: auto; }
-.tw-mini-main small { font-size: 11.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
-.tw-mini-main b { font: 600 22px/1.1 var(--serif); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--ink); }
-.tw-mini-sub { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-mini-main small { color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
+.tw-mini-main b { font: 600 var(--text-xl)/1.1 var(--serif); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.tw-mini-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tw-mini-spark { flex: none; width: 92px; height: auto; }
 .tw-mini-spark path { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }

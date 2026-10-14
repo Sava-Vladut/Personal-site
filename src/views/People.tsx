@@ -9,10 +9,10 @@ import { watchView } from '../lib/inView';
 import { plainText } from '../lib/body';
 import { usePref } from '../lib/prefs';
 import { EmotionChip } from '../components/emotion';
+import { PageHead } from '../components/PageHead';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
 import { Sky } from '../components/Sky';
-import { NavWheel } from '../components/NavWheel';
 import { count, t } from '../lib/i18n';
 
 /** "today", "yesterday", "24 Sep" */
@@ -70,19 +70,16 @@ export function People() {
 
   return (
     <div class="page">
-      <header class="page-head">
-        <div class="eyebrow">{t('People')}</div>
-        <div class="row between">
-          <h1 class="title">{t('The people in your life')}</h1>
-          <div class="row">
-            <button class="icon-btn" onClick={() => navigate('person/new')} aria-label={t('Add person')} title={t('Add person')}>
-              <Icon name="user-plus" />
-            </button>
-            <NavWheel world="love-connection" />
-          </div>
-        </div>
-        <p class="subtitle">{t('Write about them, tag them in notes and check-ins, and notice how they make you feel.')}</p>
-      </header>
+      <PageHead
+        title={t('The people in your life')}
+        subtitle={t('Write about them, tag them in notes and check-ins, and notice how they make you feel.')}
+        wheel world="love-connection"
+        actions={
+          <button class="icon-btn" onClick={() => navigate('person/new')} aria-label={t('Add person')} title={t('Add person')}>
+            <Icon name="user-plus" />
+          </button>
+        }
+      />
 
       {people.length > 0 && (
         <>
