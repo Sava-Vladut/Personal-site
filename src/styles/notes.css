@@ -306,6 +306,8 @@
 }
 .journal-top .icon-btn:hover, .journal-top .icon-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--surface) 70%, transparent); }
 .journal-top .page-head { margin-bottom: 18px; }
+/* the date shares its row with the controls: keep it to whole words, a touch smaller so "Wednesday" fits */
+.journal-top .page-title-row > .title { font-size: clamp(24px, 6.6vw, 29px); overflow-wrap: normal; }
 .journal-top .filter-note { margin: 10px 0 0; }
 /* what sits on the sky is frosted, so the clouds show through */
 .journal-top .prompt, .journal-top > .card, .journal-top .search {

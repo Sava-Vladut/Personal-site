@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.5',
+    date: '2026-10-14',
+    changes: [
+      'The date at the top of the main screen no longer breaks “Wednesday” in the middle of the word',
+    ],
+  },
+  {
     version: '1.82.4',
     date: '2026-10-14',
     changes: [
