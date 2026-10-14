@@ -176,13 +176,25 @@ addEventListener('popstate', (e) => {
   while (closers.length > depth) closers.pop()!();
 });
 
+// Entries of sheets closed this tick, popped together at the end of it. A sheet opening in the
+// same tick (one sheet handing over to another) takes one over instead: history.back() is async,
+// and its late popstate would otherwise close the new sheet as soon as it opened.
+let pops = 0;
+
 export function pushBack(close: () => void) {
   closers.push(close);
-  history.pushState({ ...history.state, mmSheet: closers.length }, '');
+  if (pops) {
+    pops--;
+    history.replaceState({ ...history.state, mmSheet: closers.length }, '');
+  } else history.pushState({ ...history.state, mmSheet: closers.length }, '');
   return () => {
     const i = closers.indexOf(close);
     if (i === -1) return; // already closed by the back button
     closers.splice(i, 1);
-    history.back();
+    if (!pops++) queueMicrotask(() => {
+      const n = pops;
+      pops = 0;
+      if (n) history.go(-n);
+    });
   };
 }

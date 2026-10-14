@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.84.1',
+    date: '2026-10-14',
+    changes: [
+      'Notes: Add icon (and Make public) from the More menu opens its sheet again instead of closing it straight away',
+    ],
+  },
+  {
     version: '1.84.0',
     date: '2026-10-14',
     changes: [

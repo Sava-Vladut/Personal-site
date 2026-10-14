@@ -900,6 +900,44 @@ test('navigation waits for a screen and discards stale or unmounted loads', asyn
   assert.equal(failures, 0);
 });
 
+test('a sheet opened as another closes keeps its history entry, and the back button still closes it', async () => {
+  const listeners = new Map();
+  // the browser's session history: a traversal lands later, on the entry it was aimed at when asked
+  const entries = [{}];
+  let at = 0;
+  const history = {
+    get state() { return entries[at]; },
+    pushState(state) { entries.length = ++at; entries.push(state); },
+    replaceState(state) { entries[at] = state; },
+    go(n) { const to = Math.max(0, at + n); setTimeout(() => { at = to; listeners.get('popstate')({ state: entries[at] }); }); },
+    back() { this.go(-1); },
+  };
+  const { pushBack } = await load('src/lib/router.ts', {}, {
+    location: { hash: '#/' }, matchMedia: () => ({ matches: true }), queueMicrotask, history,
+    addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name),
+  });
+  const wait = () => new Promise((resolve) => setTimeout(resolve, 5));
+  let more = true, icon = false;
+  const releaseMore = pushBack(() => { more = false; });
+  // More → Add icon: the menu's entry is released in the same tick the picker's is added
+  releaseMore();
+  const releaseIcon = pushBack(() => { icon = false; });
+  icon = true;
+  await wait();
+  assert.equal(icon, true, 'the picker stays open');
+  assert.equal(at, 1, 'one entry for the one open sheet');
+  history.back(); await wait();
+  assert.equal(icon, false, 'the back button closes the picker');
+  assert.equal(at, 0);
+  releaseIcon(); await wait();
+  assert.equal(at, 0, 'releasing an already closed sheet goes nowhere');
+  // closing on its own still pops its entry
+  const release = pushBack(() => {});
+  release(); await wait();
+  assert.equal(at, 0);
+  assert.equal(more, true, 'releasing never calls the sheet’s own close');
+});
+
 test('a failed screen load restores the current address and permits a retry', async () => {
   const h = componentHooks(), listeners = new Map(), location = { hash: '#/people' };
   let failures = 0, attempt = 0;
