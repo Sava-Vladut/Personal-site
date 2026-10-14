@@ -58,7 +58,8 @@ export const searchDocs = (q: string, doc?: string, signal?: AbortSignal) =>
 export const pageInfo = (doc: string, page: number, q: string, signal?: AbortSignal) =>
   get<PageInfo>(`/${doc}/page/${page}?q=${encodeURIComponent(q)}`, signal);
 
-export const pageImage = (doc: string, page: number, zoom = false) => `${base}/${doc}/page/${page}/image${zoom ? '?size=zoom' : ''}`;
+/** v: the server's drawing of pages, so a browser doesn't keep showing ones drawn before (v2: pages drawn with fonts). */
+export const pageImage = (doc: string, page: number, zoom = false) => `${base}/${doc}/page/${page}/image?v=2${zoom ? '&size=zoom' : ''}`;
 export const helpUrl = (doc: string, file: string) => `${base}/${doc}/files/${file.split('/').map(encodeURIComponent).join('/')}`;
 export const fileUrl = (doc: string) => `${base}/${doc}/file`;
 

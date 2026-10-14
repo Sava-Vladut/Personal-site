@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.2',
+    date: '2026-10-14',
+    changes: [
+      'Fixed missing text on some PDF pages in Docs, like the Student Guides and the CPA help PDF',
+    ],
+  },
+  {
     version: '1.82.1',
     date: '2026-10-14',
     changes: [

@@ -5,7 +5,7 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { extractHelp } from './help.js';
 import { HttpError } from './http-error.js';
@@ -115,7 +115,9 @@ function pageSizes(info) {
 
 export function createLibraryHandler({ directory, cacheDir, isAdmin }) {
   const indexFile = join(cacheDir, 'index.json');
-  const pagesDir = join(cacheDir, 'pages');
+  // drawn pages go in a new folder whenever they'd come out differently; v2: with fonts, so text the PDF doesn't embed shows
+  const pagesDir = join(cacheDir, 'pages-v2');
+  rm(join(cacheDir, 'pages'), { recursive: true, force: true }).catch(() => {});
   const helpDir = (id) => join(cacheDir, 'help', id);
   /** path → { id, path, kind, title, folder, size, mtime, text, folded, and sizes (PDF) or files, topics, toc (help) } */
   let docs = new Map();
