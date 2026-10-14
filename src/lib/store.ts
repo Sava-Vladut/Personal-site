@@ -227,9 +227,14 @@ export async function saveEntry(e: Entry) {
   const revision = clearRevision;
   const previous = entries$.get().find((x) => x.id === e.id);
   const next = { ...e, updated: Math.max(Date.now(), e.updated + 1, (previous?.updated ?? 0) + 1, (deleted[e.id] ?? 0) + 1) };
-  const list = entries$.get().filter((x) => x.id !== e.id);
-  list.push(next);
-  entries$.set(list.sort(byNewest));
+  // Edits that keep the note's date and time (nearly all of them, while writing) swap it in place: no sort, and every
+  // other entry stays the same object, so lists that only redraw what changed don't redraw them.
+  if (previous && previous.date === next.date && previous.time === next.time) entries$.set(entries$.get().map((x) => (x === previous ? next : x)));
+  else {
+    const list = entries$.get().filter((x) => x.id !== e.id);
+    list.push(next);
+    entries$.set(list.sort(byNewest));
+  }
   pendingPrevious.set(next, previous);
   try {
     await db.put(next);

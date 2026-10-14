@@ -23,7 +23,7 @@ import { initSync } from './lib/sync';
 import { startWeather } from './lib/weather';
 import { t } from './lib/i18n';
 import { routeName } from './lib/router';
-import { prepareView, viewFor } from './lib/views';
+import { preloadViews, prepareView, viewFor } from './lib/views';
 import { authStatus, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
 import type { IntroProps } from './views/Intro';
 
@@ -111,6 +111,7 @@ function boot(dive?: Promise<void>) {
       startWeather();
       initSync();
       enableOffline();
+      preloadViews();
     },
     (e) => failed(e, databaseError),
   );

@@ -310,6 +310,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .prompt:active { transform: scale(0.985); }
 
 .day { margin-top: 28px; }
+.feed-more { height: 1px; }
 .day-label {
   position: sticky; top: var(--safe-t); z-index: 5;
   font-size: var(--text-m); font-weight: 600; color: var(--ink-3); margin: 0 -2px 8px; padding: 8px 2px 6px;
@@ -1073,21 +1074,21 @@ html[data-nav]::view-transition-old(root),
 html[data-nav]::view-transition-new(root) { mix-blend-mode: normal; animation-fill-mode: both; }
 
 /* opening a note, a person or stats: the new page slides in over the old one, which drifts back */
-html[data-nav='push']::view-transition-old(root) { animation: 0.44s var(--ease-emph) both vt-recede; }
-html[data-nav='push']::view-transition-new(root) { animation: 0.44s var(--ease-emph) both vt-enter; box-shadow: -8px 0 32px rgb(0 0 0 / 0.12); }
+html[data-nav='push']::view-transition-old(root) { animation: 0.3s var(--ease-emph) both vt-recede; }
+html[data-nav='push']::view-transition-new(root) { animation: 0.3s var(--ease-emph) both vt-enter; box-shadow: -8px 0 32px rgb(0 0 0 / 0.12); }
 /* going back: the page slides off to the right, uncovering the one underneath */
-html[data-nav='pop']::view-transition-old(root) { z-index: 1; animation: 0.38s var(--ease-emph) both vt-leave; box-shadow: -8px 0 32px rgb(0 0 0 / 0.12); }
-html[data-nav='pop']::view-transition-new(root) { animation: 0.38s var(--ease-emph) both vt-return; }
+html[data-nav='pop']::view-transition-old(root) { z-index: 1; animation: 0.26s var(--ease-emph) both vt-leave; box-shadow: -8px 0 32px rgb(0 0 0 / 0.12); }
+html[data-nav='pop']::view-transition-new(root) { animation: 0.26s var(--ease-emph) both vt-return; }
 /* switching tabs: a quick fade-through, leaning toward the tab you picked */
-html[data-nav^='tab']::view-transition-old(root) { animation: 0.14s ease-in both fade-out; }
-html[data-nav='tab-right']::view-transition-new(root) { animation: 0.38s var(--ease-emph) 0.04s both vt-from-right; }
-html[data-nav='tab-left']::view-transition-new(root) { animation: 0.38s var(--ease-emph) 0.04s both vt-from-left; }
-html[data-nav='fade']::view-transition-old(root) { animation: 0.16s ease-in both fade-out; }
-html[data-nav='fade']::view-transition-new(root) { animation: 0.3s var(--ease-emph) both page-in; }
+html[data-nav^='tab']::view-transition-old(root) { animation: 0.1s ease-in both fade-out; }
+html[data-nav='tab-right']::view-transition-new(root) { animation: 0.22s var(--ease-emph) 0.03s both vt-from-right; }
+html[data-nav='tab-left']::view-transition-new(root) { animation: 0.22s var(--ease-emph) 0.03s both vt-from-left; }
+html[data-nav='fade']::view-transition-old(root) { animation: 0.12s ease-in both fade-out; }
+html[data-nav='fade']::view-transition-new(root) { animation: 0.22s var(--ease-emph) both page-in; }
 /* leaving the wheel for a page: the wheel (which covers everything, tab bar too) lifts away and fades,
    and the page settles in from just behind it; nothing slides sideways, as the wheel wasn't a page */
-html[data-nav='wheel']::view-transition-old(root) { z-index: 1; animation: 0.24s cubic-bezier(0.4, 0, 0.7, 0.4) both vt-wheel-out; }
-html[data-nav='wheel']::view-transition-new(root) { animation: 0.33s var(--ease-emph) both vt-wheel-in; }
+html[data-nav='wheel']::view-transition-old(root) { z-index: 1; animation: 0.2s cubic-bezier(0.4, 0, 0.7, 0.4) both vt-wheel-out; }
+html[data-nav='wheel']::view-transition-new(root) { animation: 0.26s var(--ease-emph) both vt-wheel-in; }
 
 /* on wide screens a full-width slide is a lot of movement: keep it short */
 @media (min-width: 720px) {
@@ -1108,12 +1109,20 @@ html[data-nav='wheel']::view-transition-new(root) { animation: 0.33s var(--ease-
 @keyframes vt-wheel-out { to { opacity: 0; transform: scale(1.06); } }
 @keyframes vt-wheel-in { from { transform: scale(0.96); } }
 
+/* a screen still loading (lib/router.ts sets data-loading after a moment): a thin bar creeps across the top */
+html[data-loading]::after {
+  content: ''; position: fixed; z-index: 1000; top: var(--safe-t); left: 0; right: 0; height: 2px; pointer-events: none;
+  background: var(--ink-3); transform-origin: left; animation: load-bar 2s cubic-bezier(0.1, 0.6, 0.3, 1) both;
+}
+html[data-loading] { cursor: progress; }
+@keyframes load-bar { from { transform: scaleX(0); } to { transform: scaleX(0.9); } }
+
 /* the tab bar stays live (its pill keeps sliding) and drops away when a page without it opens */
 ::view-transition-group(nav), ::view-transition-group(toasts) { animation: none; }
 ::view-transition-old(nav):not(:only-child), ::view-transition-old(toasts) { display: none; }
 ::view-transition-new(nav):not(:only-child), ::view-transition-new(toasts) { animation: none; }
-::view-transition-old(nav):only-child { animation: 0.3s var(--ease-emph) both vt-nav-out; }
-::view-transition-new(nav):only-child { animation: 0.44s var(--ease-emph) both vt-nav-in; }
+::view-transition-old(nav):only-child { animation: 0.22s var(--ease-emph) both vt-nav-out; }
+::view-transition-new(nav):only-child { animation: 0.3s var(--ease-emph) both vt-nav-in; }
 @keyframes vt-nav-out { to { transform: translateY(calc(100% + 32px)); opacity: 0; } }
 @keyframes vt-nav-in { from { transform: translateY(calc(100% + 32px)); opacity: 0; } }
 

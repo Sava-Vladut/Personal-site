@@ -32,6 +32,11 @@ const deferred = () => {
   return { promise, resolve };
 };
 const plain = (value) => JSON.parse(JSON.stringify(value));
+/** The page's root element, as far as the router touches it (the loading bar's attribute). */
+function rootElement() {
+  const attrs = new Set();
+  return { setAttribute: (name) => attrs.add(name), removeAttribute: (name) => attrs.delete(name), hasAttribute: (name) => attrs.has(name) };
+}
 
 function componentHooks() {
   const slots = [];
@@ -863,12 +868,12 @@ test('lazy screens share pending loads, keep loaded screens synchronous and retr
 });
 
 test('navigation waits for a screen and discards stale or unmounted loads', async () => {
-  const h = componentHooks(), listeners = new Map(), location = { hash: '#/' };
+  const h = componentHooks(), listeners = new Map(), location = { hash: '#/' }, root = rootElement();
   const journal = deferred(), settings = deferred(), brain = deferred();
   let failures = 0;
   const { useRoute } = await load('src/lib/router.ts', { 'preact/hooks': h.hooks }, {
     location, matchMedia: () => ({ matches: true }), console: { error() {} },
-    document: {},
+    document: { documentElement: root },
     history: { state: {}, replaceState(_state, _title, hash) { location.hash = hash; } },
     addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name),
   });
@@ -878,10 +883,14 @@ test('navigation waits for a screen and discards stale or unmounted loads', asyn
   location.hash = '#/settings'; listeners.get('hashchange')();
   assert.equal(render().name, 'journal', 'the current screen stays mounted while loading');
   location.hash = '#/brain'; listeners.get('hashchange')();
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(root.hasAttribute('data-loading'), true, 'a slow load shows the loading bar');
   settings.resolve(); await settle();
   assert.equal(render().name, 'journal', 'an older slow navigation cannot replace the latest request');
+  assert.equal(root.hasAttribute('data-loading'), true, 'the bar stays while a load is still pending');
   brain.resolve(); await settle();
   assert.equal(render().name, 'brain');
+  assert.equal(root.hasAttribute('data-loading'), false, 'the bar goes once nothing is loading');
   location.hash = '#/note/new'; listeners.get('hashchange')();
   assert.equal(render().name, 'note', 'an already available screen navigates synchronously');
   // The pending request must also be discarded if the router unmounts.
@@ -895,7 +904,7 @@ test('a failed screen load restores the current address and permits a retry', as
   const h = componentHooks(), listeners = new Map(), location = { hash: '#/people' };
   let failures = 0, attempt = 0;
   const { useRoute } = await load('src/lib/router.ts', { 'preact/hooks': h.hooks }, {
-    location, matchMedia: () => ({ matches: true }), console: { error() {} }, document: {},
+    location, matchMedia: () => ({ matches: true }), console: { error() {} }, document: { documentElement: rootElement() },
     history: { state: { mmInApp: 1 }, replaceState(_state, _title, hash) { location.hash = hash; } },
     addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener() {},
   });

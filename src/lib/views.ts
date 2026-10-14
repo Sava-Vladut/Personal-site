@@ -38,3 +38,19 @@ export function prepareView(name: RouteName): Promise<void> | undefined {
 }
 
 export const viewFor = (name: RouteName) => loaded.get(name)!;
+
+/** The screens one tap from the journal, fetched one by one while the app is idle, so opening them doesn't wait on the network. */
+const NEARBY: RouteName[] = ['note', 'tracker', 'people', 'media', 'repos', 'library', 'stats', 'settings', 'person', 'book', 'song', 'repo', 'doc'];
+
+export function preloadViews() {
+  const idle = (f: () => void) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(() => f(), { timeout: 3000 }) : setTimeout(f, 300));
+  const next = (i: number) => {
+    if (i >= NEARBY.length) return;
+    idle(() => {
+      const loading = prepareView(NEARBY[i]);
+      if (!loading) return next(i + 1);
+      loading.then(() => next(i + 1), () => {}); // offline or a failed fetch: the screen loads when it's opened
+    });
+  };
+  next(0);
+}

@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.6',
+    date: '2026-10-14',
+    changes: [
+      'Page slides are quicker, and tapping while a page slides in skips straight to it instead of the tap being lost',
+      'Screens load in the background after the app opens, so opening one for the first time no longer waits',
+      'A thin bar at the top shows when a screen is still loading',
+      'Writing a note is smoother: saving no longer re-sorts the whole journal or rescans every note for links',
+      'Sync waits for a longer pause in your writing before sending',
+      'The journal draws its newest days first and the rest as you scroll, so long journals open and update faster',
+    ],
+  },
+  {
     version: '1.82.5',
     date: '2026-10-14',
     changes: [

@@ -256,8 +256,20 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
-  // the notes that link here, shown at the bottom
-  const backlinks = useMemo(() => (draft ? linkedFrom(draft.id, allEntries, shelf) : []), [draft?.id, allEntries, shelf]);
+  // the notes that link here, shown at the bottom. Saving while writing hands over a new list of entries, but unless
+  // another note changed (or this one's title, which links can point at) what links here can't have, so the scan of
+  // every note is skipped.
+  const backlinkCache = useRef<{ key: string; list: Entry[]; shelf: Book[]; out: ReturnType<typeof linkedFrom> } | null>(null);
+  const backlinks = useMemo(() => {
+    if (!draft) return [];
+    const self = allEntries.find((e) => e.id === draft.id);
+    const key = self ? `${self.kind}\n${self.title}\n${noteLabel(self)}` : '';
+    const c = backlinkCache.current;
+    if (c && c.key === key && c.shelf === shelf && c.list.length === allEntries.length && c.list.every((e, i) => e === allEntries[i] || e.id === draft.id)) return c.out;
+    const out = linkedFrom(draft.id, allEntries, shelf);
+    backlinkCache.current = { key, list: allEntries, shelf, out };
+    return out;
+  }, [draft?.id, allEntries, shelf]);
 
   const titleRef = useAutosize(draft?.title ?? '');
   const textRef = useRef<HTMLDivElement | null>(null);

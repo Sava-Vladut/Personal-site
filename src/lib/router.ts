@@ -53,6 +53,23 @@ addEventListener('popstate', (e) => {
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let transitions = 0;
 
+/** While a page slides in, taps land on the transition's snapshot instead of the page: a touch skips the slide to its end. */
+let sliding: ViewTransition | null = null;
+addEventListener('pointerdown', () => sliding?.skipTransition(), { capture: true, passive: true });
+
+/** A screen that isn't loaded yet shows a thin bar at the top (after a moment, so quick loads don't flash it). */
+let waiting = 0;
+function showLoading(loading: Promise<void>) {
+  const root = document.documentElement;
+  waiting++;
+  const slow = setTimeout(() => waiting && root.setAttribute('data-loading', ''), 120);
+  const done = () => {
+    clearTimeout(slow);
+    if (!--waiting) root.removeAttribute('data-loading');
+  };
+  loading.then(done, done);
+}
+
 export function useRoute(prepare?: (name: RouteName) => Promise<void> | undefined, onError?: () => void) {
   const [route, setRoute] = useState(parse);
   const current = useRef(route);
@@ -87,10 +104,12 @@ export function useRoute(prepare?: (name: RouteName) => Promise<void> | undefine
             new Promise<void>((done) => {
               rendered.current = done;
               setRoute(next);
-              setTimeout(done, 300); // never hold the page frozen if the render is slow
+              setTimeout(done, 200); // never hold the page frozen if the render is slow
             }),
         );
+        sliding = t;
         const finish = () => {
+          if (sliding === t) sliding = null;
           if (n !== transitions) return;
           delete root.dataset.nav;
           // The page's own entrance animations were held off while it slid in. Letting them go now would
@@ -105,8 +124,9 @@ export function useRoute(prepare?: (name: RouteName) => Promise<void> | undefine
         void t.finished.then(finish, finish);
       };
       const loading = prepare?.(next.name);
-      if (!loading) commit();
-      else void loading.then(commit, (error) => {
+      if (!loading) return commit();
+      showLoading(loading);
+      void loading.then(commit, (error) => {
         if (version !== request) return;
         console.error('Could not load page', error);
         history.replaceState(history.state, '', committedHash.current || '#/');

@@ -335,7 +335,8 @@ export function initSync() {
     state.dirty = true;
     saveState();
     clearTimeout(timer);
-    timer = setTimeout(syncNow, 1500);
+    // Writing saves after every pause; sending the whole journal each time made typing stutter. Leaving the app sends it at once.
+    timer = setTimeout(syncNow, 5000);
   });
   addEventListener('online', () => syncNow());
   // Pick up edits from other devices when coming back to the app; send pending ones when leaving it.

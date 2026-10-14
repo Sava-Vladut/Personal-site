@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { memo } from 'preact/compat';
 import { usePref } from '../lib/prefs';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
@@ -30,6 +31,9 @@ import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 import { usePoints } from '../lib/twitch';
 import { count, LOCALE, t } from '../lib/i18n';
+
+/** How many days of the feed are drawn at first; scrolling near the end draws this many more. */
+const DAYS_PAGE = 20;
 
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
@@ -79,6 +83,20 @@ export function Journal() {
     }
     return out;
   }, [shown]);
+
+  // Only the newest days are drawn; the rest come in as you scroll toward them, so a long journal opens (and saves) quickly.
+  const [upTo, setUpTo] = useState(DAYS_PAGE);
+  useEffect(() => setUpTo(DAYS_PAGE), [q, day]);
+  const hasMore = groups.length > upTo;
+  const moreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el) return;
+    // a new observer after each page, so one that still leaves the end in reach draws the next page too
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setUpTo((n) => n + DAYS_PAGE), { rootMargin: '1500px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, upTo]);
 
   const filtering = !!q.trim() || !!day;
   // the sky takes the colour of the world you last checked in with today
@@ -168,7 +186,8 @@ export function Journal() {
           <Entries list={pinned} compact={compact} dated />
         </section>
       )}
-      {groups.map(([date, list]) => <Day key={date} date={date} list={list} compact={compact} />)}
+      {groups.slice(0, upTo).map(([date, list]) => <Day key={date} date={date} list={list} compact={compact} />)}
+      {hasMore && <div ref={moreRef} class="feed-more" aria-hidden="true" />}
     </div>
   );
 }
@@ -181,7 +200,13 @@ const stagger = (n: number) => n % 1300;
  * line of what it was like, a ribbon under it holds the day's colours at the hours they were felt, and a
  * soft cloud of those colours drifts behind the entries while the day is on screen.
  */
-function Day({ date, list, compact }: { date: string; list: Entry[]; compact: boolean }) {
+type DayProps = { date: string; list: Entry[]; compact: boolean };
+/** A day is drawn again only when one of its entries changed: saving a note leaves every other entry the same object. */
+const sameDay = (a: DayProps, b: DayProps) =>
+  a.date === b.date && a.compact === b.compact && a.list.length === b.list.length && a.list.every((e, i) => e === b.list[i]);
+const Day = memo(DayOf, sameDay);
+
+function DayOf({ date, list, compact }: DayProps) {
   const mood = useMemo(() => dayMood(list), [list]);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
