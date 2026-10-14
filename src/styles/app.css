@@ -98,7 +98,8 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 /* scrollbar-gutter: hiding the scrollbar while a sheet is open must not shift the page sideways on desktop */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scrollbar-gutter: stable; }
+/* touch-action: no pinch or double-tap zoom on the page (iPhone Safari ignores user-scalable=no); readers and the map zoom by themselves */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scrollbar-gutter: stable; touch-action: pan-x pan-y; }
 body {
   margin: 0;
   background: var(--bg);

@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.1',
+    date: '2026-10-14',
+    changes: [
+      'The app no longer zooms in when you pinch or double-tap on your phone',
+      'Docs, photos and the map still zoom with their own pinch and buttons',
+      'Help files have buttons to make their text bigger or smaller',
+    ],
+  },
+  {
     version: '1.82.0',
     date: '2026-10-14',
     changes: [

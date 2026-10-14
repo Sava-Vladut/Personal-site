@@ -30,6 +30,8 @@ import type { IntroProps } from './views/Intro';
 applyTheme();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
 addEventListener('touchstart', () => {}, { passive: true });
+// The page doesn't zoom (see the viewport tag and html's touch-action); Safari still pinches unless its gestures are stopped.
+for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
 // Pictures aren't meant to be dragged: dropped on a text box, the browser writes the image's address into the note.
 addEventListener('dragstart', (e) => {
   if (e.target instanceof HTMLImageElement) e.preventDefault();

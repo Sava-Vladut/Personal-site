@@ -150,7 +150,8 @@ function useZoom(stage: RefObject<HTMLDivElement>, sheet: RefObject<HTMLElement>
 /* ---------- a help topic: marking the search's words inside its frame ---------- */
 
 const TOPIC_STYLE = `
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }
+  body { zoom: var(--mm-zoom, 1); }
   body { margin: 0 auto !important; padding: 18px 18px 40px; max-width: 860px; font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif !important; color: #222; background: #fff; overflow-wrap: break-word; }
   img { max-width: 100%; height: auto; }
   table { max-width: 100%; }
@@ -197,6 +198,10 @@ function markWords(d: Document, words: string[]) {
   return first;
 }
 
+/** The page doesn't pinch-zoom, so a help topic's text is made bigger or smaller with the zoom buttons. */
+const TEXT_ZOOMS = [0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5];
+const textZoom = (d: Document | null | undefined, z: number) => d?.documentElement.style.setProperty('--mm-zoom', String(z));
+
 const wide = () => matchMedia('(min-width: 1024px)').matches;
 
 /** One document: a PDF a page at a time (zoomable, the search's words marked on it), or a help file a topic at a time. */
@@ -220,6 +225,8 @@ export function DocView({ id, query }: { id: string; query: URLSearchParams }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const framePath = useRef('');
   const [frameSrc, setFrameSrc] = useState('');
+  const [textAt, setTextAt] = useState(TEXT_ZOOMS.indexOf(1));
+  useEffect(() => textZoom(frame.current?.contentDocument, TEXT_ZOOMS[textAt]), [textAt]);
 
   useEffect(() => {
     listDocs().then((lib) => {
@@ -295,6 +302,8 @@ export function DocView({ id, query }: { id: string; query: URLSearchParams }) {
     const style = d.createElement('style');
     style.textContent = TOPIC_STYLE;
     d.head?.append(style);
+    textZoom(d, TEXT_ZOOMS[textAt]);
+    for (const type of ['gesturestart', 'gesturechange']) d.addEventListener(type, (e) => e.preventDefault(), { passive: false });
     markWords(d, terms(q))?.scrollIntoView({ block: 'center' });
   };
 
@@ -429,7 +438,12 @@ export function DocView({ id, query }: { id: string; query: URLSearchParams }) {
             <span>/ {last}</span>
           </form>
           <button class="icon-btn" onClick={() => go(page + 1)} disabled={page >= last} aria-label={help ? t('Next topic') : t('Next page')}><Icon name="chevron-right" /></button>
-          {!help && (
+          {help ? (
+            <span class="doc-zoom-btns">
+              <button class="icon-btn small" onClick={() => setTextAt(textAt - 1)} disabled={textAt <= 0} aria-label={t('Smaller text')} title={t('Smaller text')}><Icon name="zoom-out" size={18} /></button>
+              <button class="icon-btn small" onClick={() => setTextAt(textAt + 1)} disabled={textAt >= TEXT_ZOOMS.length - 1} aria-label={t('Bigger text')} title={t('Bigger text')}><Icon name="zoom-in" size={18} /></button>
+            </span>
+          ) : (
             <span class="doc-zoom-btns">
               <button class="icon-btn small" onClick={() => zoom.by(1 / 1.5)} disabled={zoom.z.s <= 1} aria-label={t('Zoom out')} title={t('Zoom out')}><Icon name="zoom-out" size={18} /></button>
               <button class="icon-btn small" onClick={() => zoom.by(1.5)} disabled={zoom.z.s >= MAX_ZOOM} aria-label={t('Zoom in')} title={t('Zoom in')}><Icon name="zoom-in" size={18} /></button>

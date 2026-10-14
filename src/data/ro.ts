@@ -858,6 +858,8 @@ export const RO: Record<string, string> = {
   'An entry here': 'O intrare aici',
   'Zoom in': 'Mărește',
   'Zoom out': 'Micșorează',
+  'Smaller text': 'Text mai mic',
+  'Bigger text': 'Text mai mare',
   'Show every place': 'Arată toate locurile',
   'contributors': 'contribuitori',
   'Pin': 'Fixează',
