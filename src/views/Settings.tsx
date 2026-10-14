@@ -11,6 +11,7 @@ import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
+import { WheelEditor } from '../components/WheelEditor';
 import { HomeSheet, placeLabel } from '../components/weather';
 import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
@@ -58,6 +59,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [setup, setSetup] = useState(false);
   const [changelog, setChangelog] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  const [wheelOpen, setWheelOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches;
@@ -244,8 +246,17 @@ export function Settings({ query }: { query: URLSearchParams }) {
               ))}
             </div>
           </div>
+          <button class="list-row action" onClick={() => setWheelOpen(true)}>
+            <div>
+              <div class="row gap-s"><Icon name="chart-donut-2" size={18} /> {t('Navigation wheel')}</div>
+              <div class="muted small">{t('Hide, reorder and group the places on the wheel')}</div>
+            </div>
+            <Icon name="chevron-right" size={18} />
+          </button>
         </div>
       </section>
+
+      <WheelEditor open={wheelOpen} onClose={() => setWheelOpen(false)} />
 
       <section class="section">
         <h2 class="section-title">{t('Privacy')}</h2>

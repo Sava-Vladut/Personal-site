@@ -1100,3 +1100,42 @@ test('a public note’s link opens just that note: no sign-in check, no journal 
   assert.equal(rendered[0].props.token, token);
   assert.deepEqual(touched, []);
 });
+
+test('the wheel keeps your order, hidden places and groups, and new places still turn up', async () => {
+  const wheel = await load('src/data/wheel.ts');
+  const store = new Map();
+  const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  const observable = (value) => ({ get: () => value, set(v) { value = v; }, use: () => value });
+  const mod = await load('src/lib/wheelLayout.ts', { '../data/wheel': wheel, './store': { observable } }, { localStorage });
+  const ids = (tree) => plain(tree.map((n) => (n.kids ? [n.id, n.kids.map((k) => k.id)] : n.id)));
+
+  assert.deepEqual(ids(mod.treeOf(mod.defaultLayout())), ids(wheel.WHEEL), 'untouched, it is the wheel as shipped');
+
+  // a save from before Mind traps existed, with Docs moved into a group of your own and Repos hidden
+  const saved = mod.normalize({
+    top: ['journal', 'gwork', 'people', 'insights', 'settings', 'media', 'repos', 'nope'],
+    kids: { gwork: ['library'], insights: ['stats', 'map', 'brain', 'twitch'] },
+    hidden: ['repos', 'gone'],
+    groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
+  });
+  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch', 'traps'], 'a new place lands in its usual group');
+  assert.deepEqual(plain(saved.hidden), ['repos']);
+  assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['library']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch', 'traps']], 'settings', 'media']);
+  const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
+  assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
+
+  // every place exactly once, even from a broken save
+  const broken = mod.normalize({ top: ['journal', 'journal', 'insights'], kids: { insights: ['journal', 'stats', 'stats'] } });
+  const all = [...broken.top.filter((id) => id !== 'insights'), ...broken.kids.insights];
+  assert.equal(new Set(all).size, all.length);
+  assert.equal(all.length, wheel.WHEEL.reduce((n, x) => n + (x.kids?.length ?? 1), 0));
+
+  // a group with everything in it hidden leaves the wheel; saving the default forgets the save
+  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'map', 'brain', 'twitch', 'traps'] });
+  assert.ok(!mod.treeOf(empty).some((n) => n.id === 'insights'));
+  mod.saveLayout(saved);
+  assert.ok(store.has('mm-wheel-layout'));
+  mod.saveLayout(mod.defaultLayout());
+  assert.ok(!store.has('mm-wheel-layout'));
+});

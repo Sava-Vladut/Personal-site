@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'brain' | 'repos' | 'repo' | 'library' | 'doc' | 'intro';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'brain' | 'repos' | 'repo' | 'library' | 'doc' | 'traps' | 'intro';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -22,7 +22,7 @@ function parse(visit = ++visits): Route {
   if (head === 'books') return { name: 'media', query, visit }; // where the shelf used to live
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
   if (head === 'intro') return { name: 'intro', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'brain' || head === 'repos' || head === 'library') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'brain' || head === 'repos' || head === 'library' || head === 'traps') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 

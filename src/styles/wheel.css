@@ -145,6 +145,7 @@
 }
 .nw-kicker { margin: 0 0 3px; }
 .nw-title { margin: 0; font: 400 34px/1.1 var(--serif); color: var(--ink); }
+.nw-tools { display: flex; gap: 8px; flex: none; }
 .nw-close { background: color-mix(in oklab, var(--surface) 70%, transparent); }
 @keyframes nw-rise { from { opacity: 0; translate: 0 14px; } }
 
@@ -224,3 +225,43 @@
   .nw-beckon .nw-mark-wrap, .nw-beckon .nw-mark-wrap::before, .nw-beckon .nw-mark-wrap::after { animation: none; }
   .nw-trigger::before, .nw-mark, .nw-mark-wrap, .nw-mark-wrap::before, .nw-mark-wrap::after, .nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub, .nw-mark-halo, .nw-mark-ticks, .nw-mark-inner, .nw-hint, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }
 }
+
+/* ---------- editing the wheel (components/WheelEditor.tsx) ---------- */
+
+.we-preview { display: block; width: 132px; height: 132px; margin: 2px auto 10px; overflow: visible; }
+.we-slice path { fill: color-mix(in oklab, var(--c) 30%, var(--surface)); stroke: color-mix(in oklab, var(--c) 55%, transparent); stroke-width: 0.6; }
+.we-slice { color: color-mix(in oklab, var(--c) 70%, var(--ink)); animation: we-slice 0.4s var(--spring) backwards; animation-delay: calc(var(--i) * 30ms); transform-origin: 60px 60px; }
+@keyframes we-slice { from { opacity: 0; scale: 0.85; } }
+.we-hint { text-align: center; text-wrap: balance; margin: 0 auto 14px; max-width: 46ch; }
+.we-hint b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.we-list { overflow: hidden; }
+.we-block + .we-block { border-top: 1px solid var(--line); }
+.we-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; min-height: 54px; transition: opacity var(--dur-2); }
+.we-row.inner { padding-left: 30px; background: color-mix(in oklab, var(--c) 5%, transparent); }
+.we-row.inner::before { content: ''; align-self: stretch; width: 2px; margin: -8px 0; border-radius: 2px; background: color-mix(in oklab, var(--c) 40%, transparent); }
+.we-row.off .we-icon, .we-row.off .we-name { opacity: 0.4; }
+.we-row.off .we-name span { text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.we-icon {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: color-mix(in oklab, var(--c) 75%, var(--ink));
+}
+button.we-icon:hover { background: color-mix(in oklab, var(--c) 28%, var(--surface)); }
+.we-name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 550; }
+.we-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.we-name small { color: var(--ink-3); font-size: var(--text-s); font-weight: 450; }
+.we-input { width: 100%; min-width: 0; padding: 3px 6px; margin: -3px -6px; border: 1px solid transparent; border-radius: 8px; background: none; font: inherit; color: var(--ink); }
+.we-input:hover { border-color: var(--line-2); }
+.we-input:focus { outline: none; border-color: var(--ink); background: var(--surface); }
+.we-tools { display: flex; align-items: center; flex: none; }
+.we-tools .icon-btn { width: 34px; height: 34px; }
+.we-tools .icon-btn:disabled { opacity: 0.25; pointer-events: none; }
+.we-tools .icon-btn[aria-pressed='true'] { background: none; }
+.we-tools .icon-btn[aria-pressed='false'] { color: var(--ink-3); }
+.we-dot { width: 22px; height: 22px; margin: 0 6px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--surface) 60%, transparent); }
+.we-move { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-pill); color: var(--ink-2); cursor: pointer; }
+.we-move:hover, .we-move:focus-within { background: var(--surface-2); color: var(--ink); }
+.we-move select { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px; }
+.we-foot { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.we-foot .btn { display: inline-flex; align-items: center; gap: 6px; }
+.we-note { text-align: center; margin: 12px 0 4px; }
+@media (max-width: 380px) { .we-row.inner { padding-left: 18px; } .we-tools .icon-btn, .we-move { width: 30px; } }

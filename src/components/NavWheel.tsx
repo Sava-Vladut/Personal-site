@@ -1,14 +1,16 @@
 import type { ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { WHEEL, type WheelNode } from '../data/wheel';
+import type { WheelNode } from '../data/wheel';
 import { navigateAfterSheet, pushBack, routeName, transitionsOn } from '../lib/router';
 import { haptic } from '../lib/haptics';
 import { LOCALE, t } from '../lib/i18n';
 import { compact, usePoints } from '../lib/twitch';
 import { useLens } from '../lib/glass';
+import { useWheel } from '../lib/wheelLayout';
 import { Icon } from './icons';
 import { RAMPS, Sky } from './Sky';
+import { WheelEditor } from './WheelEditor';
 import '../styles/wheel.css';
 
 /*
@@ -117,11 +119,11 @@ const seen = () => { try { return localStorage.getItem(SEEN) === '1'; } catch { 
  * a comet circling the other way, sparks of its colours leaving it and stars twinkling around it, so it
  * reads as the way into everything. Pointing at it brings more sparks; tapping it bursts.
  */
-function WheelMark({ pop }: { pop: number }) {
-  const tops = layout(WHEEL).filter((s) => s.depth === 0);
+function WheelMark({ pop, tree }: { pop: number; tree: WheelNode[] }) {
+  const tops = layout(tree).filter((s) => s.depth === 0);
   const r = 13, gap = 9; // gap in degrees between the arcs, so they stay separate at this size
   const at = (a: number) => `${(20 + r * Math.sin(rad(a))).toFixed(2)} ${(20 - r * Math.cos(rad(a))).toFixed(2)}`;
-  const hue = (i: number) => `var(--emo-${tops[i % tops.length].hue})`;
+  const hue = (i: number) => `var(--emo-${tops[i % tops.length]?.hue ?? 'sadness'})`;
   // each spark has its own heading, size, reach, twist and speed, spread out so they never move in step
   const spark = (i: number, n: number, more = false) => {
     const f = (i * 0.618034) % 1;
@@ -185,7 +187,10 @@ export interface WheelLook {
  * world: the sky's colour while you're on the outer ring (the page's own, usually).
  * tree and look: another wheel on the same machinery, like the + button's things to add.
  */
-export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null; tree?: WheelNode[]; look?: WheelLook }) {
+export function NavWheel({ world, tree: own, look }: { world?: string | null; tree?: WheelNode[]; look?: WheelLook }) {
+  const arranged = useWheel();
+  const tree = own ?? arranged;
+  const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(false);
@@ -220,6 +225,12 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
     setClosing(true);
   };
   const back = () => (focusSeg ? setFocus(focusSeg.parent?.n.id ?? null) : close());
+  // the editor opens once the wheel's history entry has gone, or popping it would close the editor too
+  const edit = () => {
+    if (history.state?.mmSheet) addEventListener('popstate', () => setEditing(true), { once: true });
+    else setEditing(true);
+    close();
+  };
   const live = useRef({ back });
   live.current = { back };
 
@@ -480,7 +491,10 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
           <p class="nw-kicker">{focusSeg ? (focusSeg.parent?.n.name ?? look?.kicker ?? t('Everything')) : (look?.kicker ?? t('Everything'))}</p>
           <h2 class="nw-title">{focusSeg ? focusSeg.n.name : (look?.title ?? t('Where to?'))}</h2>
         </div>
-        <button class="icon-btn nw-close" onClick={close} aria-label={t('Close')}><Icon name="x" /></button>
+        <div class="nw-tools">
+          {!look && <button class="icon-btn nw-close" onClick={edit} aria-label={t('Edit the wheel')} title={t('Edit the wheel')}><Icon name="pencil" /></button>}
+          <button class="icon-btn nw-close" onClick={close} aria-label={t('Close')}><Icon name="x" /></button>
+        </div>
       </header>
       <div class="nw-body">
         <div ref={stage} class={`nw nw-stage${opening ? ' opening' : ''}`}>
@@ -537,10 +551,11 @@ export function NavWheel({ world, tree = WHEEL, look }: { world?: string | null;
         aria-expanded={open}
         onClick={toggle}
       >
-        {look ? look.mark(open) : <WheelMark pop={pop} />}
+        {look ? look.mark(open) : <WheelMark pop={pop} tree={tree} />}
         {hint && <span class="nw-hint" aria-hidden="true">{t('Tap for the menu')}</span>}
       </button>
       {layer && createPortal(layer, document.body)}
+      {!look && <WheelEditor open={editing} onClose={() => setEditing(false)} />}
     </>
   );
 }

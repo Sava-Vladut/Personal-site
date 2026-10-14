@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.84.0',
+    date: '2026-10-14',
+    changes: [
+      'New page: Mind traps, forty cognitive biases ranked by how hard they pull (on the wheel under Insights)',
+      'Each trap has a power score from its pull, reach and harm, how solid the evidence is, the experiment that caught it, where it gets you, how to get out, and a strange-but-true fact',
+      'Try a dozen of them on yourself with quick questions, starting with three that show your fast and slow minds at work',
+      'A power map puts every trap in its family’s slice of a spiral, nearer the centre the harder it pulls; point at one to see what it’s related to',
+      'Every trap has its own inkblot, and you can count the times you catch yourself in one',
+      'Edit the wheel: the pencil on the wheel (or Settings → Navigation wheel) lets you hide places, change their order, and gather them into groups of your own',
+    ],
+  },
+  {
     version: '1.83.0',
     date: '2026-10-14',
     changes: [
