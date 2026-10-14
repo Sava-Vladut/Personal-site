@@ -8,3 +8,5 @@ data
 *.log
 .agents
 .codex
+# the Docs page reads its PDFs from a mounted folder, not the image
+docs

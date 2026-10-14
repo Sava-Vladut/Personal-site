@@ -22,6 +22,7 @@ export const WHEEL: WheelNode[] = [
   { id: 'people', name: t('People'), sub: t('The people in your life'), icon: 'users', hue: 'love-connection', to: 'people' },
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
   { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
+  { id: 'library', name: t('Docs'), sub: t('Your PDFs, every page searchable'), icon: 'file-search', hue: 'fear', to: 'library' },
   // everything that's numbers about you, in one place
   {
     id: 'insights', name: t('Insights'), sub: t('Your patterns, your places and your points'), icon: 'chart-dots', hue: 'hope-interest',

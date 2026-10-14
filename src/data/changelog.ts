@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.81.0',
+    date: '2026-10-14',
+    changes: [
+      'New Docs page (in the sidebar and on the wheel): your PDFs from the server, grouped by folder and shown by their first page',
+      'Search every page of every PDF at once; accents and capitals don’t matter, and "quoted words" match as a phrase',
+      'Open a result to read the document page by page, with your words highlighted on the page and buttons to jump between matches',
+      'Docs are only visible when you’re signed in, and open as the original PDF with one tap',
+    ],
+  },
+  {
     version: '1.80.0',
     date: '2026-10-14',
     changes: [

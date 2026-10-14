@@ -1,0 +1,108 @@
+/* ============================================================
+   Docs: the PDFs on the server, searched page by page (views/Library.tsx, views/DocView.tsx)
+   ============================================================ */
+
+.docs-spin { animation: docs-spin 0.9s linear infinite; }
+@keyframes docs-spin { to { rotate: 360deg; } }
+.docs-wait { display: flex; align-items: center; gap: 8px; padding: 18px 2px; font-size: var(--text-base); }
+.docs-count { margin: 14px 2px 0; }
+
+/* the first page of each document, like a stack of printouts */
+.doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 18px 14px; }
+.doc-grid > li { animation: pop-in 0.45s var(--spring) calc(var(--i) * 40ms) backwards; min-width: 0; }
+.doc-cover { display: grid; gap: 4px; width: 100%; text-align: left; }
+.doc-cover-page {
+  position: relative; display: block; overflow: hidden; margin-bottom: 6px;
+  border-radius: var(--r-s); border: 1px solid var(--line); background: var(--surface-2);
+  box-shadow: var(--shadow);
+  transition: translate var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.doc-cover-page img { width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity var(--dur-3) var(--ease); }
+.doc-cover-page.is-shown img { opacity: 1; }
+.doc-cover:hover .doc-cover-page { translate: 0 -3px; box-shadow: 0 2px 4px rgb(0 0 0 / 0.05), 0 16px 32px -14px rgb(0 0 0 / 0.28); }
+.doc-cover:active .doc-cover-page { translate: 0 0; }
+.doc-cover-title {
+  font-size: var(--text-m); font-weight: 600; line-height: 1.3; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+}
+.doc-cover-meta { font-size: var(--text-s); color: var(--ink-3); }
+
+/* documents whose names match */
+.doc-names { display: grid; gap: 2px; }
+.doc-name {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--h-m); padding: 6px 10px;
+  border-radius: var(--r-m); text-align: left; color: var(--ink-2); transition: background-color var(--dur-1);
+}
+.doc-name:hover { background: var(--surface-2); }
+.doc-name span { flex: 1; min-width: 0; color: var(--ink); font-weight: 550; }
+.doc-name small { color: var(--ink-3); font-size: var(--text-s); white-space: nowrap; }
+
+/* search results: a document, then the pages it's on */
+.doc-hits { animation: fade-in var(--dur-2) ease-out; }
+.doc-hits-head {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 2px 8px; text-align: left;
+  font-size: var(--text-base); font-weight: 600; color: var(--ink);
+}
+.doc-hits-head > svg { flex: none; color: var(--ink-3); }
+.doc-hits-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.doc-hits-head .badge { margin-left: 0; background: var(--surface-3); color: var(--ink-2); }
+.hit-list { display: grid; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); overflow: hidden; }
+.hit-list > li + li { border-top: 1px solid var(--line); }
+.hit {
+  display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: baseline; width: 100%;
+  padding: 11px 14px; text-align: left; transition: background-color var(--dur-1);
+}
+.hit:hover { background: var(--surface-2); }
+.hit-page { font-size: var(--text-s); font-weight: 650; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hit-text { font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); overflow-wrap: anywhere; }
+.hit-more { margin-top: 8px; }
+.hit-text mark, .doc-snippet mark {
+  padding: 0 2px; border-radius: 3px; color: var(--ink); font-weight: 600;
+  background: color-mix(in oklab, var(--emo-joy) 38%, transparent);
+}
+
+/* ---------- one document ---------- */
+
+.doc-page .page-head .title { font-size: clamp(22px, 5.6vw, 30px); overflow-wrap: anywhere; }
+.doc-bar {
+  position: sticky; top: calc(var(--safe-t) + 8px); z-index: 3;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; padding: 6px;
+  border-radius: var(--r-l); background: color-mix(in oklab, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.doc-bar .search { flex: 1 1 220px; margin: 0; }
+.doc-hitnav { display: flex; align-items: center; gap: 2px; }
+.doc-hitnav-count { min-width: 78px; text-align: center; font-size: var(--text-m); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.doc-snippet { margin: 0 2px 12px; font-size: var(--text-m); line-height: 1.5; color: var(--ink-3); }
+
+.doc-sheet {
+  position: relative; overflow: hidden; margin: 0 auto; max-width: 980px;
+  border-radius: var(--r-s); border: 1px solid var(--line); background: #fff; box-shadow: var(--shadow);
+}
+.doc-sheet::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(0 0 0 / 0.04) 50%, transparent 70%) 0 0 / 200% 100%;
+  animation: doc-wait 1.2s linear infinite;
+}
+.doc-sheet.is-drawn::before { display: none; }
+@keyframes doc-wait { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.doc-sheet img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity var(--dur-2) var(--ease); }
+.doc-sheet.is-drawn img { opacity: 1; }
+.doc-mark {
+  position: absolute; margin: -1px -2px; padding: 1px 2px; box-sizing: content-box; border-radius: 2px;
+  background: color-mix(in oklab, var(--emo-joy) 42%, transparent); mix-blend-mode: multiply; pointer-events: none;
+  animation: pop-in 0.35s var(--spring) backwards;
+}
+/* tap the left or right edge of the page to turn it */
+.doc-turn { position: absolute; top: 0; bottom: 0; width: 22%; cursor: pointer; }
+.doc-turn:disabled { cursor: default; }
+.doc-turn.is-prev { left: 0; }
+.doc-turn.is-next { right: 0; }
+.doc-turn:focus-visible { outline-offset: -4px; }
+
+.doc-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; }
+.doc-pager-at { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: var(--text-base); font-variant-numeric: tabular-nums; }
+.doc-pager-at input {
+  width: 64px; height: var(--h-s); border: 1px solid var(--line); border-radius: var(--r-s); background: var(--surface);
+  text-align: center; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums;
+}

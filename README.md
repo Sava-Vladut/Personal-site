@@ -52,6 +52,7 @@ Things to know:
 | **Public notes** | The globe at the top of a note makes just that note public: its title, text, pictures and day are copied to the server and anyone with the link (`/s/<secret>`) can read it, no sign-in. Off by default and chosen note by note. Feelings, people, place, weather and music stay private unless switched on for that note under **Also show**; people go by name only and a place by its name only (never coordinates). Needs `ADMIN_PASSWORD` (only the signed-in admin can share, update or stop). The link is 192 random bits, the page is `noindex`, and **Stop sharing** (or deleting the note) deletes the public copy. A note edited after sharing offers **Update public copy**; Settings → Public notes lists everything that's public. Stored in `data/shared/`. |
 | **Map** | Every entry saved with a place, as pins in the colour of what you felt. Pinch, drag or scroll to zoom; tap a spot for what you wrote there. From Settings, the Weather tab in Stats, or a note's Feelings page. |
 | **Stats** | A sky header and colour theme taken from the feeling you had most, with charts that animate in as you scroll to them. Range filter (7D / 30D / 90D / 1Y / All) with comparison against the previous period. **Overview**: average mood, pleasant share, entries, active days, streaks, feelings named, intensity, words, plain-language insights, mood over time, pleasant vs unpleasant. **Emotions**: interactive emotion wheel, worlds, top feelings, mix over time, feelings that show up together, what tends to come next. **Patterns**: calendar coloured by the dominant feeling, weekday × time-of-day heatmap, mood by weekday and by time of day, intensity. **Weather**: mood by sky, temperature, hours of daylight and daylight vs dark, and by place, with a map. **Dex**: every feeling you've named so far. Every chart has a table view. |
+| **Docs** | The PDFs in `docs/` on the server (folders become groups), each shown by its first page. Search every page of every document at once: accents and case don't matter (`frecventa` finds *frecvență*), every word must be on the page, and `"quoted words"` match as a phrase. Results list the pages with the words marked; open one to read the document a page at a time, with the matches highlighted on the page, a search inside the document that steps from match to match, and the original PDF a tap away. Signed-in admin only. |
 | **Settings** | Language (English or Română), light / dark / system theme, week start, emotion picker style, weather and places, Spotify connection, GitHub login with public and private repo counts, backup export/import, delete everything. |
 
 Mood score: each entry scores `intensity × valence` (pleasant +1, unpleasant −1), from −5 to +5.
@@ -111,6 +112,12 @@ The Channel points page reads the Twitch Channel Points Miner's analytics from `
 channels it mines from the page, point `TWITCH_CHANNELS_FILE` at a writable `channels.json` (`{"channels": [...]}`)
 that the miner reads on start, restart the miner when that file changes (for example with a systemd `.path` unit), and
 set `ADMIN_PASSWORD`: only browsers signed in with it can save the list.
+
+The Docs page reads PDFs from `LIBRARY_DIR` (default `docs/`, searched recursively) and needs poppler's `pdftotext`,
+`pdfinfo` and `pdftoppm` (`apt install poppler-utils`, `apk add poppler-utils`). Each document's text is read once
+and kept in `data/library/` until the file changes; pages are drawn when first opened and cached there too. New files
+show up within 30 seconds, or at once with the refresh button. Only browsers signed in with `ADMIN_PASSWORD` can list,
+search or read them, and `docs/**/*.pdf` is git-ignored so they never reach the public repo.
 
 See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
 and remaining browser-side and infrastructure scaling limits.
