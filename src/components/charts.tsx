@@ -16,20 +16,29 @@ export function RevealStack({ children }: { children: ComponentChildren }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current!;
-    const kids = [...el.children] as HTMLElement[];
+    const show = (k: Element) => ((k as HTMLElement).dataset.seen = '');
     if (typeof IntersectionObserver === 'undefined') {
-      kids.forEach((k) => (k.dataset.seen = ''));
+      [...el.children].forEach(show);
       return;
     }
     const io = new IntersectionObserver((rows) => {
       for (const r of rows)
         if (r.isIntersecting) {
-          (r.target as HTMLElement).dataset.seen = '';
+          show(r.target);
           io.unobserve(r.target);
         }
     }, { rootMargin: '0px 0px -6% 0px' });
-    kids.forEach((k) => io.observe(k));
-    return () => io.disconnect();
+    const watch = () => {
+      for (const k of el.children) if (!(k as HTMLElement).hasAttribute('data-seen')) io.observe(k);
+    };
+    watch();
+    // Cards that render later (data arriving, a filter changing) start paused too, so they need watching as well.
+    const mo = new MutationObserver(watch);
+    mo.observe(el, { childList: true });
+    return () => {
+      io.disconnect();
+      mo.disconnect();
+    };
   }, []);
   return <div ref={ref} class="stack-l reveal">{children}</div>;
 }

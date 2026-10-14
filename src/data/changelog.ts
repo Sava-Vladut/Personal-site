@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.82.3',
+    date: '2026-10-14',
+    changes: [
+      'Fixed cards on the stats and Twitch pages sometimes staying invisible on phones',
+    ],
+  },
+  {
     version: '1.82.2',
     date: '2026-10-14',
     changes: [
