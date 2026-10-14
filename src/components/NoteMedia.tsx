@@ -6,6 +6,7 @@ import type { Entry } from '../lib/store';
 import { Icon } from './icons';
 import { PhotoImg } from './Photo';
 import { t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 
 export type Side = 'left' | 'center' | 'right';
 
@@ -162,7 +163,7 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
       if (editing && e.pointerType !== 'mouse' && !selected)
         cur.timer = setTimeout(() => {
           if (gesture.current !== cur || cur.kind !== 'press' || cur.pts.size !== 1) return;
-          navigator.vibrate?.(10);
+          haptic(10);
           pickUp(cur.last);
         }, 300);
     }

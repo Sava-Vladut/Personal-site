@@ -8,7 +8,7 @@
   background: color-mix(in oklab, var(--bg) 64%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   box-shadow: 0 14px 34px -22px color-mix(in oklab, var(--c) 85%, transparent);
-  animation: pop-in 0.5s var(--spring) 0.2s backwards;
+  animation: pop-in var(--dur-3) var(--spring) 0.2s backwards;
   transition: border-color var(--dur-3), box-shadow var(--dur-3);
 }
 .media-top .sotd { max-width: 640px; }
@@ -32,7 +32,7 @@
   font-size: var(--text-s); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--on-color);
   background: linear-gradient(135deg, var(--emo-hope-interest), var(--emo-anger));
   box-shadow: 0 4px 12px -6px var(--emo-hope-interest);
-  animation: pop-in 0.45s var(--spring) 0.3s backwards;
+  animation: pop-in var(--dur-3) var(--spring) 0.3s backwards;
 }
 .sotd-streak svg { animation: sotd-flicker 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes sotd-flicker { 50% { transform: scale(1.12) rotate(-4deg); } }
@@ -41,8 +41,8 @@
   width: var(--h-s); height: var(--h-s); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2);
   transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-3) var(--spring);
 }
-.sotd-tool:hover { background: color-mix(in oklab, var(--surface) 70%, transparent); color: var(--ink); }
-.sotd-tool:active:not(:disabled) { scale: 0.88; transition-duration: 0.15s, 0.15s, 0.12s; }
+@media (hover: hover) { .sotd-tool:hover { background: color-mix(in oklab, var(--surface) 70%, transparent); color: var(--ink); } }
+.sotd-tool:active:not(:disabled) { scale: 0.88; transition-duration: var(--dur-1), var(--dur-1), var(--dur-0); }
 .sotd-tool:disabled { opacity: 0.4; }
 
 /* a little equaliser by the title: it dances while the song plays, and breathes while it waits */
@@ -51,11 +51,11 @@
 .eq i:nth-child(2) { animation-delay: -0.6s; }
 .eq i:nth-child(3) { animation-delay: -1.3s; }
 .eq i:nth-child(4) { animation-delay: -0.2s; }
-.eq.is-on i { animation-duration: 0.8s; }
+.eq.is-on i { animation-duration: var(--dur-5); }
 @keyframes eq { 0%, 100% { transform: scaleY(0.3); } 30% { transform: scaleY(1); } 60% { transform: scaleY(0.55); } }
 
 /* today's record */
-.sotd-now { display: grid; gap: 8px; animation: sotd-land 0.6s var(--spring) backwards; }
+.sotd-now { display: grid; gap: 8px; animation: sotd-land var(--dur-4) var(--spring) backwards; }
 @keyframes sotd-land { from { opacity: 0; transform: translateY(10px) scale(0.94); } }
 .sotd-main {
   display: flex; align-items: center; gap: 12px; width: 100%; padding: 6px 8px 6px 6px; text-align: left; border-radius: var(--r-m);
@@ -67,7 +67,7 @@
 .sotd-title { font: 600 var(--text-l)/1.2 var(--serif); letter-spacing: -0.01em; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sotd-sub { font-size: var(--text-m); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sotd-times { margin-top: 1px; font-size: var(--text-xs); font-weight: 600; color: var(--tint); }
-.sotd-player { animation: fade-in 0.3s ease-out; }
+.sotd-player { animation: fade-in var(--dur-2) ease-out; }
 .sotd-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .sotd-actions .btn-quiet { background: color-mix(in oklab, var(--surface) 72%, transparent); }
 .sotd-actions .btn-primary { background: var(--c); color: var(--on-color); box-shadow: 0 8px 18px -10px var(--c); }
@@ -83,15 +83,15 @@
 .sotd-idea {
   flex: none; width: 82px; display: grid; justify-items: start; gap: 5px; padding: 6px; border-radius: var(--r-m); text-align: left; scroll-snap-align: start;
   background: color-mix(in oklab, var(--surface) 70%, transparent);
-  animation: spine-in 0.5s var(--spring) calc(var(--k) * 45ms + 120ms) backwards;
+  animation: spine-in var(--dur-3) var(--spring) calc(var(--k) * 45ms + 120ms) backwards;
   transition: transform var(--dur-2) var(--spring), background-color var(--dur-2);
 }
-.sotd-idea:hover { background: var(--surface); transform: translateY(-2px); }
+@media (hover: hover) { .sotd-idea:hover { background: var(--surface); transform: translateY(-2px); } }
 .sotd-idea-title { max-width: 100%; font: 600 var(--text-s)/1.25 var(--serif); color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* the last two weeks: a little record for each day */
 .sotd-strip { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; margin-top: 7px; padding-top: 6px; border-top: 1px dashed color-mix(in oklab, var(--c) 30%, var(--line)); }
-.sotd-day { display: grid; justify-items: center; gap: 2px; padding: 1px 0 0; border-radius: var(--r-s); animation: pop-in 0.4s var(--spring) calc(var(--i) * 25ms + 250ms) backwards; }
+.sotd-day { display: grid; justify-items: center; gap: 2px; padding: 1px 0 0; border-radius: var(--r-s); animation: pop-in var(--dur-3) var(--spring) calc(var(--i) * 25ms + 250ms) backwards; }
 .sotd-day small { font-size: 9px; line-height: 1; font-weight: 600; color: var(--ink-3); }
 .sotd-disc {
   position: relative; width: 100%; max-width: 22px; aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -104,7 +104,7 @@
 .sotd-day.is-today small { color: var(--tint); }
 .sotd-day.is-today .sotd-disc { outline: 2px solid var(--c); outline-offset: 2px; }
 .sotd-day.is-today.has .sotd-disc { animation: turn 6s linear infinite; }
-.sotd-day:hover .sotd-disc { transform: scale(1.15); }
+@media (hover: hover) { .sotd-day:hover .sotd-disc { transform: scale(1.15); } }
 
 .sotd-picks { margin-top: 10px; }
 .sotd-pick-count { flex: none; margin-left: auto; padding: 2px 8px; border-radius: var(--r-pill); font-size: var(--text-s); font-weight: 650; background: var(--surface-2); color: var(--ink-2); }
@@ -115,7 +115,7 @@
   position: relative; isolation: isolate; overflow: hidden; margin-top: 12px; padding: 10px 10px 8px;
   border-radius: var(--r-l); border: 1px solid var(--line); background: var(--surface);
   box-shadow: 0 14px 34px -26px color-mix(in oklab, var(--emo-love-connection) 70%, transparent);
-  animation: pop-in 0.5s var(--spring) backwards;
+  animation: pop-in var(--dur-3) var(--spring) backwards;
 }
 .sotd-clouds {
   position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.6;
@@ -132,20 +132,20 @@
   background: color-mix(in oklab, var(--surface) 70%, transparent); box-shadow: inset 0 0 0 1px var(--line);
   transition: background-color var(--dur-1), color var(--dur-1);
 }
-.sotd-more:hover { background: var(--surface); color: var(--ink); }
+@media (hover: hover) { .sotd-more:hover { background: var(--surface); color: var(--ink); } }
 .sotd-more svg { transition: transform var(--dur-2) var(--spring); }
 
 .sotd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
 .sotd-tile-n { display: flex; align-items: center; gap: 4px; }
 
 .sotd-rank { list-style: none; display: grid; gap: 4px; margin: 0; padding: 0; }
-.sotd-rank li { animation: rise-in 0.45s var(--ease-emph) calc(var(--i) * 70ms + 150ms) backwards; }
+.sotd-rank li { animation: rise-in var(--dur-3) var(--ease-emph) calc(var(--i) * 70ms + 150ms) backwards; }
 .sotd-rank-row {
   display: flex; align-items: center; gap: 9px; width: 100%; padding: 5px 11px 5px 6px; text-align: left; border-radius: var(--r-m);
   background: color-mix(in oklab, var(--surface) 80%, transparent); border: 1px solid color-mix(in oklab, var(--line) 85%, transparent);
   transition: border-color var(--dur-2), translate var(--dur-2) var(--spring);
 }
-.sotd-rank-row:hover { border-color: color-mix(in oklab, var(--t) 45%, var(--line)); translate: 2px 0; }
+@media (hover: hover) { .sotd-rank-row:hover { border-color: color-mix(in oklab, var(--t) 45%, var(--line)); translate: 2px 0; } }
 .sotd-rank li:first-child .sotd-rank-row {
   background: linear-gradient(120deg, color-mix(in oklab, var(--t) 15%, var(--surface)), color-mix(in oklab, var(--surface) 80%, transparent) 75%);
   border-color: color-mix(in oklab, var(--t) 38%, var(--line));
@@ -165,7 +165,7 @@
 .sotd-bar i {
   display: block; height: 100%; width: calc(max(var(--w), 0.06) * 100%); border-radius: inherit; transform-origin: left;
   background: linear-gradient(90deg, var(--t), color-mix(in oklab, var(--t) 55%, var(--emo-joy)));
-  animation: grow-x 0.8s var(--ease-emph) calc(var(--i) * 70ms + 300ms) backwards;
+  animation: grow-x var(--dur-5) var(--ease-emph) calc(var(--i) * 70ms + 300ms) backwards;
 }
 .sotd-rank-n { flex: none; display: grid; justify-items: end; line-height: 1.05; }
 .sotd-rank-n b { font: 500 var(--text-l)/1.1 var(--serif); font-variant-numeric: tabular-nums; color: var(--t); }

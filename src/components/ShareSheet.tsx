@@ -8,6 +8,7 @@ import { usePeopleById } from './people';
 import { placeLabel, weatherLine } from './weather';
 import { Sheet } from './Sheet';
 import { t } from '../lib/i18n';
+import { ask } from './Confirm';
 import '../styles/shared.css';
 
 const PART_LABEL: Record<SharePart, string> = {
@@ -73,8 +74,8 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
       onChange(await publish(entry, chosen));
       toast(share ? t('Public copy updated') : t('This note is public'));
     });
-  const stop = () => {
-    if (!share || !confirm(t('Stop sharing this note? Its link will stop working for everyone.'))) return;
+  const stop = async () => {
+    if (!share || !(await ask({ title: t('Stop sharing this note?'), text: t('Its link will stop working for everyone.'), ok: t('Stop sharing'), danger: true }))) return;
     return run(async () => {
       await unpublish(share.token);
       onChange(null);

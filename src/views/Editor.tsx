@@ -35,6 +35,7 @@ import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
 import '../styles/notes.css';
 import { t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 
 type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music';
 /** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
@@ -438,6 +439,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
 
   const remove = async () => {
     if (removing.current) return;
+    haptic(12);
     removing.current = true;
     clearTimeout(timer.current);
     dirty.current = false;
@@ -654,7 +656,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         const merged = mergeMedia(b, j, into);
         setBody(merged);
         setSel(mediaKey(merged.media[into > j ? into - 1 : into]));
-        navigator.vibrate?.(10);
+        haptic(10);
         return;
       }
       let next = moveMedia(b, j, target.seg, target.pos);

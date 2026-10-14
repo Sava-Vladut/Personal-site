@@ -17,12 +17,12 @@
 .stars svg.on { color: var(--emo-joy); }
 .stars svg.on g { fill: currentColor; }
 .stars.is-input { gap: 2px; margin-top: 8px; margin-left: -4px; }
-.stars.is-input button { padding: 4px; border-radius: var(--r-s); transition: scale 0.35s var(--spring-bouncy); }
-.stars.is-input button:active { scale: 0.85; transition-duration: 0.1s; }
+.stars.is-input button { padding: 4px; border-radius: var(--r-s); transition: scale var(--dur-3) var(--spring-bouncy); }
+.stars.is-input button:active { scale: 0.85; transition-duration: var(--dur-0); }
 
 .book-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .book-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 7px 10px 7px 7px; border-radius: var(--r-m); transition: background-color var(--dur-1); }
-.book-row:hover { background: var(--surface-2); }
+@media (hover: hover) { .book-row:hover { background: var(--surface-2); } }
 .book-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; justify-items: start; }
 .book-row-title { max-width: 100%; font-weight: 600; font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .book-row-sub { max-width: 100%; font-size: var(--text-m); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

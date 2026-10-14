@@ -17,6 +17,7 @@ import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } 
 import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18n';
 import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
+import { ask } from '../components/Confirm';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -115,10 +116,10 @@ export function Settings({ query }: { query: URLSearchParams }) {
       count(entries.length, 'entry', 'entries'), people.length ? count(people.length, 'person', 'people') : '', books.length ? count(books.length, 'book', 'books') : '',
       songs.length ? count(songs.length, 'record', 'records') : '', repos.length ? count(repos.length, 'repo', 'repos') : '',
     ].filter(Boolean));
-    const question = sync.on
-      ? t('Delete all {what} from this device and every device synced with it? This can’t be undone — export a backup first if you might want them.', { what })
-      : t('Delete all {what} from this device? This can’t be undone — export a backup first if you might want them.', { what });
-    if (!confirm(question)) return;
+    const text = sync.on
+      ? t('{what} will be deleted from this device and every device synced with it. This can’t be undone — export a backup first if you might want them.', { what })
+      : t('{what} will be deleted from this device. This can’t be undone — export a backup first if you might want them.', { what });
+    if (!(await ask({ title: t('Delete everything?'), text, ok: t('Delete all'), danger: true }))) return;
     entries.forEach(takeDown); // a public note's page goes with it
     await deleteAll();
     forgetFix();
@@ -126,7 +127,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   };
   const signedIn = signedInHere();
   const leave = async () => {
-    if (!confirm(t('Sign out on this device? It opens on the intro until you sign in again.'))) return;
+    if (!(await ask({ title: t('Sign out on this device?'), text: t('It opens on the intro until you sign in again.'), ok: t('Sign out') }))) return;
     try {
       await signOut();
       location.reload();
@@ -135,14 +136,15 @@ export function Settings({ query }: { query: URLSearchParams }) {
     }
   };
 
-  const toggleSync = () => {
+  const toggleSync = async () => {
     if (!sync.on) return startSync();
-    if (!confirm(t('Stop syncing this device?\n\nYour entries stay here, and the copy on the server stays for your other devices. To reconnect, load with your code: {code}', { code: formatCode(sync.code!) }))) return;
+    const text = t('Your entries stay here, and the copy on the server stays for your other devices. To reconnect, load with your code: {code}', { code: formatCode(sync.code!) });
+    if (!(await ask({ title: t('Stop syncing this device?'), text, ok: t('Stop syncing') }))) return;
     stopSync();
     toast(t('Sync turned off on this device'));
   };
   const removeServer = async () => {
-    if (!confirm(t('Delete the copy on the server? Every device stops syncing and your code stops working. Entries already on your devices stay.'))) return;
+    if (!(await ask({ title: t('Delete the copy on the server?'), text: t('Every device stops syncing and your code stops working. Entries already on your devices stay.'), ok: t('Delete'), danger: true }))) return;
     try {
       await removeServerCopy();
       toast(t('Server copy deleted'));
@@ -531,7 +533,7 @@ function PublicNotes() {
   }, []);
 
   const stop = async (n: SharedItem) => {
-    if (!confirm(t('Stop sharing “{title}”? Its link will stop working for everyone.', { title: n.title || t('Untitled') }))) return;
+    if (!(await ask({ title: t('Stop sharing “{title}”?', { title: n.title || t('Untitled') }), text: t('Its link will stop working for everyone.'), ok: t('Stop sharing'), danger: true }))) return;
     try {
       await unpublish(n.token);
     } catch (e) {

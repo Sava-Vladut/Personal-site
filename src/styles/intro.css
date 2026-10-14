@@ -30,7 +30,7 @@
   padding: 7px 9px; border-radius: var(--r-s); font: inherit; letter-spacing: 0.14em; color: var(--ink-3);
   transition: color var(--dur-1), background-color var(--dur-1);
 }
-.intro-langs button:hover { color: var(--ink); }
+@media (hover: hover) { .intro-langs button:hover { color: var(--ink); } }
 .intro-langs button[aria-pressed='true'] { color: var(--ink); background: color-mix(in oklab, var(--ink) 9%, transparent); }
 
 .intro-stage { position: relative; flex: none; width: min(100%, 1040px); height: clamp(260px, min(56dvh, 92vw), 640px); margin: 2px 0 6px; }
@@ -64,7 +64,8 @@
   font-size: var(--text-m); color: var(--ink-3); transition: color var(--dur-1);
   animation: rise-in 0.5s var(--ease-emph) 1.15s backwards;
 }
-.intro-about-toggle:hover, .intro-about-toggle[aria-expanded='true'] { color: var(--ink); }
+.intro-about-toggle[aria-expanded='true'] { color: var(--ink); }
+@media (hover: hover) { .intro-about-toggle:hover { color: var(--ink); } }
 .intro-about {
   display: grid; gap: 9px; width: 100%; margin: 0; padding: 14px 16px; list-style: none; text-align: left;
   border-radius: var(--r-m); font-size: var(--text-base); line-height: 1.45; color: var(--ink-2);

@@ -45,13 +45,13 @@
     linear-gradient(90deg, rgb(0 0 0 / 0.32), rgb(255 255 255 / 0.05) 14%, rgb(255 255 255 / 0.17) 28%, rgb(255 255 255 / 0) 54%, rgb(0 0 0 / 0.1) 80%, rgb(0 0 0 / 0.36)),
     var(--cloth);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 1px 0 0 rgb(0 0 0 / 0.22);
-  transition: translate 0.35s var(--spring), filter var(--dur-2);
-  animation: spine-in 0.55s var(--spring) calc(min(var(--k), 30) * 20ms) backwards;
+  transition: translate var(--dur-3) var(--spring), filter var(--dur-2);
+  animation: spine-in var(--dur-4) var(--spring) calc(min(var(--k), 30) * 20ms) backwards;
 }
 .spine.on-light { --gold: #8d6b2c; color: var(--paper-ink); }
 .spine.is-dnf { filter: saturate(0.5) brightness(0.94); } /* left in the sun */
 @media (hover: hover) { .spine:hover { translate: 0 -8px; } }
-.spine:active { translate: 0 -14px; transition-duration: 0.12s; }
+.spine:active { translate: 0 -14px; transition-duration: var(--dur-0); }
 .spine:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @keyframes spine-in { from { translate: 0 16px; opacity: 0; } }
 
@@ -84,7 +84,7 @@
   background: var(--paper); color: var(--paper-ink);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 10px 24px -14px rgb(0 0 0 / 0.4);
   font-family: 'Courier New', Courier, ui-monospace, monospace;
-  animation: card-out 0.8s var(--spring) 0.15s backwards;
+  animation: card-out var(--dur-5) var(--spring) 0.15s backwards;
 }
 @keyframes card-out { from { translate: 0 54px; } }
 .due-head { display: flex; justify-content: space-between; gap: 10px; font: 700 var(--text-xs)/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--stamp-red); }
@@ -146,7 +146,7 @@
 .record-disc {
   position: absolute; left: calc(var(--s) * 0.03); top: calc(var(--s) * 0.03); width: calc(var(--s) * 0.94); height: calc(var(--s) * 0.94);
   border-radius: 50%; background: #121212; box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
-  translate: calc(var(--s) * 0.3) 0; transition: translate 0.7s var(--spring);
+  translate: calc(var(--s) * 0.3) 0; transition: translate var(--dur-4) var(--spring);
 }
 /* the light on the vinyl stays put while it turns */
 .record-disc::after {
@@ -196,7 +196,7 @@
 }
 
 /* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind; on repeat, slowly */
-.record { transition: width 0.7s var(--spring); }
+.record { transition: width var(--dur-4) var(--spring); }
 /* a hover pulls the record out a little; once it's on, it's all the way out */
 @media (hover: hover) { :is(.deck-main, .track, .sleeve, .mini-card, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record { width: calc(var(--s) * 1.74); }
@@ -216,7 +216,7 @@
   background: var(--surface-2); color: var(--ink); transition: background-color var(--dur-2), color var(--dur-2);
 }
 .deck.is-on .deck-button { background: var(--ink); color: var(--on-ink); }
-.deck-player { display: grid; gap: 10px; padding: 0 10px 10px; animation: fade-in 0.3s ease-out; }
+.deck-player { display: grid; gap: 10px; padding: 0 10px 10px; animation: fade-in var(--dur-2) ease-out; }
 
 /* in the music picker */
 .track-thing { flex: none; display: flex; align-items: center; }
@@ -237,11 +237,11 @@
   position: relative; display: grid; justify-items: start; align-content: start; gap: 1px; min-width: 0; padding: 8px 8px 7px; text-align: left; border-radius: var(--r-m);
   background: linear-gradient(120deg, color-mix(in oklab, var(--t) 12%, var(--surface)), var(--surface) 70%);
   border: 1px solid color-mix(in oklab, var(--t) 24%, var(--line));
-  animation: spine-in 0.5s var(--spring) calc(min(var(--k), 20) * 30ms) backwards;
+  animation: spine-in var(--dur-3) var(--spring) calc(min(var(--k), 20) * 30ms) backwards;
   transition: transform var(--dur-2) var(--spring), border-color var(--dur-2), scale var(--dur-3) var(--spring);
 }
-.sleeve:hover { border-color: color-mix(in oklab, var(--t) 55%, var(--line)); transform: translateY(-2px); }
-.sleeve:active { scale: 0.96; transition-duration: 0.2s, 0.2s, 0.12s; }
+@media (hover: hover) { .sleeve:hover { border-color: color-mix(in oklab, var(--t) 55%, var(--line)); transform: translateY(-2px); } }
+.sleeve:active { scale: 0.96; transition-duration: var(--dur-1), var(--dur-1), var(--dur-0); }
 .sleeve:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .sleeve :is(.record, .cassette) { margin-bottom: 6px; }
 .sleeve-title { max-width: 100%; font: 600 var(--text-m)/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -263,8 +263,8 @@
   text-align: left; border-radius: var(--r-m); background: var(--surface); border: 1px solid var(--line);
   transition: border-color var(--dur-2), scale var(--dur-3) var(--spring);
 }
-button.mini-card:hover { border-color: var(--line-2); }
-button.mini-card:active { scale: 0.97; transition-duration: 0.2s, 0.12s; }
+@media (hover: hover) { button.mini-card:hover { border-color: var(--line-2); } }
+button.mini-card:active { scale: 0.97; transition-duration: var(--dur-1), var(--dur-0); }
 .mini-card.is-repeat {
   background: linear-gradient(120deg, color-mix(in oklab, var(--emo-love-connection) 13%, var(--surface)), var(--surface) 72%);
   border-color: color-mix(in oklab, var(--emo-love-connection) 28%, var(--line));
@@ -276,7 +276,7 @@ button.mini-card:active { scale: 0.97; transition-duration: 0.2s, 0.12s; }
   flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   background: var(--ink); color: var(--on-ink); transition: scale var(--dur-3) var(--spring);
 }
-.mini-keep:active { scale: 0.88; transition-duration: 0.12s; }
+.mini-keep:active { scale: 0.88; transition-duration: var(--dur-0); }
 .section-title > svg { vertical-align: -3px; margin-right: 4px; }
 
 .song-row .record, .song-row .cassette { flex: none; }
@@ -292,7 +292,7 @@ button.mini-card:active { scale: 0.97; transition-duration: 0.2s, 0.12s; }
 .song-head .stars.is-input { margin-left: 0; }
 .song-actions { margin-top: 12px; flex-wrap: wrap; justify-content: center; }
 .song-actions .btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
-.song-player { margin-top: 16px; animation: fade-in 0.3s ease-out; }
+.song-player { margin-top: 16px; animation: fade-in var(--dur-2) ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
   .sleeve { animation: none; }
@@ -311,11 +311,11 @@ button.mini-card:active { scale: 0.97; transition-duration: 0.2s, 0.12s; }
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   backdrop-filter: blur(14px) saturate(1.4);
 }
-.media-top .search { margin: 10px 0 0; animation: rise-in 0.35s var(--ease-emph) backwards; }
-.media-panel { animation: fade-in 0.25s ease-out; }
+.media-top .search { margin: 10px 0 0; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
+.media-panel { animation: fade-in var(--dur-2) ease-out; }
 
 /* the title rises out of the clouds a letter at a time */
-.cloud-title span { display: inline-block; animation: cloud-letter 0.7s var(--ease-emph) calc(var(--i) * 30ms) backwards; }
+.cloud-title span { display: inline-block; animation: cloud-letter var(--dur-4) var(--ease-emph) calc(var(--i) * 30ms) backwards; }
 @keyframes cloud-letter { from { opacity: 0; translate: 0 0.4em; filter: blur(6px); } }
 
 /* a row of small numbers, each popping in after the last (the .stat itself is in app.css) */
@@ -326,7 +326,7 @@ button.mini-card:active { scale: 0.97; transition-duration: 0.2s, 0.12s; }
 .chips.media-filters { margin-block: 10px 0; gap: 6px; }
 .chips.media-filters .chip { height: var(--h-s); padding: 0 11px; font-size: var(--text-m); }
 .sort-chip { gap: 4px; padding-left: 10px; margin-right: 4px; background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
-.sort-chip span { animation: fade-in 0.25s ease-out; }
+.sort-chip span { animation: fade-in var(--dur-2) ease-out; }
 
 .media-panel .section { margin-top: 14px; }
 .media-panel .section-title { margin-bottom: 6px; }

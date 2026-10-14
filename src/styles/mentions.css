@@ -43,7 +43,7 @@
   position: fixed; z-index: 75; display: grid; gap: 12px; padding: 14px; isolation: isolate;
   border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 22px 48px -18px rgb(0 0 0 / 0.45);
-  transform-origin: var(--tail) 0; animation: peek-in 0.24s var(--ease-emph);
+  transform-origin: var(--tail) 0; animation: peek-in var(--dur-2) var(--ease-emph);
 }
 .peek.is-above { transform-origin: var(--tail) 100%; }
 .peek-content { display: grid; gap: 12px; max-height: max(0px, calc(var(--peek-height) - 30px)); overflow-y: auto; overscroll-behavior: contain; }
@@ -119,11 +119,11 @@
 .mention-burst::before {
   content: ''; position: absolute; left: calc(var(--w) / -2 - 5px); top: calc(var(--h) / -2 - 3px);
   width: calc(var(--w) + 10px); height: calc(var(--h) + 6px); border-radius: var(--r-pill); border: 2px solid var(--c);
-  animation: burst-ring 0.6s ease-out forwards;
+  animation: burst-ring var(--dur-4) ease-out forwards;
 }
 .mention-burst i {
   position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--c);
-  animation: burst-dot 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: burst-dot var(--dur-4) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 @keyframes burst-ring { from { opacity: 0.9; scale: 0.85; } to { opacity: 0; scale: 1.2; } }
 @keyframes burst-dot {

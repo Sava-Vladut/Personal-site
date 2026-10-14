@@ -12,7 +12,7 @@
   animation: nw-spin 9.3s linear infinite, nw-glow 2.4s ease-in-out infinite alternate;
   transition: opacity var(--dur-2), inset 0.27s var(--spring);
 }
-.nw-trigger:hover::before { opacity: 0.72; inset: -3px; }
+@media (hover: hover) { .nw-trigger:hover::before { opacity: 0.72; inset: -3px; } }
 @keyframes nw-glow { from { scale: 0.82; } to { scale: 1.16; } }
 /* every few seconds the mark gives a twirl, and rings of light roll out from it */
 .nw-mark { animation: nw-twirl 4.67s var(--spring) infinite; }
@@ -31,15 +31,15 @@
   background: color-mix(in oklab, var(--surface) 72%, transparent);
   box-shadow: 0 0 0 0.5px var(--line-2), 0 4px 14px -6px rgb(0 0 0 / 0.25);
 }
-.icon-btn.nw-trigger:hover, .journal-top .icon-btn.nw-trigger:hover { background: none; }
+@media (hover: hover) { .icon-btn.nw-trigger:hover, .journal-top .icon-btn.nw-trigger:hover { background: none; } }
 
 .nw-mark-wrap { display: grid; transition: scale var(--dur-2) var(--spring-bouncy), rotate var(--dur-3) var(--spring); }
-.nw-trigger:hover .nw-mark-wrap { scale: 1.12; }
+@media (hover: hover) { .nw-trigger:hover .nw-mark-wrap { scale: 1.12; } }
 .nw-trigger:active .nw-mark-wrap { scale: 0.88; }
 .nw-trigger[aria-expanded='true'] .nw-mark-wrap { scale: 0.8; rotate: 90deg; }
 .nw-mark { overflow: visible; }
 .nw-mark-arcs { transform-box: view-box; transform-origin: 20px 20px; animation: nw-spin 12s linear infinite; }
-.nw-trigger:hover .nw-mark-arcs { animation-duration: 3.3s; }
+@media (hover: hover) { .nw-trigger:hover .nw-mark-arcs { animation-duration: 3.3s; } }
 /* a wave of light running round the ring: each arc swells in turn */
 .nw-mark-arcs path {
   fill: none; stroke-width: 4.6; stroke-linecap: round;
@@ -73,7 +73,8 @@
 }
 /* the extra ones that join in while it's pointed at */
 .nw-fx .more { display: none; }
-.nw-trigger:hover .nw-fx .more, .nw-trigger:focus-visible .nw-fx .more { display: block; }
+.nw-trigger:focus-visible .nw-fx .more { display: block; }
+@media (hover: hover) { .nw-trigger:hover .nw-fx .more { display: block; } }
 .nw-fx b {
   position: absolute; left: var(--x); top: var(--y); width: var(--z); height: var(--z); margin: calc(var(--z) / -2) 0 0 calc(var(--z) / -2);
   background: var(--ink); opacity: 0; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);

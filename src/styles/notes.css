@@ -44,14 +44,14 @@
 
 .details {
   position: fixed; inset: 0; z-index: 40; overflow-y: auto; overscroll-behavior: contain; outline: none;
-  background: var(--bg); animation: details-in 0.38s var(--ease-emph);
+  background: var(--bg); animation: details-in var(--dur-3) var(--ease-emph);
 }
-.details.closing { animation: details-out 0.22s cubic-bezier(0.4, 0, 0.9, 0.6) forwards; pointer-events: none; }
+.details.closing { animation: details-out var(--dur-1) cubic-bezier(0.4, 0, 0.9, 0.6) forwards; pointer-events: none; }
 @keyframes details-in { from { transform: translateX(100%); box-shadow: -20px 0 40px rgb(0 0 0 / 0.12); } }
 @keyframes details-out { to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) {
-  .details { animation: fade-in 0.15s ease-out; }
-  .details.closing { animation: fade-out 0.15s ease-in forwards; }
+  .details { animation: fade-in var(--dur-1) ease-out; }
+  .details.closing { animation: fade-out var(--dur-1) ease-in forwards; }
 }
 .details-page { max-width: 640px; margin: 0 auto; padding: calc(var(--safe-t) + 18px) var(--gutter) calc(var(--safe-b) + 40px); }
 .details-title { margin-top: 4px; }
@@ -75,7 +75,7 @@
   background: var(--surface-2); color: var(--ink-2); font-size: var(--text-xs); font-weight: 600;
   transition: background-color var(--dur-1), box-shadow var(--dur-1);
 }
-.cover-pick:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
+@media (hover: hover) { .cover-pick:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); } }
 .cover-pick.is-pic img, .cover-pick.is-pic .photo-ph { width: 100%; height: 100%; object-fit: cover; }
 .cover-pick[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
 
@@ -116,13 +116,13 @@
   bottom: max(calc(var(--safe-b) + 10px), calc(var(--kb, 0px) + 6px));
   display: flex; align-items: center; gap: 2px; width: min(calc(var(--toolbar-width, 100%) - 20px), 680px);
   border-radius: var(--r-pill); padding: 4px;
-  animation: rise-in 0.4s var(--ease-emph);
-  transition: translate 0.35s var(--ease-emph), opacity var(--dur-2), width var(--dur-2) var(--ease-emph);
+  animation: rise-in var(--dur-3) var(--ease-emph);
+  transition: translate var(--dur-3) var(--ease-emph), opacity var(--dur-2), width var(--dur-2) var(--ease-emph);
 }
 /* tucked away while reading down the note */
 .format-bar.is-tucked { translate: -50% calc(100% + 16px + var(--safe-b)); opacity: 0; pointer-events: none; }
 /* the Aa button swaps the add buttons and the text tools; whichever shows eases in */
-.format-bar:not(.is-swapped) :is(.format-scroll, .format-fixed) { animation: format-in 0.32s var(--ease-emph); }
+.format-bar:not(.is-swapped) :is(.format-scroll, .format-fixed) { animation: format-in var(--dur-2) var(--ease-emph); }
 @keyframes format-in { from { opacity: 0; translate: -6px 0; filter: blur(2px); } }
 .format-scroll, .format-fixed, .format-group { display: flex; align-items: center; gap: 0; }
 .format-group { flex: none; }
@@ -138,7 +138,7 @@
 .format-fixed { flex: none; }
 .format-btn {
   flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ink-2); transition: background-color 0.18s, color 0.18s, scale 0.18s var(--spring-bouncy, ease-out);
+  color: var(--ink-2); transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-1) var(--spring-bouncy, ease-out);
   -webkit-tap-highlight-color: transparent;
 }
 .format-btn svg { transition: scale var(--dur-2) var(--spring-bouncy, ease-out); }
@@ -304,7 +304,8 @@
   content: ''; position: absolute; inset: 0 0 auto; height: 150px; z-index: -1; pointer-events: none;
   background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 60%, transparent) 40%, transparent);
 }
-.journal-top .icon-btn:hover, .journal-top .icon-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--surface) 70%, transparent); }
+.journal-top .icon-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--surface) 70%, transparent); }
+@media (hover: hover) { .journal-top .icon-btn:hover { background: color-mix(in oklab, var(--surface) 70%, transparent); } }
 .journal-top .page-head { margin-bottom: 18px; }
 /* the date shares its row with the controls: keep it to whole words, a touch smaller so "Wednesday" fits */
 .journal-top .page-title-row > .title { font-size: clamp(24px, 6.6vw, 29px); overflow-wrap: normal; }

@@ -21,6 +21,7 @@ import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
 import { lastSeen, useMoments, usePages } from './People';
 import { t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 
 type Open = null | 'icon' | 'emotion';
 
@@ -174,7 +175,7 @@ export function PersonView({ id }: { id: string }) {
 
   const remove = async () => {
     if (removing.current) return;
-    if (saved.current && !confirm(t('Delete {name}? Notes they’re tagged in stay in your journal.', { name: draft.name.trim() || t('this person') }))) return;
+    haptic(12);
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;

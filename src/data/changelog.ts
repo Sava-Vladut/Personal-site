@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.83.0',
+    date: '2026-10-14',
+    changes: [
+      'On phones, tapping a button no longer leaves it looking pressed or selected afterwards',
+      'Removing a person, book, song or repo happens at once with Undo, like deleting a note, instead of asking first',
+      'Things that can’t be undone (deleting everything, signing out, stopping sync or sharing) ask in the app’s own sheet instead of a browser pop-up',
+      'The phone gives the same small tick everywhere: switches, swiping past the pin or delete point, pinning, deleting and the hold menu — now on iPhone too',
+      'Animations across the app share one set of speeds, so similar things move at the same pace',
+    ],
+  },
+  {
     version: '1.82.6',
     date: '2026-10-14',
     changes: [

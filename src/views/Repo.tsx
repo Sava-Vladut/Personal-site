@@ -15,6 +15,7 @@ import { Sky } from '../components/Sky';
 import { Spin, languageColor } from '../components/repos';
 import { coreOf } from '../data/emotions';
 import { t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 import '../styles/repos.css';
 
 /** What a repo's page keeps of GitHub's description, so the list can show it without asking. */
@@ -281,7 +282,7 @@ export function RepoView({ id }: { id: string }) {
 
   const remove = async () => {
     if (removing.current) return;
-    if (!confirm(t('Take “{title}” out of your journal? Your rating, feelings and thoughts about it are deleted. The repo on GitHub is untouched.', { title: name }))) return;
+    haptic(12);
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;

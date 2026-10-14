@@ -22,6 +22,7 @@ import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
 import { startWeather } from './lib/weather';
 import { t } from './lib/i18n';
+import { haptic } from './lib/haptics';
 import { routeName } from './lib/router';
 import { preloadViews, prepareView, viewFor } from './lib/views';
 import { authStatus, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
@@ -32,6 +33,10 @@ applyTheme();
 addEventListener('touchstart', () => {}, { passive: true });
 // The page doesn't zoom (see the viewport tag and html's touch-action); Safari still pinches unless its gestures are stopped.
 for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+// Every switch ticks as it flips, wherever it is.
+addEventListener('click', (e) => {
+  if ((e.target as Element | null)?.closest?.('.switch:not(:disabled)')) haptic();
+});
 // Pictures aren't meant to be dragged: dropped on a text box, the browser writes the image's address into the note.
 addEventListener('dragstart', (e) => {
   if (e.target instanceof HTMLImageElement) e.preventDefault();

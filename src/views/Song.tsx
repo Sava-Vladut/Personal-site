@@ -14,6 +14,7 @@ import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
 import { rich, t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 
 type Open = null | 'emotion' | 'from';
 
@@ -115,7 +116,7 @@ export function SongView({ id }: { id: string }) {
   const tape = isTape(m);
   const remove = async () => {
     if (removing.current) return;
-    if (!confirm(t('Remove “{title}” from your records? Notes it’s in keep it.', { title: m.title }))) return;
+    haptic(12);
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;

@@ -5,6 +5,7 @@ import { PeekLayer } from './components/mentions';
 import { AddMenu } from './components/AddMenu';
 import { EntryMenu } from './components/EntryMenu';
 import { Toasts } from './components/Toasts';
+import { ConfirmLayer } from './components/Confirm';
 import { Icon, type UiName } from './components/icons';
 import { prepareView, viewFor } from './lib/views';
 import { toast } from './lib/store';
@@ -47,6 +48,7 @@ export function App() {
       {route.name !== 'note' && route.name !== 'person' && route.name !== 'book' && route.name !== 'song' && route.name !== 'repo' && route.name !== 'doc' && route.name !== 'map' && route.name !== 'settings' && route.name !== 'intro' && <TabBar />}
       {route.name !== 'intro' && <SideNav active={SECTION[route.name] ?? route.name} here={route.name} />}
       <EntryMenu />
+      <ConfirmLayer />
       <Toasts />
       <TooltipLayer />
       <PeekLayer />

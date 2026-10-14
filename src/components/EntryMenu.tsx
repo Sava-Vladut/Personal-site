@@ -8,6 +8,7 @@ import { takeDown } from '../lib/share';
 import { deleteEntry, observable, saveEntry, toast, uid, type Entry } from '../lib/store';
 import { Icon, type UiName } from './icons';
 import { Sheet } from './Sheet';
+import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
 
 const HOLD_MS = 450;
@@ -33,8 +34,9 @@ export function useHold(e: Entry, onTap: () => void) {
   const open = (touch: boolean, at?: { x: number; y: number }) => {
     cancel();
     held.current = true;
+    // first: on iOS the tick is a click of its own, which the lift's swallowed click mustn't take
+    haptic(10);
     if (touch) swallowLiftClick();
-    navigator.vibrate?.(10);
     getSelection()?.removeAllRanges();
     menu$.set({ e, at: touch ? undefined : at });
   };
@@ -140,11 +142,11 @@ export function EntryMenu() {
   const share = () => navigator.share({ title: entry.title.trim() || undefined, text: shareText }).catch(() => {});
 
   const actions: { icon: UiName; label: string; run: () => unknown; danger?: boolean }[] = [];
-  if (isNote) actions.push({ icon: entry.pinned ? 'pinned-off' : 'pin', label: entry.pinned ? t('Unpin') : t('Pin to the top'), run: () => togglePin(entry) });
+  if (isNote) actions.push({ icon: entry.pinned ? 'pinned-off' : 'pin', label: entry.pinned ? t('Unpin') : t('Pin to the top'), run: () => { haptic(); return togglePin(entry); } });
   if (isNote) actions.push({ icon: 'copy-plus', label: t('Duplicate'), run: duplicate });
   if (shareText) actions.push({ icon: 'copy', label: t('Copy text'), run: copyText });
   if (shareText && 'share' in navigator) actions.push({ icon: 'share', label: t('Share'), run: share });
-  actions.push({ icon: 'trash', label: isNote ? t('Delete note') : t('Delete check-in'), run: () => removeEntry(entry), danger: true });
+  actions.push({ icon: 'trash', label: isNote ? t('Delete note') : t('Delete check-in'), run: () => { haptic(12); return removeEntry(entry); }, danger: true });
   const run = (f: () => unknown) => () => {
     close();
     f();

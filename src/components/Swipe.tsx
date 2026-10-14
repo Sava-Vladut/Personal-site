@@ -4,6 +4,7 @@ import type { Entry } from '../lib/store';
 import { removeEntry, togglePin } from './EntryMenu';
 import { Icon } from './icons';
 import { t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 
 const START = 12; // px of sideways movement before a drag counts as a swipe (more than the hold's 10px slop)
 const COMMIT = 96; // how far to drag before letting go does something
@@ -28,19 +29,21 @@ export function Swipe({ e, children }: { e: Entry; children: ComponentChildren }
     const side = dx > 0 ? (canPin ? 'pin' : '') : dx < 0 ? 'del' : '';
     const r = root.current!;
     r.dataset.side = side;
-    if (side && Math.abs(dx) >= COMMIT) r.dataset.ready = '';
+    const ready = !!side && Math.abs(dx) >= COMMIT;
+    if (ready && !('ready' in r.dataset)) haptic(); // a tick as it passes the point where letting go acts
+    if (ready) r.dataset.ready = '';
     else delete r.dataset.ready;
   };
   const settle = () => {
     const el = face.current;
     if (el) {
-      el.style.transition = 'transform 0.35s var(--spring)';
+      el.style.transition = 'transform var(--dur-3) var(--spring)';
       el.style.transform = '';
     }
     const r = root.current;
     if (r) {
       delete r.dataset.ready;
-      setTimeout(() => delete r.dataset.side, 350);
+      setTimeout(() => delete r.dataset.side, 450); // once it has settled (--dur-3)
     }
   };
 
@@ -73,9 +76,9 @@ export function Swipe({ e, children }: { e: Entry; children: ComponentChildren }
         drag.current = null;
         if (!d || ev.pointerId !== d.id || !d.on) return;
         if (d.dx <= -COMMIT) {
-          face.current!.style.transition = 'transform 0.2s ease-in';
+          face.current!.style.transition = 'transform var(--dur-1) ease-in';
           face.current!.style.transform = 'translateX(-105%)';
-          setTimeout(() => removeEntry(e), 200);
+          setTimeout(() => removeEntry(e), 150); // once it has slid away (--dur-1)
         } else {
           settle();
           if (d.dx >= COMMIT && canPin) togglePin(e);

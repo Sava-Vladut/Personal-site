@@ -36,7 +36,7 @@
   .nav-new-sky {
     --ink: #ffffff; --surface: #1a1a19;
     position: absolute; inset: 0; z-index: 0; border-radius: inherit; overflow: hidden; pointer-events: none;
-    animation: fade-in 0.8s ease 0.2s backwards;
+    animation: fade-in var(--dur-5) ease 0.2s backwards;
   }
   :root[data-theme='dark'] .nav-new-sky { --ink: #141413; --surface: #f3f3f1; }
   .nav-new-sky > .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -52,7 +52,8 @@
     height: 42px; padding: 0 12px; border-radius: var(--r-m); font-size: var(--text-base);
     transition: background-color var(--dur-1), color var(--dur-1);
   }
-  .side .nav-item:hover, .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
+  .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
+  @media (hover: hover) { .side .nav-item:hover { background: var(--surface-2); color: var(--ink); } }
 
   /* the arrow on the sidebar's edge hides it; hidden, the sidebar slides away and the arrow stays at the screen's edge to bring it back */
   .side { transition: transform var(--dur-2) ease; }
@@ -62,8 +63,11 @@
     border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink-2, var(--ink));
     cursor: pointer; opacity: 0; transition: opacity var(--dur-1), background-color var(--dur-1);
   }
-  .side:hover .side-toggle, .side-toggle:focus-visible, :root[data-side='hidden'] .side-toggle { opacity: 1; }
-  .side-toggle:hover { background: var(--surface-2); color: var(--ink); }
+  .side-toggle:focus-visible, :root[data-side='hidden'] .side-toggle { opacity: 1; }
+  @media (hover: hover) { .side:hover .side-toggle { opacity: 1; } }
+  /* a touch screen can't hover to find it, so it stays shown */
+  @media (hover: none) { .side-toggle { opacity: 1; } }
+  @media (hover: hover) { .side-toggle:hover { background: var(--surface-2); color: var(--ink); } }
   :root[data-side='hidden'] { --side-w: 0px; }
   :root[data-side='hidden'] .side { transform: translateX(-100%); border-right-color: transparent; }
   /* off-screen links stay out of the tab order */

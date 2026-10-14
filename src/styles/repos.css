@@ -8,7 +8,7 @@
 .repo-wait { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: var(--text-base); padding: 18px 2px; }
 .spin { display: inline-block; width: 1.1em; color: var(--sky, var(--ink-2)); font-size: 16px; }
 
-.repo-connect { display: grid; gap: 10px; justify-items: start; padding: 16px; margin-top: 14px; animation: rise-in 0.45s var(--ease-emph) backwards; }
+.repo-connect { display: grid; gap: 10px; justify-items: start; padding: 16px; margin-top: 14px; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
 .repo-connect p { margin: 0; }
 .repo-count { margin: 14px 0 0; text-align: center; font-variant-numeric: tabular-nums; }
 
@@ -17,7 +17,7 @@
 .repo-tree { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
 .repo-item {
   position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: start; gap: 2px;
-  animation: rise-in 0.45s var(--ease-emph) calc(var(--i) * 45ms) backwards;
+  animation: rise-in var(--dur-3) var(--ease-emph) calc(var(--i) * 45ms) backwards;
 }
 /* the rail the tick hangs from: it runs on to the next repo and stops at the last */
 .repo-item::before {
@@ -26,14 +26,14 @@
 .repo-item.is-last::before { bottom: auto; height: 22px; }
 .repo-branch {
   position: relative; z-index: 1; padding-top: 11px; font-size: var(--text-s); line-height: 1; letter-spacing: -0.12em;
-  color: var(--ink-3); background: var(--bg); width: max-content; margin-left: -1px; animation: fade-in 0.5s var(--ease) calc(var(--i) * 45ms + 200ms) backwards;
+  color: var(--ink-3); background: var(--bg); width: max-content; margin-left: -1px; animation: fade-in var(--dur-3) var(--ease) calc(var(--i) * 45ms + 200ms) backwards;
 }
 .repo-card {
   display: grid; gap: 4px; width: 100%; text-align: left; padding: 11px 14px 10px; color: var(--ink);
-  transition: border-color var(--dur-1), background-color var(--dur-2), translate 0.35s var(--spring);
+  transition: border-color var(--dur-1), background-color var(--dur-2), translate var(--dur-3) var(--spring);
 }
-.repo-card:hover { border-color: var(--line-2); translate: 2px 0; }
-.repo-card:active { translate: 0 0; transition-duration: 0.08s; }
+@media (hover: hover) { .repo-card:hover { border-color: var(--line-2); translate: 2px 0; } }
+.repo-card:active { translate: 0 0; transition-duration: var(--dur-0); }
 .repo-readme { display: grid; gap: 5px; min-width: 0; margin-top: 6px; padding-top: 9px; border-top: 1px solid var(--line); }
 .repo-readme-label { font-size: var(--text-s); font-weight: 600; color: var(--ink-3); }
 .repo-readme-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
@@ -85,21 +85,21 @@
 .gl-day ol { list-style: none; margin: 0; padding: 0; }
 .gl-commit {
   position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px; padding-bottom: 12px;
-  animation: pop-in 0.4s var(--spring) calc(var(--i) * 35ms) backwards;
+  animation: pop-in var(--dur-3) var(--spring) calc(var(--i) * 35ms) backwards;
 }
 /* the line between one commit's star and the next */
-.gl-commit::before { content: ''; position: absolute; left: 6px; top: 22px; bottom: -2px; border-left: 1px solid var(--line-2); animation: grow-y 0.5s var(--ease) calc(var(--i) * 35ms + 120ms) backwards; transform-origin: top; }
+.gl-commit::before { content: ''; position: absolute; left: 6px; top: 22px; bottom: -2px; border-left: 1px solid var(--line-2); animation: grow-y var(--dur-3) var(--ease) calc(var(--i) * 35ms + 120ms) backwards; transform-origin: top; }
 .gl-day:last-child .gl-commit:last-child::before { display: none; }
 .gl-node { z-index: 1; font-size: var(--text-base); line-height: 20px; font-weight: 700; color: var(--c, var(--emo-calm-safety)); text-align: left; }
 .gl-main { display: grid; gap: 3px; min-width: 0; }
 .gl-msg { text-align: left; font-size: var(--text-base); line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
-button.gl-msg:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (hover: hover) { button.gl-msg:hover { text-decoration: underline; text-underline-offset: 3px; } }
 .gl-more { color: var(--ink-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.gl-body { margin: 2px 0 4px; padding: 8px 10px; font: var(--text-s)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-s); animation: fade-in 0.2s ease-out; }
+.gl-body { margin: 2px 0 4px; padding: 8px 10px; font: var(--text-s)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-s); animation: fade-in var(--dur-1) ease-out; }
 .gl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: var(--text-s); color: var(--ink-3); }
 .gl-meta code { background: none; padding: 0; font-size: var(--text-s); color: var(--ink-2); }
 .gl-meta a { text-decoration: none; }
-.gl-meta a:hover code { text-decoration: underline; text-underline-offset: 2px; }
+@media (hover: hover) { .gl-meta a:hover code { text-decoration: underline; text-underline-offset: 2px; } }
 .gl-load { justify-self: start; margin-top: 4px; }
 .gl-end { margin: 6px 0 0; color: var(--ink-3); font-size: var(--text-s); letter-spacing: 0.04em; }
 
@@ -116,13 +116,13 @@ button.gl-msg:hover { text-decoration: underline; text-underline-offset: 3px; }
 .rd-scroll { padding: 14px 16px 6px; }
 .rd-scroll.is-clipped { max-height: 440px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
 .rd-expand { display: block; width: 100%; padding: 11px; border-top: 1px solid var(--line); font-size: var(--text-m); font-weight: 550; color: var(--ink-2); background: var(--surface); }
-.rd-expand:hover { background: var(--surface-2); color: var(--ink); }
+@media (hover: hover) { .rd-expand:hover { background: var(--surface-2); color: var(--ink); } }
 
 .rd { font-size: var(--text-base); line-height: 1.6; color: var(--ink); overflow-wrap: anywhere; }
 .rd > :first-child { margin-top: 0; }
 .rd p { margin: 0 0 10px; }
 .rd a { color: inherit; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
-.rd a:hover { text-decoration-color: currentColor; }
+@media (hover: hover) { .rd a:hover { text-decoration-color: currentColor; } }
 .rd-h { font-family: var(--serif); font-weight: 600; line-height: 1.25; margin: 20px 0 8px; letter-spacing: -0.01em; }
 .rd-h1 { font-size: var(--text-xl); }
 .rd-h2 { font-size: var(--text-l); padding-bottom: 5px; border-bottom: 1px solid var(--line); }

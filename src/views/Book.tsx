@@ -16,6 +16,7 @@ import { PeopleSheet, PersonChip, usePeopleById } from '../components/people';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
 import { count, rich, t } from '../lib/i18n';
+import { haptic } from '../lib/haptics';
 
 type Open = null | 'emotion' | 'from';
 
@@ -237,7 +238,7 @@ export function BookView({ id }: { id: string }) {
 
   const remove = async () => {
     if (removing.current) return;
-    if (!confirm(t('Remove “{title}” from your shelf? Notes that mention it keep its title.', { title: draft.title.trim() || t('this book') }))) return;
+    haptic(12);
     clearTimeout(timer.current);
     removing.current = true;
     dirty.current = false;
