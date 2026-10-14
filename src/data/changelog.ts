@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.79.1',
+    date: '2026-10-14',
+    changes: ['Visiting savavlad.com/game no longer replaces the journal’s offline copy'],
+  },
+  {
     version: '1.79.0',
     date: '2026-10-14',
     changes: [
