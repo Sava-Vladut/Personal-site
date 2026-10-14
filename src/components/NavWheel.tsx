@@ -555,7 +555,8 @@ export function NavWheel({ world, tree: own, look }: { world?: string | null; tr
         {hint && <span class="nw-hint" aria-hidden="true">{t('Tap for the menu')}</span>}
       </button>
       {layer && createPortal(layer, document.body)}
-      {!look && <WheelEditor open={editing} onClose={() => setEditing(false)} />}
+      {/* on the body, like the wheel: the button sits in page headers (the journal's sky) that clip and stack their insides, so notes would cover it */}
+      {!look && createPortal(<WheelEditor open={editing} onClose={() => setEditing(false)} />, document.body)}
     </>
   );
 }

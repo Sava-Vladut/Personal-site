@@ -891,8 +891,6 @@ export const RO: Record<string, string> = {
   'thinking of {names}': 'mă gândesc la {names}',
 
   // ── Editor ──
-  'Saved': 'Salvat',
-  'Couldn’t save': 'Nu s-a salvat',
   'Couldn’t save this note. Try again.': 'Notița nu s-a putut salva. Încearcă din nou.',
   'Couldn’t save the note’s weather.': 'Vremea notiței nu s-a putut salva.',
   'Spotify connected': 'Spotify conectat',

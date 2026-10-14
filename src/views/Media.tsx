@@ -73,7 +73,7 @@ export function Media({ query }: { query: URLSearchParams }) {
 
   const isBooks = tab === 'books';
   const worlds = useMemo(() => (isBooks ? feltWorlds(books, QUIET.books) : feltWorlds(songs, QUIET.music)), [isBooks, books, songs]);
-  const stats = isBooks ? bookStats(books) : musicStats(songs);
+  const stats = useMemo(() => (isBooks ? bookStats(books) : musicStats(songs)), [isBooks, books, songs]);
   const has = isBooks ? books.length > 0 : songs.length > 0;
   const search = isBooks ? t('Search your books') : t('Search your music');
 

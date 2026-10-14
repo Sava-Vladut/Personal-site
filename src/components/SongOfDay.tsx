@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addDays, dayLabel, todayKey, WEEKDAYS, weekday } from '../lib/dates';
 import { hashOf, useColor } from '../lib/colors';
 import { haptic } from '../lib/haptics';
+import { usePaged } from '../lib/inView';
 import { navigate } from '../lib/router';
 import { pickSongOfDay, songOfDay, toast, type Song } from '../lib/store';
 import { CountUp } from './charts';
@@ -16,6 +17,8 @@ import { noun, t } from '../lib/i18n';
 import '../styles/sotd.css';
 
 const STRIP = 14;
+/** How many records the day picker draws at first, and then on each scroll toward its end. */
+const PICKS_PAGE = 60;
 /** Each place in the ranking takes its own feeling's colour. */
 const RANK_COLORS = ['joy', 'love-connection', 'hope-interest', 'calm-safety', 'sadness', 'fear', 'anger'];
 /** The little sky behind the ranking: notes in the colours of the first places. */
@@ -182,6 +185,7 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
       .filter((s) => words.every((w) => `${s.music.title} ${s.music.sub ?? ''}`.toLowerCase().includes(w)))
       .sort((a, b) => +(b.music.kind === 'track') - +(a.music.kind === 'track') || b.days.length - a.days.length);
   }, [songs, q]);
+  const paged = usePaged(shown.length, PICKS_PAGE, `${day}|${q}`);
   const close = () => {
     setQ('');
     closePicker();
@@ -201,7 +205,7 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
         <input type="search" placeholder={t('Search your music')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search your music')} />
       </label>
       <div class="tracks sotd-picks">
-        {shown.map((s) => (
+        {shown.slice(0, paged.n).map((s) => (
           <button key={s.id} class="track" aria-pressed={s === current} disabled={busy} onClick={() => day && (setQ(''), void pick(s, day))}>
             <span class="track-thing"><MusicThing m={s.music} size={38} /></span>
             <span class="track-main">
@@ -211,6 +215,7 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
             {s.days.length > 0 && <span class="sotd-pick-count">×{s.days.length}</span>}
           </button>
         ))}
+        {paged.more && <div ref={paged.ref} class="feed-more" aria-hidden="true" />}
         {!shown.length && <p class="empty-note center">{t('No music matches.')}</p>}
       </div>
     </Sheet>

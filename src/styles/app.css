@@ -677,7 +677,6 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   pointer-events: none; /* content scrolls under the floating buttons */
 }
 .editor-bar > * { pointer-events: auto; }
-.editor-status { flex: 1; text-align: right; font-size: var(--text-s); color: var(--ink-3); padding-right: 6px; }
 .editor-top { display: flex; gap: 14px; align-items: flex-start; margin-top: 10px; }
 .icon-pick {
   width: 54px; height: 54px; flex: none; border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line);

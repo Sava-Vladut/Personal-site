@@ -50,7 +50,9 @@ function stylesAt(at: Element, box: HTMLElement) {
 }
 
 const keepFocus = {
-  // keep the text box focused (and the phone keyboard up) while tapping
+  // Keep the text box focused (and the phone keyboard up) while tapping any button of the bar, the add buttons
+  // passed in as children too. Safari doesn't focus a tapped button, so the text box losing the focus would read as
+  // "not writing" and put the bar away (inert) before the tap's click arrived.
   onPointerDown: (e: PointerEvent) => e.preventDefault(),
   onMouseDown: (e: MouseEvent) => e.preventDefault(),
 };
@@ -180,13 +182,29 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
   useEffect(() => {
     const text = (n: EventTarget | null) => !!(n as Element | null)?.closest?.('.body-input, .title-input');
     const bar = (n: EventTarget | null) => !!(n as Element | null)?.closest?.('.format-bar');
+    // A tap on the bar under way: if the focus still leaves for nowhere (a browser that doesn't focus buttons and
+    // didn't keep it in the text box), the bar stays until the tap's click has landed.
+    let pressing = false;
     const into = (e: FocusEvent) => { setWriting(text(e.target)); setOnBar(bar(e.target)); };
-    const out = (e: FocusEvent) => { setWriting(text(e.relatedTarget)); setOnBar(bar(e.relatedTarget)); };
+    const out = (e: FocusEvent) => { setWriting(text(e.relatedTarget)); setOnBar(bar(e.relatedTarget) || (pressing && !e.relatedTarget)); };
+    const down = (e: PointerEvent) => {
+      pressing = bar(e.target);
+      // a tap elsewhere puts a bar kept up that way away, unless the focus is still in it
+      if (!pressing && !bar(document.activeElement)) setOnBar(false);
+    };
+    const up = () => { pressing = false; };
     document.addEventListener('focusin', into);
     document.addEventListener('focusout', out);
+    document.addEventListener('pointerdown', down, true);
+    // captured, so it's done before the button's own click: Hide keyboard's blur still puts the bar away
+    document.addEventListener('click', up, true);
+    document.addEventListener('pointercancel', up, true);
     return () => {
       document.removeEventListener('focusin', into);
       document.removeEventListener('focusout', out);
+      document.removeEventListener('pointerdown', down, true);
+      document.removeEventListener('click', up, true);
+      document.removeEventListener('pointercancel', up, true);
     };
   }, []);
 
@@ -233,7 +251,7 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
   const inList = lit.includes('ul') || lit.includes('ol') || lit.includes('task');
 
   const tool = (icon: UiName, label: string, onClick: () => void, on?: boolean) => (
-    <button class="format-btn" aria-label={label} title={label} aria-pressed={on} {...keepFocus} onClick={onClick}>
+    <button class="format-btn" aria-label={label} title={label} aria-pressed={on} onClick={onClick}>
       <Icon name={icon} size={19} />
     </button>
   );
@@ -243,7 +261,6 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
       aria-pressed={showTools}
       aria-label={showTools ? t('Hide formatting') : t('Formatting')}
       title={showTools ? t('Hide formatting') : t('Formatting')}
-      {...keepFocus}
       onClick={() => {
         opened.current = false;
         setTools(!showTools);
@@ -257,7 +274,6 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
       class="format-btn format-done"
       aria-label={t('Hide keyboard')}
       title={t('Hide keyboard')}
-      {...keepFocus}
       onClick={() => (document.activeElement as HTMLElement | null)?.blur?.()}
     >
       <Icon name="keyboard-hide" size={19} />
@@ -272,7 +288,7 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
         <div class="format-scroll">{swap}</div>
       </div>
     ) : (
-    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${away ? ' is-tucked' : ''}`} inert={away} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')}>
+    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${away ? ' is-tucked' : ''}`} inert={away} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')} {...keepFocus}>
       {toggle}
       {showTools ? (
         <div class="format-scroll">

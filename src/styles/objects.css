@@ -239,7 +239,11 @@
   border: 1px solid color-mix(in oklab, var(--t) 24%, var(--line));
   animation: spine-in var(--dur-3) var(--spring) calc(min(var(--k), 20) * 30ms) backwards;
   transition: transform var(--dur-2) var(--spring), border-color var(--dur-2), scale var(--dur-3) var(--spring);
+  /* records far off screen aren't laid out or painted until they come near it */
+  content-visibility: auto; contain-intrinsic-size: auto 100px auto 128px;
 }
+/* while the records load: blank sleeves where they'll be */
+.sleeve.sleeve-ph { height: 128px; background: var(--surface-2); border-color: var(--line); animation: photo-pulse 1.2s ease-in-out infinite alternate; }
 @media (hover: hover) { .sleeve:hover { border-color: color-mix(in oklab, var(--t) 55%, var(--line)); transform: translateY(-2px); } }
 .sleeve:active { scale: 0.96; transition-duration: var(--dur-1), var(--dur-1), var(--dur-0); }
 .sleeve:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -295,7 +299,7 @@ button.mini-card:active { scale: 0.97; transition-duration: var(--dur-1), var(--
 .song-player { margin-top: 16px; animation: fade-in var(--dur-2) ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sleeve { animation: none; }
+  .sleeve, .sleeve.sleeve-ph { animation: none; }
   .spine, .due-card { animation: none; }
   .record-spin, .reel { animation: none !important; }
 }

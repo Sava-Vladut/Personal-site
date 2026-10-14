@@ -11,7 +11,6 @@ import { SongRow } from '../components/music';
 import { MentionText } from '../components/MentionText';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
-import { SaveStatus, type SaveState } from '../components/SaveStatus';
 import { Avatar, initials } from '../components/people';
 import { KeyDates } from '../components/KeyDates';
 import { ThemeSong } from '../components/ThemeSong';
@@ -39,7 +38,6 @@ function useAutosize(value: string) {
 export function PersonView({ id }: { id: string }) {
   const [draft, setDraft] = useState<Person | null>(() => (id === 'new' ? blankPerson() : getPeople().find((p) => p.id === id) ?? null));
   const [open, setOpen] = useState<Open>(null);
-  const [status, setStatus] = useState<SaveState>('');
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
   const alive = useRef(true);
@@ -68,19 +66,15 @@ export function PersonView({ id }: { id: string }) {
     if (removing.current || !d) return Promise.resolve(false);
     if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
     dirty.current = false;
-    if (!saved.current && !d.name.trim()) { setStatus(''); return Promise.resolve(false); } // a person needs a name before they're kept
+    if (!saved.current && !d.name.trim()) return Promise.resolve(false); // a person needs a name before they're kept
     const request = ++saveRequest.current;
     const saving = savePerson({ ...d, name: d.name.trim() || d.name }).then(() => {
       saved.current = true;
-      if (alive.current && !removing.current) {
-        syncUrl();
-        if (request === saveRequest.current && !dirty.current) setStatus('saved');
-      }
+      if (alive.current && !removing.current) syncUrl();
       return true;
     }).catch(() => {
       if (!removing.current && request === saveRequest.current) {
         dirty.current = true;
-        setStatus('error');
         toast(t('Couldn’t save this person. Try again.'));
       }
       return false;
@@ -96,7 +90,6 @@ export function PersonView({ id }: { id: string }) {
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
-    setStatus('saving');
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, 500);
   };
@@ -222,7 +215,7 @@ export function PersonView({ id }: { id: string }) {
     <div class="page editor person">
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <SaveStatus state={status} />
+        <span class="grow" />
         <button class="glass glass-btn round" onClick={remove} aria-label={t('Delete person')}><Icon name="trash" /></button>
         <button class="glass glass-btn tinted" onClick={done}>{t('Done')}</button>
       </div>

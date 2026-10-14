@@ -14,10 +14,22 @@ export const isTape = (m: Music) => m.kind === 'playlist' || m.kind === 'show' |
 /** "Artist" for a song, "Playlist · Owner" for the rest. */
 export const musicSub = (m: Music) => (m.kind === 'track' ? m.sub ?? t('Song') : KIND_LABEL[m.kind] + (m.sub ? ` · ${m.sub}` : ''));
 
-const Art = ({ m, class: cls }: { m: Music; class: string }) =>
-  m.image ? <img class={cls} src={m.image} alt="" loading="lazy" referrerpolicy="no-referrer" draggable={false} /> : <span class={`${cls} no-art`} />;
+/** Spotify's 300px cover instead of its 640px one (albums and playlist mosaics), for records and tapes drawn small. */
+export const smallArt = (url: string) =>
+  url
+    .replace(/^https:\/\/i\.scdn\.co\/image\/ab67616d0000b273/, 'https://i.scdn.co/image/ab67616d00001e02')
+    .replace(/^https:\/\/mosaic\.scdn\.co\/640\//, 'https://mosaic.scdn.co/300/');
+
+/** Below this many px a record or tape gets the small cover. */
+const SMALL = 100;
+
+const Art = ({ m, class: cls, small }: { m: Music; class: string; small?: boolean }) =>
+  m.image
+    ? <img class={cls} src={small ? smallArt(m.image) : m.image} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable={false} />
+    : <span class={`${cls} no-art`} />;
 
 const sized = (size?: number) => (size ? { '--s': `${size}px` } : undefined);
+const isSmall = (size?: number) => !!size && size <= SMALL;
 
 /** A record half out of its sleeve, the cover art on both. `size` is the sleeve's side in px (else the CSS decides). */
 export function Record({ m, size }: { m: Music; size?: number }) {
@@ -25,10 +37,10 @@ export function Record({ m, size }: { m: Music; size?: number }) {
     <span class="record" style={sized(size)} aria-hidden="true">
       <span class="record-disc">
         <span class="record-spin">
-          <span class="record-label"><Art m={m} class="record-art" /></span>
+          <span class="record-label"><Art m={m} class="record-art" small={isSmall(size)} /></span>
         </span>
       </span>
-      <span class="record-sleeve">{m.image ? <Art m={m} class="record-cover" /> : <Icon name="music" size={22} />}</span>
+      <span class="record-sleeve">{m.image ? <Art m={m} class="record-cover" small={isSmall(size)} /> : <Icon name="music" size={22} />}</span>
     </span>
   );
 }
@@ -38,7 +50,7 @@ export function Cassette({ m, size }: { m: Music; size?: number }) {
   return (
     <span class="cassette" style={sized(size)} aria-hidden="true">
       <span class="cassette-label">
-        <Art m={m} class="cassette-art" />
+        <Art m={m} class="cassette-art" small={isSmall(size)} />
         <span class="cassette-lines" />
         <span class="cassette-window"><i class="reel" /><span class="cassette-tape" /><i class="reel" /></span>
       </span>
@@ -127,7 +139,7 @@ export function MiniMusic({ m }: { m: Music }) {
   if (isTape(m)) return <span class="mini-tape" aria-hidden="true"><i /><i /></span>;
   return (
     <span class="mini-record" aria-hidden="true">
-      {m.image && <img src={m.image} alt="" loading="lazy" referrerpolicy="no-referrer" />}
+      {m.image && <img src={smallArt(m.image)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />}
     </span>
   );
 }

@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.85.0',
+    date: '2026-10-14',
+    changes: [
+      'Notes: the toolbar buttons (photos, images, Spotify music, books and the rest) work again on phones',
+      'Editing the wheel: the editor now opens above your notes instead of underneath them',
+      'The flickering Saving…/Saved indicator is gone from the top of editors; you still get a message if something can’t be saved',
+      'Music loads much faster with big collections: records appear a page at a time as you scroll',
+      'Searching and filtering your music no longer lags with lots of songs, and the song-of-the-day picker opens quickly',
+      'Small records and tapes load lighter cover images, and placeholder records show while your music loads',
+    ],
+  },
+  {
     version: '1.84.1',
     date: '2026-10-14',
     changes: [

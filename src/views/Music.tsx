@@ -1,3 +1,4 @@
+import { memo } from 'preact/compat';
 import { useMemo, useRef } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { navigate } from '../lib/router';
@@ -6,6 +7,7 @@ import { Stars } from '../components/books';
 import { SortChip, type Sort } from './Books';
 import { Icon } from '../components/icons';
 import { usePref } from '../lib/prefs';
+import { usePaged } from '../lib/inView';
 import { isTape, MusicThing, musicSub } from '../components/music';
 import { SongStats } from '../components/SongOfDay';
 import { noun, t } from '../lib/i18n';
@@ -14,6 +16,10 @@ type Kind = 'all' | 'track' | 'album' | 'playlist' | 'podcast';
 
 const KINDS: [Kind, string][] = [['track', t('Songs')], ['album', t('Albums')], ['playlist', t('Playlists')], ['podcast', t('Podcasts')]];
 const kindOf = (m: Music): Kind => (m.kind === 'show' || m.kind === 'episode' ? 'podcast' : m.kind === 'artist' ? 'album' : m.kind);
+
+/** How many records are drawn at first; scrolling near the end draws this many more (a whole row at 2, 3, 4 or 6 across). */
+const PAGE = 48;
+const keyOf = (m: Pick<Music, 'kind' | 'id'>) => m.kind + ':' + m.id;
 
 /** The Media page's music (the song of the day sits on its sky): what you pick most, what's on repeat, your records and tapes in one dense grid, and what's waiting in your notes. */
 export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
@@ -24,35 +30,49 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const [sort, setSort] = usePref<Sort>('music-sort', 'recent', ['recent', 'title', 'rating']);
   const keeping = useRef(new Set<string>());
 
+  // what search looks through, lowercased once per change to the records rather than on every key
+  const hay = useMemo(() => new Map(songs.map((s) => [s, `${s.music.title} ${s.music.sub ?? ''}`.toLowerCase()])), [songs]);
+  const counts = useMemo(() => {
+    const out = new Map<Kind, number>();
+    for (const s of songs) out.set(kindOf(s.music), (out.get(kindOf(s.music)) ?? 0) + 1);
+    return out;
+  }, [songs]);
+
+  const query = q.trim().toLowerCase();
   const shown = useMemo(() => {
-    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const list = songs.filter((s) => (kind === 'all' || kindOf(s.music) === kind) && words.every((w) => `${s.music.title} ${s.music.sub ?? ''}`.toLowerCase().includes(w)));
+    const words = query.split(/\s+/).filter(Boolean);
+    const list = songs.filter((s) => (kind === 'all' || kindOf(s.music) === kind) && (!words.length || words.every((w) => hay.get(s)!.includes(w))));
     if (sort === 'title') list.sort((a, b) => a.music.title.localeCompare(b.music.title, undefined, { sensitivity: 'base' }));
     if (sort === 'rating') list.sort((a, b) => b.rating - a.rating || b.created - a.created);
     return list;
-  }, [songs, kind, sort, q]);
+  }, [songs, hay, kind, sort, query]);
 
   // Music attached to notes that isn't kept yet, newest first, each once.
   const waiting = useMemo(() => {
-    const seen = new Set<string>();
+    const seen = new Set(songs.map((s) => keyOf(s.music)));
     const out: Music[] = [];
-    for (const e of entries)
+    for (const e of entries) {
       for (const m of e.music) {
-        const key = m.kind + ':' + m.id;
-        if (seen.has(key) || findSong(songs, m)) continue;
+        const key = keyOf(m);
+        if (seen.has(key)) continue;
         seen.add(key);
         out.push(m);
       }
+      if (out.length >= 12) break;
+    }
     return out.slice(0, 12);
   }, [entries, songs]);
 
-  const grouped = kind === 'all' && !q.trim();
-  const repeat = grouped ? shown.filter((s) => s.repeat) : [];
-  const rest = grouped ? shown.filter((s) => !s.repeat) : shown;
-    const count = (k: Kind) => songs.filter((s) => kindOf(s.music) === k).length;
+  const grouped = kind === 'all' && !query;
+  const repeat = useMemo(() => (grouped ? shown.filter((s) => s.repeat) : []), [grouped, shown]);
+  const rest = useMemo(() => (grouped ? shown.filter((s) => !s.repeat) : shown), [grouped, shown]);
+  const count = (k: Kind) => counts.get(k) ?? 0;
+
+  // Only the first records are drawn; the rest come in as you scroll toward them, so a big collection opens quickly.
+  const paged = usePaged(rest.length, PAGE, `${kind}|${sort}|${query}`);
 
   const keep = async (m: Music) => {
-    const key = m.kind + ':' + m.id;
+    const key = keyOf(m);
     if (keeping.current.has(key)) return;
     keeping.current.add(key);
     try {
@@ -96,6 +116,12 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
         </div>
       )}
 
+      {!ready && !songs.length && (
+        <div class="sleeves" aria-hidden="true">
+          {Array.from({ length: 8 }, () => <span class="sleeve sleeve-ph" />)}
+        </div>
+      )}
+
       {ready && !songs.length && (
         <div class="empty">
           <h2 class="title-s">{t('No records yet')}</h2>
@@ -107,32 +133,18 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
 
       {rest.length > 0 && (
         <div class="sleeves">
-          {rest.map((s, k) => {
-            const core = s.emotions[0] && coreOf(s.emotions[0])?.id;
-            return (
-              <button
-                key={s.id}
-                class={`sleeve${isTape(s.music) ? ' is-tape' : ''}`}
-                style={{ '--k': k, '--t': core ? `var(--emo-${core})` : 'var(--line-2)' }}
-                onClick={() => navigate('song/' + s.id)}
-                aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
-              >
-                <MusicThing m={s.music} size={50} />
-                {s.repeat && <span class="sleeve-badge" title={t('On repeat')}><Icon name="repeat" size={11} stroke={2.2} /></span>}
-                <span class="sleeve-title">{s.music.title}</span>
-                {s.rating > 0 ? <Stars value={s.rating} size={10} /> : <span class="sleeve-sub">{s.music.sub ?? musicSub(s.music)}</span>}
-              </button>
-            );
-          })}
+          {/* each page's records come in on their own count, so a page drawn on scrolling doesn't wait behind the first */}
+          {rest.slice(0, paged.n).map((s, k) => <Sleeve key={s.id} s={s} k={k % PAGE} />)}
         </div>
       )}
+      {paged.more && <div ref={paged.ref} class="feed-more" aria-hidden="true" />}
 
       {waiting.length > 0 && grouped && (
         <section class="section" title={t('Music you added to notes. Keep it to rate it and say what it means to you.')}>
           <h2 class="section-title"><Icon name="notebook" size={16} /> {t('In your notes')}</h2>
           <div class="mini-strip">
             {waiting.map((m) => (
-              <div key={m.kind + ':' + m.id} class="mini-card">
+              <div key={keyOf(m)} class="mini-card">
                 <MusicThing m={m} size={34} />
                 <span class="mini-main">
                   <span class="mini-title">{m.title}</span>
@@ -147,6 +159,28 @@ export function MusicTab({ q, onAdd }: { q: string; onAdd: () => void }) {
     </>
   );
 }
+
+type SleeveProps = { s: Song; k: number };
+/** Every save reads the records back as new objects, so a record is the same while its id and last change are. */
+const sameSleeve = (a: SleeveProps, b: SleeveProps) => a.k === b.k && a.s.id === b.s.id && a.s.updated === b.s.updated;
+
+/** A record in the collection, tinted by the first feeling it brings; drawn again only when it (or its place) changes. */
+const Sleeve = memo(function Sleeve({ s, k }: SleeveProps) {
+  const core = s.emotions[0] && coreOf(s.emotions[0])?.id;
+  return (
+    <button
+      class={`sleeve${isTape(s.music) ? ' is-tape' : ''}`}
+      style={{ '--k': k, '--t': core ? `var(--emo-${core})` : 'var(--line-2)' }}
+      onClick={() => navigate('song/' + s.id)}
+      aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
+    >
+      <MusicThing m={s.music} size={50} />
+      {s.repeat && <span class="sleeve-badge" title={t('On repeat')}><Icon name="repeat" size={11} stroke={2.2} /></span>}
+      <span class="sleeve-title">{s.music.title}</span>
+      {s.rating > 0 ? <Stars value={s.rating} size={10} /> : <span class="sleeve-sub">{s.music.sub ?? musicSub(s.music)}</span>}
+    </button>
+  );
+}, sameSleeve);
 
 /** The numbers over the records: records, tapes, what's on repeat, and the average rating. */
 export function musicStats(songs: Song[]): [string, string][] {
