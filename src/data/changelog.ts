@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.87.0',
+    date: '2026-10-15',
+    changes: [
+      'Feed: customizable widgets — the check-in, On this day, Coming up, Reading now, Song of the day and Channel points cards can each be hidden, reordered and set up',
+      'Feed: a new button beside Search and Calendar (and Settings → Feed widgets) opens the editor; every change shows on the feed at once, and Reset brings the original layout back',
+      'Coming up: choose how far ahead to look (1 week to 3 months) and how many dates to show',
+      'Reading now: show all your books or just the first few',
+      'Channel points: hide the 30-day graph if you prefer just the total',
+    ],
+  },
+  {
     version: '1.86.0',
     date: '2026-10-15',
     changes: [

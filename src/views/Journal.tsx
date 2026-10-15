@@ -27,9 +27,13 @@ import { WeatherMark, weatherOf } from '../components/weather';
 import { MiniMusic } from '../components/music';
 import { DayPicker, SongOfDay, useDayPick, type DayPick } from '../components/SongOfDay';
 import { PageHead } from '../components/PageHead';
+import { WidgetEditor } from '../components/WidgetEditor';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
+import '../styles/widgets.css';
 import { usePoints } from '../lib/twitch';
+import { optionOf, shownIn, useWidgets, type WidgetLayout } from '../lib/widgets';
+import type { WidgetId } from '../data/widgets';
 import { count, LOCALE, t } from '../lib/i18n';
 
 /** How many days of the feed are drawn at first; scrolling near the end draws this many more. */
@@ -46,6 +50,8 @@ export function Journal() {
   const [searching, setSearching] = useState(false);
   const [calOpen, setCalOpen] = usePref<boolean>('journal-calendar', false);
   const [day, setDay] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const widgets = useWidgets();
   const compact = useSettings().density === 'compact';
   const picker = useDayPick();
 
@@ -121,6 +127,9 @@ export function Journal() {
           <button class="icon-btn" aria-pressed={calOpen} aria-label={t('Calendar')} title={t('Calendar')} onClick={() => { setCalOpen(!calOpen); if (calOpen) setDay(null); }}>
             <Icon name="calendar" />
           </button>
+          <button class="icon-btn" aria-label={t('Edit the feed')} title={t('Edit the feed')} onClick={() => setEditing(true)}>
+            <Icon name="layout-grid" />
+          </button>
         </>}
       />
 
@@ -151,10 +160,11 @@ export function Journal() {
         </div>
       )}
 
-      {!filtering && <CheckInPrompt entries={entries} />}
-      {!filtering && <OnThisDay byDay={byDay} onOpen={setDay} />}
-      {!filtering && <ComingUp />}
-      {!filtering && <ReadingNow />}
+      {!filtering && (
+        <div class="widgets">
+          {shownIn(widgets, 'panel').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} />)}
+        </div>
+      )}
 
       {day && (
         <div class="row between filter-note">
@@ -163,10 +173,10 @@ export function Journal() {
         </div>
       )}
       </div>
-      <JournalSong picker={picker} />
-      <JournalPoints />
+      {shownIn(widgets, 'side').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} />)}
       </aside>
       <JournalSongPicker picker={picker} />
+      <WidgetEditor open={editing} onClose={() => setEditing(false)} />
 
       {ready && !entries.length && (
         <div class="empty">
@@ -190,6 +200,20 @@ export function Journal() {
       {hasMore && <div ref={moreRef} class="feed-more" aria-hidden="true" />}
     </div>
   );
+}
+
+/** One of the feed's widgets (data/widgets.ts), set up as the layout says. */
+function Widget({ id, layout, entries, byDay, onOpenDay, picker }: {
+  id: WidgetId; layout: WidgetLayout; entries: Entry[]; byDay: Map<string, Entry[]>; onOpenDay: (day: string) => void; picker: DayPick;
+}) {
+  switch (id) {
+    case 'checkin': return <CheckInPrompt entries={entries} />;
+    case 'on-this-day': return <OnThisDay byDay={byDay} onOpen={onOpenDay} />;
+    case 'coming-up': return <ComingUp within={optionOf(layout, id, 'days')} max={optionOf(layout, id, 'max')} />;
+    case 'reading': return <ReadingNow max={optionOf(layout, id, 'max')} />;
+    case 'song': return <JournalSong picker={picker} />;
+    case 'points': return <JournalPoints graph={!!optionOf(layout, id, 'graph')} />;
+  }
 }
 
 /** Sprites side by side shouldn't move in step: each waits a little, by when its entry was written. */
@@ -295,7 +319,7 @@ function JournalSong({ picker }: { picker: DayPick }) {
 }
 
 /** Desktop only: the channel points total under the song, a tap away from the full page. */
-function JournalPoints() {
+function JournalPoints({ graph }: { graph: boolean }) {
   const wide = useWide();
   const { data } = usePoints(wide);
   if (!wide || !data) return null;
@@ -322,7 +346,7 @@ function JournalPoints() {
           {live.length ? t('Watching {names} now', { names: live.map((c) => c.name).join(', ') }) : `${change.day > 0 ? '+' : ''}${change.day.toLocaleString(LOCALE)} ${t('today')}`}
         </span>
       </span>
-      {known.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}
+      {graph && known.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}
       <Icon name="chevron-right" size={16} />
     </button>
   );
@@ -389,10 +413,10 @@ function seen(): string[] {
  * A gentle note about the birthdays and anniversaries of the next two weeks. Putting one away hides it until it
  * comes round again next year.
  */
-function ComingUp() {
+function ComingUp({ within, max }: { within: number; max: number }) {
   const people = usePeople();
   const [hidden, setHidden] = useState(seen);
-  const list = upcoming(people, 14).filter((u) => !hidden.includes(occurrence(u))).slice(0, 3);
+  const list = upcoming(people, within).filter((u) => !hidden.includes(occurrence(u))).slice(0, max);
   if (!list.length) return null;
   const hide = (u: Upcoming) => {
     const keep = new Set(list.map(occurrence));
@@ -424,8 +448,8 @@ function ComingUp() {
   );
 }
 
-function ReadingNow() {
-  const reading = useBooks().filter((b) => b.status === 'reading');
+function ReadingNow({ max }: { max: number }) {
+  const reading = useBooks().filter((b) => b.status === 'reading').slice(0, max || undefined);
   if (!reading.length) return null;
   return (
     <div class="reading-strip" role="list" aria-label={t('Reading now')}>

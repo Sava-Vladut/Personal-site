@@ -1,0 +1,17 @@
+/* ---------- the feed's widgets (views/Journal.tsx) and the sheet that arranges them (components/WidgetEditor.tsx) ---------- */
+
+/* the cards under the date, in the order you chose: one even gap, whichever comes first */
+.widgets { display: grid; gap: 10px; margin-top: 10px; }
+.widgets:empty { display: none; }
+.widgets > :is(.prompt, .coming-up, .reading-strip) { margin-top: 0; margin-bottom: 0; }
+
+.wd-zone + .wd-zone { margin-top: 18px; }
+.wd-zone-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 4px 8px; }
+.wd-zone-head small { font: inherit; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+/* a widget's own settings, under its row */
+.wd-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 6px 12px 10px 56px; font-size: var(--text-s); color: var(--ink-2);
+}
+.wd-opt > span { flex: none; }
+@media (max-width: 380px) { .wd-opt { padding-left: 18px; } }

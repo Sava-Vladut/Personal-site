@@ -12,6 +12,7 @@ import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
 import { Sheet } from '../components/Sheet';
 import { WheelEditor } from '../components/WheelEditor';
+import { WidgetEditor } from '../components/WidgetEditor';
 import { HomeSheet, placeLabel } from '../components/weather';
 import { CHANGELOG, VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
@@ -60,6 +61,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [changelog, setChangelog] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches;
@@ -253,10 +255,18 @@ export function Settings({ query }: { query: URLSearchParams }) {
             </div>
             <Icon name="chevron-right" size={18} />
           </button>
+          <button class="list-row action" onClick={() => setFeedOpen(true)}>
+            <div>
+              <div class="row gap-s"><Icon name="layout-grid" size={18} /> {t('Feed widgets')}</div>
+              <div class="muted small">{t('Choose, reorder and set up the cards on the main feed')}</div>
+            </div>
+            <Icon name="chevron-right" size={18} />
+          </button>
         </div>
       </section>
 
       <WheelEditor open={wheelOpen} onClose={() => setWheelOpen(false)} />
+      <WidgetEditor open={feedOpen} onClose={() => setFeedOpen(false)} />
 
       <section class="section">
         <h2 class="section-title">{t('Privacy')}</h2>
