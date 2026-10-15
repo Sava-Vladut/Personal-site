@@ -11,6 +11,23 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.90.0',
+    date: '2026-10-15',
+    changes: [
+      'Notes: a full redesign after Microsoft Word: a ribbon with Home, Insert and View tabs replaces the little toolbar',
+      'Notes: Home has Undo and Redo, the font styles (bold, italic, strike, highlight, code, clear formatting), lists, indents and quote, and a styles gallery: Normal, Heading 1–3 and Quote',
+      'Notes: Insert has pictures, online pictures, music, a book, a mention, a note link, a link, a divider, a callout and a code block',
+      'Notes: View switches between Edit and Read mode, opens Focus, zooms the page, and changes the note’s icon or details',
+      'Notes: selecting a picture brings up a Picture tab with its wrapping, size, arrangement and remove tools',
+      'Notes: on a computer the note is a page on a grey desk, with the title bar and ribbon above it; Ctrl+F1 folds the ribbon to its tabs',
+      'Notes: a status bar along the bottom shows words, characters, reading time and whether the note is saved, with view buttons and a zoom slider',
+      'Notes: Focus hides everything but the page; Esc or Exit Focus brings it all back',
+      'Notes: Word’s shortcuts work in the text: Ctrl/⌘+B, I, K, Ctrl+Alt+1/2/3 for headings, Ctrl+Alt+0 for Normal, Ctrl+Shift+L, 7 and 9 for lists, and more (shown in each button’s tooltip)',
+      'Notes: a new Title style, a tidier details line under it, Word-blue headings, a yellow highlighter, and quotes behind a blue rule, the same while writing and reading',
+      'Notes: on a phone the ribbon docks above the keyboard, with a tab button to switch between Home, Insert and View',
+    ],
+  },
+  {
     version: '1.89.0',
     date: '2026-10-15',
     changes: [
@@ -21,6 +38,24 @@ export const CHANGELOG: Release[] = [
       'Records: On repeat is a filter beside Songs, Albums and the rest, instead of its own strip above the records',
       'Records and Books: filters only show when there is something to choose between (no more “All” beside “Songs” with the same count), and the order sits at the right of the row',
       'The streak flame on the song of the day shows your best run when you hover it',
+    ],
+  },
+  {
+    version: '1.88.0',
+    date: '2026-10-15',
+    changes: [
+      'Notes: the line you’re writing on shows its formatting marks (#, **, > …) softly, the way Obsidian does, and the other lines stay clean — no more stray * or # popping up',
+      'Notes: the caret no longer disappears after a heading, a bullet, a task or bold words',
+      'Notes: Undo and Redo work properly — Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z, Ctrl+Y or your phone’s undo — a word or a command at a time',
+      'Notes: Enter carries numbered lists on and counts the items after again; Enter on an empty item ends the list',
+      'Notes: Backspace at the start of a heading, list item or quote turns it into plain text first, then joins it to the line above',
+      'Notes: Tab never takes you out of the note; outside lists it types a tab',
+      'Notes: type "[] " at the start of a line for a checklist item; Backspace right after gives back what you typed',
+      'Notes: Bold, Italic, Strike and Highlight with nothing selected work like Word: they style the word you’re in, or let you type styled words, and tapping again at the end steps back out',
+      'Notes: the Link button links the word you’re in, and an empty link you don’t fill in is tidied away',
+      'Notes: **two** **bold** words next to each other, \\* and other escapes now read right while writing, in reading view and in previews',
+      'Notes: tapping a note in reading view starts writing where you tapped',
+      'Notes: adding a picture while writing keeps the caret where it was',
     ],
   },
   {

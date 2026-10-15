@@ -2,7 +2,8 @@
 // # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers and #tags.
 // This file has the editing side: formatting commands for the text boxes, and the plain words for excerpts.
 // Reading it back is components/Markdown.tsx.
-import { hiddenRanges, styleSpans } from './liveMarkdown';
+import { plainInline } from './inline';
+import { styleSpans } from './liveMarkdown';
 
 /* ---------- block prefixes ---------- */
 
@@ -33,24 +34,44 @@ export interface TextBox {
   setRangeText(text: string, start: number, end: number): void;
   focus(options?: FocusOptions): void;
   dispatchEvent(e: Event): boolean;
+  /** Runs a command's change as one step to undo, when the box keeps its own undo (lib/editable.ts). */
+  edit?(change: () => void): void;
 }
 
 /**
- * Replaces [start, end) with `text` and selects [selStart, selEnd]. Goes through the browser's own editing so
- * undo keeps working, and the input event updates the note like typing does.
+ * Replaces [start, end) with `text` and selects [selStart, selEnd]. Goes through the browser's own editing where it
+ * can, so the input event updates the note like typing does, and it's one step to undo.
  */
 export function replace(el: TextBox, start: number, end: number, text: string, selStart = start + text.length, selEnd = selStart) {
-  el.focus({ preventScroll: true });
-  el.setSelectionRange(start, end);
-  let done = false;
-  try {
-    done = document.execCommand('insertText', false, text);
-  } catch {}
-  if (!done || el.value.slice(start, start + text.length) !== text) {
-    el.setRangeText(text, start, end);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }
+  const change = () => {
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(start, end);
+    let done = false;
+    try {
+      done = document.execCommand('insertText', false, text);
+    } catch {}
+    if (!done || el.value.slice(start, start + text.length) !== text) {
+      el.setRangeText(text, start, end);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  };
+  if (el.edit) el.edit(change);
+  else change();
   el.setSelectionRange(selStart, selEnd);
+}
+
+/** Makes a text box's text `next`, replacing only the part that differs, and selects [selStart, selEnd]. */
+function rewrite(el: TextBox, next: string, selStart: number, selEnd = selStart) {
+  const v = el.value;
+  if (v === next) return el.setSelectionRange(selStart, selEnd);
+  let a = 0;
+  while (a < v.length && a < next.length && v[a] === next[a]) a++;
+  let z = 0;
+  while (z < v.length - a && z < next.length - a && v[v.length - 1 - z] === next[next.length - 1 - z]) z++;
+  // never between the two halves of an emoji
+  if (a > 0 && /[\uDC00-\uDFFF]/.test(v[a] ?? '')) a--;
+  if (z > 0 && /[\uDC00-\uDFFF]/.test(v[v.length - z] ?? '')) z--;
+  replace(el, a, v.length - z, next.slice(a, next.length - z), selStart, selEnd);
 }
 
 const lineStart = (v: string, i: number) => i <= 0 ? 0 : v.lastIndexOf('\n', i - 1) + 1;
@@ -238,17 +259,94 @@ export function insertBlock(el: TextBox, block: string, caretAt?: number) {
   replace(el, s, e, text, s + before.length + (caretAt ?? block.length + 1)); // by default, on the line below
 }
 
-/** Adds a link around the selection, or an empty one to fill in. */
-export function insertLink(el: TextBox) {
+/** Whether the caret at `s` is in an empty pair of `mark`s (**|**), and not between two styles that meet. */
+const emptyPair = (v: string, s: number, mark: string) => {
+  const n = mark.length;
+  return v.slice(s - n, s) === mark && v.slice(s, s + n) === mark && v[s - n - 1] !== mark[0] && v[s + n] !== mark[0]
+    && !styleSpans(v).some((p) => p.y === s || p.x === s);
+};
+
+/**
+ * Bold, italic, strike or highlight tapped with nothing selected, the way Word does it. Inside a word (or styled
+ * words) it styles the word, or takes the style off it; at the end of styled words the caret steps out past the
+ * closing marker, so what's typed next is plain; anywhere else it puts down an empty pair to type into, and tapped
+ * again, that goes. Returns where a pair was put down, [start, end), so it can be tidied away if nothing is typed in it.
+ */
+export function wrapAtCaret(el: TextBox, mark: string): [number, number] | null {
   const v = el.value;
-  const s = el.selectionStart, e = el.selectionEnd;
-  const sel = v.slice(s, e);
-  if (/^https?:\/\/\S+$/.test(sel)) return replace(el, s, e, `[](${sel})`, s + 1);
-  if (sel) return replace(el, s, e, `[${sel}](https://)`, s + sel.length + 3, s + sel.length + 11);
-  replace(el, s, e, '[](https://)', s + 1);
+  const s = el.selectionStart;
+  const n = mark.length;
+  const spans = styleSpans(v);
+  const style = STYLE[mark];
+  if (emptyPair(v, s, mark)) {
+    replace(el, s - n, s + n, '');
+    return null;
+  }
+  if (spans.some((p) => p.c === style && p.cy === s && p.y === s + n)) {
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(s + n, s + n);
+    return null;
+  }
+  const inWord = isWordChar(v[s - 1]) && isWordChar(v[s]);
+  if ((inWord || spans.some((p) => p.c === style && p.cx <= s && s < p.cy)) && toggleWrap(el, mark)) return null;
+  replace(el, s, s, mark + mark, s + n);
+  return [s, s + 2 * n];
 }
 
-/** Moves the selected list lines in or out a level. */
+/**
+ * Adds a link around the selection (or the word at the caret), with its address selected to type or paste over. With
+ * nothing to link, an empty one to fill in, the caret in its text: returns where that is, [start, end), so it can be
+ * tidied away if nothing is typed in it.
+ */
+export function insertLink(el: TextBox): [number, number] | null {
+  const v = el.value;
+  let s = el.selectionStart, e = el.selectionEnd;
+  if (s === e && isWordChar(v[s - 1]) && isWordChar(v[s])) {
+    while (s > 0 && isWordChar(v[s - 1])) s--;
+    while (e < v.length && isWordChar(v[e])) e++;
+  }
+  const sel = v.slice(s, e);
+  if (/^https?:\/\/\S+$/.test(sel)) return replace(el, s, e, `[](${sel})`, s + 1), null;
+  if (sel) return replace(el, s, e, `[${sel}](https://)`, s + sel.length + 3, s + sel.length + 11), null;
+  replace(el, s, e, '[](https://)', s + 1);
+  return [s, s + 12];
+}
+
+const indentWidth = (indent: string) => [...indent].reduce((n, c) => n + (c === '\t' ? 4 : 1), 0);
+const isItem = (line: string) => {
+  const k = kindOf(line.match(PREFIX)![2] ?? '');
+  return k === 'ul' || k === 'ol' || k === 'task';
+};
+
+/**
+ * The text with the numbered list around character `at` counted again: 1, 2, 3… at each level. A list keeps the number
+ * it starts from (or starts from `from`, when given), and one nested under an item starts from 1.
+ */
+export function renumber(v: string, at: number, from?: number) {
+  const lines = v.split('\n');
+  const i = v.slice(0, Math.max(0, at)).split('\n').length - 1;
+  if (!lines[i] || !isItem(lines[i])) return v;
+  let a = i, b = i;
+  while (a > 0 && isItem(lines[a - 1])) a--;
+  while (b + 1 < lines.length && isItem(lines[b + 1])) b++;
+  const next = new Map<number, number>(); // by indent: the number the next item there gets
+  let prev = -1;
+  for (let k = a; k <= b; k++) {
+    const m = lines[k].match(PREFIX)!;
+    const w = indentWidth(m[1]);
+    for (const x of [...next.keys()]) if (x > w) next.delete(x);
+    const num = (m[2] ?? '').match(/^\d{1,9}/);
+    if (num) {
+      const n = next.get(w) ?? (k === a && from !== undefined ? from : k > a && prev < w ? 1 : +num[0]);
+      lines[k] = m[1] + n + lines[k].slice(m[1].length + num[0].length);
+      next.set(w, n + 1);
+    } else next.delete(w);
+    prev = w;
+  }
+  return lines.join('\n');
+}
+
+/** Moves the selected lines in or out a level (a numbered list is counted again). */
 export function indentLines(el: TextBox, out: boolean) {
   const v = el.value;
   const s = lineStart(v, el.selectionStart);
@@ -258,12 +356,21 @@ export function indentLines(el: TextBox, out: boolean) {
   const text = next.join('\n');
   const shift = next[0].length - lines[0].length;
   if (text === v.slice(s, e)) return;
-  replace(el, s, e, text, Math.max(s, el.selectionStart + shift), el.selectionEnd + text.length - (e - s));
+  let full = v.slice(0, s) + text + v.slice(e);
+  if (lines.some((l) => /^[ \t]*\d{1,9}[.)][ \t]/.test(l))) {
+    // the level it left and the one it joined
+    full = renumber(full, s);
+    if (s > 0) full = renumber(full, lineStart(full, s - 1));
+  }
+  rewrite(el, full, Math.max(s, el.selectionStart + shift), el.selectionEnd + text.length - (e - s));
 }
 
 /**
- * List typing, as in Obsidian: Enter carries a list, task or quote on to the next line (Enter on an empty item ends
- * it), Tab and Shift+Tab move list items in and out. Returns true when it handled the key.
+ * List typing, as in Obsidian and Word: Enter carries a list, task or quote on to the next line (a number counts on,
+ * a task starts unticked, and the items after are counted again), and Enter on an empty item ends it. The new line
+ * comes first and its marker after, as a step of its own, so undo leaves just the line break. Tab and Shift+Tab move
+ * list items in and out; elsewhere Tab puts in a tab, so it never takes the caret out of the note. Returns true when
+ * it handled the key.
  */
 export function listKey(el: TextBox, e: KeyboardEvent) {
   if (e.isComposing || e.keyCode === 229 || e.altKey || e.ctrlKey || e.metaKey) return false;
@@ -274,8 +381,11 @@ export function listKey(el: TextBox, e: KeyboardEvent) {
   const m = line.match(PREFIX)!;
   const kind = kindOf(m[2] ?? '');
   const inList = kind === 'ul' || kind === 'ol' || kind === 'task';
-  if (e.key === 'Tab' && inList) {
-    indentLines(el, e.shiftKey);
+  if (e.key === 'Tab') {
+    const lines = v.slice(s, el.selectionEnd).includes('\n');
+    if (inList || lines || (e.shiftKey && /^[ \t]/.test(line))) indentLines(el, e.shiftKey);
+    // a tab in the words; never in a heading's or a quote's marker, which it would undo
+    else if (!e.shiftKey && (!kind || s >= ls + m[0].length)) replace(el, s, el.selectionEnd, '\t');
     return true;
   }
   if (e.key !== 'Enter' || e.shiftKey || s !== el.selectionEnd || !kind || s < ls + m[0].length) return false;
@@ -288,13 +398,34 @@ export function listKey(el: TextBox, e: KeyboardEvent) {
   if (!line.slice(m[0].length).trim()) {
     // an empty item: step out a level, or end the list
     if (m[1] && inList) indentLines(el, true);
-    else replace(el, ls, ls + line.length, '');
+    else {
+      const next = v.slice(0, ls) + v.slice(ls + line.length);
+      rewrite(el, kind === 'ol' ? renumber(next, ls + 1, +m[2]!.match(/\d+/)![0]) : next, ls);
+    }
     return true;
   }
   let marker = m[2]!;
   if (kind === 'task') marker = marker.replace(/\[[xX]\]/, '[ ]');
   if (kind === 'ol') marker = marker.replace(/\d+/, (d) => String(+d + 1));
-  replace(el, s, s, '\n' + m[1] + marker);
+  replace(el, s, s, '\n');
+  const after = el.value.slice(0, s + 1) + m[1] + marker + el.value.slice(s + 1);
+  const at = s + 1 + m[1].length + marker.length;
+  rewrite(el, kind === 'ol' ? renumber(after, at) : after, at);
+  return true;
+}
+
+/**
+ * Typing "[] " (or "[x] ") at the start of a line makes it a task, as in Obsidian and Notion: "- [ ] ". It's a step
+ * of its own, so undo (or Backspace straight after) gives back what was typed. Returns true when it did.
+ */
+export function shortcutKey(el: TextBox) {
+  const v = el.value;
+  const s = el.selectionStart;
+  if (s !== el.selectionEnd) return false;
+  const ls = lineStart(v, s);
+  const m = v.slice(ls, s).match(/^([ \t]*)\[([ xX]?)\] $/);
+  if (!m) return false;
+  replace(el, ls + m[1].length, s, `- [${m[2].trim() ? 'x' : ' '}] `);
   return true;
 }
 
@@ -303,67 +434,59 @@ const charAt = (v: string, i: number, back: boolean) =>
   back ? (i >= 2 && /[\uDC00-\uDFFF]/.test(v[i - 1]) && /[\uD800-\uDBFF]/.test(v[i - 2]) ? [i - 2, i] : [i - 1, i])
     : /[\uD800-\uDBFF]/.test(v[i]) && /[\uDC00-\uDFFF]/.test(v[i + 1] ?? '') ? [i, i + 2] : [i, i + 1];
 
-/** Takes out [a, b), and the markers around it as well when that leaves them with nothing between. */
+/** Takes out the letter [a, b) with the markers around it, when it's all a style holds. Returns whether it did. */
 function cutOut(el: TextBox, v: string, a: number, b: number) {
-  for (const mark of ['**', '~~', '==', '*', '`']) {
-    const n = mark.length;
-    if (v.slice(a - n, a) === mark && v.slice(b, b + n) === mark && (mark !== '*' || (v[a - n - 1] !== '*' && v[b + n] !== '*')))
-      return replace(el, a - n, b + n, '');
-  }
-  replace(el, a, b, '');
+  const spans = styleSpans(v).filter((p) => p.x < p.cx && p.cy < p.y);
+  let x = a, y = b;
+  for (let p = spans.find((q) => q.cx === x && q.cy === y); p; p = spans.find((q) => q.cx === x && q.cy === y)) (x = p.x), (y = p.y);
+  if (x === a) return false;
+  replace(el, x, y, '');
+  return true;
 }
 
 /**
- * Backspace and Delete next to the markers that are hidden while writing (lib/liveMarkdown.ts), so they act on what
- * shows. At the start of a heading, list item or quote, Backspace turns it back into plain text (a nested item steps
- * out a level first); beside a hidden ** or ~~ they take out the letter next to it, not the marker. Returns true when
- * it handled the key.
+ * Backspace and Delete, as in Notion. At the start of a heading, list item, task or quote, Backspace first turns it
+ * back into plain text (a nested item steps out a level first, and a numbered list after it is counted again); the
+ * next one joins it to the line above. Taking out the last letter of a style takes its markers with it, and an empty
+ * pair goes as one, so no stray * is left behind. Otherwise they're the browser's: they take out what shows before
+ * (or after) the caret. Returns true when it handled the key.
  */
 export function deleteKey(el: TextBox, back: boolean) {
   const v = el.value;
   const s = el.selectionStart;
   if (s !== el.selectionEnd) return false;
-  const ranges = hiddenRanges(v);
   const ls = lineStart(v, s);
-  const m = v.slice(ls, lineEnd(v, s)).match(PREFIX)!;
+  const line = v.slice(ls, lineEnd(v, s));
+  const m = line.match(PREFIX)!;
   if (back) {
-    const head = !!m[2] && ranges.some(([a, b]) => b === s && a === ls + m[1].length);
-    if ((m[2] && s === ls + m[0].length) || head) {
+    if (m[2] && (s === ls + wordsFrom(line) || s === ls + m[0].length || s === ls)) {
       const kind = kindOf(m[2]);
       if (m[1] && (kind === 'ul' || kind === 'ol' || kind === 'task')) indentLines(el, true);
       else {
         // a callout's [!note] goes with its quote marker
         const callout = kind === 'quote' ? v.slice(ls + m[0].length).match(/^\[![\w-]+\][+-]?[ \t]*/)?.[0] ?? '' : '';
-        replace(el, ls, ls + m[0].length + callout.length, '');
+        const next = v.slice(0, ls) + v.slice(ls + m[0].length + callout.length);
+        const below = lineEnd(next, ls) + 1;
+        rewrite(el, kind === 'ol' && below < next.length ? renumber(next, below, +m[2].match(/\d+/)![0]) : next, ls);
       }
       return true;
     }
-    // past the hidden markers right before the caret, to the letter that shows
-    let q = s;
-    for (let r = ranges.find(([a, b]) => b === q && a < q); r; r = ranges.find(([a, b]) => b === q && a < q)) q = r[0];
-    if (q === s) return false;
-    if (q > 0) {
-      const [a, b] = charAt(v, q, true);
-      cutOut(el, v, a, b);
-    }
-    return true;
+    for (const mark of ['**', '~~', '==']) if (emptyPair(v, s, mark)) return replace(el, s - mark.length, s + mark.length, ''), true;
+    if (s === 0) return false;
+    const [a, b] = charAt(v, s, true);
+    return cutOut(el, v, a, b);
   }
-  let q = s;
-  for (let r = ranges.find(([a, b]) => a === q && b > q); r; r = ranges.find(([a, b]) => a === q && b > q)) q = r[1];
-  if (v[q] === '\n') {
+  if (v[s] === '\n') {
     // joining the next line on: its own marker goes with the line break
-    const r = ranges.find(([a]) => a === q + 1);
-    if (r) return replace(el, q, r[1], ''), true;
+    const nm = v.slice(s + 1, lineEnd(v, s + 1)).match(PREFIX)!;
+    if (nm[2]) return replace(el, s, s + 1 + nm[0].length, ''), true;
   }
-  if (q === s) return false;
-  if (q < v.length) {
-    const [a, b] = charAt(v, q, false);
-    cutOut(el, v, a, b);
-  }
-  return true;
+  if (s >= v.length) return false;
+  const [a, b] = charAt(v, s, false);
+  return cutOut(el, v, a, b);
 }
 
-/** Ticks or unticks the task at character `at` of a text box (its hidden marker), leaving the caret where it was. */
+/** Ticks or unticks the task at character `at` of a text box (its marker), leaving the caret where it was. */
 export function toggleTaskAt(el: TextBox, at: number, focused: boolean) {
   const v = el.value;
   const i = v.indexOf('[', at);
@@ -433,13 +556,10 @@ export function stripMarkdown(text: string) {
         .replace(/^(\s*)[-*+]\s+\[[xX]\]\s+/, '$1☑ ')
         .replace(/^(\s*)[-*+]\s+\[ \]\s+/, '$1☐ ')
         .replace(/^(\s*)[-*+]\s+/, '$1• ')
-        .replace(/!?\[([^\]\n]*)\]\([^)\s]*\)/g, '$1')
-        .replace(/\[\[([^\]|\n]+\|)?([^\]\n]+)\]\]/g, '$2')
-        .replace(/@\[(?:person:[^\]|\n]+\|)?([^\]\n]+)\]/g, '$1')
-        .replace(/♪\[(?:song:[^\]|\n]+\|)?([^\]\n]+)\]/g, '$1')
-        .replace(/(\*\*|__|~~|==)(\S(?:.*?\S)?)\1/g, '$2')
-        .replace(/\*(?=[^\s*])([^*\n]+?)\*/g, '$1')
-        .replace(/`([^`\n]+)`/g, '$1'),
+        .replace(/!\[([^\]\n]*)\]\([^)\s]*\)/g, '$1')
+        .replace(/\[\]\([^)\s]*\)/g, '')
+        .replace(/__(\S(?:[^\n]*?\S)??)__/g, '$1'),
     )
+    .map(plainInline)
     .join('\n');
 }

@@ -1,0 +1,308 @@
+/* The note's ribbon and toolbar (components/FormatBar.tsx, components/ribbon/Ribbon.tsx). */
+
+/* ---------- Word blue ----------
+   A restrained accent for the editor's chrome, as Word has: the open tab's underline, a lit command, the Picture
+   tab, focus rings. Shared with the page (headings may wear it too). */
+
+:root {
+  --word: #2b579a;
+  --on-word: #ffffff;
+  --word-wash: color-mix(in oklab, var(--word) 12%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --word: #7ea6e0; --on-word: #0e1a2c; --word-wash: color-mix(in oklab, var(--word) 16%, transparent); }
+}
+:root[data-theme='dark'] { --word: #7ea6e0; --on-word: #0e1a2c; --word-wash: color-mix(in oklab, var(--word) 16%, transparent); }
+
+/* the wrapper the bars hang from: no box of its own, it only carries the keyboard's height (--kb) down to them */
+.ribbon-root { display: contents; }
+
+/* ---------- a command ---------- */
+
+.format-btn {
+  flex: none; width: 40px; height: 40px; border-radius: var(--r-s); display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-2); transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-1) ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) { .format-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
+.format-btn:active:not(:disabled) { scale: 0.92; }
+.format-bar .format-btn[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
+.format-bar :is(button, input):focus-visible { outline: 2px solid var(--word); outline-offset: -2px; border-radius: 4px; }
+.format-bar .format-btn:disabled { opacity: 0.32; }
+
+.format-scroll, .format-fixed, .format-group { display: flex; align-items: center; gap: 0; }
+.format-group { flex: none; }
+.format-scroll {
+  flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth;
+  /* a fade at the end says there's more to scroll to; the spacer lets the last button clear it */
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
+}
+.format-scroll::after { content: ''; flex: none; width: 16px; }
+.format-scroll::-webkit-scrollbar { display: none; }
+.format-fixed { flex: none; }
+/* groups sit apart, a short hairline between them */
+.format-scroll > .format-group + .format-group, .format-scroll > * + .media-size {
+  margin-left: 4px; padding-left: 5px;
+  background: linear-gradient(var(--line), var(--line)) left center / 1px 22px no-repeat;
+}
+
+/* put the keyboard away: only on touch screens, at the far end */
+.format-done { margin-left: auto; color: var(--ink-3); }
+@media (hover: hover) and (pointer: fine) { .format-done { display: none; } }
+
+/* ---------- a strip: what an @ suggests, a picture's tools, or the plain bar ----------
+   A small flat card floating just above the keyboard. */
+
+.format-bar.is-strip {
+  position: fixed; z-index: 30; left: var(--toolbar-left, 50%); translate: -50% 0;
+  bottom: max(calc(var(--safe-b) + 10px), calc(var(--kb, 0px) + 6px));
+  display: flex; align-items: center; gap: 2px; width: min(calc(var(--toolbar-width, 100%) - 20px), 680px);
+  padding: 4px; border-radius: var(--r-m); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  animation: rise-in var(--dur-3) var(--ease-emph);
+  transition: translate var(--dur-3) var(--ease-emph), opacity var(--dur-2);
+}
+.format-bar.is-strip.is-tucked { translate: -50% calc(100% + 16px + var(--safe-b)); opacity: 0; pointer-events: none; }
+/* the Aa button swaps the add buttons and the text tools; whichever shows eases in */
+.format-bar.is-strip:not(.is-swapped) :is(.format-scroll, .format-fixed) { animation: format-in var(--dur-2) var(--ease-emph); }
+@keyframes format-in { from { opacity: 0; translate: -6px 0; } }
+.format-bar .format-toggle[aria-pressed='true'] { background: var(--word); color: var(--on-word); }
+.format-toggle + :is(.format-scroll, .format-fixed) { margin-left: 4px; }
+.format-bar.is-strip:not(:has(.format-scroll)) { width: auto; }
+@media (min-width: 720px) { .is-strip .format-scroll { -webkit-mask-image: none; mask-image: none; } .is-strip .format-scroll::after { display: none; } }
+
+/* ---------- on a phone: the ribbon's bar, docked above the keyboard ----------
+   Full width, flat, a hairline over it, as Word's phone app has it: the open tab's name to pick another, its
+   commands in a row to scroll, and Hide keyboard at the end. */
+
+@media (max-width: 1023.98px) {
+  .editor { padding-bottom: calc(76px + var(--safe-b)); }
+  .app.route-note ~ .toasts { bottom: calc(var(--safe-b) + 66px); }
+
+  .format-bar.is-phone, .format-bar.is-strip.in-ribbon {
+    position: fixed; z-index: 30; left: var(--toolbar-left, 50%); translate: -50% 0; bottom: var(--kb, 0px);
+    width: var(--toolbar-width, 100%); display: flex; align-items: center; gap: 2px;
+    padding: 4px 4px max(4px, calc(var(--safe-b) - var(--kb, 0px)));
+    background: var(--surface); border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: 0 -8px 24px -18px rgb(0 0 0 / 0.25);
+    animation: none;
+    transition: translate var(--dur-3) var(--ease-emph), opacity var(--dur-2);
+  }
+  .format-bar.is-phone.is-tucked { translate: -50% calc(100% + 8px); opacity: 0; pointer-events: none; }
+  .format-bar.is-strip.in-ribbon { animation: rb-up var(--dur-2) var(--ease-emph); }
+  .is-phone .format-btn { width: 44px; height: 44px; }
+  .is-phone .format-btn svg { width: 20px; height: 20px; }
+  .is-phone .format-scroll { animation: format-in var(--dur-2) var(--ease-emph); }
+}
+@keyframes rb-up { from { opacity: 0; translate: -50% 12px; } }
+
+/* the open tab's name; tapped, the tabs come up above it */
+.rb-pick { position: relative; flex: none; display: flex; align-items: center; padding-right: 5px; margin-right: 2px; background: linear-gradient(var(--line), var(--line)) right center / 1px 22px no-repeat; }
+.rb-pick-btn {
+  height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 10px; border-radius: var(--r-s);
+  font: 600 var(--text-m)/1 var(--sans); color: var(--word); white-space: nowrap;
+}
+.rb-pick-btn svg { transition: rotate var(--dur-2) var(--ease-emph); }
+.rb-pick-btn[aria-expanded='true'] svg { rotate: 180deg; }
+@media (hover: hover) { .rb-pick-btn:hover { background: var(--surface-2); } }
+.rb-menu {
+  position: absolute; left: 0; bottom: calc(100% + 10px); z-index: 2; min-width: 180px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); box-shadow: var(--shadow);
+  animation: rb-menu var(--dur-2) var(--ease-emph); transform-origin: bottom left;
+}
+@keyframes rb-menu { from { opacity: 0; scale: 0.96; translate: 0 6px; } }
+.rb-menu button {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 44px; padding: 0 12px;
+  border-radius: var(--r-s); font: 500 var(--text-base)/1 var(--sans); color: var(--ink); text-align: left;
+}
+.rb-menu button[aria-checked='true'] { background: var(--word-wash); color: var(--word); }
+.rb-menu button.is-context { color: var(--word); }
+@media (hover: hover) { .rb-menu button:hover:not([aria-checked='true']) { background: var(--surface-2); } }
+/* the picture's tab: its name in the accent colour, as Word marks a contextual tab */
+.is-phone.is-context .rb-pick-btn { background: var(--word-wash); }
+
+/* Insert's and View's commands on a phone: icon and name side by side */
+.is-phone .rb-big {
+  flex: none; height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border-radius: var(--r-s);
+  font: 500 var(--text-m)/1 var(--sans); color: var(--ink-2); white-space: nowrap;
+}
+.is-phone .rb-big svg { width: 20px; height: 20px; }
+@media (hover: hover) { .is-phone .rb-big:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
+.is-phone .rb-big[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
+.is-phone .rb-big:disabled { opacity: 0.32; }
+/* the styles as chips, each name in its own look */
+.is-phone .rb-gallery { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
+.is-phone .rb-style {
+  flex: none; height: 36px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); color: var(--ink); white-space: nowrap;
+}
+.is-phone .rb-style-sample { display: none; }
+.is-phone .rb-style-name { font: 400 var(--text-base)/1 var(--serif); }
+.is-phone .rb-style.is-h1 .rb-style-name { font-size: 17px; font-weight: 650; }
+.is-phone .rb-style.is-h2 .rb-style-name { font-size: 16px; font-weight: 600; }
+.is-phone .rb-style.is-h3 .rb-style-name { font-weight: 600; }
+.is-phone .rb-style.is-quote .rb-style-name { font-style: italic; color: var(--ink-2); }
+.is-phone .rb-style[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); }
+.is-phone .rb-style:disabled { opacity: 0.32; }
+.is-phone .rb-zoom { min-width: 48px; height: 44px; font: 600 var(--text-m)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+/* ---------- Focus: everything but the page goes, but for a way back ---------- */
+
+.focus-exit {
+  position: fixed; z-index: 36; top: calc(var(--safe-t) + 12px); right: 16px; height: 34px; display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 13px 0 11px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  font: 500 var(--text-m)/1 var(--sans); color: var(--ink-2); opacity: 0.55;
+  transition: opacity var(--dur-2), color var(--dur-1); animation: fade-in var(--dur-3) var(--ease-emph);
+}
+.focus-exit:is(:hover, :focus-visible) { opacity: 1; color: var(--ink); }
+.focus-exit:focus-visible { outline: 2px solid var(--word); outline-offset: 2px; }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* ---------- on a computer: the ribbon across the top ----------
+   One flat block over the page beside the sidebar: the note's title bar, the tabs, then the commands in groups with
+   their captions under them, between hairlines. Heights are fixed, so the page can leave exactly that much room. */
+
+@media (min-width: 1024px) {
+  :root { --ribbon-h: 168px; }                    /* 44 title bar + 34 tabs + 90 ribbon */
+  :root[data-ribbon='collapsed'] { --ribbon-h: 78px; }
+  :root[data-note-focus] { --ribbon-h: 0px; }
+
+  .format-bar.is-strip { left: calc(50% + var(--side-w) / 2); }
+  /* what an @ suggests, floating over the status bar */
+  .format-bar.is-strip.in-ribbon { bottom: calc(var(--status-h, 30px) + 12px); width: min(calc(100vw - var(--side-w) - 48px), 680px); }
+  .app.route-note ~ .toasts { bottom: calc(var(--status-h, 30px) + 16px); }
+}
+
+.ribbon.is-wide {
+  position: fixed; z-index: 35; top: 0; left: var(--side-w, 0px); right: 0;
+  font: 400 var(--text-m)/1.2 var(--sans); color: var(--ink); background: var(--surface);
+  transition: left var(--dur-2) ease;
+}
+.ribbon.is-wide.is-focus { display: none; }
+.ribbon.is-wide .format-btn { width: 32px; height: 32px; border-radius: 4px; }
+.ribbon.is-wide .format-btn svg { width: 18px; height: 18px; }
+
+/* the title bar: back, the note's name, then Share, More and Done */
+.rb-titlebar {
+  height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 10px 0 6px;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.rb-doc { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; margin-left: 4px; color: var(--ink-3); }
+.rb-doc svg { flex: none; }
+.rb-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink); }
+.rb-title.is-untitled { font-weight: 500; color: var(--ink-3); }
+.rb-share, .rb-done {
+  flex: none; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 4px;
+  font: 600 var(--text-m)/1 var(--sans); transition: background-color var(--dur-1), border-color var(--dur-1), filter var(--dur-1);
+}
+.rb-share { border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); }
+.rb-share.is-shared svg { color: var(--word); }
+.rb-done { margin-left: 4px; padding: 0 16px; background: var(--word); color: var(--on-word); }
+@media (hover: hover) {
+  .rb-share:hover { background: var(--surface-2); color: var(--ink); }
+  .rb-done:hover:not(:disabled) { filter: brightness(1.1); }
+}
+.rb-titlebar :is(.rb-share, .rb-done):focus-visible { outline-offset: 2px; }
+
+/* the tabs: the open one underlined in the accent colour */
+.rb-tabs { height: 34px; display: flex; align-items: stretch; gap: 8px; padding: 0 10px 0 8px; }
+.is-collapsed .rb-tabs { border-bottom: 1px solid var(--line); }
+.rb-tablist { flex: 1; min-width: 0; display: flex; align-items: stretch; gap: 2px; }
+.rb-tab {
+  position: relative; flex: none; padding: 0 12px; border-radius: 4px 4px 0 0;
+  font: 500 var(--text-m)/1 var(--sans); color: var(--ink-2); transition: color var(--dur-1), background-color var(--dur-1);
+}
+.rb-tab::after {
+  content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0;
+  background: var(--word); scale: 0 1; transition: scale var(--dur-2) var(--ease-emph);
+}
+.rb-tab[aria-selected='true'] { color: var(--ink); }
+.rb-tab[aria-selected='true']::after { scale: 1 1; }
+/* folded away, no tab is open, unless it's dropped down */
+.is-collapsed:not(.is-peeking) .rb-tab::after { scale: 0 1; }
+.is-collapsed:not(.is-peeking) .rb-tab[aria-selected='true'] { color: var(--ink-2); }
+@media (hover: hover) { .rb-tab:hover { background: var(--surface-2); color: var(--ink); } }
+.rb-tab:focus-visible { outline: 2px solid var(--word); outline-offset: -2px; }
+/* a contextual tab (the selected picture's): its name in the accent colour, a band over it */
+.rb-tab.is-context { color: var(--word); font-weight: 600; background: color-mix(in oklab, var(--word) 6%, transparent); animation: fade-in var(--dur-2) var(--ease-emph); }
+.rb-tab.is-context::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--word); opacity: 0.55; }
+.rb-tab.is-context[aria-selected='true'] { color: var(--word); }
+/* Editing / Reading, at the end of the tabs as in Word */
+.rb-mode {
+  flex: none; align-self: center; height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 4px; font: 500 var(--text-s)/1 var(--sans); color: var(--ink-2);
+}
+@media (hover: hover) { .rb-mode:hover { background: var(--surface-2); color: var(--ink); } }
+
+/* the ribbon: groups of commands, each captioned, between hairlines */
+.rb-body { position: relative; height: 90px; padding-top: 4px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.rb-panel {
+  height: 100%; display: flex; align-items: stretch; padding: 0 40px 0 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+  animation: format-in var(--dur-2) var(--ease-emph);
+}
+.rb-panel::-webkit-scrollbar { display: none; }
+.ribbon .rb-panel > .format-group {
+  position: relative; flex: none; display: flex; align-items: center; gap: 2px; height: auto; margin: 0; padding: 0 10px 18px;
+  background: none;
+}
+.ribbon .rb-panel > .format-group + .format-group::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 8px; width: 1px; background: var(--line);
+}
+.ribbon .rb-panel > .format-group::after {
+  content: attr(data-caption); position: absolute; left: 0; right: 0; bottom: 4px; text-align: center;
+  font: 400 var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; pointer-events: none;
+}
+/* small commands in two rows */
+.ribbon .rb-panel > .rb-rows { display: grid; grid-auto-flow: row; grid-template-columns: repeat(var(--cols, 3), 32px); grid-template-rows: 32px 32px; align-content: center; gap: 2px; }
+/* the selected picture's size */
+.ribbon .rb-panel > .media-size { padding-inline: 12px 14px; }
+
+/* a big command: its icon over its name */
+.ribbon.is-wide .rb-big {
+  flex: none; min-width: 54px; max-width: 84px; height: 64px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 7px 6px 4px; border-radius: 4px; font: 400 var(--text-s)/1.15 var(--sans); color: var(--ink); text-align: center;
+  transition: background-color var(--dur-1), color var(--dur-1);
+}
+.ribbon.is-wide .rb-big svg { flex: none; width: 24px; height: 24px; color: var(--ink-2); }
+@media (hover: hover) { .ribbon.is-wide .rb-big:hover:not(:disabled) { background: var(--surface-2); } }
+.ribbon.is-wide .rb-big[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
+.ribbon.is-wide .rb-big[aria-pressed='true'] svg { color: var(--word); }
+.ribbon.is-wide .rb-big:disabled { opacity: 0.32; }
+.ribbon.is-wide .rb-big:active:not(:disabled) { scale: 0.96; }
+
+/* Zoom: −, the percentage (back to 100%), + */
+.rb-zoom {
+  min-width: 48px; height: 32px; padding: 0 6px; border-radius: 4px;
+  font: 600 var(--text-m)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink);
+}
+@media (hover: hover) { .ribbon.is-wide .rb-zoom:hover { background: var(--surface-2); } }
+
+/* the styles gallery: each style shown in its own look, the caret's one framed */
+.ribbon.is-wide .rb-gallery { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.ribbon.is-wide .rb-style {
+  width: 76px; height: 58px; display: flex; flex-direction: column; justify-content: space-between; padding: 7px 7px 5px;
+  border: 1px solid transparent; border-radius: 3px; background: var(--surface); text-align: left; overflow: hidden;
+  transition: border-color var(--dur-1), background-color var(--dur-1);
+}
+.rb-style-sample { display: block; height: 24px; overflow: hidden; white-space: nowrap; font: 400 15px/24px var(--serif); color: var(--ink); }
+.rb-style.is-h1 .rb-style-sample { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--heading-ink, var(--ink)); }
+.rb-style.is-h2 .rb-style-sample { font-size: 17px; font-weight: 600; color: var(--heading-ink, var(--ink)); }
+.rb-style.is-h3 .rb-style-sample { font-size: 15px; font-weight: 650; color: var(--heading-ink, var(--ink)); }
+.rb-style.is-quote .rb-style-sample { font-style: italic; color: var(--ink-2); padding-left: 6px; box-shadow: inset 2px 0 var(--line-2); }
+.ribbon.is-wide .rb-style-name { font: 400 var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) { .ribbon.is-wide .rb-style:hover:not(:disabled) { border-color: var(--line-2); } }
+.ribbon.is-wide .rb-style[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); }
+.ribbon.is-wide .rb-style[aria-pressed='true'] .rb-style-name { color: var(--word); }
+.ribbon.is-wide .rb-style:disabled { opacity: 0.4; }
+
+/* fold the ribbon to its tabs: the small chevron in its corner, as in Word */
+.ribbon.is-wide .rb-fold { position: absolute; right: 8px; bottom: 6px; width: 26px; height: 26px; color: var(--ink-3); }
+/* folded, a tab drops the ribbon down over the page */
+.rb-body.is-peek {
+  position: absolute; left: 0; right: 0; top: 100%;
+  box-shadow: 0 14px 28px -16px rgb(0 0 0 / 0.28); animation: rb-drop var(--dur-2) var(--ease-emph);
+}
+@keyframes rb-drop { from { opacity: 0; translate: 0 -6px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .format-bar, .format-bar *, .focus-exit, .rb-menu { animation: none !important; transition: none !important; }
+}

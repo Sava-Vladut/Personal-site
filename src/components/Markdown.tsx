@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { PersonMention, SongMention, WikiLink } from './mentions';
+import { inline as pieces } from '../lib/inline';
 import { t } from '../lib/i18n';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
@@ -64,44 +65,28 @@ function parse(text: string, offset = 0): Block[] {
 
 /* ---------- inline ---------- */
 
-const INLINE = new RegExp(
-  [
-    /(`+)([^`\n]+?)\1/.source, //                                        1, 2 code
-    /\[\[(?:([^\]|\n]+)\|)?([^\]\n]+)\]\]/.source, //                    3, 4 wiki link: a book on the shelf, a note, else text
-    /\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/.source, //       5, 6 link
-    /\*\*(\S(?:[^\n]*?\S)?)\*\*(?!\*)/.source, //                               7 bold
-    /~~(\S(?:[^\n]*?\S)?)~~/.source, //                                   8 strike
-    /==(\S(?:[^\n]*?\S)?)==/.source, //                                   9 highlight
-    /\*(\S(?:[^*\n]*?\S)?)\*/.source, //                                  10 italic
-    /(https?:\/\/[^\s<>]*[^\s<>.,:;"'!?)\]])/.source, //                  11 bare address
-    /(^|[\s(])#([\p{L}_][\p{L}\p{N}_/-]*)/u.source, //                     12, 13 tag
-    /@\[(?:person:([^\]|\n]+)\|)?([^\]\n]+)\]/.source, //                       14, 15 someone in People
-    /♪\[(?:song:([^\]|\n]+)\|)?([^\]\n]+)\]/.source, //                         16, 17 music in your records
-  ].join('|'),
-  'gu',
-);
+/** A link's address that opens: the web or e-mail, never script. */
+const SAFE = /^(https?:\/\/|mailto:)\S/;
 
+// The same inline syntax the editor styles as it's written (lib/inline.ts).
 function inline(text: string): ComponentChildren[] {
-  const out: ComponentChildren[] = [];
-  let at = 0;
-  for (const m of text.matchAll(INLINE)) {
-    const i = m.index!;
-    if (i > at) out.push(text.slice(at, i));
-    at = i + m[0].length;
-    if (m[2] !== undefined) out.push(<code>{m[2]}</code>);
-    else if (m[4] !== undefined) out.push(<WikiLink target={m[3]} text={m[4]} />);
-    else if (m[5] !== undefined) out.push(<a href={m[6]} target="_blank" rel="noopener noreferrer">{inline(m[5])}</a>);
-    else if (m[7] !== undefined) out.push(<strong>{inline(m[7])}</strong>);
-    else if (m[8] !== undefined) out.push(<s>{inline(m[8])}</s>);
-    else if (m[9] !== undefined) out.push(<mark>{inline(m[9])}</mark>);
-    else if (m[10] !== undefined) out.push(<em>{inline(m[10])}</em>);
-    else if (m[11] !== undefined) out.push(<a href={m[11]} target="_blank" rel="noopener noreferrer">{m[11]}</a>);
-    else if (m[13] !== undefined) out.push(m[12], <span class="md-tag">#{m[13]}</span>);
-    else if (m[15] !== undefined) out.push(<PersonMention target={m[14]} text={m[15]} />);
-    else if (m[17] !== undefined) out.push(<SongMention target={m[16]} text={m[17]} />);
-  }
-  if (at < text.length) out.push(text.slice(at));
-  return out;
+  return pieces(text).map((p) => {
+    switch (p.t) {
+      case 'text': case 'esc': return p.s;
+      case 'code': return <code>{p.s}</code>;
+      case 'wiki': return <WikiLink target={p.target} text={p.s} />;
+      case 'person': return <PersonMention target={p.target} text={p.s} />;
+      case 'song': return <SongMention target={p.target} text={p.s} />;
+      case 'link': return SAFE.test(p.url) ? <a href={p.url} target="_blank" rel="noopener noreferrer">{inline(p.s)}</a> : <span>{inline(p.s)}</span>;
+      case 'b': return <strong>{inline(p.s)}</strong>;
+      case 's': return <s>{inline(p.s)}</s>;
+      case 'hl': return <mark>{inline(p.s)}</mark>;
+      case 'i': return <em>{inline(p.s)}</em>;
+      case 'empty': return p.s;
+      case 'bare': return <a href={p.s} target="_blank" rel="noopener noreferrer">{p.s}</a>;
+      case 'tag': return <span class="md-tag">{p.s}</span>;
+    }
+  });
 }
 
 /* ---------- blocks ---------- */

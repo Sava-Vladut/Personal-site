@@ -1,3 +1,4 @@
+import { Fragment } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { flushSync } from 'preact/compat';
 import { rangeLabel, timeLabel } from '../lib/dates';
@@ -5,7 +6,8 @@ import { goBack, navigate } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { editable, PLAIN } from '../lib/editable';
 import { imageSrc } from '../lib/images';
-import { deleteKey, listKey, toggleTask, toggleTaskAt } from '../lib/markdown';
+import { deleteKey, listKey, shortcutKey, toggleTask, toggleTaskAt } from '../lib/markdown';
+import type { Kind } from '../lib/history';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { linkedFrom, linkOf, linkRanges, noteLabel, suggestLinks, typedLink, type LinkSuggestion } from '../lib/links';
@@ -32,7 +34,11 @@ import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarge
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
+import { NoteStatus, type SaveState } from '../components/NoteStatus';
+import { applyDocView, useDocView } from '../lib/docView';
 import '../styles/notes.css';
+import '../styles/ribbon.css';
+import '../styles/document.css';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
 
@@ -66,10 +72,42 @@ function useAutosize(value: string) {
   return ref;
 }
 
+/** What an input event did, for undo (lib/history.ts): letters typed (a space ends a word), letters deleted, or more. */
+function kindOf(e: Event): Kind {
+  const { inputType: type, data } = e as InputEvent;
+  if (type === 'insertText' || type === 'insertCompositionText') return data && /\s$/.test(data) ? 'space' : 'type';
+  return type === 'deleteContentBackward' || type === 'deleteContentForward' ? 'delete' : 'other';
+}
+
+/**
+ * Where a tap on a stretch of formatted text (the reading view) landed in its Markdown, as near as can be told: the
+ * words under the finger are found in the text, after as many characters as show before them. Undefined when it
+ * can't be told.
+ */
+function tappedAt(e: MouseEvent, text: string) {
+  const d = document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
+  let node: Node | undefined, offset = 0;
+  const p = d.caretPositionFromPoint?.(e.clientX, e.clientY);
+  if (p) (node = p.offsetNode), (offset = p.offset);
+  else {
+    const r = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+    if (r) (node = r.startContainer), (offset = r.startOffset);
+  }
+  const host = e.currentTarget as HTMLElement;
+  if (!node || node.nodeType !== Node.TEXT_NODE || !host.contains(node)) return;
+  const words = (node as Text).data;
+  let shown = 0; // the characters that show before it; its Markdown can only have more
+  const tw = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+  for (let n = tw.nextNode(); n && n !== node; n = tw.nextNode()) shown += (n as Text).data.length;
+  const at = text.indexOf(words, Math.min(shown, text.length));
+  return at < 0 ? undefined : at + Math.min(offset, words.length);
+}
+
 /**
  * One stretch of the note's text, between pictures. A plain-text editable block, not a textarea, so that its lines
- * wrap around a picture floated beside it. Its Markdown shows styled as it's typed: after each change, the pieces
- * whose styling changed are laid out again (lib/editable.ts); the rest stays the browser's own.
+ * wrap around a picture floated beside it. Its Markdown shows styled as it's typed: after each change, the lines whose
+ * styling changed are laid out again (lib/editable.ts); the rest stays the browser's own. It keeps its own undo, and
+ * the keys behave as in Notion and Word (lib/markdown.ts).
  */
 function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, grow, textRef, suggestionsOpen, activeSuggestion }: {
   value: string;
@@ -88,6 +126,8 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
   const ref = useRef<HTMLDivElement | null>(null);
   const composing = useRef(false);
   const frame = useRef(0);
+  // the text a "[] " turned into a task made, and the caret then: Backspace straight after takes it back
+  const converted = useRef<{ text: string; at: number } | null>(null);
   const handlers = useRef({ onCaret, onMention });
   handlers.current = { onCaret, onMention };
   const readCaret = () => {
@@ -135,6 +175,23 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       queueCaret();
     }
   };
+  /** After the text changed: lays it out again, keeps the change for undo, and passes the text on. */
+  const changed = (el: HTMLDivElement, kind: Kind, typed: boolean) => {
+    const box = editable(el);
+    box.tidy();
+    box.record(kind);
+    converted.current = null;
+    // "[] " at the start of a line becomes a task
+    if (typed && shortcutKey(box)) converted.current = { text: box.value, at: box.selectionStart };
+    onChange(box.value);
+  };
+  const history = (el: HTMLDivElement, redo: boolean) => {
+    const box = editable(el);
+    converted.current = null;
+    if (!(redo ? box.redo() : box.undo())) return;
+    onChange(box.value);
+    readCaret();
+  };
   const pressed = useRef<HTMLElement | null>(null); // a task's box, while a finger is on it
   const taskAt = (e: Event) => (e.target as Element | null)?.closest?.('.md-task-mark') as HTMLElement | null;
   const tick = (e: Event) => {
@@ -160,22 +217,48 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
       spellcheck
       onInput={(e) => {
         const el = e.currentTarget;
-        // restyles the Markdown as it's typed (and tidies away whatever line markup the browser added)
-        if (!composing.current && !(e as InputEvent).isComposing) editable(el).tidy();
-        onChange(editable(el).value);
+        // while a word is being composed (a phone's keyboard, an IME), the browser's text is left alone until it's done
+        if (composing.current || (e as InputEvent).isComposing) onChange(editable(el).value);
+        else changed(el, kindOf(e), (e as InputEvent).inputType === 'insertText' && (e as InputEvent).data === ' ');
         caret(e);
       }}
-      onCompositionStart={() => { composing.current = true; onMention(null); }}
+      onCompositionStart={() => {
+        composing.current = true;
+        if (ref.current) editable(ref.current).before();
+        onMention(null);
+      }}
       onCompositionEnd={(e) => {
         composing.current = false;
-        editable(e.currentTarget).tidy();
-        onChange(editable(e.currentTarget).value);
+        const el = e.currentTarget;
+        changed(el, /\s$/.test(e.data ?? '') ? 'space' : 'type', / $/.test(e.data ?? ''));
         caret(e);
       }}
       onBeforeInput={(e) => {
+        const el = e.currentTarget;
+        const box = editable(el);
+        // undo and redo are the note's own, from the keyboard, a shake or the keyboard's own buttons
+        if (e.inputType === 'historyUndo' || e.inputType === 'historyRedo') {
+          e.preventDefault();
+          history(el, e.inputType === 'historyRedo');
+          return;
+        }
         if (composing.current || e.isComposing) return;
-        // Backspace and Delete act on what shows, not on the hidden markers
-        if ((e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') && deleteKey(editable(e.currentTarget), e.inputType === 'deleteContentBackward')) {
+        box.before();
+        const back = e.inputType === 'deleteContentBackward';
+        // Backspace straight after "[] " became a task gives back what was typed
+        const c = converted.current;
+        if (back && c && c.text === box.value && c.at === box.selectionStart && box.selectionEnd === c.at) {
+          e.preventDefault();
+          history(el, false);
+          return;
+        }
+        if ((back || e.inputType === 'deleteContentForward') && deleteKey(box, back)) {
+          e.preventDefault();
+          return;
+        }
+        // Enter from a keyboard that doesn't say which key it was (Android) carries lists on all the same
+        if ((e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak')
+          && listKey(box, { key: 'Enter', shiftKey: e.inputType === 'insertLineBreak' } as KeyboardEvent)) {
           e.preventDefault();
           return;
         }
@@ -184,15 +267,27 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
         if (e.inputType.startsWith('format')) e.preventDefault();
         else if (e.inputType === 'insertParagraph') {
           e.preventDefault();
-          document.execCommand('insertText', false, '\n');
+          box.edit(() => document.execCommand('insertText', false, '\n'));
         }
       }}
       onPaste={(e) => {
         if (PLAIN || e.clipboardData?.files.length) return; // pictures are the page's to add
         e.preventDefault();
-        document.execCommand('insertText', false, e.clipboardData?.getData('text/plain') ?? '');
+        const text = e.clipboardData?.getData('text/plain') ?? '';
+        editable(e.currentTarget).edit(() => document.execCommand('insertText', false, text));
       }}
-      onKeyDown={(e) => !composing.current && !e.isComposing && e.keyCode !== 229 && (onKey(e) || listKey(editable(e.currentTarget), e)) && e.preventDefault()}
+      onKeyDown={(e) => {
+        if (composing.current || e.isComposing || e.keyCode === 229) return;
+        const el = e.currentTarget;
+        const k = e.key.toLowerCase();
+        // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl+Y redo
+        if ((e.metaKey || e.ctrlKey) && !e.altKey && (k === 'z' || (k === 'y' && e.ctrlKey && !e.metaKey))) {
+          e.preventDefault();
+          history(el, k === 'y' || e.shiftKey);
+          return;
+        }
+        if (onKey(e) || listKey(editable(el), e)) e.preventDefault();
+      }}
       onKeyUp={(e) => !['Enter', 'Tab', 'Escape'].includes(e.key) && caret(e)}
       onPointerUp={caret}
       // a task's box ticks it, without moving the caret or bringing the keyboard up
@@ -206,7 +301,10 @@ function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, gro
         pressed.current = null;
       }}
       onClick={(e) => taskAt(e) && tick(e)}
-      onFocus={caret}
+      onFocus={(e) => {
+        editable(e.currentTarget).before();
+        caret(e);
+      }}
       onBlur={caret}
     />
   );
@@ -255,6 +353,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const latest = useRef(draft);
   latest.current = draft;
+  // what the status bar says about saving: only shown, never consulted, so saving works exactly as without it
+  const [saveState, setSaveState] = useState<SaveState>(id !== 'new' ? 'saved' : 'idle');
   // the notes that link here, shown at the bottom. Saving while writing hands over a new list of entries, but unless
   // another note changed (or this one's title, which links can point at) what links here can't have, so the scan of
   // every note is skipped.
@@ -271,6 +371,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   }, [draft?.id, allEntries, shelf]);
 
   const titleRef = useAutosize(draft?.title ?? '');
+  // the page's zoom sets the title's size too: fit its box again when it changes
+  const docView = useDocView();
+  useLayoutEffect(() => fit(titleRef.current), [docView?.zoom]);
+  // while the note is open, the page carries its zoom, Focus and ribbon (lib/docView.ts)
+  // (before the first paint, so the floating Back and Done never flash over the ribbon)
+  useLayoutEffect(() => applyDocView(), []);
   const textRef = useRef<HTMLDivElement | null>(null);
   const areas = useRef<(HTMLDivElement | null)[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -293,7 +399,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (removing.current || !d) return Promise.resolve(false);
     if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
     dirty.current = false;
-    if (!saved.current && isEmpty(d)) return Promise.resolve(false); // don't keep blank notes
+    if (!saved.current && isEmpty(d)) {
+      if (alive.current) setSaveState('idle');
+      return Promise.resolve(false); // don't keep blank notes
+    }
     const request = ++saveRequest.current;
     const saving = saveEntry(d).then(() => {
       if (removing.current) return false;
@@ -302,11 +411,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         addPlaceAndWeather(d);
       }
       saved.current = true;
-      if (alive.current) syncUrl();
+      if (alive.current) {
+        syncUrl();
+        if (request === saveRequest.current && !dirty.current) setSaveState('saved');
+      }
       return true;
     }).catch(() => {
       if (removing.current || request !== saveRequest.current) return false;
       dirty.current = true;
+      if (alive.current) setSaveState('error');
       toast(t('Couldn’t save this note. Try again.'));
       return false;
     }).finally(() => {
@@ -340,6 +453,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
+    setSaveState('saving');
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, 500);
   };
@@ -735,21 +849,36 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     });
   };
 
-  /** Switches to writing, with the caret at the end of text block `seg` (or where it was). */
-  const write = (seg?: number) => {
+  /** Switches to writing, with the caret at `pos` (or the end) of text block `seg` (or where it was). */
+  const write = (seg?: number, pos?: number) => {
     const go = () => {
       const el = seg === undefined ? areas.current[Math.max(0, where.current.seg)] ?? textRef.current : areas.current[seg];
       if (!el) return;
       el.focus();
       if (seg !== undefined) {
         const box = editable(el);
-        box.setSelectionRange(box.value.length, box.value.length);
+        const at = pos ?? box.value.length;
+        box.setSelectionRange(at, at);
       }
     };
     if (!reading) return go();
     // Render the editable before this touch ends: iOS only opens its keyboard for synchronous focus.
     flushSync(() => setReading(false));
     go();
+  };
+  /** Reading view and writing, back and forth (the More menu, the status bar). */
+  const toggleReading = () => (reading ? write() : setReading(true));
+  /**
+   * A click on the empty paper below the words starts writing at the end, as in Word. Clicks beside a line are left
+   * to the browser, and the notes linking here at the foot of the page keep theirs.
+   */
+  const clickPaper = (e: MouseEvent) => {
+    const host = bodyRef.current;
+    if (!host || (e.target !== e.currentTarget && e.target !== host) || !getSelection()?.isCollapsed) return;
+    const words = host.lastElementChild?.getBoundingClientRect();
+    const foot = (e.currentTarget as HTMLElement).querySelector('.backlinks')?.getBoundingClientRect();
+    if (!words || e.clientY <= words.bottom || (foot && e.clientY >= foot.top)) return;
+    write(last);
   };
   /** The text box the toolbar formats: the one being written in, or the last one that was. */
   const target = () => {
@@ -953,112 +1082,117 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>{t('Done')}</button>
       </div>
 
-      <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
-        {draft.cover && <CoverImg cover={draft.cover} class="note-head-cover" />}
-        {isCheckin && <div class="eyebrow">Check-in · {timeLabel(draft.time)}</div>}
-        <div class="editor-top">
-          {draft.icon && (
-            <button class="icon-pick" onClick={() => setOpen('icon')} aria-label={t('Change icon')}>
-              <NoteIcon id={draft.icon} size={26} />
-            </button>
-          )}
-          <textarea
-            ref={titleRef}
-            class="title-input"
-            rows={1}
-            placeholder={t('Title')}
-            value={draft.title}
-            maxLength={300}
-            onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write(0))}
-            aria-label={t('Title')}
-          />
-        </div>
-        <DetailsSummary draft={draft} onOpen={() => setDetails(true)} onMusic={() => setOpen('music')} />
-      </section>
-
-      <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef}>
-        {body.texts.map((text, i) => (
-          <>
-            {i > 0 && (() => {
-              const m = body.media[i - 1];
-              const key = mediaKey(m);
-              return (
-                <MediaBlock
-                  key={key}
-                  m={m}
-                  draft={draft}
-                  editing={!reading}
-                  selected={!reading && sel === key}
-                  dragging={moving?.key === key}
-                  merging={moving?.onto === key}
-                  onSelect={() => setSel(key)}
-                  onOpen={(el, k) => view(i - 1, k, el)}
-                  onResize={(size) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, { size, align: m.align })) })}
-                  onDrag={(e, el) => !reading && startMove(i - 1, e, el)}
-                />
-              );
-            })()}
-            {reading ? (
-              text.trim() && (
-                <div
-                  class="read-text"
-                  onClick={(e) => {
-                    // a tap on the words starts writing there; links, ticks and selecting text don't
-                    if ((e.target as Element).closest('a, input, button') || !getSelection()?.isCollapsed) return;
-                    write(i);
-                  }}
-                >
-                  <Markdown text={text} onTask={(line) => setText(i, toggleTask(text, line))} />
-                </div>
-              )
-            ) : (
-            <BodyText
-              value={text}
-              textRef={(el) => { areas.current[i] = el; if (i === 0) textRef.current = el; }}
-              grow={i === last}
-              placeholder={i === 0 && !body.media.length ? t('What’s on your mind?') : i === last ? t('Keep writing…') : undefined}
-              onChange={(v) => setText(i, v)}
-              onCaret={(pos) => (where.current = { seg: i, pos })}
-              onMention={(m) => setMention(i, m)}
-              onKey={mentionKey}
-              suggestionsOpen={typing?.seg === i}
-              activeSuggestion={typing?.seg === i && choices ? `mention-suggestions-option-${activeChoice}` : undefined}
-            />
+      <article class="note-sheet" onClick={clickPaper}>
+        <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
+          {draft.cover && <CoverImg cover={draft.cover} class="note-head-cover" />}
+          {isCheckin && <div class="eyebrow">{t('Check-in')} · {timeLabel(draft.time)}</div>}
+          <div class="editor-top">
+            {draft.icon && (
+              <button class="icon-pick" onClick={() => setOpen('icon')} aria-label={t('Change icon')}>
+                <NoteIcon id={draft.icon} size={26} />
+              </button>
             )}
-          </>
-        ))}
-        {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label={t('Adding photo')} />)}
-        {moving && !moving.onto && (
-          <span
-            class={`drop-slot is-${moving.side}`}
-            style={{ top: moving.y + 'px', width: (moving.layout.size ?? 100) + '%', aspectRatio: String(moving.ratio) }}
-            aria-hidden="true"
-          >
-            <span class="drop-slot-label glass">{moving.side === 'center' ? t('On its own line') : t('Text wraps around')}</span>
-          </span>
-        )}
-        {reading && !plainText(draft.text).trim() && (
-          <button class="read-empty" onClick={() => write(last)}>{t('Nothing written yet. Tap to write.')}</button>
-        )}
-        {reading && <button class="read-tail" onClick={() => write(last)} aria-label={t('Keep writing')} tabIndex={-1} />}
-      </div>
-
-      {backlinks.length > 0 && (
-        <section class="backlinks" aria-label={t('Linked from')}>
-          <h2 class="eyebrow">{t('Linked from')}</h2>
-          {backlinks.map(({ entry: e, context }) => (
-            <button key={e.id} class="backlink card" onClick={() => navigate('note/' + e.id)}>
-              <span class="backlink-icon">{e.icon ? <NoteIcon id={e.icon} size={20} /> : <Icon name={e.kind === 'checkin' ? 'mood-smile' : 'notebook'} size={18} />}</span>
-              <span class="backlink-main">
-                <span class="backlink-title">{e.kind === 'checkin' && !e.title.trim() ? t('Check-in') : noteLabel(e)}</span>
-                <span class="backlink-when">{rangeLabel(e.date, e.dateEnd)}</span>
-                {context && <span class="backlink-context">{context}</span>}
-              </span>
-            </button>
-          ))}
+            <textarea
+              ref={titleRef}
+              class="title-input"
+              rows={1}
+              placeholder={t('Title')}
+              value={draft.title}
+              maxLength={300}
+              onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write(0))}
+              aria-label={t('Title')}
+            />
+          </div>
+          <DetailsSummary draft={draft} onOpen={() => setDetails(true)} onMusic={() => setOpen('music')} />
         </section>
-      )}
+
+        <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef}>
+          {body.texts.map((text, i) => (
+            // keyed by the picture before it, so a picture put in mid-text gets a new block after it and the one
+            // being written in stays itself
+            <Fragment key={i ? mediaKey(body.media[i - 1]) : ''}>
+              {i > 0 && (() => {
+                const m = body.media[i - 1];
+                const key = mediaKey(m);
+                return (
+                  <MediaBlock
+                    key={key}
+                    m={m}
+                    draft={draft}
+                    editing={!reading}
+                    selected={!reading && sel === key}
+                    dragging={moving?.key === key}
+                    merging={moving?.onto === key}
+                    onSelect={() => setSel(key)}
+                    onOpen={(el, k) => view(i - 1, k, el)}
+                    onResize={(size) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, { size, align: m.align })) })}
+                    onDrag={(e, el) => !reading && startMove(i - 1, e, el)}
+                  />
+                );
+              })()}
+              {reading ? (
+                text.trim() && (
+                  <div
+                    class="read-text"
+                    onClick={(e) => {
+                      // a tap on the words starts writing there; links, ticks and selecting text don't
+                      if ((e.target as Element).closest('a, input, button') || !getSelection()?.isCollapsed) return;
+                      write(i, tappedAt(e, text));
+                    }}
+                  >
+                    <Markdown text={text} onTask={(line) => setText(i, toggleTask(text, line))} />
+                  </div>
+                )
+              ) : (
+              <BodyText
+                value={text}
+                textRef={(el) => { areas.current[i] = el; if (i === 0) textRef.current = el; }}
+                grow={i === last}
+                placeholder={i === 0 && !body.media.length ? t('What’s on your mind?') : i === last ? t('Keep writing…') : undefined}
+                onChange={(v) => setText(i, v)}
+                onCaret={(pos) => (where.current = { seg: i, pos })}
+                onMention={(m) => setMention(i, m)}
+                onKey={mentionKey}
+                suggestionsOpen={typing?.seg === i}
+                activeSuggestion={typing?.seg === i && choices ? `mention-suggestions-option-${activeChoice}` : undefined}
+              />
+              )}
+            </Fragment>
+          ))}
+          {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label={t('Adding photo')} />)}
+          {moving && !moving.onto && (
+            <span
+              class={`drop-slot is-${moving.side}`}
+              style={{ top: moving.y + 'px', width: (moving.layout.size ?? 100) + '%', aspectRatio: String(moving.ratio) }}
+              aria-hidden="true"
+            >
+              <span class="drop-slot-label glass">{moving.side === 'center' ? t('On its own line') : t('Text wraps around')}</span>
+            </span>
+          )}
+          {reading && !plainText(draft.text).trim() && (
+            <button class="read-empty" onClick={() => write(last)}>{t('Nothing written yet. Tap to write.')}</button>
+          )}
+          {reading && <button class="read-tail" onClick={() => write(last)} aria-label={t('Keep writing')} tabIndex={-1} />}
+        </div>
+
+        {backlinks.length > 0 && (
+          <section class="backlinks" aria-label={t('Linked from')}>
+            <h2 class="eyebrow">{t('Linked from')}</h2>
+            {backlinks.map(({ entry: e, context }) => (
+              <button key={e.id} class="backlink card" onClick={() => navigate('note/' + e.id)}>
+                <span class="backlink-icon">{e.icon ? <NoteIcon id={e.icon} size={20} /> : <Icon name={e.kind === 'checkin' ? 'mood-smile' : 'notebook'} size={18} />}</span>
+                <span class="backlink-main">
+                  <span class="backlink-title">{e.kind === 'checkin' && !e.title.trim() ? t('Check-in') : noteLabel(e)}</span>
+                  <span class="backlink-when">{rangeLabel(e.date, e.dateEnd)}</span>
+                  {context && <span class="backlink-context">{context}</span>}
+                </span>
+              </button>
+            ))}
+          </section>
+        )}
+      </article>
+      <NoteStatus text={draft.text} save={saveState} reading={reading} onRead={() => setReading(true)} onWrite={() => write()} />
       <input
         ref={fileRef}
         type="file"
@@ -1070,75 +1204,63 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       <FormatBar
         target={target}
         format={!reading}
-        swapLabel={typing ? (typing.link ? t('Link a note or a book') : t('Tag someone, a book or music')) : t('Picture')}
-        swap={typing ? (
+        swapLabel={typing?.link ? t('Link a note or a book') : t('Tag someone, a book or music')}
+        swap={typing && (
           <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} link={typing.link} />
-        ) : selIndex >= 0 && (
-          <MediaTools
-            m={body.media[selIndex]}
-            canUp={canStep(body, selIndex, -1)}
-            canDown={canStep(body, selIndex, 1)}
-            onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, l)) })}
-            onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), selIndex, dir))}
-            onOpen={() => view(selIndex)}
-            onWrite={() => {
-              // beside a picture on a side; a picture on its own line moves to the left first, half as wide
-              const m = body.media[selIndex];
-              if ((m.size ?? 100) >= 100 || !m.align) update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, dropLayout(m, 'left'))) });
-              setSel(null);
-              const el = areas.current[selIndex + 1];
-              if (!el) return;
-              el.focus({ preventScroll: true });
-              editable(el).setSelectionRange(0, 0);
-            }}
-            onRemove={() => removePicture(body.media[selIndex])}
-            onUngroup={() => {
-              const b = ungroup(bodyOf(latest.current!), selIndex);
-              setBody(b);
-              setSel(mediaKey(b.media[selIndex]));
-            }}
-          />
         )}
-      >
-        <button class="format-btn" onClick={() => fileRef.current?.click()} disabled={draft.photos.length + adding >= MAX_PHOTOS} aria-label={t('Add photos')} title={t('Add photos')}>
-          <Icon name="photo-plus" size={19} />
-        </button>
-        <button class="format-btn" onClick={() => setOpen('images')} aria-label={t('Find an image')} title={t('Find an image')}>
-          <Icon name="photo-search" size={19} />
-        </button>
-        <button class="format-btn" onClick={() => setOpen('spotify')} aria-label={t('Add music from Spotify')} title={t('Add music from Spotify')}>
-          <Icon name="brand-spotify" size={19} />
-        </button>
-        <button
-          class="format-btn"
-          onPointerDown={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => startMention('@')}
-          aria-label={t('Tag someone, a book or music')}
-          title={t('Tag someone, a book or music')}
-        >
-          <Icon name="at" size={19} />
-        </button>
-        <button
-          class="format-btn"
-          onPointerDown={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => startMention('[[')}
-          aria-label={t('Link another note')}
-          title={t('Link another note')}
-        >
-          <Icon name="link" size={19} />
-        </button>
-        <button class="format-btn" onClick={() => setOpen('book')} aria-label={t('Mention a book')} title={t('Mention a book')}>
-          <Icon name="books" size={19} />
-        </button>
-      </FormatBar>
+        context={selIndex >= 0 ? { label: t('Picture'), content: (
+            <MediaTools
+              m={body.media[selIndex]}
+              canUp={canStep(body, selIndex, -1)}
+              canDown={canStep(body, selIndex, 1)}
+              onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, l)) })}
+              onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), selIndex, dir))}
+              onOpen={() => view(selIndex)}
+              onWrite={() => {
+                // beside a picture on a side; a picture on its own line moves to the left first, half as wide
+                const m = body.media[selIndex];
+                if ((m.size ?? 100) >= 100 || !m.align) update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, dropLayout(m, 'left'))) });
+                setSel(null);
+                const el = areas.current[selIndex + 1];
+                if (!el) return;
+                el.focus({ preventScroll: true });
+                editable(el).setSelectionRange(0, 0);
+              }}
+              onRemove={() => removePicture(body.media[selIndex])}
+              onUngroup={() => {
+                const b = ungroup(bodyOf(latest.current!), selIndex);
+                setBody(b);
+                setSel(mediaKey(b.media[selIndex]));
+              }}
+            />
+        ) } : undefined}
+        ribbon={{
+          title: draft.title,
+          back: done,
+          done,
+          busy: adding > 0 || coverAdding,
+          more: () => setOpen('more'),
+          share: isCheckin || (!draft.share && isEmpty(draft)) ? undefined : () => setOpen('share'),
+          shared: !!draft.share,
+          icon: () => setOpen('icon'),
+          details: () => setDetails(true),
+          reading,
+          setReading: (on) => (on ? setReading(true) : write()),
+          addPhotos: () => fileRef.current?.click(),
+          canAddPhotos: draft.photos.length + adding < MAX_PHOTOS,
+          findImage: () => setOpen('images'),
+          addMusic: () => setOpen('spotify'),
+          mention: () => startMention('@'),
+          linkNote: () => startMention('[['),
+          mentionBook: () => setOpen('book'),
+        }}
+      />
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
       {!isCheckin && <ShareSheet open={open === 'share'} onClose={close} entry={draft} onChange={(share) => update({ share })} />}
       <Sheet open={open === 'more'} onClose={close} title={t('More')}>
         <div class="card list menu-list">
-          <button class="list-row action" onClick={() => { close(); reading ? write() : setReading(true); }}>
+          <button class="list-row action" onClick={() => { close(); toggleReading(); }}>
             <span class="row gap-s"><Icon name={reading ? 'pencil' : 'book'} size={18} /> {reading ? t('Edit') : t('Reading view')}</span>
           </button>
           {!isCheckin && (draft.share || !isEmpty(draft)) && (

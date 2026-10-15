@@ -84,8 +84,7 @@
 
   .app { padding-top: 10px; padding-left: var(--side-w); }
   .page { max-width: 1320px; }
-  /* a note fills the screen beside the sidebar, like a document in a word processor, with wide margins either side */
-  .page.editor { max-width: none; padding-inline: clamp(36px, 5vw, 96px); }
+  /* a note is a sheet of paper on a grey desk, as in Word: see document.css */
 
   /* the sky panels stop being full-width banners and become cards inside the page */
   .app .page > .journal-top, .route-journal .page > .journal-side > .journal-top {
@@ -95,7 +94,10 @@
 
   .toasts, .route-note ~ .toasts, .route-person ~ .toasts { left: calc(50% + var(--side-w) / 2); bottom: 22px; }
   .route-note ~ .toasts, .route-person ~ .toasts { bottom: 74px; }
-  .format-bar { left: calc(50% + var(--side-w) / 2); }
+  /* a note's toolbar is the ribbon at the top, so its toasts only clear the status bar at the bottom (html: ahead of
+     the phone's toolbar rule in ribbon.css, which loads later) */
+  html .app.route-note ~ .toasts { bottom: calc(var(--status-h, 30px) + 16px); }
+  html[data-note-focus] .app.route-note ~ .toasts { bottom: 22px; }
   .map-page { left: var(--side-w); }
 
   /* rows that swipe sideways on a phone simply wrap */

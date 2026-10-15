@@ -261,7 +261,11 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
   );
 }
 
-/** The toolbar for the selected picture, in place of the formatting buttons. */
+/**
+ * The tools for the selected picture: the ribbon's Picture tab (or the bar's, on a phone). Each group carries its
+ * caption, shown under it on a computer as Word does: how the text wraps around it, its size, moving it, and the
+ * picture itself (view it, ungroup an album, remove it).
+ */
 export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup, onWrite }: {
   m: Media;
   canUp: boolean;
@@ -296,7 +300,7 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
   };
   return (
     <>
-      <div class="format-group">
+      <div class="format-group" role="group" aria-label={t('Wrap text')} data-caption={t('Wrap text')}>
         <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label={t('Left, text wraps around it')} title={t('Left, text wraps around it')}>
           <Icon name="float-left" size={19} />
         </button>
@@ -306,8 +310,11 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
         <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label={t('Right, text wraps around it')} title={t('Right, text wraps around it')}>
           <Icon name="float-right" size={19} />
         </button>
+        <button class="format-btn" onClick={onWrite} aria-label={t('Write next to it')} title={t('Write next to it')}>
+          <Icon name="cursor-text" size={19} />
+        </button>
       </div>
-      <label class="format-group media-size" title={t('Size')}>
+      <label class="format-group media-size" title={t('Size')} data-caption={t('Size')}>
         <input
           type="range"
           min={MIN_SIZE}
@@ -322,15 +329,7 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
         />
         <span class="media-size-value" aria-hidden="true">{shown === 100 ? t('Full') : shown + '%'}</span>
       </label>
-      <div class="format-group">
-        <button class="format-btn" onClick={onWrite} aria-label={t('Write next to it')} title={t('Write next to it')}>
-          <Icon name="cursor-text" size={19} />
-        </button>
-        <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
-          <Icon name="maximize" size={19} />
-        </button>
-      </div>
-      <div class="format-group">
+      <div class="format-group" role="group" aria-label={t('Arrange')} data-caption={t('Arrange')}>
         <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label={t('Move up')} title={t('Move up')}>
           <Icon name="arrow-up" size={19} />
         </button>
@@ -338,7 +337,10 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
           <Icon name="arrow-down" size={19} />
         </button>
       </div>
-      <div class="format-group">
+      <div class="format-group" role="group" aria-label={t('Picture')} data-caption={t('Picture')}>
+        <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
+          <Icon name="maximize" size={19} />
+        </button>
         {m.kind === 'album' && (
           <button class="format-btn" onClick={onUngroup} aria-label={t('Ungroup the album')} title={t('Ungroup the album')}>
             <Icon name="layout-grid-remove" size={19} />

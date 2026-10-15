@@ -1,16 +1,26 @@
 /* ============================================================
    Notes: the header section, the Feelings page, the formatting
    toolbar, formatted (Markdown) text and cover pictures.
+   The page itself (the sheet of paper on a computer, the status
+   bar) is in document.css.
    ============================================================ */
 
-/* ---------- the note's header: icon, title and a one-line summary, apart from the writing ---------- */
+/* Word's accent blue, for headings, links and ticked boxes (ribbon.css sets --word while a note is open; this
+   stands in for it elsewhere, such as a public note's page), and the yellow of its highlighter. */
+:root { --word-ink: var(--word, #2b579a); --doc-hl: #fff27a; }
+:root[data-theme='dark'] { --word-ink: var(--word, #8db4ee); --doc-hl: rgb(255 214 0 / 0.32); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --word-ink: var(--word, #8db4ee); --doc-hl: rgb(255 214 0 / 0.32); } }
+
+/* ---------- the note's header: Word's Title style, and the note's properties under it ----------
+   The title is large, light and set tight; under it, one small quiet line about the note (when, where, how it felt),
+   like a document's properties. */
 
 .note-head { position: relative; isolation: isolate; margin-top: 4px; }
-.note-head > .eyebrow { margin: 0 0 4px; }
+.note-head > .eyebrow { margin: 0 0 6px; font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--word-ink); }
 .note-head .editor-top { margin-top: 0; gap: 10px; align-items: flex-start; }
 /* the icon, when there is one: a bare glyph before the title, no box */
-.note-head .icon-pick { width: 34px; height: 34px; margin-top: 3px; border-radius: var(--r-s); background: none; border-color: transparent; }
-.note-head .title-input { font-size: 28px; line-height: 1.2; padding: 2px 0; }
+.note-head .icon-pick { width: 34px; height: 34px; margin-top: 2px; border-radius: var(--r-s); background: none; border-color: transparent; }
+.note-head .title-input { font: 400 30px/1.15 var(--serif); letter-spacing: -0.022em; padding: 2px 0; }
 /* a cover shows as a soft wash behind the title and the line under it */
 .note-head.has-cover { overflow: hidden; margin-inline: -12px; padding: 10px 12px; border-radius: var(--r-l); }
 .note-head-cover, .note-cover {
@@ -23,13 +33,16 @@
 :root[data-theme='dark'] :is(.note-head-cover, .note-cover) { opacity: 0.3; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) :is(.note-head-cover, .note-cover) { opacity: 0.3; } }
 
-.details-line { display: flex; align-items: center; gap: 10px; margin-top: 2px; min-width: 0; }
+.details-line { display: flex; align-items: center; gap: 10px; margin-top: 6px; min-width: 0; }
 /* one line, no card: whatever doesn't fit fades out at the end */
 .details-summary {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 0; text-align: left; overflow: hidden; white-space: nowrap;
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 4px 0; text-align: left; overflow: hidden; white-space: nowrap;
   -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent);
 }
-.details-date, .details-add { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 22px; font-size: var(--text-m); font-weight: 500; color: var(--ink-3); white-space: nowrap; }
+.details-date, .details-add { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 22px; font: 500 var(--text-s)/1 var(--sans); color: var(--ink-3); white-space: nowrap; }
+/* the date leads, in small capitals, with a dot between it and the rest */
+.details-summary > .details-date:first-child { font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+.details-summary > .details-date:first-child:not(:last-child)::after { content: ''; width: 3px; height: 3px; margin-left: 6px; border-radius: 50%; background: var(--line-2); }
 .details-add { color: var(--ink-3); }
 .details-music {
   flex: none; display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: var(--r-pill);
@@ -105,64 +118,11 @@
 .crop-zoom { display: flex; align-items: center; gap: 10px; margin: 14px 2px 4px; color: var(--ink-3); }
 .crop-zoom input { flex: 1; min-width: 0; accent-color: var(--ink); }
 
-/* ---------- the toolbar: formatting, then pictures and music ----------
-   A slim pill above the keyboard. No dividers: the tools sit in small groups with a little air between them, and
-   a lit tool is a soft wash rather than a filled button. */
-
-.editor { padding-bottom: 76px; }
-.app.route-note ~ .toasts { bottom: calc(var(--safe-b) + 74px); }
-.format-bar {
-  position: fixed; z-index: 30; left: var(--toolbar-left, 50%); translate: -50% 0;
-  bottom: max(calc(var(--safe-b) + 10px), calc(var(--kb, 0px) + 6px));
-  display: flex; align-items: center; gap: 2px; width: min(calc(var(--toolbar-width, 100%) - 20px), 680px);
-  border-radius: var(--r-pill); padding: 4px;
-  animation: rise-in var(--dur-3) var(--ease-emph);
-  transition: translate var(--dur-3) var(--ease-emph), opacity var(--dur-2), width var(--dur-2) var(--ease-emph);
-}
-/* tucked away while reading down the note */
-.format-bar.is-tucked { translate: -50% calc(100% + 16px + var(--safe-b)); opacity: 0; pointer-events: none; }
-/* the Aa button swaps the add buttons and the text tools; whichever shows eases in */
-.format-bar:not(.is-swapped) :is(.format-scroll, .format-fixed) { animation: format-in var(--dur-2) var(--ease-emph); }
-@keyframes format-in { from { opacity: 0; translate: -6px 0; filter: blur(2px); } }
-.format-scroll, .format-fixed, .format-group { display: flex; align-items: center; gap: 0; }
-.format-group { flex: none; }
-.format-group + .format-group { margin-left: 8px; }
-.format-scroll {
-  flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; border-radius: var(--r-pill); scroll-behavior: smooth;
-  /* a fade at the end says there's more to scroll to; the spacer lets the last button clear it */
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
-  mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
-}
-.format-scroll::after { content: ''; flex: none; width: 16px; }
-.format-scroll::-webkit-scrollbar { display: none; }
-.format-fixed { flex: none; }
-.format-btn {
-  flex: none; width: 38px; height: 38px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ink-2); transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-1) var(--spring-bouncy, ease-out);
-  -webkit-tap-highlight-color: transparent;
-}
-.format-btn svg { transition: scale var(--dur-2) var(--spring-bouncy, ease-out); }
-@media (hover: hover) { .format-btn:hover:not(:disabled) { background: var(--glass-pill); color: var(--ink); } }
-.format-btn:active:not(:disabled) { scale: 0.88; }
-.format-bar .format-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--ink) 9%, transparent); color: var(--ink); }
-.format-bar .format-btn[aria-pressed='true'] svg { scale: 1.06; }
-/* Aa, open: the one solid button, so it's clear which set of tools is showing */
-.format-bar .format-toggle[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
-.format-toggle + :is(.format-scroll, .format-fixed) { margin-left: 4px; }
-/* put the keyboard away: only on touch screens, at the far end */
-.format-done { margin-left: auto; color: var(--ink-3); }
-@media (hover: hover) and (pointer: fine) { .format-done { display: none; } }
-.format-sep { flex: none; width: 1px; height: 18px; margin: 0 5px; background: var(--line); }
-/* the add buttons (and Aa): keep the pill snug */
-.format-bar:not(:has(.format-scroll)) { width: auto; }
-@media (min-width: 720px) { .format-scroll { -webkit-mask-image: none; mask-image: none; } .format-scroll::after { display: none; } }
-@media (prefers-reduced-motion: reduce) { .format-bar:not(.is-swapped) :is(.format-scroll, .format-fixed) { animation: none; } }
-
 /* ---------- reading view ---------- */
 
 .note-body.is-reading { padding-top: 4px; }
 .read-text { cursor: text; }
-.read-empty { display: block; width: 100%; text-align: left; padding: 6px 0; font: 400 var(--text-l)/1.65 var(--serif); color: var(--ink-3); }
+.read-empty { display: block; width: 100%; text-align: left; padding: 6px 0; font: 400 var(--text-l)/1.62 var(--serif); color: var(--ink-3); }
 .read-tail { display: block; width: 100%; min-height: 28vh; cursor: text; }
 
 /* ---------- formatted text ---------- */
@@ -211,43 +171,73 @@
 .md .md-callout-title + * { margin-top: 4px; }
 .md .md-callout > :not(.md-callout-title) { font-size: 0.95em; }
 
+/* ---------- a note's words in Word's styles ----------
+   The same while reading (here: the reading view, and a public note's page) and while writing (.body-input, below).
+   Normal is the body serif with an easy line height; Heading 1 and 2 are light sans in Word's blue and Heading 3 is
+   ink; a quote is italic behind a blue rule; a highlight is a yellow marker; a link is Word's blue, underlined. Other
+   formatted text (a person's or a book's page) keeps the plain styles above. */
+
+.note-body .md { line-height: 1.62; }
+.note-body .md .md-h { font-family: var(--sans); letter-spacing: -0.012em; line-height: 1.25; }
+.note-body .md .md-h1 { font-size: 1.6em; font-weight: 420; color: var(--word-ink); margin: 0.85em 0 0.25em; }
+.note-body .md .md-h2 { font-size: 1.3em; font-weight: 500; color: var(--word-ink); margin: 0.8em 0 0.2em; }
+.note-body .md .md-h3 { font-size: 1.1em; font-weight: 600; color: var(--ink); margin: 0.7em 0 0.15em; }
+.note-body .md :is(.md-h4, .md-h5, .md-h6) { font-weight: 600; color: var(--ink-2); margin: 0.6em 0 0.1em; }
+.note-body .md > .md-h:first-child { margin-top: 0.1em; }
+.note-body .md mark { background: var(--doc-hl); border-radius: 1px; padding: 0 1px; }
+.note-body .md a[href] { color: var(--word-ink); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--word-ink) 50%, transparent); text-underline-offset: 3px; }
+.note-body .md blockquote { padding-left: 16px; border-left-color: color-mix(in oklab, var(--word-ink) 60%, transparent); color: var(--ink-2); font-style: italic; }
+.note-body .md .md-marker { color: var(--ink-2); }
+.note-body .md .md-task input:checked { background: var(--word-ink); border-color: var(--word-ink); }
+
 /* ---------- formatting while writing ----------
    The Markdown in the note's editable text, styled as it's typed (lib/liveMarkdown.ts). Every marker stays in the
-   text, so the commands work on it as typed, but none of them show: the words simply take on their style. Bullets
-   and tasks draw a dot or a box in their marker's place; lib/editable.ts keeps the caret out of the hidden ones. */
+   text, so the commands work on it as typed. As in Obsidian, the line being written shows its markers, quietly, at
+   full size, so the caret always has something to sit beside; the other lines tuck theirs away (lib/editable.ts marks
+   which line is which). Bullets and tasks draw a dot or a box over their marker, which stays see-through at full size. */
 
 .body-input { tab-size: 5; }
-.body-input :is(.md-mark, .md-bullet, .md-task-mark) { font-size: 0; letter-spacing: 0; }
-/* a link shows its address while the caret is in it, to change it */
-.body-input .md-link[data-active] .md-mark { font: 400 var(--text-m)/1 var(--sans); color: var(--ink-3); }
+.note-body .body-input { line-height: 1.62; }
+.body-input .md-line:not([data-active]) .md-mark { font-size: 0; letter-spacing: 0; }
+.body-input .md-line[data-active] .md-mark { color: var(--ink-3); font-weight: 400; font-style: normal; }
+.body-input .md-line[data-active] .md-url { font: 400 var(--text-m)/1 var(--sans); }
+/* an empty pair from the toolbar, waiting for words */
+.body-input .md-empty { color: var(--ink-3); }
 .body-input .md-b { font-weight: 650; }
 .body-input .md-i { font-style: italic; }
 .body-input .md-s { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
-.body-input .md-hl { background: color-mix(in oklab, var(--emo-joy) 38%, transparent); border-radius: 3px; padding: 1px 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.body-input .md-hl { background: var(--doc-hl); border-radius: 1px; padding: 1px 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .body-input .md-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84em; background: var(--surface-2); border-radius: 5px; padding: 1px 3px; }
-.body-input .md-link { text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 3px; }
+.body-input .md-link { color: var(--word-ink); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--word-ink) 50%, transparent); text-underline-offset: 3px; }
 .body-input .md-tag { font-family: var(--sans); font-size: 0.86em; font-weight: 600; color: var(--ink-2); }
-.body-input .md-h { font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
-.body-input .md-h1 { font-size: 1.55em; }
-.body-input .md-h2 { font-size: 1.3em; }
-.body-input .md-h3 { font-size: 1.12em; }
-/* bullets: a dot in the dash's place */
+.body-input .md-h { font-family: var(--sans); font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; }
+.body-input .md-h1 { font-size: 1.6em; font-weight: 420; color: var(--word-ink); }
+.body-input .md-h2 { font-size: 1.3em; font-weight: 500; color: var(--word-ink); }
+.body-input .md-h3 { font-size: 1.1em; }
+/* Word's space before a heading: an unseen strut at the heading's start, as tall as it needs, makes its line taller
+   above the words. It holds no text, so the caret and the line's markers are as before. */
+.body-input .md-h::before { content: ''; display: inline-block; width: 0; height: 1.7em; vertical-align: baseline; }
+/* bullets, numbers and tasks: the marker keeps its place at full size; a bullet's or a task's is see-through, with a
+   dot or a box drawn over it (the space after it is plain text, so the caret never sits in see-through text) */
+.body-input .md-li-mark { position: relative; }
+.body-input :is(.md-bullet, .md-task-mark) { color: transparent; }
+.body-input .md-bullet { letter-spacing: 0.72em; }
 .body-input .md-bullet::before {
-  content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 11px 0 6px; vertical-align: 0.24em;
+  content: ''; position: absolute; left: 0.2em; top: calc(50% - 2px); width: 6px; height: 6px;
   border-radius: 50%; background: var(--ink-2);
 }
 /* numbers stay, quieter */
-.body-input .md-num { color: var(--ink-3); font-family: var(--sans); font-size: 0.9em; font-weight: 600; font-variant-numeric: tabular-nums; padding-left: 2px; }
+.body-input .md-num { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 /* tasks: a round box to tick */
-.body-input .md-task-mark { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.body-input .md-task-mark { cursor: pointer; -webkit-tap-highlight-color: transparent; letter-spacing: 0.06em; }
 .body-input .md-task-mark::before {
-  content: ''; display: inline-block; box-sizing: border-box; width: 20px; height: 20px; margin: 0 10px 0 1px; vertical-align: -0.2em;
+  content: ''; position: absolute; left: 1px; top: calc(50% - 9px); box-sizing: border-box; width: 20px; height: 20px;
   border-radius: 50%; border: 1.5px solid var(--ink-3); background: var(--surface) center / 12px no-repeat;
   transition: background-color var(--dur-2), border-color var(--dur-2), scale var(--dur-2) var(--spring-bouncy, ease-out);
 }
 .body-input .md-task-mark:active::before { scale: 0.86; }
 .body-input .md-task-mark.is-done::before {
-  border-color: var(--ink); background-color: var(--ink);
+  border-color: var(--word-ink); background-color: var(--word-ink);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
 }
 :root[data-theme='dark'] .body-input .md-task-mark.is-done::before {
@@ -260,11 +250,12 @@
 }
 .body-input .md-done { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); transition: color var(--dur-2); }
 .body-input .md-quote {
-  color: var(--ink-2); padding-left: 14px; box-shadow: inset 3px 0 0 var(--line-2);
+  color: var(--ink-2); font-style: italic; padding-left: 14px; box-shadow: inset 3px 0 0 color-mix(in oklab, var(--word-ink) 60%, transparent);
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 /* a callout: a quote with a tint */
 .body-input .md-quote:has(.md-callout-mark) {
+  font-style: normal;
   box-shadow: inset 3px 0 0 color-mix(in oklab, var(--emo-sadness) 70%, transparent);
   background: color-mix(in oklab, var(--emo-sadness) 9%, transparent); border-radius: 0 6px 6px 0; padding-right: 4px;
 }
@@ -274,6 +265,8 @@
   display: inline-block; width: 100%; color: transparent; vertical-align: top;
   background: linear-gradient(transparent calc(50% - 0.5px), var(--line-2) 0 calc(50% + 0.5px), transparent 0);
 }
+/* …and its dashes, being written */
+.body-input .md-line[data-active] .md-hr { color: var(--ink-3); background: none; }
 
 /* ---------- journal cards with a cover ---------- */
 

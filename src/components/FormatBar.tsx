@@ -2,11 +2,48 @@ import type { ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { editable } from '../lib/editable';
-import { indentLines, insertBlock, insertLink, replace, toggleLines, toggleWrap, type TextBox } from '../lib/markdown';
+import { indentLines, insertBlock, insertLink, toggleLines, toggleWrap, wrapAtCaret, type TextBox } from '../lib/markdown';
 import { Icon, type UiName } from './icons';
+import { Ribbon } from './ribbon/Ribbon';
+import { keepFocus } from './ribbon/commands';
 import { t } from '../lib/i18n';
+// the bar's own styles, wherever it's used (an @ in a person's or a book's page too, before any note has been opened)
+import '../styles/ribbon.css';
 
-type Action = (el: TextBox) => void;
+export type Action = (el: TextBox) => void;
+
+/** What the note editor gives its ribbon: the note's own commands, around the text ones the bar has itself. */
+export interface RibbonActions {
+  /** the note's title, '' when it has none */
+  title: string;
+  /** leaves the note (as Done does) */
+  back: () => void;
+  done: () => void;
+  /** pictures are still being added: Back and Done wait */
+  busy: boolean;
+  /** the More sheet */
+  more: () => void;
+  /** Make public / Public link (check-ins have none) */
+  share?: () => void;
+  shared?: boolean;
+  /** adds or changes the note's icon */
+  icon: () => void;
+  /** the note's details: date, feelings, place… */
+  details: () => void;
+  reading: boolean;
+  setReading: (on: boolean) => void;
+  addPhotos: () => void;
+  canAddPhotos: boolean;
+  /** online image search */
+  findImage: () => void;
+  /** music from Spotify */
+  addMusic: () => void;
+  /** tags someone, a book or music (@) */
+  mention: () => void;
+  /** links another note ([[) */
+  linkNote: () => void;
+  mentionBook: () => void;
+}
 
 /** The inline styles, by their marker: what lights each up (a class of the styled text, lib/liveMarkdown.ts). */
 const WRAPS: [UiName, string, string, string][] = [
@@ -49,16 +86,12 @@ function stylesAt(at: Element, box: HTMLElement) {
   return on;
 }
 
-const keepFocus = {
-  // Keep the text box focused (and the phone keyboard up) while tapping any button of the bar, the add buttons
-  // passed in as children too. Safari doesn't focus a tapped button, so the text box losing the focus would read as
-  // "not writing" and put the bar away (inert) before the tap's click arrived.
-  onPointerDown: (e: PointerEvent) => e.preventDefault(),
-  onMouseDown: (e: MouseEvent) => e.preventDefault(),
-};
 
-/** A style waiting at the caret for the words typed next, from tapping Bold (or another style) with nothing selected. */
-interface Pending { mark: string; box: TextBox; pos: number; len: number }
+/**
+ * An empty pair put down at the caret to type into, from tapping Bold (or another style, or Link) with nothing
+ * selected: [from, to) of the text it made, with the caret at `at`. Left without typing anything in it, it goes again.
+ */
+interface Pending { mark: string; box: TextBox; text: string; at: number; from: number; to: number }
 
 /**
  * The note's toolbar, a slim pill at the bottom that rides up on top of a phone's keyboard. It holds `children` —
@@ -66,16 +99,24 @@ interface Pending { mark: string; box: TextBox; pos: number; len: number }
  * text tools: heading, bold, italic, strike and highlight; checklist, bullets, numbers and quote; moving a list item
  * in or out (while in a list); link and divider. Selecting text brings the text tools up by themselves (and puts
  * them away again after); the tools for how the text at the caret is styled are lit. A style tapped with nothing
- * selected waits at the caret and styles what's typed next. Scrolling down through a note, not writing, tucks the
+ * selected puts down an empty pair to type into (see wrapAtCaret in lib/markdown.ts). Scrolling down through a note, not writing, tucks the
  * bar away until you scroll back up. The bar only shows while writing (the caret in the title or the text, or a button
  * of the bar tapped); otherwise the page is just the note. With `swap` (a selected picture's tools, or what an @ suggests), it shows those.
+ *
+ * Given `ribbon`, the note's commands, it's the note editor's ribbon instead, the way Word has it (components/ribbon/
+ * Ribbon.tsx): Home, Insert and View tabs, and a tab for the selected picture (`context`) while there is one. On a
+ * computer it sits across the top of the page; on a phone it's a bar docked above the keyboard. What an @ suggests
+ * (`swap`) still shows as a strip of its own near the bottom.
  */
-export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'), children }: {
+export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'), children, ribbon, context }: {
   target: () => TextBox | null;
   format?: boolean;
   swap?: ComponentChildren;
   swapLabel?: string;
   children?: ComponentChildren;
+  ribbon?: RibbonActions;
+  /** a tab of its own for what's selected, as Word's Picture tab: its name and its tools */
+  context?: { label: string; content: ComponentChildren };
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [tools, setTools] = useState(false);
@@ -84,6 +125,7 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
   const [writing, setWriting] = useState(false);
   const [onBar, setOnBar] = useState(false); // a button of the bar has the focus: tapping one mustn't put the bar away
   const [pending, setPending] = useState<string | null>(null);
+  const [ranged, setRanged] = useState(false); // text is selected in the note
   const pend = useRef<Pending | null>(null);
   const toolsShown = useRef(tools);
   toolsShown.current = tools;
@@ -149,34 +191,26 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
         setTools(false);
       }
       selecting.current = ranged;
+      setRanged(ranged);
       setStyles(at && document.activeElement === at.box ? stylesAt(at.at, at.box).join(' ') : '');
-      // a waiting style goes when the caret moves away without typing
+      // an empty pair goes again when the caret moves away without typing in it
       const p = pend.current;
-      if (p && p.box.value.length === p.len && (p.box.selectionStart !== p.pos || p.box.selectionEnd !== p.pos)) drop();
+      if (!p) return;
+      const box = p.box as TextBox & { el?: HTMLElement };
+      if (box.value !== p.text) return drop();
+      const here = !!box.el && document.activeElement === box.el;
+      if (here && box.selectionStart === p.at && box.selectionEnd === p.at) return;
+      drop();
+      const n = p.to - p.from;
+      const moved = (i: number) => (i >= p.to ? i - n : i > p.from ? p.from : i);
+      const [s0, s1] = here ? [moved(box.selectionStart), moved(box.selectionEnd)] : [0, 0];
+      box.setRangeText('', p.from, p.to);
+      if (here) box.setSelectionRange(s0, s1);
+      box.dispatchEvent(new Event('input', { bubbles: true }));
     };
     document.addEventListener('selectionchange', on);
     return () => document.removeEventListener('selectionchange', on);
   }, [format]);
-
-  // What's typed after tapping a style with nothing selected takes that style.
-  useEffect(() => {
-    const typed = (e: Event) => {
-      const p = pend.current;
-      if (!p || (e as InputEvent).isComposing) return;
-      drop();
-      const v = p.box.value;
-      const c = p.box.selectionStart;
-      const text = v.slice(p.pos, c);
-      if (c !== p.pos + v.length - p.len || p.box.selectionEnd !== c || !text || text.includes('\n') || /^\s|\s$/.test(text)) return;
-      replace(p.box, p.pos, c, p.mark + text + p.mark, c + p.mark.length);
-    };
-    document.addEventListener('input', typed);
-    document.addEventListener('compositionend', typed);
-    return () => {
-      document.removeEventListener('input', typed);
-      document.removeEventListener('compositionend', typed);
-    };
-  }, []);
 
   // Whether a note's words are being written: the bar then offers to put the keyboard away, and it shows at all.
   useEffect(() => {
@@ -233,17 +267,28 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
     const el = target();
     if (el) f(el);
   };
-  /** Bold and the like: around the selection or the word at the caret, or waiting for what's typed next. */
+  /** Remembers an empty pair put down at the caret, to tidy it away if nothing is typed in it. */
+  const hold = (el: TextBox, mark: string, at: [number, number] | null) => {
+    if (!at) return;
+    pend.current = { mark, box: el, text: el.value, at: el.selectionStart, from: at[0], to: at[1] };
+    setPending(mark);
+  };
+  /** Bold and the like: around the selection, or at the caret as Word does it (wrapAtCaret). */
   const wrap = (mark: string) => {
     const el = target();
     if (!el) return;
-    const caret = el.selectionStart === el.selectionEnd;
-    if (caret && pend.current?.mark === mark) return drop();
+    if (el.selectionStart !== el.selectionEnd) return void (drop(), toggleWrap(el, mark));
+    // the pair just put down, tapped again: wrapAtCaret takes it out
+    if (pend.current && pend.current.mark !== mark) drop();
+    const at = wrapAtCaret(el, mark);
     drop();
-    if (toggleWrap(el, mark) || !caret) return;
-    el.focus({ preventScroll: true });
-    pend.current = { mark, box: el, pos: el.selectionStart, len: el.value.length };
-    setPending(mark);
+    hold(el, mark, at);
+  };
+  const link = () => {
+    const el = target();
+    if (!el) return;
+    drop();
+    hold(el, ']', insertLink(el));
   };
   const showTools = format && tools;
   const lit = styles.split(' ');
@@ -283,12 +328,40 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
   // Page entrance transforms temporarily turn fixed descendants into page-relative
   // elements. Keep this keyboard accessory at the document level throughout editing.
   const away = tucked || !(writing || onBar);
+  if (ribbon) {
+    // a wrapper of no box of its own, carrying the keyboard's height to the ribbon and the strip
+    return createPortal(
+      <div ref={ref} class="ribbon-root">
+        <Ribbon
+          actions={ribbon}
+          context={context}
+          swapped={!!swap}
+          lit={lit}
+          pending={pending}
+          ranged={format && ranged}
+          away={away}
+          done={done}
+          target={target}
+          wrap={wrap}
+          link={link}
+          run={run}
+        />
+        {/* on a phone it docks above the keyboard as the ribbon's bar does; on a computer it floats near the bottom */}
+        {swap && (
+          <div class="format-bar is-swapped is-strip in-ribbon" role="toolbar" aria-label={swapLabel}>
+            <div class="format-scroll">{swap}</div>
+          </div>
+        )}
+      </div>,
+      document.body,
+    );
+  }
   const bar = swap ? (
-      <div ref={ref} class="format-bar glass is-swapped" role="toolbar" aria-label={swapLabel}>
+      <div ref={ref} class="format-bar is-swapped is-strip" role="toolbar" aria-label={swapLabel}>
         <div class="format-scroll">{swap}</div>
       </div>
     ) : (
-    <div ref={ref} class={`format-bar glass${showTools ? ' is-formatting' : ''}${away ? ' is-tucked' : ''}`} inert={away} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')} {...keepFocus}>
+    <div ref={ref} class={`format-bar is-strip${showTools ? ' is-formatting' : ''}${away ? ' is-tucked' : ''}`} inert={away} role="toolbar" aria-label={showTools ? t('Formatting') : t('Add to the note')} {...keepFocus}>
       {toggle}
       {showTools ? (
         <div class="format-scroll">
@@ -306,7 +379,7 @@ export function FormatBar({ target, format = true, swap, swapLabel = t('Picture'
             </div>
           )}
           <div class="format-group">
-            {tool('link', t('Link'), () => run(insertLink), lit.includes('md-link'))}
+            {tool('link', t('Link'), link, lit.includes('md-link'))}
             {tool('separator-horizontal', t('Divider'), () => run((el) => insertBlock(el, '---')))}
           </div>
         </div>

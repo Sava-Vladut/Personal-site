@@ -2,7 +2,8 @@
 // so text in it can never wrap around a picture beside it. This gives such a block the bits of the textarea API the
 // Markdown commands use (value, selection, replacing text), so they work on either. Its text is laid out in spans
 // that style the Markdown as it's written (lib/liveMarkdown.ts); reading it back only ever sees the characters.
-import { decorate, hiddenRanges, type Deco } from './liveMarkdown';
+import { History, type Kind, type Snap } from './history';
+import { caretStops, decorate, type Deco } from './liveMarkdown';
 import type { TextBox } from './markdown';
 
 /** Browsers without plain-text editing (Firefox before 136) get rich editing, kept to plain text by the editor. */
@@ -52,36 +53,43 @@ function read(el: HTMLElement, at?: { node: Node; offset: number }) {
   return { text, found: found < 0 ? text.length : Math.min(found, text.length) };
 }
 
-/** Whether a text node is a Markdown marker that's tucked away while writing (lib/liveMarkdown.ts). */
-function hiddenText(n: Node) {
-  const p = n.nodeType === Node.TEXT_NODE ? n.parentElement : null;
-  if (!p?.closest?.('.md-mark, .md-bullet, .md-task-mark') || typeof getComputedStyle !== 'function') return false;
-  return getComputedStyle(p).fontSize === '0px';
-}
+/** Whether a text node is part of a Markdown marker (lib/liveMarkdown.ts). */
+const inMark = (n: Node) => !!n.parentElement?.closest?.('.md-mark, .md-li-mark');
 
 /**
- * The DOM point at character `pos` of a block. Where two pieces meet, a hidden marker's edge gives way to the visible
- * text beside it, so the caret takes that text's size and style.
+ * The DOM point at character `pos` of a block. Where two pieces meet, the caret stays with the text before (so typing
+ * at the end of a bold word goes on in bold), unless that's a marker or a line break and visible text on the same line
+ * starts there: then it goes with that (so typing after a closing ** is plain, and a line starts after its marker).
  */
 function locate(el: HTMLElement, pos: number): [Node, number] {
   let at = 0;
   let newline = false;
-  let edge: [Node, number] | null = null;
+  let edge: [Node, number] | null = null; // the end of a marker (or a line break) right at `pos`
+  let broke = false;
   const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   for (let n = tw.nextNode(); n; n = tw.nextNode()) {
     if (n.nodeType === Node.TEXT_NODE) {
-      const len = (n as Text).data.length;
-      if (pos <= at + len && pos >= at) {
-        if (!len || (pos > at && pos < at + len) || !hiddenText(n)) return [n, pos - at];
-        edge ??= [n, pos - at];
+      const data = (n as Text).data;
+      const len = data.length;
+      if (edge) {
+        if (!len) continue;
+        // after a line break, whatever starts the next line; after a marker, the visible text after it on the line
+        return broke || (data[0] !== '\n' && !inMark(n)) ? [n, 0] : edge;
+      }
+      if (pos >= at && pos <= at + len) {
+        if (!len || pos < at + len || (!inMark(n) && !data.endsWith('\n'))) return [n, pos - at];
+        edge = [n, len];
+        broke = data.endsWith('\n');
       } else if (pos < at) break;
       at += len;
-      if (len) newline = (n as Text).data.endsWith('\n');
+      if (len) newline = data.endsWith('\n');
     } else if (n.nodeName === 'BR') {
+      if (edge) return edge;
       if (pos <= at) return [n.parentNode!, [...n.parentNode!.childNodes].indexOf(n as ChildNode)];
       at += 1;
       newline = true;
     } else if (isBlock(n) && at && !newline) {
+      if (edge) return edge;
       // Safari can create nested line blocks. Match the implicit newline that read() adds
       // before each block, so selections and tag highlight ranges use the same offsets.
       if (pos <= at) return [n.parentNode!, [...n.parentNode!.childNodes].indexOf(n as ChildNode)];
@@ -93,16 +101,6 @@ function locate(el: HTMLElement, pos: number): [Node, number] {
   const last = el.lastChild;
   return [el, el.childNodes.length - (last?.nodeName === 'BR' ? 1 : 0)];
 }
-
-/** One letter on from `i` (back, with -1), a whole emoji at once; never across a line break. */
-function step(v: string, i: number, dir: 1 | -1) {
-  const c = dir > 0 ? v[i] : v[i - 1];
-  if (c === undefined || c === '\n') return i;
-  const pair = dir > 0 ? /[\uD800-\uDBFF]/.test(c) : /[\uDC00-\uDFFF]/.test(c);
-  return i + dir * (pair ? 2 : 1);
-}
-
-const lineHead = (v: string, i: number) => /^[ \t]*$/.test(v.slice(v.lastIndexOf('\n', i - 1) + 1, i));
 
 /** Whether a node already shows a piece of the styled text. */
 const same = (n: Node | undefined, d: Deco): boolean =>
@@ -142,8 +140,18 @@ function fill(el: HTMLElement, text: string) {
   return true;
 }
 
+type Direction = 'forward' | 'backward' | 'none';
+interface Sel { start: number; end: number; direction: Direction }
+
 export class Editable implements TextBox {
-  private last: { start: number; end: number; direction: 'forward' | 'backward' | 'none' } = { start: 0, end: 0, direction: 'none' };
+  /** The selection when it was last in this block (only the block's own caret handling changes it). */
+  private last: Sel = { start: 0, end: 0, direction: 'none' };
+  /** Where the caret was when it last came to rest, and the text then: which way it's moving, and whether it was typing. */
+  private was = -1;
+  private seen = '';
+  private commands = 0;
+  /** Undo and redo (lib/history.ts). */
+  readonly history = new History();
   constructor(readonly el: HTMLElement) {}
 
   get value() {
@@ -152,22 +160,24 @@ export class Editable implements TextBox {
   set value(v: string) {
     fill(this.el, v);
     this.last = { ...this.last, start: Math.min(this.last.start, v.length), end: Math.min(this.last.end, v.length) };
+    this.activate();
   }
 
+  /** The selection, when it's in this block. Reading it changes nothing. */
+  private live(): Sel | null {
+    const s = getSelection();
+    if (!s || !s.rangeCount || !this.el.contains(s.anchorNode)) return null;
+    const r = s.getRangeAt(0);
+    if (!this.el.contains(r.startContainer) || !this.el.contains(r.endContainer)) return null;
+    return {
+      start: read(this.el, { node: r.startContainer, offset: r.startOffset }).found,
+      end: read(this.el, { node: r.endContainer, offset: r.endOffset }).found,
+      direction: r.collapsed ? 'none' : s.anchorNode === r.endContainer && s.anchorOffset === r.endOffset ? 'backward' : 'forward',
+    };
+  }
   /** The selection, when it's in this block; otherwise where it was when it last was. */
   private sel() {
-    const s = getSelection();
-    if (s && s.rangeCount && this.el.contains(s.anchorNode)) {
-      const r = s.getRangeAt(0);
-      if (this.el.contains(r.startContainer) && this.el.contains(r.endContainer)) {
-        this.last = {
-          start: read(this.el, { node: r.startContainer, offset: r.startOffset }).found,
-          end: read(this.el, { node: r.endContainer, offset: r.endOffset }).found,
-          direction: r.collapsed ? 'none' : s.anchorNode === r.endContainer && s.anchorOffset === r.endOffset ? 'backward' : 'forward',
-        };
-      }
-    }
-    return this.last;
+    return this.live() ?? this.last;
   }
   get selectionStart() {
     return this.sel().start;
@@ -176,18 +186,29 @@ export class Editable implements TextBox {
     return this.sel().end;
   }
 
-  setSelectionRange(start: number, end: number, direction: 'forward' | 'backward' | 'none' = 'none') {
+  /** Selects characters [start, end), by where they are in the text. Leaves a selection that's there already alone. */
+  setSelectionRange(start: number, end: number, direction: Direction = 'none') {
     const len = this.value.length;
     start = Number.isFinite(start) ? Math.max(0, Math.min(Math.trunc(start), len)) : 0;
     end = Number.isFinite(end) ? Math.max(start, Math.min(Math.trunc(end), len)) : start;
-    const r = document.createRange();
-    r.setStart(...locate(this.el, start));
-    r.setEnd(...locate(this.el, end));
     const s = getSelection();
-    s?.removeAllRanges();
-    s?.addRange(r);
-    if (direction === 'backward' && s?.setBaseAndExtent) s.setBaseAndExtent(r.endContainer, r.endOffset, r.startContainer, r.startOffset);
+    if (s) {
+      const a = locate(this.el, start);
+      const b = end === start ? a : locate(this.el, end);
+      const [anchor, focus] = direction === 'backward' ? [b, a] : [a, b];
+      if (s.anchorNode !== anchor[0] || s.anchorOffset !== anchor[1] || s.focusNode !== focus[0] || s.focusOffset !== focus[1]) {
+        if (s.setBaseAndExtent) s.setBaseAndExtent(anchor[0], anchor[1], focus[0], focus[1]);
+        else {
+          const r = document.createRange();
+          r.setStart(...a);
+          r.setEnd(...b);
+          s.removeAllRanges();
+          s.addRange(r);
+        }
+      }
+    }
     this.last = { start, end, direction };
+    this.activate();
   }
 
   setRangeText(text: string, start = this.selectionStart, end = this.selectionEnd) {
@@ -212,45 +233,103 @@ export class Editable implements TextBox {
   }
 
   /**
-   * Keeps a caret out of the hidden markers. One that lands inside them goes on to the text the way it was moving (or
-   * back), and always after a line's own marker — so typing at the start of a heading or a list item stays in it.
+   * After the selection moved: shows the markers of the lines it's on, and lets a caret that came to rest inside a
+   * bullet's or a task's marker, or between the stars of a **, go on out of it — the way it was going, or else to
+   * after it. It only ever moves the caret to a place it can stay, so it never goes back and forth.
    */
   settle() {
-    const s = getSelection();
-    const n = s?.anchorNode;
-    if (!s || !n || document.activeElement !== this.el || !this.el.contains(n)) return this.reveal(null);
-    // a link shows its address while the caret is in it
-    this.reveal((n.nodeType === Node.ELEMENT_NODE ? (n as Element) : n.parentElement)?.closest?.('.md-link') ?? null);
-    if (!s.isCollapsed) return;
-    const was = this.last.start;
-    if (!hiddenText(n)) return void this.sel();
-    const v = this.value;
-    const p = read(this.el, { node: n, offset: s.anchorOffset }).found;
-    const r = hiddenRanges(v).find(([a, b]) => p >= a && p <= b);
-    let to = p;
-    if (r) {
-      const [a, b] = r;
-      const ls = v.lastIndexOf('\n', a - 1) + 1;
-      // arrowing back out of a line's marker goes on to the end of the line above
-      if (lineHead(v, a)) to = was === b && p < b && ls > 0 ? ls - 1 : b;
-      // an arrow press that only stepped into hidden markers goes on one letter more, so every press moves
-      else if (p > a && p < b) to = was === a ? step(v, b, 1) : was === b ? step(v, a, -1) : was < p ? b : a;
+    const now = document.activeElement === this.el ? this.live() : null;
+    if (!now) {
+      this.was = -1;
+      return this.activate();
     }
-    const [node] = locate(this.el, to);
-    if (to === p && (node === n || hiddenText(node))) return void this.sel();
-    this.setSelectionRange(to, to);
+    const v = this.value;
+    let p = now.start;
+    // only a caret that moved: typing leaves it where the letters went
+    if (now.start === now.end && v === this.seen) {
+      const r = caretStops(v).find(([a, b]) => p > a && p < b);
+      if (r) {
+        p = this.was === r[1] ? r[0] : r[1];
+        this.setSelectionRange(p, p);
+      }
+    }
+    if (p === now.start) this.last = now;
+    this.was = p;
+    this.seen = v;
+    this.activate();
   }
 
-  private reveal(link: Element | null) {
-    for (const l of this.el.querySelectorAll?.('.md-link[data-active]') ?? []) if (l !== link) l.removeAttribute('data-active');
-    if (link && this.el.contains(link) && !link.hasAttribute('data-active')) link.setAttribute('data-active', '');
+  /**
+   * Shows the Markdown markers of the lines the selection is on, and tucks away the rest. Each line with markers is a
+   * span of its own (lib/liveMarkdown.ts); this only marks them, so the text itself is never laid out again for it.
+   */
+  activate() {
+    const now = document.activeElement === this.el ? this.live() : null;
+    let at = 0;
+    for (const n of [...this.el.childNodes]) {
+      const len = n.nodeType === Node.TEXT_NODE ? (n as Text).data.length : n.nodeName === 'BR' ? 1 : n.textContent?.length ?? 0;
+      const line = n.nodeType === Node.ELEMENT_NODE && (n as Element).classList?.contains('md-line') ? (n as Element) : null;
+      if (line) {
+        const on = !!now && at <= now.end && at + len >= now.start;
+        if (on !== line.hasAttribute('data-active')) {
+          if (on) line.setAttribute('data-active', '');
+          else line.removeAttribute('data-active');
+        }
+      }
+      at += len;
+    }
   }
 
-  /** Lays the block out again as its styled text (whatever the browser's editing left in it), keeping the caret. */
+  /**
+   * Lays the block out again as its styled text (whatever the browser's editing left in it). Only the lines whose
+   * styling changed are replaced; the caret is put back by where it is in the text, and only if that moved.
+   */
   tidy() {
     const focused = document.activeElement === this.el;
     const at = this.sel();
-    if (fill(this.el, this.value) && focused) this.setSelectionRange(at.start, at.end, at.direction);
+    if (fill(this.el, this.value) && focused) {
+      const now = this.live();
+      if (!now || now.start !== at.start || now.end !== at.end) this.setSelectionRange(at.start, at.end, at.direction);
+    }
+    this.activate();
+  }
+
+  private snap(): Snap {
+    const s = this.sel();
+    return { text: this.value, start: s.start, end: s.end };
+  }
+  /** Before the text changes (typing, a paste…): where the change starts from, for undo. */
+  before() {
+    if (!this.commands) this.history.before(this.snap());
+  }
+  /** After the text changed: the change, for undo. */
+  record(kind: Kind) {
+    this.history.after(this.snap(), this.commands ? 'other' : kind);
+  }
+  /** A command that changes the text (lib/markdown.ts): a step of its own to undo, apart from the typing around it. */
+  edit(change: () => void) {
+    if (!this.commands) this.history.before(this.snap());
+    this.commands++;
+    try {
+      change();
+    } finally {
+      this.commands--;
+    }
+    if (!this.commands) this.history.cut();
+  }
+  undo() {
+    return this.restore(this.history.undo(this.snap()));
+  }
+  redo() {
+    return this.restore(this.history.redo(this.snap()));
+  }
+  private restore(s: Snap | null) {
+    if (!s) return false;
+    this.value = s.text;
+    if (document.activeElement === this.el) this.setSelectionRange(s.start, s.end);
+    else this.last = { start: s.start, end: s.end, direction: 'none' };
+    this.seen = s.text;
+    return true;
   }
 
   focus(o?: FocusOptions) {

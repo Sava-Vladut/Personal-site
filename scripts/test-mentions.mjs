@@ -248,7 +248,8 @@ test('typing a closing marker restyles only what changed and keeps the caret', (
   box.tidy();
   assert.equal(box.value, 'One *two*\nmake it **loud**');
   assert.equal(root.childNodes[0], first, 'untouched text keeps its node');
-  assert.ok(root.childNodes.some((n) => n.className === 'md-b'));
+  // a line with markers is a span of its own, so they can show while it's being written
+  assert.ok(root.childNodes.some((n) => n.className === 'md-line' && n.childNodes.some((k) => k.className === 'md-b')));
   assert.equal(box.selectionStart, box.value.length);
 });
 

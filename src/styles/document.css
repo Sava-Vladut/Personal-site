@@ -1,0 +1,134 @@
+/* ============================================================
+   A note as a document, the way Word shows one (views/Editor.tsx)
+   On a computer it's Print Layout: the note is a sheet of paper on a grey desk, under the ribbon, with Word's status
+   bar along the bottom (how long it is, whether it's saved, the views and the zoom). On a phone it's Word's Mobile
+   View: no paper, the words run edge to edge on the page's own background, in the same styles (notes.css).
+   The view (zoom, Focus, the ribbon folded) comes from lib/docView.ts, on the root element while a note is open.
+   ============================================================ */
+
+/* phones: the sheet is only a wrapper, and there's no status bar */
+.note-sheet { position: relative; }
+.note-status { display: none; }
+
+@media (min-width: 1024px) {
+  :root {
+    --status-h: 30px;
+    /* the desk under the paper */
+    --doc-canvas: color-mix(in oklab, var(--surface-2) 60%, var(--surface-3));
+    --doc-sheet-shadow: 0 0 0 1px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.06), 0 6px 22px -6px rgb(0 0 0 / 0.14);
+  }
+  :root[data-theme='dark'] {
+    --doc-canvas: color-mix(in oklab, var(--bg) 55%, #000);
+    --doc-sheet-shadow: 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.4), 0 10px 30px -8px rgb(0 0 0 / 0.7);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --doc-canvas: color-mix(in oklab, var(--bg) 55%, #000);
+      --doc-sheet-shadow: 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.4), 0 10px 30px -8px rgb(0 0 0 / 0.7);
+    }
+  }
+
+  /* ---------- the desk: the whole content area, under the ribbon and above the status bar ---------- */
+
+  .app.route-note { padding-top: 0; background: var(--doc-canvas); }
+  /* the ribbon carries its own title bar (back, title, More, Done), so the floating buttons step aside */
+  :root[data-ribbon] .editor-bar { display: none; }
+  .page.editor { max-width: none; padding: calc(var(--ribbon-h, 150px) + 28px) 28px calc(var(--status-h) + 56px); }
+  /* what's scrolled to (the caret, a picture) stops clear of the ribbon above and the status bar below */
+  :root[data-ribbon] { scroll-padding: calc(var(--ribbon-h, 150px) + 12px) 0 calc(var(--status-h) + 12px); }
+  :root[data-ribbon][data-note-focus] { scroll-padding: 12px 0; }
+
+  /* ---------- the sheet of paper ----------
+     Letter-sized at 100% (816px across, as Word draws it), with wide margins. The zoom scales its width, its margins
+     and its type, never the page itself, so a picture's handles and drags measure the page as it shows. */
+
+  .note-sheet {
+    --z: var(--doc-zoom, 1);
+    --pad-x: min(calc(88px * var(--z)), 7vw);
+    --pad-y: calc(72px * var(--z));
+    --title-size: calc(var(--text-l) * 2.4 * var(--z));
+    --cover-h: calc(200px * var(--z));
+    display: flex; flex-direction: column;
+    width: min(100%, calc(816px * var(--z))); min-height: calc(1056px * var(--z));
+    margin: 0 auto; padding: var(--pad-y) var(--pad-x) calc(var(--pad-y) + 8px);
+    background: var(--surface); border-radius: 2px; box-shadow: var(--doc-sheet-shadow);
+  }
+  /* the words fill the paper down to its foot, where the notes linking here sit like endnotes */
+  .note-sheet > .note-body { flex: 1 0 auto; margin-top: calc(26px * var(--z)); }
+  .note-sheet > .backlinks { margin-top: calc(40px * var(--z)); }
+
+  /* Normal, at the page's zoom */
+  .note-sheet :is(.body-input, .md, .read-empty) { font-size: calc(var(--text-l) * var(--z)); }
+
+  /* ---------- the header: Title, the properties line, then a hairline ---------- */
+
+  .note-sheet > .note-head { margin-top: 0; }
+  .note-sheet .note-head .title-input { font-size: var(--title-size); line-height: 1.12; letter-spacing: -0.025em; }
+  /* the icon sits level with the title's first line */
+  .note-sheet .note-head .icon-pick { margin-top: max(0px, calc((var(--title-size) * 1.12 - 34px) / 2)); }
+  .note-sheet .note-head::after { content: ''; display: block; height: 1px; margin-top: calc(14px * var(--z)); background: var(--line); }
+
+  /* a cover is a banner across the top of the paper, the title under it */
+  .note-sheet .note-head.has-cover {
+    margin: calc(-1 * var(--pad-y)) calc(-1 * var(--pad-x)) 0;
+    padding: calc(var(--cover-h) + var(--pad-y) * 0.6) var(--pad-x) 0;
+    border-radius: 2px 2px 0 0;
+  }
+  .note-sheet .note-head.has-cover .note-head-cover {
+    inset: 0 0 auto; height: var(--cover-h); opacity: 1;
+    -webkit-mask-image: none; mask-image: none;
+  }
+
+  /* ---------- Focus: nothing but the paper (the ribbon makes way in ribbon.css) ---------- */
+
+  :root[data-note-focus] { --side-w: 0px; }
+  :root[data-note-focus] .side { display: none; }
+  :root[data-note-focus] .note-status { display: none; }
+  :root[data-note-focus] .page.editor { padding-top: 64px; padding-bottom: 72px; }
+
+  /* ---------- the status bar ---------- */
+
+  .note-status {
+    position: fixed; z-index: 35; left: var(--side-w); right: 0; bottom: 0; height: var(--status-h);
+    display: flex; align-items: center; gap: 2px; padding: 0 10px 0 14px;
+    background: var(--surface); border-top: 1px solid var(--line);
+    font: 400 var(--text-s)/1 var(--sans); color: var(--ink-3); font-variant-numeric: tabular-nums;
+    animation: fade-in var(--dur-2) ease-out;
+  }
+  .note-status-item { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; white-space: nowrap; }
+  .note-save.is-saved svg { color: var(--word-ink); }
+  .note-save.is-error { color: var(--danger); }
+  .note-views, .note-zoom { display: flex; align-items: center; gap: 1px; }
+  .note-views { padding-right: 10px; margin-right: 6px; border-right: 1px solid var(--line); }
+  .note-status-btn {
+    display: grid; place-items: center; width: 28px; height: 22px; border-radius: 4px; color: var(--ink-2);
+    transition: background-color var(--dur-1), color var(--dur-1);
+  }
+  @media (hover: hover) { .note-status-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
+  .note-status-btn[aria-pressed='true'] { background: var(--word-wash, color-mix(in oklab, var(--word-ink) 14%, transparent)); color: var(--word-ink); }
+  .note-status-btn:disabled { opacity: 0.35; }
+
+  /* the zoom slider: a thin track with a notch at 100%, and a slim thumb, as in Word */
+  .note-zoom-track { position: relative; display: grid; align-items: center; width: 104px; height: 22px; margin: 0 2px; }
+  .note-zoom-track::before {
+    content: ''; position: absolute; top: 6px; bottom: 6px; width: 1px; pointer-events: none;
+    left: calc(3px + (100% - 6px) * var(--tick, 0.4)); background: var(--ink-3);
+  }
+  .note-zoom-track input { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; margin: 0; background: none; cursor: pointer; }
+  .note-zoom-track input::-webkit-slider-runnable-track { height: 1px; background: var(--ink-3); }
+  .note-zoom-track input::-moz-range-track { height: 1px; background: var(--ink-3); }
+  .note-zoom-track input::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 6px; height: 14px; margin-top: -7px; border: 0; border-radius: 2px; background: var(--ink-2);
+    transition: background-color var(--dur-1);
+  }
+  .note-zoom-track input::-moz-range-thumb { width: 6px; height: 14px; border: 0; border-radius: 2px; background: var(--ink-2); }
+  .note-zoom-track input:is(:hover, :active)::-webkit-slider-thumb { background: var(--word-ink); }
+  .note-zoom-track input:is(:hover, :active)::-moz-range-thumb { background: var(--word-ink); }
+  .note-zoom-value { min-width: 44px; height: 22px; padding: 0 6px; border-radius: 4px; text-align: right; color: var(--ink-2); }
+  @media (hover: hover) { .note-zoom-value:hover { background: var(--surface-2); color: var(--ink); } }
+}
+
+/* Focus on a phone: the Exit Focus button takes the top bar's corner, so the bar steps aside until Focus ends */
+@media (max-width: 1023.98px) {
+  :root[data-note-focus] .editor-bar { visibility: hidden; }
+}

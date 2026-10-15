@@ -525,7 +525,7 @@ function mockEditable(value) {
   const el = {};
   return {
     el, value, selectionStart: value.length, selectionEnd: value.length,
-    focus() {}, tidy() {}, settle() {},
+    focus() {}, tidy() {}, settle() {}, before() {}, record() {}, edit(change) { change(); }, undo() { return false; }, redo() { return false; },
     setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
     setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); },
     range() { return { getBoundingClientRect: () => ({ width: 0 }) }; },
@@ -724,7 +724,7 @@ test('tagging: @ button falls back when insertText is unsupported and immediatel
   body.props.textRef(box.el);
   body.props.onChange('Words');
   tree = h.render('Editor', props);
-  button(tree, 'Tag someone, a book or music').props.onClick();
+  find(tree, (n) => n.type.name === 'FormatBar').props.ribbon.mention(); // the ribbon's Mention (Insert tab)
   assert.equal(box.value, 'Words @');
   assert.equal(box.selectionStart, 7);
   tree = h.render('Editor', props);
@@ -744,7 +744,7 @@ test('iOS tagging: @ from reading view renders and focuses editing within the sa
   box.focus = () => { focusCalls++; h.document.activeElement = box.el; };
   const tree = h.render();
   assert.equal(find(tree, (n) => n.type.name === 'BodyText'), undefined);
-  button(tree, 'Tag someone, a book or music').props.onClick();
+  find(tree, (n) => n.type.name === 'FormatBar').props.ribbon.mention(); // the ribbon's Mention (Insert tab)
   assert.equal(focusCalls, 1, 'Focus happens before any animation frame runs');
   assert.equal(box.value, 'Words @');
 });
