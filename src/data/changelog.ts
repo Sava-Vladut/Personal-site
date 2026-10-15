@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.89.0',
+    date: '2026-10-15',
+    changes: [
+      'Records and Books: a cleaner page — the title carries one line of numbers (records, tapes, average rating) instead of number boxes, and the tabs and search sit side by side on a wide screen',
+      'Records: the song of the day comes right under the search with its last two weeks, and nothing else gets between it and your records',
+      'Records: Most picked is now a small tile that opens the full ranking in a sheet, with its four numbers and the top ten',
+      'Records: music from your notes that isn’t kept yet is a tile too: tap it for a list with a Keep button, instead of a strip at the very bottom',
+      'Records: On repeat is a filter beside Songs, Albums and the rest, instead of its own strip above the records',
+      'Records and Books: filters only show when there is something to choose between (no more “All” beside “Songs” with the same count), and the order sits at the right of the row',
+      'The streak flame on the song of the day shows your best run when you hover it',
+    ],
+  },
+  {
     version: '1.87.0',
     date: '2026-10-15',
     changes: [

@@ -114,37 +114,35 @@
 
   /* ---------- media ---------- */
 
-  /* the sky: title across the top, numbers and tabs on the left, the song of the day filling the right */
+  /* Docs and Repos: the numbers on the left, the search across the row under them */
   .media-top {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); column-gap: 20px; align-content: start;
   }
   .media-top > :is(.page-head, .search) { grid-column: 1 / -1; }
-  .media-top > :is(.media-stats, .media-tabs) { grid-column: 1; }
-  .media-top > .seg.media-tabs { max-width: none; align-self: start; }
-  .media-top > .sotd { grid-column: 2; grid-row: 2 / span 2; max-width: none; margin-top: 0; align-self: start; }
+  .media-top > .media-stats { grid-column: 1; }
   .media-top > .search { max-width: none; }
-  .media-top .media-stats { margin-bottom: 10px; }
+  .media-top .media-stats { margin-bottom: 0; }
   .media-top .stat { padding: 10px 14px 8px; }
   .media-top .stat b { font-size: 24px; }
   .media-top .stat small { font-size: var(--text-s); }
-  /* no song card (the shelf, or searching): numbers and tabs share one row */
-  .media-top:not(:has(> .sotd)) > .media-tabs { grid-column: 2; grid-row: 2; }
-  .media-top:not(:has(> .sotd)) > .media-stats { margin-bottom: 0; }
 
-  /* most picked: the four numbers in a square on the left, the ranking beside them */
-  .sotd-stats { display: grid; grid-template-columns: 300px minmax(0, 1fr); column-gap: 14px; padding: 14px; }
-  .sotd-stats > .sotd-stats-head { grid-column: 1 / -1; }
-  .sotd-stats > .sotd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; align-content: start; }
-  .sotd-stats .stat { padding: 10px 12px 8px; }
-  .sotd-stats .stat b { font-size: var(--text-xl); }
+  /* the records and the shelf: the tabs and the search share a row */
+  .media-bar { grid-template-columns: 260px minmax(0, 1fr); gap: 12px; }
+  .media-bar > .seg.tabs, .media-bar > .search { max-width: none; }
+
+  /* today's song takes the left, the two tiles stack beside it and share its height */
+  .media-side { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; margin-bottom: 18px; }
+  .media-side:has(> .media-links:empty) { grid-template-columns: minmax(0, 1fr); }
+  .media-side:has(> .media-links:empty) > .sotd { max-width: 720px; }
+  .media-links { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 1fr; }
+  .media-link { max-height: 100px; padding: 10px 14px 10px 12px; }
+  .media-link-icon { width: 40px; height: 40px; }
 
   .media-panel .reading-list {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); overflow: visible;
     margin-inline: 0; padding: 2px 0 4px;
   }
   .media-panel .reading-card { flex: none; }
-  .mini-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); overflow: visible; margin-inline: 0; padding: 2px 0 4px; }
-  .mini-card { flex: none; }
   .sleeves { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 24px 12px; }
   .sleeve :is(.record, .cassette) { --s: 104px; }
   .media-panel .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -3,15 +3,14 @@ import { navigateAfterSheet } from '../lib/router';
 import { connectSpotify } from '../lib/spotify';
 import { blankSong, findSong, getSongs, saveSongs, toast, useBooks, useSongs, type Music } from '../lib/store';
 import { BookSheet } from '../components/books';
-import { CountUp } from '../components/charts';
 import { feltWorlds } from '../components/cloud';
 import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
-import { DayPicker, SongOfDay, useDayPick } from '../components/SongOfDay';
+import { DayPicker, useDayPick } from '../components/SongOfDay';
 import { SpotifySheet } from '../components/SpotifySheet';
-import { BooksTab, bookStats } from './Books';
-import { MusicTab, musicStats } from './Music';
+import { BooksTab, bookSummary } from './Books';
+import { MusicTab, musicSummary } from './Music';
 import { t } from '../lib/i18n';
 
 type Tab = 'books' | 'music';
@@ -28,7 +27,11 @@ function lastTab(): Tab {
   return history.state?.mmMediaTab === 'books' ? 'books' : 'music';
 }
 
-/** Your music and your books: a record collection and a shelf. `?tab=books|music`, and `?add` opens its picker. */
+/**
+ * Your music and your books: a record collection and a shelf. `?tab=books|music`, and `?add` opens its picker.
+ * The sky has the title, a line of numbers, the tabs and the search; under it come the day's song and the ways into
+ * the rest of the music (at the right on a wide screen), then the collection itself.
+ */
 export function Media({ query }: { query: URLSearchParams }) {
   const books = useBooks();
   const songs = useSongs();
@@ -72,18 +75,18 @@ export function Media({ query }: { query: URLSearchParams }) {
 
   const isBooks = tab === 'books';
   const worlds = useMemo(() => (isBooks ? feltWorlds(books, QUIET.books) : feltWorlds(songs, QUIET.music)), [isBooks, books, songs]);
-  const stats = useMemo(() => (isBooks ? bookStats(books) : musicStats(songs)), [isBooks, books, songs]);
+  const summary = useMemo(() => (isBooks ? bookSummary(books) : musicSummary(songs)), [isBooks, books, songs]);
   const has = isBooks ? books.length > 0 : songs.length > 0;
   const search = isBooks ? t('Search your books') : t('Search your music');
 
   return (
     <div class="page media-page">
       {/* the shelf and the records under a sky of their own: letters over the books, notes over the music */}
-      <div class="journal-top media-top" style={{ '--sky': `var(--emo-${worlds[0]})` }}>
+      <div class="journal-top media-head" style={{ '--sky': `var(--emo-${worlds[0]})` }}>
         <Sky world={worlds[0]} worlds={worlds} letters={tab} />
         <PageHead
           title={isBooks ? t('Your shelf') : t('Your records')}
-          subtitle={!has ? (isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')) : undefined}
+          subtitle={has ? summary : isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')}
           wheel world={worlds[0]}
           actions={<>
             <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>
@@ -92,34 +95,23 @@ export function Media({ query }: { query: URLSearchParams }) {
           </>}
         />
 
-        {stats.length > 0 && (
-          <div class="media-stats" key={tab}>
-            {stats.map(([value, label], i) => (
-              <span class="stat" style={{ '--i': i }}>
-                <b><CountUp value={value} /></b>
-                <small>{label}</small>
-              </span>
-            ))}
+        <div class="media-bar">
+          <div class="seg tabs media-tabs" role="tablist" aria-label={t('Media')} style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
+            <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> {t('Music')}</button>
+            <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
           </div>
-        )}
 
-        <div class="seg tabs media-tabs" role="tablist" aria-label={t('Media')} style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
-          <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> {t('Music')}</button>
-          <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
+          {has && (
+            <label class="search">
+              <Icon name="search" size={18} />
+              <input type="search" placeholder={search} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={search} />
+            </label>
+          )}
         </div>
-
-        {has && (
-          <label class="search">
-            <Icon name="search" size={18} />
-            <input type="search" placeholder={search} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={search} />
-          </label>
-        )}
-
-        {!isBooks && songs.length > 0 && !q.trim() && <SongOfDay songs={songs} picker={picker} />}
       </div>
 
-      <div class="media-panel" key={tab}>
-        {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} />}
+      <div class="media-panel media-body" key={tab}>
+        {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} picker={picker} />}
       </div>
 
       <DayPicker songs={songs} picker={picker} />

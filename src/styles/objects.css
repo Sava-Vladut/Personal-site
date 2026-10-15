@@ -198,7 +198,7 @@
 /* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind; on repeat, slowly */
 .record { transition: width var(--dur-4) var(--spring); }
 /* a hover pulls the record out a little; once it's on, it's all the way out */
-@media (hover: hover) { :is(.deck-main, .track, .sleeve, .mini-card, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
+@media (hover: hover) { :is(.deck-main, .track, .sleeve, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record { width: calc(var(--s) * 1.74); }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record-disc { translate: calc(var(--s) * 0.76) 0; }
 :is(.is-on, .track[aria-pressed='true']) :is(.record-spin, .reel) { animation: turn 1.8s linear infinite; }
@@ -254,26 +254,7 @@
   color: var(--emo-love-connection); background: color-mix(in oklab, var(--emo-love-connection) 16%, var(--surface));
 }
 
-/* on repeat and waiting in your notes: small cards in a row you swipe through */
-.mini-strip {
-  display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter);
-  margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) 4px; scrollbar-width: none;
-}
-.mini-strip::-webkit-scrollbar { display: none; }
-.mini-card {
-  flex: 0 0 min(236px, 76%); scroll-snap-align: start; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 8px;
-  text-align: left; border-radius: var(--r-m); background: var(--surface); border: 1px solid var(--line);
-  transition: border-color var(--dur-2), scale var(--dur-3) var(--spring);
-}
-@media (hover: hover) { button.mini-card:hover { border-color: var(--line-2); } }
-button.mini-card:active { scale: 0.97; transition-duration: var(--dur-1), var(--dur-0); }
-.mini-card.is-repeat {
-  background: linear-gradient(120deg, color-mix(in oklab, var(--emo-love-connection) 13%, var(--surface)), var(--surface) 72%);
-  border-color: color-mix(in oklab, var(--emo-love-connection) 28%, var(--line));
-}
-.mini-main { flex: 1; min-width: 0; display: grid; }
-.mini-title { font: 600 var(--text-base)/1.3 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* keeping music that's waiting in your notes */
 .mini-keep {
   flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   background: var(--ink); color: var(--on-ink); transition: scale var(--dur-3) var(--spring);
@@ -316,6 +297,54 @@ button.mini-card:active { scale: 0.97; transition-duration: var(--dur-1), var(--
 .media-top .search { margin: 10px 0 0; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
 .media-panel { animation: fade-in var(--dur-2) ease-out; }
 
+/* the records and the shelf: the sky holds the title, a line of numbers, the tabs and the search (Docs and Repos keep the
+   .media-top version, with number boxes) */
+.journal-top.media-head { padding-bottom: 14px; margin-bottom: 14px; }
+.journal-top.media-head .page-head { margin-bottom: 12px; }
+.media-head :is(.seg, .search) {
+  background: color-mix(in oklab, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+}
+.media-bar { display: grid; gap: 10px; }
+.media-bar > .seg.tabs { margin: 0; }
+.media-bar > .search { margin: 0; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
+
+/* today's song, and the ways into what you pick most and what's waiting in your notes */
+.media-side { display: grid; gap: 10px; margin-bottom: 14px; }
+.media-side > .sotd { margin: 0; max-width: none; background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.media-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.media-links:empty { display: none; }
+.media-links > button.media-link:only-of-type { grid-column: 1 / -1; }
+.media-link {
+  display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px 8px 8px; text-align: left; color: var(--ink-3);
+  border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line);
+  transition: border-color var(--dur-1), scale var(--dur-3) var(--spring);
+}
+@media (hover: hover) { .media-link:hover { border-color: var(--line-2); } }
+.media-link:active { scale: 0.98; transition-duration: var(--dur-1), var(--dur-0); }
+.media-link > svg { flex: none; }
+.media-link-icon {
+  flex: none; width: 36px; height: 36px; border-radius: var(--r-m); display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(140deg, color-mix(in oklab, var(--emo-love-connection) 24%, var(--surface)), color-mix(in oklab, var(--emo-hope-interest) 18%, var(--surface)));
+  color: color-mix(in oklab, var(--emo-love-connection) 60%, var(--ink));
+}
+.media-link-main { flex: 1; min-width: 0; display: grid; color: var(--ink); }
+.media-link-title { font: 550 var(--text-base)/1.3 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.media-link-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* two tiles side by side on a phone: just their names */
+@media (max-width: 559px) {
+  .media-link-sub, .media-link > svg:last-child { display: none; }
+  .media-link-icon { width: 32px; height: 32px; }
+}
+
+/* the row over the records or the shelf: what to show at the left (only when there is something to choose), the order at the right */
+.media-tools { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.media-tools .chips.scroll-x { flex: 1; min-width: 0; margin: 0; padding: 0; gap: 6px; }
+.media-tools .chip { height: var(--h-s); padding: 0 11px; font-size: var(--text-m); }
+.media-tools .sort-chip { flex: none; margin-left: auto; }
+.media-panel .reading-now + .media-tools { margin-top: 14px; }
+
 /* the title rises out of the clouds a letter at a time */
 .cloud-title span { display: inline-block; animation: cloud-letter var(--dur-4) var(--ease-emph) calc(var(--i) * 30ms) backwards; }
 @keyframes cloud-letter { from { opacity: 0; translate: 0 0.4em; filter: blur(6px); } }
@@ -327,7 +356,7 @@ button.mini-card:active { scale: 0.97; transition-duration: var(--dur-1), var(--
 /* filters and order on one line that scrolls sideways */
 .chips.media-filters { margin-block: 10px 0; gap: 6px; }
 .chips.media-filters .chip { height: var(--h-s); padding: 0 11px; font-size: var(--text-m); }
-.sort-chip { gap: 4px; padding-left: 10px; margin-right: 4px; background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
+.sort-chip { gap: 4px; padding-left: 10px; background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
 .sort-chip span { animation: fade-in var(--dur-2) ease-out; }
 
 .media-panel .section { margin-top: 14px; }
@@ -352,5 +381,5 @@ button.mini-card:active { scale: 0.97; transition-duration: var(--dur-1), var(--
 
 @media (prefers-reduced-motion: reduce) {
   .cloud-title span, .stat { animation: none; }
-  .sleeve, .mini-card, .mini-keep { transition: none; }
+  .sleeve, .media-link, .mini-keep { transition: none; }
 }

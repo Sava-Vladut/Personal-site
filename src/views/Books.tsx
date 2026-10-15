@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { mentionsByBook, progressOf, STATUS_LABEL } from '../lib/books';
 import { navigate } from '../lib/router';
@@ -5,7 +6,7 @@ import { BOOK_STATUSES, useBooks, useEntries, useReady, type Book, type BookStat
 import { BookCover, Shelf } from '../components/books';
 import { Icon } from '../components/icons';
 import { usePref } from '../lib/prefs';
-import { noun, t } from '../lib/i18n';
+import { count as countOf, noun, t } from '../lib/i18n';
 
 export type Sort = 'recent' | 'title' | 'rating';
 const SORTS: [Sort, string][] = [['recent', t('Recent')], ['title', t('A–Z')], ['rating', t('Top rated')]];
@@ -22,17 +23,31 @@ export function SortChip({ sort, onSort }: { sort: Sort; onSort: (s: Sort) => vo
   );
 }
 
+/** The row over a collection: what to show on the left (only when there's something to choose between), the order on the right. */
+export function MediaFilters({ label, sort, onSort, children }: { label: string; sort: Sort; onSort: (s: Sort) => void; children?: ComponentChildren }) {
+  return (
+    <div class="media-tools">
+      {children && <div class="chips scroll-x" role="toolbar" aria-label={label}>{children}</div>}
+      <SortChip sort={sort} onSort={onSort} />
+    </div>
+  );
+}
+
 /** The Media page's books: what you're reading, then a shelf for each status. */
 export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   const books = useBooks();
   const entries = useEntries();
   const ready = useReady();
-  const [shelf, setShelf] = usePref<BookStatus | 'all'>('books-shelf', 'all', ['all', ...BOOK_STATUSES]);
+  const [chosen, setShelf] = usePref<BookStatus | 'all'>('books-shelf', 'all', ['all', ...BOOK_STATUSES]);
   const [sort, setSort] = usePref<Sort>('books-sort', 'recent', SORTS.map(([s]) => s));
   const mentions = useMemo(() => mentionsByBook(entries, books), [entries, books]);
 
   const reading = books.filter((b) => b.status === 'reading');
   const count = (s: BookStatus) => books.filter((b) => b.status === s).length;
+  // a shelf that has emptied since you picked it shows everything again
+  const shelf = chosen !== 'all' && !count(chosen) ? 'all' : chosen;
+  // a shelf is worth a chip when it would show something other than everything
+  const chips = BOOK_STATUSES.filter((s) => s === shelf || (count(s) > 0 && count(s) < books.length));
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -77,13 +92,14 @@ export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
       )}
 
       {books.length > 0 && (
-        <div class="chips scroll-x filters media-filters" role="toolbar" aria-label={t('Shelf and order')}>
-          <SortChip sort={sort} onSort={setSort} />
-          <button class="chip" aria-pressed={shelf === 'all'} onClick={() => setShelf('all')}>{t('All')} {books.length}</button>
-          {BOOK_STATUSES.map((s) => count(s) > 0 && (
-            <button class="chip" aria-pressed={shelf === s} onClick={() => setShelf(s)}>{STATUS_LABEL[s]} {count(s)}</button>
-          ))}
-        </div>
+        <MediaFilters label={t('Shelf and order')} sort={sort} onSort={setSort}>
+          {chips.length > 0 && (
+            <>
+              <button class="chip" aria-pressed={shelf === 'all'} onClick={() => setShelf('all')}>{t('All')} {books.length}</button>
+              {chips.map((s) => <button class="chip" aria-pressed={shelf === s} onClick={() => setShelf(s)}>{STATUS_LABEL[s]} {count(s)}</button>)}
+            </>
+          )}
+        </MediaFilters>
       )}
 
       {ready && !books.length && (
@@ -105,16 +121,16 @@ export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
   );
 }
 
-/** The numbers over the shelf: reading, read this year, still to read, and the average rating. */
-export function bookStats(books: Book[]): [string, string][] {
+/** The line under the shelf's title: reading, read this year, still to read, and the average rating. */
+export function bookSummary(books: Book[]): string {
   const year = new Date().getFullYear();
-  const read = books.filter((b) => b.status === 'read' && b.finished?.startsWith(String(year))).length;
+  const of = (status: BookStatus) => books.filter((b) => b.status === status);
+  const read = of('read').filter((b) => b.finished?.startsWith(String(year))).length;
   const rated = books.filter((b) => b.rating);
-  const out: [string, string][] = [
-    [String(books.filter((b) => b.status === 'reading').length), t('reading')],
-    [String(read), t('read in {year}', { year })],
-    [String(books.filter((b) => b.status === 'want').length), t('to read')],
-  ];
-  if (rated.length) out.push([(rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1), t('average ★')]);
-  return out.filter(([v]) => v !== '0');
+  return [
+    of('reading').length ? `${of('reading').length} ${t('reading')}` : '',
+    read ? `${read} ${t('read in {year}', { year })}` : '',
+    of('want').length ? `${of('want').length} ${t('to read')}` : '',
+    rated.length ? t('{n} ★ average', { n: (rated.reduce((n, b) => n + b.rating, 0) / rated.length).toFixed(1) }) : '',
+  ].filter(Boolean).join(' · ') || countOf(books.length, 'book', 'books');
 }

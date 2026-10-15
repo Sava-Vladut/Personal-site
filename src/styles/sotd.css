@@ -1,4 +1,4 @@
-/* ---------- the song of the day: a frosted card on the Media page's sky ----------
+/* ---------- the song of the day: a frosted card on a sky, or a plain one on the Media page ----------
    --c is the cover's colour (a warm pink until a song is picked); soft lights drift behind it. */
 
 .sotd {
@@ -11,7 +11,6 @@
   animation: pop-in var(--dur-3) var(--spring) 0.2s backwards;
   transition: border-color var(--dur-3), box-shadow var(--dur-3);
 }
-.media-top .sotd { max-width: 640px; }
 .sotd-aura { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .sotd-aura i { position: absolute; width: 60%; aspect-ratio: 1; border-radius: 50%; filter: blur(30px); opacity: 0.42; animation: sotd-drift 14s ease-in-out infinite alternate; }
 .sotd-aura i:nth-child(1) { left: -18%; top: -40%; background: var(--c); }
@@ -109,33 +108,9 @@
 .sotd-picks { margin-top: 10px; }
 .sotd-pick-count { flex: none; margin-left: auto; padding: 2px 8px; border-radius: var(--r-pill); font-size: var(--text-s); font-weight: 650; background: var(--surface-2); color: var(--ink-2); }
 
-/* ---------- the most picked: a little sky of its own, four numbers and a ranking of coloured bars ---------- */
+/* ---------- the most picked: four numbers and a ranking of coloured bars, in a sheet ---------- */
 
-.sotd-stats {
-  position: relative; isolation: isolate; overflow: hidden; margin-top: 12px; padding: 10px 10px 8px;
-  border-radius: var(--r-l); border: 1px solid var(--line); background: var(--surface);
-  box-shadow: 0 14px 34px -26px color-mix(in oklab, var(--emo-love-connection) 70%, transparent);
-  animation: pop-in var(--dur-3) var(--spring) backwards;
-}
-.sotd-clouds {
-  position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.6;
-  -webkit-mask-image: linear-gradient(180deg, #000 0, rgb(0 0 0 / 0.5) 45%, rgb(0 0 0 / 0.18));
-  mask-image: linear-gradient(180deg, #000 0, rgb(0 0 0 / 0.5) 45%, rgb(0 0 0 / 0.18));
-}
-.sotd-clouds > .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-.sotd-stats .sotd-stats-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px; margin-bottom: 8px; }
-.sotd-stats .sotd-stats-head .section-title { margin: 0; }
-.sotd-more {
-  display: inline-flex; align-items: center; gap: 3px; height: 26px; padding: 0 8px 0 11px; border-radius: var(--r-pill);
-  font-size: var(--text-s); font-weight: 600; color: var(--ink-2); white-space: nowrap;
-  background: color-mix(in oklab, var(--surface) 70%, transparent); box-shadow: inset 0 0 0 1px var(--line);
-  transition: background-color var(--dur-1), color var(--dur-1);
-}
-@media (hover: hover) { .sotd-more:hover { background: var(--surface); color: var(--ink); } }
-.sotd-more svg { transition: transform var(--dur-2) var(--spring); }
-
-.sotd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
+.sotd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-bottom: 10px; }
 .sotd-tile-n { display: flex; align-items: center; gap: 4px; }
 
 .sotd-rank { list-style: none; display: grid; gap: 4px; margin: 0; padding: 0; }
@@ -172,5 +147,5 @@
 .sotd-rank-n small { font-size: var(--text-xs); color: var(--ink-3); }
 
 @media (prefers-reduced-motion: reduce) {
-  .sotd, .sotd-aura i, .sotd-streak, .sotd-streak svg, .eq i, .sotd-now, .sotd-idea, .sotd-day, .sotd-day .sotd-disc, .sotd-stats, .stat, .sotd-rank li, .sotd-bar i { animation: none !important; }
+  .sotd, .sotd-aura i, .sotd-streak, .sotd-streak svg, .eq i, .sotd-now, .sotd-idea, .sotd-day, .sotd-day .sotd-disc, .stat, .sotd-rank li, .sotd-bar i { animation: none !important; }
 }

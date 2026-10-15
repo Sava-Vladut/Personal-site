@@ -1,28 +1,27 @@
 // The song of the day: one record from your collection for each day, picked by you (or by a roll of the dice), and
-// the numbers on what you keep coming back to. The card sits on the Media page's sky; its day picker is a sheet, so
-// that lives apart (useDayPick, DayPicker) where no frosted or clipped panel can trap it.
+// the numbers on what you keep coming back to (a small link on the Media page that opens the ranking in a sheet). Its
+// day picker is a sheet too, so that lives apart (useDayPick, DayPicker) where no frosted or clipped panel can trap it.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addDays, dayLabel, todayKey, WEEKDAYS, weekday } from '../lib/dates';
 import { hashOf, useColor } from '../lib/colors';
 import { haptic } from '../lib/haptics';
 import { usePaged } from '../lib/inView';
-import { navigate } from '../lib/router';
+import { navigate, navigateAfterSheet } from '../lib/router';
 import { pickSongOfDay, songOfDay, toast, type Song } from '../lib/store';
 import { CountUp } from './charts';
 import { Icon } from './icons';
 import { MusicEmbed, MusicThing, musicSub } from './music';
 import { Sheet } from './Sheet';
-import { Sky } from './Sky';
-import { noun, t } from '../lib/i18n';
+import { count, noun, t } from '../lib/i18n';
 import '../styles/sotd.css';
 
 const STRIP = 14;
 /** How many records the day picker draws at first, and then on each scroll toward its end. */
 const PICKS_PAGE = 60;
+/** How far down the ranking goes. */
+const RANKED = 10;
 /** Each place in the ranking takes its own feeling's colour. */
 const RANK_COLORS = ['joy', 'love-connection', 'hope-interest', 'calm-safety', 'sadness', 'fear', 'anger'];
-/** The little sky behind the ranking: notes in the colours of the first places. */
-const RANK_SKY = ['joy', 'love-connection', 'hope-interest'];
 
 /** Days in a row with a song, ending today (or yesterday, while today is still open). */
 function streakOf(days: Set<string>, today: string) {
@@ -87,7 +86,10 @@ export function SongOfDay({ songs, picker }: { songs: Song[]; picker: DayPick })
     const day = addDays(today, i - STRIP + 1);
     return { day, song: songOfDay(songs, day) };
   }), [songs, today]);
-  const streak = useMemo(() => streakOf(new Set(songs.flatMap((s) => s.days)), today), [songs, today]);
+  const { streak, best } = useMemo(() => {
+    const days = new Set(songs.flatMap((s) => s.days));
+    return { streak: streakOf(days, today), best: bestRunOf([...days].sort()) };
+  }, [songs, today]);
 
   // a few to choose from at a tap: what's on repeat, then the best rated, in an order that changes every day
   const ideas = useMemo(() => [...songs]
@@ -110,7 +112,7 @@ export function SongOfDay({ songs, picker }: { songs: Song[]; picker: DayPick })
           <span class={`eq${on ? ' is-on' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
           {t('Song of the day')}
         </span>
-        {streak > 1 && <span class="sotd-streak" title={t('Days in a row')}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
+        {streak > 1 && <span class="sotd-streak" title={`${t('Days in a row')} · ${t('best streak')} ${best}`}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
         {song && (
           <span class="sotd-tools">
             <button class="sotd-tool" onClick={() => open(today)} aria-label={t('Change')} title={t('Change')}><Icon name="refresh" size={17} /></button>
@@ -222,20 +224,24 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
   );
 }
 
-/** Which songs got picked the most: a few coloured bars on a little sky of their own, and the streaks behind them. */
-export function SongStats({ songs }: { songs: Song[] }) {
-  const [all, setAll] = useState(false);
+/** The songs picked most often for the song of the day, longest-running first, and the runs of days behind them. */
+function usePicked(songs: Song[]) {
   const today = todayKey();
-  const stats = useMemo(() => {
+  return useMemo(() => {
     const ranked = songs.filter((s) => s.days.length).sort((a, b) => b.days.length - a.days.length || (b.days[b.days.length - 1] > a.days[a.days.length - 1] ? 1 : -1));
     const days = [...new Set(ranked.flatMap((s) => s.days))].sort();
     return { ranked, days: days.length, best: bestRunOf(days), streak: streakOf(new Set(days), today) };
   }, [songs, today]);
-  if (!stats.ranked.length) return null;
+}
 
+/** A quiet way into the ranking: what you pick most, on a tile like its neighbours. The numbers and the top ten open in a sheet. */
+export function MostPicked({ songs }: { songs: Song[] }) {
+  const [open, setOpen] = useState(false);
+  const stats = usePicked(songs);
   const { ranked } = stats;
+  if (!ranked.length) return null;
+
   const top = ranked[0].days.length;
-  const shown = all ? ranked.slice(0, 10) : ranked.slice(0, 3);
   const tiles: [number, string, 'calendar' | 'vinyl' | 'flame' | 'trophy'][] = [
     [stats.days, noun(stats.days, 'day', 'days'), 'calendar'],
     [ranked.length, noun(ranked.length, 'song', 'songs'), 'vinyl'],
@@ -244,40 +250,40 @@ export function SongStats({ songs }: { songs: Song[] }) {
   ];
 
   return (
-    <section class="sotd-stats">
-      <div class="sotd-clouds" aria-hidden="true"><Sky worlds={RANK_SKY} letters="music" small /></div>
-      <header class="sotd-stats-head">
-        <h2 class="section-title"><Icon name="chart-bar" size={16} /> {t('Most picked')}</h2>
-        {ranked.length > 3 && (
-          <button class="sotd-more" aria-expanded={all} onClick={() => setAll(!all)}>
-            {all ? t('Show less') : t('Show the top {n}', { n: Math.min(10, ranked.length) })}
-            <Icon name={all ? 'arrow-up' : 'chevron-down'} size={14} />
-          </button>
-        )}
-      </header>
-      <div class="sotd-tiles">
-        {tiles.map(([value, label, icon], i) => (
-          <span class="stat" style={{ '--i': i }}>
-            <span class="sotd-tile-n"><Icon name={icon} size={14} stroke={2} /><b><CountUp value={value} /></b></span>
-            <small>{label}</small>
-          </span>
-        ))}
-      </div>
-      <ol class="sotd-rank">
-        {shown.map((s, i) => (
-          <li key={s.id} style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i % RANK_COLORS.length]})`, '--w': s.days.length / top }}>
-            <button class="sotd-rank-row" onClick={() => navigate('song/' + s.id)}>
-              <span class={`sotd-place${i < 3 ? ' p' + (i + 1) : ''}`}>{i === 0 ? <Icon name="crown" size={13} stroke={2} /> : i + 1}</span>
-              <MusicThing m={s.music} size={30} />
-              <span class="sotd-rank-main">
-                <span class="sotd-rank-title"><span>{s.music.title}</span><small>{musicSub(s.music)}</small></span>
-                <span class="sotd-bar"><i /></span>
-              </span>
-              <span class="sotd-rank-n"><b>{s.days.length}</b><small>{noun(s.days.length, 'day', 'days')}</small></span>
-            </button>
-          </li>
-        ))}
-      </ol>
-    </section>
+    <>
+      <button class="media-link" onClick={() => setOpen(true)}>
+        <span class="media-link-icon"><Icon name="chart-bar" size={19} /></span>
+        <span class="media-link-main">
+          <span class="media-link-title">{t('Most picked')}</span>
+          <span class="media-link-sub">{ranked[0].music.title} · {count(top, 'day', 'days')}</span>
+        </span>
+        <Icon name="chevron-right" size={18} />
+      </button>
+      <Sheet open={open} onClose={() => setOpen(false)} title={<span class="row gap-s"><Icon name="chart-bar" /> {t('Most picked')}</span>} label={t('Most picked')} tall>
+        <div class="sotd-tiles">
+          {tiles.map(([value, label, icon], i) => (
+            <span class="stat" style={{ '--i': i }}>
+              <span class="sotd-tile-n"><Icon name={icon} size={14} stroke={2} /><b><CountUp value={value} /></b></span>
+              <small>{label}</small>
+            </span>
+          ))}
+        </div>
+        <ol class="sotd-rank">
+          {ranked.slice(0, RANKED).map((s, i) => (
+            <li key={s.id} style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i % RANK_COLORS.length]})`, '--w': s.days.length / top }}>
+              <button class="sotd-rank-row" onClick={() => { navigateAfterSheet('song/' + s.id); setOpen(false); }}>
+                <span class={`sotd-place${i < 3 ? ' p' + (i + 1) : ''}`}>{i === 0 ? <Icon name="crown" size={13} stroke={2} /> : i + 1}</span>
+                <MusicThing m={s.music} size={30} />
+                <span class="sotd-rank-main">
+                  <span class="sotd-rank-title"><span>{s.music.title}</span><small>{musicSub(s.music)}</small></span>
+                  <span class="sotd-bar"><i /></span>
+                </span>
+                <span class="sotd-rank-n"><b>{s.days.length}</b><small>{noun(s.days.length, 'day', 'days')}</small></span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </Sheet>
+    </>
   );
 }
