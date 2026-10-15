@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.85.1',
+    date: '2026-10-15',
+    changes: [
+      'Media: the search bar is always there under Music and Books — no more hunting for the search icon',
+    ],
+  },
+  {
     version: '1.85.0',
     date: '2026-10-14',
     changes: [

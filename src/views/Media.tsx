@@ -35,7 +35,6 @@ export function Media({ query }: { query: URLSearchParams }) {
   const asked = query.get('tab');
   const [tab, setTabState] = useState<Tab>(asked === 'music' || asked === 'books' ? asked : lastTab);
   const [adding, setAdding] = useState<Tab | null>(null);
-  const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
   const picker = useDayPick();
 
@@ -87,11 +86,6 @@ export function Media({ query }: { query: URLSearchParams }) {
           subtitle={!has ? (isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')) : undefined}
           wheel world={worlds[0]}
           actions={<>
-            {has && (
-              <button class="icon-btn" aria-pressed={searching} aria-label={search} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>
-                <Icon name="search" />
-              </button>
-            )}
             <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>
               <Icon name="plus" />
             </button>
@@ -114,14 +108,14 @@ export function Media({ query }: { query: URLSearchParams }) {
           <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
         </div>
 
-        {searching && has && (
+        {has && (
           <label class="search">
             <Icon name="search" size={18} />
-            <input type="search" autoFocus placeholder={search} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={search} />
+            <input type="search" placeholder={search} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={search} />
           </label>
         )}
 
-        {!isBooks && songs.length > 0 && !searching && <SongOfDay songs={songs} picker={picker} />}
+        {!isBooks && songs.length > 0 && !q.trim() && <SongOfDay songs={songs} picker={picker} />}
       </div>
 
       <div class="media-panel" key={tab}>
