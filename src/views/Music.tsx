@@ -1,6 +1,5 @@
 import { memo } from 'preact/compat';
 import { useMemo, useRef } from 'preact/hooks';
-import { coreOf } from '../data/emotions';
 import { navigate } from '../lib/router';
 import { blankSong, findSong, getSongs, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
 import { Stars } from '../components/books';
@@ -164,20 +163,19 @@ type SleeveProps = { s: Song; k: number };
 /** Every save reads the records back as new objects, so a record is the same while its id and last change are. */
 const sameSleeve = (a: SleeveProps, b: SleeveProps) => a.k === b.k && a.s.id === b.s.id && a.s.updated === b.s.updated;
 
-/** A record in the collection, tinted by the first feeling it brings; drawn again only when it (or its place) changes. */
+/** A record in the collection: the disc, its name and its rating; drawn again only when it (or its place) changes. */
 const Sleeve = memo(function Sleeve({ s, k }: SleeveProps) {
-  const core = s.emotions[0] && coreOf(s.emotions[0])?.id;
   return (
     <button
       class={`sleeve${isTape(s.music) ? ' is-tape' : ''}`}
-      style={{ '--k': k, '--t': core ? `var(--emo-${core})` : 'var(--line-2)' }}
+      style={{ '--k': k }}
       onClick={() => navigate('song/' + s.id)}
       aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
     >
       <MusicThing m={s.music} size={50} />
       {s.repeat && <span class="sleeve-badge" title={t('On repeat')}><Icon name="repeat" size={11} stroke={2.2} /></span>}
       <span class="sleeve-title">{s.music.title}</span>
-      {s.rating > 0 ? <Stars value={s.rating} size={10} /> : <span class="sleeve-sub">{s.music.sub ?? musicSub(s.music)}</span>}
+      {s.rating > 0 && <Stars value={s.rating} size={10} />}
     </button>
   );
 }, sameSleeve);

@@ -230,21 +230,19 @@
 .mini-tape { flex: none; display: inline-flex; align-items: center; justify-content: space-around; width: 18px; height: 12px; padding: 0 2px; border-radius: 2px; background: #3d3c42; }
 .mini-tape i { width: 4px; height: 4px; border-radius: 50%; background: #efe9dc; }
 
-/* ---------- the record collection: sleeves in a dense grid, each tinted by how the music makes you feel ---------- */
+/* ---------- the record collection: bare records in a grid, each with its name and rating ---------- */
 
-.sleeves { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 6px; margin-top: 10px; }
+.sleeves { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 10px 6px; margin-top: 10px; }
 .sleeve {
-  position: relative; display: grid; justify-items: start; align-content: start; gap: 1px; min-width: 0; padding: 8px 8px 7px; text-align: left; border-radius: var(--r-m);
-  background: linear-gradient(120deg, color-mix(in oklab, var(--t) 12%, var(--surface)), var(--surface) 70%);
-  border: 1px solid color-mix(in oklab, var(--t) 24%, var(--line));
+  position: relative; display: grid; justify-items: start; align-content: start; gap: 1px; min-width: 0; padding: 4px 2px 6px; text-align: left; border-radius: var(--r-m);
   animation: spine-in var(--dur-3) var(--spring) calc(min(var(--k), 20) * 30ms) backwards;
-  transition: transform var(--dur-2) var(--spring), border-color var(--dur-2), scale var(--dur-3) var(--spring);
+  transition: transform var(--dur-2) var(--spring), scale var(--dur-3) var(--spring);
   /* records far off screen aren't laid out or painted until they come near it */
   content-visibility: auto; contain-intrinsic-size: auto 100px auto 128px;
 }
 /* while the records load: blank sleeves where they'll be */
-.sleeve.sleeve-ph { height: 128px; background: var(--surface-2); border-color: var(--line); animation: photo-pulse 1.2s ease-in-out infinite alternate; }
-@media (hover: hover) { .sleeve:hover { border-color: color-mix(in oklab, var(--t) 55%, var(--line)); transform: translateY(-2px); } }
+.sleeve.sleeve-ph { height: 128px; background: var(--surface-2); animation: photo-pulse 1.2s ease-in-out infinite alternate; }
+@media (hover: hover) { .sleeve:hover { transform: translateY(-2px); } }
 .sleeve:active { scale: 0.96; transition-duration: var(--dur-1), var(--dur-1), var(--dur-0); }
 .sleeve:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .sleeve :is(.record, .cassette) { margin-bottom: 6px; }
@@ -252,7 +250,7 @@
 .sleeve-sub { max-width: 100%; font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sleeve .stars { margin-top: 1px; }
 .sleeve-badge {
-  position: absolute; top: 7px; right: 7px; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  position: absolute; top: 4px; right: 2px; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   color: var(--emo-love-connection); background: color-mix(in oklab, var(--emo-love-connection) 16%, var(--surface));
 }
 
