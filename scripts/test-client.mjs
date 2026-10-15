@@ -464,11 +464,11 @@ test('a failed database startup offers recovery without rendering an empty journ
     preact: { render: (node) => rendered.push(node) },
     'preact/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, 
-    './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView() {} },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView() {} },
     './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
   }, {
     console: { error() {} }, navigator: {}, addEventListener() {},
-    document: { getElementById: () => ({}) },
+    document: { getElementById: () => ({}), addEventListener() {} },
   });
   await settle();
   assert.equal(rendered.length, 1);
@@ -484,13 +484,13 @@ test('startup keeps the app unmounted until the current deep link screen is load
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
     './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, './lib/router': { routeName: () => route },
-    './lib/views': { prepareView: name => ({ journal, brain }[name].promise) },
+    './lib/views': { preloadViews() {}, prepareView: name => ({ journal, brain }[name].promise) },
     './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ },
   }, {
     navigator: {}, addEventListener() {}, setTimeout: fn => timers.push(fn),
     document: {
       getElementById: () => ({}),
-      querySelector: () => ({ setAttribute: (name, value) => attributes.set(name, value) }),
+      querySelector: () => ({ setAttribute: (name, value) => attributes.set(name, value) }), addEventListener() {},
     },
   });
   route = 'brain'; journal.resolve(); await settle();
@@ -507,10 +507,10 @@ test('a failed initial screen load reports a connection problem and offers a rel
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} }, './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, 
     './lib/router': { routeName: () => 'journal' },
-    './lib/views': { prepareView: () => Promise.reject(new Error('Offline')) },
+    './lib/views': { preloadViews() {}, prepareView: () => Promise.reject(new Error('Offline')) },
   }, {
     console: { error() {} }, navigator: {}, addEventListener() {},
-    document: { getElementById: () => ({}) },
+    document: { getElementById: () => ({}), addEventListener() {} },
   });
   await settle();
   assert.match(JSON.stringify(rendered[0]), /Check your connection/);
@@ -530,11 +530,11 @@ test('a signed-out device opens on the intro without touching storage, and the j
       opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
     },
     './lib/router': { routeName: () => 'intro' },
-    './lib/views': { prepareView: () => Promise.resolve(), viewFor: (name) => (name === 'intro' ? Intro : null) },
+    './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: (name) => (name === 'intro' ? Intro : null) },
   }, {
     navigator: {}, addEventListener() {},
     history: { state: null, replaceState: (_s, _t, hash) => replaced.push(hash) },
-    document: { getElementById: () => ({}), querySelector: () => null },
+    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
   });
   await settle();
   assert.equal(rendered.length, 1);
@@ -563,10 +563,10 @@ test('a device without the note goes straight in when its cookie is still good, 
         signedInHere: () => false, authStatus: async () => status,
         opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
       },
-      './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView: () => undefined, viewFor() {} },
+      './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => undefined, viewFor() {} },
     }, {
       navigator: {}, addEventListener() {},
-      document: { getElementById: () => ({}), querySelector: () => null },
+      document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
     });
     await settle(); await settle();
     assert.equal(rendered[0]?.type, App);
@@ -580,10 +580,10 @@ test('a signed-in device reloads into the intro once the server says it was sign
     preact: { render() {} }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
     './lib/auth': { signedInHere: () => true, stillSignedIn: async () => false },
-    './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView: () => undefined },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => undefined },
   }, {
     navigator: {}, addEventListener() {}, location: { reload: () => reloads++ },
-    document: { getElementById: () => ({}), querySelector: () => null },
+    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
   });
   await settle();
   assert.equal(reloads, 1);
@@ -1126,11 +1126,11 @@ test('a public note’s link opens just that note: no sign-in check, no journal 
     './lib/weather': { startWeather: () => touched.push('weather') }, './lib/sync': { initSync: () => touched.push('sync') },
     './lib/store': { applyTheme() {}, init: async () => touched.push('init') },
     './lib/auth': { signedInHere: () => touched.push('signedInHere'), authStatus: async () => touched.push('authStatus'), opensOn: () => 'intro' },
-    './lib/router': { routeName: () => 'journal' }, './lib/views': { prepareView: () => touched.push('views') },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => touched.push('views') },
     './views/Shared': { Shared },
   }, {
     navigator: {}, addEventListener() {}, location: { pathname: `/s/${token}` },
-    document: { getElementById: () => ({}), querySelector: () => null },
+    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
   });
   await settle(); await settle();
   assert.equal(rendered.length, 1);
