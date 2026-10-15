@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.86.0',
+    date: '2026-10-15',
+    changes: [
+      'Music: redesigned records grid — bigger discs, centred with their name and rating underneath, two across on a phone and more room on desktop',
+    ],
+  },
+  {
     version: '1.85.2',
     date: '2026-10-15',
     changes: [

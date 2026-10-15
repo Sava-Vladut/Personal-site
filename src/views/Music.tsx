@@ -172,7 +172,7 @@ const Sleeve = memo(function Sleeve({ s, k }: SleeveProps) {
       onClick={() => navigate('song/' + s.id)}
       aria-label={`${s.music.title}, ${musicSub(s.music)}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
     >
-      <MusicThing m={s.music} size={50} />
+      <MusicThing m={s.music} />
       {s.repeat && <span class="sleeve-badge" title={t('On repeat')}><Icon name="repeat" size={11} stroke={2.2} /></span>}
       <span class="sleeve-title">{s.music.title}</span>
       {s.rating > 0 && <Stars value={s.rating} size={10} />}

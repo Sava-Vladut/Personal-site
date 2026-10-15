@@ -145,8 +145,8 @@
   .media-panel .reading-card { flex: none; }
   .mini-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); overflow: visible; margin-inline: 0; padding: 2px 0 4px; }
   .mini-card { flex: none; }
-  .sleeves { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
-  .sleeve :is(.record, .cassette) { --s: 62px; }
+  .sleeves { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 24px 12px; }
+  .sleeve :is(.record, .cassette) { --s: 104px; }
   .media-panel .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   /* ---------- tracker ---------- */
