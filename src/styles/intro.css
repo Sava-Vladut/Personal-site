@@ -20,8 +20,8 @@
 
 .intro-top {
   width: 100%; max-width: 1100px; display: flex; align-items: center; justify-content: space-between;
-  font: 500 var(--text-s)/1 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
-  animation: rise-in 0.6s var(--ease-emph) 0.2s backwards;
+  font: var(--w-medium) var(--text-s)/1 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3);
+  animation: rise-in var(--dur-4) var(--ease-emph) 0.2s backwards;
 }
 .intro-cursor { animation: intro-blink 1.1s steps(1) infinite; color: var(--emo-hope-interest); }
 @keyframes intro-blink { 50% { opacity: 0; } }
@@ -38,23 +38,23 @@
 .intro-brain:active { cursor: grabbing; }
 .intro-spot {
   position: absolute; left: 0; right: 0; bottom: -6px; display: flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 18px; font: 500 var(--text-s)/1.4 var(--mono); letter-spacing: 0.06em; color: color-mix(in oklab, var(--c, var(--ink)) 55%, var(--ink));
+  min-height: 18px; font: var(--w-medium) var(--text-s)/1.4 var(--mono); letter-spacing: 0.06em; color: color-mix(in oklab, var(--c, var(--ink)) 55%, var(--ink));
   transition: color var(--dur-3);
 }
 .intro-spot i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
 .intro-spot span { color: var(--ink-3); }
 
 .intro-copy { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 520px; text-align: center; }
-.intro .cloud-title { font: 500 clamp(42px, 10vw, 76px)/1 var(--serif); letter-spacing: -0.025em; }
+.intro .cloud-title { font: var(--w-medium) clamp(42px, 10vw, 76px)/1 var(--serif); letter-spacing: -0.025em; }
 .intro .cloud-title span { animation-delay: calc(0.5s + var(--i) * 55ms); }
 .intro-tag {
-  max-width: 34ch; font: 400 var(--text-l)/1.45 var(--serif); color: var(--ink-2); text-wrap: balance;
-  animation: rise-in 0.6s var(--ease-emph) 0.9s backwards;
+  max-width: 34ch; font: var(--w-regular) var(--text-l)/1.45 var(--serif); color: var(--ink-2); text-wrap: balance;
+  animation: rise-in var(--dur-4) var(--ease-emph) 0.9s backwards;
 }
-.intro-actions, .intro-form { display: flex; gap: 8px; justify-content: center; animation: rise-in 0.5s var(--ease-emph) 1.05s backwards; }
+.intro-actions, .intro-form { display: flex; gap: 8px; justify-content: center; animation: rise-in var(--dur-3) var(--ease-emph) 1.05s backwards; }
 .intro-form { width: 100%; max-width: 380px; animation-delay: 0s; }
 .intro-form .input { flex: 1; min-width: 0; background: color-mix(in oklab, var(--surface) 80%, transparent); backdrop-filter: blur(8px); }
-.intro-form.shake { animation: intro-shake 0.4s; }
+.intro-form.shake { animation: intro-shake var(--dur-3); }
 @keyframes intro-shake { 20%, 60% { translate: -7px 0; } 40%, 80% { translate: 7px 0; } }
 .intro-go { gap: 8px; padding-inline: 22px; box-shadow: 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent), 0 8px 40px -8px color-mix(in oklab, var(--emo-hope-interest) 55%, transparent); }
 .intro-error { margin: 0; font-size: var(--text-base); color: var(--emo-anger); }
@@ -62,7 +62,7 @@
 .intro-about-toggle {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--r-s);
   font-size: var(--text-m); color: var(--ink-3); transition: color var(--dur-1);
-  animation: rise-in 0.5s var(--ease-emph) 1.15s backwards;
+  animation: rise-in var(--dur-3) var(--ease-emph) 1.15s backwards;
 }
 .intro-about-toggle[aria-expanded='true'] { color: var(--ink); }
 @media (hover: hover) { .intro-about-toggle:hover { color: var(--ink); } }
@@ -71,13 +71,13 @@
   border-radius: var(--r-m); font-size: var(--text-base); line-height: 1.45; color: var(--ink-2);
   background: color-mix(in oklab, var(--surface) 72%, transparent); backdrop-filter: blur(12px);
   box-shadow: inset 0 0 0 1px var(--line);
-  animation: rise-in 0.35s var(--ease-emph);
+  animation: rise-in var(--dur-3) var(--ease-emph);
 }
-.intro-about b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+.intro-about b { color: var(--ink); font-weight: var(--w-bold); margin-right: 4px; }
 
 .intro-foot {
   margin-top: auto; padding-top: 18px; font: var(--text-xs)/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
-  opacity: 0.7; animation: rise-in 0.6s var(--ease-emph) 1.4s backwards;
+  opacity: 0.7; animation: rise-in var(--dur-4) var(--ease-emph) 1.4s backwards;
 }
 
 /* going in: everything but the brain steps aside while it bursts toward you */
@@ -85,7 +85,7 @@
   opacity: 0; translate: 0 14px; filter: blur(6px); pointer-events: none;
   transition: opacity var(--dur-3), translate var(--dur-3) var(--ease-emph), filter var(--dur-3);
 }
-.intro.diving .intro-sky { opacity: 0.35; transition: opacity 1s; }
+.intro.diving .intro-sky { opacity: 0.35; transition: opacity var(--dur-5); }
 
 @media (min-width: 1024px) {
   .intro { padding-inline: 40px; }

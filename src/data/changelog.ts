@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.91.0',
+    date: '2026-10-15',
+    changes: [
+      'Faster, calmer pages: moving between screens takes about a fifth of a second, and sections appear almost at once instead of one by one',
+      'The wheel button at the top of each page plays its animation when a page opens, then rests; it comes alive again when you point at it',
+      'Smoother scrolling on phones: cards on the sky (search, stats, song of the day, media) are solid instead of blurred',
+      'The Traps map’s spiral, the docs loading shimmer and other decorations no longer move forever',
+      'One consistent look across the app: the same text sizes, weights, corners, shadows and timing everywhere',
+      'A little less to download before the first screen appears',
+    ],
+  },
+  {
     version: '1.90.1',
     date: '2026-10-15',
     changes: [

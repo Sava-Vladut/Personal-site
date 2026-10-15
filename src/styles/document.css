@@ -51,7 +51,7 @@
     display: flex; flex-direction: column;
     width: min(100%, calc(816px * var(--z))); min-height: calc(1056px * var(--z));
     margin: 0 auto; padding: var(--pad-y) var(--pad-x) calc(var(--pad-y) + 8px);
-    background: var(--surface); border-radius: 2px; box-shadow: var(--doc-sheet-shadow);
+    background: var(--surface); border-radius: var(--r-2xs); box-shadow: var(--doc-sheet-shadow);
   }
   /* the words fill the paper down to its foot, where the notes linking here sit like endnotes */
   .note-sheet > .note-body { flex: 1 0 auto; margin-top: calc(26px * var(--z)); }
@@ -72,7 +72,7 @@
   .note-sheet .note-head.has-cover {
     margin: calc(-1 * var(--pad-y)) calc(-1 * var(--pad-x)) 0;
     padding: calc(var(--cover-h) + var(--pad-y) * 0.6) var(--pad-x) 0;
-    border-radius: 2px 2px 0 0;
+    border-radius: var(--r-2xs) var(--r-2xs) 0 0;
   }
   .note-sheet .note-head.has-cover .note-head-cover {
     inset: 0 0 auto; height: var(--cover-h); opacity: 1;
@@ -92,7 +92,7 @@
     position: fixed; z-index: 35; left: var(--side-w); right: 0; bottom: 0; height: var(--status-h);
     display: flex; align-items: center; gap: 2px; padding: 0 10px 0 14px;
     background: var(--surface); border-top: 1px solid var(--line);
-    font: 400 var(--text-s)/1 var(--sans); color: var(--ink-3); font-variant-numeric: tabular-nums;
+    font: var(--w-regular) var(--text-s)/1 var(--sans); color: var(--ink-3); font-variant-numeric: tabular-nums;
     animation: fade-in var(--dur-2) ease-out;
   }
   .note-status-item { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; white-space: nowrap; }
@@ -101,7 +101,7 @@
   .note-views, .note-zoom { display: flex; align-items: center; gap: 1px; }
   .note-views { padding-right: 10px; margin-right: 6px; border-right: 1px solid var(--line); }
   .note-status-btn {
-    display: grid; place-items: center; width: 28px; height: 22px; border-radius: 4px; color: var(--ink-2);
+    display: grid; place-items: center; width: 28px; height: 22px; border-radius: var(--r-xs); color: var(--ink-2);
     transition: background-color var(--dur-1), color var(--dur-1);
   }
   @media (hover: hover) { .note-status-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
@@ -118,13 +118,13 @@
   .note-zoom-track input::-webkit-slider-runnable-track { height: 1px; background: var(--ink-3); }
   .note-zoom-track input::-moz-range-track { height: 1px; background: var(--ink-3); }
   .note-zoom-track input::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 6px; height: 14px; margin-top: -7px; border: 0; border-radius: 2px; background: var(--ink-2);
+    -webkit-appearance: none; width: 6px; height: 14px; margin-top: -7px; border: 0; border-radius: var(--r-2xs); background: var(--ink-2);
     transition: background-color var(--dur-1);
   }
-  .note-zoom-track input::-moz-range-thumb { width: 6px; height: 14px; border: 0; border-radius: 2px; background: var(--ink-2); }
+  .note-zoom-track input::-moz-range-thumb { width: 6px; height: 14px; border: 0; border-radius: var(--r-2xs); background: var(--ink-2); }
   .note-zoom-track input:is(:hover, :active)::-webkit-slider-thumb { background: var(--word-ink); }
   .note-zoom-track input:is(:hover, :active)::-moz-range-thumb { background: var(--word-ink); }
-  .note-zoom-value { min-width: 44px; height: 22px; padding: 0 6px; border-radius: 4px; text-align: right; color: var(--ink-2); }
+  .note-zoom-value { min-width: 44px; height: 22px; padding: 0 6px; border-radius: var(--r-xs); text-align: right; color: var(--ink-2); }
   @media (hover: hover) { .note-zoom-value:hover { background: var(--surface-2); color: var(--ink); } }
 }
 

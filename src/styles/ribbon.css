@@ -27,7 +27,7 @@
 @media (hover: hover) { .format-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
 .format-btn:active:not(:disabled) { scale: 0.92; }
 .format-bar .format-btn[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
-.format-bar :is(button, input):focus-visible { outline: 2px solid var(--word); outline-offset: -2px; border-radius: 4px; }
+.format-bar :is(button, input):focus-visible { outline: 2px solid var(--word); outline-offset: -2px; border-radius: var(--r-xs); }
 .format-bar .format-btn:disabled { opacity: 0.32; }
 
 .format-scroll, .format-fixed, .format-group { display: flex; align-items: center; gap: 0; }
@@ -99,7 +99,7 @@
 .rb-pick { position: relative; flex: none; display: flex; align-items: center; padding-right: 5px; margin-right: 2px; background: linear-gradient(var(--line), var(--line)) right center / 1px 22px no-repeat; }
 .rb-pick-btn {
   height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 10px; border-radius: var(--r-s);
-  font: 600 var(--text-m)/1 var(--sans); color: var(--word); white-space: nowrap;
+  font: var(--w-bold) var(--text-m)/1 var(--sans); color: var(--word); white-space: nowrap;
 }
 .rb-pick-btn svg { transition: rotate var(--dur-2) var(--ease-emph); }
 .rb-pick-btn[aria-expanded='true'] svg { rotate: 180deg; }
@@ -112,7 +112,7 @@
 @keyframes rb-menu { from { opacity: 0; scale: 0.96; translate: 0 6px; } }
 .rb-menu button {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 44px; padding: 0 12px;
-  border-radius: var(--r-s); font: 500 var(--text-base)/1 var(--sans); color: var(--ink); text-align: left;
+  border-radius: var(--r-s); font: var(--w-medium) var(--text-base)/1 var(--sans); color: var(--ink); text-align: left;
 }
 .rb-menu button[aria-checked='true'] { background: var(--word-wash); color: var(--word); }
 .rb-menu button.is-context { color: var(--word); }
@@ -123,7 +123,7 @@
 /* Insert's and View's commands on a phone: icon and name side by side */
 .is-phone .rb-big {
   flex: none; height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border-radius: var(--r-s);
-  font: 500 var(--text-m)/1 var(--sans); color: var(--ink-2); white-space: nowrap;
+  font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2); white-space: nowrap;
 }
 .is-phone .rb-big svg { width: 20px; height: 20px; }
 @media (hover: hover) { .is-phone .rb-big:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
@@ -136,26 +136,25 @@
   border: 1px solid var(--line); color: var(--ink); white-space: nowrap;
 }
 .is-phone .rb-style-sample { display: none; }
-.is-phone .rb-style-name { font: 400 var(--text-base)/1 var(--serif); }
+.is-phone .rb-style-name { font: var(--w-regular) var(--text-base)/1 var(--serif); }
 .is-phone .rb-style.is-h1 .rb-style-name { font-size: 17px; font-weight: 650; }
 .is-phone .rb-style.is-h2 .rb-style-name { font-size: 16px; font-weight: 600; }
 .is-phone .rb-style.is-h3 .rb-style-name { font-weight: 600; }
 .is-phone .rb-style.is-quote .rb-style-name { font-style: italic; color: var(--ink-2); }
 .is-phone .rb-style[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); }
 .is-phone .rb-style:disabled { opacity: 0.32; }
-.is-phone .rb-zoom { min-width: 48px; height: 44px; font: 600 var(--text-m)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.is-phone .rb-zoom { min-width: 48px; height: 44px; font: var(--w-bold) var(--text-m)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-2); }
 
 /* ---------- Focus: everything but the page goes, but for a way back ---------- */
 
 .focus-exit {
-  position: fixed; z-index: 36; top: calc(var(--safe-t) + 12px); right: 16px; height: 34px; display: inline-flex; align-items: center; gap: 6px;
+  position: fixed; z-index: 36; top: calc(var(--safe-t) + 12px); right: 16px; height: var(--h-s); display: inline-flex; align-items: center; gap: 6px;
   padding: 0 13px 0 11px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
-  font: 500 var(--text-m)/1 var(--sans); color: var(--ink-2); opacity: 0.55;
+  font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2); opacity: 0.55;
   transition: opacity var(--dur-2), color var(--dur-1); animation: fade-in var(--dur-3) var(--ease-emph);
 }
 .focus-exit:is(:hover, :focus-visible) { opacity: 1; color: var(--ink); }
 .focus-exit:focus-visible { outline: 2px solid var(--word); outline-offset: 2px; }
-@keyframes fade-in { from { opacity: 0; } }
 
 /* ---------- on a computer: the ribbon across the top ----------
    One flat block over the page beside the sidebar: the note's title bar, the tabs, then the commands in groups with
@@ -174,11 +173,11 @@
 
 .ribbon.is-wide {
   position: fixed; z-index: 35; top: 0; left: var(--side-w, 0px); right: 0;
-  font: 400 var(--text-m)/1.2 var(--sans); color: var(--ink); background: var(--surface);
-  transition: left var(--dur-2) ease;
+  font: var(--w-regular) var(--text-m)/1.2 var(--sans); color: var(--ink); background: var(--surface);
+  transition: left var(--dur-2) var(--ease);
 }
 .ribbon.is-wide.is-focus { display: none; }
-.ribbon.is-wide .format-btn { width: 32px; height: 32px; border-radius: 4px; }
+.ribbon.is-wide .format-btn { width: 32px; height: 32px; border-radius: var(--r-xs); }
 .ribbon.is-wide .format-btn svg { width: 18px; height: 18px; }
 
 /* the title bar: back, the note's name, then Share, More and Done */
@@ -188,11 +187,11 @@
 }
 .rb-doc { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; margin-left: 4px; color: var(--ink-3); }
 .rb-doc svg { flex: none; }
-.rb-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink); }
-.rb-title.is-untitled { font-weight: 500; color: var(--ink-3); }
+.rb-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--w-bold); color: var(--ink); }
+.rb-title.is-untitled { font-weight: var(--w-medium); color: var(--ink-3); }
 .rb-share, .rb-done {
-  flex: none; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 4px;
-  font: 600 var(--text-m)/1 var(--sans); transition: background-color var(--dur-1), border-color var(--dur-1), filter var(--dur-1);
+  flex: none; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: var(--r-xs);
+  font: var(--w-bold) var(--text-m)/1 var(--sans); transition: background-color var(--dur-1), border-color var(--dur-1), filter var(--dur-1);
 }
 .rb-share { border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); }
 .rb-share.is-shared svg { color: var(--word); }
@@ -208,11 +207,11 @@
 .is-collapsed .rb-tabs { border-bottom: 1px solid var(--line); }
 .rb-tablist { flex: 1; min-width: 0; display: flex; align-items: stretch; gap: 2px; }
 .rb-tab {
-  position: relative; flex: none; padding: 0 12px; border-radius: 4px 4px 0 0;
-  font: 500 var(--text-m)/1 var(--sans); color: var(--ink-2); transition: color var(--dur-1), background-color var(--dur-1);
+  position: relative; flex: none; padding: 0 12px; border-radius: var(--r-xs) var(--r-xs) 0 0;
+  font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2); transition: color var(--dur-1), background-color var(--dur-1);
 }
 .rb-tab::after {
-  content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0;
+  content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: var(--r-xs) var(--r-xs) 0 0;
   background: var(--word); scale: 0 1; transition: scale var(--dur-2) var(--ease-emph);
 }
 .rb-tab[aria-selected='true'] { color: var(--ink); }
@@ -223,13 +222,13 @@
 @media (hover: hover) { .rb-tab:hover { background: var(--surface-2); color: var(--ink); } }
 .rb-tab:focus-visible { outline: 2px solid var(--word); outline-offset: -2px; }
 /* a contextual tab (the selected picture's): its name in the accent colour, a band over it */
-.rb-tab.is-context { color: var(--word); font-weight: 600; background: color-mix(in oklab, var(--word) 6%, transparent); animation: fade-in var(--dur-2) var(--ease-emph); }
+.rb-tab.is-context { color: var(--word); font-weight: var(--w-bold); background: color-mix(in oklab, var(--word) 6%, transparent); animation: fade-in var(--dur-2) var(--ease-emph); }
 .rb-tab.is-context::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--word); opacity: 0.55; }
 .rb-tab.is-context[aria-selected='true'] { color: var(--word); }
 /* Editing / Reading, at the end of the tabs as in Word */
 .rb-mode {
   flex: none; align-self: center; height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
-  border: 1px solid var(--line); border-radius: 4px; font: 500 var(--text-s)/1 var(--sans); color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--r-xs); font: var(--w-medium) var(--text-s)/1 var(--sans); color: var(--ink-2);
 }
 @media (hover: hover) { .rb-mode:hover { background: var(--surface-2); color: var(--ink); } }
 
@@ -249,7 +248,7 @@
 }
 .ribbon .rb-panel > .format-group::after {
   content: attr(data-caption); position: absolute; left: 0; right: 0; bottom: 4px; text-align: center;
-  font: 400 var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; pointer-events: none;
+  font: var(--w-regular) var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; pointer-events: none;
 }
 /* small commands in two rows */
 .ribbon .rb-panel > .rb-rows { display: grid; grid-auto-flow: row; grid-template-columns: repeat(var(--cols, 3), 32px); grid-template-rows: 32px 32px; align-content: center; gap: 2px; }
@@ -259,7 +258,7 @@
 /* a big command: its icon over its name */
 .ribbon.is-wide .rb-big {
   flex: none; min-width: 54px; max-width: 84px; height: 64px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 7px 6px 4px; border-radius: 4px; font: 400 var(--text-s)/1.15 var(--sans); color: var(--ink); text-align: center;
+  padding: 7px 6px 4px; border-radius: var(--r-xs); font: var(--w-regular) var(--text-s)/1.15 var(--sans); color: var(--ink); text-align: center;
   transition: background-color var(--dur-1), color var(--dur-1);
 }
 .ribbon.is-wide .rb-big svg { flex: none; width: 24px; height: 24px; color: var(--ink-2); }
@@ -271,16 +270,16 @@
 
 /* Zoom: −, the percentage (back to 100%), + */
 .rb-zoom {
-  min-width: 48px; height: 32px; padding: 0 6px; border-radius: 4px;
-  font: 600 var(--text-m)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink);
+  min-width: 48px; height: 32px; padding: 0 6px; border-radius: var(--r-xs);
+  font: var(--w-bold) var(--text-m)/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink);
 }
 @media (hover: hover) { .ribbon.is-wide .rb-zoom:hover { background: var(--surface-2); } }
 
 /* the styles gallery: each style shown in its own look, the caret's one framed */
-.ribbon.is-wide .rb-gallery { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.ribbon.is-wide .rb-gallery { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-xs); background: var(--bg); }
 .ribbon.is-wide .rb-style {
   width: 76px; height: 58px; display: flex; flex-direction: column; justify-content: space-between; padding: 7px 7px 5px;
-  border: 1px solid transparent; border-radius: 3px; background: var(--surface); text-align: left; overflow: hidden;
+  border: 1px solid transparent; border-radius: var(--r-xs); background: var(--surface); text-align: left; overflow: hidden;
   transition: border-color var(--dur-1), background-color var(--dur-1);
 }
 .rb-style-sample { display: block; height: 24px; overflow: hidden; white-space: nowrap; font: 400 15px/24px var(--serif); color: var(--ink); }
@@ -288,7 +287,7 @@
 .rb-style.is-h2 .rb-style-sample { font-size: 17px; font-weight: 600; color: var(--heading-ink, var(--ink)); }
 .rb-style.is-h3 .rb-style-sample { font-size: 15px; font-weight: 650; color: var(--heading-ink, var(--ink)); }
 .rb-style.is-quote .rb-style-sample { font-style: italic; color: var(--ink-2); padding-left: 6px; box-shadow: inset 2px 0 var(--line-2); }
-.ribbon.is-wide .rb-style-name { font: 400 var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ribbon.is-wide .rb-style-name { font: var(--w-regular) var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (hover: hover) { .ribbon.is-wide .rb-style:hover:not(:disabled) { border-color: var(--line-2); } }
 .ribbon.is-wide .rb-style[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); }
 .ribbon.is-wide .rb-style[aria-pressed='true'] .rb-style-name { color: var(--word); }
@@ -299,7 +298,7 @@
 /* folded, a tab drops the ribbon down over the page */
 .rb-body.is-peek {
   position: absolute; left: 0; right: 0; top: 100%;
-  box-shadow: 0 14px 28px -16px rgb(0 0 0 / 0.28); animation: rb-drop var(--dur-2) var(--ease-emph);
+  box-shadow: var(--shadow-2); animation: rb-drop var(--dur-2) var(--ease-emph);
 }
 @keyframes rb-drop { from { opacity: 0; translate: 0 -6px; } }
 

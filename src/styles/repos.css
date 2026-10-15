@@ -6,7 +6,7 @@
 .mono, .repo-branch, .gl-node, .gl-meta code, .spin { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .repo-wait { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: var(--text-base); padding: 18px 2px; }
-.spin { display: inline-block; width: 1.1em; color: var(--sky, var(--ink-2)); font-size: 16px; }
+.spin { display: inline-block; width: 1.1em; color: var(--sky, var(--ink-2)); font-size: var(--text-l); }
 
 .repo-connect { display: grid; gap: 10px; justify-items: start; padding: 16px; margin-top: 14px; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
 .repo-connect p { margin: 0; }
@@ -17,7 +17,7 @@
 .repo-tree { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
 .repo-item {
   position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: start; gap: 2px;
-  animation: rise-in var(--dur-3) var(--ease-emph) calc(var(--i) * 45ms) backwards;
+  animation: rise-in var(--dur-3) var(--ease-emph) calc(var(--i) * 25ms) backwards;
 }
 /* the rail the tick hangs from: it runs on to the next repo and stops at the last */
 .repo-item::before {
@@ -26,7 +26,7 @@
 .repo-item.is-last::before { bottom: auto; height: 22px; }
 .repo-branch {
   position: relative; z-index: 1; padding-top: 11px; font-size: var(--text-s); line-height: 1; letter-spacing: -0.12em;
-  color: var(--ink-3); background: var(--bg); width: max-content; margin-left: -1px; animation: fade-in var(--dur-3) var(--ease) calc(var(--i) * 45ms + 200ms) backwards;
+  color: var(--ink-3); background: var(--bg); width: max-content; margin-left: -1px; animation: fade-in var(--dur-3) var(--ease) calc(var(--i) * 25ms + 80ms) backwards;
 }
 .repo-card {
   display: grid; gap: 4px; width: 100%; text-align: left; padding: 11px 14px 10px; color: var(--ink);
@@ -35,7 +35,7 @@
 @media (hover: hover) { .repo-card:hover { border-color: var(--line-2); translate: 2px 0; } }
 .repo-card:active { translate: 0 0; transition-duration: var(--dur-0); }
 .repo-readme { display: grid; gap: 5px; min-width: 0; margin-top: 6px; padding-top: 9px; border-top: 1px solid var(--line); }
-.repo-readme-label { font-size: var(--text-s); font-weight: 600; color: var(--ink-3); }
+.repo-readme-label { font-size: var(--text-s); font-weight: var(--w-bold); color: var(--ink-3); }
 .repo-readme-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
 /* a repo you've felt something about wears that feeling's colour */
 .repo-item.is-felt .repo-card {
@@ -45,8 +45,8 @@
 .repo-item.is-felt .repo-branch { color: var(--c); }
 .repo-line { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-3); }
 .repo-line .stars { margin-left: auto; flex: none; }
-.repo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 var(--text-l)/1.3 var(--serif); color: var(--ink); }
-.repo-name small { font: 400 var(--text-m)/1 var(--sans); color: var(--ink-3); margin-right: 1px; }
+.repo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--w-bold) var(--text-l)/1.3 var(--serif); color: var(--ink); }
+.repo-name small { font: var(--w-regular) var(--text-m)/1 var(--sans); color: var(--ink-3); margin-right: 1px; }
 .repo-desc { color: var(--ink-2); font-size: var(--text-m); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .repo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: var(--text-s); color: var(--ink-3); min-height: 18px; }
 .repo-meta .emo { margin: 0; }
@@ -64,8 +64,8 @@
 .repo-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: var(--text-s); color: var(--ink-3); }
 .repo-facts > span { display: inline-flex; align-items: center; gap: 4px; }
 .repo-vis { padding: 1px 8px; border-radius: var(--r-pill); background: color-mix(in oklab, var(--bg) 60%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); }
-.repo-title { font: 500 clamp(26px, 7vw, 32px)/1.15 var(--serif); letter-spacing: -0.015em; overflow-wrap: anywhere; }
-.repo-title small { display: block; font: 400 var(--text-m)/1.6 var(--sans); letter-spacing: 0; color: var(--ink-3); }
+.repo-title { font: var(--w-medium) clamp(26px, 7vw, 32px)/1.15 var(--serif); letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.repo-title small { display: block; font: var(--w-regular) var(--text-m)/1.6 var(--sans); letter-spacing: 0; color: var(--ink-3); }
 .repo-about { color: var(--ink-2); font-size: var(--text-base); line-height: 1.45; }
 .repo-open { display: inline-flex; align-items: center; gap: 5px; font-size: var(--text-m); color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
 .repo-clone { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -78,19 +78,19 @@
 
 .gitlog { display: grid; gap: 4px; }
 .gl-date {
-  display: flex; align-items: center; gap: 10px; margin: 14px 0 6px; font-size: var(--text-s); font-weight: 600; color: var(--ink-3); letter-spacing: 0.02em;
+  display: flex; align-items: center; gap: 10px; margin: 14px 0 6px; font-size: var(--text-s); font-weight: var(--w-bold); color: var(--ink-3); letter-spacing: 0.02em;
 }
 .gl-date::after { content: ''; flex: 1; border-top: 1px dashed var(--line-2); }
 .gl-day:first-child .gl-date { margin-top: 2px; }
 .gl-day ol { list-style: none; margin: 0; padding: 0; }
 .gl-commit {
   position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px; padding-bottom: 12px;
-  animation: pop-in var(--dur-3) var(--spring) calc(var(--i) * 35ms) backwards;
+  animation: pop-in var(--dur-3) var(--spring) calc(var(--i) * 25ms) backwards;
 }
 /* the line between one commit's star and the next */
-.gl-commit::before { content: ''; position: absolute; left: 6px; top: 22px; bottom: -2px; border-left: 1px solid var(--line-2); animation: grow-y var(--dur-3) var(--ease) calc(var(--i) * 35ms + 120ms) backwards; transform-origin: top; }
+.gl-commit::before { content: ''; position: absolute; left: 6px; top: 22px; bottom: -2px; border-left: 1px solid var(--line-2); animation: grow-y var(--dur-3) var(--ease) calc(var(--i) * 25ms + 80ms) backwards; transform-origin: top; }
 .gl-day:last-child .gl-commit:last-child::before { display: none; }
-.gl-node { z-index: 1; font-size: var(--text-base); line-height: 20px; font-weight: 700; color: var(--c, var(--emo-calm-safety)); text-align: left; }
+.gl-node { z-index: 1; font-size: var(--text-base); line-height: 20px; font-weight: var(--w-bold); color: var(--c, var(--emo-calm-safety)); text-align: left; }
 .gl-main { display: grid; gap: 3px; min-width: 0; }
 .gl-msg { text-align: left; font-size: var(--text-base); line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
 @media (hover: hover) { button.gl-msg:hover { text-decoration: underline; text-underline-offset: 3px; } }
@@ -115,7 +115,7 @@
 .rd-frame > .repo-wait, .rd-frame > .repo-trouble, .rd-frame > .empty-note { padding-inline: 14px; }
 .rd-scroll { padding: 14px 16px 6px; }
 .rd-scroll.is-clipped { max-height: 440px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
-.rd-expand { display: block; width: 100%; padding: 11px; border-top: 1px solid var(--line); font-size: var(--text-m); font-weight: 550; color: var(--ink-2); background: var(--surface); }
+.rd-expand { display: block; width: 100%; padding: 11px; border-top: 1px solid var(--line); font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); background: var(--surface); }
 @media (hover: hover) { .rd-expand:hover { background: var(--surface-2); color: var(--ink); } }
 
 .rd { font-size: var(--text-base); line-height: 1.6; color: var(--ink); overflow-wrap: anywhere; }
@@ -123,7 +123,7 @@
 .rd p { margin: 0 0 10px; }
 .rd a { color: inherit; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
 @media (hover: hover) { .rd a:hover { text-decoration-color: currentColor; } }
-.rd-h { font-family: var(--serif); font-weight: 600; line-height: 1.25; margin: 20px 0 8px; letter-spacing: -0.01em; }
+.rd-h { font-family: var(--serif); font-weight: var(--w-bold); line-height: 1.25; margin: 20px 0 8px; letter-spacing: -0.01em; }
 .rd-h1 { font-size: var(--text-xl); }
 .rd-h2 { font-size: var(--text-l); padding-bottom: 5px; border-bottom: 1px solid var(--line); }
 .rd-h3 { font-size: var(--text-l); }
@@ -138,12 +138,12 @@
 .rd-code[data-lang]::before { content: '┌─ ' attr(data-lang); position: absolute; left: 10px; top: 5px; font-size: var(--text-xs); color: var(--ink-3); }
 .rd-code code { background: none; padding: 0; font: inherit; }
 .rd code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; }
-.rd-img { display: inline-block; max-width: 100%; height: auto; vertical-align: middle; border-radius: 6px; }
+.rd-img { display: inline-block; max-width: 100%; height: auto; vertical-align: middle; border-radius: var(--r-s); }
 .rd-alt { color: var(--ink-3); }
 .rd-table { overflow-x: auto; margin: 0 0 12px; }
 .rd table { border-collapse: collapse; font-size: var(--text-m); }
 .rd th, .rd td { padding: 5px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-.rd th { background: var(--surface-2); font-weight: 600; }
+.rd th { background: var(--surface-2); font-weight: var(--w-bold); }
 
 @media (prefers-reduced-motion: reduce) {
   .repo-item, .repo-branch, .repo-connect, .gl-commit, .gl-commit::before { animation: none; }

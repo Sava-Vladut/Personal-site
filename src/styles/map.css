@@ -30,7 +30,7 @@
   position: absolute; top: -7px; right: -9px; min-width: 19px; height: 19px; padding: 0 5px;
   display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-pill);
   background: var(--c); color: var(--on-color); border: 2px solid var(--surface);
-  font-size: var(--text-xs); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+  font-size: var(--text-xs); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; line-height: 1;
 }
 button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .map.is-still .map-pin { pointer-events: none; }
@@ -38,7 +38,7 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 
 .map-tools { position: absolute; top: 12px; right: 12px; z-index: 2; display: grid; gap: 8px; }
 .map-credit {
-  position: absolute; right: 0; bottom: 0; z-index: 2; padding: 2px 7px; border-top-left-radius: 8px;
+  position: absolute; right: 0; bottom: 0; z-index: 2; padding: 2px 7px; border-top-left-radius: var(--r-s);
   font-size: var(--text-xs); color: var(--ink-2); background: color-mix(in oklab, var(--surface) 78%, transparent);
 }
 .map-credit a { color: inherit; }
@@ -58,11 +58,11 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 }
 .map-bar > * { pointer-events: auto; }
 .map-title { display: grid; padding: 6px 16px; border-radius: var(--r-pill); line-height: 1.25; }
-.map-title b { font: 500 var(--text-l)/1.2 var(--serif); }
+.map-title b { font: var(--w-medium) var(--text-l)/1.2 var(--serif); }
 .map-title span { font-size: var(--text-s); color: var(--ink-3); }
 .map-empty {
   position: absolute; z-index: 3; left: 16px; right: 16px; bottom: calc(var(--safe-b) + 28px);
-  max-width: 420px; margin: 0 auto; padding: 16px; display: grid; gap: 10px; box-shadow: var(--shadow);
+  max-width: 420px; margin: 0 auto; padding: 16px; display: grid; gap: 10px; box-shadow: var(--shadow-2);
 }
 .map-empty p { color: var(--ink-2); font-size: var(--text-base); }
 
@@ -75,7 +75,7 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 @media (hover: hover) { .spot-row:hover { background: var(--surface-2); } }
 .spot-ico { display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
 .spot-main { display: grid; min-width: 0; }
-.spot-title { font-weight: 600; font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-title { font-weight: var(--w-bold); font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spot-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spot-when { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 

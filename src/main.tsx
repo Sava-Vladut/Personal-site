@@ -2,16 +2,17 @@ import { render, type ComponentType } from 'preact';
 import '@fontsource-variable/source-serif-4/wght.css';
 import '@fontsource-variable/instrument-sans/index.css';
 import './styles/app.css';
+// Styles that stay global, in their original cascade with desktop.css last: the app shell's own (glass, wheel, objects,
+// mentions, books), ones whose classes are also used by screens that don't import them (notes' sky banner, stats'
+// charts, twitch's journal card, brain), and ones desktop.css overrides (map). The song of the day's styles come with
+// components/SongOfDay.tsx and the photo viewer's with lib/viewer.ts, so they load with the screens that use them.
 import './styles/books.css';
 import './styles/glass.css';
 import './styles/brain.css';
-// Keep the original cascade (desktop last), even though screen code now loads separately.
 import './styles/objects.css';
 import './styles/mentions.css';
 import './styles/wheel.css';
 import './styles/notes.css';
-import 'photoswipe/style.css';
-import './styles/sotd.css';
 import './styles/map.css';
 import './styles/stats.css';
 import './styles/twitch.css';
