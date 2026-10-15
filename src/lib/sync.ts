@@ -105,11 +105,22 @@ async function decrypt(key: CryptoKey, buf: ArrayBuffer) {
 
 /* ---------- server ---------- */
 
-async function call(path: string, init?: RequestInit) {
+/** A request that never settles would hold up every later sync, so each one gets a deadline: 30 s plus room for its size at 64 KB/s. */
+const deadline = (bytes: number) => 30_000 + bytes / 64;
+
+async function call(path: string, init: RequestInit = {}) {
+  const unreachable = () => new Error(t('Can’t reach the server. It’ll sync when you’re back online.'));
+  const stop = new AbortController();
+  let timer = setTimeout(() => stop.abort(unreachable()), deadline(init.body instanceof Uint8Array ? init.body.length : 0));
   try {
-    return await fetch('/api/sync/' + path, { cache: 'no-store', ...init });
+    const res = await fetch('/api/sync/' + path, { cache: 'no-store', ...init, signal: stop.signal });
+    // The body is read after this returns: give it time for its size.
+    clearTimeout(timer);
+    timer = setTimeout(() => stop.abort(unreachable()), deadline(Number(res.headers.get('Content-Length')) || 0));
+    return res;
   } catch {
-    throw new Error(t('Can’t reach the server. It’ll sync when you’re back online.'));
+    clearTimeout(timer);
+    throw unreachable();
   }
 }
 

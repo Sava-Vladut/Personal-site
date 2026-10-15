@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.90.1',
+    date: '2026-10-15',
+    changes: [
+      'Sync: a request that stalls on a bad connection now gives up after a while, so syncing carries on instead of staying stuck until the app is reopened',
+    ],
+  },
+  {
     version: '1.90.0',
     date: '2026-10-15',
     changes: [

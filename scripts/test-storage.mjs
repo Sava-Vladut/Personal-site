@@ -29,7 +29,7 @@ async function loadModule(file, mocks, globals = {}) {
   const module = { exports: {} };
   vm.runInNewContext(output[0].code, {
     mocks, module, exports: module.exports, console, Blob, URL, TextEncoder, TextDecoder,
-    Uint8Array, crypto: webcrypto, setTimeout: () => 0, clearTimeout: () => {},
+    Uint8Array, crypto: webcrypto, AbortController, setTimeout: () => 0, clearTimeout: () => {},
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {} }), navigator: {},
     ...globals,
@@ -376,6 +376,28 @@ test('replacing a sync session continues even if the stopped session fails', asy
   assert.equal(uploads, 1);
   assert.equal(sync.useSync().on, true);
   assert.equal(sync.useSync().error, undefined);
+});
+
+test('a stalled sync request times out instead of blocking every later sync', async () => {
+  const timers = new Map();
+  let next = 0, calls = 0;
+  const sync = await loadModule('src/lib/sync.ts', syncMocks(), {
+    setTimeout: (fn) => (timers.set(++next, fn), next),
+    clearTimeout: (id) => timers.delete(id),
+    fetch: (_url, init) => {
+      if (++calls === 1) return new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(init.signal.reason)));
+      return Promise.resolve(init?.method === 'PUT' ? Response.json({ rev: 'new-revision' }) : new Response(null, { status: 404 }));
+    },
+  });
+  const stalled = sync.startSync();
+  while (calls === 0) await new Promise((resolve) => setImmediate(resolve));
+  [...timers.values()].forEach((fire) => fire());
+  await stalled;
+  assert.match(sync.useSync().error, /reach the server/);
+  assert.equal(sync.useSync().busy, false);
+  await sync.syncNow();
+  assert.equal(sync.useSync().error, undefined);
+  assert.equal(calls, 3);
 });
 
 test('invalid saved sync state is discarded and incomplete legacy state is repaired', async () => {
