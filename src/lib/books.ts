@@ -18,7 +18,7 @@ export async function searchBooks(q: string, page = 1): Promise<{ items: FoundBo
   const url = `${OL}/search.json?q=${encodeURIComponent(q.trim())}&fields=key,title,author_name,first_publish_year,cover_i,number_of_pages_median&limit=20&page=${page}`;
   let res: Response;
   try {
-    res = await fetch(url);
+    res = await fetch(url, { signal: AbortSignal.timeout(15_000) }); // a stalled search would spin forever
   } catch {
     throw new Error(t('Can’t reach Open Library. Check your connection, or add the book by hand.'));
   }

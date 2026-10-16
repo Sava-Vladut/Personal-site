@@ -1151,3 +1151,19 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   mod.saveLayout(mod.defaultLayout());
   assert.ok(!store.has('mm-wheel-layout'));
 });
+
+test('book and picture searches give up on a stalled request with a readable message', async () => {
+  for (const [file, run, message] of [
+    ['src/lib/books.ts', (m) => m.searchBooks('dune'), /Can’t reach Open Library/],
+    ['src/lib/images.ts', (m) => m.searchImages('sea'), /Can’t reach Openverse/],
+  ]) {
+    let signal;
+    const fetch = async (_url, init) => {
+      signal = init?.signal;
+      throw new DOMException('The operation timed out.', 'TimeoutError');
+    };
+    const lib = await load(file, {}, { fetch, AbortSignal, DOMException });
+    await assert.rejects(run(lib), message);
+    assert.ok(signal instanceof AbortSignal, `${file} sets a deadline on its request`);
+  }
+});

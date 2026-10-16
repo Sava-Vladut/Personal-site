@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.93.1',
+    date: '2026-10-16',
+    changes: ['Books and picture search: a search that gets no answer stops after 15 seconds with a message, instead of spinning forever'],
+  },
+  {
     version: '1.93.0',
     date: '2026-10-16',
     changes: [

@@ -14,7 +14,7 @@ const license = (l: string, v?: string) => LICENSE[l] ?? `CC ${l.toUpperCase()}$
 export async function searchImages(q: string, page = 1): Promise<Page> {
   let res: Response;
   try {
-    res = await fetch(`${API}?q=${encodeURIComponent(q.trim())}&page=${page}&page_size=${PAGE}`);
+    res = await fetch(`${API}?q=${encodeURIComponent(q.trim())}&page=${page}&page_size=${PAGE}`, { signal: AbortSignal.timeout(15_000) }); // a stalled search would spin forever
   } catch {
     throw new Error(t('Can’t reach Openverse. Check your connection.'));
   }
