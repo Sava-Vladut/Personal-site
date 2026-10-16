@@ -15,7 +15,6 @@
 //    on the server, from the repo's page (server/clone.js).
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
-//  • docs: the PDFs in LIBRARY_DIR, searchable and readable page by page by the admin only (server/library.js).
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -26,7 +25,6 @@ import { createCloner } from './clone.js';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
 import { json } from './http-response.js';
-import { createLibraryHandler } from './library.js';
 import { createShareHandler } from './share.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
@@ -47,9 +45,6 @@ const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 // the miner's settings/channels.json, the channels it watches (writable)
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-// the PDFs the Docs page searches (read-only), and where their text and drawn pages are cached
-const LIBRARY_DIR = process.env.LIBRARY_DIR || join(ROOT, 'docs');
-const LIBRARY_CACHE = join(ROOT, 'data', 'library');
 // where repos are cloned on the server, and the numeric GitHub user id of the only account allowed to clone
 const CLONE_DIR = process.env.CLONE_DIR || '';
 const CLONE_GITHUB_ID = process.env.CLONE_GITHUB_ID || '';
@@ -817,7 +812,6 @@ async function admin(req, res) {
 const sync = createSyncHandler({ directory: SYNC_DIR });
 const share = createShareHandler({ directory: SHARE_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
-const library = createLibraryHandler({ directory: LIBRARY_DIR, cacheDir: LIBRARY_CACHE, isAdmin });
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -832,7 +826,6 @@ async function api(req, res, url) {
     if (p === '/api/admin') return await admin(req, res);
     if (p === '/api/share' || p.startsWith('/api/share/')) return await share.api(req, res, p);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
-    if (p === '/api/library' || p.startsWith('/api/library/')) return await library(req, res, p, url);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

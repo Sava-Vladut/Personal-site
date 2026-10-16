@@ -1123,17 +1123,17 @@ test('the wheel keeps your order, hidden places and groups, and new places still
 
   assert.deepEqual(ids(mod.treeOf(mod.defaultLayout())), ids(wheel.WHEEL), 'untouched, it is the wheel as shipped');
 
-  // a save from before Mind traps existed, with Docs moved into a group of your own and Repos hidden
+  // a save from before Mind traps existed, with Media moved into a group of your own and Repos hidden
   const saved = mod.normalize({
-    top: ['journal', 'gwork', 'people', 'insights', 'settings', 'media', 'repos', 'nope'],
-    kids: { gwork: ['library'], insights: ['stats', 'map', 'brain', 'twitch'] },
+    top: ['journal', 'gwork', 'people', 'insights', 'settings', 'repos', 'nope'],
+    kids: { gwork: ['media'], insights: ['stats', 'map', 'brain', 'twitch'] },
     hidden: ['repos', 'gone'],
     groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
   });
   assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch', 'traps'], 'a new place lands in its usual group');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['library']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch', 'traps']], 'settings', 'media']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch', 'traps']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 

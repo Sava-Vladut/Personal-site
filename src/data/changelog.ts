@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.94.0',
+    date: '2026-10-16',
+    changes: ['The Docs page (PDFs and help files, searchable page by page) is gone, from the sidebar, the wheel and the server'],
+  },
+  {
     version: '1.93.1',
     date: '2026-10-16',
     changes: ['Books and picture search: a search that gets no answer stops after 15 seconds with a message, instead of spinning forever'],

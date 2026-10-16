@@ -12,8 +12,6 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   media: () => import('../views/Media').then((m) => m.Media),
   repos: () => import('../views/Repos').then((m) => m.Repos),
   repo: () => import('../views/Repo').then((m) => m.RepoView),
-  library: () => import('../views/Library').then((m) => m.Library),
-  doc: () => import('../views/DocView').then((m) => m.DocView),
   song: () => import('../views/Song').then((m) => m.SongView),
   tracker: () => import('../views/Tracker').then((m) => m.Tracker),
   stats: () => import('../views/Stats').then((m) => m.Stats),
@@ -41,7 +39,7 @@ export function prepareView(name: RouteName): Promise<void> | undefined {
 export const viewFor = (name: RouteName) => loaded.get(name)!;
 
 /** The screens one tap from the journal, fetched one by one while the app is idle, so opening them doesn't wait on the network. */
-const NEARBY: RouteName[] = ['note', 'tracker', 'people', 'media', 'repos', 'library', 'stats', 'settings', 'person', 'book', 'song', 'repo', 'doc'];
+const NEARBY: RouteName[] = ['note', 'tracker', 'people', 'media', 'repos', 'stats', 'settings', 'person', 'book', 'song', 'repo'];
 
 export function preloadViews() {
   const idle = (f: () => void) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(() => f(), { timeout: 3000 }) : setTimeout(f, 300));

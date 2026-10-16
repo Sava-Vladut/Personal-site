@@ -30,8 +30,6 @@ export const RAMPS: Record<string, string[]> = {
   music: [' ', '.', '·', '-', '♩', '♪', '♫', '♬'],
   // repos: a sky of code
   repos: [' ', '.', ':', ';', '=', '/', '{}', '<>'],
-  // docs: a sky of print, from specks to section marks
-  docs: [' ', '.', ',', '-', 'rnu', 'mwFE', '#§', '¶'],
   // channel points: a sky of coins
   twitch: [' ', '.', '·', ':', 'o', '¢', '$', '¤'],
 };
