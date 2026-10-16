@@ -137,7 +137,7 @@
 }
 .is-phone .rb-style-sample { display: none; }
 .is-phone .rb-style-name { font: var(--w-regular) var(--text-base)/1 var(--serif); }
-.is-phone .rb-style.is-h1 .rb-style-name { font-size: 17px; font-weight: 650; }
+.is-phone .rb-style.is-h1 .rb-style-name { font-size: 17px; font-weight: var(--w-bold); }
 .is-phone .rb-style.is-h2 .rb-style-name { font-size: 16px; font-weight: 600; }
 .is-phone .rb-style.is-h3 .rb-style-name { font-weight: 600; }
 .is-phone .rb-style.is-quote .rb-style-name { font-style: italic; color: var(--ink-2); }
@@ -285,7 +285,7 @@
 .rb-style-sample { display: block; height: 24px; overflow: hidden; white-space: nowrap; font: 400 15px/24px var(--serif); color: var(--ink); }
 .rb-style.is-h1 .rb-style-sample { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--heading-ink, var(--ink)); }
 .rb-style.is-h2 .rb-style-sample { font-size: 17px; font-weight: 600; color: var(--heading-ink, var(--ink)); }
-.rb-style.is-h3 .rb-style-sample { font-size: 15px; font-weight: 650; color: var(--heading-ink, var(--ink)); }
+.rb-style.is-h3 .rb-style-sample { font-size: 15px; font-weight: var(--w-bold); color: var(--heading-ink, var(--ink)); }
 .rb-style.is-quote .rb-style-sample { font-style: italic; color: var(--ink-2); padding-left: 6px; box-shadow: inset 2px 0 var(--line-2); }
 .ribbon.is-wide .rb-style-name { font: var(--w-regular) var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (hover: hover) { .ribbon.is-wide .rb-style:hover:not(:disabled) { border-color: var(--line-2); } }

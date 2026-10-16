@@ -212,7 +212,7 @@
 .nw-ring { transform-box: view-box; transform-origin: 200px 200px; animation: nw-spin 100s linear infinite; pointer-events: none; }
 .nw-ring.far { animation-duration: 160s; animation-direction: reverse; }
 .nw-svg .nw-ring text {
-  text-anchor: start; font: var(--text-xs) ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-anchor: start; font: var(--text-xs) var(--mono);
   fill: color-mix(in oklab, var(--sky) 35%, var(--ink-3)); opacity: 0.55;
 }
 .nw-svg .nw-ring.far text { font-size: 8px; opacity: 0.3; }

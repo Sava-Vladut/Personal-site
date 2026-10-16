@@ -1,6 +1,5 @@
 /* The intro: always dark, a full screen of letter clouds with the brain turning in the middle (views/Intro.tsx). */
 .intro {
-  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   position: fixed; inset: 0; z-index: 60; isolation: isolate;
   display: flex; flex-direction: column; align-items: center;
   padding: calc(var(--safe-t) + 14px) 20px calc(var(--safe-b) + 16px);

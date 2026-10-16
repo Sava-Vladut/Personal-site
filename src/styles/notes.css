@@ -138,11 +138,11 @@
 .md .md-h2 { font-size: 1.3em; }
 .md .md-h3 { font-size: 1.12em; }
 .md :is(.md-h4, .md-h5, .md-h6) { font-size: 1em; }
-.md strong { font-weight: 650; }
+.md strong { font-weight: var(--w-bold); }
 .md s { color: var(--ink-3); }
 .md mark { background: color-mix(in oklab, var(--emo-joy) 38%, transparent); color: inherit; border-radius: var(--r-xs); padding: 0 2px; }
 .md a { color: var(--ink); text-decoration-color: var(--ink-3); text-underline-offset: 2px; }
-.md code { font: 0.82em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.md code { font: 0.82em/1.5 var(--mono); }
 .md pre { margin: 0.3em 0; padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2); overflow-x: auto; }
 .md pre code { background: none; padding: 0; font-size: 0.8em; white-space: pre; }
 .md hr { border: 0; height: 1px; background: var(--line-2); margin: 0.9em 0; }
@@ -205,11 +205,11 @@
 .body-input .md-line[data-active] .md-url { font: var(--w-regular) var(--text-m)/1 var(--sans); }
 /* an empty pair from the toolbar, waiting for words */
 .body-input .md-empty { color: var(--ink-3); }
-.body-input .md-b { font-weight: 650; }
+.body-input .md-b { font-weight: var(--w-bold); }
 .body-input .md-i { font-style: italic; }
 .body-input .md-s { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
 .body-input .md-hl { background: var(--doc-hl); border-radius: var(--r-2xs); padding: 1px 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.body-input .md-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84em; background: var(--surface-2); border-radius: var(--r-xs); padding: 1px 3px; }
+.body-input .md-code { font-family: var(--mono); font-size: 0.84em; background: var(--surface-2); border-radius: var(--r-xs); padding: 1px 3px; }
 .body-input .md-link { color: var(--word-ink); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--word-ink) 50%, transparent); text-underline-offset: 3px; }
 .body-input .md-tag { font-family: var(--sans); font-size: 0.86em; font-weight: var(--w-bold); color: var(--ink-2); }
 .body-input .md-h { font-family: var(--sans); font-weight: var(--w-bold); letter-spacing: -0.012em; line-height: 1.3; }
@@ -261,7 +261,7 @@
   box-shadow: inset 3px 0 0 color-mix(in oklab, var(--emo-sadness) 70%, transparent);
   background: color-mix(in oklab, var(--emo-sadness) 9%, transparent); border-radius: 0 var(--r-s) var(--r-s) 0; padding-right: 4px;
 }
-.body-input .md-pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84em; color: var(--ink-2); }
+.body-input .md-pre { font-family: var(--mono); font-size: 0.84em; color: var(--ink-2); }
 /* a divider: a quiet line across the column */
 .body-input .md-hr {
   display: inline-block; width: 100%; color: transparent; vertical-align: top;

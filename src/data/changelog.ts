@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.91.1',
+    date: '2026-10-16',
+    changes: [
+      'One code font everywhere: code, branch names, stamps and the library card now share the same monospace face',
+      'Dropdowns (day and month pickers) use the app’s font instead of the system one',
+      'Bold text in notes and the style picker uses the same bold weight as the rest of the app',
+    ],
+  },
+  {
     version: '1.91.0',
     date: '2026-10-15',
     changes: [

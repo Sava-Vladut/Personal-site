@@ -67,7 +67,7 @@
 .spine-label {
   flex: none; width: calc(100% - 8px); max-width: 30px; padding: 3px 0 2px; border-radius: var(--r-2xs);
   background: var(--paper-2); color: var(--paper-ink); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.25);
-  font: var(--w-bold) 7.5px/1 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.03em; text-align: center; overflow: hidden;
+  font: var(--w-bold) 7.5px/1 var(--mono); letter-spacing: 0.03em; text-align: center; overflow: hidden;
 }
 /* a paper bookmark sticking out of the top of the book you're reading */
 .spine-mark {
@@ -83,7 +83,7 @@
   position: relative; z-index: 1; margin: 0 16px; padding: 14px 16px 62px; border-radius: var(--r-xs);
   background: var(--paper); color: var(--paper-ink);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 10px 24px -14px rgb(0 0 0 / 0.4);
-  font-family: 'Courier New', Courier, ui-monospace, monospace;
+  font-family: var(--mono);
   animation: card-out var(--dur-5) var(--spring) 0.15s backwards;
 }
 @keyframes card-out { from { translate: 0 54px; } }
@@ -113,7 +113,7 @@
 .stamp {
   display: inline-block; padding: 2px 5px 1px; border: 1.5px solid currentColor; border-radius: var(--r-xs);
   color: var(--ink-blue); opacity: 0.86; mix-blend-mode: multiply;
-  font: var(--w-bold) var(--text-s)/1.15 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.05em; white-space: nowrap;
+  font: var(--w-bold) var(--text-s)/1.15 var(--mono); letter-spacing: 0.05em; white-space: nowrap;
 }
 .stamp.red { color: var(--stamp-red); }
 .stamp.faint { opacity: 0.62; }
@@ -131,7 +131,7 @@
   mask: radial-gradient(34px 18px at 50% 0, transparent 97%, #000 100%);
   font: var(--w-bold) var(--text-xs)/1 var(--sans); letter-spacing: 0.24em; text-transform: uppercase;
 }
-.due-pocket small { font: var(--w-bold) var(--text-xs)/1.2 'Courier New', Courier, monospace; letter-spacing: 0.02em; text-transform: none; }
+.due-pocket small { font: var(--w-bold) var(--text-xs)/1.2 var(--mono); letter-spacing: 0.02em; text-transform: none; }
 :root[data-theme='dark'] :is(.due-card, .due-pocket) { filter: brightness(0.8); }
 
 /* ---------- a record in its sleeve ---------- */
