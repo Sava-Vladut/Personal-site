@@ -110,7 +110,7 @@ function box(text) {
 const shown = (b) => b.value.slice(0, b.selectionStart) + '|' + b.value.slice(b.selectionStart);
 const key = (k, extra = {}) => ({ key: k, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, isComposing: false, keyCode: 0, ...extra });
 
-test('markers tuck away off the line being written; bullets, tasks, numbers and tags stay', () => {
+test('markers are hidden; bullets, tasks, numbers and tags stay', () => {
   const ranges = (t) => [...md.hiddenRanges(t)].map(([a, b]) => t.slice(a, b));
   assert.deepEqual(ranges('# Day'), ['# ']);
   assert.deepEqual(ranges('a **b** c'), ['**', '**']);
@@ -163,19 +163,25 @@ test('a quote can hold a list, a task or a heading', () => {
   assert.deepEqual(styled('> # T').map((x) => x.split(':')[0]), ['md-quote', 'md-h md-h1']);
 });
 
-test('only lines with markers get a line of their own, to show them while being written', () => {
+test('only lines with markers get a line of their own, so typing lays out just that line again', () => {
   const lines = [...md.decorate('plain\n# Head\n- item\nx **b**')].filter((d) => typeof d === 'object').map((d) => d.c);
   assert.deepEqual(lines, ['md-line', 'md-li-mark md-bullet', 'md-line']);
   assert.equal(md.decorate('same text'), md.decorate('same text'), 'the last text asked for is kept');
 });
 
-test('the caret goes on out of a bullet or between the stars of a **, never out of the words', () => {
-  const stops = (t) => [...md.caretStops(t)].map(([a, b]) => t.slice(a, b));
+test('the caret goes on out of a bullet or hidden markers, never out of the words', () => {
+  const stops = (t) => [...md.caretStops(t)].map(([a, b]) => t.slice(Math.max(a, 0), b));
   assert.deepEqual(stops('- [ ] a\n- b'), ['- [ ] ', '- ']);
   assert.deepEqual(stops('x **b** y'), ['**', '**']);
-  assert.deepEqual(stops('***b***'), ['***', '***']);
-  assert.deepEqual(stops('*i* 1. n # h'), [], 'single stars, numbers and headings are fine to sit in');
+  assert.deepEqual(stops('x ***b*** y'), ['***', '***']);
+  assert.deepEqual(stops('*i* 1. n # h'), [], 'single stars, numbers and a # mid-line are fine to sit in');
   assert.deepEqual(stops('- **b**'), ['- ', '**', '**'], 'a list marker stays apart from a style after it');
+  assert.deepEqual(stops('see [site](https://x.y) ok'), ['](https://x.y)'], 'a link’s address is passed over');
+  // a heading's or a quote's marker: the place before it is out too, and backing out goes to the line above
+  const at = (t) => [...md.caretStops(t)].map(([a, b]) => [a, b]);
+  assert.deepEqual(at('## H'), [[-1, 3]]);
+  assert.deepEqual(at('a\n> q'), [[1, 4]]);
+  assert.deepEqual(at('**b** c'), [[0, 2], [3, 5]], 'a style at a line’s start can be typed before');
 });
 
 test('Backspace at the start of a heading, item or quote turns it back into text', () => {
@@ -191,9 +197,20 @@ test('Backspace at the start of a heading, item or quote turns it back into text
 });
 
 test('Backspace and Delete take out what shows, and never leave a lone marker', () => {
-  // the markers show on the line being written, so Backspace takes out the one before the caret
-  assert.equal(md.deleteKey(box('a **bold**| c'), true), false);
-  assert.equal(md.deleteKey(box('see [site](https://x.y)|'), true), false, 'a shown link loses its last character');
+  // the markers don't show, so Backspace and Delete take out the letter past them
+  let h = box('a **bold**| c');
+  assert.equal(md.deleteKey(h, true), true);
+  assert.equal(shown(h), 'a **bol|** c');
+  h = box('see [site](https://x.y)|');
+  assert.equal(md.deleteKey(h, true), true);
+  assert.equal(shown(h), 'see [sit|](https://x.y)', 'a link loses its last letter, not its address');
+  h = box('a |**bold** c');
+  assert.equal(md.deleteKey(h, false), true);
+  assert.equal(shown(h), 'a **|old** c');
+  h = box('x\n**|b** y');
+  assert.equal(md.deleteKey(h, true), true);
+  assert.equal(h.value, 'x**b** y', 'before a style at a line’s start, the lines join');
+  assert.equal(md.deleteKey(box('**|b**'), true), true, 'nothing before the first line’s markers to take out');
   // the last letter of a style takes its markers with it
   let b = box('a **b|** c');
   assert.equal(md.deleteKey(b, true), true);
@@ -552,22 +569,6 @@ test('the block reads back as its text, a line with markers in a span of its own
   assert.equal(b.value, '');
 });
 
-test('only the lines the selection is on show their markers', () => {
-  const b = editor('# One\n**two**\nthree');
-  const [one, two] = lineNodes(b);
-  b.setSelectionRange(2, 2);
-  assert.equal(one.hasAttribute('data-active'), true);
-  assert.equal(two.hasAttribute('data-active'), false);
-  b.setSelectionRange(8, 8);
-  assert.equal(one.hasAttribute('data-active'), false);
-  assert.equal(two.hasAttribute('data-active'), true);
-  b.setSelectionRange(0, 8);
-  assert.equal(one.hasAttribute('data-active') && two.hasAttribute('data-active'), true, 'a selection shows every line it touches');
-  document.activeElement = null;
-  b.settle();
-  assert.equal(one.hasAttribute('data-active') || two.hasAttribute('data-active'), false, 'none away from the note');
-});
-
 test('the caret goes where typing does what you’d expect, never into a marker that can be avoided', () => {
   const b = editor('a **b** c');
   b.setSelectionRange(7, 7);
@@ -596,6 +597,17 @@ test('typing lays out again only the line that changed, and puts the caret back 
   typeInto(b, ' c');
   assert.equal(b.value, '# Head\nx **b** c');
   assert.equal(b.selectionStart, b.value.length);
+});
+
+test('a caret never rests before a heading’s hidden marker, where typing would undo it', () => {
+  const b = editor('a\n## T');
+  b.settle();
+  b.setSelectionRange(2, 2); // clicked at the line's start
+  b.settle();
+  assert.equal(b.selectionStart, 5, 'it goes on to where the words start');
+  b.setSelectionRange(3, 3); // arrowing back from there
+  b.settle();
+  assert.equal(b.selectionStart, 1, 'backing out goes to the end of the line above');
 });
 
 test('a caret that lands inside a bullet’s marker goes on out of it, the way it was going', () => {

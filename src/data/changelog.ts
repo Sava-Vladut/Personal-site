@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.92.0',
+    date: '2026-10-16',
+    changes: [
+      'Notes: formatting marks (**, #, >, links’ addresses…) never show while writing, not even on the line you’re on — bold just looks bold, as in Word',
+      'Notes: the cursor skips over the hidden marks, and clicking at the start of a heading puts it before the heading’s words',
+      'Notes: Backspace and Delete remove the letter you see, never a hidden mark',
+      'Notes: dividers always show as a line',
+    ],
+  },
+  {
     version: '1.91.1',
     date: '2026-10-16',
     changes: [

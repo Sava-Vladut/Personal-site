@@ -3,7 +3,7 @@
 // This file has the editing side: formatting commands for the text boxes, and the plain words for excerpts.
 // Reading it back is components/Markdown.tsx.
 import { plainInline } from './inline';
-import { styleSpans } from './liveMarkdown';
+import { hiddenRanges, styleSpans } from './liveMarkdown';
 
 /* ---------- block prefixes ---------- */
 
@@ -448,8 +448,8 @@ function cutOut(el: TextBox, v: string, a: number, b: number) {
  * Backspace and Delete, as in Notion. At the start of a heading, list item, task or quote, Backspace first turns it
  * back into plain text (a nested item steps out a level first, and a numbered list after it is counted again); the
  * next one joins it to the line above. Taking out the last letter of a style takes its markers with it, and an empty
- * pair goes as one, so no stray * is left behind. Otherwise they're the browser's: they take out what shows before
- * (or after) the caret. Returns true when it handled the key.
+ * pair goes as one, so no stray * is left behind. Markers don't show, so the letter taken out is the one before (or
+ * after) them. Otherwise they're the browser's. Returns true when it handled the key.
  */
 export function deleteKey(el: TextBox, back: boolean) {
   const v = el.value;
@@ -472,18 +472,22 @@ export function deleteKey(el: TextBox, back: boolean) {
       return true;
     }
     for (const mark of ['**', '~~', '==']) if (emptyPair(v, s, mark)) return replace(el, s - mark.length, s + mark.length, ''), true;
-    if (s === 0) return false;
-    const [a, b] = charAt(v, s, true);
-    return cutOut(el, v, a, b);
+    // the markers don't show, so it takes out what's before them
+    const at = hiddenRanges(v).find(([, y]) => y === s)?.[0] ?? s;
+    if (at === 0) return at !== s;
+    const [a, b] = charAt(v, at, true);
+    return cutOut(el, v, a, b) || (at !== s && (replace(el, a, b, ''), true));
   }
-  if (v[s] === '\n') {
+  // …or after them
+  const at = hiddenRanges(v).find(([x]) => x === s)?.[1] ?? s;
+  if (v[at] === '\n') {
     // joining the next line on: its own marker goes with the line break
-    const nm = v.slice(s + 1, lineEnd(v, s + 1)).match(PREFIX)!;
-    if (nm[2]) return replace(el, s, s + 1 + nm[0].length, ''), true;
+    const nm = v.slice(at + 1, lineEnd(v, at + 1)).match(PREFIX)!;
+    if (nm[2]) return replace(el, at, at + 1 + nm[0].length, ''), true;
   }
-  if (s >= v.length) return false;
-  const [a, b] = charAt(v, s, false);
-  return cutOut(el, v, a, b);
+  if (at >= v.length) return at !== s;
+  const [a, b] = charAt(v, at, false);
+  return cutOut(el, v, a, b) || (at !== s && (replace(el, a, b, ''), true));
 }
 
 /** Ticks or unticks the task at character `at` of a text box (its marker), leaving the caret where it was. */

@@ -194,15 +194,14 @@
 
 /* ---------- formatting while writing ----------
    The Markdown in the note's editable text, styled as it's typed (lib/liveMarkdown.ts). Every marker stays in the
-   text, so the commands work on it as typed. As in Obsidian, the line being written shows its markers, quietly, at
-   full size, so the caret always has something to sit beside; the other lines tuck theirs away (lib/editable.ts marks
-   which line is which). Bullets and tasks draw a dot or a box over their marker, which stays see-through at full size. */
+   text, so the commands work on it as typed, but as in Word none of them show. A marker is laid out see-through and
+   with no width: monospaced, each letter's own width taken back by its spacing. It keeps the line's size, so a caret
+   beside it is as tall as the words. Bullets and tasks draw a dot or a box over their marker, which stays see-through
+   at full size. */
 
 .body-input { tab-size: 5; }
 .note-body .body-input { line-height: 1.62; }
-.body-input .md-line:not([data-active]) .md-mark { font-size: 0; letter-spacing: 0; }
-.body-input .md-line[data-active] .md-mark { color: var(--ink-3); font-weight: var(--w-regular); font-style: normal; }
-.body-input .md-line[data-active] .md-url { font: var(--w-regular) var(--text-m)/1 var(--sans); }
+.body-input .md-mark { font-family: var(--mono); font-weight: var(--w-regular); font-style: normal; letter-spacing: -1ch; color: transparent; }
 /* an empty pair from the toolbar, waiting for words */
 .body-input .md-empty { color: var(--ink-3); }
 .body-input .md-b { font-weight: var(--w-bold); }
@@ -267,8 +266,6 @@
   display: inline-block; width: 100%; color: transparent; vertical-align: top;
   background: linear-gradient(transparent calc(50% - 0.5px), var(--line-2) 0 calc(50% + 0.5px), transparent 0);
 }
-/* …and its dashes, being written */
-.body-input .md-line[data-active] .md-hr { color: var(--ink-3); background: none; }
 
 /* ---------- journal cards with a cover ---------- */
 

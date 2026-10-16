@@ -160,7 +160,6 @@ export class Editable implements TextBox {
   set value(v: string) {
     fill(this.el, v);
     this.last = { ...this.last, start: Math.min(this.last.start, v.length), end: Math.min(this.last.end, v.length) };
-    this.activate();
   }
 
   /** The selection, when it's in this block. Reading it changes nothing. */
@@ -208,7 +207,6 @@ export class Editable implements TextBox {
       }
     }
     this.last = { start, end, direction };
-    this.activate();
   }
 
   setRangeText(text: string, start = this.selectionStart, end = this.selectionEnd) {
@@ -233,15 +231,15 @@ export class Editable implements TextBox {
   }
 
   /**
-   * After the selection moved: shows the markers of the lines it's on, and lets a caret that came to rest inside a
-   * bullet's or a task's marker, or between the stars of a **, go on out of it — the way it was going, or else to
-   * after it. It only ever moves the caret to a place it can stay, so it never goes back and forth.
+   * After the selection moved: lets a caret that came to rest inside a bullet's or a task's marker, or in the hidden
+   * markers of a heading, a quote or a style, go on out of it — the way it was going, or else to after it. It only
+   * ever moves the caret to a place it can stay, so it never goes back and forth.
    */
   settle() {
     const now = document.activeElement === this.el ? this.live() : null;
     if (!now) {
       this.was = -1;
-      return this.activate();
+      return;
     }
     const v = this.value;
     let p = now.start;
@@ -249,35 +247,14 @@ export class Editable implements TextBox {
     if (now.start === now.end && v === this.seen) {
       const r = caretStops(v).find(([a, b]) => p > a && p < b);
       if (r) {
-        p = this.was === r[1] ? r[0] : r[1];
+        // back out of a heading's or a quote's marker is the end of the line above (there's none above the first)
+        p = this.was === r[1] && r[0] >= 0 ? r[0] : r[1];
         this.setSelectionRange(p, p);
       }
     }
     if (p === now.start) this.last = now;
     this.was = p;
     this.seen = v;
-    this.activate();
-  }
-
-  /**
-   * Shows the Markdown markers of the lines the selection is on, and tucks away the rest. Each line with markers is a
-   * span of its own (lib/liveMarkdown.ts); this only marks them, so the text itself is never laid out again for it.
-   */
-  activate() {
-    const now = document.activeElement === this.el ? this.live() : null;
-    let at = 0;
-    for (const n of [...this.el.childNodes]) {
-      const len = n.nodeType === Node.TEXT_NODE ? (n as Text).data.length : n.nodeName === 'BR' ? 1 : n.textContent?.length ?? 0;
-      const line = n.nodeType === Node.ELEMENT_NODE && (n as Element).classList?.contains('md-line') ? (n as Element) : null;
-      if (line) {
-        const on = !!now && at <= now.end && at + len >= now.start;
-        if (on !== line.hasAttribute('data-active')) {
-          if (on) line.setAttribute('data-active', '');
-          else line.removeAttribute('data-active');
-        }
-      }
-      at += len;
-    }
   }
 
   /**
@@ -291,7 +268,6 @@ export class Editable implements TextBox {
       const now = this.live();
       if (!now || now.start !== at.start || now.end !== at.end) this.setSelectionRange(at.start, at.end, at.direction);
     }
-    this.activate();
   }
 
   private snap(): Snap {

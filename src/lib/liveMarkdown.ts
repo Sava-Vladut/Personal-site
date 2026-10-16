@@ -1,7 +1,6 @@
 // The note's Markdown, styled while it's written: the text stays exactly as typed (every * and # is still there, so
 // the caret and the commands work as before), but bold reads bold, headings are big and quotes have their bar. As in
-// Obsidian, the markers show — quietly — only on the line being written, and are tucked away on the others: each line
-// with markers is a span of its own, which lib/editable.ts marks active while the selection is on it. Bullets and tasks
+// Word, the markers never show: they're laid out with no width, so the page holds only the words. Bullets and tasks
 // keep their marker's text at full size but see-through, with a dot or a box drawn over it, so the caret never sits in
 // text that doesn't show.
 import { inline as pieces } from './inline';
@@ -86,15 +85,15 @@ function tidy(list: Deco[]): Deco[] {
   return out;
 }
 
-/** Whether pieces have markers that show only on the line being written (a divider shows its dashes then too). */
+/** Whether pieces have markers (or are a divider): such a line is a span of its own. */
 const marked = (list: Deco[]): boolean => list.some((d) => typeof d === 'object' && (/(^| )md-(mark|hr)( |$)/.test(d.c) || marked(d.k)));
 
 let last: { text: string; out: Deco[] } | null = null;
 
 /**
  * A block's text in styled pieces, ending with the line break that keeps its last line open (see editable.ts). A line
- * with markers is a span of its own (class md-line). The last text asked for is kept, as the editor asks for the
- * same one several times over for each key pressed.
+ * with markers is a span of its own (class md-line), so typing on it lays out that line again and leaves the rest. The
+ * last text asked for is kept, as the editor asks for the same one several times over for each key pressed.
  */
 export function decorate(text: string): Deco[] {
   if (last?.text === text) return last.out;
@@ -115,7 +114,7 @@ export function decorate(text: string): Deco[] {
   return out;
 }
 
-/** Where a text's markers are (what's tucked away on the lines not being written), as [start, end) ranges, with neighbouring ones joined. */
+/** Where a text's markers are (what's hidden), as [start, end) ranges, with neighbouring ones joined. */
 export function hiddenRanges(text: string) {
   const out: [number, number][] = [];
   let at = 0;
@@ -167,24 +166,18 @@ export function styleSpans(text: string) {
 }
 
 /**
- * Where the caret shouldn't come to rest: inside a bullet's or a task's marker (it's drawn over), or between the
- * stars of a ** (or ~~, ==) around styled words, joined where markers meet. As [start, end): only the places strictly
- * between start and end are out.
+ * Where the caret shouldn't come to rest: inside a bullet's or a task's marker (it's drawn over), or inside the hidden
+ * markers of a style, a link or a code word, joined where markers meet. A heading's or a quote's marker starts its line,
+ * so the place before it is out too (typing there would undo the heading): its range starts at the end of the line
+ * above, or at -1 on the first line. As [start, end): only the places strictly between start and end are out.
  */
 export function caretStops(text: string) {
   const items: [number, number][] = [];
-  const runs: [number, number][] = [];
   for (const p of styleSpans(text)) {
     if (/(^| )(md-bullet|md-task-mark)( |$)/.test(p.c)) items.push([p.x, p.y + (text.slice(p.y).match(/^[ \t]*/)?.[0].length ?? 0)]);
-    else if (/^md-(b|i|s|hl)$/.test(p.c)) runs.push([p.x, p.cx], [p.cy, p.y]);
   }
-  runs.sort((a, b) => a[0] - b[0]);
-  const out: [number, number][] = [];
-  for (const r of runs) {
-    const last = out[out.length - 1];
-    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
-    else out.push([r[0], r[1]]);
-  }
+  const hidden = hiddenRanges(text).map(([a, b]): [number, number] =>
+    [(!a || text[a - 1] === '\n') && /^(#{1,6}[ \t]|[ \t]*>)/.test(text.slice(a, b)) ? a - 1 : a, b]);
   // a list marker stays apart from a style right after it, so the caret can rest where the item's words start
-  return [...items, ...out].filter(([a, b]) => b - a > 1).sort((a, b) => a[0] - b[0]);
+  return [...items, ...hidden].filter(([a, b]) => b - a > 1).sort((a, b) => a[0] - b[0]);
 }
