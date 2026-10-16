@@ -1,11 +1,11 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { docView, setDocView, stepZoom, useDocView, ZOOMS } from '../../lib/docView';
-import { indentLines, insertBlock, toggleLines, type TextBox } from '../../lib/markdown';
 import { t } from '../../lib/i18n';
 import { Icon, type UiName } from '../icons';
-import type { Action, RibbonActions } from '../FormatBar';
-import { clearFormatting, keepFocus, setNormal } from './commands';
+import type { RibbonActions } from '../FormatBar';
+import type { Lit, NoteCommands } from '../../editor/NoteBody';
+import { keepFocus } from './keepFocus';
 
 type Tab = 'home' | 'insert' | 'view' | 'context';
 
@@ -38,20 +38,14 @@ export interface RibbonProps {
   context?: { label: string; content: ComponentChildren };
   /** what an @ suggests is showing, in a strip of its own (on a phone, in the bar's place) */
   swapped: boolean;
-  /** how the text at the caret is styled (FormatBar's stylesAt) */
-  lit: string[];
-  /** the marker of an empty pair put down at the caret, waiting for words */
-  pending: string | null;
-  /** text is selected in the note */
-  ranged: boolean;
+  /** the note editor's commands (null until it's there) */
+  cmds: NoteCommands | null;
+  /** how the text at the caret is styled, and what can be undone (null until the editor's there) */
+  lit: Lit | null;
   /** not writing, or tucked away while reading down the note: the phone's bar is put away */
   away: boolean;
   /** Hide keyboard, while writing on a touch screen */
   done: ComponentChildren;
-  target: () => TextBox | null;
-  wrap: (mark: string) => void;
-  link: () => void;
-  run: (f: Action) => void;
 }
 
 /**
@@ -67,13 +61,14 @@ export interface RibbonProps {
  * Focus puts all of it away, but for a small button to come back (or Esc). The usual Word shortcuts work in the text.
  */
 export function Ribbon(p: RibbonProps) {
-  const { actions: a, context, lit } = p;
+  const { actions: a, context, cmds } = p;
+  const lit = p.lit;
+  const ranged = !!lit?.ranged;
   const view = useDocView();
   const wide = useWide();
   const [tab, setTab] = useState<Tab>('home');
   const [peek, setPeek] = useState(false); // the folded ribbon dropped down over the page
   const [menu, setMenu] = useState(false); // the phone's list of tabs
-  const [hist, setHist] = useState({ undo: true, redo: true });
   const before = useRef<Tab>('home'); // the tab to go back to when the picture's goes
   const auto = useRef<Tab | null>(null); // the tab a selection switched away from, on a phone
   const scroller = useRef<HTMLDivElement>(null);
@@ -106,7 +101,7 @@ export function Ribbon(p: RibbonProps) {
   useEffect(() => {
     if (wide) return;
     const was = now.current;
-    if (p.ranged) {
+    if (ranged) {
       if (was === 'home' || was === 'context') return;
       auto.current = was;
       setTab('home');
@@ -114,38 +109,12 @@ export function Ribbon(p: RibbonProps) {
       if (was === 'home') setTab(auto.current);
       auto.current = null;
     }
-  }, [p.ranged]);
+  }, [ranged]);
 
   // a new tab's row starts at its first command
   useEffect(() => {
     if (scroller.current) scroller.current.scrollLeft = 0;
   }, [shown]);
-
-  // Undo and Redo are only there when there's something to undo or redo in the text the caret is in.
-  const live = useRef(p);
-  live.current = p;
-  const recheck = useRef(() => {});
-  useEffect(() => {
-    let frame = 0;
-    const check = (recheck.current = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const h = (live.current.target() as (TextBox & { history?: { canUndo: boolean; canRedo: boolean } }) | null)?.history;
-        const next = h ? { undo: h.canUndo, redo: h.canRedo } : { undo: true, redo: true };
-        setHist((was) => (was.undo === next.undo && was.redo === next.redo ? was : next));
-      });
-    });
-    document.addEventListener('input', check);
-    document.addEventListener('selectionchange', check);
-    document.addEventListener('focusin', check);
-    check();
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener('input', check);
-      document.removeEventListener('selectionchange', check);
-      document.removeEventListener('focusin', check);
-    };
-  }, []);
 
   // The dropped-down ribbon goes up again on a click outside it, or Esc; so does the phone's list of tabs.
   useEffect(() => {
@@ -173,66 +142,30 @@ export function Ribbon(p: RibbonProps) {
 
   /* ---------- the commands ---------- */
 
-  const level = lit.find((c) => /^h[1-3]$/.test(c)) as 'h1' | 'h2' | 'h3' | undefined;
-  const inList = lit.includes('ul') || lit.includes('ol') || lit.includes('task');
-  const style: Style | null = level ?? (lit.includes('quote') ? 'quote' : lit.includes('callout') ? null : 'normal');
-  /** Undo and Redo, as the text's own (BodyText in views/Editor.tsx keeps them). */
-  const history = (redo: boolean) => {
-    const box = p.target() as (TextBox & { el?: HTMLElement }) | null;
-    box?.el?.dispatchEvent(new InputEvent('beforeinput', { inputType: redo ? 'historyRedo' : 'historyUndo', bubbles: true, cancelable: true }));
-    recheck.current();
-  };
+  const inList = !!lit?.inList;
+  const style = (lit ? lit.style : 'normal') as Style | null;
   /** A style from the gallery: applying the one the line has already leaves it be, as Word does. */
   const apply = (s: Style) => {
     if (s === style && s !== 'normal') return;
-    p.run((el) => void (s === 'normal' ? setNormal(el) : toggleLines(el, s)));
+    cmds?.style(s);
   };
-  const indent = (out: boolean) => inList && p.run((el) => indentLines(el, out));
-  const lines = (kind: 'ul' | 'ol' | 'task' | 'quote') => p.run((el) => toggleLines(el, kind));
-  const block = (text: string, caret?: number) => p.run((el) => insertBlock(el, text, caret));
   const toggleRibbon = () => {
     setPeek(false);
     setDocView({ ribbon: docView().ribbon === 'collapsed' ? 'open' : 'collapsed' });
   };
 
-  // Word's shortcuts, while writing in the note's text (BodyText has Undo and Redo).
-  const cmds = useRef({ wrap: p.wrap, link: p.link, apply, indent, lines, toggleRibbon, reading, wide });
-  cmds.current = { wrap: p.wrap, link: p.link, apply, indent, lines, toggleRibbon, reading, wide };
+  // Esc leaves Focus, and Ctrl+F1 folds the ribbon (Word's shortcuts in the text are the editor's, src/editor/plugins.ts).
+  const live = useRef({ toggleRibbon, wide });
+  live.current = { toggleRibbon, wide };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      const c = cmds.current;
+      const c = live.current;
       const sheet = document.documentElement.classList.contains('sheet-open');
       if (e.key === 'Escape' && docView().focus && !e.defaultPrevented && !sheet) return void setDocView({ focus: false });
-      const mod = e.ctrlKey || e.metaKey;
-      if (e.key === 'F1' && mod && c.wide) return void (e.preventDefault(), c.toggleRibbon());
-      if (!mod || e.defaultPrevented || e.isComposing || c.reading) return;
-      if (!(e.target as Element | null)?.closest?.('.body-input')) return;
-      const k = e.key.toLowerCase(), code = e.code;
-      let f: (() => void) | null = null;
-      // AltGr is Ctrl+Alt to the browser: on many keyboards it types characters ({, }, ², ~…), never styles
-      if (e.altKey && !e.shiftKey) {
-        if (e.getModifierState?.('AltGraph')) return;
-        if (code === 'Digit1' || code === 'Digit2' || code === 'Digit3') f = () => c.apply(('h' + code.slice(5)) as Style);
-        else if (code === 'Digit0') f = () => c.apply('normal');
-      } else if (e.shiftKey && !e.altKey) {
-        if (k === 'x') f = () => c.wrap('~~');
-        else if (k === 'h') f = () => c.wrap('==');
-        else if (k === 'l') f = () => c.lines('ul');
-        else if (k === 'n') f = () => c.apply('normal');
-        else if (code === 'Digit7') f = () => c.lines('ol');
-        else if (code === 'Digit9') f = () => c.lines('task');
-        else if (code === 'Period') f = () => c.lines('quote');
-      } else if (!e.altKey) {
-        if (k === 'b') f = () => c.wrap('**');
-        else if (k === 'i') f = () => c.wrap('*');
-        else if (k === 'k') f = c.link;
-        // never the browser's Back and Forward (⌘[ and ⌘]) from the text, in a list or not
-        else if (code === 'BracketRight') f = () => c.indent(false);
-        else if (code === 'BracketLeft') f = () => c.indent(true);
+      if (e.key === 'F1' && (e.ctrlKey || e.metaKey) && c.wide) {
+        e.preventDefault();
+        c.toggleRibbon();
       }
-      if (!f) return;
-      e.preventDefault();
-      f();
     };
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
@@ -259,28 +192,29 @@ export function Ribbon(p: RibbonProps) {
     </div>
   );
 
-  const off = reading;
-  const wrapTool = (icon: UiName, label: string, mark: string, cls: string, k?: string) =>
-    tool(icon, label, () => p.wrap(mark), { on: lit.includes(cls) || p.pending === mark, off, k });
+  const off = reading || !cmds;
+  const markTool = (icon: UiName, label: string, mark: 'bold' | 'italic' | 'strike' | 'highlight' | 'code', k?: string) =>
+    tool(icon, label, () => cmds?.mark(mark), { on: !!lit?.[mark], off, k });
   const undo = group('undo', t('Undo'), [
-    tool('arrow-back-up', t('Undo'), () => history(false), { off: off || !hist.undo, k: 'Ctrl+Z' }),
-    tool('arrow-forward-up', t('Redo'), () => history(true), { off: off || !hist.redo, k: MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y' }),
+    tool('arrow-back-up', t('Undo'), () => cmds?.undo(), { off: off || !lit?.canUndo, k: 'Ctrl+Z' }),
+    tool('arrow-forward-up', t('Redo'), () => cmds?.redo(), { off: off || !lit?.canRedo, k: MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y' }),
   ], 'rb-rows', 1);
   const font = group('font', t('Font'), [
-    wrapTool('bold', t('Bold'), '**', 'md-b', 'Ctrl+B'),
-    wrapTool('italic', t('Italic'), '*', 'md-i', 'Ctrl+I'),
-    wrapTool('strikethrough', t('Strikethrough'), '~~', 'md-s', 'Ctrl+Shift+X'),
-    wrapTool('highlight', t('Highlight'), '==', 'md-hl', 'Ctrl+Shift+H'),
-    wrapTool('code', t('Code'), '`', 'md-code'),
-    tool('clear-formatting', t('Clear formatting'), () => p.run((el) => void clearFormatting(el)), { off }),
+    markTool('bold', t('Bold'), 'bold', 'Ctrl+B'),
+    markTool('italic', t('Italic'), 'italic', 'Ctrl+I'),
+    markTool('strikethrough', t('Strikethrough'), 'strike', 'Ctrl+Shift+X'),
+    markTool('highlight', t('Highlight'), 'highlight', 'Ctrl+Shift+H'),
+    markTool('code', t('Code'), 'code', 'Ctrl+E'),
+    tool('clear-formatting', t('Clear formatting'), () => cmds?.clearFormatting(), { off }),
   ], 'rb-rows', 3);
+  const block = lit?.block;
   const paragraph = group('paragraph', t('Paragraph'), [
-    tool('list', t('Bullet list'), () => lines('ul'), { on: lit.includes('ul'), off, k: 'Ctrl+Shift+L' }),
-    tool('list-numbers', t('Numbered list'), () => lines('ol'), { on: lit.includes('ol'), off, k: 'Ctrl+Shift+7' }),
-    tool('list-check', t('Checklist'), () => lines('task'), { on: lit.includes('task'), off, k: 'Ctrl+Shift+9' }),
-    tool('indent-decrease', t('Decrease indent'), () => indent(true), { off: off || !inList, k: 'Ctrl+[' }),
-    tool('indent-increase', t('Increase indent'), () => indent(false), { off: off || !inList, k: 'Ctrl+]' }),
-    tool('blockquote', t('Quote'), () => lines('quote'), { on: lit.includes('quote'), off, k: 'Ctrl+Shift+.' }),
+    tool('list', t('Bullet list'), () => cmds?.list('ul'), { on: block === 'ul', off, k: 'Ctrl+Shift+L' }),
+    tool('list-numbers', t('Numbered list'), () => cmds?.list('ol'), { on: block === 'ol', off, k: 'Ctrl+Shift+7' }),
+    tool('list-check', t('Checklist'), () => cmds?.list('task'), { on: block === 'task', off, k: 'Ctrl+Shift+9' }),
+    tool('indent-decrease', t('Decrease indent'), () => cmds?.indent(true), { off: off || !inList, k: 'Ctrl+[' }),
+    tool('indent-increase', t('Increase indent'), () => cmds?.indent(false), { off: off || !inList, k: 'Ctrl+]' }),
+    tool('blockquote', t('Quote'), () => cmds?.quote(), { on: !!lit?.quote && !lit.callout, off, k: 'Ctrl+Shift+.' }),
   ], 'rb-rows', 3);
   const STYLES: [Style, string, string?][] = [
     ['normal', t('Normal'), 'Ctrl+Alt+0'],
@@ -313,12 +247,12 @@ export function Ribbon(p: RibbonProps) {
     group('links', t('Links'), [
       big('at', t('Mention'), a.mention, { off, title: t('Tag someone, a book or music') }),
       big('file-text', t('Note link'), a.linkNote, { off, title: t('Link another note') }),
-      big('link', t('Link'), p.link, { off, on: lit.includes('md-link'), k: 'Ctrl+K' }),
+      big('link', t('Link'), a.link, { off, on: !!lit?.link, k: 'Ctrl+K' }),
     ]),
     group('blocks', t('Blocks'), [
-      big('separator-horizontal', t('Divider'), () => block('---'), { off }),
-      big('info-circle', t('Callout'), () => block('> [!note] ', 10), { off }),
-      big('code', t('Code block'), () => block('```\n\n```', 4), { off }),
+      big('separator-horizontal', t('Divider'), () => cmds?.insert('hr'), { off }),
+      big('info-circle', t('Callout'), () => cmds?.insert('callout'), { off }),
+      big('code', t('Code block'), () => cmds?.insert('code'), { off }),
     ]),
   ];
 

@@ -1,4 +1,4 @@
-// The inline Markdown of a line, read the same way everywhere: the styled text while writing (lib/liveMarkdown.ts),
+// The inline Markdown of a line, read the same way everywhere: the note editor's document (lib/noteDoc/parse.ts),
 // the reading view (components/Markdown.tsx) and the plain words of excerpts (stripMarkdown in lib/markdown.ts).
 // Styles take the shortest run they can, so **a** and **b** are two bold words rather than one, and a backslash
 // keeps the character after it as it is (\* is a star, not italic).

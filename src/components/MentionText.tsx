@@ -189,8 +189,6 @@ export function MentionText({ value, onChange, onPerson, class: cls, placeholder
       />
       {mention && (
         <FormatBar
-          target={() => null}
-          format={false}
           swapLabel={t('Tag someone, a book or music')}
           swap={<MentionStrip items={found} active={active} q={mention.q} canAdd={canAdd} onPick={pick} onAdd={() => pick('new')} listId={listId} />}
         />

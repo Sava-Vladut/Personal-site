@@ -208,32 +208,6 @@ test('keeping music ignores repeated taps, uses an existing record and reports s
   }
 });
 
-function textBox(value, start = 0, end = start) {
-  return {
-    value, selectionStart: start, selectionEnd: end,
-    focus() {}, dispatchEvent() {},
-    setSelectionRange(s, e) { this.selectionStart = s; this.selectionEnd = e; },
-    setRangeText(text, s, e) { this.value = this.value.slice(0, s) + text + this.value.slice(e); },
-  };
-}
-
-test('formatting at position zero preserves a leading blank line correctly', async () => {
-  const md = await load('src/lib/markdown.ts', {}, { document: { execCommand: () => false } });
-  const box = textBox('\nSecond line');
-  md.toggleLines(box, 'h1');
-  assert.equal(box.value, '# \nSecond line');
-});
-
-test('formatting a selection ending at the next line start only affects selected lines', async () => {
-  const md = await load('src/lib/markdown.ts', {}, { document: { execCommand: () => false } });
-  for (const operation of [box => md.toggleLines(box, 'ul'), box => md.indentLines(box, false)]) {
-    const box = textBox('First\nSecond', 0, 6);
-    operation(box);
-    assert.ok(box.value.endsWith('\nSecond'), box.value);
-  }
-  assert.equal(md.toggleTask('Words', 20), 'Words');
-});
-
 test('the editor toolbar follows the visible keyboard viewport and releases its listeners', async () => {
   const styles = {}, effects = [], cleanups = [], listeners = new Map(), frames = new Map();
   const scroll = { scrollLeft: 240 };
@@ -259,7 +233,7 @@ test('the editor toolbar follows the visible keyboard viewport and releases its 
     requestAnimationFrame: (fn) => { frames.set(1, fn); return 1; },
     cancelAnimationFrame: (id) => frames.delete(id),
   });
-  FormatBar({ target: () => null, swap: 'Suggestions', swapLabel: 'Tag' });
+  FormatBar({ swap: 'Suggestions', swapLabel: 'Tag' });
   for (const effect of effects) { const cleanup = effect(); if (cleanup) cleanups.push(cleanup); }
   assert.equal(portalTarget, body, 'toolbar must be outside the animated page');
   assert.deepEqual(styles, { '--kb': '384px', '--toolbar-left': '207px', '--toolbar-width': '390px' });

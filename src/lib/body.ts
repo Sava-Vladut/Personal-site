@@ -37,9 +37,10 @@ export const itemOf = (m: Item & Layout): Item => (m.kind === 'photo' ? { kind: 
 /** The pictures a picture or album holds. */
 export const itemsOf = (m: Media): Item[] => (m.kind === 'album' ? m.items : [itemOf(m)]);
 /** An album of `items` with `layout` — or just the picture, when there's only one. */
-const albumOf = (items: Item[], layout: Layout): Media => (items.length === 1 ? { ...items[0], ...layoutPart(layout) } : { kind: 'album', items, ...layoutPart(layout) });
+export const albumOf = (items: Item[], layout: Layout): Media => (items.length === 1 ? { ...items[0], ...layoutPart(layout) } : { kind: 'album', items, ...layoutPart(layout) });
 
-const marker = (m: Media) =>
+/** The line a picture or album is written as in the note's text. */
+export const mediaMarker = (m: Media) =>
   `[[${m.kind === 'album' ? 'album:' + m.items.map(itemKey).join(' ') : itemKey(m)}${m.size && m.size < 100 ? ` ${m.size}${m.align ? ' ' + m.align : ''}` : ''}]]`;
 /** Names a picture or album while it's in the note. An album goes by its first picture. */
 export const mediaKey = (m: Media) => (m.kind === 'album' ? 'album:' + itemKey(m.items[0]) : itemKey(m));
@@ -65,7 +66,7 @@ export function parseBody(text: string): Body {
   return { texts, media };
 }
 
-export const serializeBody = ({ texts, media }: Body) => texts.reduce((s, t, i) => s + (i ? '\n' + marker(media[i - 1]) + '\n' : '') + t, '');
+export const serializeBody = ({ texts, media }: Body) => texts.reduce((s, t, i) => s + (i ? '\n' + mediaMarker(media[i - 1]) + '\n' : '') + t, '');
 
 // Dragging a picture onto the text used to drop its address in as words. Nobody writes these lines themselves.
 const OPENVERSE = /^https:\/\/api\.openverse\.org\/v1\/images\/[0-9a-f-]+\/(thumb\/)?$/;

@@ -1,23 +1,20 @@
 import { Fragment } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { flushSync } from 'preact/compat';
+import { createPortal, flushSync } from 'preact/compat';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, moveMedia, plainText, removeItem, removeMedia, sameMedia, serializeBody, setLayout, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
-import { editable, PLAIN } from '../lib/editable';
+import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, parseBody, plainText, removeItem, removeMedia, sameMedia, serializeBody, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
-import { deleteKey, listKey, shortcutKey, toggleTask, toggleTaskAt } from '../lib/markdown';
-import type { Kind } from '../lib/history';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
-import { linkedFrom, linkOf, linkRanges, noteLabel, suggestLinks, typedLink, type LinkSuggestion } from '../lib/links';
+import { linkedFrom, linkOf, noteLabel, suggestLinks, type LinkSuggestion } from '../lib/links';
 import { connectSpotify } from '../lib/spotify';
 import {
   blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
   type Book, type Entry, type Person,
 } from '../lib/store';
-import { mentionOfPerson, mentionOfSong, mentionsIn, suggest, typedMention, type Suggestion } from '../lib/mentions';
-import { CHART_ORDER, coreOf } from '../data/emotions';
+import { mentionOfPerson, mentionOfSong, suggest, type Suggestion } from '../lib/mentions';
+import { coreOf } from '../data/emotions';
 import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
@@ -28,9 +25,10 @@ import { ImageSearchSheet } from '../components/ImageSearchSheet';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
-import { Markdown } from '../components/Markdown';
+import { LinkSheet } from '../components/LinkSheet';
+import { NoteBody, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
-import { dropLayout, dropTargets, MediaBlock, MediaTools, sideAt, type DropTarget, type Side } from '../components/NoteMedia';
+import { dropLayout, MediaBlock, MediaTools, sideAt, type Side } from '../components/NoteMedia';
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
@@ -42,14 +40,8 @@ import '../styles/document.css';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music';
-/** An @tag or a [[ link being typed: where it starts, where the caret is and what's been typed. */
-type Typed = { start: number; end: number; q: string; link?: boolean };
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link';
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
-
-/** The highlight each kind of tag is coloured with while writing: people in the colour of the feeling they bring. */
-const highlights = () => ['mm-at-book', 'mm-at-song', 'mm-at-note', 'mm-at-note-id', 'mm-at-none', ...CHART_ORDER.map((id) => `mm-at-${id}`)];
-const highlightRegistry = () => (typeof CSS === 'undefined' ? undefined : (CSS as unknown as { highlights?: Map<string, unknown> }).highlights);
 
 const MAX_PHOTOS = 20;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -70,244 +62,6 @@ function useAutosize(value: string) {
     return () => removeEventListener('resize', on);
   }, []);
   return ref;
-}
-
-/** What an input event did, for undo (lib/history.ts): letters typed (a space ends a word), letters deleted, or more. */
-function kindOf(e: Event): Kind {
-  const { inputType: type, data } = e as InputEvent;
-  if (type === 'insertText' || type === 'insertCompositionText') return data && /\s$/.test(data) ? 'space' : 'type';
-  return type === 'deleteContentBackward' || type === 'deleteContentForward' ? 'delete' : 'other';
-}
-
-/**
- * Where a tap on a stretch of formatted text (the reading view) landed in its Markdown, as near as can be told: the
- * words under the finger are found in the text, after as many characters as show before them. Undefined when it
- * can't be told.
- */
-function tappedAt(e: MouseEvent, text: string) {
-  const d = document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
-  let node: Node | undefined, offset = 0;
-  const p = d.caretPositionFromPoint?.(e.clientX, e.clientY);
-  if (p) (node = p.offsetNode), (offset = p.offset);
-  else {
-    const r = document.caretRangeFromPoint?.(e.clientX, e.clientY);
-    if (r) (node = r.startContainer), (offset = r.startOffset);
-  }
-  const host = e.currentTarget as HTMLElement;
-  if (!node || node.nodeType !== Node.TEXT_NODE || !host.contains(node)) return;
-  const words = (node as Text).data;
-  let shown = 0; // the characters that show before it; its Markdown can only have more
-  const tw = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
-  for (let n = tw.nextNode(); n && n !== node; n = tw.nextNode()) shown += (n as Text).data.length;
-  const at = text.indexOf(words, Math.min(shown, text.length));
-  return at < 0 ? undefined : at + Math.min(offset, words.length);
-}
-
-/**
- * One stretch of the note's text, between pictures. A plain-text editable block, not a textarea, so that its lines
- * wrap around a picture floated beside it. Its Markdown shows styled as it's typed: after each change, the lines whose
- * styling changed are laid out again (lib/editable.ts); the rest stays the browser's own. It keeps its own undo, and
- * the keys behave as in Notion and Word (lib/markdown.ts).
- */
-function BodyText({ value, onChange, onCaret, onMention, onKey, placeholder, grow, textRef, suggestionsOpen, activeSuggestion }: {
-  value: string;
-  onChange: (v: string) => void;
-  onCaret: (pos: number) => void;
-  /** an @tag (or a [[ link) being typed before the caret, or null */
-  onMention: (m: Typed | null) => void;
-  /** keys go here first; true means it was handled */
-  onKey: (e: KeyboardEvent) => boolean;
-  placeholder?: string;
-  grow?: boolean;
-  textRef?: (el: HTMLDivElement | null) => void;
-  suggestionsOpen?: boolean;
-  activeSuggestion?: string;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const composing = useRef(false);
-  const frame = useRef(0);
-  // the text a "[] " turned into a task made, and the caret then: Backspace straight after takes it back
-  const converted = useRef<{ text: string; at: number } | null>(null);
-  const handlers = useRef({ onCaret, onMention });
-  handlers.current = { onCaret, onMention };
-  const readCaret = () => {
-    const el = ref.current;
-    if (!el || document.activeElement !== el) return;
-    const box = editable(el);
-    if (!composing.current) box.settle();
-    const start = box.selectionStart;
-    handlers.current.onCaret(start);
-    handlers.current.onMention(!composing.current && getSelection()?.isCollapsed !== false && start === box.selectionEnd ? typedMention(box.value, start) ?? typedLink(box.value, start) : null);
-  };
-  const queueCaret = () => {
-    cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(readCaret);
-  };
-  useEffect(() => {
-    // On iOS the selection can move after `input`, without a keyup event.
-    document.addEventListener('selectionchange', readCaret);
-    return () => {
-      document.removeEventListener('selectionchange', readCaret);
-      cancelAnimationFrame(frame.current);
-    };
-  }, []);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || composing.current) return;
-    const box = editable(el);
-    if (box.value === value) return;
-    const focused = document.activeElement === el;
-    const start = box.selectionStart, end = box.selectionEnd;
-    box.value = value;
-    if (focused) box.setSelectionRange(start, end);
-  }, [value]);
-  const caret = (e: Event) => {
-    const el = e.currentTarget as HTMLDivElement;
-    if (e.type === 'blur') {
-      editable(el).settle();
-      onMention(null);
-      cancelAnimationFrame(frame.current);
-    }
-    if (document.activeElement !== el && e.type !== 'blur') return;
-    if (e.type === 'blur') onCaret(editable(el).selectionStart);
-    else {
-      readCaret();
-      queueCaret();
-    }
-  };
-  /** After the text changed: lays it out again, keeps the change for undo, and passes the text on. */
-  const changed = (el: HTMLDivElement, kind: Kind, typed: boolean) => {
-    const box = editable(el);
-    box.tidy();
-    box.record(kind);
-    converted.current = null;
-    // "[] " at the start of a line becomes a task
-    if (typed && shortcutKey(box)) converted.current = { text: box.value, at: box.selectionStart };
-    onChange(box.value);
-  };
-  const history = (el: HTMLDivElement, redo: boolean) => {
-    const box = editable(el);
-    converted.current = null;
-    if (!(redo ? box.redo() : box.undo())) return;
-    onChange(box.value);
-    readCaret();
-  };
-  const pressed = useRef<HTMLElement | null>(null); // a task's box, while a finger is on it
-  const taskAt = (e: Event) => (e.target as Element | null)?.closest?.('.md-task-mark') as HTMLElement | null;
-  const tick = (e: Event) => {
-    const mark = taskAt(e);
-    const el = ref.current;
-    if (!mark || !el) return;
-    const box = editable(el);
-    toggleTaskAt(box, box.offsetOf(mark), document.activeElement === el);
-  };
-  return (
-    <div
-      ref={(el) => { ref.current = el; textRef?.(el); }}
-      class={`body-input${grow ? ' grow' : ''}${value ? '' : ' is-empty'}`}
-      contentEditable={PLAIN ? 'plaintext-only' : 'true'}
-      role="textbox"
-      aria-multiline="true"
-      aria-label={t('Note')}
-      aria-autocomplete="list"
-      aria-controls={suggestionsOpen ? 'mention-suggestions' : undefined}
-      aria-expanded={!!suggestionsOpen}
-      aria-activedescendant={suggestionsOpen ? activeSuggestion : undefined}
-      data-placeholder={placeholder}
-      spellcheck
-      onInput={(e) => {
-        const el = e.currentTarget;
-        // while a word is being composed (a phone's keyboard, an IME), the browser's text is left alone until it's done
-        if (composing.current || (e as InputEvent).isComposing) onChange(editable(el).value);
-        else changed(el, kindOf(e), (e as InputEvent).inputType === 'insertText' && (e as InputEvent).data === ' ');
-        caret(e);
-      }}
-      onCompositionStart={() => {
-        composing.current = true;
-        if (ref.current) editable(ref.current).before();
-        onMention(null);
-      }}
-      onCompositionEnd={(e) => {
-        composing.current = false;
-        const el = e.currentTarget;
-        changed(el, /\s$/.test(e.data ?? '') ? 'space' : 'type', / $/.test(e.data ?? ''));
-        caret(e);
-      }}
-      onBeforeInput={(e) => {
-        const el = e.currentTarget;
-        const box = editable(el);
-        // undo and redo are the note's own, from the keyboard, a shake or the keyboard's own buttons
-        if (e.inputType === 'historyUndo' || e.inputType === 'historyRedo') {
-          e.preventDefault();
-          history(el, e.inputType === 'historyRedo');
-          return;
-        }
-        if (composing.current || e.isComposing) return;
-        box.before();
-        const back = e.inputType === 'deleteContentBackward';
-        // Backspace straight after "[] " became a task gives back what was typed
-        const c = converted.current;
-        if (back && c && c.text === box.value && c.at === box.selectionStart && box.selectionEnd === c.at) {
-          e.preventDefault();
-          history(el, false);
-          return;
-        }
-        if ((back || e.inputType === 'deleteContentForward') && deleteKey(box, back)) {
-          e.preventDefault();
-          return;
-        }
-        // Enter from a keyboard that doesn't say which key it was (Android) carries lists on all the same
-        if ((e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak')
-          && listKey(box, { key: 'Enter', shiftKey: e.inputType === 'insertLineBreak' } as KeyboardEvent)) {
-          e.preventDefault();
-          return;
-        }
-        // browsers without plain-text editing: no bold, lists or pasted formatting, and Enter makes a line break
-        if (PLAIN) return;
-        if (e.inputType.startsWith('format')) e.preventDefault();
-        else if (e.inputType === 'insertParagraph') {
-          e.preventDefault();
-          box.edit(() => document.execCommand('insertText', false, '\n'));
-        }
-      }}
-      onPaste={(e) => {
-        if (PLAIN || e.clipboardData?.files.length) return; // pictures are the page's to add
-        e.preventDefault();
-        const text = e.clipboardData?.getData('text/plain') ?? '';
-        editable(e.currentTarget).edit(() => document.execCommand('insertText', false, text));
-      }}
-      onKeyDown={(e) => {
-        if (composing.current || e.isComposing || e.keyCode === 229) return;
-        const el = e.currentTarget;
-        const k = e.key.toLowerCase();
-        // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl+Y redo
-        if ((e.metaKey || e.ctrlKey) && !e.altKey && (k === 'z' || (k === 'y' && e.ctrlKey && !e.metaKey))) {
-          e.preventDefault();
-          history(el, k === 'y' || e.shiftKey);
-          return;
-        }
-        if (onKey(e) || listKey(editable(el), e)) e.preventDefault();
-      }}
-      onKeyUp={(e) => !['Enter', 'Tab', 'Escape'].includes(e.key) && caret(e)}
-      onPointerUp={caret}
-      // a task's box ticks it, without moving the caret or bringing the keyboard up
-      onMouseDown={(e) => taskAt(e) && e.preventDefault()}
-      onTouchStart={(e) => {
-        pressed.current = taskAt(e);
-        if (pressed.current) e.preventDefault();
-      }}
-      onTouchEnd={(e) => {
-        if (pressed.current && pressed.current === taskAt(e)) tick(e);
-        pressed.current = null;
-      }}
-      onClick={(e) => taskAt(e) && tick(e)}
-      onFocus={(e) => {
-        editable(e.currentTarget).before();
-        caret(e);
-      }}
-      onBlur={caret}
-    />
-  );
 }
 
 export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
@@ -332,10 +86,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // — or the picture it's over, to make an album with
   const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number; onto: string | null } | null>(null);
   const [details, setDetails] = useState(false); // the Feelings page
-  // an @tag (or [[ link) being typed: in which text block, where its @ is and what follows it; and which suggestion is picked
-  const [mention, setMentionState] = useState<({ seg: number } & Typed) | null>(null);
+  // an @tag (or [[ link) being typed: where its @ is and what follows it; and which suggestion is picked
+  const [mention, setMentionState] = useState<Typed | null>(null);
   const [pickAt, setPickAt] = useState(0);
-  const dismissed = useRef(''); // which @ Escape put away, as block:position
+  const dismissed = useRef(''); // which @ Escape put away, by where it is
   const pickingMention = useRef(false);
   const people = usePeople();
   const shelf = useBooks();
@@ -377,15 +131,22 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // while the note is open, the page carries its zoom, Focus and ribbon (lib/docView.ts)
   // (before the first paint, so the floating Back and Done never flash over the ribbon)
   useLayoutEffect(() => applyDocView(), []);
-  const textRef = useRef<HTMLDivElement | null>(null);
-  const areas = useRef<(HTMLDivElement | null)[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
   const removing = useRef(false);
   const pendingImports = useRef(0);
   const cancelMove = useRef<(() => void) | null>(null);
-  // Where new pictures go: a text block of the body and the caret in it. -1 means the end of the note.
-  const where = useRef({ seg: -1, pos: 0 });
+  // The note's words and pictures (editor/NoteBody.tsx): its document is the text, written back to the draft a moment
+  // after each change. Kept once it's been there, so leaving still reads the last words.
+  const [note, setNote] = useState<NoteBodyHandle | null>(null);
+  const noteRef = useRef<NoteBodyHandle | null>(null);
+  const [initialText] = useState(() => (draft ? serializeBody(bodyOf(draft)) : ''));
+  const textDirty = useRef(false);
+  const textTimer = useRef<ReturnType<typeof setTimeout>>();
+  // pictures cut from the note (or undone): their photos wait here, to come back with them
+  const stash = useRef<{ photos: Entry['photos']; images: Entry['images'] }>({ photos: [], images: [] });
+  const [slots, setSlots] = useState<MediaSlot[]>([]);
+  const [linkTo, setLinkTo] = useState<{ text: string; href: string | null }>({ text: '', href: null });
 
   // Once a new note is saved, point the URL at it so a reload reopens it. Never rewrite a sheet's history entry.
   const syncUrl = () => {
@@ -393,7 +154,54 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (saved.current && d && !history.state?.mmSheet && location.hash === '#/note/new') history.replaceState(history.state, '', '#/note/' + d.id);
   };
 
+  /**
+   * Writes the document back into the draft as text. The note's photos follow it: those whose picture left the text
+   * (cut, or an insert undone) go to the stash, and come back from it with their picture (undo, paste).
+   */
+  const syncText = () => {
+    clearTimeout(textTimer.current);
+    const n = noteRef.current;
+    const d = latest.current;
+    if (!textDirty.current || !n || !d || removing.current) return;
+    textDirty.current = false;
+    const text = n.text();
+    const inDoc = new Set(parseBody(text).media.flatMap(itemsOf).map(itemKey));
+    const has = (it: Item) => inDoc.has(itemKey(it));
+    const st = stash.current;
+    const pool = { photos: [...d.photos, ...st.photos], images: [...d.images, ...st.images] };
+    const photos = pool.photos.filter((p) => has({ kind: 'photo', id: p.id }));
+    const images = pool.images.filter((x) => has({ kind: 'image', url: x.url }));
+    stash.current = { photos: pool.photos.filter((p) => !photos.includes(p)), images: pool.images.filter((x) => !images.includes(x)) };
+    const same = <T,>(a: T[], b: T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+    const patch: Partial<Entry> = {
+      ...(text !== d.text && { text }),
+      ...(!same(photos, d.photos) && { photos }),
+      ...(!same(images, d.images) && { images }),
+    };
+    if (!Object.keys(patch).length) return;
+    if (alive.current) return update(patch);
+    // leaving: straight into what's saved
+    latest.current = { ...d, ...patch };
+    dirty.current = true;
+  };
+  /** The document changed: its text is written back shortly (and on leaving, at once). */
+  const docChanged = () => {
+    textDirty.current = true;
+    setSaveState('saving');
+    clearTimeout(textTimer.current);
+    textTimer.current = setTimeout(syncText, 300);
+  };
+  /** The note's text now, the document's when it's open. */
+  const textNow = () => noteRef.current?.text() ?? (latest.current ? serializeBody(bodyOf(latest.current)) : '');
+  /** Puts a new text in the note: into the document when it's open (one step to undo), else straight into the draft. */
+  const setBodyText = (text: string) => {
+    const n = noteRef.current;
+    if (n) n.setText(text);
+    else update({ text });
+  };
+
   const flush = () => {
+    syncText();
     clearTimeout(timer.current);
     const d = latest.current;
     if (removing.current || !d) return Promise.resolve(false);
@@ -499,39 +307,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
   }, [sel]);
 
-  useEffect(() => setPickAt(0), [mention?.seg, mention?.start, mention?.q]);
-
-  // Tags glow in their own colours while writing. These are CSS Custom Highlights: the text itself stays plain.
-  useEffect(() => {
-    const reg = highlightRegistry();
-    const Make = (globalThis as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
-    if (!reg || !Make) return;
-    const groups = new Map<string, Range[]>();
-    if (!reading && draft)
-      areas.current.slice(0, bodyOf(draft).texts.length).forEach((el) => {
-        if (!el?.isConnected) return;
-        const box = editable(el);
-        const add = (name: string, start: number, end: number) => {
-          if (!groups.has(name)) groups.set(name, []);
-          groups.get(name)!.push(box.range(start, end));
-        };
-        for (const f of mentionsIn(box.value, people, shelf, songs)) add(f.kind === 'person' ? `mm-at-${f.core ?? 'none'}` : `mm-at-${f.kind}`, f.start, f.end);
-        // a note link's note:<id>| fades back, leaving the title to read
-        for (const l of linkRanges(box.value, allEntries, shelf)) {
-          add('mm-at-note', l.start, l.end);
-          if (l.label > l.start + 2) add('mm-at-note-id', l.start + 2, l.label);
-        }
-      });
-    for (const name of highlights()) {
-      const ranges = groups.get(name);
-      if (ranges) reg.set(name, new Make(...ranges));
-      else reg.delete(name);
-    }
-  }, [draft?.text, reading, people, shelf, songs, allEntries]);
-  useEffect(() => () => {
-    const reg = highlightRegistry();
-    if (reg) highlights().forEach((n) => reg.delete(n));
-  }, []);
+  useEffect(() => setPickAt(0), [mention?.from, mention?.q]);
 
   if (!draft)
     return (
@@ -587,7 +363,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const d = latest.current;
       if (d && photos.length) {
         const fit = photos.slice(0, MAX_PHOTOS - d.photos.length);
-        update({ photos: [...d.photos, ...fit], text: place(bodyOf(d), fit.map((p) => ({ kind: 'photo', id: p.id }))) });
+        update({ photos: [...d.photos, ...fit] });
+        place(fit.map((p) => ({ kind: 'photo', id: p.id })));
       }
       if (failed) toast(failed === take.length && failed === 1 ? t('Couldn’t read that image') : t('Couldn’t read {n} of the images', { n: failed }));
       else if (files.length > room) toast(t('Added {n} — a note can hold {max} photos', { n: take.length, max: MAX_PHOTOS }));
@@ -615,34 +392,38 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (alive.current && !removing.current) setCoverAdding(false);
     }
   };
-  /** Inserts pictures where the caret was (or at the end), and moves the insert point after them. */
-  const place = (b: Body, add: Media[]) => {
-    const last = b.texts.length - 1;
-    const { seg, pos } = where.current.seg < 0 || where.current.seg > last ? { seg: last, pos: b.texts[last].length } : where.current;
-    where.current = { seg: seg + add.length, pos: 0 };
-    return serializeBody(insertMedia(b, add, seg, pos));
-  };
-  const setText = (i: number, v: string) => {
+  /**
+   * Puts pictures in where the caret is (at the end of the note when it's never been written in, or while reading),
+   * the caret going after them. Without the editor there yet, at the end of the draft's text.
+   */
+  const place = (add: Media[]) => {
+    const n = noteRef.current;
+    if (n) return n.media.insert(add, reading);
     const d = latest.current;
     if (!d) return;
     const b = bodyOf(d);
-    if (i < 0 || i >= b.texts.length || b.texts[i] === v) return;
-    b.texts[i] = v;
-    update({ text: serializeBody(b) });
+    const last = b.texts.length - 1;
+    update({ text: serializeBody(insertMedia(b, add, last, b.texts[last].length)) });
   };
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
-  /** Rearranges the body's pictures. Carets from before the change no longer point anywhere useful. */
-  const setBody = (b: Body) => {
-    where.current = { seg: -1, pos: 0 };
-    update({ text: serializeBody(b) });
+  /** The note's pictures as body.ts has them, read from the text now. */
+  const bodyNow = (): Body => parseBody(textNow());
+  /** Changes the pictures with a body.ts change, by the key of the one changed (`i` is its index then). */
+  const withBody = (key: string, change: (b: Body, i: number) => Body) => {
+    const b = bodyNow();
+    const i = b.media.findIndex((m) => mediaKey(m) === key);
+    if (i < 0) return;
+    const next = change(b, i);
+    if (next !== b) setBodyText(serializeBody(next));
   };
 
   /** Removes a picture — on its own or from its album — or a whole album, with Undo. */
   const removePicture = (target: Media | Item) => {
     const d = latest.current;
     if (!d) return;
-    const b = bodyOf(d);
+    const before = textNow();
+    const b = parseBody(before);
     const whole = target.kind === 'album' ? b.media.findIndex((x) => sameMedia(x, target)) : -1;
     const gone = itemsOf(target.kind === 'album' ? target : itemOf(target));
     const { i } = findItem(b, gone[0]);
@@ -654,22 +435,29 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const photos = d.photos.filter((p) => isGone({ kind: 'photo', id: p.id }));
     const images = d.images.filter((x) => isGone({ kind: 'image', url: x.url }));
     const after = serializeBody(alone ? removeMedia(b, at) : removeItem(b, gone[0]));
-    where.current = { seg: -1, pos: 0 };
-    update({ photos: d.photos.filter((p) => !photos.includes(p)), images: d.images.filter((x) => !images.includes(x)), text: after });
+    setBodyText(after);
+    syncText();
+    update({ photos: latest.current!.photos.filter((p) => !photos.includes(p)), images: latest.current!.images.filter((x) => !images.includes(x)), text: after });
+    stash.current = { photos: stash.current.photos.filter((p) => !photos.includes(p)), images: stash.current.images.filter((x) => !images.includes(x)) };
     setSel(null);
     setOpen(null);
-    const restore = (e: Entry): Partial<Entry> => ({
+    const restore = (e: Entry, now: string): Partial<Entry> => ({
       photos: [...e.photos, ...photos.filter((p) => !e.photos.some((x) => x.id === p.id))],
       images: [...e.images, ...images.filter((p) => !e.images.some((x) => x.url === p.url))],
       // untouched since: as it was. Otherwise the picture goes back where it was, or (from an album) at the end.
-      text: e.text === after ? d.text : alone ? serializeBody(insertMedia(bodyOf(e), [at], i, pos)) : e.text,
+      text: now === after ? before : alone ? serializeBody(insertMedia(parseBody(now), [at], Math.min(i, parseBody(now).texts.length - 1), pos)) : now,
     });
     toast(gone.length > 1 ? t('Album removed') : gone[0].kind === 'photo' ? t('Photo removed') : t('Image removed'), {
       label: t('Undo'),
       run: () => {
-        if (alive.current) return latest.current && update(restore(latest.current));
+        if (alive.current && latest.current) {
+          const patch = restore(latest.current, textNow());
+          update({ photos: patch.photos, images: patch.images });
+          setBodyText(patch.text!);
+          return;
+        }
         const e = getEntries().find((x) => x.id === d.id);
-        if (e) saveEntry({ ...e, ...restore(e) });
+        if (e) saveEntry({ ...e, ...restore(e, e.text) });
       },
     });
   };
@@ -680,14 +468,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
    * with the text wrapping around it, over the middle it's centred on its own. Dropped on another picture, the two
    * become an album (or it joins that album). Drops it on release; Escape cancels.
    */
-  const startMove = (i: number, e: PointerEvent, el: HTMLElement) => {
+  const startMove = (key: string, e: PointerEvent, el: HTMLElement) => {
     cancelMove.current?.();
     const bodyEl = bodyRef.current;
-    const d = latest.current;
-    if (!bodyEl || !d) return;
-    const m = bodyOf(d).media[i];
-    const key = mediaKey(m);
-    const targets = dropTargets(areas.current.slice(0, bodyOf(d).texts.length));
+    const n = noteRef.current;
+    const m = bodyNow().media.find((x) => mediaKey(x) === key);
+    if (!bodyEl || !n || !m) return;
+    const targets = n.media.dropTargets();
     if (!targets.length) return;
     const r = el.getBoundingClientRect();
     const ratio = r.width / Math.max(1, r.height);
@@ -704,7 +491,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     // it lifts off the page, shrinking smoothly about the finger, then follows it without delay
     requestAnimationFrame(() => (ghost.style.scale = String(scale)));
 
-    let target: DropTarget | null = null;
+    let target: { pos: number; y: number } | null = null;
     let side: Side = 'center';
     let onto: string | null = null;
     let x = e.clientX, y = e.clientY;
@@ -720,7 +507,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       picked = true;
       // over another picture of this note (the copy under the finger lets touches through)
       const over = document.elementFromPoint(x, y)?.closest<HTMLElement>('.media');
-      onto = over && over.parentElement === bodyEl && over.dataset.key !== key ? over.dataset.key! : null;
+      onto = over && bodyEl.contains(over) && over.dataset.key !== key ? over.dataset.key! : null;
       ghost.style.translate = `${x - e.clientX}px ${y - e.clientY}px`;
       ghost.classList.toggle('is-merging', !!onto);
       setMoving({ key, y: target.y - (col.top + scrollY), side, layout: dropLayout(m, side), ratio, onto });
@@ -753,25 +540,22 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       ghost.remove();
       setMoving(null);
       settle(key, from);
-      const now = latest.current;
-      if (!drop || !target || !now) return;
-      const b = bodyOf(now);
-      const j = b.media.findIndex((x) => mediaKey(x) === key);
-      if (j < 0) return;
-      const into = onto ? b.media.findIndex((x) => mediaKey(x) === onto) : -1;
-      if (into >= 0) {
-        const merged = mergeMedia(b, j, into);
-        setBody(merged);
-        setSel(mediaKey(merged.media[into > j ? into - 1 : into]));
+      if (!drop || !target || !alive.current) return;
+      if (onto) {
+        const into = onto;
+        let merged = '';
+        withBody(key, (b, j) => {
+          const k = b.media.findIndex((x) => mediaKey(x) === into);
+          if (k < 0) return b;
+          const next = mergeMedia(b, j, k);
+          merged = mediaKey(next.media[k > j ? k - 1 : k]);
+          return next;
+        });
+        if (merged) setSel(merged);
         haptic(10);
         return;
       }
-      let next = moveMedia(b, j, target.seg, target.pos);
-      const k = next.media.findIndex((x) => mediaKey(x) === key);
-      const was = next.media[k];
-      const layout = dropLayout(was, side);
-      if ((layout.size ?? 100) !== (was.size ?? 100) || (layout.size ?? 100) < 100 && layout.align !== was.align) next = setLayout(next, k, layout);
-      if (next !== b) setBody(next);
+      noteRef.current?.media.move(key, target.pos, dropLayout(m, side));
     };
     const up = () => end(true);
     const cancel = () => end(false);
@@ -795,7 +579,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   /** Glides a dropped picture from where it was let go (`from`, on screen) into its place in the note. */
   const settle = (key: string, from: DOMRect) => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      const el = bodyRef.current?.querySelector<HTMLElement>(`:scope > .media[data-key="${CSS.escape(key)}"]`);
+      const el = bodyRef.current?.querySelector<HTMLElement>(`.media[data-key="${CSS.escape(key)}"]`);
       if (!el || !el.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const to = el.getBoundingClientRect();
       if (!to.width || !to.height) return;
@@ -807,12 +591,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     }));
   };
 
-  /** Opens the note's pictures full screen — every picture, albums opened out — at picture `k` of picture or album `i`. */
-  const view = async (i: number, k = 0, el?: HTMLElement | null) => {
+  /** Opens the note's pictures full screen — every picture, albums opened out — at picture `k` of the one named `key`. */
+  const view = async (key: string, k = 0, el?: HTMLElement | null) => {
     const d = latest.current;
     if (!d) return;
-    const b = bodyOf(d);
-    const blocks = bodyRef.current ? [...bodyRef.current.querySelectorAll<HTMLElement>(':scope > .media')] : [];
+    const b = bodyOf({ ...d, text: textNow() });
+    const i = b.media.findIndex((m) => mediaKey(m) === key);
+    const blocks = bodyRef.current ? [...bodyRef.current.querySelectorAll<HTMLElement>('.media-node > .media')] : [];
     const name = d.title.trim().replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'photo';
     const flat = b.media.flatMap((m, mi) => itemsOf(m).map((it, j) => ({ it, mi, j, album: m.kind === 'album' })));
     const items = await Promise.all(
@@ -834,84 +619,77 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (!alive.current || removing.current) return;
     const shown = items.filter((x) => x.src);
     const start = items[flat.findIndex((f) => f.mi === i && f.j === k)];
-    const now = () => latest.current && bodyOf(latest.current);
     openViewer(shown, Math.max(0, shown.indexOf(start)), reading ? {} : {
       onRemove: (n) => removePicture(shown[n].it),
       onTakeOut: (n) => {
-        const b = now();
         const it = shown[n].it;
-        const { i } = b ? findItem(b, it) : { i: -1 };
-        if (b && i >= 0) {
-          setBody(takeOut(b, i, it));
-          setSel(itemKey(it));
-        }
+        const b = bodyNow();
+        const { i } = findItem(b, it);
+        if (i < 0) return;
+        setBodyText(serializeBody(takeOut(b, i, it)));
+        setSel(itemKey(it));
       },
     });
   };
 
-  /** Switches to writing, with the caret at `pos` (or the end) of text block `seg` (or where it was). */
-  const write = (seg?: number, pos?: number) => {
-    const go = () => {
-      const el = seg === undefined ? areas.current[Math.max(0, where.current.seg)] ?? textRef.current : areas.current[seg];
-      if (!el) return;
-      el.focus();
-      if (seg !== undefined) {
-        const box = editable(el);
-        const at = pos ?? box.value.length;
-        box.setSelectionRange(at, at);
-      }
-    };
-    if (!reading) return go();
-    // Render the editable before this touch ends: iOS only opens its keyboard for synchronous focus.
-    flushSync(() => setReading(false));
-    go();
+  /** Switches to writing, with the caret at a position (or the start or end of the note, or where it was). */
+  const write = (at?: 'start' | 'end' | number) => {
+    const n = noteRef.current;
+    if (reading) {
+      // Editable before this touch ends: iOS only opens its keyboard for synchronous focus.
+      flushSync(() => setReading(false));
+      n?.setEditable(true);
+    }
+    n?.focus(at ?? (reading ? 'end' : undefined));
   };
   /** Reading view and writing, back and forth (the More menu, the status bar). */
   const toggleReading = () => (reading ? write() : setReading(true));
+  /** A tap on the words of the reading view starts writing there; links, tags, ticks and selecting text don't. */
+  const tapToWrite = (e: MouseEvent) => {
+    if (!reading || (e.target as Element).closest('a, input, button, .media, .note-chip') || !getSelection()?.isCollapsed) return;
+    if (!(e.target as Element).closest('.note-editor')) return;
+    write(noteRef.current?.posAt(e.clientX, e.clientY) ?? 'end');
+  };
   /**
    * A click on the empty paper below the words starts writing at the end, as in Word. Clicks beside a line are left
    * to the browser, and the notes linking here at the foot of the page keep theirs.
    */
   const clickPaper = (e: MouseEvent) => {
     const host = bodyRef.current;
-    if (!host || (e.target !== e.currentTarget && e.target !== host) || !getSelection()?.isCollapsed) return;
-    const words = host.lastElementChild?.getBoundingClientRect();
+    const target = e.target as Element;
+    if (!host || (target !== e.currentTarget && target !== host && !target.classList?.contains('note-editor-host')) || !getSelection()?.isCollapsed) return;
+    const words = host.querySelector('.note-editor')?.getBoundingClientRect();
     const foot = (e.currentTarget as HTMLElement).querySelector('.backlinks')?.getBoundingClientRect();
     if (!words || e.clientY <= words.bottom || (foot && e.clientY >= foot.top)) return;
-    write(last);
-  };
-  /** The text box the toolbar formats: the one being written in, or the last one that was. */
-  const target = () => {
-    const active = document.activeElement;
-    const el = active instanceof HTMLDivElement && areas.current.includes(active) ? active : areas.current[where.current.seg] ?? areas.current[body.texts.length - 1];
-    return el ? editable(el) : null;
+    write('end');
   };
 
-  /** Mentions a book where the caret was (or at the end of the note), as a link to it. */
+  /** Mentions a book where the caret is (or at the end of the note, while reading), as a link to it. */
   const mentionBook = (b: Book) => {
+    const token = mentionOf(b, getBooks());
+    const n = noteRef.current;
+    setOpen(null);
+    if (n) return n.insertToken(token, reading);
     const d = latest.current;
     if (!d) return;
-    const bb = bodyOf(d);
-    const end = bb.texts.length - 1;
-    const { seg, pos } = reading || where.current.seg < 0 || where.current.seg > end ? { seg: end, pos: bb.texts[end].length } : where.current;
-    const text = bb.texts[seg];
-    const before = text.slice(0, pos), after = text.slice(pos);
-    const add = (before && !/\s$/.test(before) ? ' ' : '') + mentionOf(b, getBooks()) + (/^\s/.test(after) ? '' : ' ');
-    bb.texts[seg] = before + add + after;
-    where.current = { seg, pos: pos + add.length };
-    update({ text: serializeBody(bb) });
-    setOpen(null);
+    update({ text: d.text + (d.text && !/\s$/.test(d.text) ? ' ' : '') + token + ' ' });
+  };
+
+  /** The Link sheet, for the link at the caret (or the selected words, or the word at the caret). */
+  const openLink = () => {
+    const n = noteRef.current;
+    if (!n || reading) return;
+    const at = n.linkAt();
+    setLinkTo({ text: at.text, href: at.href });
+    setOpen('link');
   };
 
   /* ---------- @tags ---------- */
 
-  const setMention = (seg: number, m: Typed | null) => {
+  const setMention = (m: Typed | null) => {
     if (!m) dismissed.current = '';
-    else if (dismissed.current === `${seg}:${m.start}`) m = null;
-    setMentionState((cur) =>
-      !m ? (cur?.seg === seg ? null : cur)
-      : cur && cur.seg === seg && cur.start === m.start && cur.end === m.end && cur.q === m.q && !!cur.link === !!m.link ? cur
-      : { seg, ...m });
+    else if (dismissed.current === String(m.from)) m = null;
+    setMentionState((cur) => (!m ? null : cur && cur.from === m.from && cur.to === m.to && cur.q === m.q && cur.link === m.link ? cur : m));
   };
   const typing = mention;
   const suggestions: (Suggestion | LinkSuggestion)[] = !typing ? []
@@ -927,14 +705,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
    */
   const pickMention = async (s: Suggestion | LinkSuggestion | 'new') => {
     const m = mention;
-    const el = m && areas.current[m.seg];
-    if (!m || !el || !latest.current || !alive.current || removing.current || pickingMention.current) return;
-    const box = editable(el);
-    const source = box.value;
-    if (source.slice(m.start, m.end) !== (m.link ? '[[' : '@') + m.q) return setMentionState(null);
+    const n = noteRef.current;
+    if (!m || !n || !latest.current || !alive.current || removing.current || pickingMention.current) return;
     // Keep the keyboard open in the original touch event; a later asynchronous focus cannot open it on iOS.
-    box.focus({ preventScroll: true });
-    const selection = { start: box.selectionStart, end: box.selectionEnd };
+    n.focus();
+    const version = n.version();
+    const selection = n.selection();
     let awaitedCreation = false;
     let person: Person | null = null;
     let token: string;
@@ -978,32 +754,26 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     }
     if (person?.emotions[0]) color = `var(--emo-${coreOf(person.emotions[0]).id})`;
     const d = latest.current;
-    if (!alive.current || removing.current || !d || areas.current[m.seg] !== el || box.value !== source) return;
-    if (awaitedCreation && (document.activeElement !== el || box.selectionStart !== selection.start || box.selectionEnd !== selection.end)) return;
-    const b = bodyOf(d);
-    if (b.texts[m.seg] !== source) return;
-    const v = source;
-    // a link typed inside brackets already closed takes their place
-    const after = m.link && v.startsWith(']]', m.end) ? v.slice(m.end + 2) : v.slice(m.end);
-    const insert = token + (/^\s/.test(after) ? '' : ' ');
-    box.value = v.slice(0, m.start) + insert + after;
-    box.setSelectionRange(m.start + insert.length, m.start + insert.length);
-    where.current = { seg: m.seg, pos: m.start + insert.length };
-    b.texts[m.seg] = box.value;
-    update({ text: serializeBody(b), ...(person && !d.people.includes(person.id) ? { people: [...d.people, person.id] } : {}) });
+    // the words changed meanwhile (or, after a wait, the caret moved or the note lost the focus): left as they are
+    if (!alive.current || removing.current || !d || noteRef.current !== n || n.version() !== version) return;
+    const now = n.selection();
+    if (awaitedCreation && (!n.focused() || now.from !== selection.from || now.to !== selection.to)) return;
+    if (!n.pick(m, token)) return setMentionState(null);
+    if (person && !d.people.includes(person.id)) update({ people: [...d.people, person.id] });
     setMentionState(null);
+    const landed = n.version();
     requestAnimationFrame(() => {
       const host = bodyRef.current;
-      if (alive.current && host && el.isConnected && areas.current[m.seg] === el && box.value.slice(m.start, m.start + token.length) === token)
-        burst(box.range(m.start, m.start + token.length), host, color);
+      if (!alive.current || !host || noteRef.current !== n || n.version() !== landed) return;
+      const range = n.rangeOf(m.from, m.from + 1);
+      if (range) burst(range, host, color);
     });
   };
 
   const mentionKey = (e: KeyboardEvent) => {
-    if (e.isComposing) return false;
-    if (!typing) return tidyAfterTag(e);
+    if (e.isComposing || !typing) return false;
     if (e.key === 'Escape') {
-      dismissed.current = `${typing.seg}:${typing.start}`;
+      dismissed.current = String(typing.from);
       setMentionState(null);
       return true;
     }
@@ -1019,53 +789,35 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     return false;
   };
 
-  /** A full stop, comma… typed just after a tag takes the place of the space the tag came with. */
-  const tidyAfterTag = (e: KeyboardEvent) => {
-    if (!/^[.,!?;:)]$/.test(e.key) || e.metaKey || e.ctrlKey || e.altKey) return false;
-    const el = e.currentTarget as HTMLDivElement;
-    const box = editable(el);
-    const at = box.selectionStart;
-    const i = areas.current.indexOf(el);
-    if (i < 0 || at !== box.selectionEnd || !/(@\[[^\]\n]+\]|♪\[[^\]\n]+\]|\]\]) $/.test(box.value.slice(0, at))) return false;
-    box.setRangeText(e.key, at - 1, at);
-    box.setSelectionRange(at, at);
-    setText(i, box.value);
-    return true;
-  };
-
   /** The @ and link buttons: type an @ (or [[) where the caret is (writing first, if reading), which brings up the suggestions. */
   const startMention = (sigil: '@' | '[[' = '@') => {
-    const go = () => {
-      const box = target();
-      if (!box) return;
-      const { selectionStart: a, selectionEnd: z } = box;
-      box.focus();
-      box.setSelectionRange(a, z);
-      const original = box.value;
-      const before = original.slice(0, a);
-      const insert = (before && !/[\s([{]$/.test(before) ? ' ' : '') + sigil;
-      try { document.execCommand('insertText', false, insert); } catch {}
-      if (box.value === original) box.setRangeText(insert, a, z);
-      const pos = a + insert.length;
-      box.setSelectionRange(pos, pos);
-      const seg = areas.current.findIndex((el) => el === box.el);
-      if (seg >= 0) {
-        setText(seg, box.value);
-        where.current = { seg, pos };
-        setMention(seg, sigil === '@' ? typedMention(box.value, pos) : typedLink(box.value, pos));
-      }
-    };
-    if (!reading) return go();
-    flushSync(() => setReading(false));
-    go();
+    write();
+    const typed = noteRef.current?.trigger(sigil);
+    if (typed) setMention(typed);
+  };
+
+  /** Where the caret is kept clear of: under the ribbon on a computer, above the bar over a phone's keyboard. */
+  const margins = () => {
+    const wide = document.querySelector('.ribbon.is-wide:not(.is-focus)');
+    const bars = [...document.querySelectorAll('.ribbon-root .format-bar:not(.is-tucked):not(.is-wide)')];
+    const barTop = Math.min(innerHeight, ...bars.map((b) => b.getBoundingClientRect().top));
+    return { top: (wide ? Math.max(0, wide.getBoundingClientRect().bottom) : 0) + 24, bottom: Math.max(0, innerHeight - barTop) + 24 };
+  };
+  /** Whether a picture is the note's own: its photos or images are in the note (pasted from another note, they aren't). */
+  const knows = (m: Media) => {
+    const d = latest.current;
+    const st = stash.current;
+    return !!d && itemsOf(m).every((it) => it.kind === 'photo'
+      ? [...d.photos, ...st.photos].some((p) => p.id === it.id)
+      : [...d.images, ...st.images].some((x) => x.url === it.url));
   };
 
   const close = () => setOpen(null);
   const isCheckin = draft.kind === 'checkin';
-  const body = bodyOf(draft);
-
-  const last = body.texts.length - 1;
-  const selIndex = reading || !sel ? -1 : body.media.findIndex((m) => mediaKey(m) === sel);
+  const selected = !reading && sel ? slots.find((s) => mediaKey(s.media) === sel)?.media : undefined;
+  const selKey = selected ? mediaKey(selected) : '';
+  const selBody = selected ? bodyNow() : null;
+  const selIndex = selBody ? selBody.media.findIndex((m) => mediaKey(m) === selKey) : -1;
 
   return (
     <div
@@ -1100,66 +852,49 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               value={draft.title}
               maxLength={300}
               onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write(0))}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write('start'))}
               aria-label={t('Title')}
             />
           </div>
           <DetailsSummary draft={draft} onOpen={() => setDetails(true)} onMusic={() => setOpen('music')} />
         </section>
 
-        <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef}>
-          {body.texts.map((text, i) => (
-            // keyed by the picture before it, so a picture put in mid-text gets a new block after it and the one
-            // being written in stays itself
-            <Fragment key={i ? mediaKey(body.media[i - 1]) : ''}>
-              {i > 0 && (() => {
-                const m = body.media[i - 1];
-                const key = mediaKey(m);
-                return (
-                  <MediaBlock
-                    key={key}
-                    m={m}
-                    draft={draft}
-                    editing={!reading}
-                    selected={!reading && sel === key}
-                    dragging={moving?.key === key}
-                    merging={moving?.onto === key}
-                    onSelect={() => setSel(key)}
-                    onOpen={(el, k) => view(i - 1, k, el)}
-                    onResize={(size) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), i - 1, { size, align: m.align })) })}
-                    onDrag={(e, el) => !reading && startMove(i - 1, e, el)}
-                  />
-                );
-              })()}
-              {reading ? (
-                text.trim() && (
-                  <div
-                    class="read-text"
-                    onClick={(e) => {
-                      // a tap on the words starts writing there; links, ticks and selecting text don't
-                      if ((e.target as Element).closest('a, input, button') || !getSelection()?.isCollapsed) return;
-                      write(i, tappedAt(e, text));
-                    }}
-                  >
-                    <Markdown text={text} onTask={(line) => setText(i, toggleTask(text, line))} />
-                  </div>
-                )
-              ) : (
-              <BodyText
-                value={text}
-                textRef={(el) => { areas.current[i] = el; if (i === 0) textRef.current = el; }}
-                grow={i === last}
-                placeholder={i === 0 && !body.media.length ? t('What’s on your mind?') : i === last ? t('Keep writing…') : undefined}
-                onChange={(v) => setText(i, v)}
-                onCaret={(pos) => (where.current = { seg: i, pos })}
-                onMention={(m) => setMention(i, m)}
-                onKey={mentionKey}
-                suggestionsOpen={typing?.seg === i}
-                activeSuggestion={typing?.seg === i && choices ? `mention-suggestions-option-${activeChoice}` : undefined}
-              />
-              )}
-            </Fragment>
-          ))}
+        <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef} onClick={tapToWrite}>
+          <NoteBody
+            text={initialText}
+            editable={!reading}
+            onChange={docChanged}
+            onTyped={setMention}
+            suggestKey={mentionKey}
+            onLink={openLink}
+            onMedia={setSlots}
+            knows={knows}
+            margins={margins}
+            onReady={(h) => {
+              if (!h) return;
+              noteRef.current = h;
+              setNote(h);
+            }}
+          />
+          {slots.map(({ dom, media: m }) => {
+            const key = mediaKey(m);
+            // each picture into its own slot in the document, keyed so it stays itself when pictures move
+            return <Fragment key={key}>{createPortal(
+              <MediaBlock
+                m={m}
+                draft={draft}
+                editing={!reading}
+                selected={!reading && sel === key}
+                dragging={moving?.key === key}
+                merging={moving?.onto === key}
+                onSelect={() => setSel(key)}
+                onOpen={(el, k) => view(key, k, el)}
+                onResize={(size) => noteRef.current?.media.layout(key, { size, align: m.align })}
+                onDrag={(e, el) => !reading && startMove(key, e, el)}
+              />,
+              dom,
+            )}</Fragment>;
+          })}
           {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label={t('Adding photo')} />)}
           {moving && !moving.onto && (
             <span
@@ -1171,9 +906,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             </span>
           )}
           {reading && !plainText(draft.text).trim() && (
-            <button class="read-empty" onClick={() => write(last)}>{t('Nothing written yet. Tap to write.')}</button>
+            <button class="read-empty" onClick={() => write('end')}>{t('Nothing written yet. Tap to write.')}</button>
           )}
-          {reading && <button class="read-tail" onClick={() => write(last)} aria-label={t('Keep writing')} tabIndex={-1} />}
+          {reading && <button class="read-tail" onClick={() => write('end')} aria-label={t('Keep writing')} tabIndex={-1} />}
         </div>
 
         {backlinks.length > 0 && (
@@ -1202,35 +937,35 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         onChange={(e) => { const input = e.currentTarget; addFiles([...(input.files ?? [])]); input.value = ''; }}
       />
       <FormatBar
-        target={target}
-        format={!reading}
+        note={note}
         swapLabel={typing?.link ? t('Link a note or a book') : t('Tag someone, a book or music')}
         swap={typing && (
           <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} link={typing.link} />
         )}
-        context={selIndex >= 0 ? { label: t('Picture'), content: (
+        context={selected && selBody ? { label: t('Picture'), content: (
             <MediaTools
-              m={body.media[selIndex]}
-              canUp={canStep(body, selIndex, -1)}
-              canDown={canStep(body, selIndex, 1)}
-              onLayout={(l) => update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, l)) })}
-              onStep={(dir) => setBody(stepMedia(bodyOf(latest.current!), selIndex, dir))}
-              onOpen={() => view(selIndex)}
+              m={selected}
+              canUp={canStep(selBody, selIndex, -1)}
+              canDown={canStep(selBody, selIndex, 1)}
+              onLayout={(l) => noteRef.current?.media.layout(selKey, l)}
+              onStep={(dir) => withBody(selKey, (b, i) => stepMedia(b, i, dir))}
+              onOpen={() => view(selKey)}
               onWrite={() => {
                 // beside a picture on a side; a picture on its own line moves to the left first, half as wide
-                const m = body.media[selIndex];
-                if ((m.size ?? 100) >= 100 || !m.align) update({ text: serializeBody(setLayout(bodyOf(latest.current!), selIndex, dropLayout(m, 'left'))) });
+                const n = noteRef.current;
+                if ((selected.size ?? 100) >= 100 || !selected.align) n?.media.layout(selKey, dropLayout(selected, 'left'));
                 setSel(null);
-                const el = areas.current[selIndex + 1];
-                if (!el) return;
-                el.focus({ preventScroll: true });
-                editable(el).setSelectionRange(0, 0);
+                n?.media.writeAfter(selKey);
               }}
-              onRemove={() => removePicture(body.media[selIndex])}
+              onRemove={() => removePicture(selected)}
               onUngroup={() => {
-                const b = ungroup(bodyOf(latest.current!), selIndex);
-                setBody(b);
-                setSel(mediaKey(b.media[selIndex]));
+                let first = '';
+                withBody(selKey, (b, i) => {
+                  const next = ungroup(b, i);
+                  first = mediaKey(next.media[i]);
+                  return next;
+                });
+                if (first) setSel(first);
               }}
             />
         ) } : undefined}
@@ -1246,6 +981,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           details: () => setDetails(true),
           reading,
           setReading: (on) => (on ? setReading(true) : write()),
+          link: openLink,
           addPhotos: () => fileRef.current?.click(),
           canAddPhotos: draft.photos.length + adding < MAX_PHOTOS,
           findImage: () => setOpen('images'),
@@ -1290,7 +1026,18 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         onClose={close}
         onAdd={(imgs) => {
           const fresh = imgs.filter((i) => !draft.images.some((x) => x.url === i.url)).slice(0, 12 - draft.images.length);
-          update({ images: [...draft.images, ...fresh], text: place(body, fresh.map((i) => ({ kind: 'image', url: i.url }))) });
+          update({ images: [...draft.images, ...fresh] });
+          place(fresh.map((i) => ({ kind: 'image', url: i.url })));
+        }}
+      />
+      <LinkSheet
+        open={open === 'link'}
+        onClose={close}
+        text={linkTo.text}
+        href={linkTo.href}
+        onDone={(to) => {
+          close();
+          noteRef.current?.cmds.link(to);
         }}
       />
       <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title={t('Mention a book')} status="reading" />

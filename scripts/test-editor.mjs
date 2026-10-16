@@ -10,11 +10,10 @@ async function compile(input) {
   const bundle = await rolldown({
     input,
     external: (id, importer) => Boolean(importer) && !/(?:^|\/)lib\/body(?:\.ts)?$/.test(id),
-    plugins: /(?:SpotifySheet|Editor)\.tsx$/.test(input) ? [{
+    plugins: /SpotifySheet\.tsx$/.test(input) ? [{
       name: 'expose-component-handlers',
       transform(source, id) {
         if (id.endsWith('/SpotifySheet.tsx')) return source + '\nexport { SearchTab };';
-        if (id.endsWith('/Editor.tsx')) return source + '\nexport { BodyText };';
       },
     }] : [],
   });
@@ -109,7 +108,7 @@ function harness(code, initial = {}) {
     require(id) {
       if (id === 'preact/hooks') return hooks;
       if (id.endsWith('/i18n')) return i18n;
-      if (id === 'preact/compat') return { flushSync(fn) { fn(); initial.onFlush?.(); } };
+      if (id === 'preact/compat') return { flushSync(fn) { fn(); initial.onFlush?.(); }, createPortal: (node) => node };
       if (id === 'preact/jsx-runtime') return { jsx: vnode, jsxs: vnode, Fragment: 'fragment' };
       const override = Object.entries(initial.modules ?? {}).find(([suffix]) => id.endsWith(suffix));
       if (override) return override[1];
@@ -151,7 +150,9 @@ function harness(code, initial = {}) {
       slots.forEach((slot) => slot?.cleanup?.());
     },
     timers() {
-      for (const [id, fn] of [...timers]) { timers.delete(id); fn(); }
+      // timers set by timers (the text written back, then saved) run too
+      for (let pass = 0; pass < 10 && timers.size; pass++)
+        for (const [id, fn] of [...timers]) { timers.delete(id); fn(); }
     },
     frames() {
       for (const [id, fn] of [...frames]) { frames.delete(id); fn(); }
@@ -491,8 +492,8 @@ test('photo viewer: leaving a note cancels a pending photo lookup before opening
       '/viewer': { openViewer: () => { opens++; } },
     },
   });
-  const tree = h.render();
-  const media = find(tree, node => node.type.name === 'MediaBlock');
+  find(h.render(), (n) => n.type.name === 'NoteBody').props.onMedia([{ dom: {}, pos: 1, media: { kind: 'photo', id: photo.id } }]);
+  const media = find(h.render(), node => node.type.name === 'MediaBlock');
   const pending = media.props.onOpen(null, 0);
   h.unmount();
   photoLookup.resolve('blob:photo');
@@ -521,139 +522,159 @@ for (const leave of [false, true]) {
   });
 }
 
-function mockEditable(value) {
+/**
+ * The note's editor (editor/NoteBody.tsx) as the Editor sees it, over a plain string: what's typed before the caret,
+ * the tags put in, the caret and the focus. The real one, on its document, is tested in scripts/test-notedoc-edit.mjs.
+ */
+function mockNote(value, h) {
   const el = {};
-  return {
-    el, value, selectionStart: value.length, selectionEnd: value.length,
-    focus() {}, tidy() {}, settle() {}, before() {}, record() {}, edit(change) { change(); }, undo() { return false; }, redo() { return false; },
-    setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
-    setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); },
-    range() { return { getBoundingClientRect: () => ({ width: 0 }) }; },
+  const n = {
+    el, value, from: value.length, to: value.length, ver: 0, editable: true, focusCalls: 0, props: null,
+    changed() { this.ver++; this.props?.onChange(); },
+    text() { return this.value; },
+    version() { return this.ver; },
+    setText(t) { if (t !== this.value) { this.value = t; this.changed(); } },
+    focused() { return h().document.activeElement === el; },
+    setEditable(on) { this.editable = on; },
+    focus(at) {
+      this.focusCalls++;
+      h().document.activeElement = el;
+      if (at === 'end') this.from = this.to = this.value.length;
+      if (at === 'start') this.from = this.to = 0;
+    },
+    posAt: () => null,
+    selection() { return { from: this.from, to: this.to }; },
+    setSelection(a, b = a) { this.from = a; this.to = b; },
+    typed() {
+      const m = /@([^\n@[\]]*)$/.exec(this.value.slice(0, this.from));
+      return m ? { from: this.from - m[1].length - 1, to: this.from, q: m[1], link: false } : null;
+    },
+    trigger(sigil) {
+      const before = this.value.slice(0, this.from);
+      const add = (before && !/[\s([{]$/.test(before) ? ' ' : '') + sigil;
+      this.value = before + add + this.value.slice(this.to);
+      this.from = this.to = before.length + add.length;
+      this.changed();
+      return this.typed();
+    },
+    pick(t, token) {
+      if (this.value.slice(t.from, t.to) !== '@' + t.q) return false;
+      const after = this.value.slice(t.to);
+      const add = token + (/^\s/.test(after) ? '' : ' ');
+      this.value = this.value.slice(0, t.from) + add + after;
+      this.from = this.to = t.from + add.length;
+      this.changed();
+      return true;
+    },
+    insertToken() {},
+    rangeOf(a, b) { return this.range ? this.range(a, b) : null; },
+    linkAt: () => ({ from: 0, to: 0, text: '', href: null }),
+    lit: () => null,
+    watch: () => () => {},
+    cmds: {},
+    media: { list: () => [], insert() {}, layout() {}, dropTargets: () => [], move() {}, writeAfter() {} },
   };
+  return n;
 }
-const tagModules = (box) => ({
-  '/lib/editable': { editable: () => box, PLAIN: true },
+const tagModules = {
   '/lib/weather': { contextNow: async () => null, needsWeather: () => false },
   '/lib/mentions': {
-    typedMention(text, caret) {
-      const m = /@([^\n@\[\]]*)$/.exec(text.slice(0, caret));
-      return m ? { start: caret - m[1].length - 1, end: caret, q: m[1] } : null;
-    },
     suggest: (q, people) => people.filter((p) => p.name.toLowerCase().startsWith(q.trim().toLowerCase())).map((item) => ({ kind: 'person', item })),
     mentionOfPerson: (p) => `@[${p.name}]`,
-    mentionsIn: () => [],
   },
-});
-
-test('iOS tagging: selectionchange finds first letters when input precedes the caret update', () => {
-  const box = mockEditable('@A');
-  box.selectionStart = box.selectionEnd = 1;
-  const h = harness(editorCode, { modules: tagModules(box) });
-  let mention;
-  const props = { value: '@A', onChange() {}, onCaret() {}, onMention(m) { mention = m; }, onKey: () => false };
-  const tree = h.render('BodyText', props);
-  tree.props.ref(box.el);
-  h.document.activeElement = box.el;
-  tree.props.onInput({ currentTarget: box.el, type: 'input' });
-  assert.equal(mention.q, '');
-  box.selectionStart = box.selectionEnd = 2;
-  for (const fn of h.documentListeners.get('selectionchange')) fn();
-  assert.equal(mention.q, 'A');
-  assert.equal(mention.start, 0);
-});
-
-test('iOS tagging: next-frame caret check works without keyboard keyup events', () => {
-  const box = mockEditable('@An');
-  box.selectionStart = box.selectionEnd = 1;
-  const h = harness(editorCode, { modules: tagModules(box) });
-  let mention;
-  const tree = h.render('BodyText', { value: '@An', onChange() {}, onCaret() {}, onMention(m) { mention = m; }, onKey: () => false });
-  tree.props.ref(box.el);
-  h.document.activeElement = box.el;
-  tree.props.onInput({ currentTarget: box.el, type: 'input' });
-  box.selectionStart = box.selectionEnd = 3;
-  h.frames();
-  assert.equal(mention.q, 'An');
-  h.unmount();
-  assert.equal(h.documentListeners.get('selectionchange').size, 0);
-});
-
-test('tagging: IME Enter cannot accept a suggestion or run a list command', () => {
-  const box = mockEditable('@An');
-  const h = harness(editorCode, { modules: tagModules(box) });
-  let keys = 0, prevented = 0, mention;
-  const tree = h.render('BodyText', { value: '@An', onChange() {}, onCaret() {}, onMention(m) { mention = m; }, onKey: () => { keys++; return true; } });
-  tree.props.ref(box.el);
-  h.document.activeElement = box.el;
-  tree.props.onCompositionStart();
-  tree.props.onKeyDown({ key: 'Enter', currentTarget: box.el, preventDefault() { prevented++; } });
-  assert.equal(keys, 0);
-  assert.equal(prevented, 0);
-  assert.equal(mention, null);
-  tree.props.onCompositionEnd({ type: 'compositionend', currentTarget: box.el });
-  assert.equal(mention.q, 'An');
-});
+};
+/** Renders the editor and hands it the mock note editor, as NoteBody does once it's mounted. */
+function withNote(h, note, props) {
+  let tree = h.render('Editor', props);
+  const body = find(tree, (n) => n.type.name === 'NoteBody');
+  note.props = body.props;
+  body.props.onReady(note);
+  tree = h.render('Editor', props);
+  return tree;
+}
 
 function mentionEditor(source, initial = {}) {
-  const box = mockEditable(source);
-  const h = harness(editorCode, { ...initial, entry: { text: source }, modules: { ...tagModules(box), ...initial.modules } });
-  box.focus = () => { h.document.activeElement = box.el; };
+  let h;
+  const note = mockNote(source, () => h);
+  h = harness(editorCode, { ...initial, entry: { text: source }, modules: { ...tagModules, ...initial.modules } });
   const props = { id: 'new', query: new URLSearchParams() };
-  let tree = h.render('Editor', props);
-  let body = find(tree, (n) => n.type.name === 'BodyText');
-  body.props.textRef(box.el);
-  body.props.onChange(source);
-  body.props.onMention({ start: 0, end: source.length, q: source.slice(1) });
-  tree = h.render('Editor', props);
-  body = find(tree, (n) => n.type.name === 'BodyText');
+  withNote(h, note, props);
+  note.focus();
+  note.changed();
+  note.props.onTyped(note.typed());
+  const tree = h.render('Editor', props);
   const strip = find(tree, (n) => n.type.name === 'FormatBar').props.swap;
-  return { h, box, props, tree, body, strip };
+  return { h, note, props, tree, strip };
 }
+
+test('tagging: what is typed after an @ brings up the suggestions, and Escape puts them away', () => {
+  const { h, note, props, strip } = mentionEditor('@An', { people: [person] });
+  assert.equal(strip.type.name, 'MentionStrip');
+  assert.equal(strip.props.q, 'An');
+  const tree = h.render('Editor', props);
+  assert.equal(find(tree, (n) => n.type.name === 'NoteBody').props.suggestKey({ key: 'Escape' }), true);
+  assert.equal(find(h.render('Editor', props), (n) => n.type.name === 'FormatBar').props.swap, null);
+  // the same @ stays put away, until it's somewhere else
+  note.props.onTyped(note.typed());
+  assert.equal(find(h.render('Editor', props), (n) => n.type.name === 'FormatBar').props.swap, null);
+});
+
+test('tagging: IME Enter cannot accept a suggestion', async () => {
+  const p = { ...person, emotions: [] };
+  const { h, note, props } = mentionEditor('@An', { people: [p] });
+  const body = find(h.render('Editor', props), (n) => n.type.name === 'NoteBody');
+  assert.equal(body.props.suggestKey({ key: 'Enter', isComposing: true }), false);
+  await settle();
+  assert.equal(note.value, '@An');
+  assert.equal(body.props.suggestKey({ key: 'Enter' }), true);
+  await settle();
+  assert.equal(note.value, '@[Ann] ');
+});
 
 test('tagging: selecting a person restores focus, inserts once, and attaches their ID', async () => {
   const p = { ...person, emotions: [] };
-  const { h, box, strip } = mentionEditor('@An', { people: [p] });
+  const { h, note, strip } = mentionEditor('@An', { people: [p] });
+  h.document.activeElement = null;
   await strip.props.onPick({ kind: 'person', item: p });
   await strip.props.onPick({ kind: 'person', item: p });
   h.timers();
-  assert.equal(box.value, '@[Ann] ');
-  assert.equal(h.document.activeElement, box.el);
+  assert.equal(note.value, '@[Ann] ');
+  assert.equal(h.document.activeElement, note.el);
   assert.deepEqual(Array.from(h.entries.get('checkin-new').people), [p.id]);
+  assert.equal(h.entries.get('checkin-new').text, '@[Ann] ');
 });
 
-test('tagging: the animation measures the inserted text after rendering and anchors to the note body', async () => {
+test('tagging: the animation measures the inserted tag after rendering and anchors to the note body', async () => {
   const calls = [], measured = [];
   const range = { getClientRects: () => [] };
   const p = { ...person, emotions: [] };
-  const { h, box, tree, strip } = mentionEditor('@An', { people: [p], modules: {
+  const { h, note, tree, strip } = mentionEditor('@An', { people: [p], modules: {
     '/components/mentions': { MentionStrip() {}, burst: (...args) => calls.push(args) },
   } });
   const host = { isConnected: true };
   find(tree, n => n.props?.class?.startsWith('note-body')).props.ref.current = host;
-  box.el.isConnected = true;
-  box.range = (start, end) => { measured.push([start, end]); return range; };
+  note.range = (from, to) => { measured.push([from, to]); return range; };
   await strip.props.onPick({ kind: 'person', item: p });
-  assert.equal(calls.length, 0, 'measure after the inserted text has rendered');
+  assert.equal(calls.length, 0, 'measure after the inserted tag has rendered');
   h.frames();
-  assert.deepEqual(measured, [[0, 6]]);
+  assert.deepEqual(measured, [[0, 1]], 'the tag is one character of the document');
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], range, 'pass the range rather than its union box');
   assert.equal(calls[0][1], host);
 });
 
-test('tagging: a pending animation does not run after the note leaves or its inserted text changes', async () => {
-  for (const reason of ['detached', 'unmounted', 'changed']) {
+test('tagging: a pending animation does not run after the note leaves or its words change', async () => {
+  for (const reason of ['unmounted', 'changed']) {
     const calls = [];
     const p = { ...person, emotions: [] };
-    const { h, box, tree, strip } = mentionEditor('@An', { people: [p], modules: {
+    const { h, note, tree, strip } = mentionEditor('@An', { people: [p], modules: {
       '/components/mentions': { MentionStrip() {}, burst: (...args) => calls.push(args) },
     } });
     find(tree, n => n.props?.class?.startsWith('note-body')).props.ref.current = { isConnected: true };
-    box.el.isConnected = true;
+    note.range = () => ({});
     await strip.props.onPick({ kind: 'person', item: p });
-    if (reason === 'detached') box.el.isConnected = false;
     if (reason === 'unmounted') h.unmount();
-    if (reason === 'changed') box.value = 'Replaced before paint';
+    if (reason === 'changed') note.setText('Replaced before paint');
     h.frames();
     assert.equal(calls.length, 0, reason);
   }
@@ -661,52 +682,51 @@ test('tagging: a pending animation does not run after the note leaves or its ins
 
 test('tagging: a deleted suggestion never creates an attachment to a missing person', async () => {
   const p = { ...person, emotions: [] };
-  const { h, box, strip } = mentionEditor('@An', { people: [p] });
+  const { h, note, strip } = mentionEditor('@An', { people: [p] });
   h.people.delete(p.id);
   await strip.props.onPick({ kind: 'person', item: p });
-  assert.equal(box.value, '@An');
+  assert.equal(note.value, '@An');
   assert.deepEqual(Array.from(h.entries.get('note-1').people), []);
 });
 
 test('tagging: a renamed suggestion uses the latest saved name', async () => {
   const p = { ...person, emotions: [] };
-  const { h, box, strip } = mentionEditor('@An', { people: [p] });
+  const { h, note, strip } = mentionEditor('@An', { people: [p] });
   h.people.set(p.id, { ...p, name: 'Anne' });
   await strip.props.onPick({ kind: 'person', item: p });
-  assert.equal(box.value, '@[Anne] ');
+  assert.equal(note.value, '@[Anne] ');
 });
 
 test('tagging: an unmatched multiword name can be created and is saved before attachment', async () => {
   const saving = deferred();
   let calls = 0;
-  const { h, box, strip } = mentionEditor('@Ana Maria', { savePerson: async (p) => { calls++; await saving.promise; h.people.set(p.id, p); return p; } });
+  const { h, note, strip } = mentionEditor('@Ana Maria', { savePerson: async (p) => { calls++; await saving.promise; h.people.set(p.id, p); return p; } });
   assert.equal(strip.type.name, 'MentionStrip');
   assert.equal(strip.props.canAdd, true);
   const picking = strip.props.onAdd();
   await strip.props.onAdd();
   assert.equal(calls, 1);
-  assert.equal(box.value, '@Ana Maria');
+  assert.equal(note.value, '@Ana Maria');
   saving.resolve();
   await picking;
   h.timers();
-  assert.equal(box.value, '@[Ana Maria] ');
+  assert.equal(note.value, '@[Ana Maria] ');
   assert.deepEqual(Array.from(h.entries.get('checkin-new').people), ['person-new']);
 });
 
 test('tagging: failed person creation preserves the query and note draft', async () => {
-  const { h, box, strip } = mentionEditor('@Ana', { savePerson: async () => { throw new Error('Storage full'); } });
+  const { h, note, strip } = mentionEditor('@Ana', { savePerson: async () => { throw new Error('Storage full'); } });
   await strip.props.onAdd();
-  assert.equal(box.value, '@Ana');
+  assert.equal(note.value, '@Ana');
   assert.match(h.messages[0], /Couldn’t save/);
   assert.equal(h.people.size, 0);
 });
 
 test('tagging: typing during person creation never overwrites later words', async () => {
   const saving = deferred();
-  const { h, box, strip, body } = mentionEditor('@Ana', { savePerson: async (p) => { await saving.promise; h.people.set(p.id, p); return p; } });
+  const { h, note, strip } = mentionEditor('@Ana', { savePerson: async (p) => { await saving.promise; h.people.set(p.id, p); return p; } });
   const picking = strip.props.onAdd();
-  box.value = '@Ana is here';
-  body.props.onChange(box.value);
+  note.setText('@Ana is here');
   saving.resolve();
   await picking;
   h.timers();
@@ -714,59 +734,42 @@ test('tagging: typing during person creation never overwrites later words', asyn
   assert.deepEqual(Array.from(h.entries.get('checkin-new').people), []);
 });
 
-test('tagging: @ button falls back when insertText is unsupported and immediately opens suggestions', () => {
-  const box = mockEditable('Words');
-  const h = harness(editorCode, { entry: { text: '' }, modules: tagModules(box) });
-  box.focus = () => { h.document.activeElement = box.el; };
+test('tagging: the Mention button types an @ at the caret and immediately opens suggestions', () => {
+  let h;
+  const note = mockNote('Words', () => h);
+  h = harness(editorCode, { entry: { text: '' }, modules: tagModules });
   const props = { id: 'new', query: new URLSearchParams() };
-  let tree = h.render('Editor', props);
-  const body = find(tree, (n) => n.type.name === 'BodyText');
-  body.props.textRef(box.el);
-  body.props.onChange('Words');
-  tree = h.render('Editor', props);
+  let tree = withNote(h, note, props);
   find(tree, (n) => n.type.name === 'FormatBar').props.ribbon.mention(); // the ribbon's Mention (Insert tab)
-  assert.equal(box.value, 'Words @');
-  assert.equal(box.selectionStart, 7);
+  assert.equal(note.value, 'Words @');
+  assert.equal(note.from, 7);
+  assert.equal(h.document.activeElement, note.el);
   tree = h.render('Editor', props);
   assert.equal(find(tree, (n) => n.type.name === 'FormatBar').props.swap.type.name, 'MentionStrip');
   h.timers();
   assert.equal(h.entries.get('checkin-new').text, 'Words @');
 });
 
-test('iOS tagging: @ from reading view renders and focuses editing within the same touch', () => {
-  const box = mockEditable('Words');
-  let h, focusCalls = 0;
-  const initial = { entry: { text: 'Words' }, modules: tagModules(box), onFlush() {
-    const tree = h.render();
-    find(tree, (n) => n.type.name === 'BodyText').props.textRef(box.el);
-  } };
-  h = harness(editorCode, initial);
-  box.focus = () => { focusCalls++; h.document.activeElement = box.el; };
-  const tree = h.render();
-  assert.equal(find(tree, (n) => n.type.name === 'BodyText'), undefined);
+test('iOS tagging: @ from reading view makes the words editable and focuses them within the same touch', () => {
+  let h, flushed = 0;
+  const note = mockNote('Words', () => h);
+  h = harness(editorCode, { entry: { text: 'Words' }, modules: tagModules, onFlush() { flushed++; } });
+  const props = { id: 'note-1', query: new URLSearchParams() };
+  const tree = withNote(h, note, props);
+  assert.equal(find(tree, (n) => n.type.name === 'NoteBody').props.editable, false, 'a note with words opens to read');
+  note.editable = false;
+  note.setSelection(0);
   find(tree, (n) => n.type.name === 'FormatBar').props.ribbon.mention(); // the ribbon's Mention (Insert tab)
-  assert.equal(focusCalls, 1, 'Focus happens before any animation frame runs');
-  assert.equal(box.value, 'Words @');
-});
-
-test('tagging: outside text updates preserve a selected range instead of collapsing it', () => {
-  const box = mockEditable('Original');
-  const h = harness(editorCode, { modules: tagModules(box) });
-  const props = { value: 'Original', onChange() {}, onCaret() {}, onMention() {}, onKey: () => false };
-  const tree = h.render('BodyText', props);
-  tree.props.ref(box.el);
-  h.document.activeElement = box.el;
-  box.selectionStart = 1;
-  box.selectionEnd = 4;
-  h.render('BodyText', { ...props, value: 'Updated words' });
-  assert.equal(box.selectionStart, 1);
-  assert.equal(box.selectionEnd, 4);
+  assert.equal(flushed, 1, 'the writing view is rendered before the focus');
+  assert.equal(note.editable, true);
+  assert.equal(note.focusCalls, 1, 'Focus happens before any animation frame runs');
+  assert.equal(note.value, 'Words @', 'from reading, the @ goes at the end');
 });
 
 test('tagging: a decomposed name never offers creation of an existing composed name', async () => {
   const p = { ...person, name: 'Ána' };
   let saves = 0;
-  const { h, strip } = mentionEditor('@A\u0301na', { people: [p], savePerson: async () => { saves++; } });
+  const { h, strip } = mentionEditor('@Ána', { people: [p], savePerson: async () => { saves++; } });
   assert.equal(strip.props.canAdd, false);
   await strip.props.onAdd();
   assert.equal(saves, 0);
@@ -776,24 +779,24 @@ test('tagging: a decomposed name never offers creation of an existing composed n
 test('tagging: a stale new-person option reuses a canonically equivalent saved person', async () => {
   const p = { ...person, name: 'Ána' };
   let saves = 0;
-  const { h, box, strip } = mentionEditor('@A\u0301na', { savePerson: async () => { saves++; } });
+  const { h, note, strip } = mentionEditor('@Ána', { savePerson: async () => { saves++; } });
   assert.equal(strip.props.canAdd, true);
   h.people.set(p.id, p);
   await strip.props.onAdd();
   h.timers();
   assert.equal(saves, 0);
   assert.equal(h.people.size, 1);
-  assert.equal(box.value, '@[Ána] ');
+  assert.equal(note.value, '@[Ána] ');
   assert.deepEqual(Array.from(h.entries.get('checkin-new').people), [p.id]);
 });
 
 for (const movement of ['caret', 'focus']) {
   test(`tagging: pending person creation preserves a moved ${movement} even when text is unchanged`, async () => {
     const saving = deferred();
-    const { h, box, strip } = mentionEditor('@Ana', { savePerson: async (p) => { await saving.promise; h.people.set(p.id, p); return p; } });
+    const { h, note, strip } = mentionEditor('@Ana', { savePerson: async (p) => { await saving.promise; h.people.set(p.id, p); return p; } });
     const picking = strip.props.onAdd();
     const otherBlock = {};
-    if (movement === 'caret') box.setSelectionRange(0, 0);
+    if (movement === 'caret') note.setSelection(0);
     else h.document.activeElement = otherBlock;
     saving.resolve();
     await picking;
@@ -801,7 +804,40 @@ for (const movement of ['caret', 'focus']) {
     assert.equal(h.entries.get('checkin-new').text, '@Ana');
     assert.deepEqual(Array.from(h.entries.get('checkin-new').people), []);
     assert.equal(h.people.size, 1, 'The selected person is still saved');
-    if (movement === 'caret') assert.equal(box.selectionStart, 0);
+    if (movement === 'caret') assert.equal(note.from, 0);
     else assert.equal(h.document.activeElement, otherBlock);
   });
 }
+
+test('pictures: a picture the editor shows opens full screen from its slot', async () => {
+  let opened = null;
+  let h;
+  const note = mockNote('', () => h);
+  h = harness(editorCode, {
+    entry: { photos: [photo], text: '[[photo:pphoto123]]' },
+    modules: { ...tagModules, '/photos': { photoUrl: async () => 'blob:photo' }, '/viewer': { openViewer: (items, at) => { opened = { items, at }; } } },
+  });
+  note.value = '\n[[photo:pphoto123]]\n';
+  const props = { id: 'note-1', query: new URLSearchParams() };
+  let tree = withNote(h, note, props);
+  note.props.onMedia([{ dom: {}, pos: 1, media: { kind: 'photo', id: photo.id } }]);
+  tree = h.render('Editor', props);
+  await find(tree, (n) => n.type.name === 'MediaBlock').props.onOpen(null, 0);
+  assert.equal(opened.items.length, 1);
+  assert.equal(opened.items[0].src, 'blob:photo');
+});
+
+test('pictures: photos follow the words — one cut from the note waits, and comes back with it', () => {
+  let h;
+  const note = mockNote('', () => h);
+  const marker = '\n[[photo:pphoto123]]\n';
+  h = harness(editorCode, { entry: { photos: [photo], text: marker }, modules: tagModules });
+  note.value = marker;
+  withNote(h, note, { id: 'note-1', query: new URLSearchParams() });
+  note.setText('');
+  h.timers();
+  assert.equal(h.entries.get('note-1').photos.length, 0);
+  note.setText(marker);
+  h.timers();
+  assert.deepEqual(Array.from(h.entries.get('note-1').photos, (p) => p.id), [photo.id]);
+});

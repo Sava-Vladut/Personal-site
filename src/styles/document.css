@@ -58,7 +58,7 @@
   .note-sheet > .backlinks { margin-top: calc(40px * var(--z)); }
 
   /* Normal, at the page's zoom */
-  .note-sheet :is(.body-input, .md, .read-empty) { font-size: calc(var(--text-l) * var(--z)); }
+  .note-sheet :is(.md, .read-empty) { font-size: calc(var(--text-l) * var(--z)); }
 
   /* ---------- the header: Title, the properties line, then a hairline ---------- */
 

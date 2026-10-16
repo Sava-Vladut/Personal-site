@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { editable } from '../lib/editable';
 import { itemKey, itemsOf, mediaKey, MIN_SIZE, type Item, type Layout, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Entry } from '../lib/store';
@@ -352,39 +351,6 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
       </div>
     </>
   );
-}
-
-export interface DropTarget { seg: number; pos: number; y: number }
-
-/**
- * Every place a picture can be dropped (page coordinates): the start of each text block, the start of each line
- * (paragraph) in it, and the end of its text.
- */
-export function dropTargets(areas: (HTMLElement | null)[]): DropTarget[] {
-  const out: DropTarget[] = [];
-  areas.forEach((el, seg) => {
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + scrollY;
-    out.push({ seg, pos: 0, y: top });
-    const box = editable(el);
-    const v = box.value;
-    if (!v) return;
-    const lh = parseFloat(getComputedStyle(el).lineHeight) || 28;
-    let pos = 0;
-    let bottom = top;
-    v.split('\n').forEach((line, k) => {
-      let y = bottom; // a blank line sits just below the one before
-      const rects = line ? [...box.range(pos, pos + line.length).getClientRects()].filter((r) => r.height) : [];
-      if (rects.length) {
-        y = rects[0].top + scrollY;
-        bottom = rects[rects.length - 1].bottom + scrollY;
-      } else bottom += lh;
-      if (k > 0) out.push({ seg, pos, y });
-      pos += line.length + 1;
-    });
-    out.push({ seg, pos: v.length, y: bottom });
-  });
-  return out;
 }
 
 /**

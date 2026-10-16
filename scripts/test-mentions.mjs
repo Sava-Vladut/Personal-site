@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import vm from 'node:vm';
 import { rolldown } from 'rolldown';
 
-// Model the DOM shapes WebKit leaves in a contenteditable after line breaks and
-// composition. Exercise the real editor adapter, including DOM selection points.
+// Tags and note links as the text has them: typing them, suggesting, resolving, renaming and linking back.
+// (The note editor's own handling of them is scripts/test-notedoc-edit.mjs.)
 class TestNode {
   constructor(nodeName, nodeType = 1, data = '') {
     this.nodeName = nodeName;
@@ -102,8 +102,6 @@ const bundle = await rolldown({
       if (id === '\0store') return 'export const getBooks = () => [];';
       if (id === '\0review:mentions') return `
         export * from '${new URL('../src/lib/mentions.ts', import.meta.url).pathname}';
-        export { Editable } from '${new URL('../src/lib/editable.ts', import.meta.url).pathname}';
-        export { decorate } from '${new URL('../src/lib/liveMarkdown.ts', import.meta.url).pathname}';
         export { linkedFrom, linkOf, linkRanges, noteLabel, resolveNote, suggestLinks, typedLink } from '${new URL('../src/lib/links.ts', import.meta.url).pathname}';
       `;
     },
@@ -119,58 +117,6 @@ function load() {
 }
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const person = (id, name, extra = {}) => ({ id, name, relation: '', emotions: [], ...extra });
-
-test('Safari nested line blocks keep caret and mention range offsets consistent', () => {
-  const env = load();
-  const second = text('@Andrei');
-  const root = element('DIV', text('@Ana'), element('DIV', second), element('BR'));
-  env.document.activeElement = root;
-  const box = new env.Editable(root);
-  assert.equal(box.value, '@Ana\n@Andrei');
-  env.select(second, 3);
-  assert.equal(box.selectionStart, 8);
-  assert.deepEqual(plain(env.typedMention(box.value, box.selectionStart)), { start: 5, end: 8, q: 'An' });
-  const highlight = box.range(5, 12);
-  assert.equal(highlight.startContainer, second);
-  assert.equal(highlight.startOffset, 0);
-  assert.equal(highlight.endContainer, second);
-  assert.equal(highlight.endOffset, 7);
-  box.tidy();
-  assert.equal(box.value, '@Ana\n@Andrei');
-  assert.equal(box.selectionStart, 8);
-});
-
-test('tidying preserves backward selections and does not steal an unfocused selection', () => {
-  const env = load();
-  const second = text('@Andrei');
-  const root = element('DIV', text('@Ana'), element('P', second), element('BR'));
-  env.document.activeElement = root;
-  env.select(second, 1, 7, true);
-  const box = new env.Editable(root);
-  box.tidy();
-  assert.equal(box.selectionStart, 6);
-  assert.equal(box.selectionEnd, 12);
-  assert.equal(env.selection.anchorOffset, 12);
-  assert.equal(env.selection.focusOffset, 6);
-  const elsewhere = text('Other field');
-  env.document.activeElement = element('INPUT', elsewhere);
-  env.select(elsewhere, 3);
-  box.tidy();
-  assert.equal(env.selection.anchorNode, elsewhere);
-});
-
-test('inline wrappers, BR lines, emoji and stale range bounds remain valid', () => {
-  const env = load();
-  const root = element('DIV', element('SPAN', text('☕️ ')), element('BR'), element('SPAN', text('@Ștefan')), element('BR'));
-  const box = new env.Editable(root);
-  assert.equal(box.value, '☕️ \n@Ștefan');
-  const range = box.range(4, box.value.length);
-  assert.equal(range.startContainer.data, '@Ștefan');
-  assert.equal(range.startOffset, 0);
-  assert.equal(range.endOffset, 7);
-  assert.doesNotThrow(() => box.range(-100, 999));
-  assert.doesNotThrow(() => box.setSelectionRange(NaN, Infinity));
-});
 
 test('typed tags terminate on newlines, carriage returns, tabs and sentence punctuation', () => {
   const env = load();
@@ -206,60 +152,6 @@ test('mention tokens disambiguate canonical Unicode duplicates and highlights fo
   const found = env.mentionsIn('♪[Blue] then @[Émilie]', people, [], [song]);
   assert.deepEqual(plain(found.map((mention) => mention.kind)), ['song', 'person']);
   assert.doesNotThrow(() => env.mentionsIn('@[Ana]', [person('ana', 'Ana', { emotions: ['unknown'] })], [], []));
-});
-
-test('Markdown is styled while writing without changing the text or the caret', () => {
-  const env = load();
-  const root = element('DIV');
-  env.document.activeElement = root;
-  const box = new env.Editable(root);
-  const source = '# Day\nSome **bold** and *soft* ==bright== words\n- [x] done\n> [!note] mind @[Ana] **';
-  box.value = source;
-  assert.equal(box.value, source);
-  const kinds = [];
-  const visit = (node) => { if (node.className) kinds.push(node.className); node.childNodes.forEach(visit); };
-  visit(root);
-  for (const c of ['md-h md-h1', 'md-b', 'md-i', 'md-hl', 'md-li-mark md-task-mark is-done', 'md-done', 'md-quote', 'md-mark md-callout-mark']) assert.ok(kinds.includes(c), c);
-  // tags stay plain text, for their own highlight
-  assert.ok(!kinds.some((c) => c.includes('link')));
-  const at = source.indexOf('bold') + 2;
-  box.setSelectionRange(at, at);
-  assert.equal(box.selectionStart, at);
-  assert.equal(env.selection.anchorNode.data, 'bold');
-  // laying out the same text again leaves the nodes alone
-  const before = [...root.childNodes];
-  box.tidy();
-  assert.deepEqual(root.childNodes, before);
-  assert.equal(box.selectionStart, at);
-});
-
-test('typing a closing marker restyles only what changed and keeps the caret', () => {
-  const env = load();
-  const root = element('DIV');
-  env.document.activeElement = root;
-  const box = new env.Editable(root);
-  box.value = 'One *two*\nmake it **loud';
-  const first = root.childNodes[0];
-  // the browser types the closing ** into the text node at the caret
-  const last = root.childNodes.at(-1);
-  last.data = last.data.replace(/\n$/, '**\n');
-  env.select(last, last.data.length - 1);
-  assert.equal(box.value, 'One *two*\nmake it **loud**');
-  box.tidy();
-  assert.equal(box.value, 'One *two*\nmake it **loud**');
-  assert.equal(root.childNodes[0], first, 'untouched text keeps its node');
-  // a line with markers is a span of its own, so they can show while it's being written
-  assert.ok(root.childNodes.some((n) => n.className === 'md-line' && n.childNodes.some((k) => k.className === 'md-b')));
-  assert.equal(box.selectionStart, box.value.length);
-});
-
-test('plain text and code keep their characters', () => {
-  const env = load();
-  const flat = (list) => list.map((d) => (typeof d === 'string' ? d : flat(d.k))).join('');
-  for (const t of ['', 'plain', 'a\n\nb', '```\n**not bold**\n```\nafter', '1. one\n   - two', '---', 'see [site](https://x.y) #tag', '**', '`a` ~~b~~ *'])
-    assert.equal(flat(env.decorate(t)), t && t + '\n', t);
-  const code = env.decorate('```\n**x**\n```');
-  assert.ok(!JSON.stringify(code).includes('md-b'));
 });
 
 const note = (id, title, text = '', extra = {}) => ({ id, kind: 'note', title, text, date: '2026-10-05', dateEnd: null, emotions: [], ...extra });

@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.93.0',
+    date: '2026-10-16',
+    changes: [
+      'Notes: a new editor underneath, the one many professional editors are built on: bold, headings and lists are real formatting while you write, never hidden marks',
+      'Notes: tags for people, books, songs and other notes show as chips while writing too, not just when reading',
+      'Notes: reading and writing are the same page: tap a word while reading and the cursor lands right there',
+      'Notes: undo and redo cover everything you do in the note, including the ribbon’s commands and pictures',
+      'Notes: pasting from Word, Google Docs or a web page keeps headings, bold, lists and checklists',
+      'Notes: Insert → Link (or Ctrl+K) opens a small sheet for the words and the address, and can remove a link',
+      'Notes: a photo cut from a note comes back with it when you undo or paste it back',
+      'Notes: typing **bold**, *italic*, `code`, a web address or an @[name] turns into what it writes as you finish it',
+    ],
+  },
+  {
     version: '1.92.0',
     date: '2026-10-16',
     changes: [

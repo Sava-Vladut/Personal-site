@@ -131,23 +131,6 @@
   to { opacity: 0; scale: 0.2; translate: calc(cos(var(--a)) * (var(--w) / 2 + var(--d))) calc(sin(var(--a)) * (var(--h) / 2 + var(--d))); }
 }
 
-/* ---------- writing: tags glow in the text (CSS Custom Highlights; colours spelled out, as variables don't reach them) ---------- */
-
-::highlight(mm-at-none) { background-color: rgb(120 118 112 / 0.18); }
-::highlight(mm-at-sadness) { background-color: rgb(42 120 214 / 0.2); }
-::highlight(mm-at-hope-interest) { background-color: rgb(235 104 52 / 0.2); }
-::highlight(mm-at-calm-safety) { background-color: rgb(27 175 122 / 0.2); }
-::highlight(mm-at-joy) { background-color: rgb(237 161 0 / 0.24); }
-::highlight(mm-at-love-connection) { background-color: rgb(232 123 164 / 0.24); }
-::highlight(mm-at-shame-aversion) { background-color: rgb(0 131 0 / 0.18); }
-::highlight(mm-at-fear) { background-color: rgb(74 58 167 / 0.2); }
-::highlight(mm-at-anger) { background-color: rgb(227 73 72 / 0.2); }
-::highlight(mm-at-book) { background-color: rgb(192 138 82 / 0.26); }
-::highlight(mm-at-song) { background-color: rgb(138 108 240 / 0.22); }
-::highlight(mm-at-note) { background-color: rgb(120 118 112 / 0.16); text-decoration: underline dotted rgb(120 118 112 / 0.7); }
-/* a link's note:<id>| steps back, leaving its title to read */
-::highlight(mm-at-note-id) { color: rgb(140 138 132 / 0.55); }
-
 @media (prefers-reduced-motion: reduce) {
   .peek, .mention-pick, .mention-at, .mention .mini-record, .mention-pick .mini-record { animation: none !important; }
   .mention, .mention-pick { transition: none; }
