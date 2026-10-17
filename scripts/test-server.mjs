@@ -359,6 +359,17 @@ test('GitHub login sends you to GitHub asking for repo access, then stores the t
   assert.match(cancelled.headers.Location, /\?github=cancelled$/);
 });
 
+/** GitHub refusing every token, and confirming through its token check that they're gone. Records the tokens asked with. */
+const revokedGithub = (asked = []) => async (url, options) => {
+  if (String(url) === 'https://api.github.com/applications/gh-client/token') {
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers.Authorization, 'Basic ' + Buffer.from('gh-client:gh-secret').toString('base64'));
+    return Response.json({ message: 'Not Found' }, { status: 404 });
+  }
+  asked.push(options.headers.Authorization);
+  return Response.json({ message: 'Bad credentials' }, { status: 401 });
+};
+
 test('GitHub status reports public and private repo counts, and whether private ones are visible', async () => {
   const cookie = sealedCookie({ a: 'gho_secret' }, 'mm_gh');
   assert.deepEqual((await raw('/api/github/status')).body, { configured: true, connected: false });
@@ -386,8 +397,8 @@ test('GitHub status reports public and private repo counts, and whether private 
   assert.equal(limited.privateVisible, false);
   assert.equal(limited.private, undefined);
 
-  // a revoked token signs the browser out
-  globalThis.fetch = async () => Response.json({ message: 'Bad credentials' }, { status: 401 });
+  // a revoked token, which GitHub confirms is gone, signs the browser out
+  globalThis.fetch = revokedGithub();
   const revoked = await raw('/api/github/status', cookie);
   assert.equal(revoked.body.connected, false);
   assert.match(revoked.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
@@ -447,7 +458,7 @@ test('GitHub repos, commits and README are read with the sign-in cookie and trim
   assert.equal(seen.length, before);
 
   // a refused token signs this browser out
-  globalThis.fetch = async () => Response.json({ message: 'Bad credentials' }, { status: 401 });
+  globalThis.fetch = revokedGithub();
   const refused = await raw('/api/github/repos', cookie);
   assert.equal(refused.status, 401);
   assert.match(refused.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
@@ -527,14 +538,14 @@ test('a GitHub token revoked by newer sign-ins elsewhere is swapped for the acco
   assert.ok(status.headers['Set-Cookie'].some((c) => c.startsWith('mm_gh=') && !c.includes('Max-Age=0')), 'the desktop is handed the newest token');
 
   // once every token for the account is refused, the browser is signed out and the saved one forgotten
-  globalThis.fetch = async () => Response.json({ message: 'Bad credentials' }, { status: 401 });
+  globalThis.fetch = revokedGithub();
   const gone = await raw('/api/github/repos', desktop);
   assert.equal(gone.status, 401);
   assert.match(gone.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
-  let asked = 0;
-  globalThis.fetch = async () => (asked++, Response.json({ message: 'Bad credentials' }, { status: 401 }));
+  const asked = [];
+  globalThis.fetch = revokedGithub(asked);
   await raw('/api/github/repos', desktop);
-  assert.equal(asked, 1, 'nothing saved is left to try');
+  assert.deepEqual(asked, ['Bearer gho_desktop'], 'nothing saved is left to try');
 });
 
 test('GitHub being unreachable reports the sign-in as kept, not signed out', async () => {
@@ -545,4 +556,42 @@ test('GitHub being unreachable reports the sign-in as kept, not signed out', asy
   assert.equal(status.body.connected, true);
   assert.match(status.body.error, /reach GitHub/);
   assert.ok(!status.headers['Set-Cookie']?.length, 'the cookie is left alone');
+});
+
+test('a GitHub refusal that GitHub can’t confirm keeps the sign-in instead of signing out', async () => {
+  const cookie = sealedCookie({ a: 'gho_alive', u: '31', t: Date.now() }, 'mm_gh');
+  // the token check says the token is still valid: the 401 was a hiccup
+  globalThis.fetch = async (url) => String(url).includes('/applications/')
+    ? Response.json({ id: 1 })
+    : Response.json({ message: 'Bad credentials' }, { status: 401 });
+  const status = await raw('/api/github/status', cookie);
+  assert.equal(status.body.connected, true);
+  assert.match(status.body.error, /Try again/);
+  assert.ok(!status.headers['Set-Cookie']?.length, 'the cookie is left alone');
+  const repos = await raw('/api/github/repos', cookie);
+  assert.equal(repos.status, 503, 'a retryable error, not a sign-out');
+  assert.ok(!repos.headers['Set-Cookie']?.length);
+
+  // the token check itself can't be reached
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('/applications/')) throw new TypeError('fetch failed');
+    return Response.json({ message: 'Bad credentials' }, { status: 401 });
+  };
+  const unsure = await raw('/api/github/repos', cookie);
+  assert.equal(unsure.status, 502);
+  assert.ok(!unsure.headers['Set-Cookie']?.length);
+});
+
+test('a GitHub cookie in use is written again before it can expire, and an unreadable one is dropped', async () => {
+  globalThis.fetch = async () => Response.json({ login: 'octo', id: 8 }, { headers: { 'x-oauth-scopes': 'repo' } });
+  const stale = await raw('/api/github/status', sealedCookie({ a: 'gho_old', u: '8', t: Date.now() - 40 * 86400_000 }, 'mm_gh'));
+  const renewed = stale.headers['Set-Cookie'].find((c) => c.startsWith('mm_gh='));
+  assert.match(renewed, /Max-Age=31536000/);
+  const fresh = await raw('/api/github/status', sealedCookie({ a: 'gho_new', u: '8', t: Date.now() }, 'mm_gh'));
+  assert.ok(!fresh.headers['Set-Cookie']?.length, 'a recently written cookie is left as it is');
+
+  globalThis.fetch = async () => assert.fail('an unreadable cookie never reaches GitHub');
+  const broken = await raw('/api/github/status', 'mm_gh=not-a-sealed-value');
+  assert.equal(broken.body.connected, false);
+  assert.match(broken.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
 });

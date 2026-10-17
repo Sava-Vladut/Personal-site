@@ -68,8 +68,10 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   useEffect(() => {
-    spotifyStatus().then(setSp);
-    githubStatus().then(setGh);
+    const check = () => { spotifyStatus().then(setSp); githubStatus().then(setGh); };
+    check();
+    // A login that couldn't be checked offline is checked again once the connection is back.
+    addEventListener('online', check);
     const s = query.get('spotify');
     if (s) {
       toast(s === 'connected' ? t('Spotify connected') : s === 'cancelled' ? t('Spotify login cancelled') : t('Couldn’t connect Spotify — try again'));
@@ -80,6 +82,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
       toast(g === 'connected' ? t('GitHub connected') : g === 'cancelled' ? t('GitHub login cancelled') : t('Couldn’t connect GitHub — try again'));
       navigate('settings', true);
     }
+    return () => removeEventListener('online', check);
   }, []);
 
   const download = async () => {
@@ -345,7 +348,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
               <div class="row gap-s"><Icon name="brand-spotify" size={18} /> {sp?.connected ? (sp.user ? t('Connected as {name}', { name: sp.user.name }) : t('Connected')) : t('Not connected')}</div>
               <div class="muted small">
                 {!sp ? t('Checking…')
-                  : sp.offline ? t('The app’s server isn’t running, so only saved music shows.')
+                  : sp.offline ? (sp.connected ? t('Can’t reach the server right now. You’re still logged in.') : t('The app’s server isn’t running, so only saved music shows.'))
                   : sp.error ? t(sp.error)
                   : !sp.configured ? t('Log in to search music and pick songs from your playlists. Pasting song links works without it.')
                   : sp.connected ? t('Add what you’re listening to, search songs, or pick from your playlists while writing a note.')
@@ -369,7 +372,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
               <div class="row gap-s"><Icon name="brand-github" size={18} /> {gh?.connected ? (gh.user ? t('Connected as {name}', { name: gh.user.name }) : t('Connected')) : t('Not connected')}</div>
               <div class="muted small">
                 {!gh ? t('Checking…')
-                  : gh.offline ? t('The app’s server isn’t running, so GitHub isn’t available.')
+                  : gh.offline ? (gh.connected ? t('Can’t reach the server right now. You’re still logged in.') : t('The app’s server isn’t running, so GitHub isn’t available.'))
                   : gh.error ? t(gh.error)
                   : !gh.configured ? t('GitHub login isn’t set up on this server.')
                   : !gh.connected ? t('Log in to see how many public and private repos you have.')
@@ -378,7 +381,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
                       gh.private !== undefined && count(gh.private, 'private repo', 'private repos'),
                     ].filter(Boolean).join(' · ')}
               </div>
-              {gh?.connected && !gh.error && (
+              {gh?.connected && !gh.error && !gh.offline && (
                 <div class="muted small">{gh.privateVisible ? t('Private repos are visible.') : t('Private repos aren’t visible. Disconnect and log in again to allow them.')}</div>
               )}
             </div>

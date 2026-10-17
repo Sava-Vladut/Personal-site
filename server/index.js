@@ -394,8 +394,10 @@ async function spotify(req, res, url, p, setCookies, out) {
       if (current && !current.u && typeof u.id === 'string') keepSp(setCookies, null, { ...current, u: u.id });
     } catch (e) {
       // Only a refusal signs this browser out; Spotify being slow or down is reported, and the sign-in kept.
-      if (e.status === 401) queueCookie(setCookies, spCookie('mm_sp', '', 0));
-      else Object.assign(status, { connected: true, error: e.message });
+      if (e.status === 401) {
+        console.log(`Spotify: signed a browser out of account ${unseal(cookies(req).mm_sp)?.u || '(unknown)'}: ${e.message}`);
+        queueCookie(setCookies, spCookie('mm_sp', '', 0));
+      } else Object.assign(status, { connected: true, error: e.message });
     }
     return out(status);
   }
@@ -530,16 +532,55 @@ async function privateRepos(token) {
   return last ? Number(last[1]) : Array.isArray(body) ? body.length : undefined;
 }
 
-/** This browser's GitHub sign-in ({ a: token, u: account id }), or null. */
-const ghSession = (req) => {
-  const s = ghConfigured() ? unseal(cookies(req).mm_gh || '') : null;
-  return s?.a ? s : null;
+/** This browser's GitHub sign-in ({ a: token, u: account id, t: when the cookie was last written }), or null. */
+const ghSession = (req, setCookies) => {
+  const raw = ghConfigured() ? cookies(req).mm_gh : '';
+  if (!raw) return null;
+  const s = unseal(raw);
+  if (s?.a) return s;
+  // Unreadable (the session secret changed, or it was tampered with): say so once, and drop it.
+  console.log('GitHub: dropped a sign-in cookie that couldn’t be read');
+  if (setCookies) queueCookie(setCookies, ghCookie('mm_gh', '', 0));
+  return null;
 };
+
+// The cookie is written again while it's in use, so an active browser never reaches its expiry.
+const GH_COOKIE_RENEW = 30 * 86400_000;
+const ghKeep = (setCookies, s) => {
+  const next = { ...s, t: Date.now() };
+  queueCookie(setCookies, ghCookie('mm_gh', seal(next), YEAR));
+  return next;
+};
+
+const tokenChecks = new Map();
+/**
+ * Asks GitHub whether a token it just refused is really dead, so one stray 401 never signs anyone out.
+ * true: revoked or unknown. false: still valid. Throws when GitHub can't say right now.
+ */
+function ghTokenDead(token) {
+  let check = tokenChecks.get(token);
+  if (!check) {
+    check = ghRequest(`https://api.github.com/applications/${encodeURIComponent(GH_ID)}/token`, {
+      method: 'POST',
+      headers: { Authorization: 'Basic ' + Buffer.from(`${GH_ID}:${GH_SECRET}`).toString('base64'), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: token }),
+    }).then(({ res }) => {
+      if (res.ok) return false;
+      if (res.status === 404) return true;
+      // our own app credentials refused: the check can't help, so the refusal stands
+      if (res.status === 401 || res.status === 403) return true;
+      throw new HttpError(503, 'GitHub couldn’t confirm your login just now. Try again.');
+    }).finally(() => tokenChecks.delete(token));
+    tokenChecks.set(token, check);
+  }
+  return check;
+}
 
 /**
  * Asks GitHub for something of the signed-in account's. GitHub keeps only an account's ten newest tokens,
- * so signing in on other devices can revoke this browser's: then the account's newest token takes over,
- * and only if that's refused too is this browser signed out. Returns the session the answer came with.
+ * so signing in on other devices can revoke this browser's: then the account's newest token takes over.
+ * A browser is only signed out once GitHub confirms its token (and the saved one) are really gone;
+ * a refusal GitHub can't confirm is reported as a hiccup and the sign-in kept. Returns the session the answer came with.
  */
 async function ghGet(s, path, setCookies, text = false) {
   if (!s) throw new HttpError(401, 'Log in with GitHub in Settings first.');
@@ -552,17 +593,20 @@ async function ghGet(s, path, setCookies, text = false) {
     if (saved?.a && saved.a !== s.a) {
       ({ res, body } = await ask(saved.a));
       if (res.status !== 401) {
-        s = { ...saved, u: s.u };
-        queueCookie(setCookies, ghCookie('mm_gh', seal(s), YEAR));
-      }
+        console.log(`GitHub: account ${s.u} carried on with its newest sign-in`);
+        s = ghKeep(setCookies, { ...saved, u: s.u });
+      } else if (await ghTokenDead(saved.a).catch(() => false)) accounts.forget('github', s.u, (v) => v.a === saved.a);
     }
     if (res.status === 401) {
-      accounts.forget('github', s.u, (v) => v.a === s.a || v.a === saved?.a);
+      if (!(await ghTokenDead(s.a))) throw new HttpError(503, 'GitHub didn’t accept your login just now. Try again.');
+      console.log(`GitHub: signed a browser out of account ${s.u || '(unknown)'}: its token was revoked`);
+      accounts.forget('github', s.u, (v) => v.a === s.a);
       queueCookie(setCookies, ghCookie('mm_gh', '', 0));
       throw new HttpError(401, 'Your GitHub connection expired. Log in again in Settings.');
     }
   }
   if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') throw new HttpError(429, 'GitHub asked us to slow down. Try again in a few minutes.');
+  if (res.ok && !(Date.now() - (s.t || 0) < GH_COOKIE_RENEW)) s = ghKeep(setCookies, s);
   return { res, body, s };
 }
 
@@ -600,7 +644,7 @@ function commitOut(c) {
 
 async function githubRepos(req, p, url, setCookies, out) {
   // Requests made in parallel each recover on their own; later ones in this request use what the first settled on.
-  let s = ghSession(req);
+  let s = ghSession(req, setCookies);
   const get = async (path, text) => {
     const answer = await ghGet(s, path, setCookies, text);
     s = answer.s;
@@ -654,7 +698,7 @@ const cloner = createCloner({ directory: CLONE_DIR, ownerId: CLONE_GITHUB_ID, sh
 async function githubClone(req, id, setCookies, out) {
   if (!cloner.enabled()) throw new HttpError(404, 'Cloning isn’t set up on this server.');
   if (!isAdmin(req)) throw new HttpError(403, 'Sign in to the site to clone repos onto the server.');
-  let s = ghSession(req);
+  let s = ghSession(req, setCookies);
   if (!s) throw new HttpError(401, 'Log in with GitHub to clone repos.');
   if (!id) {
     if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed');
@@ -678,7 +722,7 @@ async function githubClone(req, id, setCookies, out) {
 async function github(req, res, url, p, setCookies, out) {
   if (p === '/api/github/status') {
     const status = { configured: ghConfigured(), connected: false };
-    let s = ghSession(req);
+    let s = ghSession(req, setCookies);
     if (!s) return out(status);
     let r, body;
     try {
@@ -690,10 +734,7 @@ async function github(req, res, url, p, setCookies, out) {
     }
     if (!r.ok || typeof body.login !== 'string') return out({ ...status, connected: true, error: 'GitHub didn’t answer. Try again.' });
     // Signed in before accounts were remembered: note whose this is, so it can recover later.
-    if (!s.u && Number.isSafeInteger(body.id)) {
-      s = { ...s, u: String(body.id) };
-      queueCookie(setCookies, ghCookie('mm_gh', seal(s), YEAR));
-    }
+    if (!s.u && Number.isSafeInteger(body.id)) s = ghKeep(setCookies, { ...s, u: String(body.id) });
     if (s.u && !accounts.get('github', s.u)) accounts.set('github', s.u, { a: s.a });
     // Private repos are only readable with the `repo` scope; GitHub lists the scopes it granted in a header.
     const scopes = (r.headers.get('x-oauth-scopes') || '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -741,13 +782,14 @@ async function github(req, res, url, p, setCookies, out) {
         body: new URLSearchParams({ client_id: GH_ID, client_secret: GH_SECRET, code, redirect_uri: GH_REDIRECT }),
       });
       if (typeof body.access_token !== 'string' || !body.access_token) throw new HttpError(502, body.error_description || 'GitHub returned no token.');
-      const s = { a: body.access_token };
+      const s = { a: body.access_token, t: Date.now() };
       try {
         const { res: r, body: user } = await ghRequest('https://api.github.com/user', { headers: { Authorization: `Bearer ${s.a}` } });
         if (r.ok && Number.isSafeInteger(user.id)) s.u = String(user.id);
       } catch {}
       // The newest sign-in is the one GitHub will keep longest, so other devices fall back on it.
       if (s.u) accounts.set('github', s.u, { a: s.a });
+      else console.log('GitHub: signed in, but couldn’t learn which account (other devices can’t fall back on it yet)');
       return redirect(res, back + 'connected', [clear, ghCookie('mm_gh', seal(s), YEAR)]);
     } catch (e) {
       console.error('GitHub token exchange failed:', e.message);

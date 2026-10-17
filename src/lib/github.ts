@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { LOCALE, t } from './i18n';
+import { recall, remember } from './lastLogin';
 import { retry } from './retry';
 
 // Talks to our own server (server/index.js), which holds the GitHub client secret and
@@ -57,7 +58,10 @@ async function once<T>(path: string, method = 'GET'): Promise<T> {
 }
 
 export const githubStatus = () =>
-  get<GithubStatus>('/status').catch(() => ({ configured: false, connected: false, offline: true }) as GithubStatus);
+  get<GithubStatus>('/status').then(
+    (s) => remember('github', s),
+    () => recall('github', { configured: false, connected: false, offline: true } as GithubStatus),
+  );
 
 export const repoFullName = (r: Pick<GhRepo, 'owner' | 'name'>) => `${r.owner}/${r.name}`;
 export const getGhRepo = (id: number | string) => get<GhRepo>(`/repos/${id}`);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { navigate } from '../lib/router';
-import { ago, connectGithub, forgetRepos, getReadme, githubStatus, listGhRepos, repoFullName, useLoad, type GhRepo } from '../lib/github';
+import { ago, connectGithub, forgetRepos, getReadme, githubStatus, listGhRepos, repoFullName, useLoad, type GhRepo, type GithubStatus } from '../lib/github';
 import { watchView } from '../lib/inView';
 import { readmeExcerpt } from '../components/Readme';
 import { usePref } from '../lib/prefs';
@@ -77,12 +77,28 @@ export function Repos() {
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
   const [revision, setRevision] = useState(0);
+  // Kept apart from the list: GitHub failing to list your repos (slow, or the server restarting) leaves you logged in.
+  const [status, setStatus] = useState<GithubStatus>();
   const live = useLoad(async () => {
-    const status = await githubStatus();
-    return { status, items: status.connected ? await listGhRepos() : ([] as GhRepo[]) };
+    const s = await githubStatus();
+    setStatus(s);
+    if (!s.connected) return { items: [] as GhRepo[] };
+    try {
+      return { items: await listGhRepos() };
+    } catch (e) {
+      // only GitHub refusing the login itself means logged out
+      if ((e as { status?: number }).status === 401) setStatus({ ...s, connected: false, offline: false });
+      throw e;
+    }
   }, 0);
-  const status = live.data?.status;
   const items = live.data?.items;
+  // Back online after a failed load: try again by itself.
+  useEffect(() => {
+    if (!live.error) return;
+    const again = () => live.reload();
+    addEventListener('online', again);
+    return () => removeEventListener('online', again);
+  }, [live.error]);
 
   const rows = useMemo(() => {
     const byId = new Map(saved.map((r) => [r.id, r]));

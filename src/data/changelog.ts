@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.94.2',
+    date: '2026-10-17',
+    changes: [
+      'GitHub: a login is only ended once GitHub confirms its token is really gone, so a stray refusal no longer logs you out',
+      'GitHub: a login in use is kept fresh, so it never runs out on a device you keep using',
+      'Spotify & GitHub: a moment the server can’t be reached (an update, a phone waking up) shows as “still logged in”, not as logged out',
+      'Spotify & GitHub: with no connection, the app waits a few seconds for it to come back before giving up, then checks your logins again once it’s back',
+      'Repos: GitHub being slow to list your repos shows “Try again” instead of asking you to log in',
+    ],
+  },
+  {
     version: '1.94.1',
     date: '2026-10-17',
     changes: [

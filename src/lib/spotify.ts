@@ -2,6 +2,7 @@
 // keeps the access token in an encrypted, http-only cookie. The browser never sees either.
 import type { Music } from './store';
 import { t } from './i18n';
+import { recall, remember } from './lastLogin';
 import { retry } from './retry';
 
 export interface SpotifyStatus {
@@ -34,7 +35,10 @@ async function once<T>(path: string): Promise<T> {
 const at = (offset?: number) => (offset ? `offset=${offset}` : '');
 
 export const spotifyStatus = () =>
-  get<SpotifyStatus>('/status').catch(() => ({ configured: false, connected: false, offline: true }) as SpotifyStatus);
+  get<SpotifyStatus>('/status').then(
+    (s) => remember('spotify', s),
+    () => recall('spotify', { configured: false, connected: false, offline: true } as SpotifyStatus),
+  );
 
 export const resolveSpotify = (url: string) => get<Music>('/resolve?url=' + encodeURIComponent(url.trim()));
 export const searchSpotify = (q: string, offset?: number) => get<Page<Music>>(`/search?q=${encodeURIComponent(q.trim())}&${at(offset)}`);

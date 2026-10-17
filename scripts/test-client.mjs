@@ -1044,6 +1044,47 @@ test('reads are tried again when the server can’t be reached, but not when it 
   assert.equal(calls, 4, 'gives up after three more tries');
 });
 
+test('with no connection, reads wait for it to come back instead of failing at once', async () => {
+  const listeners = new Set();
+  const nav = { onLine: false };
+  const { retry } = await load('src/lib/retry.ts', {}, {
+    navigator: nav,
+    setTimeout: (fn, ms) => (ms >= 1000 ? setTimeout(fn, 50) : setImmediate(fn)),
+    clearTimeout,
+    addEventListener: (_, fn) => listeners.add(fn),
+    removeEventListener: (_, fn) => listeners.delete(fn),
+  });
+  let calls = 0;
+  const pending = retry(() => (++calls === 1 ? Promise.reject(new Error('offline')) : Promise.resolve('ok')));
+  await new Promise((r) => setImmediate(r));
+  assert.equal(listeners.size, 1, 'it waits for the connection');
+  nav.onLine = true;
+  for (const fn of [...listeners]) fn();
+  assert.equal(await pending, 'ok');
+  assert.equal(listeners.size, 0, 'and stops listening');
+
+  nav.onLine = false;
+  await assert.rejects(retry(() => Promise.reject(new Error('still offline'))), /still offline/, 'gives up when no connection comes back');
+});
+
+test('a login the server can’t be asked about is shown as kept, until the server says otherwise', async () => {
+  const store = new Map();
+  const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  const lastLogin = await load('src/lib/lastLogin.ts', {}, { localStorage });
+  const { remember } = lastLogin;
+  // plain objects, so they compare with this realm's
+  const recall = (...args) => JSON.parse(JSON.stringify(lastLogin.recall(...args)));
+  const offline = { configured: false, connected: false, offline: true };
+  assert.deepEqual(recall('github', offline), offline, 'nothing known: offline, not connected');
+  remember('github', { configured: true, connected: true, user: { name: 'octo' } });
+  assert.deepEqual(recall('github', offline), { configured: true, connected: true, offline: true, user: { name: 'octo' } });
+  remember('github', { configured: true, connected: true, error: 'GitHub didn’t answer.' });
+  assert.equal(recall('github', offline).user.name, 'octo', 'a hiccup with no name keeps what was known');
+  assert.equal(recall('spotify', offline).connected, false, 'each service is remembered apart');
+  remember('github', { configured: true, connected: false });
+  assert.deepEqual(recall('github', offline), offline, 'logged out is forgotten');
+});
+
 test('a README is shown as elements: pictures and links stay on GitHub, and nothing in it can run', async () => {
   const jsx = (type, props) => ({ type, props });
   const { Readme } = await load('src/components/Readme.tsx', { 'preact/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' } });
