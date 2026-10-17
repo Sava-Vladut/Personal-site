@@ -132,26 +132,39 @@ class ChipView implements NodeView {
 
 /* ---------- pictures ---------- */
 
-/** A picture's slot in the note: where it is, what it is, and the element its MediaBlock goes in. */
+/**
+ * A picture's slot in the note: where it is (when the list was last told), what it is, and the element its
+ * MediaBlock goes in.
+ */
 export interface MediaSlot {
   dom: HTMLElement;
   pos: number;
   media: Media;
 }
 
-/** The slots the editor's pictures fill, told to `onChange` when they come, go or change. */
+/**
+ * The slots the editor's pictures fill, told to `onChange` when they come, go, change or swap places — not when typing
+ * only moves them along, which would draw the whole page again on every key.
+ */
 export class MediaSlots {
   private views = new Set<MediaView>();
   private frame = 0;
+  private told: MediaSlot[] | null = null;
   constructor(private onChange: (slots: MediaSlot[]) => void) {}
 
   add(v: MediaView) { this.views.add(v); this.changed(); }
   remove(v: MediaView) { this.views.delete(v); this.changed(); }
 
-  /** After any change to the document (positions move), at most once a frame. */
+  /** After any change to the document, at most once a frame. */
   changed() {
     cancelAnimationFrame(this.frame);
-    this.frame = requestAnimationFrame(() => this.onChange(this.list()));
+    this.frame = requestAnimationFrame(() => {
+      const next = this.list();
+      const was = this.told;
+      if (was && was.length === next.length && was.every((s, i) => s.dom === next[i].dom && s.media === next[i].media)) return;
+      this.told = next;
+      this.onChange(next);
+    });
   }
 
   /** Now, without waiting for a frame. */

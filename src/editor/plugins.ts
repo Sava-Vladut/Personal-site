@@ -2,7 +2,8 @@
 // becomes what it writes, the keys behave as in Word and Notion, the document's shape is kept writable as text, #tags
 // show as tags, and what's typed after an @ (or [[) is reported for the suggestions.
 // The pure parts (what each key and rule does to the document) are in lib/noteDoc/edit, tested in Node.
-import { Plugin, PluginKey, TextSelection, type Command, type EditorState } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 import { InputRule, inputRules, undoInputRule } from '@tiptap/pm/inputrules';
 import { keymap } from '@tiptap/pm/keymap';
@@ -119,25 +120,59 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
 
 const TAG = /(?<![^\s(])#[\p{L}_][\p{L}\p{N}_/-]*/gu;
 
-/** #tags show as tags (span.md-tag) while they stay plain text. */
-function tagDecorations(state: EditorState): DecorationSet {
-  const found: Decoration[] = [];
-  state.doc.descendants((node, pos) => {
-    if (node.type.spec.code) return false;
-    if (!node.isText) return true;
-    if (node.marks.some((m) => m.type.name === 'code' || m.type.name === 'link')) return false;
-    for (const m of node.text!.matchAll(TAG)) found.push(Decoration.inline(pos + m.index!, pos + m.index! + m[0].length, { class: 'md-tag' }));
+/** The #tags in `node` (its content starting at `start`), added to `found`. */
+function findTags(node: PMNode, start: number, found: Decoration[]) {
+  node.nodesBetween(0, node.content.size, (n, pos) => {
+    if (n.type.spec.code) return false;
+    if (!n.isText) return true;
+    if (n.marks.some((m) => m.type.name === 'code' || m.type.name === 'link')) return false;
+    for (const m of n.text!.matchAll(TAG)) found.push(Decoration.inline(start + pos + m.index!, start + pos + m.index! + m[0].length, { class: 'md-tag' }));
     return false;
   });
-  return DecorationSet.create(state.doc, found);
+}
+
+/** #tags show as tags (span.md-tag) while they stay plain text. */
+export function tagDecorations(doc: PMNode): DecorationSet {
+  const found: Decoration[] = [];
+  findTags(doc, 0, found);
+  return DecorationSet.create(doc, found);
+}
+
+/**
+ * The tags after a change: the old ones moved along, and only the lines the change touched read again (reading
+ * every line on each key is slow in a long note).
+ */
+export function updateTags(tr: Transaction, old: DecorationSet): DecorationSet {
+  const doc = tr.doc;
+  // where the steps changed the document, in its final positions
+  const ranges: [number, number][] = [];
+  for (const map of tr.mapping.maps) {
+    for (const r of ranges) (r[0] = map.map(r[0], -1)), (r[1] = map.map(r[1], 1));
+    map.forEach((_a, _b, from, to) => void ranges.push([from, to]));
+  }
+  let set = old.map(tr.mapping, doc);
+  const size = doc.content.size;
+  for (const [a, b] of ranges) {
+    // the whole lines around it (a line joined to the next, or split, included)
+    doc.nodesBetween(Math.max(0, a - 1), Math.min(size, b + 1), (node, pos) => {
+      if (!node.isTextblock) return true;
+      const from = pos + 1, to = pos + node.nodeSize - 1;
+      set = set.remove(set.find(from, to));
+      const found: Decoration[] = [];
+      if (!node.type.spec.code) findTags(node, from, found);
+      if (found.length) set = set.add(doc, found);
+      return false;
+    });
+  }
+  return set;
 }
 
 const tagsKey = new PluginKey<DecorationSet>('tags');
 const tags = new Plugin<DecorationSet>({
   key: tagsKey,
   state: {
-    init: (_, state) => tagDecorations(state),
-    apply: (tr, old, _, state) => (tr.docChanged ? tagDecorations(state) : old),
+    init: (_, state) => tagDecorations(state.doc),
+    apply: (tr, old) => (tr.docChanged ? updateTags(tr, old) : old),
   },
   props: { decorations: (state) => tagsKey.getState(state) },
 });

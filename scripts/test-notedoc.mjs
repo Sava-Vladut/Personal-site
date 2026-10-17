@@ -552,6 +552,56 @@ test('random texts: the reading view\'s blocks, and saved without losing or chan
   }
 });
 
+test('an edited document writes the same text as a fresh copy of it (the lines kept from before are right)', () => {
+  const seed = Number(process.env.SEED ?? 1);
+  const random = generator(seed, { wild: true });
+  const r = rng(seed);
+  const COUNT = Number(process.env.COUNT ?? 1000);
+  for (let i = 0; i < COUNT; i++) {
+    let d = nd.normalizeDoc(random());
+    nd.serializeNote(d); // every block's lines kept
+    for (let k = 0; k < 3; k++) {
+      const spots = [];
+      d.descendants((n, pos) => (n.isTextblock ? (spots.push(pos + 1 + Math.floor(r() * (n.content.size + 1))), false) : true));
+      if (!spots.length) break;
+      const at = spots[Math.floor(r() * spots.length)];
+      const tr = EditorState.create({ doc: d }).tr;
+      if (r() < 0.6) tr.insertText(['x', '*', ' ', '#', '`', '\n'][Math.floor(r() * 6)], at);
+      else tr.delete(Math.max(0, at - 1), at);
+      d = nd.normalizeDoc(tr.doc);
+      const fresh = S.nodeFromJSON(d.toJSON());
+      assert.equal(nd.serializeNote(d), nd.serializeNote(fresh), `document ${i}, edit ${k} (SEED=${seed}):\n${d}`);
+    }
+  }
+  // one block written in different places: each place as it writes it
+  const copy = (n) => S.nodeFromJSON(n.toJSON());
+  const callout = p(txt('[!note] x'));
+  const marker = p(txt('[[photo:a]]'));
+  const fence = node('codeBlock', { open: '```', close: null }, txt('a'));
+  const places = [[{ top: false, quote: true }, true], [{ top: false, quote: true }, false], [{ top: true, quote: false }, true], [{ top: false, quote: false }, true]];
+  for (const n of [callout, marker, fence]) {
+    for (const [where, first] of places) {
+      const list = first ? [n, p(txt('b'))] : [p(txt('b')), n];
+      assert.equal(nd.serializeBlocks(list, where), nd.serializeBlocks(list.map(copy), where), `${n} at ${JSON.stringify(where)}, first ${first}`);
+    }
+  }
+});
+
+test('the quick look agrees with putting in shape', () => {
+  const seed = Number(process.env.SEED ?? 1);
+  const COUNT = Number(process.env.COUNT ?? 1000);
+  const docs = [generator(seed), generator(seed, { wild: true }), (() => { const t = textGenerator(seed); return () => nd.parseNote(t()); })()];
+  for (const random of docs) {
+    for (let i = 0; i < COUNT; i++) {
+      const d = random();
+      const fixes = nd.normalizeTr(EditorState.create({ doc: d }), false);
+      assert.equal(nd.inShape(d), fixes === null, `document ${i} (SEED=${seed}):\n${d}`);
+      if (fixes) assert.ok(nd.inShape(fixes.doc), `in shape once fixed: ${i}`);
+    }
+  }
+  for (const [name, d] of EDITED) assert.equal(nd.inShape(d), nd.normalizeTr(EditorState.create({ doc: d }), false) === null, name);
+});
+
 /* ---------- putting in shape ---------- */
 
 test('normalizeTr fixes structure only, once, and gives null when there is nothing to do', () => {

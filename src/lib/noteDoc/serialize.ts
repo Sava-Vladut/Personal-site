@@ -342,7 +342,25 @@ function codeFences(node: PMNode, last: boolean): { open: string; close: string 
   return { open, close };
 }
 
+/**
+ * Each block's lines, kept by node: documents are immutable and an edit keeps every block it didn't touch, so writing
+ * a long note back after a change only writes the blocks that changed (a block is written by reading it back, which
+ * is slow). Keyed by where it is too, which can change how it's written.
+ */
+const linesCache = new WeakMap<PMNode, Map<number, string[]>>();
+
 function blockLines(node: PMNode, where: Where, first: boolean, last: boolean): string[] {
+  const key = (where.top ? 1 : 0) | (where.quote ? 2 : 0) | (first ? 4 : 0) | (last ? 8 : 0);
+  let byPlace = linesCache.get(node);
+  const hit = byPlace?.get(key);
+  if (hit) return hit;
+  const lines = writeBlock(node, where, first, last);
+  if (!byPlace) linesCache.set(node, (byPlace = new Map()));
+  byPlace.set(key, lines);
+  return lines;
+}
+
+function writeBlock(node: PMNode, where: Where, first: boolean, last: boolean): string[] {
   const a = writtenAttrs(node) as Record<string, any>;
   switch (node.type.name) {
     case 'paragraph':

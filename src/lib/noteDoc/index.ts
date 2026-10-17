@@ -13,7 +13,7 @@ export {
 } from './schema';
 export { parseNote, parseBlocks, parseInline } from './parse';
 export { serializeNote, serializeBlocks, serializeInline, serializeSlice, writtenAttrs, docKey, sameDoc } from './serialize';
-export { normalizeDoc, normalizeTr } from './normalize';
+export { normalizeDoc, normalizeTr, inShape } from './normalize';
 export { replaceDoc } from './diff';
 export {
   classifyLine, calloutOf, closesFence, fenceOf, depthOf, calloutTone, calloutIcon, calloutDefaultTitle,

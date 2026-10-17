@@ -116,8 +116,48 @@ const closeCode: Fix = (tr) => {
 
 const FIXES: Fix[] = [splitLines, absorbSpaces, joinQuotes, parkCallouts, frameMedia, closeCode];
 
-/** The changes that put the state's document in shape, or null when it already is. Running it again gives null. */
-export function normalizeTr(state: EditorState): Transaction | null {
+/** Whether a textblock's text holds a line break (as its textContent would, without building it). */
+function hasBreak(n: PMNode): boolean {
+  for (let i = 0; i < n.childCount; i++) {
+    const c = n.child(i);
+    if ((c.isText ? c.text! : c.textContent).includes('\n')) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether the document is in shape already: the fixes' own tests in one walk, without collecting anything. The editor
+ * asks after every change, and nearly always it is.
+ */
+export function inShape(doc: PMNode): boolean {
+  const media = (n: PMNode | null | undefined) => n?.type.name === 'media';
+  if (media(doc.firstChild) || media(doc.lastChild)) return false;
+  const walk = (parent: PMNode): boolean => {
+    for (let i = 0; i < parent.childCount; i++) {
+      const b = parent.child(i);
+      if (i > 0) {
+        const a = parent.child(i - 1);
+        if (isQuote(a) && isQuote(b)) return false;
+        if ((isCallout(a) && (isQuote(b) || isCallout(b))) || (isQuote(a) && isCallout(b))) return false;
+        if (parent === doc && media(a) && media(b)) return false;
+      }
+      if (b.type.name === 'codeBlock' && b.attrs.close === null && i < parent.childCount - 1 && !media(parent.child(i + 1))) return false;
+      if (b.isTextblock) {
+        if (!b.type.spec.code && hasBreak(b)) return false;
+        if (/^(heading|listItem|calloutTitle)$/.test(b.type.name) && leadsWithSpace(b)) return false;
+      } else if (!b.isLeaf && !walk(b)) return false;
+    }
+    return true;
+  };
+  return walk(doc);
+}
+
+/**
+ * The changes that put the state's document in shape, or null when it already is. Running it again gives null.
+ * (`check: false` skips the quick look first, for tests comparing the two.)
+ */
+export function normalizeTr(state: EditorState, check = true): Transaction | null {
+  if (check && inShape(state.doc)) return null;
   const tr = state.tr;
   for (let pass = 0; pass < 20; pass++) {
     let changed = false;

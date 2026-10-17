@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.94.1',
+    date: '2026-10-17',
+    changes: [
+      'Notes: long notes stay quick while you type: only the lines you change are checked and saved again, not the whole note',
+      'Notes: typing no longer redraws the whole page on every key',
+      'Notes: a note that couldn’t be saved is tried again by itself a few times, a little later each time',
+      'Notes: your last words are saved when the tab is closed or the page goes away, on Safari too',
+      'Notes: photos added while you switch between reading and writing land in the right place',
+      'Notes: Undo after deleting a note or removing a picture says so when it can’t be saved',
+    ],
+  },
+  {
     version: '1.94.0',
     date: '2026-10-16',
     changes: ['The Docs page (PDFs and help files, searchable page by page) is gone, from the sidebar, the wheel and the server'],

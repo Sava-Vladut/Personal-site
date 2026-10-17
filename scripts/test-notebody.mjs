@@ -23,6 +23,7 @@ const bundle = await rolldown({
       if (id === '\0review:notebody') return `
         export { NoteBody } from '${root}src/editor/NoteBody.tsx';
         export { tidyPastedHTML } from '${root}src/editor/paste.ts';
+        export { tagDecorations } from '${root}src/editor/plugins.ts';
         export { h, render } from 'preact';
         export { act } from 'preact/test-utils';
       `;
@@ -227,6 +228,43 @@ test('pictures: a slot for each, added at the caret or the end, moved and resize
     assert.equal(n.text(), 'one\n[[photo:a]]\n\n[[photo:b 50 left]]\ntwo');
     n.setText('one\ntwo');
     assert.equal(n.text(), 'one\ntwo');
+  }
+});
+
+test('typing only moves the pictures along: the page isn\u2019t told again', async () => {
+  const { seen, type, end } = mount('one\n[[photo:a]]\ntwo');
+  await sleep(60);
+  const told = seen.slots;
+  assert.equal(told.length, 1);
+  end();
+  type('more');
+  await sleep(60);
+  assert.equal(seen.slots, told, 'the same list, not a new one');
+});
+
+test('#tags stay right after edits anywhere in a long note (only the lines changed are read again)', () => {
+  const lines = Array.from({ length: 40 }, (_, i) => (i % 5 === 0 ? `## head #h${i}` : i % 7 === 0 ? '```\n#not a tag\n```' : `line ${i} #t${i} and [#link](https://x.y) \`#code\``));
+  const { view, press } = mount(lines.join('\n'));
+  const { tagDecorations } = view.dom.ownerDocument.defaultView.NB;
+  const tagsPlugin = view.state.plugins.find((pl) => pl.key.startsWith('tags$'));
+  const spans = (set) => set.find().map((d) => `${d.from}-${d.to}`).sort().join(' ');
+  let seed = 3;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < 300; k++) {
+    const size = view.state.doc.content.size;
+    const at = 1 + Math.floor(r() * (size - 1));
+    const tr = view.state.tr;
+    const pick = r();
+    try {
+      if (pick < 0.5) tr.insertText(['#', 'a', ' ', '#x', '(', '`'][Math.floor(r() * 6)], at);
+      else if (pick < 0.8) tr.delete(at, Math.min(size, at + 1 + Math.floor(r() * 4)));
+      else tr.split(at);
+    } catch {
+      continue; // a change that can't be made there
+    }
+    view.dispatch(tr);
+    if (r() < 0.1) press('Mod-z');
+    assert.equal(spans(tagsPlugin.getState(view.state)), spans(tagDecorations(view.state.doc)), `edit ${k}`);
   }
 });
 

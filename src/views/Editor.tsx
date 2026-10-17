@@ -97,6 +97,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const allEntries = useEntries();
   // Notes that already have words open formatted, to read; the pencil (or a tap on the words) switches to writing.
   const [reading, setReading] = useState(() => !!draft && id !== 'new' && !!plainText(draft.text).trim());
+  // for what's finished after a wait (photos read in): reading or writing then, not when it started
+  const readingNow = useRef(reading);
+  readingNow.current = reading;
   const fileRef = useRef<HTMLInputElement>(null);
   const saved = useRef(id !== 'new');
   const dirty = useRef(false);
@@ -105,6 +108,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const leaving = useRef(false);
   const contextStarted = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  // a save that failed is tried again by itself, a little later each time, while the note is open
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>();
+  const retries = useRef(0);
   const latest = useRef(draft);
   latest.current = draft;
   // what the status bar says about saving: only shown, never consulted, so saving works exactly as without it
@@ -200,9 +206,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     else update({ text });
   };
 
-  const flush = () => {
+  /** Saves the draft now (`quiet`: a retry, which doesn't say again that saving failed). */
+  const flush = (quiet = false) => {
     syncText();
     clearTimeout(timer.current);
+    clearTimeout(retryTimer.current);
     const d = latest.current;
     if (removing.current || !d) return Promise.resolve(false);
     if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
@@ -219,6 +227,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         addPlaceAndWeather(d);
       }
       saved.current = true;
+      retries.current = 0;
       if (alive.current) {
         syncUrl();
         if (request === saveRequest.current && !dirty.current) setSaveState('saved');
@@ -227,8 +236,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     }).catch(() => {
       if (removing.current || request !== saveRequest.current) return false;
       dirty.current = true;
-      if (alive.current) setSaveState('error');
-      toast(t('Couldn’t save this note. Try again.'));
+      if (alive.current) {
+        setSaveState('error');
+        if (retries.current < 6) retryTimer.current = setTimeout(() => flush(true), Math.min(30_000, 2000 * 2 ** retries.current++));
+      }
+      if (!quiet) toast(t('Couldn’t save this note. Try again.'));
       return false;
     }).finally(() => {
       if (pendingSave.current === saving) pendingSave.current = null;
@@ -263,12 +275,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     dirty.current = true;
     setSaveState('saving');
     clearTimeout(timer.current);
-    timer.current = setTimeout(flush, 500);
+    timer.current = setTimeout(() => flush(), 500);
   };
 
   useEffect(() => {
     const hide = () => document.visibilityState === 'hidden' && flush();
+    const leave = () => flush();
     document.addEventListener('visibilitychange', hide);
+    // the tab closing or the page going away (Safari doesn't always say it's hidden first)
+    addEventListener('pagehide', leave);
     addEventListener('popstate', syncUrl);
     // Back from logging in to Spotify (it returns to this note): say how it went and reopen the picker.
     const sp = query?.get('spotify');
@@ -283,6 +298,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       cancelMove.current?.();
       if (pendingImports.current && !removing.current) toast(t('Photo import cancelled because you left the note'));
       document.removeEventListener('visibilitychange', hide);
+      removeEventListener('pagehide', leave);
       removeEventListener('popstate', syncUrl);
       flush();
       // moved to another day, or written offline: that day's weather
@@ -325,6 +341,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     haptic(12);
     removing.current = true;
     clearTimeout(timer.current);
+    clearTimeout(retryTimer.current);
     dirty.current = false;
     const pending = pendingSave.current;
     await pending;
@@ -332,7 +349,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const removed = saved.current || pending ? await deleteEntry(draft.id) : null;
       takeDown(removed);
       if (alive.current) goBack();
-      if (removed) toast(removed.kind === 'checkin' ? t('Check-in deleted') : t('Note deleted'), { label: t('Undo'), run: () => saveEntry({ ...removed, share: null }) });
+      if (removed) toast(removed.kind === 'checkin' ? t('Check-in deleted') : t('Note deleted'), {
+        label: t('Undo'),
+        run: () => void saveEntry({ ...removed, share: null }).catch(() => toast(t('Couldn’t save this note. Try again.'))),
+      });
     } catch {
       removing.current = false;
       dirty.current = true;
@@ -398,7 +418,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
    */
   const place = (add: Media[]) => {
     const n = noteRef.current;
-    if (n) return n.media.insert(add, reading);
+    if (n) return n.media.insert(add, readingNow.current);
     const d = latest.current;
     if (!d) return;
     const b = bodyOf(d);
@@ -457,7 +477,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           return;
         }
         const e = getEntries().find((x) => x.id === d.id);
-        if (e) saveEntry({ ...e, ...restore(e, e.text) });
+        if (e) saveEntry({ ...e, ...restore(e, e.text) }).catch(() => toast(t('Couldn’t save this note. Try again.')));
       },
     });
   };
