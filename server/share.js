@@ -62,7 +62,7 @@ function cropOf(raw) {
   return x === null || y === null || zoom === null ? undefined : { x, y, zoom };
 }
 
-const EMOTION_ID = /^[a-z0-9-]+(?:\/[a-z0-9-]+){0,2}$/;
+export const EMOTION_ID = /^[a-z0-9-]+(?:\/[a-z0-9-]+){0,2}$/;
 const ICON_ID = /^[te]:[a-z0-9-]{1,60}$/;
 const MUSIC_KINDS = ['track', 'album', 'playlist', 'episode', 'show', 'artist'];
 
@@ -148,7 +148,7 @@ export function excerpt(note) {
   return plain.length > 160 ? plain.slice(0, 157).trimEnd() + '…' : plain;
 }
 
-const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+export const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function createShareHandler({ directory, indexFile, isAdmin, adminConfigured }) {
   const locks = new Map();

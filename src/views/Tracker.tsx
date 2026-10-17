@@ -13,6 +13,8 @@ import { PageHead } from '../components/PageHead';
 import { Icon, Sprite } from '../components/icons';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
+import { StatusSheet } from '../components/StatusSheet';
+import { useStatus } from '../lib/status';
 import { t } from '../lib/i18n';
 
 const localInput = (ms: number) => {
@@ -36,6 +38,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   const [people, setPeople] = useState<string[]>(tagged);
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const status = useStatus();
   const submitting = useRef(false);
 
   const named = useMemo(() => new Set(entries.flatMap((e) => e.emotions).filter((id) => EMOTION[id]?.depth === 2)), [entries]);
@@ -160,7 +164,12 @@ export function Tracker({ query }: { query: URLSearchParams }) {
       <section class="section">
         <div class="row between">
           <h2 class="section-title">{t('Today')}</h2>
-          {streak > 1 && <span class="muted small">{t('{n}-day streak', { n: streak })}</span>}
+          <span class="row gap-s">
+            {streak > 1 && <span class="muted small">{t('{n}-day streak', { n: streak })}</span>}
+            <button class={`chip status-chip${status?.token ? ' is-on' : ''}`} onClick={() => setSharing(true)} aria-label={t('Public status')}>
+              <Icon name="world" size={15} /> {status?.token ? t('Public') : t('Share status')}
+            </button>
+          </span>
         </div>
         {todays.length ? (
           <div class="entries">{todays.map((e) => <CheckInRow e={e} />)}</div>
@@ -169,6 +178,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
         )}
       </section>
 
+      <StatusSheet open={sharing} onClose={() => setSharing(false)} />
       <PeopleSheet open={picking} onClose={() => setPicking(false)} selected={people} onChange={setPeople} />
 
       <button class="card dex-link" onClick={() => navigate('stats?tab=dex')}>

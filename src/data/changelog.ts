@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.95.0',
+    date: '2026-10-17',
+    changes: [
+      'Public status: share a link that always shows your latest check-in (the feeling, how strong it is and when), for anyone, no sign-in needed',
+      'Public status: it updates by itself each time you check in, and the page refreshes every minute while it’s open',
+      'Public status: choose whether the check-in’s note shows, and stop sharing at any time (sharing again makes a new link)',
+      'Turn it on from Check in (the globe next to Today) or Settings → Public status',
+    ],
+  },
+  {
     version: '1.94.2',
     date: '2026-10-17',
     changes: [

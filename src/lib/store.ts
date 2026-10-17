@@ -169,6 +169,11 @@ export function observable<T>(initial: T) {
   const subs = new Set<() => void>();
   return {
     get: () => value,
+    /** Calls `f` after every change, outside of any component. Returns how to stop. */
+    sub(f: () => void) {
+      subs.add(f);
+      return () => void subs.delete(f);
+    },
     set(next: T) {
       value = next;
       revision++;
@@ -199,6 +204,7 @@ const ready$ = observable(false);
 export const useEntries = entries$.use;
 export const useReady = ready$.use;
 export const getEntries = entries$.get;
+export const onEntries = entries$.sub;
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 

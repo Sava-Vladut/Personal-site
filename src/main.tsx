@@ -21,6 +21,7 @@ import './styles/desktop.css';
 import { applyTheme, init } from './lib/store';
 import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
+import { initStatus } from './lib/status';
 import { startWeather } from './lib/weather';
 import { t } from './lib/i18n';
 import { haptic } from './lib/haptics';
@@ -54,11 +55,14 @@ onBlocked(() =>
     document.getElementById('app')!,
   ),
 );
-// A public note's link opens just that note, for anyone: no sign-in and nothing of the journal is loaded.
+// A public note's link opens just that note, and a public status's link just the latest check-in, for anyone: no sign-in
+// and nothing of the journal is loaded.
 // Otherwise, a device that's signed in opens the journal at once and checks with the server in the background; one that isn't
 // (or no longer is) gets the intro, which boots the journal once you sign in.
 const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
+const status = location.pathname.match(/^\/status\/([A-Za-z0-9_-]{32})\/?$/);
 if (shared) void bootShared(shared[1]);
+else if (status) void bootStatus(status[1]);
 else if (signedInHere()) {
   boot();
   void stillSignedIn().then((ok) => ok || location.reload());
@@ -68,6 +72,16 @@ async function bootShared(token: string) {
   try {
     const { Shared } = await import('./views/Shared');
     render(<Shared token={token} />, document.getElementById('app')!);
+  } catch (e) {
+    failed(e, false);
+  }
+}
+
+/** A public status's link: just the latest check-in, for anyone, like a public note. */
+async function bootStatus(token: string) {
+  try {
+    const { Status } = await import('./views/Status');
+    render(<Status token={token} />, document.getElementById('app')!);
   } catch (e) {
     failed(e, false);
   }
@@ -116,6 +130,7 @@ function boot(dive?: Promise<void>) {
       document.querySelector('.app .page')?.setAttribute('data-boot', '');
       startWeather();
       initSync();
+      initStatus();
       enableOffline();
       preloadViews();
     },

@@ -63,3 +63,39 @@
 .public-main { min-width: 0; flex: 1; }
 .public-title { font-weight: var(--w-medium); overflow-wrap: anywhere; }
 .public-actions { display: flex; gap: 6px; flex: none; }
+
+/* ---------- the public status: its sheet, and the page anyone with its link sees (lib/status.ts) ---------- */
+
+.status-chip { gap: 5px; }
+.status-chip.is-on { color: var(--ink); font-weight: var(--w-medium); }
+.status-preview {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--r-m);
+  background: color-mix(in srgb, var(--c, var(--ink-3)) 10%, var(--surface-2)); font-size: var(--text-base); line-height: 1.45;
+}
+.status-preview .sprite { flex: none; margin-top: 1px; }
+.status-preview-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.status-preview-name { font-weight: var(--w-medium); }
+.status-preview-name .muted { font-weight: var(--w-regular); }
+.status-preview-note { color: var(--ink-2); font-family: var(--serif); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.status-page { max-width: 520px; margin-inline: auto; }
+.status-label { margin: 8px 2px 12px; font-size: var(--text-m); color: var(--ink-3); }
+.status-card {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 22px 20px 18px;
+  background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-color: color-mix(in srgb, var(--c) 30%, var(--line));
+}
+.status-sprite {
+  display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 6px; border-radius: 18px;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+.status-name { font: var(--w-medium) clamp(30px, 8vw, 38px)/1.1 var(--serif); letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.status-trail { font-size: var(--text-m); color: var(--ink-3); }
+.status-meter { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.status-meter i { width: 22px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--c) 18%, var(--surface-2)); }
+.status-meter i.on { background: var(--c); }
+.status-meter span { margin-left: 6px; font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); }
+.status-note {
+  margin: 10px 0 0; padding-left: 12px; border-left: 3px solid color-mix(in srgb, var(--c) 55%, transparent);
+  font: var(--w-regular) var(--text-l)/1.55 var(--serif); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.status-when { margin-top: 10px; font-size: var(--text-m); color: var(--ink-3); }

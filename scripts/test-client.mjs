@@ -459,7 +459,7 @@ test('startup keeps the app unmounted until the current deep link screen is load
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
     './lib/auth': { signedInHere: () => true, stillSignedIn: async () => true }, './lib/router': { routeName: () => route },
     './lib/views': { preloadViews() {}, prepareView: name => ({ journal, brain }[name].promise) },
-    './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ },
+    './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ }, './lib/status': { initStatus() {} },
   }, {
     navigator: {}, addEventListener() {}, setTimeout: fn => timers.push(fn),
     document: {
@@ -498,7 +498,7 @@ test('a signed-out device opens on the intro without touching storage, and the j
   function Intro() {}
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-    './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => { inits++; } },
+    './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => { inits++; } },
     './lib/auth': {
       signedInHere: () => false, authStatus: async () => ({ configured: true, admin: false }),
       opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
@@ -532,7 +532,7 @@ test('a device without the note goes straight in when its cookie is still good, 
     function App() {}
     await load('src/main.tsx', {
       preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-      './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+      './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
       './lib/auth': {
         signedInHere: () => false, authStatus: async () => status,
         opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
@@ -552,7 +552,7 @@ test('a signed-in device reloads into the intro once the server says it was sign
   let reloads = 0;
   await load('src/main.tsx', {
     preact: { render() {} }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-    './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
+    './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
     './lib/auth': { signedInHere: () => true, stillSignedIn: async () => false },
     './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => undefined },
   }, {
@@ -1138,7 +1138,7 @@ test('a public note’s link opens just that note: no sign-in check, no journal 
   await load('src/main.tsx', {
     preact: { render: (tree) => rendered.push(tree) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App() {} }, './lib/db': { onBlocked() {} },
-    './lib/weather': { startWeather: () => touched.push('weather') }, './lib/sync': { initSync: () => touched.push('sync') },
+    './lib/weather': { startWeather: () => touched.push('weather') }, './lib/sync': { initSync: () => touched.push('sync') }, './lib/status': { initStatus: () => touched.push('status') },
     './lib/store': { applyTheme() {}, init: async () => touched.push('init') },
     './lib/auth': { signedInHere: () => touched.push('signedInHere'), authStatus: async () => touched.push('authStatus'), opensOn: () => 'intro' },
     './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => touched.push('views') },
@@ -1150,6 +1150,30 @@ test('a public note’s link opens just that note: no sign-in check, no journal 
   await settle(); await settle();
   assert.equal(rendered.length, 1);
   assert.equal(rendered[0].type, Shared);
+  assert.equal(rendered[0].props.token, token);
+  assert.deepEqual(touched, []);
+});
+
+test('a public status’s link opens just the latest check-in: no sign-in check, no journal storage', async () => {
+  const rendered = [];
+  const touched = [];
+  const token = 'Zz9_'.repeat(8);
+  function Status() {}
+  await load('src/main.tsx', {
+    preact: { render: (tree) => rendered.push(tree) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
+    './app': { App() {} }, './lib/db': { onBlocked() {} },
+    './lib/weather': { startWeather: () => touched.push('weather') }, './lib/sync': { initSync: () => touched.push('sync') }, './lib/status': { initStatus: () => touched.push('status') },
+    './lib/store': { applyTheme() {}, init: async () => touched.push('init') },
+    './lib/auth': { signedInHere: () => touched.push('signedInHere'), authStatus: async () => touched.push('authStatus'), opensOn: () => 'intro' },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => touched.push('views') },
+    './views/Status': { Status },
+  }, {
+    navigator: {}, addEventListener() {}, location: { pathname: `/status/${token}` },
+    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
+  });
+  await settle(); await settle();
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].type, Status);
   assert.equal(rendered[0].props.token, token);
   assert.deepEqual(touched, []);
 });

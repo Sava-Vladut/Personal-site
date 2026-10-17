@@ -20,6 +20,8 @@ import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18
 import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
+import { StatusSheet } from '../components/StatusSheet';
+import { useStatus } from '../lib/status';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -298,6 +300,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
         </div>
       </section>
 
+      <PublicStatus />
       <PublicNotes />
 
       <section class="section">
@@ -544,6 +547,31 @@ function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void 
         </section>
       ))}
     </Sheet>
+  );
+}
+
+/** The public status: whether your latest check-in has a link, and the sheet to share it or stop. */
+function PublicStatus() {
+  const status = useStatus();
+  const [open, setOpen] = useState(false);
+  return (
+    <section class="section">
+      <h2 class="section-title">{t('Public status')}</h2>
+      <div class="card list">
+        <button class="list-row action" onClick={() => setOpen(true)}>
+          <span class="grow">
+            <span class="row gap-s"><Icon name="world" size={18} /> {status?.token ? t('Your status is public') : t('Share your status')}</span>
+            <div class="muted small">
+              {status?.token
+                ? status.note ? t('A link shows your latest check-in and its note.') : t('A link shows your latest check-in, without its note.')
+                : t('A link that always shows your latest check-in, with or without its note.')}
+            </div>
+          </span>
+          <Icon name="chevron-right" size={18} />
+        </button>
+      </div>
+      <StatusSheet open={open} onClose={() => setOpen(false)} />
+    </section>
   );
 }
 
