@@ -41,11 +41,18 @@ after(() => {
 const admin = { 'x-admin': 'yes' };
 const send = (method, path, { body, headers = {} } = {}, who = () => open) =>
   fetch(who().base + path, { method, headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
-const checkin = (extra = {}) => ({ id: 'abc123', emotion: 'joy/content', name: 'Content', intensity: 4, time: Date.now() - 60_000, text: 'A good @[Ana] day', ...extra });
+const details = {
+  people: [{ name: 'Ana', icon: null, id: 'p1', text: 'private' }],
+  place: { name: 'Home', lat: 46.77, lon: 23.59 },
+  weather: { code: 2, temp: 21.44, daylight: 11, dark: false },
+  music: [{ kind: 'track', id: 'abc', title: 'Song' }],
+};
+const checkin = (extra = {}) => ({ id: 'abc123', emotion: 'joy/content', name: 'Content', intensity: 4, time: Date.now() - 60_000, text: 'A good @[Ana] day', details, ...extra });
+const ALL = { note: true, people: true, place: true, weather: true };
 
 test('only the admin can turn the status on, read its settings or stop it', async () => {
   assert.equal((await send('GET', '/api/status')).status, 401);
-  assert.equal((await send('PUT', '/api/status', { body: { note: true, checkin: checkin() } })).status, 401);
+  assert.equal((await send('PUT', '/api/status', { body: { show: ALL, checkin: checkin() } })).status, 401);
   assert.equal((await send('DELETE', '/api/status')).status, 401);
   const off = await send('PUT', '/api/status', { body: { checkin: checkin() }, headers: admin }, () => closed);
   assert.equal(off.status, 403);
@@ -54,11 +61,11 @@ test('only the admin can turn the status on, read its settings or stop it', asyn
 });
 
 test('the public link shows only the whitelisted check-in, and the note only when chosen', async () => {
-  const r = await send('PUT', '/api/status', { headers: admin, body: { note: false, checkin: checkin({ people: ['p1'], place: { lat: 1 } }) } });
+  const r = await send('PUT', '/api/status', { headers: admin, body: { show: { note: 'yes' }, checkin: checkin({ people: ['p1'], place: { lat: 1 } }) } });
   assert.equal(r.status, 200);
-  const { token, note } = await r.json();
+  const { token, show } = await r.json();
   assert.match(token, /^[A-Za-z0-9_-]{32}$/);
-  assert.equal(note, false);
+  assert.deepEqual(show, { note: false, people: false, place: false, weather: false }); // only exactly true turns one on
 
   const pub = await send('GET', '/api/status/' + token);
   assert.equal(pub.status, 200);
@@ -67,16 +74,25 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   assert.deepEqual(Object.keys(body.checkin).sort(), ['emotion', 'intensity', 'name', 'time']); // no id, no note, nothing else
   assert.equal(body.checkin.emotion, 'joy/content');
 
-  // showing the note keeps the same link
-  const again = await (await send('PUT', '/api/status', { headers: admin, body: { note: true, checkin: checkin() } })).json();
+  // showing more keeps the same link, and each detail comes in its narrow shape: names, no ids, no coordinates, no music
+  const again = await (await send('PUT', '/api/status', { headers: admin, body: { show: ALL, owner: '  Sava   V ', checkin: checkin() } })).json();
   assert.equal(again.token, token);
-  assert.equal((await (await send('GET', '/api/status/' + token)).json()).checkin.text, 'A good @[Ana] day');
+  const full = await (await send('GET', '/api/status/' + token)).json();
+  assert.equal(full.owner, 'Sava V');
+  assert.equal(full.checkin.text, 'A good @[Ana] day');
+  assert.deepEqual(full.checkin.details, { people: [{ name: 'Ana', icon: null }], place: { name: 'Home' }, weather: { code: 2, temp: 21.4, daylight: 11, dark: false } });
+
+  // just the people: the rest stays private
+  await send('PUT', '/api/status', { headers: admin, body: { show: { people: true }, owner: 'Sava', checkin: checkin() } });
+  const some = (await (await send('GET', '/api/status/' + token)).json()).checkin;
+  assert.equal(some.text, undefined);
+  assert.deepEqual(Object.keys(some.details), ['people']);
 
   // the page carries the feeling for link previews, and is never indexed
   const page = await send('GET', '/status/' + token);
   assert.equal(page.status, 200);
   const html = await page.text();
-  assert.match(html, /<title>Status: Content<\/title>/);
+  assert.match(html, /<title>Sava · Content<\/title>/);
   assert.match(html, /noindex/);
 });
 
@@ -96,4 +112,15 @@ test('a wrong token, a bad check-in and a stopped status are refused', async () 
   assert.equal((await send('GET', '/api/status/' + token)).status, 404);
   const fresh = await (await send('PUT', '/api/status', { headers: admin, body: { checkin: checkin() } })).json();
   assert.notEqual(fresh.token, token); // sharing again makes a new link
+});
+
+test('a status saved before the other details existed keeps showing its note', async () => {
+  const token = 'Q'.repeat(32);
+  writeFileSync(join(directory, 'status.json'), JSON.stringify({ token, note: true, checkin: { id: 'x1', emotion: 'joy', name: 'Joy', intensity: 3, time: 5, text: 'Hi' }, updated: 1 }));
+  const own = await (await send('GET', '/api/status', { headers: admin })).json();
+  assert.deepEqual(own.show, { note: true, people: false, place: false, weather: false });
+  assert.equal(own.owner, '');
+  const pub = await (await send('GET', '/api/status/' + token)).json();
+  assert.equal(pub.checkin.text, 'Hi');
+  assert.equal(pub.owner, '');
 });

@@ -11,7 +11,7 @@
 //    The server only ever sees ciphertext; the code (and so the key) never leaves the devices.
 //  • public notes: a note you choose to share is copied to data/shared/ and read by anyone with its /s/<token> link
 //    (server/share.js); feelings, people, place, weather and music only if chosen for that note. Only the admin (ADMIN_PASSWORD) can publish, update or stop sharing one.
-//  • public status: one /status/<token> link showing the latest check-in, its note only if chosen (server/status.js); admin-only to change
+//  • public status: one /status/<token> link showing the latest check-in; its note, people, place and weather only if chosen (server/status.js); admin-only to change
 //  • cloning: the site's owner (CLONE_GITHUB_ID, signed in as admin too) can clone one of their repos into CLONE_DIR
 //    on the server, from the repo's page (server/clone.js).
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,

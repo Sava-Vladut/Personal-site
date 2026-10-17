@@ -1,7 +1,8 @@
 // The public status: one link that always shows your latest check-in, for anyone who has it. While it's on, the app sends
-// that check-in's feeling, how strong it was and when, and its note only if you chose to show it. Nothing else leaves the
-// journal. Turning it on, updating and stopping need the admin password; reading needs only the link.
-//   data/status/status.json   { token, note, checkin, updated }: the link's secret, whether the note shows, the check-in
+// that check-in's feeling, how strong it was and when; its note, the people you were thinking of (by name), the place's
+// name and the weather only if you chose to show each. Nothing else leaves the journal. Turning it on, updating and
+// stopping need the admin password; reading needs only the link.
+//   data/status/status.json   { token, show, owner, checkin, updated }: the link's secret, what shows, your name, the check-in
 // The token is 192 random bits, so the link can't be guessed. Stopping deletes the file, and turning it on again makes a new link.
 import crypto from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -9,15 +10,26 @@ import { join } from 'node:path';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
 import { json } from './http-response.js';
-import { EMOTION_ID, escapeHtml } from './share.js';
+import { EMOTION_ID, cleanDetails, escapeHtml } from './share.js';
 
 const TOKEN = /^[A-Za-z0-9_-]{32}$/;
 const ENTRY_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const MAX_NOTE = 2000;
+const SHOW = ['note', 'people', 'place', 'weather'];
 const NO_INDEX = { 'X-Robots-Tag': 'noindex, nofollow, noarchive' };
 
-/** A check-in as the public page may show it: only these fields, and the note only when `note` is on. */
-export function cleanCheckin(raw, note) {
+/** Which details the page shows: each off unless it's exactly true. An older status file only knew about the note. */
+export function cleanShow(raw) {
+  const out = {};
+  for (const k of SHOW) out[k] = raw?.[k] === true;
+  return out;
+}
+
+/** The name shown above the status ("Sava"), or ''. */
+export const cleanOwner = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 40) : '');
+
+/** A check-in as the public page may show it: only these fields, and each detail only when `show` allows it. */
+export function cleanCheckin(raw, show) {
   if (raw === null) return null;
   if (!raw || typeof raw !== 'object') throw new HttpError(400, 'That check-in can’t be shared.');
   const { id, emotion, intensity, time } = raw;
@@ -31,13 +43,19 @@ export function cleanCheckin(raw, note) {
     intensity: Number.isInteger(intensity) && intensity >= 1 && intensity <= 5 ? intensity : 3,
     time: Math.round(time),
   };
-  const text = note && typeof raw.text === 'string' ? raw.text.trim().slice(0, MAX_NOTE) : '';
+  const text = show.note && typeof raw.text === 'string' ? raw.text.trim().slice(0, MAX_NOTE) : '';
   if (text) out.text = text;
+  const all = cleanDetails(raw.details) || {};
+  const details = {};
+  if (show.people && all.people) details.people = all.people.slice(0, 12);
+  if (show.place && all.place) details.place = all.place;
+  if (show.weather && all.weather) details.weather = all.weather;
+  if (Object.keys(details).length) out.details = details;
   return out;
 }
 
 /** What anyone with the link gets: never the entry's id. */
-const publicOf = (s) => ({ checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated });
+const publicOf = (s) => ({ owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated });
 
 export function createStatusHandler({ directory, indexFile, isAdmin, adminConfigured }) {
   const file = join(directory, 'status.json');
@@ -54,7 +72,8 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
   async function read() {
     try {
       const s = JSON.parse(await readFile(file, 'utf8'));
-      return s && TOKEN.test(s.token) ? s : null;
+      if (!s || !TOKEN.test(s.token)) return null;
+      return { ...s, show: cleanShow(s.show ?? { note: s.note }), owner: cleanOwner(s.owner) };
     } catch (error) {
       if (error.code === 'ENOENT' || error instanceof SyntaxError) return null;
       throw error;
@@ -72,7 +91,7 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     if (!isAdmin(req)) throw new HttpError(401, 'Sign in with the admin password to share your status.');
   }
 
-  const own = (s) => (s ? { token: s.token, note: s.note, checkin: s.checkin, updated: s.updated } : { token: null });
+  const own = (s) => (s ? { token: s.token, show: s.show, owner: s.owner, checkin: s.checkin, updated: s.updated } : { token: null });
 
   /** The /api/status routes. Reading /api/status/<token> is public; everything else is the admin's. */
   async function api(req, res, path) {
@@ -92,11 +111,12 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     if (req.method === 'GET') return json(res, 200, own(await read()));
     if (req.method === 'PUT') {
       const body = await readJson(req, 16 * 1024);
-      const note = body?.note === true;
-      const checkin = cleanCheckin(body?.checkin ?? null, note);
+      const show = cleanShow(body?.show);
+      const owner = cleanOwner(body?.owner);
+      const checkin = cleanCheckin(body?.checkin ?? null, show);
       const s = await locked(async () => {
         const old = await read();
-        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), note, checkin, updated: Date.now() };
+        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), show, owner, checkin, updated: Date.now() };
         await write(next);
         return next;
       });
@@ -121,7 +141,7 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     const shared = !!s && crypto.timingSafeEqual(Buffer.from(s.token), Buffer.from(token));
     let html = shell.html;
     if (shared) {
-      const title = s.checkin?.name ? `Status: ${s.checkin.name}` : 'Status';
+      const title = [s.owner, s.checkin?.name].filter(Boolean).join(' · ') || 'Status';
       const blurb = s.checkin?.text ? (s.checkin.text.length > 160 ? s.checkin.text.slice(0, 157).trimEnd() + '…' : s.checkin.text) : 'My latest check-in';
       const meta = [
         '<meta name="robots" content="noindex, nofollow, noarchive" />',

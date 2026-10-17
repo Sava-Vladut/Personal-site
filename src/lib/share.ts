@@ -40,7 +40,7 @@ export function partsOf(e: Entry): SharePart[] {
   return (Object.keys(has) as SharePart[]).filter((p) => has[p]);
 }
 
-function detailsOf(e: Entry, parts: SharePart[]): PublicDetails | undefined {
+export function detailsOf(e: Entry, parts: SharePart[]): PublicDetails | undefined {
   const on = new Set(parts.filter((p) => partsOf(e).includes(p)));
   const out: PublicDetails = {};
   if (on.has('feelings')) out.feelings = { emotions: e.emotions, intensity: e.intensity };

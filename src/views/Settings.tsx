@@ -21,7 +21,7 @@ import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
 import { StatusSheet } from '../components/StatusSheet';
-import { useStatus } from '../lib/status';
+import { useStatus, type Show } from '../lib/status';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -550,6 +550,12 @@ function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
+/** "Shows your latest check-in, with the note and people." */
+function shownParts(show: Show) {
+  const parts = [show.note && t('the note'), show.people && t('people'), show.place && t('place'), show.weather && t('weather')].filter((x): x is string => !!x);
+  return parts.length ? t('Shows your latest check-in, with {parts}.', { parts: listOf(parts) }) : t('Shows your latest check-in: the feeling, how strong and when.');
+}
+
 /** The public status: whether your latest check-in has a link, and the sheet to share it or stop. */
 function PublicStatus() {
   const status = useStatus();
@@ -563,8 +569,8 @@ function PublicStatus() {
             <span class="row gap-s"><Icon name="world" size={18} /> {status?.token ? t('Your status is public') : t('Share your status')}</span>
             <div class="muted small">
               {status?.token
-                ? status.note ? t('A link shows your latest check-in and its note.') : t('A link shows your latest check-in, without its note.')
-                : t('A link that always shows your latest check-in, with or without its note.')}
+                ? shownParts(status.show)
+                : t('One link that always shows your latest check-in, with the note and the people you’re thinking of if you like.')}
             </div>
           </span>
           <Icon name="chevron-right" size={18} />

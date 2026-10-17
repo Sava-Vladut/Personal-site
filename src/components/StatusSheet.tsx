@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'preact/hooks';
 import { EMOTION, shortName } from '../data/emotions';
+import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
-import { latestCheckin, loadStatus, publicCheckin, shareStatus, statusUrl, stopStatus, useStatus, useStatusError } from '../lib/status';
+import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show } from '../lib/status';
 import { INTENSITY } from './emotion';
-import { Icon, Sprite } from './icons';
+import { Icon, Sprite, type UiName } from './icons';
 import { Sheet } from './Sheet';
 import { ask } from './Confirm';
 import { t } from '../lib/i18n';
 import '../styles/shared.css';
 
+const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = [
+  { key: 'note', icon: 'quote', label: t('The note'), hint: t('What you wrote with the check-in') },
+  { key: 'people', icon: 'heart', label: t('Thinking of'), hint: t('The people you tagged, by name') },
+  { key: 'place', icon: 'map-pin', label: t('Place'), hint: t('Where you were, by its name only') },
+  { key: 'weather', icon: 'cloud', label: t('Weather'), hint: t('The sky and temperature then') },
+];
+
 /**
- * Sharing your status: one link that always shows your latest check-in. Off until turned on here; the note of a check-in
- * only shows when "Show the note" is on. The link is secret, but anyone who has it can see it, so it can be stopped any time.
+ * Sharing your status: one link that always shows your latest check-in. Off until turned on here; the note, the people
+ * you were thinking of, the place and the weather each only show when switched on. The link is secret, but anyone who
+ * has it can see it, so it can be stopped any time.
  */
 export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const status = useStatus();
@@ -20,21 +29,25 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
   const entries = useEntries();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [note, setNote] = useState(false);
+  const [show, setShow] = useState<Show>(SHOW_NONE);
+  const [owner, setOwner] = useState('');
   useEffect(() => {
     if (!open) return;
     setError('');
     void loadStatus();
   }, [open]);
   useEffect(() => {
-    if (status) setNote(status.note);
-  }, [status?.token, status?.note]);
+    if (!status) return;
+    setShow(status.show);
+    setOwner(status.owner);
+  }, [status?.token, JSON.stringify(status?.show), status?.owner]);
 
   const on = !!status?.token;
   const url = status?.token ? statusUrl(status.token) : '';
   const latest = latestCheckin(entries);
-  const preview = latest && publicCheckin(latest, note);
+  const preview = latest && publicCheckin(latest, show);
   const em = preview && EMOTION[preview.emotion];
+  const d = preview?.details;
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -48,20 +61,28 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
     }
   };
   const start = () => run(async () => {
-    await shareStatus(note);
+    await shareStatus(show, owner);
     toast(t('Your status is public'));
   });
-  const toggleNote = () => {
-    const next = !note;
-    setNote(next);
+  const toggle = (key: keyof Show) => {
+    const before = show;
+    const next = { ...show, [key]: !show[key] };
+    setShow(next);
     if (on) void run(async () => {
       try {
-        await shareStatus(next);
+        await shareStatus(next, owner);
       } catch (e) {
-        setNote(!next);
+        setShow(before);
         throw e;
       }
-      toast(next ? t('The note shows on your status') : t('The note is hidden from your status'));
+    });
+  };
+  const saveOwner = () => {
+    const name = owner.replace(/\s+/g, ' ').trim();
+    setOwner(name);
+    if (on && name !== status?.owner) void run(async () => {
+      await shareStatus(show, name);
+      toast(t('Name updated'));
     });
   };
   const stop = async () => {
@@ -79,7 +100,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
       toast(t('Couldn’t copy — select it and copy by hand'));
     }
   };
-  const send = () => navigator.share({ title: t('How I’m feeling'), url }).catch(() => {});
+  const send = () => navigator.share({ title: owner ? t('How {name} is feeling', { name: owner }) : t('How I’m feeling'), url }).catch(() => {});
 
   return (
     <Sheet open={open} onClose={onClose} title={t('Public status')}>
@@ -97,6 +118,13 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
               <span class="status-preview-main">
                 <span class="status-preview-name">{em.depth === 0 ? shortName(em.id) : em.name} · <span class="muted">{INTENSITY[preview.intensity - 1]} · {timeLabel(preview.time)}</span></span>
                 {preview.text && <span class="status-preview-note">“{preview.text}”</span>}
+                {(d?.people || d?.place || d?.weather) && (
+                  <span class="status-preview-extra">
+                    {d.people && <span><Icon name="heart" size={13} /> {d.people.map((p) => p.name).join(', ')}</span>}
+                    {d.place && <span><Icon name="map-pin" size={13} /> {d.place.name}</span>}
+                    {d.weather && <span><Icon name="cloud" size={13} /> {fmtTemp(d.weather.temp)} · {weatherName(d.weather.code)}</span>}
+                  </span>
+                )}
               </span>
             </>
           ) : (
@@ -104,17 +132,38 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
           )}
         </div>
 
-        <label class="share-part">
-          <Icon name="quote" size={18} />
-          <span class="share-part-main">
-            <span class="share-part-name">{t('Show the note')}</span>
-            <span class="share-part-value">{t('What you wrote with the check-in')}</span>
-          </span>
-          <button class="switch" role="switch" aria-checked={note} aria-label={t('Show the note')} onClick={toggleNote} disabled={busy} />
+        <label class="status-owner">
+          <span class="field-label">{t('Your name')} <span class="muted">· {t('optional')}</span></span>
+          <input
+            class="input"
+            value={owner}
+            maxLength={40}
+            placeholder={t('So they know whose status it is')}
+            onInput={(e) => setOwner(e.currentTarget.value)}
+            onBlur={saveOwner}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            enterkeyhint="done"
+            autocomplete="given-name"
+          />
         </label>
-        {note && (
-          <p class="share-parts-note"><Icon name="alert-circle" size={14} /> {t('Names written in the note can be read by anyone with the link.')}</p>
-        )}
+
+        <div class="share-parts">
+          <div class="share-parts-head">{t('Also show')}</div>
+          {PARTS.map((p) => (
+            <label class="share-part" key={p.key}>
+              <Icon name={p.icon} size={18} />
+              <span class="share-part-main">
+                <span class="share-part-name">{p.label}</span>
+                <span class="share-part-value">{p.hint}</span>
+              </span>
+              <button class="switch" role="switch" aria-checked={show[p.key]} aria-label={p.label} onClick={() => toggle(p.key)} disabled={busy} />
+            </label>
+          ))}
+          <p class="share-parts-note">
+            <Icon name="lock" size={14} />
+            {show.note ? t('Off stays private. Names written in the note can be read by anyone with the link.') : t('Off stays private. People show by name only, a place by its name only.')}
+          </p>
+        </div>
 
         {on ? (
           <>
@@ -123,6 +172,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
               <button class="btn btn-quiet" onClick={copy}><Icon name="copy" size={16} /> {t('Copy')}</button>
               {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={16} /></button>}
             </div>
+            <a class="btn btn-quiet share-stop" href={url} target="_blank" rel="noopener"><Icon name="external-link" size={16} /> {t('Open the page')}</a>
             <button class="btn btn-quiet share-stop" onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
           </>
         ) : (

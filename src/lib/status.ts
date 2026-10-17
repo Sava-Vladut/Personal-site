@@ -1,19 +1,31 @@
 // The public status: one link (/status/<token>) that always shows your latest check-in, for anyone who has it. It's off
-// until turned on, needs the admin password, and shows the feeling, how strong it was and when; the check-in's note only
-// when "Show the note" is on. While it's on, each device that's signed in sends the newest check-in it knows of whenever
-// that changes. Stopping deletes it from the server, and turning it on again makes a new link.
+// until turned on, needs the admin password, and shows the feeling, how strong it was and when; the check-in's note, the
+// people you were thinking of (by name), the place's name and the weather only when each is chosen (Status.show), and
+// your name above it if you gave one. While it's on, each device that's signed in sends the newest check-in it knows of
+// whenever that changes. Stopping deletes it from the server, and turning it on again makes a new link.
 import { EMOTION, shortName } from '../data/emotions';
 import { getDeleted, getEntries, observable, onEntries, type Entry } from './store';
-import { plainTags } from './share';
+import { detailsOf, plainTags, type PublicDetails } from './share';
 import { t } from './i18n';
 
 /** A check-in as the public page shows it. */
-export interface PublicCheckin { emotion: string; name: string; intensity: number; time: number; text?: string }
+export interface PublicCheckin {
+  emotion: string;
+  name: string;
+  intensity: number;
+  time: number;
+  text?: string;
+  details?: Pick<PublicDetails, 'people' | 'place' | 'weather'>;
+}
 /** What the server keeps: the same, with the entry it came from. */
 type Published = PublicCheckin & { id: string };
 
+/** Which of a check-in's details the public page shows. */
+export interface Show { note: boolean; people: boolean; place: boolean; weather: boolean }
+export const SHOW_NONE: Show = { note: false, people: false, place: false, weather: false };
+
 /** The status as this device knows it: off (token null), on, or not known yet / unreachable (null). */
-export interface Status { token: string | null; note: boolean; checkin: Published | null }
+export interface Status { token: string | null; show: Show; owner: string; checkin: Published | null }
 
 const status$ = observable<Status | null>(null);
 const error$ = observable('');
@@ -30,11 +42,15 @@ export function latestCheckin(entries: Entry[] = getEntries()): Entry | null {
 }
 
 /** What the public page would show for this check-in. */
-export function publicCheckin(e: Entry, note: boolean): Published {
+export function publicCheckin(e: Entry, show: Show): Published {
   const id = e.emotions[0];
   const em = EMOTION[id];
-  const text = note ? plainTags(e.text).trim() : '';
-  return { id: e.id, emotion: id, name: em.depth === 0 ? shortName(id) : em.name, intensity: e.intensity, time: e.time, ...(text && { text }) };
+  const text = show.note ? plainTags(e.text).trim() : '';
+  const details = detailsOf(e, (['people', 'place', 'weather'] as const).filter((k) => show[k]));
+  return {
+    id: e.id, emotion: id, name: em.depth === 0 ? shortName(id) : em.name, intensity: e.intensity, time: e.time,
+    ...(text && { text }), ...(details && { details }),
+  };
 }
 
 async function call(method: string, body?: object): Promise<Status> {
@@ -49,10 +65,10 @@ async function call(method: string, body?: object): Promise<Status> {
   } catch {
     throw new Error(t('Couldn’t reach the server. Check your connection.'));
   }
-  if (r.status === 204) return { token: null, note: false, checkin: null };
+  if (r.status === 204) return { token: null, show: SHOW_NONE, owner: '', checkin: null };
   const out = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(out.error || t('Something went wrong on the server.'));
-  return { token: out.token ?? null, note: out.note === true, checkin: out.checkin ?? null };
+  return { token: out.token ?? null, show: { ...SHOW_NONE, ...out.show }, owner: out.owner ?? '', checkin: out.checkin ?? null };
 }
 
 /** Asks the server whether the status is on, and what it shows. */
@@ -65,15 +81,19 @@ export async function loadStatus() {
   }
 }
 
-const send = async (note: boolean) => {
+/** What was last sent, so a check-in the server tidied up (a rounded temperature…) isn't sent again and again. */
+let lastSent = '';
+const send = async (show: Show, owner: string) => {
   const latest = latestCheckin();
-  const s = await call('PUT', { note, checkin: latest && publicCheckin(latest, note) });
+  const checkin = latest && publicCheckin(latest, show);
+  const s = await call('PUT', { show, owner, checkin });
+  lastSent = JSON.stringify(checkin);
   status$.set(s);
   return s;
 };
 
-/** Turns the status on (or changes whether it shows the note), with the newest check-in. */
-export const shareStatus = (note: boolean) => send(note);
+/** Turns the status on, or changes what it shows or the name above it, with the newest check-in. */
+export const shareStatus = (show: Show, owner: string) => send(show, owner);
 
 /** Takes the status down: its link stops working at once. */
 export async function stopStatus() {
@@ -86,8 +106,8 @@ const same = (a: Published | null, b: Published | null) => JSON.stringify(a) ===
 function shouldSend(s: Status) {
   if (!s.token) return false;
   const latest = latestCheckin();
-  const mine = latest && publicCheckin(latest, s.note);
-  if (same(mine, s.checkin)) return false;
+  const mine = latest && publicCheckin(latest, s.show);
+  if (same(mine, s.checkin) || JSON.stringify(mine) === lastSent) return false;
   // A device that hasn't synced yet mustn't roll the status back to an older check-in: only when the one shown was
   // deleted here, or edited here (then it's the newest one this device knows of, or was moved earlier), does it go back.
   const shown = s.checkin;
@@ -105,7 +125,7 @@ function check() {
     sending = true;
     let sent = false;
     try {
-      await send(s.note);
+      await send(s.show, s.owner);
       sent = true;
     } catch {
       // tried again with the next change, or the next time the app opens

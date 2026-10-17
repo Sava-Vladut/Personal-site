@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.96.0',
+    date: '2026-10-17',
+    changes: [
+      'Public status: a new look made for phones: the feeling big in its own colour, how strong it is, what the word means, and how long ago it was',
+      'Public status: also show the people you were thinking of, the place and the weather, each with its own switch (all off until you turn them on)',
+      'Public status: add your name, so family and friends see whose status it is (“Ana is feeling…”)',
+      'Public status: “Open the page” to see it as others do',
+    ],
+  },
+  {
     version: '1.95.0',
     date: '2026-10-17',
     changes: [
