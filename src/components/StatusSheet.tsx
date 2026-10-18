@@ -4,6 +4,7 @@ import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
 import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show } from '../lib/status';
+import { countdownOn } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
 import { Sheet } from './Sheet';
@@ -16,6 +17,7 @@ const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = 
   { key: 'people', icon: 'heart', label: t('Thinking of'), hint: t('The people you tagged, by name') },
   { key: 'place', icon: 'map-pin', label: t('Place'), hint: t('Where you were, by its name only') },
   { key: 'weather', icon: 'cloud', label: t('Weather'), hint: t('The sky and temperature then') },
+  { key: 'countdown', icon: 'hourglass', label: t('Countdown'), hint: t('The timer to 30 October, 07:00, ticking live') },
 ];
 
 /**
@@ -149,7 +151,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
 
         <div class="share-parts">
           <div class="share-parts-head">{t('Also show')}</div>
-          {PARTS.map((p) => (
+          {PARTS.filter((p) => p.key !== 'countdown' || countdownOn()).map((p) => (
             <label class="share-part" key={p.key}>
               <Icon name={p.icon} size={18} />
               <span class="share-part-main">

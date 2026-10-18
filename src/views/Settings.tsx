@@ -22,6 +22,7 @@ import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../l
 import { ask } from '../components/Confirm';
 import { StatusSheet } from '../components/StatusSheet';
 import { useStatus, type Show } from '../lib/status';
+import { countdownOn } from '../lib/countdown';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -552,7 +553,7 @@ function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void 
 
 /** "Shows your latest check-in, with the note and people." */
 function shownParts(show: Show) {
-  const parts = [show.note && t('the note'), show.people && t('people'), show.place && t('place'), show.weather && t('weather')].filter((x): x is string => !!x);
+  const parts = [show.note && t('the note'), show.people && t('people'), show.place && t('place'), show.weather && t('weather'), show.countdown && countdownOn() && t('the countdown')].filter((x): x is string => !!x);
   return parts.length ? t('Shows your latest check-in, with {parts}.', { parts: listOf(parts) }) : t('Shows your latest check-in: the feeling, how strong and when.');
 }
 

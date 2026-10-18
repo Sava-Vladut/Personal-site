@@ -1,6 +1,7 @@
 // The public status: one link that always shows your latest check-in, for anyone who has it. While it's on, the app sends
 // that check-in's feeling, how strong it was and when; its note, the people you were thinking of (by name), the place's
-// name and the weather only if you chose to show each. Nothing else leaves the journal. Turning it on, updating and
+// name and the weather only if you chose to show each, and the app's countdown (src/lib/countdown.ts) beside it if chosen.
+// Nothing else leaves the journal. Turning it on, updating and
 // stopping need the admin password; reading needs only the link.
 //   data/status/status.json   { token, show, owner, checkin, updated }: the link's secret, what shows, your name, the check-in
 // The token is 192 random bits, so the link can't be guessed. Stopping deletes the file, and turning it on again makes a new link.
@@ -15,7 +16,7 @@ import { EMOTION_ID, cleanDetails, escapeHtml } from './share.js';
 const TOKEN = /^[A-Za-z0-9_-]{32}$/;
 const ENTRY_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const MAX_NOTE = 2000;
-const SHOW = ['note', 'people', 'place', 'weather'];
+const SHOW = ['note', 'people', 'place', 'weather', 'countdown'];
 const NO_INDEX = { 'X-Robots-Tag': 'noindex, nofollow, noarchive' };
 
 /** Which details the page shows: each off unless it's exactly true. An older status file only knew about the note. */
@@ -54,8 +55,8 @@ export function cleanCheckin(raw, show) {
   return out;
 }
 
-/** What anyone with the link gets: never the entry's id. */
-const publicOf = (s) => ({ owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated });
+/** What anyone with the link gets: never the entry's id. The countdown's dates are the app's own, so only whether it shows. */
+const publicOf = (s) => ({ owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated, ...(s.show.countdown && { countdown: true }) });
 
 export function createStatusHandler({ directory, indexFile, isAdmin, adminConfigured }) {
   const file = join(directory, 'status.json');

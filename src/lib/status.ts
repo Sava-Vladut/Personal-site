@@ -1,7 +1,7 @@
 // The public status: one link (/status/<token>) that always shows your latest check-in, for anyone who has it. It's off
 // until turned on, needs the admin password, and shows the feeling, how strong it was and when; the check-in's note, the
 // people you were thinking of (by name), the place's name and the weather only when each is chosen (Status.show), and
-// your name above it if you gave one. While it's on, each device that's signed in sends the newest check-in it knows of
+// your name above it if you gave one; the countdown too, while it lasts, if chosen. While it's on, each device that's signed in sends the newest check-in it knows of
 // whenever that changes. Stopping deletes it from the server, and turning it on again makes a new link.
 import { EMOTION, shortName } from '../data/emotions';
 import { getDeleted, getEntries, observable, onEntries, type Entry } from './store';
@@ -20,9 +20,9 @@ export interface PublicCheckin {
 /** What the server keeps: the same, with the entry it came from. */
 type Published = PublicCheckin & { id: string };
 
-/** Which of a check-in's details the public page shows. */
-export interface Show { note: boolean; people: boolean; place: boolean; weather: boolean }
-export const SHOW_NONE: Show = { note: false, people: false, place: false, weather: false };
+/** Which of a check-in's details the public page shows, and whether the countdown (lib/countdown.ts) shows under it. */
+export interface Show { note: boolean; people: boolean; place: boolean; weather: boolean; countdown: boolean }
+export const SHOW_NONE: Show = { note: false, people: false, place: false, weather: false, countdown: false };
 
 /** The status as this device knows it: off (token null), on, or not known yet / unreachable (null). */
 export interface Status { token: string | null; show: Show; owner: string; checkin: Published | null }

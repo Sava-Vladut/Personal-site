@@ -3,14 +3,15 @@ import { EMOTION, shortName } from '../data/emotions';
 import { fmtTemp, weatherIcon, weatherName } from '../data/weather';
 import { addDays, formatDate, keyOf, todayKey } from '../lib/dates';
 import type { PublicCheckin } from '../lib/status';
+import { END, countdownOn, parts, progress, useNow } from '../lib/countdown';
 import type { Person } from '../lib/store';
 import { INTENSITY, trail } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
-import { t } from '../lib/i18n';
+import { LOCALE, t } from '../lib/i18n';
 import '../styles/shared.css';
 
-type Public = { owner: string; checkin: PublicCheckin | null; updated: number };
+type Public = { owner: string; checkin: PublicCheckin | null; updated: number; countdown?: boolean };
 type State = Public | 'gone' | 'loading' | 'error';
 
 async function read(token: string): Promise<Public | 'gone'> {
@@ -91,6 +92,7 @@ export function Status({ token }: { token: string }) {
               {typeof state === 'object' && <p>{owner ? t('{name} hasn’t checked in yet. This page shows the next one by itself.', { name: owner }) : t('This page shows the next check-in by itself.')}</p>}
             </div>
           )}
+          {typeof state === 'object' && state.countdown && countdownOn() && <Countdown />}
         </div>
       </main>
     );
@@ -156,11 +158,48 @@ export function Status({ token }: { token: string }) {
           </div>
         )}
 
+        {state.countdown && countdownOn() && <Countdown />}
+
         <footer class="status-foot">
           <span>{since ? at(c.time) : t('Checked in {when}', { when: at(c.time) })}</span>
           <span class="status-brand">{t('Updates by itself · My Mind')}</span>
         </footer>
       </article>
     </main>
+  );
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const until = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+/** The app's countdown (lib/countdown.ts), ticking live, when the status chose to show it. Gone by itself on 1 November. */
+function Countdown() {
+  const now = useNow(1000);
+  if (!countdownOn(now)) return null;
+  const done = now >= END;
+  const left = parts(END - now);
+  const p = progress(now);
+  const units: [number, string][] = [[left.d, t('days')], [left.h, t('hours')], [left.m, t('min')], [left.s, t('sec')]];
+  return (
+    <section class="status-card status-countdown">
+      <h2 class="status-card-title"><Icon name="hourglass" size={15} /> {t('Countdown')}</h2>
+      {done ? (
+        <p class="status-cd-done">{t('The countdown is over')}</p>
+      ) : (
+        <div class="status-cd-clock" role="timer" aria-label={t('{d} days, {h} hours, {m} minutes and {s} seconds left', { d: left.d, h: left.h, m: left.m, s: left.s })}>
+          {units.map(([n, label]) => (
+            <span class="status-cd-unit" aria-hidden="true">
+              <b>{pad(n)}</b>
+              <span>{label}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      <div class="status-cd-bar" aria-hidden="true"><i style={{ transform: `scaleX(${p})` }} /></div>
+      <p class="status-cd-sub">
+        <span>{t('{n}% through', { n: Math.floor(p * 100) })}</span>
+        <span>{t('Until {when}', { when: until.format(END) })}</span>
+      </p>
+    </section>
   );
 }

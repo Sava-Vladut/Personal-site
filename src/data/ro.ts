@@ -1842,4 +1842,7 @@ export const RO: Record<string, string> = {
   'in {d} d {h} h': 'în {d} z {h} h',
   'Countdown · over': 'Numărătoare inversă · gata',
   'Countdown · {d} days left': 'Numărătoare inversă · {d} zile rămase',
+  'The timer to 30 October, 07:00, ticking live': 'Cronometrul până pe 30 octombrie, 07:00, în timp real',
+  'the countdown': 'numărătoarea inversă',
+  'Until {when}': 'Până pe {when}',
 };

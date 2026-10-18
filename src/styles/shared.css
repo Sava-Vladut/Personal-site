@@ -167,6 +167,16 @@
   font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); font-variant-numeric: tabular-nums;
 }
 .status-pill svg { color: var(--ink-3); }
+/* the countdown (lib/countdown.ts), when the status shows it */
+.status-cd-clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.status-cd-unit { display: grid; justify-items: center; gap: 1px; padding: 10px 4px 8px; border-radius: var(--r-l); background: color-mix(in oklab, var(--c) 9%, var(--surface-2)); }
+.status-cd-unit b { font: var(--w-bold) 28px/1.1 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: color-mix(in oklab, var(--c) 35%, var(--ink)); }
+.status-cd-unit span { font-size: var(--text-xs); color: var(--ink-3); }
+.status-cd-done { font: var(--w-medium) var(--text-xl)/1.3 var(--serif); color: color-mix(in oklab, var(--c) 45%, var(--ink)); }
+.status-cd-bar { height: 6px; margin-top: 14px; border-radius: var(--r-pill); overflow: hidden; background: color-mix(in oklab, var(--c) 12%, var(--surface-2)); }
+.status-cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c); transform-origin: left; transition: transform 1s linear; }
+.status-cd-sub { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.status-view.is-empty .status-countdown { --c: var(--emo-calm-safety); margin-top: 18px; }
 .status-foot { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: var(--text-s); color: var(--ink-3); text-align: center; }
 .status-brand { opacity: 0.8; }
 @media (prefers-reduced-motion: reduce) { .status-orb, .status-ago.is-fresh i, .status-view > * { animation: none; } }

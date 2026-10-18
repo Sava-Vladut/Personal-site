@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.98.0',
+    date: '2026-10-18',
+    changes: [
+      'Public status: a new “Countdown” switch shows the timer to 30 October, 07:00 on your public page, ticking live',
+      'Public status: it’s off until you turn it on, and like the timer itself it goes away by itself on 1 November',
+    ],
+  },
+  {
     version: '1.97.0',
     date: '2026-10-18',
     changes: [
