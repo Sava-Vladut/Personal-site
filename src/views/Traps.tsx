@@ -391,8 +391,9 @@ function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCa
 type Sort = 'power' | 'name' | 'pull';
 const SORTS: Sort[] = ['power', 'pull', 'name'];
 
-export function Traps() {
-  const [open, setOpen] = useState<string | null>(null);
+export function Traps({ query: params }: { query: URLSearchParams }) {
+  // ?open=<id> opens a trap straight away (the Laws of Power page links here)
+  const [open, setOpen] = useState<string | null>(() => (BY_ID.has(params.get('open') ?? '') ? params.get('open') : null));
   const [family, setFamily] = usePref<string>('traps-family', 'all', ['all', ...FAMILY_IDS]);
   const [sort, setSort] = usePref<Sort>('traps-sort', 'power', SORTS);
   const [query, setQuery] = useState('');

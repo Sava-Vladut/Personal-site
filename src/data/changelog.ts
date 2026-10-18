@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.103.0',
+    date: '2026-10-18',
+    changes: [
+      'New page: the 48 Laws of Power, on the wheel under Insights',
+      'Every law in depth: the history it came from, the psychology behind it, the levers it pulls and a real experiment',
+      'Each law links to the Mind traps it springs, and shows the signs it’s being played on you and how to answer',
+      'A chessboard of all 48, a shadow map of how dark and how common each one is, and a law of the day',
+      'Name the move: a game where you spot which law is being played',
+      'Read as the player or as the target, and keep count of laws played on you or by you',
+      'Mind traps: a link can now open a trap straight away',
+    ],
+  },
+  {
     version: '1.102.0',
     date: '2026-10-18',
     changes: [
