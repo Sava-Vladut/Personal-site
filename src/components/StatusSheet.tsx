@@ -9,7 +9,7 @@ import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
 import { Sheet } from './Sheet';
 import { ask } from './Confirm';
-import { t } from '../lib/i18n';
+import { LANGS, lang, t, type Lang } from '../lib/i18n';
 import '../styles/shared.css';
 
 const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = [
@@ -23,7 +23,7 @@ const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = 
 /**
  * Sharing your status: one link that always shows your latest check-in. Off until turned on here; the note, the people
  * you were thinking of, the place and the weather each only show when switched on. The link is secret, but anyone who
- * has it can see it, so it can be stopped any time.
+ * has it can see it, so it can be stopped any time. The page is in the language chosen here, whatever the reader's device uses.
  */
 export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const status = useStatus();
@@ -33,6 +33,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
   const [error, setError] = useState('');
   const [show, setShow] = useState<Show>(SHOW_NONE);
   const [owner, setOwner] = useState('');
+  const [pageLang, setPageLang] = useState<Lang>(lang);
   useEffect(() => {
     if (!open) return;
     setError('');
@@ -42,7 +43,9 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
     if (!status) return;
     setShow(status.show);
     setOwner(status.owner);
-  }, [status?.token, JSON.stringify(status?.show), status?.owner]);
+    // a status from before it had a language showed in English to nearly everyone; a new one starts in the app's
+    setPageLang(status.token ? status.lang || 'en' : lang);
+  }, [status?.token, JSON.stringify(status?.show), status?.owner, status?.lang]);
 
   const on = !!status?.token;
   const url = status?.token ? statusUrl(status.token) : '';
@@ -63,7 +66,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
     }
   };
   const start = () => run(async () => {
-    await shareStatus(show, owner);
+    await shareStatus(show, owner, pageLang);
     toast(t('Your status is public'));
   });
   const toggle = (key: keyof Show) => {
@@ -72,7 +75,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
     setShow(next);
     if (on) void run(async () => {
       try {
-        await shareStatus(next, owner);
+        await shareStatus(next, owner, pageLang);
       } catch (e) {
         setShow(before);
         throw e;
@@ -83,8 +86,22 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
     const name = owner.replace(/\s+/g, ' ').trim();
     setOwner(name);
     if (on && name !== status?.owner) void run(async () => {
-      await shareStatus(show, name);
+      await shareStatus(show, name, pageLang);
       toast(t('Name updated'));
+    });
+  };
+  const pickLang = (next: Lang) => {
+    if (next === pageLang) return;
+    const before = pageLang;
+    setPageLang(next);
+    if (on) void run(async () => {
+      try {
+        await shareStatus(show, owner, next);
+        toast(t('Language updated'));
+      } catch (e) {
+        setPageLang(before);
+        throw e;
+      }
     });
   };
   const stop = async () => {
@@ -148,6 +165,15 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
             autocomplete="given-name"
           />
         </label>
+
+        <div class="status-lang">
+          <span class="field-label">{t('Page language')}</span>
+          <div class="seg compact" role="radiogroup" aria-label={t('Page language')}>
+            {LANGS.map(([v, l]) => (
+              <button role="radio" lang={v} aria-checked={pageLang === v} aria-selected={pageLang === v} onClick={() => pickLang(v)} disabled={busy}>{l}</button>
+            ))}
+          </div>
+        </div>
 
         <div class="share-parts">
           <div class="share-parts-head">{t('Also show')}</div>

@@ -6,7 +6,7 @@
 import { EMOTION, shortName } from '../data/emotions';
 import { getDeleted, getEntries, observable, onEntries, type Entry } from './store';
 import { detailsOf, plainTags, type PublicDetails } from './share';
-import { t } from './i18n';
+import { t, type Lang } from './i18n';
 
 /** A check-in as the public page shows it. */
 export interface PublicCheckin {
@@ -24,8 +24,8 @@ type Published = PublicCheckin & { id: string };
 export interface Show { note: boolean; people: boolean; place: boolean; weather: boolean; countdown: boolean }
 export const SHOW_NONE: Show = { note: false, people: false, place: false, weather: false, countdown: false };
 
-/** The status as this device knows it: off (token null), on, or not known yet / unreachable (null). */
-export interface Status { token: string | null; show: Show; owner: string; checkin: Published | null }
+/** The status as this device knows it: off (token null), on, or not known yet / unreachable (null). lang: the page's language, or '' for each reader's own. */
+export interface Status { token: string | null; show: Show; owner: string; lang: Lang | ''; checkin: Published | null }
 
 const status$ = observable<Status | null>(null);
 const error$ = observable('');
@@ -65,10 +65,10 @@ async function call(method: string, body?: object): Promise<Status> {
   } catch {
     throw new Error(t('Couldn’t reach the server. Check your connection.'));
   }
-  if (r.status === 204) return { token: null, show: SHOW_NONE, owner: '', checkin: null };
+  if (r.status === 204) return { token: null, show: SHOW_NONE, owner: '', lang: '', checkin: null };
   const out = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(out.error || t('Something went wrong on the server.'));
-  return { token: out.token ?? null, show: { ...SHOW_NONE, ...out.show }, owner: out.owner ?? '', checkin: out.checkin ?? null };
+  return { token: out.token ?? null, show: { ...SHOW_NONE, ...out.show }, owner: out.owner ?? '', lang: out.lang === 'en' || out.lang === 'ro' ? out.lang : '', checkin: out.checkin ?? null };
 }
 
 /** Asks the server whether the status is on, and what it shows. */
@@ -83,17 +83,17 @@ export async function loadStatus() {
 
 /** What was last sent, so a check-in the server tidied up (a rounded temperature…) isn't sent again and again. */
 let lastSent = '';
-const send = async (show: Show, owner: string) => {
+const send = async (show: Show, owner: string, lang: Lang | '') => {
   const latest = latestCheckin();
   const checkin = latest && publicCheckin(latest, show);
-  const s = await call('PUT', { show, owner, checkin });
+  const s = await call('PUT', { show, owner, lang, checkin });
   lastSent = JSON.stringify(checkin);
   status$.set(s);
   return s;
 };
 
-/** Turns the status on, or changes what it shows or the name above it, with the newest check-in. */
-export const shareStatus = (show: Show, owner: string) => send(show, owner);
+/** Turns the status on, or changes what it shows, the name above it or its language, with the newest check-in. */
+export const shareStatus = (show: Show, owner: string, lang: Lang | '') => send(show, owner, lang);
 
 /** Takes the status down: its link stops working at once. */
 export async function stopStatus() {
@@ -125,7 +125,7 @@ function check() {
     sending = true;
     let sent = false;
     try {
-      await send(s.show, s.owner);
+      await send(s.show, s.owner, s.lang);
       sent = true;
     } catch {
       // tried again with the next change, or the next time the app opens

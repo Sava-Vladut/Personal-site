@@ -82,6 +82,8 @@
 .status-preview-extra span { display: inline-flex; align-items: center; gap: 4px; }
 .status-owner { display: flex; flex-direction: column; gap: 6px; }
 .status-owner .input { font-size: var(--text-base); }
+/* the public page's language: its label on the left, the choice on the right */
+.status-lang { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 /* the page: one screen, tinted with the feeling's colour. Built for a phone first; on a wide screen it stays a phone's width. */
 .route-status { position: relative; isolation: isolate; padding-bottom: 0; min-height: 100dvh; }

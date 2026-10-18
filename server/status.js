@@ -3,7 +3,8 @@
 // name and the weather only if you chose to show each, and the app's countdown (src/lib/countdown.ts) beside it if chosen.
 // Nothing else leaves the journal. Turning it on, updating and
 // stopping need the admin password; reading needs only the link.
-//   data/status/status.json   { token, show, owner, checkin, updated }: the link's secret, what shows, your name, the check-in
+//   data/status/status.json   { token, show, owner, lang, checkin, updated }: the link's secret, what shows, your name, the page's
+//                             language ('en', 'ro', or '' for the reader's own), the check-in
 // The token is 192 random bits, so the link can't be guessed. Stopping deletes the file, and turning it on again makes a new link.
 import crypto from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -28,6 +29,9 @@ export function cleanShow(raw) {
 
 /** The name shown above the status ("Sava"), or ''. */
 export const cleanOwner = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 40) : '');
+
+/** The language the page is in for everyone ('en' or 'ro'), or '' to leave it to each reader's device. */
+export const cleanLang = (v) => (v === 'en' || v === 'ro' ? v : '');
 
 /** A check-in as the public page may show it: only these fields, and each detail only when `show` allows it. */
 export function cleanCheckin(raw, show) {
@@ -74,7 +78,7 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     try {
       const s = JSON.parse(await readFile(file, 'utf8'));
       if (!s || !TOKEN.test(s.token)) return null;
-      return { ...s, show: cleanShow(s.show ?? { note: s.note }), owner: cleanOwner(s.owner) };
+      return { ...s, show: cleanShow(s.show ?? { note: s.note }), owner: cleanOwner(s.owner), lang: cleanLang(s.lang) };
     } catch (error) {
       if (error.code === 'ENOENT' || error instanceof SyntaxError) return null;
       throw error;
@@ -92,7 +96,7 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     if (!isAdmin(req)) throw new HttpError(401, 'Sign in with the admin password to share your status.');
   }
 
-  const own = (s) => (s ? { token: s.token, show: s.show, owner: s.owner, checkin: s.checkin, updated: s.updated } : { token: null });
+  const own = (s) => (s ? { token: s.token, show: s.show, owner: s.owner, lang: s.lang, checkin: s.checkin, updated: s.updated } : { token: null });
 
   /** The /api/status routes. Reading /api/status/<token> is public; everything else is the admin's. */
   async function api(req, res, path) {
@@ -114,10 +118,11 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
       const body = await readJson(req, 16 * 1024);
       const show = cleanShow(body?.show);
       const owner = cleanOwner(body?.owner);
+      const lang = cleanLang(body?.lang);
       const checkin = cleanCheckin(body?.checkin ?? null, show);
       const s = await locked(async () => {
         const old = await read();
-        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), show, owner, checkin, updated: Date.now() };
+        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), show, owner, lang, checkin, updated: Date.now() };
         await write(next);
         return next;
       });
@@ -142,8 +147,9 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     const shared = !!s && crypto.timingSafeEqual(Buffer.from(s.token), Buffer.from(token));
     let html = shell.html;
     if (shared) {
-      const title = [s.owner, s.checkin?.name].filter(Boolean).join(' · ') || 'Status';
-      const blurb = s.checkin?.text ? (s.checkin.text.length > 160 ? s.checkin.text.slice(0, 157).trimEnd() + '…' : s.checkin.text) : 'My latest check-in';
+      const ro = s.lang === 'ro';
+      const title = [s.owner, s.checkin?.name].filter(Boolean).join(' · ') || (ro ? 'Stare' : 'Status');
+      const blurb = s.checkin?.text ? (s.checkin.text.length > 160 ? s.checkin.text.slice(0, 157).trimEnd() + '…' : s.checkin.text) : ro ? 'Ultimul meu check-in' : 'My latest check-in';
       const meta = [
         '<meta name="robots" content="noindex, nofollow, noarchive" />',
         '<meta property="og:type" content="profile" />',
@@ -153,6 +159,8 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
       html = html
         .replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(title)}</title>\n    ${meta}`)
         .replace(/(<meta name="description" content=")[^"]*(")/, (_, a, b) => a + escapeHtml(blurb) + b);
+      // the page opens in the language chosen for it, whatever the reader's device uses (src/lib/i18n.ts)
+      if (s.lang) html = html.replace(/<html\b[^>]*>/, `<html lang="${s.lang}" data-mm-lang="${s.lang}">`);
     } else {
       html = html.replace(/<title>[^<]*<\/title>/, () => '<title>Not shared</title>\n    <meta name="robots" content="noindex, nofollow" />');
     }

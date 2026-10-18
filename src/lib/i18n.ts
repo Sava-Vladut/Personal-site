@@ -9,6 +9,9 @@ export const LANGS: [Lang, string][] = [['en', 'English'], ['ro', 'Română']];
 const KEY = 'mm-lang';
 
 function read(): Lang {
+  // a public status's page is in the language its owner chose for it (server/status.js marks the page), whatever this device uses
+  const page = typeof document !== 'undefined' ? document.documentElement?.dataset.mmLang : undefined;
+  if (page === 'en' || page === 'ro') return page;
   try {
     return localStorage.getItem(KEY) === 'ro' ? 'ro' : 'en';
   } catch {

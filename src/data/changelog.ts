@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.99.0',
+    date: '2026-10-18',
+    changes: [
+      'Public status: choose the page’s language (English or Română) when you share your check-in',
+      'Public status: the page opens in that language for everyone who has the link, whatever their phone uses',
+      'Public status: its link preview’s title and description follow the language too',
+    ],
+  },
+  {
     version: '1.98.0',
     date: '2026-10-18',
     changes: [

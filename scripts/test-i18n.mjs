@@ -83,3 +83,10 @@ test('Romanian counts follow its plural rules, English stays as it was', async (
   assert.equal(en.t('Week of {date}', { date: '5 Oct' }), 'Week of 5 Oct');
   assert.equal(en.listOf(['a', 'b', 'c']), 'a, b and c');
 });
+
+test('a public status page marked with its language opens in it, whatever the device keeps', async () => {
+  const page = (mmLang) => ({ document: { documentElement: { dataset: { mmLang } } } });
+  assert.equal((await load('src/lib/i18n.ts', { ...storage(null), ...page('ro') })).lang, 'ro');
+  assert.equal((await load('src/lib/i18n.ts', { ...storage('ro'), ...page('en') })).lang, 'en');
+  assert.equal((await load('src/lib/i18n.ts', { ...storage('ro'), ...page(undefined) })).lang, 'ro');
+});

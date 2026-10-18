@@ -1845,4 +1845,6 @@ export const RO: Record<string, string> = {
   'The timer to 30 October, 07:00, ticking live': 'Cronometrul până pe 30 octombrie, 07:00, în timp real',
   'the countdown': 'numărătoarea inversă',
   'Until {when}': 'Până pe {when}',
+  'Page language': 'Limba paginii',
+  'Language updated': 'Limba a fost schimbată',
 };

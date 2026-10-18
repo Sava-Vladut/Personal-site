@@ -97,6 +97,14 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   const html = await page.text();
   assert.match(html, /<title>Sava · Content<\/title>/);
   assert.match(html, /noindex/);
+  assert.doesNotMatch(html, /data-mm-lang/); // no language chosen: each reader's own
+
+  // a chosen language marks the page, so it opens in it for everyone; anything else is no choice
+  const ro = await (await send('PUT', '/api/status', { headers: admin, body: { show: { people: true }, owner: 'Sava', lang: 'ro', checkin: checkin() } })).json();
+  assert.equal(ro.lang, 'ro');
+  assert.match(await (await send('GET', '/status/' + token)).text(), /<html lang="ro" data-mm-lang="ro"/);
+  assert.equal((await (await send('PUT', '/api/status', { headers: admin, body: { lang: 'xx"><script>', checkin: checkin() } })).json()).lang, '');
+  assert.doesNotMatch(await (await send('GET', '/status/' + token)).text(), /data-mm-lang/);
 });
 
 test('a wrong token, a bad check-in and a stopped status are refused', async () => {
