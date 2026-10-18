@@ -7,6 +7,9 @@
 // one world (the journal) or a mix (the mind page, where each cloud belongs to someone you think about),
 // and changes colour in place when they change, without the clouds starting over.
 import { useEffect, useRef } from 'preact/hooks';
+import { RAMPS } from './ramps';
+
+export { RAMPS };
 
 const SCALE = 4; // cloud canvases are drawn at 1/4 size
 const SPRITE = 64; // a soft puff, painted once per colour and stamped for every puff
@@ -14,25 +17,6 @@ const LUT_N = 256;
 const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const MIN_FRAME = 15; // never step faster than ~60fps, even on 120Hz screens
 
-/** Letters from empty to dense. A level with several characters picks one per cell, for texture. */
-export const RAMPS: Record<string, string[]> = {
-  default: [' ', '.', ':', '+', '*', 'o', 'O', '#'],
-  joy: [' ', '·', '.', '+', '*', 'o', 'O', '@'],
-  'hope-interest': [' ', '.', ':', '^', '*', '+', 'x', 'X'],
-  'love-connection': [' ', '.', ':', 'o', 'O', '0', '8', '@'],
-  'calm-safety': [' ', '.', '-', '~', '=', '≈', '≡'],
-  sadness: [' ', '.', ',', "'", ':', ';', '!', '|'],
-  fear: [' ', '.', "'", '/\\', 'x', 'X', '%'],
-  anger: [' ', '.', ':', '+', '%', '#', '@', 'M'],
-  'shame-aversion': [' ', '.', ':', '-', '()', '[]', '{}'],
-  // the media page: a sky of pages, and one of notes
-  books: [' ', '.', ',', ';', 'ilt', 'aeo', 'bdhk', '¶§'],
-  music: [' ', '.', '·', '-', '♩', '♪', '♫', '♬'],
-  // repos: a sky of code
-  repos: [' ', '.', ':', ';', '=', '/', '{}', '<>'],
-  // channel points: a sky of coins
-  twitch: [' ', '.', '·', ':', 'o', '¢', '$', '¤'],
-};
 
 /** The world a sky leans toward; the second colour keeps it from going flat. */
 const COMPANION: Record<string, string> = {
