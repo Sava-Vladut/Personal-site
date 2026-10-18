@@ -16,7 +16,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const hash = (n: number) => { const v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); };
 
 /**
- * A little sky in its world's letters, beside a day's mood line (or over a public status's feeling). A day that leaned toward sadness rains, anger
+ * A little sky in its world's letters, beside a day's mood line. A day that leaned toward sadness rains, anger
  * brings thunder (the mood line flashes with each strike), joy shines; anything else is a cloud drifting by.
  * Tap it for more of the same: a downpour, a strike, a burst of sun.
  */
@@ -27,7 +27,7 @@ export function AsciiCloud({ world, seed = 0 }: { world: string; seed?: number }
     if (!el) return;
     const weather = WEATHER[world] ?? 'drift';
     const rows = ROWS[weather];
-    const label = el.closest<HTMLElement>('.day-label, .status-hero');
+    const label = el.closest<HTMLElement>('.day-label');
     if (label) label.dataset.weather = weather;
     const ramp = RAMPS[world] ?? RAMPS.default;
     const body = BODY[weather] ?? ramp;

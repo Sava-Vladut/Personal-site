@@ -8,7 +8,7 @@ import type { Person } from '../lib/store';
 import { INTENSITY, trail } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
-import { AsciiCloud } from '../components/AsciiCloud';
+import { Sky } from '../components/Sky';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/shared.css';
 
@@ -105,6 +105,7 @@ export function Status({ token }: { token: string }) {
 
   return (
     <main class="app route-shared route-status" style={{ '--c': `var(--emo-${em.core})` }}>
+      <div class="status-sky" aria-hidden="true"><Sky world={em.core} /></div>
       <div class="status-glow" aria-hidden="true" />
       <article class="status-view">
         <header class="status-top">
@@ -116,7 +117,6 @@ export function Status({ token }: { token: string }) {
         </header>
 
         <section class="status-hero">
-          <AsciiCloud world={em.core} seed={c.time % 997} />
           <div class="status-orb"><Sprite core={em.core} size={68} idle /></div>
           <p class="status-kicker">{owner ? t('{name} is feeling', { name: owner }) : t('I’m feeling')}</p>
           <h1 class="status-name">{feeling}</h1>

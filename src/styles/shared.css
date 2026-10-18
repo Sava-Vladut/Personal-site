@@ -89,6 +89,10 @@
 
 /* the page: one screen, tinted with the feeling's colour. Built for a phone first; on a wide screen it stays a phone's width. */
 .route-status { position: relative; isolation: isolate; padding-bottom: 0; min-height: 100dvh; }
+.status-glow, .status-sky { position: fixed; inset: 0; pointer-events: none; }
+/* the journal's sky, in the feeling's world, drifting behind the whole page (components/Sky.tsx) */
+.status-sky { z-index: -2; opacity: 0.85; }
+.status-sky > .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
 .status-glow {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
@@ -136,17 +140,6 @@
   animation: status-float 5s ease-in-out infinite;
 }
 @keyframes status-float { 50% { transform: translateY(-6px); } }
-/* the feeling's weather over the orb (components/cloud.tsx): it rains, storms, shines or drifts, and the name with it */
-.status-hero .ascii-cloud {
-  margin: 0 0 10px; font: var(--w-bold) 11px/9px var(--mono); color: color-mix(in oklab, var(--c) 65%, var(--ink-3)); opacity: 0.85;
-}
-.status-name { transition: color var(--dur-1), text-shadow var(--dur-1); }
-.status-hero[data-weather='sun'] .status-name { animation: status-sun 4.5s ease-in-out infinite; }
-.status-hero[data-weather='rain'] .status-name { animation: status-rain 5s ease-in-out infinite; }
-.status-hero[data-weather='storm'][data-flash] .status-name { color: var(--ink); text-shadow: 0 0 18px var(--c), 0 0 3px var(--c); }
-.status-hero[data-weather='storm'][data-flash] .ascii-cloud { opacity: 1; color: var(--ink); }
-@keyframes status-sun { 50% { text-shadow: 0 0 18px color-mix(in oklab, var(--c) 70%, transparent); } }
-@keyframes status-rain { 50% { opacity: 0.75; transform: translateY(2px); } }
 .status-kicker { font-size: var(--text-base); color: var(--ink-2); }
 .status-name {
   margin-top: 2px; font: var(--w-medium) clamp(46px, 14vw, 64px)/1.02 var(--serif); letter-spacing: -0.025em;
@@ -194,4 +187,4 @@
 .status-view.is-empty .status-countdown { --c: var(--emo-calm-safety); margin-top: 18px; }
 .status-foot { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: var(--text-s); color: var(--ink-3); text-align: center; }
 .status-brand { opacity: 0.8; }
-@media (prefers-reduced-motion: reduce) { .status-orb, .status-ago.is-fresh i, .status-view > *, .status-hero[data-weather] .status-name { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .status-orb, .status-ago.is-fresh i, .status-view > * { animation: none; } }
