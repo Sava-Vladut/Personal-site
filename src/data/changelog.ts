@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.106.1',
+    date: '2026-10-18',
+    changes: [
+      'Mind traps and Laws of power move to Learn on wheels you arranged yourself too, and Repos, Channel points, Public status and Countdown to Extras',
+      'Anything you moved somewhere else yourself stays where you put it',
+    ],
+  },
+  {
     version: '1.106.0',
     date: '2026-10-18',
     changes: [
