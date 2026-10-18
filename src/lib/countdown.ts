@@ -1,16 +1,67 @@
-// A countdown that lives for a while and then goes away by itself: its button sits next to the wheel
-// (components/PageHead.tsx) and its page is #/countdown, both only until OFF. Times are the device's own.
+// The countdown: one at a time, with a name and the two times it runs between, set and changed on its page under Insights
+// (views/Countdown.tsx). It's kept on the server (/api/countdown, server/status.js) so every device and the public status show the same
+// one, and remembered here for when the server can't be reached. Its button sits next to the wheel (components/PageHead.tsx) until it ends.
 import { useEffect, useState } from 'preact/hooks';
+import { observable } from './store';
+import { t } from './i18n';
 
-export const START = new Date(2026, 9, 17, 7, 0).getTime(); // 17 October, 07:00
-export const END = new Date(2026, 9, 30, 7, 0).getTime(); // 30 October, 07:00
-export const OFF = new Date(2026, 10, 1, 0, 0).getTime(); // 1 November: the button and the page are gone
+export interface Countdown { name: string; start: number; end: number }
 
-/** Whether the countdown still shows anywhere. */
-export const countdownOn = (now = Date.now()) => now < OFF;
+const KEY = 'mm-countdown';
+/** The one there was before it could be changed (17 to 30 October, 07:00), until the server says otherwise. */
+const FIRST: Countdown = { name: '', start: new Date(2026, 9, 17, 7, 0).getTime(), end: new Date(2026, 9, 30, 7, 0).getTime() };
+
+function cached(): Countdown | null {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw !== null) return JSON.parse(raw);
+  } catch {}
+  return FIRST;
+}
+
+const countdown$ = observable<Countdown | null>(cached());
+export const useCountdown = countdown$.use;
+export const getCountdown = countdown$.get;
+
+function keep(c: Countdown | null) {
+  countdown$.set(c);
+  try {
+    localStorage.setItem(KEY, JSON.stringify(c));
+  } catch {}
+}
+
+async function call(method: string, countdown?: Countdown) {
+  let r: Response;
+  try {
+    r = await fetch('/api/countdown', {
+      method,
+      cache: 'no-store',
+      headers: countdown ? { 'Content-Type': 'application/json' } : undefined,
+      body: countdown ? JSON.stringify({ countdown }) : undefined,
+    });
+  } catch {
+    throw new Error(t('Couldn’t reach the server. Check your connection.'));
+  }
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(out.error || t('Something went wrong on the server.'));
+  keep(out.countdown ?? null);
+}
+
+/** Asks the server for the countdown. Quietly keeps the one remembered here if it can't. */
+export const loadCountdown = () => call('GET').catch(() => {});
+/** Sets the countdown, or changes it. */
+export const saveCountdown = (c: Countdown) => call('PUT', c);
+/** Removes it: its button goes, and the public status stops showing it. */
+export const removeCountdown = () => call('DELETE');
+
+/** Whether it's still counting down: its button and the public status only show it until it ends. */
+export const isRunning = (c: Countdown | null, now = Date.now()): c is Countdown => !!c && now < c.end;
+
+/** Its name, or "Countdown". */
+export const countdownName = (c: Countdown) => c.name || t('Countdown');
 
 /** How far along it is, 0 to 1. */
-export const progress = (now: number) => Math.min(1, Math.max(0, (now - START) / (END - START)));
+export const progress = (c: Countdown, now: number) => Math.min(1, Math.max(0, (now - c.start) / (c.end - c.start)));
 
 /** A span of time as days, hours, minutes and seconds. */
 export function parts(ms: number) {

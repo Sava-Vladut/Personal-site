@@ -1,5 +1,9 @@
 /* ---------- countdown: the stats page's cards, in its own colour (--accent) ---------- */
 
+/* its sheet: a label over each field */
+.cd-field { display: grid; gap: 6px; }
+.cd-hero > .btn { margin-top: 14px; }
+
 .cd-hero { display: grid; justify-items: center; text-align: center; padding: 18px 18px 16px; }
 .cd-hero > .tile-label { justify-self: start; }
 

@@ -1,10 +1,12 @@
 // The public status: one link that always shows your latest check-in, for anyone who has it. While it's on, the app sends
 // that check-in's feeling, how strong it was and when; its note, the people you were thinking of (by name), the place's
-// name and the weather only if you chose to show each, and the app's countdown (src/lib/countdown.ts) beside it if chosen.
+// name and the weather only if you chose to show each, and your countdown (src/lib/countdown.ts) beside it if chosen.
 // Nothing else leaves the journal. Turning it on, updating and
 // stopping need the admin password; reading needs only the link.
 //   data/status/status.json   { token, show, owner, lang, checkin, updated }: the link's secret, what shows, your name, the page's
 //                             language ('en', 'ro', or '' for the reader's own), the check-in
+//   data/status/countdown.json { countdown }: the app's one countdown ({ name, start, end }, ms), or null once removed;
+//                             the same on every device, so it lives here. /api/countdown reads and changes it, admin-only.
 // The token is 192 random bits, so the link can't be guessed. Stopping deletes the file, and turning it on again makes a new link.
 import crypto from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -59,11 +61,28 @@ export function cleanCheckin(raw, show) {
   return out;
 }
 
-/** What anyone with the link gets: never the entry's id. The countdown's dates are the app's own, so only whether it shows. */
-const publicOf = (s) => ({ owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated, ...(s.show.countdown && { countdown: true }) });
+/** The countdown before it could be changed: 17 to 30 October 2026, 07:00 in Bucharest. Used until one is saved. */
+const FIRST_COUNTDOWN = { name: '', start: Date.UTC(2026, 9, 17, 4), end: Date.UTC(2026, 9, 30, 5) };
+const YEAR = 365 * 86_400_000;
+
+/** A countdown as saved: a short name and two times, the end after the start. */
+export function cleanCountdown(raw) {
+  if (raw === null) return null;
+  const ok = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v - Date.now()) < 50 * YEAR;
+  if (!raw || typeof raw !== 'object' || !ok(raw.start) || !ok(raw.end) || raw.end <= raw.start) throw new HttpError(400, 'The countdown has to end after it starts.');
+  const name = typeof raw.name === 'string' ? raw.name.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+  return { name, start: Math.round(raw.start), end: Math.round(raw.end) };
+}
+
+/** What anyone with the link gets: never the entry's id, and the countdown only if chosen and not over yet. */
+const publicOf = (s, countdown) => ({
+  owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated,
+  ...(s.show.countdown && countdown && countdown.end > Date.now() && { countdown }),
+});
 
 export function createStatusHandler({ directory, indexFile, isAdmin, adminConfigured }) {
   const file = join(directory, 'status.json');
+  const countdownFile = join(directory, 'countdown.json');
   let queue = Promise.resolve();
   let shell = null; // index.html, re-read when the build changes
 
@@ -85,15 +104,36 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     }
   }
 
-  async function write(s) {
+  async function write(s, to = file) {
     await mkdir(directory, { recursive: true, mode: 0o700 });
-    await writeFile(file + '.tmp', JSON.stringify(s), { mode: 0o600 });
-    await rename(file + '.tmp', file);
+    await writeFile(to + '.tmp', JSON.stringify(s), { mode: 0o600 });
+    await rename(to + '.tmp', to);
+  }
+
+  async function readCountdown() {
+    try {
+      return cleanCountdown(JSON.parse(await readFile(countdownFile, 'utf8')).countdown ?? null);
+    } catch (error) {
+      if (error.code === 'ENOENT') return FIRST_COUNTDOWN;
+      if (error instanceof SyntaxError || error instanceof HttpError) return null;
+      throw error;
+    }
   }
 
   function needAdmin(req) {
     if (!adminConfigured) throw new HttpError(403, 'Sharing is off: this server has no admin password. Set ADMIN_PASSWORD in .env.');
     if (!isAdmin(req)) throw new HttpError(401, 'Sign in with the admin password to share your status.');
+  }
+
+  /** /api/countdown: the countdown, to read (GET), set (PUT { countdown }) or remove (DELETE). The admin's only. */
+  async function countdownApi(req, res) {
+    if (!adminConfigured) throw new HttpError(403, 'This server has no admin password. Set ADMIN_PASSWORD in .env.');
+    if (!isAdmin(req)) throw new HttpError(401, 'Sign in with the admin password to change the countdown.');
+    if (req.method === 'GET') return json(res, 200, { countdown: await readCountdown() });
+    if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed');
+    const countdown = req.method === 'PUT' ? cleanCountdown((await readJson(req, 4 * 1024))?.countdown ?? null) : null;
+    await locked(() => write({ countdown }, countdownFile));
+    return json(res, 200, { countdown });
   }
 
   const own = (s) => (s ? { token: s.token, show: s.show, owner: s.owner, lang: s.lang, checkin: s.checkin, updated: s.updated } : { token: null });
@@ -109,7 +149,7 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
       const s = TOKEN.test(token) ? await read() : null;
       // compared in constant time, so the answer's timing says nothing about the secret
       if (!s || !crypto.timingSafeEqual(Buffer.from(s.token), Buffer.from(token))) throw new HttpError(404, 'This status isn’t shared.');
-      return json(res, 200, publicOf(s), NO_INDEX);
+      return json(res, 200, publicOf(s, s.show.countdown ? await readCountdown() : null), NO_INDEX);
     }
 
     needAdmin(req);
@@ -174,5 +214,5 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     res.end(req.method === 'HEAD' ? undefined : body);
   }
 
-  return { api, page };
+  return { api, countdownApi, page };
 }

@@ -6,6 +6,7 @@
 import { EMOTION, shortName } from '../data/emotions';
 import { getDeleted, getEntries, observable, onEntries, type Entry } from './store';
 import { detailsOf, plainTags, type PublicDetails } from './share';
+import { loadCountdown } from './countdown';
 import { t, type Lang } from './i18n';
 
 /** A check-in as the public page shows it. */
@@ -136,8 +137,9 @@ function check() {
   }, 1500);
 }
 
-/** On a signed-in device: learns whether the status is on, then keeps it showing the newest check-in. */
+/** On a signed-in device: learns whether the status is on, then keeps it showing the newest check-in. Fetches the countdown too. */
 export function initStatus() {
+  void loadCountdown();
   void loadStatus().then(check);
   onEntries(check);
 }

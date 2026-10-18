@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.102.0',
+    date: '2026-10-18',
+    changes: [
+      'Countdown: change its name, start and end on its page, or remove it',
+      'Countdown: add a new one when there isn’t one',
+      'Countdown: now under Insights on the wheel',
+      'Countdown: its button next to the wheel goes away as soon as it ends',
+      'Countdown: the same dates on every device, and on the public status page',
+    ],
+  },
+  {
     version: '1.101.3',
     date: '2026-10-18',
     changes: [

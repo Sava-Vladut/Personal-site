@@ -4,19 +4,21 @@ import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
 import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show } from '../lib/status';
-import { countdownOn } from '../lib/countdown';
+import { isRunning, useCountdown } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
 import { ask } from './Confirm';
-import { LANGS, lang, t, type Lang } from '../lib/i18n';
+import { LANGS, LOCALE, lang, t, type Lang } from '../lib/i18n';
 import '../styles/shared.css';
+
+const until = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
 const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = [
   { key: 'note', icon: 'quote', label: t('The note'), hint: t('What you wrote with the check-in') },
   { key: 'people', icon: 'heart', label: t('Thinking of'), hint: t('The people you tagged, by name') },
   { key: 'place', icon: 'map-pin', label: t('Place'), hint: t('Where you were, by its name only') },
   { key: 'weather', icon: 'cloud', label: t('Weather'), hint: t('The sky and temperature then') },
-  { key: 'countdown', icon: 'hourglass', label: t('Countdown'), hint: t('The timer to 30 October, 07:00, ticking live') },
+  { key: 'countdown', icon: 'hourglass', label: t('Countdown'), hint: '' },
 ];
 
 /**
@@ -28,6 +30,7 @@ export function StatusPanel() {
   const status = useStatus();
   const loadError = useStatusError();
   const entries = useEntries();
+  const countdown = useCountdown();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [show, setShow] = useState<Show>(SHOW_NONE);
@@ -171,12 +174,12 @@ export function StatusPanel() {
 
         <div class="share-parts">
           <div class="share-parts-head">{t('Also show')}</div>
-          {PARTS.filter((p) => p.key !== 'countdown' || countdownOn()).map((p) => (
+          {PARTS.filter((p) => p.key !== 'countdown' || isRunning(countdown)).map((p) => (
             <label class="share-part" key={p.key}>
               <Icon name={p.icon} size={18} />
               <span class="share-part-main">
                 <span class="share-part-name">{p.label}</span>
-                <span class="share-part-value">{p.hint}</span>
+                <span class="share-part-value">{p.key === 'countdown' && countdown ? t('The timer to {when}, ticking live', { when: until.format(countdown.end) }) : p.hint}</span>
               </span>
               <button class="switch" role="switch" aria-checked={show[p.key]} aria-label={p.label} onClick={() => toggle(p.key)} disabled={busy} />
             </label>

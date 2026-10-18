@@ -872,6 +872,7 @@ async function api(req, res, url) {
     if (p === '/api/admin') return await admin(req, res);
     if (p === '/api/share' || p.startsWith('/api/share/')) return await share.api(req, res, p);
     if (p === '/api/status' || p.startsWith('/api/status/')) return await status.api(req, res, p);
+    if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
     throw new HttpError(404, 'Not found');
   } finally {

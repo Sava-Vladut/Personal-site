@@ -19,6 +19,7 @@ function start(adminConfigured) {
   const server = http.createServer(async (req, res) => {
     try {
       const path = new URL(req.url, 'http://x').pathname;
+      if (path === '/api/countdown') return await status.countdownApi(req, res);
       return path.startsWith('/status/') ? await status.page(req, res, path) : await status.api(req, res, path);
     } catch (e) {
       json(res, e instanceof HttpError ? e.status : 500, { error: e.message });
@@ -80,7 +81,7 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   assert.equal(again.token, token);
   const full = await (await send('GET', '/api/status/' + token)).json();
   assert.equal(full.owner, 'Sava V');
-  assert.equal(full.countdown, true);
+  assert.deepEqual(Object.keys(full.countdown).sort(), ['end', 'name', 'start']); // the one from before it could be changed, until one is saved
   assert.equal(full.checkin.text, 'A good @[Ana] day');
   assert.deepEqual(full.checkin.details, { people: [{ name: 'Ana', icon: null }], place: { name: 'Home' }, weather: { code: 2, temp: 21.4, daylight: 11, dark: false } });
 
@@ -134,4 +135,26 @@ test('a status saved before the other details existed keeps showing its note', a
   const pub = await (await send('GET', '/api/status/' + token)).json();
   assert.equal(pub.checkin.text, 'Hi');
   assert.equal(pub.owner, '');
+});
+
+test('the countdown: only the admin reads or changes it, and the public page shows it while it runs', async () => {
+  assert.equal((await send('GET', '/api/countdown')).status, 401);
+  assert.equal((await send('PUT', '/api/countdown', { body: { countdown: { start: 1, end: 2 } } })).status, 401);
+  const now = Date.now();
+  const set = await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { name: '  Trip   home ', start: now - 1000, end: now + 86_400_000, extra: 1 } } });
+  assert.equal(set.status, 200);
+  assert.deepEqual((await set.json()).countdown, { name: 'Trip home', start: now - 1000, end: now + 86_400_000 });
+  assert.deepEqual((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdown.name, 'Trip home');
+  assert.equal((await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { start: now, end: now - 1 } } })).status, 400);
+  assert.equal((await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { start: 'x', end: now } } })).status, 400);
+
+  const { token } = await (await send('PUT', '/api/status', { headers: admin, body: { show: { countdown: true }, checkin: checkin() } })).json();
+  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown.name, 'Trip home');
+  // once it's over, the public page drops it
+  await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { name: '', start: now - 5000, end: now - 1000 } } });
+  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown, undefined);
+  // removed: gone everywhere, and it stays gone
+  assert.equal((await (await send('DELETE', '/api/countdown', { headers: admin })).json()).countdown, null);
+  assert.equal((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdown, null);
+  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown, undefined);
 });
