@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.106.0',
+    date: '2026-10-18',
+    changes: [
+      'The wheel is reorganized: Insights now holds only Stats, Map and Your brain',
+      'New Learn slice on the wheel: Mind traps and Laws of power',
+      'New Extras slice on the wheel: Repos, Channel points, Public status and Countdown',
+      'A wheel you arranged yourself stays as you left it',
+    ],
+  },
+  {
     version: '1.105.0',
     date: '2026-10-18',
     changes: [
