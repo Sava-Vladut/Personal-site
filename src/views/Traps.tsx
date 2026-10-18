@@ -1,17 +1,20 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
+import { useLayoutEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
 import { EVIDENCE, FAMILIES, POWER, REFLECT, TRAPS, power, type Family, type Trap } from '../data/traps';
 import { Icon } from '../components/icons';
-import { NavWheel } from '../components/NavWheel';
-import { CountdownButton } from '../components/CountdownButton';
 import { Sheet } from '../components/Sheet';
+import { PageHead } from '../components/PageHead';
+import { RevealStack } from '../components/charts';
+import { Sky } from '../components/Sky';
+import { Tile } from './stats/parts';
+import '../styles/stats.css';
 import '../styles/traps.css';
 
 /*
- * Mind traps: forty cognitive biases on a page that looks like a psychologist's desk at night.
+ * Mind traps: forty cognitive biases, under Insights, on the same sky, cards and tiles as Stats.
  * Every trap gets its own Rorschach blot, grown from its name, so the same trap always wears the same stain.
  * The data and the scoring are in data/traps.ts.
  */
@@ -21,7 +24,6 @@ const RANK = new Map(RANKED.map((x, i) => [x.id, i + 1]));
 const BY_ID = new Map(TRAPS.map((x) => [x.id, x]));
 const FAMILY_IDS = Object.keys(FAMILIES) as Family[];
 const hueOf = (x: Trap) => FAMILIES[x.family].hue;
-const two = (n: number) => String(n).padStart(2, '0');
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- the blots ---------- */
@@ -80,63 +82,6 @@ function Inkblot({ seed, class: cls }: { seed: string; class?: string }) {
       <use href={`#${id}h`} transform="translate(100 0) scale(-1 1)" />
     </svg>
   );
-}
-
-/** An eye in the hero's blot that watches the pointer, and blinks now and then. */
-function Eye() {
-  const pupil = useRef<SVGGElement>(null);
-  useEffect(() => {
-    if (reduced()) return;
-    let raf = 0, x = 0, y = 0;
-    const move = (e: PointerEvent) => {
-      x = e.clientX;
-      y = e.clientY;
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        const el = pupil.current;
-        const box = el?.ownerSVGElement?.getBoundingClientRect();
-        if (!el || !box) return;
-        const dx = x - (box.left + box.width / 2), dy = y - (box.top + box.height / 2);
-        const d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260);
-        el.style.transform = `translate(${((dx / d) * 9 * k).toFixed(2)}px, ${((dy / d) * 4.5 * k).toFixed(2)}px)`;
-      });
-    };
-    addEventListener('pointermove', move, { passive: true });
-    return () => { removeEventListener('pointermove', move); cancelAnimationFrame(raf); };
-  }, []);
-  return (
-    <svg class="tr-eye" viewBox="-30 -16 60 32" aria-hidden="true">
-      <g class="tr-eye-lid">
-        <path d="M-28 0Q0 -22 28 0Q0 22 -28 0z" class="tr-eye-white" />
-        <g ref={pupil} class="tr-eye-look">
-          <circle r="10" class="tr-eye-iris" />
-          <circle r="4.6" class="tr-eye-pupil" />
-          <circle r="1.6" cx="-3" cy="-3.4" class="tr-eye-glint" />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
-/** The title decodes itself out of noise. */
-function Scramble({ text }: { text: string }) {
-  const [shown, setShown] = useState(text);
-  useEffect(() => {
-    if (reduced()) return;
-    const glyphs = '#%&?!*+=<>/\\|~^ΨΔΣΩ∞≠';
-    const start = performance.now();
-    let raf = 0;
-    const step = (now: number) => {
-      const p = (now - start) / 900;
-      setShown([...text].map((c, i) => (c === ' ' || p * text.length > i + 2 ? c : glyphs[Math.floor(Math.random() * glyphs.length)])).join(''));
-      if (p < 1.3) raf = requestAnimationFrame(step);
-      else setShown(text);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [text]);
-  return <>{shown}</>;
 }
 
 /* ---------- small pieces ---------- */
@@ -366,7 +311,7 @@ function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCa
         <p>{x.fact}</p>
       </div>
 
-      <button class="tr-caught" onClick={() => { haptic(10); onCaught(); }}>
+      <button class="btn btn-quiet tr-caught" onClick={() => { haptic(10); onCaught(); }}>
         <Icon name="eye" size={18} />
         <span>{t('I caught myself in this one')}</span>
         {caught > 0 && <b>×{caught}</b>}
@@ -390,8 +335,19 @@ function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCa
 
 type Sort = 'power' | 'name' | 'pull';
 const SORTS: Sort[] = ['power', 'pull', 'name'];
+const WORLD = 'sadness';
+
+/** The page wears the wheel's blue for the mind; tiles and card titles read the accent from the root. */
+function useAccent() {
+  useLayoutEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--accent', `var(--emo-${WORLD})`);
+    return () => root.removeProperty('--accent');
+  }, []);
+}
 
 export function Traps({ query: params }: { query: URLSearchParams }) {
+  useAccent();
   // ?open=<id> opens a trap straight away (the Laws of Power page links here)
   const [open, setOpen] = useState<string | null>(() => (BY_ID.has(params.get('open') ?? '') ? params.get('open') : null));
   const [family, setFamily] = usePref<string>('traps-family', 'all', ['all', ...FAMILY_IDS]);
@@ -411,6 +367,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
   }, [family, sort, query]);
   const caughtTotal = Object.values(caught).reduce((s, n) => s + n, 0);
   const mostCaught = Object.entries(caught).sort((a, b) => b[1] - a[1])[0];
+  const picked = family === 'all' ? null : FAMILIES[family as Family];
 
   const openTrap = (x: Trap) => { haptic(5); setOpen(x.id); };
   const go = (id: string) => {
@@ -423,146 +380,109 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
   const current = last.current;
 
   return (
-    <div class="page traps-page">
-      <div class="page-bar tr-bar">
-        <button class="glass glass-btn round" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <div class="page-actions"><CountdownButton /><NavWheel world="fear" /></div>
+    <div class="page stats-page traps-page">
+      <div class="journal-top stats-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
+        <Sky world={WORLD} />
+        <PageHead title={t('Mind traps')} back={() => goBack()} subtitle={t('40 ways your brain fools you, ranked by how hard they pull')} />
       </div>
 
-      <header class="tr-hero">
-        <div class="tr-hero-art" aria-hidden="true">
-          <svg class="tr-hypno" viewBox="-100 -100 200 200">
-            {Array.from({ length: 9 }, (_, i) => <circle r={12 + i * 11} style={{ '--i': i }} />)}
-          </svg>
-          <Inkblot seed="mind traps" class="tr-hero-ink" />
-          <Eye />
-        </div>
-        <p class="tr-kicker">{t('A field guide to the mind’s blind spots')}</p>
-        <h1 class="tr-title" data-text={t('Mind traps')}><Scramble text={t('Mind traps')} /></h1>
-        <p class="tr-lede">{t('Forty ways your brain fools you, ranked by how hard they pull. The experiments that caught them, the thoughts that give them away, and how to get out.')}</p>
-        <dl class="tr-facts">
-          <div><dt>{TRAPS.length}</dt><dd>{t('traps')}</dd></div>
-          <div><dt>{FAMILY_IDS.length}</dt><dd>{t('families')}</dd></div>
-          <div><dt>180+</dt><dd>{t('biases named so far')}</dd></div>
-          <div><dt>1/661</dt><dd>{t('people who think they’re more biased than average')}</dd></div>
-        </dl>
-      </header>
-
-      <div class="tr-tells" aria-hidden="true">
-        <div class="tr-tells-run">
-          {[0, 1].map(() => RANKED.map((x) => <span style={{ '--c': `var(--emo-${hueOf(x)})` }}>{x.tell}</span>))}
-        </div>
-      </div>
-
-      <section class="tr-section tr-two">
-        <p class="tr-eyebrow">{t('Before you start')}</p>
-        <h2 class="tr-h2">{t('You have two minds')}</h2>
-        <p class="tr-p">{t('Psychologists describe two ways of thinking. System 1 is fast, automatic and effortless: it reads faces, finishes sentences and jumps to answers. System 2 is slow and deliberate: it checks, counts and doubts. System 1 runs almost everything, and nearly every trap below is System 1 answering a question that needed System 2. Try it: answer these with your first instinct.')}</p>
-        <div class="tr-crt">
-          {REFLECT.map((r, i) => (
-            <Quiz q={`${i + 1}. ${r.q}`} options={r.options} answer={r.answer} gut={r.gut} reveal={r.why} onAnswer={(right) => setScore((s) => { const n = [...s]; n[i] = right; return n; })} />
-          ))}
-        </div>
-        {score.filter((x) => x != null).length === REFLECT.length && (
-          <p class="tr-crt-score" role="status">
-            {t('You got {n} of 3.', { n: score.filter(Boolean).length })}{' '}
-            {t('In Shane Frederick’s 2005 study of 3,428 people, only 17% got all three; even at MIT, fewer than half did. The wrong answers aren’t random: almost everyone who misses picks the same one, the one that jumps out first.')}
-          </p>
-        )}
-      </section>
-
-      <section class="tr-section">
-        <p class="tr-eyebrow">{t('Trap of the day')}</p>
-        <button class="tr-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openTrap(today)}>
-          <Inkblot seed={today.id} class="tr-today-ink" />
-          <span class="tr-today-body">
-            <span class="tr-today-rank">#{RANK.get(today.id)} · {t(FAMILIES[today.family].name)}</span>
-            <span class="tr-today-name">{today.name}</span>
-            <span class="tr-today-line">{today.line}</span>
-            <span class="tr-today-tell">{today.tell}</span>
+      <RevealStack>
+        <button class="card hero tr-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openTrap(today)}>
+          <span class="tile-label">{t('Trap of the day')}</span>
+          <span class="tr-today-row">
+            <Inkblot seed={today.id} class="tr-today-ink" />
+            <span class="tr-today-body">
+              <span class="tr-today-name">{today.name}</span>
+              <span class="tr-today-line">{today.line}</span>
+            </span>
+            <Gauge value={power(today)} size={56} />
           </span>
-          <Gauge value={power(today)} size={64} />
+          <span class="tr-today-tell">{today.tell}</span>
         </button>
-      </section>
 
-      <section class="tr-section">
-        <p class="tr-eyebrow">{t('The power map')}</p>
-        <h2 class="tr-h2">{t('Where they pull from')}</h2>
-        <PowerMap open={openTrap} />
-      </section>
-
-      <section class="tr-section tr-families">
-        {FAMILY_IDS.map((f) => {
-          const list = RANKED.filter((x) => x.family === f);
-          return (
-            <button class="tr-family" style={{ '--c': `var(--emo-${FAMILIES[f].hue})` }} aria-pressed={family === f} onClick={() => setFamily(family === f ? 'all' : f)}>
-              <b>{t(FAMILIES[f].name)}</b>
-              <span class="tr-family-motto">{t(FAMILIES[f].motto)}</span>
-              <span class="tr-family-about">{t(FAMILIES[f].about)}</span>
-              <span class="tr-family-n">{list.length} · {t('strongest: {name}', { name: list[0].name })}</span>
-            </button>
-          );
-        })}
-      </section>
-
-      <section class="tr-section" id="tr-all">
-        <div class="tr-list-head">
-          <div>
-            <p class="tr-eyebrow">{family === 'all' ? t('All forty, strongest first') : t(FAMILIES[family as Family]?.motto ?? '')}</p>
-            <h2 class="tr-h2">{family === 'all' ? t('The ranking') : t(FAMILIES[family as Family]?.name ?? '')}</h2>
-          </div>
-          {caughtTotal > 0 && mostCaught && (
-            <p class="tr-caught-sum">{t('Caught {n} times · most: {name}', { n: caughtTotal, name: BY_ID.get(mostCaught[0])?.name ?? '' })}</p>
-          )}
+        <div class="tiles">
+          <Tile k={0} icon="spiral" label={t('Traps')} value={TRAPS.length} sub={t('in {n} families', { n: FAMILY_IDS.length })} />
+          <Tile k={1} icon="brain" label={t('Biases named')} value="180+" sub={t('so far, by psychologists')} />
+          <Tile k={2} icon="users" label={t('Think they’re more biased')} value="1/661" sub={t('than the average person')} />
+          <Tile k={3} icon="eye" label={t('Caught yourself')} value={caughtTotal} sub={mostCaught ? t('most: {name}', { name: BY_ID.get(mostCaught[0])?.name ?? '' }) : t('in none yet')} />
         </div>
+
+        <section class="card chart-card">
+          <header class="chart-head">
+            <div>
+              <h3 class="chart-title">{t('You have two minds')}</h3>
+              <p class="chart-sub">{t('System 1 is fast and automatic, System 2 slow and careful. Nearly every trap below is System 1 answering a question that needed System 2. Answer these with your first instinct.')}</p>
+            </div>
+          </header>
+          <div class="tr-crt">
+            {REFLECT.map((r, i) => (
+              <Quiz q={`${i + 1}. ${r.q}`} options={r.options} answer={r.answer} gut={r.gut} reveal={r.why} onAnswer={(right) => setScore((s) => { const n = [...s]; n[i] = right; return n; })} />
+            ))}
+          </div>
+          {score.filter((x) => x != null).length === REFLECT.length && (
+            <p class="tr-crt-score" role="status">
+              <b>{t('You got {n} of 3.', { n: score.filter(Boolean).length })}</b>{' '}
+              {t('In Shane Frederick’s 2005 study of 3,428 people, only 17% got all three; even at MIT, fewer than half did. The wrong answers aren’t random: almost everyone who misses picks the same one, the one that jumps out first.')}
+            </p>
+          )}
+        </section>
+
+        <section class="card chart-card">
+          <header class="chart-head">
+            <div>
+              <h3 class="chart-title">{t('Where they pull from')}</h3>
+              <p class="chart-sub">{t('Every trap by family and power')}</p>
+            </div>
+          </header>
+          <PowerMap open={openTrap} />
+        </section>
+      </RevealStack>
+
+      <section class="section" id="tr-all">
+        <h2 class="section-title">{family === 'all' ? t('All forty, strongest first') : t(picked?.name ?? '')}</h2>
+        <label class="search">
+          <Icon name="search" size={18} />
+          <input type="search" value={query} onInput={(e) => setQuery(e.currentTarget.value)} placeholder={t('Search traps or thoughts')} aria-label={t('Search traps or thoughts')} />
+        </label>
         <div class="tr-controls">
-          <label class="tr-search">
-            <Icon name="search" size={17} />
-            <input type="search" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} placeholder={t('Search traps or thoughts')} aria-label={t('Search traps or thoughts')} />
-          </label>
+          <div class="chips scroll-x tr-chips" role="toolbar" aria-label={t('Family')}>
+            <button class="chip" aria-pressed={!picked} onClick={() => setFamily('all')}>{t('All')}</button>
+            {FAMILY_IDS.map((f) => (
+              <button class="chip tr-chip" style={{ '--c': `var(--emo-${FAMILIES[f].hue})` }} aria-pressed={family === f} onClick={() => setFamily(family === f ? 'all' : f)}>{t(FAMILIES[f].name)}</button>
+            ))}
+          </div>
           <div class="seg compact tr-sort" role="radiogroup" aria-label={t('Sort')}>
             {([['power', t('Power')], ['pull', t('Pull')], ['name', t('A–Z')]] as [Sort, string][]).map(([v, l]) => (
               <button role="radio" aria-checked={sort === v} aria-selected={sort === v} onClick={() => setSort(v)}>{l}</button>
             ))}
           </div>
         </div>
-        <div class="filters tr-chips">
-          <button class="chip" aria-pressed={family === 'all'} onClick={() => setFamily('all')}>{t('All')}</button>
-          {FAMILY_IDS.map((f) => (
-            <button class="chip tr-chip" style={{ '--c': `var(--emo-${FAMILIES[f].hue})` }} aria-pressed={family === f} onClick={() => setFamily(f)}>{t(FAMILIES[f].name)}</button>
-          ))}
-        </div>
+        {picked && <p class="muted small tr-family-about"><b>{t(picked.motto)}.</b> {t(picked.about)}</p>}
 
         <ol class="tr-list">
-          {shown.map((x, i) => {
-            const p = power(x);
-            return (
-              <li key={x.id} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 12) }}>
-                <button class="tr-card" onClick={() => openTrap(x)}>
-                  <span class="tr-rank" aria-hidden="true">{two(RANK.get(x.id)!)}</span>
-                  <Inkblot seed={x.id} class="tr-card-ink" />
-                  <span class="tr-card-main">
-                    <span class="tr-card-top">
-                      <span class="tr-fam">{t(FAMILIES[x.family].name)}</span>
-                      {x.evidence === 'debated' && <span class="tr-debated">{t('debated')}</span>}
-                      {caught[x.id] > 0 && <span class="tr-caught-n"><Icon name="eye" size={12} /> {caught[x.id]}</span>}
-                    </span>
-                    <span class="tr-name">{x.name}</span>
-                    <span class="tr-line">{x.line}</span>
-                    <span class="tr-meter" aria-hidden="true"><i style={{ width: `${p}%` }} /></span>
+          {shown.map((x, i) => (
+            <li key={x.id} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 4) }}>
+              <button class="card tr-card" onClick={() => openTrap(x)}>
+                <Inkblot seed={x.id} class="tr-card-ink" />
+                <span class="tr-card-main">
+                  <span class="tr-card-top">
+                    #{RANK.get(x.id)} · {t(FAMILIES[x.family].name)}
+                    {x.evidence === 'debated' && <span class="tr-debated">{t('debated')}</span>}
+                    {caught[x.id] > 0 && <span class="tr-caught-n"><Icon name="eye" size={12} /> {caught[x.id]}</span>}
                   </span>
-                  <span class="tr-power"><b>{p}</b><small>{t('power')}</small></span>
-                </button>
-              </li>
-            );
-          })}
+                  <span class="tr-name">{x.name}</span>
+                  <span class="tr-line">{x.line}</span>
+                </span>
+                <span class="tr-power"><b>{power(x)}</b><small>{t('power')}</small></span>
+              </button>
+            </li>
+          ))}
         </ol>
         {!shown.length && <p class="empty-note">{t('No trap matches that. Which is, of course, exactly what a trap would want you to think.')}</p>}
       </section>
 
-      <section class="tr-section tr-method">
-        <p class="tr-eyebrow">{t('How power is scored')}</p>
-        <h2 class="tr-h2">{t('Pull, reach and harm')}</h2>
+      <section class="section">
+        <h2 class="section-title">{t('How power is scored')}</h2>
         <p class="tr-p">{t('Each trap is rated from 1 to 10 on three things, and power is the weighted sum, out of 100. It’s a considered judgement drawn from the research, not a measurement: no study ranks biases against each other.')}</p>
         <div class="tr-method-grid">
           <div><b>{t('Pull')} ×{POWER.pull}</b><span>{t('How hard it is to resist, even knowing it’s there. It counts most: a trap you can walk out of once you see it is a weaker trap.')}</span></div>
@@ -576,10 +496,9 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
         </div>
       </section>
 
-      <section class="tr-section tr-outro">
-        <Inkblot seed="the last one" class="tr-outro-ink" />
-        <p class="tr-outro-text">{t('Knowing about a trap doesn’t free you from it. The research is clear on that: the people who know most about biases fall for them about as often as everyone else, and are better at spotting them in others. What helps is slower thinking at the moments that matter, other people who will tell you when you’re wrong, and writing things down before you know how they turn out.')}</p>
-        <button class="btn btn-quiet" onClick={() => openTrap(BY_ID.get('blind-spot')!)}>{t('Read the trap you’re in right now')}</button>
+      <section class="section tr-about">
+        <p>{t('Knowing about a trap doesn’t free you from it. The research is clear on that: the people who know most about biases fall for them about as often as everyone else, and are better at spotting them in others. What helps is slower thinking at the moments that matter, other people who will tell you when you’re wrong, and writing things down before you know how they turn out.')}</p>
+        <button class="btn btn-quiet" onClick={() => openTrap(BY_ID.get('blind-spot')!)}><Icon name="eye" size={18} /> {t('Read the trap you’re in right now')}</button>
       </section>
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('#{rank} of {n}', { rank: RANK.get(current.id)!, n: TRAPS.length }) : ''} label={current?.name} tall>

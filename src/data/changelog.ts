@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.105.0',
+    date: '2026-10-18',
+    changes: [
+      'Mind traps: redesigned to match the other Insights pages, with the sky header, cards and tiles',
+      'Mind traps: tiles for the traps, biases named so far and how often you’ve caught yourself',
+      'Mind traps: filter by family and read what it covers, right above the list',
+      'Mind traps: a calmer opened trap, in the app’s usual type and cards',
+    ],
+  },
+  {
     version: '1.104.0',
     date: '2026-10-18',
     changes: [
