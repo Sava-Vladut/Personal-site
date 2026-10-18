@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.101.2',
+    date: '2026-10-18',
+    changes: [
+      'Public status: the ASCII sky behind the page actually shows now (the page’s background was covering it)',
+    ],
+  },
+  {
     version: '1.101.1',
     date: '2026-10-18',
     changes: [
