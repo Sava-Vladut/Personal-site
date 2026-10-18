@@ -6,6 +6,7 @@ import { t } from '../lib/i18n';
 import { EVIDENCE, FAMILIES, POWER, REFLECT, TRAPS, power, type Family, type Trap } from '../data/traps';
 import { Icon } from '../components/icons';
 import { NavWheel } from '../components/NavWheel';
+import { CountdownButton } from '../components/CountdownButton';
 import { Sheet } from '../components/Sheet';
 import '../styles/traps.css';
 
@@ -424,7 +425,7 @@ export function Traps() {
     <div class="page traps-page">
       <div class="page-bar tr-bar">
         <button class="glass glass-btn round" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <NavWheel world="fear" />
+        <div class="page-actions"><CountdownButton /><NavWheel world="fear" /></div>
       </div>
 
       <header class="tr-hero">

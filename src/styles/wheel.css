@@ -277,3 +277,16 @@ button.we-icon:hover { background: color-mix(in oklab, var(--c) 28%, var(--surfa
 .we-foot .btn { display: inline-flex; align-items: center; gap: 6px; }
 .we-note { text-align: center; margin: 12px 0 4px; }
 @media (max-width: 380px) { .we-row.inner { padding-left: 18px; } .we-tools .icon-btn, .we-move { width: 30px; } }
+
+/* ---------- the countdown's button next to the wheel (lib/countdown.ts): a little ring that fills as the days go ---------- */
+
+.icon-btn.cd-trigger { position: relative; color: var(--emo-calm-safety); }
+.cd-trigger svg.cd-mini { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); transform: rotate(-90deg); pointer-events: none; }
+.cd-mini circle { fill: none; stroke-width: 2.6; }
+.cd-mini .cd-track { stroke: color-mix(in oklab, currentColor 20%, transparent); }
+.cd-mini .cd-fill { stroke: currentColor; animation: none; transition: none; }
+.cd-trigger .cd-days {
+  position: absolute; right: -2px; bottom: 1px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: var(--r-pill);
+  display: grid; place-items: center; font-size: 10px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+  background: var(--emo-calm-safety); color: #fff; box-shadow: 0 0 0 2px var(--surface);
+}

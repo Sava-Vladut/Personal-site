@@ -20,6 +20,7 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   brain: () => import('../views/BrainView').then((m) => m.BrainView),
   map: () => import('../views/Places').then((m) => m.MapView),
   traps: () => import('../views/Traps').then((m) => m.Traps),
+  countdown: () => import('../views/Countdown').then((m) => m.Countdown),
   intro: () => import('../views/Intro').then((m) => m.Intro),
 };
 const loaded = new Map<RouteName, View>();

@@ -1,0 +1,32 @@
+/* ---------- countdown: the stats page's cards, in its own colour (--accent) ---------- */
+
+.cd-hero { display: grid; justify-items: center; text-align: center; padding: 18px 18px 16px; }
+.cd-hero > .tile-label { justify-self: start; }
+
+.cd-ring { position: relative; width: min(220px, 62vw); aspect-ratio: 1; margin: 8px 0 4px; animation: pop-in var(--dur-4) var(--spring-bouncy) 0.05s backwards; }
+.cd-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.cd-ring circle { fill: none; stroke-width: 9; }
+.cd-track { stroke: color-mix(in oklab, var(--accent) 14%, var(--surface-3)); }
+.cd-fill { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 1s linear; animation: cd-draw var(--dur-5) var(--ease-emph) 0.1s backwards; }
+@keyframes cd-draw { from { stroke-dashoffset: 327; } } /* the ring's length: it fills up to where it is */
+.cd-ring-text { position: absolute; inset: 0; display: grid; place-content: center; gap: 2px; }
+.cd-ring-text b { font: var(--w-bold) clamp(48px, 16vw, 66px)/1 var(--sans); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.cd-ring-text span { font-size: var(--text-m); color: var(--ink-3); }
+.cd-hero.done .cd-ring-text b { color: var(--accent); }
+
+.cd-clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 360px; margin-top: 12px; }
+.cd-unit {
+  display: grid; gap: 1px; padding: 9px 4px 8px; border-radius: var(--r-m); overflow: hidden;
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface-2));
+}
+.cd-unit b { font: var(--w-bold) 26px/1.15 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; animation: cd-tick var(--dur-2) var(--ease-emph); }
+.cd-unit span { font-size: var(--text-xs); color: var(--ink-3); }
+@keyframes cd-tick { from { opacity: 0.35; transform: translateY(-6px); } }
+
+.cd-bar { width: 100%; height: 8px; margin-top: 16px; border-radius: var(--r-pill); overflow: hidden; background: var(--surface-3); }
+.cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform-origin: left; transition: transform 1s linear; }
+.cd-hero .split-labels { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cd-unit b, .cd-fill, .cd-ring { animation: none; }
+}

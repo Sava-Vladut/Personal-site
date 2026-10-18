@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.97.0',
+    date: '2026-10-18',
+    changes: [
+      'Countdown: a new button next to the wheel opens a timer from 17 October, 07:00 to 30 October, 07:00',
+      'Countdown: the days, hours, minutes and seconds left, ticking live, with a ring and a bar that fill as the time goes',
+      'Countdown: when it started, how much has gone by and when it ends, in the same cards as Stats',
+      'Countdown: the button shows the days left, and the button and the page go away by themselves on 1 November',
+    ],
+  },
+  {
     version: '1.96.0',
     date: '2026-10-17',
     changes: [
