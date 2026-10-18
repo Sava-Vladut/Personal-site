@@ -88,7 +88,7 @@
 .status-lang { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 /* the page: one screen, tinted with the feeling's colour. Built for a phone first; on a wide screen it stays a phone's width. */
-.route-status { position: relative; isolation: isolate; padding-bottom: 0; min-height: 100dvh; }
+.route-shared.route-status { position: relative; isolation: isolate; padding-bottom: 0; min-height: 100dvh; }
 .status-glow, .status-sky { position: fixed; inset: 0; pointer-events: none; }
 /* the journal's sky, in the feeling's world, drifting behind the whole page (components/Sky.tsx) */
 .status-sky { z-index: -2; background: var(--bg); }

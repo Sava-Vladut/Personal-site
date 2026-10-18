@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.101.3',
+    date: '2026-10-18',
+    changes: [
+      'Public status settings: the + button no longer covers Open the page and Stop sharing at the bottom',
+    ],
+  },
+  {
     version: '1.101.2',
     date: '2026-10-18',
     changes: [
