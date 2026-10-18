@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { countdownOn } from './countdown';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'brain' | 'repos' | 'repo' | 'traps' | 'countdown' | 'intro';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'brain' | 'repos' | 'repo' | 'traps' | 'status' | 'countdown' | 'intro';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -23,7 +23,7 @@ function parse(visit = ++visits): Route {
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
   if (head === 'intro') return { name: 'intro', query, visit };
   if (head === 'countdown' && countdownOn()) return { name: 'countdown', query, visit }; // gone on 1 November: the journal instead
-  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'brain' || head === 'repos' || head === 'traps') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'brain' || head === 'repos' || head === 'traps' || head === 'status') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 

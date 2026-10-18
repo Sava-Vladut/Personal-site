@@ -20,9 +20,6 @@ import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18
 import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
-import { StatusSheet } from '../components/StatusSheet';
-import { useStatus, type Show } from '../lib/status';
-import { countdownOn } from '../lib/countdown';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -301,7 +298,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
         </div>
       </section>
 
-      <PublicStatus />
       <PublicNotes />
 
       <section class="section">
@@ -548,37 +544,6 @@ function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void 
         </section>
       ))}
     </Sheet>
-  );
-}
-
-/** "Shows your latest check-in, with the note and people." */
-function shownParts(show: Show) {
-  const parts = [show.note && t('the note'), show.people && t('people'), show.place && t('place'), show.weather && t('weather'), show.countdown && countdownOn() && t('the countdown')].filter((x): x is string => !!x);
-  return parts.length ? t('Shows your latest check-in, with {parts}.', { parts: listOf(parts) }) : t('Shows your latest check-in: the feeling, how strong and when.');
-}
-
-/** The public status: whether your latest check-in has a link, and the sheet to share it or stop. */
-function PublicStatus() {
-  const status = useStatus();
-  const [open, setOpen] = useState(false);
-  return (
-    <section class="section">
-      <h2 class="section-title">{t('Public status')}</h2>
-      <div class="card list">
-        <button class="list-row action" onClick={() => setOpen(true)}>
-          <span class="grow">
-            <span class="row gap-s"><Icon name="world" size={18} /> {status?.token ? t('Your status is public') : t('Share your status')}</span>
-            <div class="muted small">
-              {status?.token
-                ? shownParts(status.show)
-                : t('One link that always shows your latest check-in, with the note and the people you’re thinking of if you like.')}
-            </div>
-          </span>
-          <Icon name="chevron-right" size={18} />
-        </button>
-      </div>
-      <StatusSheet open={open} onClose={() => setOpen(false)} />
-    </section>
   );
 }
 

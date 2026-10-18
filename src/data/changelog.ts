@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.101.0',
+    date: '2026-10-18',
+    changes: [
+      'Public status: a page of its own, on the wheel under Insights',
+      'Public status: its switches (note, people, place, weather, countdown), your name, the language and the link all live there now, instead of in a pop-up',
+      'Settings: the Public status section moved to that page',
+      'Check-in: the Share status chip opens the new page',
+    ],
+  },
+  {
     version: '1.100.0',
     date: '2026-10-18',
     changes: [

@@ -30,6 +30,7 @@ export const WHEEL: WheelNode[] = [
       { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', hue: 'calm-safety', to: 'map' },
       { id: 'brain', name: t('Your brain'), sub: t('A brain in letters, glowing with your journal'), icon: 'brain', hue: 'love-connection', to: 'brain' },
       { id: 'traps', name: t('Mind traps'), sub: t('40 ways your brain fools you, ranked by how hard they pull'), icon: 'spiral', hue: 'sadness', to: 'traps' },
+      { id: 'status', name: t('Public status'), sub: t('One link that always shows your latest check-in'), icon: 'world', hue: 'joy', to: 'status' },
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
     ],
   },

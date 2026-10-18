@@ -6,6 +6,8 @@
 /* ---------- the sheet ---------- */
 
 .share-sheet { display: flex; flex-direction: column; gap: 14px; padding: 2px 2px 8px; }
+/* the public status, on its own page under Insights (views/StatusPage.tsx) */
+.status-panel-card { padding: 16px; }
 .share-lead { color: var(--ink-2); line-height: 1.5; }
 .share-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .share-facts li { display: flex; gap: 10px; align-items: flex-start; font-size: var(--text-base); line-height: 1.45; color: var(--ink-2); }

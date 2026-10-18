@@ -1782,6 +1782,7 @@ export const RO: Record<string, string> = {
 
   // ── Public status (lib/status.ts) ──
   'Public status': 'Stare publică',
+  'One link that always shows your latest check-in': 'Un singur link care arată mereu ultimul tău check-in',
   'Share status': 'Distribuie starea',
   'Share your status': 'Distribuie-ți starea',
   'Your status is public': 'Starea ta e publică',

@@ -7,7 +7,6 @@ import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, shareStatus, statu
 import { countdownOn } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
-import { Sheet } from './Sheet';
 import { ask } from './Confirm';
 import { LANGS, lang, t, type Lang } from '../lib/i18n';
 import '../styles/shared.css';
@@ -21,11 +20,11 @@ const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = 
 ];
 
 /**
- * Sharing your status: one link that always shows your latest check-in. Off until turned on here; the note, the people
+ * Sharing your status (its page under Insights, views/StatusPage.tsx): one link that always shows your latest check-in. Off until turned on here; the note, the people
  * you were thinking of, the place and the weather each only show when switched on. The link is secret, but anyone who
  * has it can see it, so it can be stopped any time. The page is in the language chosen here, whatever the reader's device uses.
  */
-export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function StatusPanel() {
   const status = useStatus();
   const loadError = useStatusError();
   const entries = useEntries();
@@ -34,11 +33,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
   const [show, setShow] = useState<Show>(SHOW_NONE);
   const [owner, setOwner] = useState('');
   const [pageLang, setPageLang] = useState<Lang>(lang);
-  useEffect(() => {
-    if (!open) return;
-    setError('');
-    void loadStatus();
-  }, [open]);
+  useEffect(() => void loadStatus(), []);
   useEffect(() => {
     if (!status) return;
     setShow(status.show);
@@ -122,8 +117,7 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
   const send = () => navigator.share({ title: owner ? t('How {name} is feeling', { name: owner }) : t('How I’m feeling'), url }).catch(() => {});
 
   return (
-    <Sheet open={open} onClose={onClose} title={t('Public status')}>
-      <div class="share-sheet">
+      <div class="share-sheet status-panel">
         <p class="share-lead">
           {on
             ? t('Anyone with this link sees your latest check-in. It updates by itself each time you check in.')
@@ -210,6 +204,5 @@ export function StatusSheet({ open, onClose }: { open: boolean; onClose: () => v
         )}
         {(error || (!status && loadError)) && <p class="share-error" role="alert">{error || loadError}</p>}
       </div>
-    </Sheet>
   );
 }
