@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigateAfterSheet } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
@@ -6,15 +6,18 @@ import { t } from '../lib/i18n';
 import { LAWS, REALMS, roman, type Law, type Realm } from '../data/laws';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { Icon } from '../components/icons';
-import { NavWheel } from '../components/NavWheel';
-import { CountdownButton } from '../components/CountdownButton';
 import { Sheet } from '../components/Sheet';
+import { PageHead } from '../components/PageHead';
+import { RevealStack } from '../components/charts';
+import { Sky } from '../components/Sky';
+import { Tile } from './stats/parts';
+import '../styles/stats.css';
 import '../styles/laws.css';
 
 /*
- * The 48 Laws of Power: a candlelit chessboard. A pawn whose shadow on the wall is a king, a board of 48 squares,
- * and every law sealed in wax in its arena's colour. Each law opens to its history, its psychology, the mind traps
- * it springs (linked to the Mind traps page) and how to see it coming. The data is in data/laws.
+ * The 48 Laws of Power, under Insights: the same sky, cards and tiles as Stats, with every law sealed in wax in its
+ * arena's colour. Each law opens to its history, its psychology, the mind traps it springs (linked to the Mind traps
+ * page) and how to see it coming. The data is in data/laws.
  */
 
 const BY_N = new Map(LAWS.map((x) => [x.n, x]));
@@ -40,43 +43,6 @@ function seeded(text: string) {
     x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-/* ---------- the art ---------- */
-
-const PAWN = 'M50 14a15 15 0 0 1 8.6 27.3c4.6 1.3 7.4 3.4 7.4 5.7 0 2.2-2.4 3.9-6 4.9 2.6 11 7.4 24.3 15.6 34.6 2.8.9 4.4 2.8 4.4 5.5v6H20v-6c0-2.7 1.6-4.6 4.4-5.5C32.6 76.2 37.4 62.9 40 51.9c-3.6-1-6-2.7-6-4.9 0-2.3 2.8-4.4 7.4-5.7A15 15 0 0 1 50 14zM14 100h72v10H14z';
-const KING = 'M46 2h8v9h9v8h-9v7h-8v-7h-9v-8h9zM29 31q21-9 42 0l-4 22H33zM31 55h38v8H31zM36 65h28c1 28 6 52 13 73H23c7-21 12-45 13-73zM18 140h64v9H18zM13 151h74v12H13z';
-
-/** The hero: a candle, a pawn on the floor, and on the wall behind it the shadow of a king. */
-function Hero() {
-  return (
-    <svg class="lw-scene" viewBox="0 0 300 230" aria-hidden="true">
-      <defs>
-        <radialGradient id="lw-glow" cx="0.14" cy="0.62" r="0.75">
-          <stop offset="0" class="lw-glow-0" />
-          <stop offset="1" class="lw-glow-1" />
-        </radialGradient>
-        <linearGradient id="lw-floor" x1="0" x2="1">
-          <stop offset="0" class="lw-floor-0" />
-          <stop offset="0.5" class="lw-floor-1" />
-          <stop offset="1" class="lw-floor-0" />
-        </linearGradient>
-      </defs>
-      <rect width="300" height="230" fill="url(#lw-glow)" />
-      <g class="lw-shadow">
-        <path d={KING} transform="translate(150 10) scale(1.22)" />
-      </g>
-      <rect x="0" y="209" width="300" height="1.2" fill="url(#lw-floor)" />
-      <path d={PAWN} class="lw-pawn" transform="translate(84 112) scale(0.88)" />
-      <g class="lw-candle" transform="translate(34 148)">
-        <ellipse cx="0" cy="-14" rx="16" ry="22" class="lw-halo" />
-        <path d="M0 -26C5 -18 6 -12 0 -4C-6 -12 -5 -18 0 -26z" class="lw-flame" />
-        <path d="M0 -4v4" class="lw-wick" />
-        <rect x="-7" y="0" width="14" height="61" rx="2" class="lw-wax" />
-        <path d="M-7 8q3 6 0 12M5 0q2 9 2 14" class="lw-drip" />
-      </g>
-    </svg>
-  );
 }
 
 /** A wax seal with the law's numeral pressed into it. Its edge is grown from the law's id, so each seal is its own. */
@@ -151,7 +117,7 @@ function Board({ realm, open }: { realm: Realm | null; open: (x: Law) => void })
             <span>{focus.line}</span>
           </>
         ) : (
-          <span>{t('Forty-eight squares, one law each. Hover or focus one to read it, tap to open it.')}</span>
+          <span>{t('Hover or focus a square to read its law, tap to open it.')}</span>
         )}
       </div>
     </div>
@@ -268,11 +234,8 @@ function NameTheMove({ open }: { open: (x: Law) => void }) {
   };
   const next = () => { setRound(deal(round.law.n)); setPicked(null); };
   return (
-    <div class="lw-game" style={{ '--c': `var(--emo-${hueOf(round.law)})` }}>
-      <div class="lw-game-top">
-        <span><Icon name="eye" size={15} /> {t('Which law is being played?')}</span>
-        {score.played > 0 && <b>{t('{right} of {played}', score)}{score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}</b>}
-      </div>
+    <div class="lw-game">
+      {score.played > 0 && <p class="lw-game-score">{t('{right} of {played}', score)}{score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}</p>}
       <p class="lw-game-scene" key={round.law.n}>{round.law.scenario}</p>
       <div class="lw-game-options">
         {round.options.map((x, i) => (
@@ -328,7 +291,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
   const law = (
     <>
       <h3 class="lw-d-h">{t('The law')}</h3>
-      <p class="lw-d-p lw-d-gist">{x.gist}</p>
+      <p class="lw-d-p">{x.gist}</p>
       <figure class="lw-d-scene">
         <p class="lw-d-k"><Icon name="book" size={15} /> {t('From history')}</p>
         <figcaption><b>{x.scene.who}</b><span>{x.scene.when}</span></figcaption>
@@ -384,7 +347,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
   return (
     <article class="lw-detail" style={{ '--c': `var(--emo-${realm.hue})` }}>
       <header class="lw-d-head">
-        <Seal x={x} size={118} class="lw-d-seal" />
+        <Seal x={x} size={88} class="lw-d-seal" />
         <p class="lw-d-kicker">{t('Law {n}', { n: x.n })} · {t(realm.name)}</p>
         <h2 class="lw-d-title">{x.title}</h2>
         <p class="lw-d-line">{x.line}</p>
@@ -412,12 +375,12 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
       </blockquote>
 
       <div class="lw-d-seen">
-        <button class="lw-seen" onClick={() => { haptic(10); onSeen('on'); }}>
+        <button class="btn btn-quiet lw-seen" onClick={() => { haptic(10); onSeen('on'); }}>
           <Icon name="eye" size={18} />
           <span>{t('Played on me')}</span>
           {!!seen.on && <b>×{seen.on}</b>}
         </button>
-        <button class="lw-seen" onClick={() => { haptic(10); onSeen('by'); }}>
+        <button class="btn btn-quiet lw-seen" onClick={() => { haptic(10); onSeen('by'); }}>
           <Icon name="crown" size={18} />
           <span>{t('I played it')}</span>
           {!!seen.by && <b>×{seen.by}</b>}
@@ -428,7 +391,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
       <div class="lw-kin">
         {x.kin.map((k) => BY_N.get(k)).filter((k): k is Law => !!k).map((k) => (
           <button class="lw-kin-chip" onClick={() => go(k.n)}>
-            <Seal x={k} size={38} />
+            <Seal x={k} size={34} />
             <span>{k.title}</span>
           </button>
         ))}
@@ -442,8 +405,20 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
 type Sort = 'n' | 'dark' | 'everyday';
 const SORTS: Sort[] = ['n', 'dark', 'everyday'];
 const LENSES: Lens[] = ['player', 'target'];
+const WORLD = 'anger';
+const LEVERS = new Set(LAWS.flatMap((x) => x.levers.map((l) => l.name.toLowerCase()))).size;
+
+/** The page wears the wheel's red for power; tiles and card titles read the accent from the root. */
+function useAccent() {
+  useLayoutEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--accent', `var(--emo-${WORLD})`);
+    return () => root.removeProperty('--accent');
+  }, []);
+}
 
 export function Laws({ query: params }: { query: URLSearchParams }) {
+  useAccent();
   const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null);
   const [realm, setRealm] = usePref<string>('laws-realm', 'all', ['all', ...REALM_IDS]);
   const [sort, setSort] = usePref<Sort>('laws-sort', 'n', SORTS);
@@ -462,7 +437,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
   }, [realm, sort, query]);
   const seenOn = Object.values(seen).reduce((s, v) => s + (v.on ?? 0), 0);
   const seenBy = Object.values(seen).reduce((s, v) => s + (v.by ?? 0), 0);
-  const leversN = new Set(LAWS.flatMap((x) => x.levers.map((l) => l.name.toLowerCase()))).size;
+  const picked = realm === 'all' ? null : REALMS[realm as Realm];
 
   const openLaw = (x: Law) => { haptic(5); setOpen(x.n); };
   const go = (n: number) => {
@@ -479,155 +454,126 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
   useEffect(() => { if (open && !BY_N.has(open)) setOpen(null); }, [open]);
 
   return (
-    <div class="page laws-page">
-      <div class="page-bar lw-bar">
-        <button class="glass glass-btn round" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <div class="page-actions"><CountdownButton /><NavWheel world="anger" /></div>
-      </div>
-
-      <header class="lw-hero">
-        <div class="lw-hero-art"><Hero /></div>
-        <p class="lw-kicker">{t('Robert Greene · 1998 · three thousand years of history')}</p>
-        <h1 class="lw-title"><span class="lw-title-n">48</span> <span>{t('Laws of Power')}</span></h1>
-        <p class="lw-lede">{t('The game is being played whether you play it or not. Every law, with the history it came from, the psychology that makes it work, the mind traps it springs, and how to see it coming.')}</p>
-        <dl class="lw-facts">
-          <div><dt>48</dt><dd>{t('laws')}</dd></div>
-          <div><dt>{REALM_IDS.length}</dt><dd>{t('arenas')}</dd></div>
-          <div><dt>{leversN}</dt><dd>{t('psychological levers')}</dd></div>
-          <div><dt>{SPRUNG.length}</dt><dd>{t('mind traps they spring')}</dd></div>
-        </dl>
-      </header>
-
-      <div class="lw-run" aria-hidden="true">
-        <div class="lw-run-in">
-          {[0, 1].map(() => LAWS.map((x) => <span style={{ '--c': `var(--emo-${hueOf(x)})` }}>{x.line}</span>))}
+    <div class="page stats-page laws-page">
+      <div class="journal-top stats-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
+        <Sky world={WORLD} />
+        <PageHead title={t('Laws of power')} back={() => goBack()} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
+        <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
+          <button role="tab" aria-selected={lens === 'player'} onClick={() => setLens('player')}><Icon name="crown" size={17} /> {t('As the player')}</button>
+          <button role="tab" aria-selected={lens === 'target'} onClick={() => setLens('target')}><Icon name="eye" size={17} /> {t('As the target')}</button>
         </div>
       </div>
 
-      <section class="lw-section lw-read">
-        <p class="lw-eyebrow">{t('How to read it')}</p>
-        <h2 class="lw-h2">{t('Two ways through the same book')}</h2>
-        <p class="lw-p">{t('Greene wrote it without morals on purpose: these are the moves, as courtiers, generals and con artists have made them for centuries. Most people who read it are not would-be kings. They are people who kept losing a game they didn’t know was being played. So every law here comes with its shadow side, an honest version, and the signs that someone is playing it on you.')}</p>
-        <div class="lw-lens" role="radiogroup" aria-label={t('Read as')}>
-          <button role="radio" aria-checked={lens === 'player'} class={lens === 'player' ? 'on' : ''} onClick={() => setLens('player')}>
-            <Icon name="crown" size={22} />
-            <b>{t('The player')}</b>
-            <span>{t('The law first: its history and how it works, then the defence.')}</span>
-          </button>
-          <button role="radio" aria-checked={lens === 'target'} class={lens === 'target' ? 'on' : ''} onClick={() => setLens('target')}>
-            <Icon name="eye" size={22} />
-            <b>{t('The target')}</b>
-            <span>{t('The signs it’s being played on you and how to answer, first.')}</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="lw-section">
-        <p class="lw-eyebrow">{t('Law of the day')}</p>
-        <button class="lw-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openLaw(today)}>
-          <Seal x={today} size={92} class="lw-today-seal" />
-          <span class="lw-today-body">
-            <span class="lw-today-k">{t('Law {n}', { n: today.n })} · {t(REALMS[today.realm].name)}</span>
-            <span class="lw-today-title">{today.title}</span>
-            <span class="lw-today-line">{today.line}</span>
-            <span class="lw-today-q">{today.question}</span>
+      <RevealStack>
+        <button class="card hero lw-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openLaw(today)}>
+          <span class="tile-label">{t('Law of the day')}</span>
+          <span class="lw-today-row">
+            <Seal x={today} size={64} />
+            <span class="lw-today-body">
+              <span class="lw-today-title">{today.title}</span>
+              <span class="lw-today-line">{today.line}</span>
+            </span>
           </span>
+          <span class="lw-today-q">{today.question}</span>
         </button>
-      </section>
 
-      <section class="lw-section">
-        <p class="lw-eyebrow">{t('The board')}</p>
-        <h2 class="lw-h2">{t('Forty-eight squares')}</h2>
-        <Board realm={realm === 'all' ? null : (realm as Realm)} open={openLaw} />
-      </section>
-
-      <section class="lw-section lw-realms">
-        {REALM_IDS.map((r) => {
-          const list = LAWS.filter((x) => x.realm === r);
-          return (
-            <button class="lw-realm" style={{ '--c': `var(--emo-${REALMS[r].hue})` }} aria-pressed={realm === r} onClick={() => setRealm(realm === r ? 'all' : r)}>
-              <b>{t(REALMS[r].name)}</b>
-              <span class="lw-realm-motto">{t(REALMS[r].motto)}</span>
-              <span class="lw-realm-about">{t(REALMS[r].about)}</span>
-              <span class="lw-realm-n">{list.map((x) => roman(x.n)).join(' · ')}</span>
-            </button>
-          );
-        })}
-      </section>
-
-      <section class="lw-section">
-        <p class="lw-eyebrow">{t('The shadow map')}</p>
-        <h2 class="lw-h2">{t('How dark, how common')}</h2>
-        <ShadowMap open={openLaw} />
-      </section>
-
-      <section class="lw-section">
-        <p class="lw-eyebrow">{t('The machinery underneath')}</p>
-        <h2 class="lw-h2">{t('The mind traps they spring')}</h2>
-        <p class="lw-p">{t('Almost every law works by leaning on a bias you already have. These are the ones the laws lean on most. Tap one to read it on the Mind traps page.')}</p>
-        <ol class="lw-sprung">
-          {SPRUNG.slice(0, 10).map(({ trap, laws }, i) => (
-            <li style={{ '--c': `var(--emo-${FAMILIES[trap.family].hue})`, '--i': i }}>
-              <button class="lw-sprung-row" onClick={() => openTrap(trap.id)}>
-                <span class="lw-sprung-name">{trap.name}</span>
-                <span class="lw-sprung-bar"><i style={{ width: `${(laws.length / SPRUNG[0].laws.length) * 100}%` }} /></span>
-                <span class="lw-sprung-laws">{laws.map((x) => roman(x.n)).join(' · ')}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section class="lw-section">
-        <p class="lw-eyebrow">{t('Name the move')}</p>
-        <h2 class="lw-h2">{t('Can you see it being played?')}</h2>
-        <NameTheMove open={openLaw} />
-      </section>
-
-      <section class="lw-section" id="lw-all">
-        <div class="lw-list-head">
-          <div>
-            <p class="lw-eyebrow">{realm === 'all' ? t('All forty-eight') : t(REALMS[realm as Realm]?.motto ?? '')}</p>
-            <h2 class="lw-h2">{realm === 'all' ? t('The laws') : t(REALMS[realm as Realm]?.name ?? '')}</h2>
-          </div>
-          {(seenOn > 0 || seenBy > 0) && <p class="lw-seen-sum">{t('Seen played on you {on}× · played yourself {by}×', { on: seenOn, by: seenBy })}</p>}
+        <div class="tiles">
+          <Tile k={0} icon="crown" label={t('Laws')} value={LAWS.length} sub={t('in {n} arenas', { n: REALM_IDS.length })} />
+          <Tile k={1} icon="brain" label={t('Levers')} value={LEVERS} sub={t('from psychology')} />
+          <Tile k={2} icon="spiral" label={t('Mind traps')} value={SPRUNG.length} sub={t('that the laws spring')} />
+          <Tile k={3} icon="eye" label={t('Played on you')} value={seenOn} sub={t('played yourself {n}', { n: seenBy })} />
         </div>
+
+        <section class="card chart-card">
+          <header class="chart-head">
+            <div>
+              <h3 class="chart-title">{t('The board')}</h3>
+              <p class="chart-sub">{t('Forty-eight squares, one law each, in its arena’s colour.')}</p>
+            </div>
+          </header>
+          <Board realm={picked ? (realm as Realm) : null} open={openLaw} />
+        </section>
+
+        <section class="card chart-card">
+          <header class="chart-head">
+            <div>
+              <h3 class="chart-title">{t('How dark, how common')}</h3>
+              <p class="chart-sub">{t('Every law by darkness and how often it plays out')}</p>
+            </div>
+          </header>
+          <ShadowMap open={openLaw} />
+        </section>
+
+        <section class="card chart-card">
+          <header class="chart-head">
+            <div>
+              <h3 class="chart-title">{t('The mind traps they spring')}</h3>
+              <p class="chart-sub">{t('The biases the laws lean on most. Tap one to read it in Mind traps.')}</p>
+            </div>
+          </header>
+          <ol class="lw-sprung">
+            {SPRUNG.slice(0, 8).map(({ trap, laws }, i) => (
+              <li style={{ '--c': `var(--emo-${FAMILIES[trap.family].hue})`, '--i': i }}>
+                <button class="lw-sprung-row" onClick={() => openTrap(trap.id)}>
+                  <span class="lw-sprung-name">{trap.name}</span>
+                  <span class="lw-sprung-n">{laws.length}</span>
+                  <span class="lw-sprung-bar"><i style={{ width: `${(laws.length / SPRUNG[0].laws.length) * 100}%` }} /></span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section class="card chart-card">
+          <header class="chart-head">
+            <div>
+              <h3 class="chart-title">{t('Name the move')}</h3>
+              <p class="chart-sub">{t('Which law is being played?')}</p>
+            </div>
+          </header>
+          <NameTheMove open={openLaw} />
+        </section>
+      </RevealStack>
+
+      <section class="section">
+        <h2 class="section-title">{t('All 48 laws')}</h2>
+        <label class="search">
+          <Icon name="search" size={18} />
+          <input type="search" value={query} onInput={(e) => setQuery(e.currentTarget.value)} placeholder={t('Search laws, signs or levers')} aria-label={t('Search laws, signs or levers')} />
+        </label>
         <div class="lw-controls">
-          <label class="lw-search">
-            <Icon name="search" size={17} />
-            <input type="search" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} placeholder={t('Search laws, signs or levers')} aria-label={t('Search laws, signs or levers')} />
-          </label>
+          <div class="chips scroll-x lw-chips" role="toolbar" aria-label={t('Arena')}>
+            <button class="chip" aria-pressed={!picked} onClick={() => setRealm('all')}>{t('All')}</button>
+            {REALM_IDS.map((r) => (
+              <button class="chip lw-chip" style={{ '--c': `var(--emo-${REALMS[r].hue})` }} aria-pressed={realm === r} onClick={() => setRealm(realm === r ? 'all' : r)}>{t(REALMS[r].name)}</button>
+            ))}
+          </div>
           <div class="seg compact lw-sort" role="radiogroup" aria-label={t('Sort')}>
             {([['n', t('In order')], ['dark', t('Darkest')], ['everyday', t('Commonest')]] as [Sort, string][]).map(([v, l]) => (
               <button role="radio" aria-checked={sort === v} aria-selected={sort === v} onClick={() => setSort(v)}>{l}</button>
             ))}
           </div>
         </div>
-        <div class="filters lw-chips">
-          <button class="chip" aria-pressed={realm === 'all'} onClick={() => setRealm('all')}>{t('All')}</button>
-          {REALM_IDS.map((r) => (
-            <button class="chip lw-chip" style={{ '--c': `var(--emo-${REALMS[r].hue})` }} aria-pressed={realm === r} onClick={() => setRealm(r)}>{t(REALMS[r].name)}</button>
-          ))}
-        </div>
+        {picked && <p class="muted small lw-realm-about">{t(picked.about)}</p>}
 
         <ol class="lw-list">
           {shown.map((x, i) => (
-            <li key={x.n} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 12) }}>
-              <button class="lw-card" onClick={() => openLaw(x)}>
-                <Seal x={x} size={58} class="lw-card-seal" />
+            <li key={x.n} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 4) }}>
+              <button class="card lw-card" onClick={() => openLaw(x)}>
+                <Seal x={x} size={48} />
                 <span class="lw-card-main">
                   <span class="lw-card-top">
-                    <span class="lw-card-realm">{t(REALMS[x.realm].name)}</span>
+                    {t('Law {n}', { n: x.n })} · {t(REALMS[x.realm].name)}
                     {!!seen[x.n]?.on && <span class="lw-card-seen"><Icon name="eye" size={12} /> {seen[x.n].on}</span>}
                     {!!seen[x.n]?.by && <span class="lw-card-seen"><Icon name="crown" size={12} /> {seen[x.n].by}</span>}
                   </span>
                   <span class="lw-card-title">{x.title}</span>
                   <span class="lw-card-line">{x.line}</span>
-                  <span class="lw-card-dark" aria-label={t('Darkness {d} of 10', { d: x.dark })}>
-                    {Array.from({ length: 10 }, (_, k) => <i class={k < x.dark ? 'on' : ''} />)}
-                  </span>
                 </span>
-                <span class="lw-card-n" aria-hidden="true">{x.n}</span>
+                <span class="lw-card-dark" title={t('Darkness {d} of 10', { d: x.dark })}>
+                  <b>{x.dark}</b>
+                  <small>{t('dark')}</small>
+                </span>
               </button>
             </li>
           ))}
@@ -635,10 +581,9 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
         {!shown.length && <p class="empty-note">{t('No law matches that. Saying less than necessary, perhaps.')}</p>}
       </section>
 
-      <section class="lw-section lw-outro">
-        <svg class="lw-outro-king" viewBox="0 0 100 165" aria-hidden="true"><path d={KING} /></svg>
-        <p class="lw-outro-text">{t('Power is mostly attention: who notices what, and when. The laws describe how people have taken it from each other for as long as there have been courts. You don’t have to play every one. But a move you can name is a move that has far less hold on you.')}</p>
-        <button class="btn btn-quiet" onClick={() => openLaw(LAWS[Math.floor(Math.random() * LAWS.length)])}>{t('Draw a law at random')}</button>
+      <section class="section lw-about">
+        <p>{t('Greene wrote the book without morals on purpose: these are the moves, as courtiers, generals and con artists have made them for centuries. Most people who read it aren’t would-be kings, they’re people who kept losing a game they didn’t know was being played. So each law here also has its shadow side, an honest version, and the signs that someone is playing it on you.')}</p>
+        <button class="btn btn-quiet" onClick={() => openLaw(LAWS[Math.floor(Math.random() * LAWS.length)])}><Icon name="dice-5" size={18} /> {t('Draw a law at random')}</button>
       </section>
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Law {n} of 48', { n: current.n }) : ''} label={current?.title} tall>

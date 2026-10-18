@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.104.0',
+    date: '2026-10-18',
+    changes: [
+      'Laws of power: redesigned to match the other Insights pages, with the sky header, cards and tiles',
+      'Laws of power: read as the player or the target from the tabs at the top',
+      'Laws of power: tiles for the laws, levers, mind traps and how often you’ve seen them played on you',
+      'Laws of power: filter by arena and read what it covers, right above the list',
+      'Laws of power: a calmer opened law, in the app’s usual type and cards',
+    ],
+  },
+  {
     version: '1.103.0',
     date: '2026-10-18',
     changes: [
