@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.5',
+    date: '2026-10-19',
+    changes: [
+      'Laws of power: “Pose as a friend, work as a spy” has its own study, on how confiding in someone makes you like them',
+      'Laws of power: “Never appear too perfect” has its own study, on groups wanting to expel members who are too generous',
+    ],
+  },
+  {
     version: '1.112.4',
     date: '2026-10-19',
     changes: [
