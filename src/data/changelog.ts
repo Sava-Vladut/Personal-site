@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.9',
+    date: '2026-10-19',
+    changes: [
+      'Mind traps: the closing note no longer says knowing about biases never helps; practice with feedback has reduced some for months',
+    ],
+  },
+  {
     version: '1.112.8',
     date: '2026-10-19',
     changes: [

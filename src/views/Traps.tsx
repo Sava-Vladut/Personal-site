@@ -462,7 +462,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
       </section>
 
       <section class="section tr-about">
-        <p>{t('Knowing about a trap doesn’t free you from it. The research is clear on that: the people who know most about biases fall for them about as often as everyone else, and are better at spotting them in others. What helps is slower thinking at the moments that matter, other people who will tell you when you’re wrong, and writing things down before you know how they turn out.')}</p>
+        <p>{t('Knowing about a trap doesn’t free you from it, and neither does being clever: in study after study, people with higher cognitive ability fell for many biases about as often as everyone else, and were no better at seeing their own. Reading about them changes little. Practice with feedback does better: in 2015 a single training game cut several biases, and the effect was still there two months later. What helps most is slower thinking at the moments that matter, other people who will tell you when you’re wrong, and writing things down before you know how they turn out.')}</p>
         <button class="btn btn-quiet" onClick={() => openTrap(BY_ID.get('blind-spot')!)}><Icon name="eye" size={18} /> {t('Read the trap you’re in right now')}</button>
       </section>
 
