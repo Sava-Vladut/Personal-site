@@ -97,9 +97,12 @@ const bundle = await rolldown({
     resolveId(id) {
       if (id === 'review:mentions') return '\0' + id;
       if (id === './store') return '\0store';
+      // the traps, laws and principles load on demand and aren't read here (their Romanian text arrives by top-level await, which this CJS bundle can't hold)
+      if (/^\.\.\/data\/(traps|laws|principles)$/.test(id)) return '\0learn-data';
     },
     load(id) {
       if (id === '\0store') return 'export const getBooks = () => [];';
+      if (id === '\0learn-data') return 'export const TRAPS = [], LAWS = [], PRINCIPLES = [], FAMILIES = {}, REALMS = {}, PARTS = {};';
       if (id === '\0review:mentions') return `
         export * from '${new URL('../src/lib/mentions.ts', import.meta.url).pathname}';
         export { linkedFrom, linkOf, linkRanges, noteLabel, resolveNote, suggestLinks, typedLink } from '${new URL('../src/lib/links.ts', import.meta.url).pathname}';

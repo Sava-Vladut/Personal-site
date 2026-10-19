@@ -1,6 +1,9 @@
 // Mind traps: forty cognitive biases, each with how hard it pulls, the experiment that caught it,
 // and a way out. The scores are an editorial judgement, not a measurement: see POWER below.
 
+import { lang } from '../lib/i18n';
+import { localize } from '../lib/localize';
+
 export type Family = 'belief' | 'memory' | 'social' | 'self' | 'chance' | 'value' | 'time';
 export type Evidence = 'robust' | 'good' | 'debated';
 
@@ -53,7 +56,7 @@ export const EVIDENCE: Record<Evidence, [string, string]> = {
 export const POWER = { pull: 4.5, reach: 3.5, harm: 2 };
 export const power = (x: Trap) => Math.round(x.pull * POWER.pull + x.reach * POWER.reach + x.harm * POWER.harm);
 
-export const TRAPS: Trap[] = [
+const ENGLISH_TRAPS: Trap[] = [
   /* ---------------- belief ---------------- */
   {
     id: 'confirmation', name: 'Confirmation bias', family: 'belief', pull: 10, reach: 10, harm: 9, evidence: 'robust',
@@ -621,7 +624,7 @@ export const TRAPS: Trap[] = [
 ];
 
 /** Three questions where the first answer that comes to mind is wrong (Shane Frederick's Cognitive Reflection Test, 2005). */
-export const REFLECT: { q: string; options: string[]; gut: number; answer: number; why: string }[] = [
+const ENGLISH_REFLECT: { q: string; options: string[]; gut: number; answer: number; why: string }[] = [
   {
     q: 'A bat and a ball cost £1.10 in total. The bat costs £1.00 more than the ball. How much does the ball cost?',
     options: ['10p', '5p', '1p'], gut: 0, answer: 1,
@@ -638,3 +641,8 @@ export const REFLECT: { q: string; options: string[]; gut: number; answer: numbe
     why: 'It doubles each day, so the day before it covers the whole lake, it covers half: day 47.',
   },
 ];
+
+// In Romanian the text comes from a separate file that only loads then (see ro-learn/); the rest of each trap stays as written above.
+const RO = lang === 'ro' ? (await import('./ro-learn/traps')) : null;
+export const TRAPS: Trap[] = RO ? ENGLISH_TRAPS.map((x) => localize(x, RO.RO_TRAPS[x.id])) : ENGLISH_TRAPS;
+export const REFLECT = RO ? ENGLISH_REFLECT.map((x, i) => localize(x, RO.RO_REFLECT[i])) : ENGLISH_REFLECT;

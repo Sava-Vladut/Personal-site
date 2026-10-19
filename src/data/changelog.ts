@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.0',
+    date: '2026-10-19',
+    changes: [
+      'Mind traps, Laws of power and Win friends now read fully in Romanian: every title, story, study, psychology note, practice tip and quiz question',
+      'The Romanian text only loads when the app is set to Română, so English stays as light as before',
+    ],
+  },
+  {
     version: '1.111.0',
     date: '2026-10-19',
     changes: [

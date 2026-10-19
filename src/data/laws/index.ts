@@ -2,6 +2,8 @@
 // work, the mind traps it springs, and how to see it coming. The laws' content lives in part-1 … part-4.
 // The prose is ours: only the laws' titles are the book's.
 
+import { lang } from '../../lib/i18n';
+import { localize } from '../../lib/localize';
 import type { Law, Realm } from './types';
 import { LAWS as P1 } from './part-1';
 import { LAWS as P2 } from './part-2';
@@ -10,7 +12,11 @@ import { LAWS as P4 } from './part-4';
 
 export type { Law, Realm };
 
-export const LAWS: Law[] = [...P1, ...P2, ...P3, ...P4].sort((a, b) => a.n - b.n);
+const ENGLISH: Law[] = [...P1, ...P2, ...P3, ...P4].sort((a, b) => a.n - b.n);
+
+// In Romanian the text comes from a separate file that only loads then (see data/ro-learn/); the rest of each law stays as written.
+const RO = lang === 'ro' ? (await import('../ro-learn/laws')).RO_LAWS : null;
+export const LAWS: Law[] = RO ? ENGLISH.map((x) => localize(x, RO[x.n])) : ENGLISH;
 
 export interface RealmInfo { name: string; motto: string; hue: string; about: string }
 
