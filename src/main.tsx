@@ -16,6 +16,9 @@ import './styles/notes.css';
 import './styles/map.css';
 import './styles/stats.css';
 import './styles/twitch.css';
+import './styles/fade-images.css';
+import './styles/fade-scroll.css';
+import './styles/fade-data.css';
 import { App } from './app';
 import './styles/desktop.css';
 import { applyTheme, init } from './lib/store';
@@ -25,12 +28,16 @@ import { initStatus } from './lib/status';
 import { startWeather } from './lib/weather';
 import { t } from './lib/i18n';
 import { haptic } from './lib/haptics';
+import { startImageFade } from './lib/fadeImages';
+import { startReveal } from './lib/reveal';
 import { routeName } from './lib/router';
 import { preloadViews, prepareView, viewFor } from './lib/views';
 import { authStatus, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
 import type { IntroProps } from './views/Intro';
 
 applyTheme();
+startImageFade();
+startReveal();
 // iOS only shows :active (the press feedback on cards and buttons) once the page listens for touches.
 addEventListener('touchstart', () => {}, { passive: true });
 // The page doesn't zoom (see the viewport tag and html's touch-action); Safari still pinches unless its gestures are stopped.

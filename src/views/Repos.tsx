@@ -63,7 +63,7 @@ function RepoRow({ row, last, i, connected }: { row: Row; last: boolean; i: numb
           {row.pushed && <span>{ago(row.pushed)}</span>}
           {r?.emotions.slice(0, 3).map((id, k) => <EmotionChip id={id} size="sm" idle="view" delay={(r.created + k * 380) % 1300} />)}
         </span>
-        {excerpt && <span class="repo-readme"><span class="repo-readme-label">README.md</span><span class="repo-readme-text">{excerpt}</span></span>}
+        {excerpt && <span class="repo-readme fade-arrive"><span class="repo-readme-label">README.md</span><span class="repo-readme-text">{excerpt}</span></span>}
       </button>
     </li>
   );
@@ -163,7 +163,7 @@ export function Repos() {
         )}
 
         {rows.length > 0 && (
-          <div class="chips scroll-x filters media-filters" role="toolbar" aria-label={t('Filter repos')}>
+          <div class="chips scroll-x filters media-filters fade-arrive" role="toolbar" aria-label={t('Filter repos')}>
             {FILTERS.filter((f) => connected || f === 'all' || f === 'journaled').map((f) => (
               <button class="chip" aria-pressed={filter === f} onClick={() => setFilter(f)}>
                 {{ all: t('All'), journaled: t('Journaled'), public: t('Public'), private: t('Private') }[f]}

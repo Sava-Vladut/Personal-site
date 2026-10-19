@@ -173,7 +173,7 @@ function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
         <Icon name="search" size={18} />
         <input type="search" placeholder={t('Songs, artists, or paste a link')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search Spotify')} />
       </label>
-      <div class="tracks">{res.items.map(row)}</div>
+      <div class="tracks fade-rows">{res.items.map(row)}</div>
       {res.busy && <p class="hint center">{t('Searching…')}</p>}
       {res.error && <p class="error">{res.error}</p>}
       {!res.busy && res.next !== undefined && <button class="btn btn-quiet block" onClick={() => res.load(fetchPage, true)}>{t('More results')}</button>}
@@ -228,16 +228,16 @@ function NowTab({ row, active, onConnect }: { row: (m: Music) => preact.JSX.Elem
         <button class="icon-btn" onClick={refresh} disabled={busy} aria-label={t('Refresh')}><Icon name="refresh" size={18} /></button>
       </div>
       {now?.current ? (
-        <div class="tracks">{row(now.current)}</div>
+        <div class="tracks fade-rows">{row(now.current)}</div>
       ) : now ? (
-        <p class="hint">{t('Nothing playing right now. Play something in Spotify and it’ll show up here.')}</p>
+        <p class="hint fade-arrive">{t('Nothing playing right now. Play something in Spotify and it’ll show up here.')}</p>
       ) : null}
       {!now && busy && <p class="hint center">{t('Loading…')}</p>}
       {error && <p class="error">{error}</p>}
       {!!now?.recent.length && (
         <>
           <span class="section-label">{t('Recently played')}</span>
-          <div class="tracks">{now.recent.map(row)}</div>
+          <div class="tracks fade-rows">{now.recent.map(row)}</div>
         </>
       )}
     </div>
@@ -294,7 +294,7 @@ function PlaylistsTab({ row, onAddAll }: { row: (m: Music) => preact.JSX.Element
           </button>
         )}
         {all?.error && <p class="error">{all.error}</p>}
-        <div class="tracks">{songs.items.map(row)}</div>
+        <div class="tracks fade-rows">{songs.items.map(row)}</div>
         {songs.busy && <p class="hint center">{t('Loading…')}</p>}
         {songs.error && <p class="error">{songs.error}</p>}
         {!songs.busy && songs.next !== undefined && <button class="btn btn-quiet block" onClick={() => songs.load((o) => listPlaylistItems(open.id, o), true)}>{t('Load more')}</button>}
@@ -304,7 +304,7 @@ function PlaylistsTab({ row, onAddAll }: { row: (m: Music) => preact.JSX.Element
 
   return (
     <div class="stack">
-      <div class="board-grid">
+      <div class="board-grid fade-rows">
         {lists.items.map((p) => (
           <button class="board" onClick={() => setOpen(p)}>
             <span class="board-cover">{p.cover ? <img src={p.cover} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <Icon name="playlist" size={22} />}</span>
@@ -378,7 +378,7 @@ function LinkTab({ onAdd, label }: { onAdd: (m: Music) => void; label: string })
       <button class="btn btn-primary block" disabled={busy || !url.trim()}>{busy ? t('Finding it…') : t('Get music')}</button>
       {error && <p class="error">{error}</p>}
       {preview && (
-        <div class="stack">
+        <div class="stack fade-arrive-soft">
           <MusicEmbed m={preview} />
           <button type="button" class="btn btn-primary block" onClick={() => onAdd(preview)}>{label}</button>
         </div>

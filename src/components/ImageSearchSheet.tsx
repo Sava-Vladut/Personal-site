@@ -74,7 +74,7 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
           <input type="search" enterKeyHint="search" placeholder={t('Rainy window, sunset, cozy café…')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search images')} />
         </form>
         {items.length > 0 && (
-          <div class="img-grid">
+          <div class="img-grid fade-rows-soft">
             {items.map((img) => (
               <button key={img.url} class="img-pick" aria-pressed={isSel(img.url)} onClick={() => toggle(img)} aria-label={img.title || t('Image')}>
                 <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" style={img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />

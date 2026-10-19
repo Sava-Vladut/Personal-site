@@ -1,0 +1,14 @@
+/* Images fade in once they've loaded instead of popping in (lib/fadeImages.ts). */
+
+/* Still loading: hidden, in its own space, so nothing shifts when it arrives. Only lib/fadeImages.ts sets this, and it
+   always clears it once the picture loads or fails. */
+img[data-img='wait'] { opacity: 0; }
+
+/* Loaded: it comes up and settles from a touch larger. `scale` rather than transform, so a picture's own transform
+   stays; keyframes with only a start end on the picture's own opacity and scale. No filter, so Settings › Blur still
+   applies. Reduced motion makes this instant (end of app.css). */
+img[data-img='in'] { animation: img-fade-in var(--dur-3) var(--ease) backwards; }
+@keyframes img-fade-in { from { opacity: 0; scale: 1.015; } }
+
+/* An image search result keeps its grey slot (its own background, hidden with it) until it has faded in over it. */
+.img-pick:has(> img[data-img]) { background: var(--surface-2); }

@@ -1,0 +1,21 @@
+/* Cards and rows below the fold drift in as they scroll into view, once (lib/reveal.ts). */
+
+/* Waiting below the screen: hidden and a little low, with no transition so it goes there unseen. Only lib/reveal.ts
+   sets this, only on things off screen, and it never does under reduced motion. `translate` rather than transform or
+   scale, so a card's own transform and its press feedback (scale) stay its own. The opacity wins over a running
+   entrance animation, so one that played off screen isn't seen twice. */
+[data-reveal='wait'] { opacity: 0 !important; translate: 0 14px; transition: none !important; }
+
+/* Peeking in: it rises into place with a soft landing, each a beat after the one before (the step is set by the
+   script, 0–4, 25ms apart). Only while tagged: the tag goes once it has landed, and the element's own transitions
+   come back. Press feedback keeps its spring meanwhile. Only opacity and translate, as this runs while scrolling. */
+[data-reveal]:not([data-reveal='wait']) {
+  transition:
+    opacity var(--dur-3) var(--ease-emph) var(--reveal-delay, 0ms),
+    translate var(--dur-3) var(--ease-emph) var(--reveal-delay, 0ms),
+    scale var(--dur-3) var(--spring) !important;
+}
+[data-reveal='1'] { --reveal-delay: 25ms; }
+[data-reveal='2'] { --reveal-delay: 50ms; }
+[data-reveal='3'] { --reveal-delay: 75ms; }
+[data-reveal='4'] { --reveal-delay: 100ms; }

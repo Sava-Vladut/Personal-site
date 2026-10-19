@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.110.0',
+    date: '2026-10-19',
+    changes: [
+      'The app fades in gently when it opens, with the sidebar and + button settling in alongside the page',
+      'Pictures, covers and album art fade in smoothly as they load instead of popping in',
+      'Cards and rows drift softly into place as you scroll down to them',
+      'Search results, Spotify, GitHub and channel points fade in as they arrive instead of popping in',
+      'A note’s place and weather fade in when they’re found after you save',
+    ],
+  },
+  {
     version: '1.109.0',
     date: '2026-10-19',
     changes: [

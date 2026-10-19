@@ -336,7 +336,7 @@ function JournalPoints({ graph }: { graph: boolean }) {
     d += `${d ? 'L' : 'M'}${px.toFixed(1)},${py.toFixed(1)}`;
   });
   return (
-    <button class="tw-mini" onClick={() => navigate('twitch')} aria-label={t('Channel points')}>
+    <button class="tw-mini fade-arrive" onClick={() => navigate('twitch')} aria-label={t('Channel points')}>
       <span class="tw-mini-ico"><Icon name="brand-twitch" size={18} /></span>
       <span class="tw-mini-main">
         <small>{t('Channel points')}</small>

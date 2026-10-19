@@ -5,6 +5,8 @@ import { rolldown } from 'rolldown';
 import { i18n } from './i18n-stub.mjs';
 
 const compiled = new Map();
+/** Start-up effects that only touch the page (fades): nothing to see in these tests, so they do nothing. */
+const effects = { './lib/fadeImages': { startImageFade() {} }, './lib/reveal': { startReveal() {} } };
 async function load(file, mocks = {}, globals = {}) {
   if (!compiled.has(file)) {
     const bundle = await rolldown({ input: file, external: (_id, importer) => !!importer, transform: { define: { 'import.meta.env.PROD': 'false' } } });
@@ -17,7 +19,7 @@ async function load(file, mocks = {}, globals = {}) {
     ? compiled.get(file).replace(/\bimport\((['"])([^'"]+)\1\)/g, 'Promise.resolve().then(() => require("$2"))')
     : compiled.get(file);
   vm.runInNewContext(code, {
-    module, exports: module.exports, require: (id) => mocks[id] ?? (id.endsWith('/i18n') ? i18n : {}),
+    module, exports: module.exports, require: (id) => mocks[id] ?? (id.endsWith('/i18n') ? i18n : effects[id] ?? {}),
     console, Blob, URL, URLSearchParams, atob, Uint8Array, Event, AbortController, setTimeout, clearTimeout,
     ...globals,
     // the start-up code reads the page's address to tell a public note's link from the app

@@ -44,12 +44,14 @@ export function DetailsSummary({ draft, onOpen, onMusic }: { draft: Entry; onOpe
   const byId = usePeopleById();
   const people = draft.people.map((id) => byId.get(id)!).filter(Boolean);
   const w = weatherOf(draft);
+  // the place and weather are looked up after a new note is kept: ones that turn up then fade in, ones already there don't
+  const [had] = useState(() => ({ w: !!w, place: !!draft.place?.name }));
   return (
     <div class="details-line">
       <button class="details-summary" onClick={onOpen} aria-label={t('Feelings, people, date, place and cover')}>
         <span class="details-date"><Icon name="calendar-event" size={14} /> {rangeLabel(draft.date, draft.dateEnd)}</span>
-        {w && <span class="details-date"><WeatherMark w={w} size={14} /></span>}
-        {draft.place?.name && <span class="details-date details-place"><Icon name="map-pin" size={14} /> <span>{draft.place.name}</span></span>}
+        {w && <span class={had.w ? 'details-date' : 'details-date fade-arrive'}><WeatherMark w={w} size={14} /></span>}
+        {draft.place?.name && <span class={had.place ? 'details-date details-place' : 'details-date details-place fade-arrive'}><Icon name="map-pin" size={14} /> <span>{draft.place.name}</span></span>}
         {draft.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
         {draft.emotions.length > 0 && <Bars n={draft.intensity} />}
         {people.map((p) => <PersonChip p={p} size="sm" />)}
@@ -219,7 +221,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
               </button>
             </div>
           )}
-          {weather && <p class="details-hint wx-line"><Icon name={weatherIcon(weather.code, weather.dark)} size={15} /> {weatherLine(weather)}</p>}
+          {weather && <p class="details-hint wx-line fade-arrive"><Icon name={weatherIcon(weather.code, weather.dark)} size={15} /> {weatherLine(weather)}</p>}
         </section>
 
         <section class="details-section">

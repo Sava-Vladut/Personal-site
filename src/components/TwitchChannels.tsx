@@ -107,7 +107,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
       {admin ? (
         <>
           <p class="hint">{t('Twitch only counts two live channels at a time, and the miner takes them in this order, so move a channel up to have it watched first. Saving restarts it, so it stops for a few seconds.')}</p>
-          <ol class="tw-edit">
+          <ol class="tw-edit fade-arrive">
             {list.map((c, i) => (
               <li key={c}>
                 <span class="tw-edit-n">{i + 1}</span>
@@ -137,7 +137,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
         </>
       ) : (
         <>
-          {saved && <p class="hint">{t('Mining {names}.', { names: saved.join(', ') })}</p>}
+          {saved && <p class="hint fade-arrive">{t('Mining {names}.', { names: saved.join(', ') })}</p>}
           <p class="hint">{t('Enter the admin password to change them. This device stays signed in.')}</p>
           <form onSubmit={login}>
             <input

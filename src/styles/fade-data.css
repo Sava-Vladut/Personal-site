@@ -1,0 +1,46 @@
+/* Content that arrives after the page (fetched widgets, search results, the first paint) fades in instead of popping. */
+
+/* It comes up from a few px below, out of a soft blur, and settles. `translate` rather than transform, so an element's
+   own transform stays; keyframes with only a start end on the element's own values. The blur is one-shot and small,
+   and never used on what Settings › Blur blurs (the soft one is for that, and for big blocks where a blur costs).
+   Each of these only plays when its element is put in the page, so a refresh that keeps it doesn't replay it.
+   Reduced motion makes them instant (end of app.css), so nothing is ever left hidden. */
+@keyframes arrive { from { opacity: 0; translate: 0 7px; filter: blur(4px); } }
+@keyframes arrive-soft { from { opacity: 0; translate: 0 6px; } }
+
+/* one block landing: a widget, a preview, a line of fetched text. `--i` staggers blocks that land together */
+.fade-arrive, .fade-arrive-soft {
+  animation: arrive var(--dur-3) var(--ease-emph) calc(min(var(--i, 0), 4) * 25ms) backwards;
+}
+.fade-arrive-soft { animation-name: arrive-soft; }
+
+/* a list landing: its rows cascade 25ms apart, all moving within 100ms. Past the first few rows (off screen in a
+   sheet, or a page of "more") the blur is left out */
+.fade-rows > *, .fade-rows-soft > * { animation: arrive var(--dur-3) var(--ease-emph) backwards; }
+.fade-rows-soft > *, .fade-rows > :nth-child(n + 9) { animation-name: arrive-soft; }
+:is(.fade-rows, .fade-rows-soft) > :nth-child(2) { animation-delay: 25ms; }
+:is(.fade-rows, .fade-rows-soft) > :nth-child(3) { animation-delay: 50ms; }
+:is(.fade-rows, .fade-rows-soft) > :nth-child(4) { animation-delay: 75ms; }
+:is(.fade-rows, .fade-rows-soft) > :nth-child(n + 5) { animation-delay: 100ms; }
+
+/* ---------- the first paint ----------
+   On a cold start the first page's pieces settle in one after another (app.css staggers .page[data-boot]); here they
+   take a touch longer and softer, without the blur (a whole page blurring is heavy on a phone at its busiest
+   moment). The sidebar fades in and the + rises from the bottom with them, instead of standing there before the
+   page. The + rises rather than fades: its glass can't frost through a fading parent. Only while the first page is
+   up, so later pages and the tab bar coming back keep their own transitions. Everything is in within ~0.4s. */
+.page[data-boot] > * { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+.app:has(> .page[data-boot]) ~ .side { animation: fade-in var(--dur-3) var(--ease) backwards; }
+.app:has(> .page[data-boot]) ~ .nav { animation: boot-nav-in var(--dur-3) var(--ease-emph) 60ms backwards; }
+@keyframes boot-nav-in { from { translate: 0 calc(100% + 32px); } }
+
+/* a public note or status (no journal behind it): its page arrives the same way once it's loaded (the status's own
+   pieces already rise in, in shared.css; its sky and glow fade in behind them) */
+.route-shared > article.shared { animation: none; }
+.route-shared > article.shared > * { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+.route-shared > article.shared > :nth-child(2) { animation-delay: 25ms; }
+.route-shared > article.shared > :nth-child(n + 3) { animation-delay: 50ms; }
+.route-status > :is(.status-sky, .status-glow) { animation: fade-in var(--dur-4) var(--ease) backwards; }
+
+/* the channel points board, once the miner's numbers are in (its cards then play their own entrances) */
+.tw-page .reveal { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }

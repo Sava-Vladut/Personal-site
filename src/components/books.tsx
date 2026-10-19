@@ -208,7 +208,7 @@ export function BookSheet({ open, onClose, onPick, title = t('Add a book'), stat
       {needle.length >= 2 && (
         <>
           <div class="section-label book-sheet-label">{t('From Open Library')}</div>
-          <div class="book-rows">
+          <div class="book-rows fade-rows">
             {found.map((f) => {
               const have = shelf.find((b) => sameWork(b, f));
               return (

@@ -174,7 +174,7 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home', current }: {
         <input type="search" placeholder={t('Search for a town or city, or type coordinates')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search for a town or city, or type coordinates')} enterkeyhint="search" />
       </form>
       {error && <p class="hint danger" role="alert">{error}</p>}
-      <div class="person-picks">
+      <div class="person-picks fade-rows">
         {coords && (
           <button class="person-pick" onClick={useCoords} disabled={locating}>
             <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="map-pin" size={18} /></span>

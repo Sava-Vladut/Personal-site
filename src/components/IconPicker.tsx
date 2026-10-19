@@ -117,14 +117,15 @@ export function IconSheet({ open, onClose, value, onChange }: {
         />
       </label>
       {!results && cats && (
-        <div class="chips scroll-x" role="tablist">
+        <div class="chips scroll-x fade-arrive" role="tablist">
           {tabs.map((c, i) => (
             <button class="chip" role="tab" aria-selected={tab === i} aria-pressed={tab === i} onClick={() => { setTab(i); setLimit(240); }}>{t(c.name)}</button>
           ))}
         </div>
       )}
       {!cats && <p class="hint">{t('Loading icons…')}</p>}
-      <div class="icon-grid">
+      {/* keyed on the icons loading, so the grid fades in once they're here (and not again as a search changes it) */}
+      <div key={cats ? 'icons' : 'wait'} class={cats ? 'icon-grid fade-arrive-soft' : 'icon-grid'}>
         {shown.map((id) => (
           <button key={id} class="icon-cell" aria-pressed={id === value} title={iconLabel(id)} aria-label={iconLabel(id)} onClick={() => pick(id)}>
             <svg width="26" height="26" viewBox={viewBoxOf(id)} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svgInner(id, pool[id]) }} />

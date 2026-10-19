@@ -129,7 +129,7 @@ function ReadmeFrame({ id, base }: { id: string; base: { repo: string; branch: s
       {readme.data && (readme.data.text === null || !readme.data.text.trim()) && <p class="empty-note">{t('This repo has no README.')}</p>}
       {readme.data?.text?.trim() && (
         <>
-          <div ref={box} class={`rd-scroll${tall && !whole ? ' is-clipped' : ''}`}><Readme text={readme.data.text} base={base} /></div>
+          <div ref={box} class={`rd-scroll fade-arrive-soft${tall && !whole ? ' is-clipped' : ''}`}><Readme text={readme.data.text} base={base} /></div>
           {tall && <button class="rd-expand" aria-expanded={whole} onClick={() => setWhole(!whole)}>{whole ? t('Show less') : t('Show the whole README')}</button>}
         </>
       )}
@@ -257,9 +257,10 @@ export function RepoView({ id }: { id: string }) {
   const main = draft?.emotions[0] ? coreOf(draft.emotions[0]).id : null;
   const worlds = useMemo(() => (draft?.emotions.length ? [...new Set(draft.emotions.map((e) => coreOf(e).id))] : ['calm-safety', 'sadness', 'hope-interest']), [draft?.emotions.join()]);
 
+  // keyed apart from the repo's page, so the page arrives with its own entrance instead of snapping in over the wait
   if (!draft)
     return (
-      <div class="page">
+      <div class="page" key="wait">
         <div class="empty">
           {meta.loading ? <p class="repo-wait"><Spin /> {t('Reading the repo from GitHub…')}</p> : (
             <>
@@ -306,7 +307,7 @@ export function RepoView({ id }: { id: string }) {
   };
 
   return (
-    <div class="page editor repo-page">
+    <div class="page editor repo-page" key="repo">
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <span class="grow" />

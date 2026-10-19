@@ -344,7 +344,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
         <h2 class="section-title">Spotify</h2>
         <div class="card list">
           <div class="list-row">
-            <div>
+            {/* keyed on the check, so what it found fades in over "Checking…" instead of the words swapping */}
+            <div key={sp ? 'sp' : 'wait'} class={sp ? 'fade-arrive' : undefined}>
               <div class="row gap-s"><Icon name="brand-spotify" size={18} /> {sp?.connected ? (sp.user ? t('Connected as {name}', { name: sp.user.name }) : t('Connected')) : t('Not connected')}</div>
               <div class="muted small">
                 {!sp ? t('Checking…')
@@ -356,9 +357,9 @@ export function Settings({ query }: { query: URLSearchParams }) {
               </div>
             </div>
             {sp && !sp.offline && (sp.connected ? (
-              <button class="btn btn-quiet" onClick={async () => { await disconnectSpotify(); setSp(await spotifyStatus()); toast(t('Spotify disconnected')); }}>{t('Disconnect')}</button>
+              <button class="btn btn-quiet fade-arrive" onClick={async () => { await disconnectSpotify(); setSp(await spotifyStatus()); toast(t('Spotify disconnected')); }}>{t('Disconnect')}</button>
             ) : (
-              <button class="btn btn-primary" onClick={sp.configured ? () => connectSpotify('#/settings') : () => setSetup(true)}>{t('Log in')}</button>
+              <button class="btn btn-primary fade-arrive" onClick={sp.configured ? () => connectSpotify('#/settings') : () => setSetup(true)}>{t('Log in')}</button>
             ))}
           </div>
         </div>
@@ -368,7 +369,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
         <h2 class="section-title">GitHub</h2>
         <div class="card list">
           <div class="list-row">
-            <div>
+            <div key={gh ? 'gh' : 'wait'} class={gh ? 'fade-arrive' : undefined}>
               <div class="row gap-s"><Icon name="brand-github" size={18} /> {gh?.connected ? (gh.user ? t('Connected as {name}', { name: gh.user.name }) : t('Connected')) : t('Not connected')}</div>
               <div class="muted small">
                 {!gh ? t('Checking…')
@@ -386,9 +387,9 @@ export function Settings({ query }: { query: URLSearchParams }) {
               )}
             </div>
             {gh && !gh.offline && (gh.connected ? (
-              <button class="btn btn-quiet" onClick={async () => { await disconnectGithub(); forgetRepos(); setGh(await githubStatus()); toast(t('GitHub disconnected')); }}>{t('Disconnect')}</button>
+              <button class="btn btn-quiet fade-arrive" onClick={async () => { await disconnectGithub(); forgetRepos(); setGh(await githubStatus()); toast(t('GitHub disconnected')); }}>{t('Disconnect')}</button>
             ) : gh.configured && (
-              <button class="btn btn-primary" onClick={connectGithub}>{t('Log in')}</button>
+              <button class="btn btn-primary fade-arrive" onClick={connectGithub}>{t('Log in')}</button>
             ))}
           </div>
         </div>
