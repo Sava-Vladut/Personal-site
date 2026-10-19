@@ -1,0 +1,8 @@
+/* ============================================================
+   Marks (components/Mark.tsx): the drawings of the mind traps and the laws of power.
+   The tile is artwork, like a printed card: a muted, papery take on the colour, the same in both themes,
+   so the black ink and ivory paper always read.
+   ============================================================ */
+
+.mark { display: block; flex: none; overflow: visible; }
+.mark-tile { fill: color-mix(in oklab, var(--c) 60%, #e6dccb); }

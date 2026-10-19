@@ -1,13 +1,8 @@
 /* ============================================================
    Mind traps (views/Traps.tsx)
    Built on the Stats page's shell (stats.css): a sky header, cards and tiles in the page's accent.
-   What's its own: the Rorschach blots, the power map and the quizzes. Each trap wears its family's world colour (--c).
+   What's its own: the marks' sizes, the power map and the quizzes. Each trap wears its family's world colour (--c).
    ============================================================ */
-
-/* ---------- the blots ---------- */
-
-.ink { display: block; overflow: visible; color: color-mix(in oklab, var(--c, var(--accent)) 50%, var(--ink)); }
-.ink use, .ink g { color: inherit; }
 
 /* ---------- trap of the day ---------- */
 
@@ -137,7 +132,7 @@
 
 .tr-detail { padding-bottom: 8px; }
 .tr-d-head { text-align: center; padding-top: 4px; }
-.tr-d-ink { width: 104px; height: 104px; margin: 0 auto 8px; animation: pop-in var(--dur-4) var(--spring) backwards; }
+.tr-d-ink { width: 96px; height: 96px; margin: 0 auto 8px; animation: pop-in var(--dur-4) var(--spring) backwards; }
 .tr-d-kicker { margin: 0; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 70%, var(--ink-3)); }
 .tr-d-name { margin: 6px 0 0; font: var(--w-medium) clamp(24px, 6.6vw, 29px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
 .tr-d-aka { margin: 4px 0 0; color: var(--ink-3); font-size: var(--text-m); }

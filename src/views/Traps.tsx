@@ -1,10 +1,11 @@
-import { useLayoutEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
+import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
 import { EVIDENCE, FAMILIES, POWER, REFLECT, TRAPS, power, type Family, type Trap } from '../data/traps';
 import { Icon } from '../components/icons';
+import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
 import { RevealStack } from '../components/charts';
@@ -15,7 +16,7 @@ import '../styles/traps.css';
 
 /*
  * Mind traps: forty cognitive biases, under Insights, on the same sky, cards and tiles as Stats.
- * Every trap gets its own Rorschach blot, grown from its name, so the same trap always wears the same stain.
+ * Every trap wears its own mark, a small ink-and-paper drawing (data/marks.ts) on a tile in its family's colour.
  * The data and the scoring are in data/traps.ts.
  */
 
@@ -25,64 +26,6 @@ const BY_ID = new Map(TRAPS.map((x) => [x.id, x]));
 const FAMILY_IDS = Object.keys(FAMILIES) as Family[];
 const hueOf = (x: Trap) => FAMILIES[x.family].hue;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/* ---------- the blots ---------- */
-
-function seeded(text: string) {
-  let h = 2166136261;
-  for (const c of text) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  let a = h >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let x = Math.imul(a ^ (a >>> 15), 1 | a);
-    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Half a blot, drawn left of the fold: a spine down the middle, a body, arms and a spray of drops. */
-function blotShapes(seed: string) {
-  const r = seeded(seed);
-  const between = (a: number, b: number) => a + (b - a) * r();
-  const out: { cx: number; cy: number; rx: number; ry: number; rot: number }[] = [];
-  const spine = 3 + Math.floor(r() * 3);
-  for (let i = 0; i < spine; i++) out.push({ cx: 50, cy: between(22, 78), rx: between(3, 8), ry: between(7, 15), rot: 0 });
-  const body = 5 + Math.floor(r() * 4);
-  for (let i = 0; i < body; i++) {
-    const cy = between(20, 80);
-    out.push({ cx: between(30, 49), cy, rx: between(4, 12), ry: between(4, 12), rot: between(-40, 40) });
-  }
-  const arms = 2 + Math.floor(r() * 2);
-  for (let i = 0; i < arms; i++) out.push({ cx: between(20, 38), cy: between(14, 86), rx: between(9, 16), ry: between(1.6, 3.6), rot: between(-60, 60) });
-  const drops = 5 + Math.floor(r() * 6);
-  for (let i = 0; i < drops; i++) {
-    const s = between(0.6, 2.6);
-    out.push({ cx: between(9, 40), cy: between(8, 92), rx: s, ry: s, rot: 0 });
-  }
-  return { shapes: out, noise: Math.floor(r() * 1000), wobble: between(9, 15) };
-}
-
-/** A Rorschach blot: half drawn, run through noise so its edges bleed, then folded over. */
-function Inkblot({ seed, class: cls }: { seed: string; class?: string }) {
-  const id = 'ink' + useId().replace(/\W/g, '');
-  const { shapes, noise, wobble } = useMemo(() => blotShapes(seed), [seed]);
-  return (
-    <svg class={`ink${cls ? ' ' + cls : ''}`} viewBox="0 0 100 100" aria-hidden="true">
-      <defs>
-        <filter id={id + 'f'} x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves={2} seed={noise} result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale={wobble} xChannelSelector="R" yChannelSelector="G" result="d" />
-          <feGaussianBlur in="d" stdDeviation="1.1" result="b" />
-          <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 16 -7" />
-        </filter>
-      </defs>
-      <g id={id + 'h'} filter={`url(#${id}f)`} fill="currentColor">
-        {shapes.map((s) => <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} transform={s.rot ? `rotate(${s.rot.toFixed(1)} ${s.cx.toFixed(1)} ${s.cy.toFixed(1)})` : undefined} />)}
-      </g>
-      <use href={`#${id}h`} transform="translate(100 0) scale(-1 1)" />
-    </svg>
-  );
-}
 
 /* ---------- small pieces ---------- */
 
@@ -256,7 +199,7 @@ function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCa
   return (
     <article class="tr-detail" style={{ '--c': `var(--emo-${hueOf(x)})` }}>
       <header class="tr-d-head">
-        <Inkblot seed={x.id} class="tr-d-ink" />
+        <Mark id={x.id} hue={hueOf(x)} class="tr-d-ink" />
         <p class="tr-d-kicker">{t(FAMILIES[x.family].name)} · {t(FAMILIES[x.family].motto)}</p>
         <h2 class="tr-d-name">{x.name}</h2>
         {x.aka && <p class="tr-d-aka">{t('also called')} {x.aka}</p>}
@@ -321,7 +264,7 @@ function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCa
       <div class="tr-kin">
         {x.kin.map((k) => BY_ID.get(k)).filter((k): k is Trap => !!k).map((k) => (
           <button class="tr-kin-chip" style={{ '--c': `var(--emo-${hueOf(k)})` }} onClick={() => go(k.id)}>
-            <Inkblot seed={k.id} class="tr-kin-ink" />
+            <Mark id={k.id} hue={hueOf(k)} class="tr-kin-ink" />
             <span>{k.name}</span>
             <em>{power(k)}</em>
           </button>
@@ -390,7 +333,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
         <button class="card hero tr-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openTrap(today)}>
           <span class="tile-label">{t('Trap of the day')}</span>
           <span class="tr-today-row">
-            <Inkblot seed={today.id} class="tr-today-ink" />
+            <Mark id={today.id} hue={hueOf(today)} class="tr-today-ink" />
             <span class="tr-today-body">
               <span class="tr-today-name">{today.name}</span>
               <span class="tr-today-line">{today.line}</span>
@@ -463,7 +406,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
           {shown.map((x, i) => (
             <li key={x.id} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 4) }}>
               <button class="card tr-card" onClick={() => openTrap(x)}>
-                <Inkblot seed={x.id} class="tr-card-ink" />
+                <Mark id={x.id} hue={hueOf(x)} class="tr-card-ink" />
                 <span class="tr-card-main">
                   <span class="tr-card-top">
                     #{RANK.get(x.id)} · {t(FAMILIES[x.family].name)}

@@ -6,6 +6,7 @@ import { t } from '../lib/i18n';
 import { LAWS, REALMS, roman, type Law, type Realm } from '../data/laws';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { Icon } from '../components/icons';
+import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
 import { RevealStack } from '../components/charts';
@@ -15,9 +16,9 @@ import '../styles/stats.css';
 import '../styles/laws.css';
 
 /*
- * The 48 Laws of Power, under Insights: the same sky, cards and tiles as Stats, with every law sealed in wax in its
- * arena's colour. Each law opens to its history, its psychology, the mind traps it springs (linked to the Mind traps
- * page) and how to see it coming. The data is in data/laws.
+ * The 48 Laws of Power, under Insights: the same sky, cards and tiles as Stats, with every law wearing its own mark,
+ * a small ink-and-paper drawing (data/marks.ts) on a tile in its arena's colour. Each law opens to its history, its
+ * psychology, the mind traps it springs (linked to the Mind traps page) and how to see it coming. The data is in data/laws.
  */
 
 const BY_N = new Map(LAWS.map((x) => [x.n, x]));
@@ -32,45 +33,6 @@ const SPRUNG = (() => {
   for (const x of LAWS) for (const { id } of x.traps) if (TRAP_BY_ID.has(id)) by.set(id, [...(by.get(id) ?? []), x]);
   return [...by.entries()].map(([id, laws]) => ({ trap: TRAP_BY_ID.get(id)!, laws })).sort((a, b) => b.laws.length - a.laws.length);
 })();
-
-function seeded(text: string) {
-  let h = 2166136261;
-  for (const c of text) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  let a = h >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let x = Math.imul(a ^ (a >>> 15), 1 | a);
-    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** A wax seal with the law's numeral pressed into it. Its edge is grown from the law's id, so each seal is its own. */
-function Seal({ x, size = 64, class: cls }: { x: Law; size?: number; class?: string }) {
-  const edge = useMemo(() => {
-    const r = seeded(x.id);
-    const pts = Array.from({ length: 22 }, (_, i) => {
-      const a = (i / 22) * Math.PI * 2, rad = 44 + r() * 4.5;
-      return [50 + rad * Math.cos(a), 50 + rad * Math.sin(a)];
-    });
-    let d = '';
-    pts.forEach((p, i) => {
-      const q = pts[(i + 1) % pts.length];
-      const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
-      d += (i ? '' : `M${((pts[pts.length - 1][0] + p[0]) / 2).toFixed(1)} ${((pts[pts.length - 1][1] + p[1]) / 2).toFixed(1)}`) + `Q${p[0].toFixed(1)} ${p[1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`;
-    });
-    return d + 'z';
-  }, [x.id]);
-  const num = roman(x.n);
-  return (
-    <svg class={`lw-seal${cls ? ' ' + cls : ''}`} width={size} height={size} viewBox="0 0 100 100" style={{ '--c': `var(--emo-${hueOf(x)})` }} aria-hidden="true">
-      <path d={edge} class="lw-seal-wax" />
-      <circle cx="50" cy="50" r="33" class="lw-seal-ring" />
-      <circle cx="50" cy="50" r="29" class="lw-seal-ring thin" />
-      <text x="50" y="50" class="lw-seal-num" style={{ fontSize: num.length > 4 ? '17px' : num.length > 2 ? '21px' : '26px' }} text-anchor="middle" dominant-baseline="central">{num}</text>
-    </svg>
-  );
-}
 
 function Meter({ label, value, about }: { label: string; value: number; about: string }) {
   return (
@@ -347,7 +309,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
   return (
     <article class="lw-detail" style={{ '--c': `var(--emo-${realm.hue})` }}>
       <header class="lw-d-head">
-        <Seal x={x} size={88} class="lw-d-seal" />
+        <Mark id={x.id} hue={hueOf(x)} class="lw-d-mark" />
         <p class="lw-d-kicker">{t('Law {n}', { n: x.n })} · {t(realm.name)}</p>
         <h2 class="lw-d-title">{x.title}</h2>
         <p class="lw-d-line">{x.line}</p>
@@ -391,7 +353,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
       <div class="lw-kin">
         {x.kin.map((k) => BY_N.get(k)).filter((k): k is Law => !!k).map((k) => (
           <button class="lw-kin-chip" onClick={() => go(k.n)}>
-            <Seal x={k} size={34} />
+            <Mark id={k.id} hue={hueOf(k)} class="lw-kin-mark" />
             <span>{k.title}</span>
           </button>
         ))}
@@ -468,7 +430,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
         <button class="card hero lw-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openLaw(today)}>
           <span class="tile-label">{t('Law of the day')}</span>
           <span class="lw-today-row">
-            <Seal x={today} size={64} />
+            <Mark id={today.id} hue={hueOf(today)} class="lw-today-mark" />
             <span class="lw-today-body">
               <span class="lw-today-title">{today.title}</span>
               <span class="lw-today-line">{today.line}</span>
@@ -560,7 +522,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
           {shown.map((x, i) => (
             <li key={x.n} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 4) }}>
               <button class="card lw-card" onClick={() => openLaw(x)}>
-                <Seal x={x} size={48} />
+                <Mark id={x.id} hue={hueOf(x)} class="lw-card-mark" />
                 <span class="lw-card-main">
                   <span class="lw-card-top">
                     {t('Law {n}', { n: x.n })} · {t(REALMS[x.realm].name)}

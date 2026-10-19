@@ -1,7 +1,7 @@
 /* ============================================================
    The 48 Laws of Power (views/Laws.tsx)
    Built on the Stats page's shell (stats.css): a sky header, cards and tiles in the page's accent.
-   What's its own: the wax seals, the board and the map. Each law wears its arena's world colour (--c).
+   What's its own: the marks' sizes, the board and the map. Each law wears its arena's world colour (--c).
    ============================================================ */
 
 /* ---------- law of the day ---------- */
@@ -15,14 +15,11 @@
 .lw-today-line { color: var(--ink-2); font-size: var(--text-base); line-height: 1.45; }
 .lw-today-q { padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
 
-/* ---------- the seals ---------- */
+/* ---------- the marks (components/Mark.tsx) ---------- */
 
-.lw-seal { display: block; flex: none; overflow: visible; transition: rotate var(--dur-3) var(--spring); }
-/* sealing wax is artwork: the same deep tone in both themes, so the pale numeral always reads */
-.lw-seal-wax { fill: color-mix(in oklab, var(--c) 68%, #1c0f0c); }
-.lw-seal-ring { fill: none; stroke: var(--on-color); stroke-width: 1.4; opacity: 0.4; }
-.lw-seal-ring.thin { stroke-width: 0.7; stroke-dasharray: 1.5 2.5; }
-.lw-seal-num { font-family: var(--serif); font-weight: var(--w-medium); fill: var(--on-color); }
+.lw-card-mark { width: 48px; height: 48px; transition: rotate var(--dur-3) var(--spring); }
+.lw-today-mark { width: 64px; height: 64px; }
+.lw-kin-mark { width: 34px; height: 34px; }
 
 /* ---------- the board ---------- */
 
@@ -118,7 +115,7 @@
 }
 @media (hover: hover) {
   .lw-card:hover { border-color: color-mix(in oklab, var(--c) 40%, var(--line)); }
-  .lw-card:hover .lw-seal { rotate: -8deg; }
+  .lw-card:hover .lw-card-mark { rotate: -4deg; }
 }
 .lw-card:active { transform: scale(0.98); }
 .lw-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -137,7 +134,7 @@
 
 .lw-detail { padding-bottom: 8px; }
 .lw-d-head { text-align: center; padding-top: 4px; }
-.lw-d-seal { margin: 0 auto 10px; animation: pop-in var(--dur-4) var(--spring) backwards; }
+.lw-d-mark { width: 96px; height: 96px; margin: 0 auto 10px; animation: pop-in var(--dur-4) var(--spring) backwards; }
 .lw-d-kicker { margin: 0; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 70%, var(--ink-3)); }
 .lw-d-title { margin: 6px 0 0; font: var(--w-medium) clamp(24px, 6.6vw, 29px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
 .lw-d-line { margin: 8px auto 0; max-width: 38ch; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); text-wrap: balance; }

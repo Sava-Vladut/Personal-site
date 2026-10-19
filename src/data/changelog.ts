@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.109.0',
+    date: '2026-10-19',
+    changes: [
+      'Every mind trap and law of power has its own drawing: black brush lines and ivory paper on a tile in its colour',
+      'The drawings replace the inkblots on Mind traps and the wax seals on Laws of power',
+    ],
+  },
+  {
     version: '1.108.0',
     date: '2026-10-19',
     changes: [
