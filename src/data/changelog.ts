@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.6',
+    date: '2026-10-19',
+    changes: [
+      'Laws of power: “Make other people come to you” has its own study, on how forceful bans provoke the thing they forbid',
+      'Laws of power: “Never reform too much at once” has its own study, on why a pay cut feels unfair but a below-inflation raise doesn’t',
+    ],
+  },
+  {
     version: '1.112.5',
     date: '2026-10-19',
     changes: [

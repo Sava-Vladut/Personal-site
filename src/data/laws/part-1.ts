@@ -365,9 +365,9 @@ export const LAWS: Law[] = [
       { id: 'overconfidence', how: 'An apparently weak opponent invites a rash attack. The bait plays on the target’s sense that they have spotted an opportunity others missed.' },
     ],
     study: {
-      who: 'Elliot Aronson and Judson Mills, 1959',
-      title: 'The severity of initiation',
-      text: 'Female students volunteered to join a discussion group about sex. Some went through a mildly embarrassing initiation, while others had to read explicit passages aloud to a male experimenter, and a control group joined with no test. All then listened to a deliberately dull recording of the group. Those who had suffered most to get in rated the discussion and its members as the most interesting. Effort spent reaching something made it seem worth reaching.',
+      who: 'James Pennebaker and D. Y. Sanders, 1976',
+      title: 'American graffiti',
+      text: 'In university restrooms, the researchers put up signs telling people not to write on the walls. Some asked mildly; others banned it “under any circumstances”. Some were signed by a high-ranking campus authority, others by a low-ranking one. The more forceful and authoritative the sign, the more graffiti appeared. The pressure provoked the very thing it meant to stop. It is the reverse of bait: push people and they push back; leave them room, and they come of their own accord.',
     },
     today: [
       'Posting a hint about a new job opening instead of cold-messaging candidates',

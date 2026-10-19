@@ -358,9 +358,9 @@ export const RO: Record<number, LawRo> = {
       { how: 'Un adversar aparent slab invită un atac pripit. Momeala se joacă pe impresia țintei că a văzut o oportunitate pe care alții au ratat-o.' },
     ],
     study: {
-      who: 'Elliot Aronson și Judson Mills, 1959',
-      title: 'Asprimea inițierii',
-      text: 'Studente s-au oferit voluntar să se alăture unui grup de discuții despre sex. Unele au trecut printr-o inițiere ușor jenantă, altele au trebuit să citească cu voce tare pasaje explicite în fața unui experimentator bărbat, iar un grup de control s-a alăturat fără nicio probă. Toate au ascultat apoi o înregistrare deliberat plictisitoare a grupului. Cele care suferiseră cel mai mult ca să intre au evaluat discuția și membrii ei drept cei mai interesanți. Efortul cheltuit ca să ajungi la ceva l-a făcut să pară că merită.',
+      who: 'James Pennebaker și D. Y. Sanders, 1976',
+      title: 'Graffiti americane',
+      text: 'În toaletele unei universități, cercetătorii au pus afișe care le cereau oamenilor să nu scrie pe pereți. Unele rugau politicos; altele interziceau asta „în nicio împrejurare”. Unele erau semnate de o autoritate importantă din campus, altele de una măruntă. Cu cât afișul era mai apăsat și mai autoritar, cu atât apăreau mai multe graffiti. Presiunea a provocat exact lucrul pe care voia să-l oprească. E opusul momelii: împinge-i pe oameni și ei împing înapoi; lasă-le loc și vin singuri.',
     },
     today: [
       'Să postezi un indiciu despre un post nou deschis în loc să scrii candidaților din senin',
