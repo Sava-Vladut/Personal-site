@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.2',
+    date: '2026-10-19',
+    changes: [
+      'Win friends: “Arouse an eager want” has its own study, on arguing from the other side’s values, instead of repeating the negotiation study from principle 17',
+    ],
+  },
+  {
     version: '1.112.1',
     date: '2026-10-19',
     changes: [

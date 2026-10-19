@@ -129,9 +129,9 @@ export const PRINCIPLES: Principle[] = [
       { n: 32, how: 'Greene plays to people’s fantasies to sell them illusions. Carnegie’s eager want must be real: if what you promise doesn’t serve them, it is bait, and it will be discovered.' },
     ],
     study: {
-      who: 'Adam Galinsky, William Maddux, Debra Gilin and Judith White, 2008',
-      title: 'Getting inside the head of your opponent',
-      text: 'In negotiation experiments, including the sale of a petrol station where the obvious price ranges didn’t overlap, people told to imagine what the other side was thinking reached deals more often than those told to empathise with the other side’s feelings, or those given no instructions. Understanding the other party’s interests uncovered deals that hard bargaining missed. There is a twist: later work by Tal Eyal, Mary Steffel and Nicholas Epley found that imagining someone’s perspective rarely makes us more accurate about what they actually think. What did improve accuracy was asking them. The best way to find someone’s eager want is often to ask.',
+      who: 'Matthew Feinberg and Robb Willer, 2015',
+      title: 'From gulf to bridge: moral reframing',
+      text: 'Feinberg and Willer first asked people to write an argument that would win over the other side of politics. Almost nobody managed it: only about 9 per cent of liberals arguing for same-sex marriage appealed to conservative values, and about 8 per cent of conservatives arguing for English as the official language appealed to liberal ones. Everyone else argued from their own values. Then the researchers tested reframed arguments. Conservatives who read a case for same-sex marriage built on loyalty and patriotism supported it more than those who read one built on equality, and liberals warmed to English as the official language when it was framed in terms of fairness. The shifts were modest and measured in online surveys straight after reading. In a 2021 field experiment by Joshua Kalla, Ethan Levine and David Broockman, canvassers listened for each voter’s values and tailored their case to them; it had large effects on willingness to act, but weaker evidence of changed views. It is Carnegie’s worm on the hook: the bait has to suit the fish, not the fisherman.',
     },
     today: [
       'Pitching a project to your boss in terms of the problem it solves for them',
