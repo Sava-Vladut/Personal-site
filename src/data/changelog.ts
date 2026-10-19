@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.7',
+    date: '2026-10-19',
+    changes: [
+      'In dark mode the phone’s status bar is dark from the first moment, instead of flashing light while the app loads',
+    ],
+  },
+  {
     version: '1.112.6',
     date: '2026-10-19',
     changes: [
