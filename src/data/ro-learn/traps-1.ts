@@ -115,7 +115,7 @@ export const RO: Record<string, TrapRo> = {
     study: {
       who: 'R. D. Clarke, 1946',
       title: 'Bombele V-1 asupra Londrei',
-      text: 'În timpul Blitz-ului, londonezii erau siguri că bombele zburătoare erau ghidate, pentru că unele cartiere erau lovite iar și iar, iar altele erau cruțate, și oamenii se mutau în zonele „sigure”. Clarke a împărțit sudul Londrei în 576 de pătrate și a numărat loviturile: ele se potriveau aproape perfect cu ce ar produce întâmplarea pură. Grupările erau felul în care arată aleatoriul.',
+      text: 'În vara lui 1944, când bombele zburătoare V-1 cădeau pe Londra, londonezii erau siguri că erau ghidate, pentru că unele cartiere erau lovite iar și iar, iar altele erau cruțate, și oamenii se mutau în zonele „sigure”. Clarke a împărțit sudul Londrei în 576 de pătrate și a numărat loviturile: ele se potriveau aproape perfect cu ce ar produce întâmplarea pură. Grupările erau felul în care arată aleatoriul.',
     },
     life: [
       'Crezi că un aparat de păcănele „e gata” să câștige sau că un zar e „fierbinte”',
@@ -436,7 +436,7 @@ export const RO: Record<string, TrapRo> = {
     study: {
       who: 'Ola Svenson, 1981; Marc Alpert și Howard Raiffa, 1982',
       title: 'Șoferi peste medie și intervale de 98%',
-      text: 'În studiul lui Svenson, 93% dintre studenții americani s-au evaluat drept șoferi mai siguri decât mediana, ceea ce este imposibil. În cel al lui Alpert și Raiffa, oamenii au dat intervale despre care erau siguri 98% că conțin răspunsul la întrebări factuale; răspunsul adevărat cădea în afara intervalelor lor în peste 40% din cazuri.',
+      text: 'În studiul lui Svenson, 93% dintre studenții americani s-au evaluat drept șoferi mai pricepuți decât mediana, iar 88% drept mai prudenți, ceea ce este imposibil. În cel al lui Alpert și Raiffa, oamenii au dat intervale despre care erau siguri 98% că conțin răspunsul la întrebări factuale; răspunsul adevărat cădea în afara intervalelor lor în peste 40% din cazuri.',
     },
     life: [
       'Pornești o afacere ignorând rata de eșec',

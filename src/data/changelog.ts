@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.4',
+    date: '2026-10-19',
+    changes: [
+      'Mind traps: the V-1 bombs fell on London in 1944, not during the Blitz',
+      'Mind traps: Svenson’s 93% is drivers rating their skill above the median; for safety it was 88%',
+    ],
+  },
+  {
     version: '1.112.3',
     date: '2026-10-19',
     changes: [
