@@ -3,7 +3,7 @@
 // show as tags, and what's typed after an @ (or [[) is reported for the suggestions.
 // The pure parts (what each key and rule does to the document) are in lib/noteDoc/edit, tested in Node.
 import { Plugin, PluginKey, TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
-import type { Node as PMNode } from '@tiptap/pm/model';
+import { Mark, type Node as PMNode } from '@tiptap/pm/model';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 import { InputRule, inputRules, undoInputRule } from '@tiptap/pm/inputrules';
 import { keymap } from '@tiptap/pm/keymap';
@@ -38,9 +38,35 @@ const INLINE = new RegExp(
   'u',
 );
 
+/** The styles a pair of markers puts on what's between them, by the marker. */
+const WRAPS: [string, string][] = [['**', 'bold'], ['~~', 'strike'], ['==', 'highlight'], ['*', 'italic']];
+
 const markdownRule = new InputRule(INLINE, (state, match, start, end) => {
   const $s = state.doc.resolve(start);
   if ($s.parent.type.spec.code || $s.marks().some((m) => m.type.name === 'code')) return null;
+  // What's between the markers may hold styles of its own already (a link, code, a word in bold): read again from its
+  // letters, they'd be lost. Then the markers go and the style goes on, around what's there. A marker written as
+  // itself (\*) never pairs.
+  const base = $s.marks();
+  let mixed = false, escaped = false;
+  state.doc.nodesBetween(start, end, (n) => {
+    if (!n.isInline) return true;
+    if (n.marks.some((m) => m.type.name === 'escaped')) escaped = true;
+    if (!Mark.sameSet(n.marks, base)) mixed = true;
+    return false;
+  });
+  if (escaped) return null;
+  if (mixed) {
+    const wrap = WRAPS.find(([d]) => match[0].startsWith(d) && match[0].endsWith(d) && match[0].length > 2 * d.length);
+    if (!wrap) return null;
+    const [d, name] = wrap;
+    const typed = match[0].length - (end - start); // the closing marker's letters not in the document yet
+    const closeIn = d.length - typed;
+    const tr = state.tr.delete(end - closeIn, end).delete(start, start + d.length);
+    const to = end - closeIn - d.length;
+    tr.addMark(start, to, state.schema.marks[name].create());
+    return tr.setSelection(TextSelection.create(tr.doc, to)).setStoredMarks(base.filter((m) => m.type.name !== 'escaped'));
+  }
   const nodes = parseInline(match[0], $s.marks().filter((m) => m.type.name !== 'escaped'), state.schema);
   // only when it read as something: a lone `*` stays a star
   if (nodes.length === 1 && nodes[0].isText && nodes[0].text === match[0]) return null;
@@ -58,7 +84,9 @@ const autolink = new InputRule(/(?<![\w/:\]()])(https?:\/\/[^\s<>]+)(\s)$/, (sta
   const $s = state.doc.resolve(start);
   if ($s.parent.type.spec.code || state.doc.rangeHasMark(start, end, state.schema.marks.link)) return null;
   const link = state.schema.marks.link.create({ href: url, bare: true });
-  const tr = state.tr.addMark(start, start + url.length, link).insertText(match[2], end);
+  const tr = state.tr.addMark(start, start + url.length, link);
+  // the space is typed now, or (a phone's keyboard ending a word) in the document already
+  if (end - start < match[0].length) tr.insertText(match[2], end);
   return tr.setStoredMarks($s.marks());
 });
 
@@ -80,7 +108,10 @@ export interface KeyOptions {
 function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean {
   const mod = e.ctrlKey || e.metaKey;
   if (!mod) return false;
-  const k = e.key.toLowerCase(), code = e.code;
+  const code = e.code;
+  // by the letter's key where the layout's letter isn't Latin (Cyrillic, Greek…): Ctrl+B is bold there too
+  const typed = e.key.toLowerCase();
+  const k = /^[a-z]$/.test(typed) || !/^Key[A-Z]$/.test(code) ? typed : code.slice(3).toLowerCase();
   let cmd: Command | null = null;
   if (e.altKey && !e.shiftKey) {
     if (e.getModifierState?.('AltGraph')) return false;
@@ -181,12 +212,14 @@ const tags = new Plugin<DecorationSet>({
 
 /**
  * Reports the @query (or [[query) typed just before the caret, or null, after each change of the text or the caret
- * (only with nothing selected). While a word is being composed (a phone's keyboard) it isn't read.
+ * (only with nothing selected). A word being composed (a phone's keyboard composes every word on Android) is read as
+ * it's typed too: ProseMirror keeps its document up to date meanwhile, and the suggestions narrow letter by letter
+ * instead of going away until the word ends.
  */
 function suggest(onTyped: (t: Typed | null) => void): Plugin {
   let last: string | null = null;
   const report = (view: EditorView) => {
-    const typed = view.composing || !view.hasFocus() ? null : typedAt(view.state);
+    const typed = !view.hasFocus() ? null : typedAt(view.state);
     const key = typed && `${typed.from}:${typed.to}:${typed.q}:${typed.link}`;
     if (key === last) return;
     last = key;

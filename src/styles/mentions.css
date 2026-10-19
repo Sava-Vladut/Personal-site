@@ -6,13 +6,16 @@
 
 .mention {
   --tone: var(--c, var(--ink-3));
-  position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  /* the chip sits on the line by its name's baseline (the picture before it centred), whatever comes first: a line
+     with a tag is as tall as one without, and doesn't move when one lands. clip, not hidden, keeps that baseline. */
+  position: relative; overflow: clip; display: inline-flex; align-items: baseline; gap: 5px; max-width: 100%;
   margin: 0 1px; padding: 1px 9px 1px 3px; border-radius: var(--r-pill); vertical-align: baseline; translate: 0 -1px;
   font: var(--w-bold) 0.84em/1.55 var(--sans); color: var(--ink); text-decoration: none;
   background: color-mix(in oklab, var(--tone) 14%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 32%, transparent);
-  transition: scale var(--dur-2) var(--spring-bouncy), box-shadow var(--dur-2), background-color var(--dur-2);
+  transition: scale var(--dur-3) var(--spring), box-shadow var(--dur-2), background-color var(--dur-2);
 }
+.mention > :not(:last-child) { align-self: center; }
 .mention > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mention .avatar { flex: none; font-size: 8px !important; }
 .mention.is-book { border-radius: var(--r-s); padding-left: 4px; }
@@ -27,13 +30,19 @@
   animation: tag-sheen var(--dur-5) ease-out 0.2s;
 }
 :root[data-theme='dark'] .mention::after { background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.16) 50%, transparent 80%); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .mention::after { background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.16) 50%, transparent 80%); }
+}
+/* only as the note opens: a tag drawn again later (typed, pasted, undone) stays still */
+.note-chip.is-quiet .mention::after { display: none; }
 @keyframes tag-sheen { from { translate: -110% 0; } to { translate: 110% 0; } }
 @media (hover: hover) {
   .mention:hover { background: color-mix(in oklab, var(--tone) 22%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 45%, transparent), 0 5px 14px -6px color-mix(in oklab, var(--tone) 70%, transparent); }
   .mention.is-song:hover .mini-record { animation: turn 1.8s linear infinite; }
 }
-.mention:active { scale: 0.95; }
-.mention:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.mention:active { scale: var(--press, 0.93); transition-duration: var(--dur-0), var(--dur-2), var(--dur-2); }
+.mention:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: var(--r-pill); }
+.mention:is(.is-book, .is-note, .is-trap, .is-law):focus-visible { border-radius: var(--r-s); }
 .mention.is-missing { overflow: visible; padding: 0; background: none; box-shadow: none; color: var(--ink-3); font-weight: var(--w-medium); }
 .mention.is-missing::after { display: none; }
 

@@ -4,6 +4,7 @@ import type { MarkType } from '@tiptap/pm/model';
 import { redoDepth, undoDepth } from '@tiptap/pm/history';
 import type { EditorState } from '@tiptap/pm/state';
 import type { Style } from './blocks';
+import { markLit } from './marks';
 
 /** The kind of line the caret is on: a plain line, a heading, a list item of a kind, or code. */
 export type LineKind = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol' | 'task' | 'code';
@@ -70,11 +71,12 @@ export function litOf(state: EditorState): Lit {
     : quote ? 'quote'
     : 'normal';
   return {
-    bold: has('bold'),
-    italic: has('italic'),
-    strike: has('strike'),
-    highlight: has('highlight'),
-    code: has('code'),
+    // the styles lit exactly when their buttons would take them off
+    bold: markLit(state, 'bold'),
+    italic: markLit(state, 'italic'),
+    strike: markLit(state, 'strike'),
+    highlight: markLit(state, 'highlight'),
+    code: markLit(state, 'code'),
     link: has('link'),
     block,
     quote,

@@ -96,7 +96,9 @@
     animation: fade-in var(--dur-2) ease-out;
   }
   .note-status-item { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; white-space: nowrap; }
-  .note-save.is-saved svg { color: var(--word-ink); }
+  .note-save { min-width: 7em; }
+  .note-save svg { color: var(--word-ink); }
+  .note-save svg.is-hidden { visibility: hidden; }
   .note-save.is-error { color: var(--danger); }
   .note-views, .note-zoom { display: flex; align-items: center; gap: 1px; }
   .note-views { padding-right: 10px; margin-right: 6px; border-right: 1px solid var(--line); }

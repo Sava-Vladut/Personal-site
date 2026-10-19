@@ -1,6 +1,6 @@
 // The ribbon's commands, bound to the note's editor: each runs on the document, then puts the focus back in the text
 // (a tap on the ribbon keeps it there anyway, see components/ribbon/keepFocus.ts). What they do is in lib/noteDoc/edit.
-import type { Command } from '@tiptap/pm/state';
+import { Selection, type Command } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { redo, undo } from '@tiptap/pm/history';
 import { noteCommands, type BlockKind, type MarkName, type Style } from '../lib/noteDoc/edit';
@@ -20,9 +20,15 @@ export interface NoteCommands {
 }
 
 export function bindCommands(view: () => EditorView | null): NoteCommands {
-  const run = (cmd: Command) => {
+  const run = (cmd: Command, inText = true) => {
     const v = view();
     if (!v || !v.editable) return false;
+    // from the title (the note's other place to write), a command acts on the note's words from their start, not on
+    // wherever the caret was in them last
+    const a = document.activeElement;
+    if (inText && !v.hasFocus() && a instanceof HTMLElement && a.closest('input, textarea, [contenteditable="true"]')) {
+      v.dispatch(v.state.tr.setSelection(Selection.findFrom(v.state.doc.resolve(0), 1, true) ?? Selection.atStart(v.state.doc)));
+    }
     const done = cmd(v.state, v.dispatch, v);
     v.focus();
     return done;
@@ -36,7 +42,7 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     indent: (out) => run(noteCommands.indent(out)),
     insert: (kind) => run(noteCommands.insert(kind)),
     link: (to) => run(noteCommands.link(to)),
-    undo: () => run(undo),
-    redo: () => run(redo),
+    undo: () => run(undo, false),
+    redo: () => run(redo, false),
   };
 }

@@ -1,4 +1,4 @@
-import { useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { plainText } from '../lib/body';
 import { stripMarkdown } from '../lib/markdown';
@@ -35,6 +35,13 @@ export function NoteStatus({ text, save, reading, onRead, onWrite }: {
 }) {
   const view = useDocView();
   const { words, chars, minutes } = useMemo(() => measure(text), [text]);
+  // "Saving…" only when saving takes a moment: a quick save between two words stays "Saved", not a flicker
+  const [shown, setShown] = useState<SaveState>(save === 'saving' ? 'idle' : save);
+  useEffect(() => {
+    if (save !== 'saving') return void setShown(save);
+    const wait = setTimeout(() => setShown('saving'), 700);
+    return () => clearTimeout(wait);
+  }, [save]);
   const step = Math.max(0, ZOOMS.indexOf(view.zoom));
   const percent = Math.round(view.zoom * 100) + '%';
   if (typeof document === 'undefined') return null;
@@ -43,10 +50,11 @@ export function NoteStatus({ text, save, reading, onRead, onWrite }: {
       <span class="note-status-item">{count(words, 'word', 'words')}</span>
       <span class="note-status-item">{count(chars, 'character', 'characters')}</span>
       {minutes > 0 && <span class="note-status-item">{t('{n} min read', { n: minutes })}</span>}
-      {save !== 'idle' && (
-        <span class={`note-status-item note-save is-${save}`}>
-          {save === 'saved' && <Icon name="check" size={13} />}
-          {save === 'saving' ? t('Saving…') : save === 'saved' ? t('Saved') : t('Not saved')}
+      {shown !== 'idle' && (
+        <span class={`note-status-item note-save is-${shown}`}>
+          {/* the tick's place is kept while saving, so the words beside it don't move */}
+          <Icon name="check" size={13} class={shown === 'saved' ? undefined : 'is-hidden'} />
+          {shown === 'saving' ? t('Saving…') : shown === 'saved' ? t('Saved') : t('Not saved')}
         </span>
       )}
       <span class="grow" />

@@ -28,7 +28,7 @@ import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { LinkSheet } from '../components/LinkSheet';
-import { NoteBody, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
+import { NoteBody, pastesPictures, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
 import { dropLayout, MediaBlock, MediaTools, sideAt, type Side } from '../components/NoteMedia';
 import { MusicDeck } from '../components/music';
@@ -61,7 +61,13 @@ function useAutosize(value: string) {
   useEffect(() => {
     const on = () => fit(ref.current);
     addEventListener('resize', on);
-    return () => removeEventListener('resize', on);
+    // measured again once the serif has loaded: it can take another line, which would be cut off
+    let live = true;
+    document.fonts?.ready.then(() => live && on());
+    return () => {
+      live = false;
+      removeEventListener('resize', on);
+    };
   }, []);
   return ref;
 }
@@ -144,6 +150,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const removing = useRef(false);
   const pendingImports = useRef(0);
   const cancelMove = useRef<(() => void) | null>(null);
+  const marginsAt = useRef<{ at: number; m: { top: number; bottom: number } } | null>(null); // margins(), once a frame
+  const selBodyAt = useRef<{ version: number; body: Body } | null>(null);
+  const addFilesNow = useRef<(files: File[]) => void>(() => {});
   // The note's words and pictures (editor/NoteBody.tsx): its document is the text, written back to the draft a moment
   // after each change. Kept once it's been there, so leaving still reads the last words.
   const [note, setNote] = useState<NoteBodyHandle | null>(null);
@@ -186,7 +195,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       ...(!same(photos, d.photos) && { photos }),
       ...(!same(images, d.images) && { images }),
     };
-    if (!Object.keys(patch).length) return;
+    if (!Object.keys(patch).length) {
+      // the words came back to what's kept (typed and taken out again): nothing to save, so it's saved
+      if (alive.current && !dirty.current && !pendingSave.current) setSaveState(saved.current ? 'saved' : 'idle');
+      return;
+    }
     if (alive.current) return update(patch);
     // leaving: straight into what's saved
     latest.current = { ...d, ...patch };
@@ -308,11 +321,35 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
   }, []);
 
+  // Pictures dropped on the ribbon or the status bar (they float over the page, outside it) come into the note too,
+  // rather than the browser opening them in place of the app.
+  useEffect(() => {
+    const files = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+    const outside = (e: DragEvent) => files(e) && !(e.target as Element | null)?.closest?.('.page.editor');
+    const over = (e: DragEvent) => {
+      if (!outside(e)) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'copy';
+    };
+    const drop = (e: DragEvent) => {
+      if (!outside(e)) return;
+      e.preventDefault();
+      addFilesNow.current([...e.dataTransfer!.files]);
+    };
+    addEventListener('dragover', over);
+    addEventListener('drop', drop);
+    return () => {
+      removeEventListener('dragover', over);
+      removeEventListener('drop', drop);
+    };
+  }, []);
+
   // A selected picture lets go when you tap anywhere else, or press Escape.
   useEffect(() => {
     if (!sel) return;
     const down = (e: PointerEvent) => {
-      if (!(e.target as Element).closest?.('.media.is-selected, .format-bar, .sheet, .toast, .pswp')) setSel(null);
+      // a tap on another picture selects that one (its click does): letting go first would flash the Picture tab away
+      if (!(e.target as Element).closest?.('.media, .format-bar, .sheet, .toast, .pswp')) setSel(null);
     };
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !document.documentElement.classList.contains('sheet-open')) setSel(null);
@@ -325,7 +362,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
   }, [sel]);
 
-  useEffect(() => setPickAt(0), [mention?.from, mention?.q]);
 
   if (!draft)
     return (
@@ -427,6 +463,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const last = b.texts.length - 1;
     update({ text: serializeBody(insertMedia(b, add, last, b.texts[last].length)) });
   };
+  addFilesNow.current = addFiles;
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
   /** The note's pictures as body.ts has them, read from the text now. */
@@ -519,6 +556,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     let x = e.clientX, y = e.clientY;
     let frame = 0;
     let picked = false;
+    let shown = ''; // what the page last drew of the move: it's drawn again only when that changes, not on every move
     const pick = () => {
       const col = bodyEl.getBoundingClientRect();
       const at = y + scrollY;
@@ -532,7 +570,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       onto = over && bodyEl.contains(over) && over.dataset.key !== key ? over.dataset.key! : null;
       ghost.style.translate = `${x - e.clientX}px ${y - e.clientY}px`;
       ghost.classList.toggle('is-merging', !!onto);
-      setMoving({ key, y: target.y - (col.top + scrollY), side, layout: dropLayout(m, side), ratio, onto });
+      const slotY = target.y - (col.top + scrollY);
+      const now = `${slotY}|${side}|${onto}`;
+      if (now === shown) return;
+      shown = now;
+      setMoving({ key, y: slotY, side, layout: dropLayout(m, side), ratio, onto });
     };
     // Near the top or bottom of the screen the page scrolls along.
     const tick = () => {
@@ -654,15 +696,24 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     });
   };
 
+  /** Where the caret goes when writing starts from reading: the end of the note if it's in view, else the first line that is. */
+  const inView = (): 'end' | number => {
+    const r = bodyRef.current?.querySelector('.note-editor')?.getBoundingClientRect();
+    const m = margins();
+    if (!r || r.bottom <= innerHeight - m.bottom || r.bottom < m.top || r.top > innerHeight) return 'end';
+    return noteRef.current?.posAt(r.left + 2, Math.max(r.top, m.top) + 4) ?? 'end';
+  };
   /** Switches to writing, with the caret at a position (or the start or end of the note, or where it was). */
   const write = (at?: 'start' | 'end' | number) => {
     const n = noteRef.current;
+    // from reading, with no place given: the end when it's on screen, else the first line in view (not a jump to the end)
+    const where = at === undefined && reading ? inView() : 'end';
     if (reading) {
       // Editable before this touch ends: iOS only opens its keyboard for synchronous focus.
       flushSync(() => setReading(false));
       n?.setEditable(true);
     }
-    n?.focus(at ?? (reading ? 'end' : undefined));
+    n?.focus(at ?? (reading ? where : undefined));
   };
   /** Reading view and writing, back and forth (the More menu, the status bar). */
   const toggleReading = () => (reading ? write() : setReading(true));
@@ -714,6 +765,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const setMention = (m: Typed | null) => {
     if (!m) dismissed.current = '';
     else if (dismissed.current === String(m.from)) m = null;
+    // a new query starts at its first suggestion, in the same render (not a frame later with the old one lit)
+    if (!m || m.from !== mention?.from || m.q !== mention?.q) setPickAt(0);
     setMentionState((cur) => (!m ? null : cur && cur.from === m.from && cur.to === m.to && cur.q === m.q && cur.link === m.link ? cur : m));
   };
   const typing = mention;
@@ -811,7 +864,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     }
     if (!choices) return false;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      setPickAt((i) => (i + (e.key === 'ArrowDown' ? 1 : -1) + choices) % choices);
+      setPickAt((activeChoice + (e.key === 'ArrowDown' ? 1 : -1) + choices) % choices);
       return true;
     }
     if (e.key === 'Enter' || e.key === 'Tab') {
@@ -823,17 +876,30 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
 
   /** The @ and link buttons: type an @ (or [[) where the caret is (writing first, if reading), which brings up the suggestions. */
   const startMention = (sigil: '@' | '[[' = '@') => {
-    write();
+    // from reading, the tag goes at the end of the note
+    write(reading ? 'end' : undefined);
     const typed = noteRef.current?.trigger(sigil);
     if (typed) setMention(typed);
   };
 
-  /** Where the caret is kept clear of: under the ribbon on a computer, above the bar over a phone's keyboard. */
+  /**
+   * Where the caret is kept clear of: under the ribbon on a computer (and above its status bar), under the floating
+   * Back and Done on a phone and above the bar over its keyboard. Read once a frame: ProseMirror asks for each box it
+   * scrolls, and each read measures the page.
+   */
   const margins = () => {
+    const now = Date.now();
+    const memo = marginsAt.current;
+    if (memo && now - memo.at < 16) return memo.m;
+    const shown = (el: Element | null) => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
     const wide = document.querySelector('.ribbon.is-wide:not(.is-focus)');
-    const bars = [...document.querySelectorAll('.ribbon-root .format-bar:not(.is-tucked):not(.is-wide)')];
+    const head = document.querySelector('.page.editor .editor-bar');
+    const top = Math.max(wide ? wide.getBoundingClientRect().bottom : 0, shown(head) ? head!.getBoundingClientRect().bottom : 0);
+    const bars = [...document.querySelectorAll('.ribbon-root .format-bar:not(.is-tucked):not(.is-wide), .note-status')].filter(shown);
     const barTop = Math.min(innerHeight, ...bars.map((b) => b.getBoundingClientRect().top));
-    return { top: (wide ? Math.max(0, wide.getBoundingClientRect().bottom) : 0) + 24, bottom: Math.max(0, innerHeight - barTop) + 24 };
+    const m = { top: Math.max(0, top) + 24, bottom: Math.max(0, innerHeight - barTop) + 24 };
+    marginsAt.current = { at: now, m };
+    return m;
   };
   /** Whether a picture is the note's own: its photos or images are in the note (pasted from another note, they aren't). */
   const knows = (m: Media) => {
@@ -848,7 +914,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const isCheckin = draft.kind === 'checkin';
   const selected = !reading && sel ? slots.find((s) => mediaKey(s.media) === sel)?.media : undefined;
   const selKey = selected ? mediaKey(selected) : '';
-  const selBody = selected ? bodyNow() : null;
+  // read from the text once per change of the note, not on every render (a drag renders many times)
+  const version = note?.version() ?? -1;
+  const cached = selBodyAt.current;
+  const selBody = !selected ? null : cached && cached.version === version && version >= 0 ? cached.body : bodyNow();
+  if (selected && selBody) selBodyAt.current = { version, body: selBody };
   const selIndex = selBody ? selBody.media.findIndex((m) => mediaKey(m) === selKey) : -1;
 
   return (
@@ -857,7 +927,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       onDragOver={(e) => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; setDropping(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false); }}
       onDrop={(e) => { if (hasFiles(e)) { e.preventDefault(); setDropping(false); addFiles([...e.dataTransfer!.files]); } }}
-      onPaste={(e) => { const files = [...(e.clipboardData?.files ?? [])].filter(isImageFile); if (files.length) { e.preventDefault(); addFiles(files); } }}
+      onPaste={(e) => { if (!pastesPictures(e.clipboardData)) return; e.preventDefault(); addFiles([...e.clipboardData!.files].filter(isImageFile)); }}
     >
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} disabled={adding > 0 || coverAdding} aria-label={t('Back')}><Icon name="arrow-left" /></button>
@@ -940,7 +1010,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           {reading && !plainText(draft.text).trim() && (
             <button class="read-empty" onClick={() => write('end')}>{t('Nothing written yet. Tap to write.')}</button>
           )}
-          {reading && <button class="read-tail" onClick={() => write('end')} aria-label={t('Keep writing')} tabIndex={-1} />}
+          {/* the room below the words, the same reading or writing (so switching moves nothing): a tap there writes on
+              at the end, the keyboard staying up when it's up already */}
+          <div class="read-tail" aria-hidden="true" onPointerDown={(e) => !reading && e.preventDefault()} onClick={() => write('end')} />
         </div>
 
         {backlinks.length > 0 && (

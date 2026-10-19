@@ -5,7 +5,7 @@
 // Pictures are never taken out by a stray key: Backspace just after one and Delete just before one do nothing (an
 // empty line after a picture goes when it can, as long as the picture keeps a line of text below it).
 import { NodeRange, type Node as PMNode, type ResolvedPos } from '@tiptap/pm/model';
-import { TextSelection, type Command, type EditorState, type Transaction } from '@tiptap/pm/state';
+import { Selection, TextSelection, type Command, type EditorState, type Transaction } from '@tiptap/pm/state';
 import { findWrapping } from '@tiptap/pm/transform';
 import { indentList, itemToParagraph, listEnter, renumber } from './lists';
 import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, replaceSelectionText, selectedBlocks, unCallout } from './util';
@@ -18,11 +18,24 @@ const FENCE_LINE = /^[ \t]*(```|~~~)[^`~\n]*$/;
 
 /* ---------- Enter ---------- */
 
+/** The styles the caret had (Bold set with nothing selected, say) go on to the new line, as in Word. */
+function keepMarks(tr: Transaction, state: EditorState): Transaction {
+  const marks = (state.storedMarks ?? state.selection.$from.marks()).filter((m) => m.type.name !== 'escaped');
+  if (marks.length && tr.selection.$from.parent.inlineContent) tr.ensureMarks(marks);
+  return tr;
+}
+
 /** Enter in a code block: a new line, and out of the block after two empty lines at its end (a third Enter). */
 export const codeEnter: Command = (state, dispatch) => {
   const { $from, $to } = state.selection;
   if (!$from.parent.type.spec.code || $from.parent !== $to.parent) return false;
   const text = $from.parent.textContent;
+  // at the very start of code with no line above it to go to: a plain line opens above (else there'd be no way to
+  // write before a note's first code block)
+  if ($from.pos === $to.pos && $from.parentOffset === 0 && text && !lineBefore($from)) {
+    dispatch?.(state.tr.insert($from.before(), state.schema.nodes.paragraph.create()).scrollIntoView());
+    return true;
+  }
   if ($from.pos === $to.pos && $from.parentOffset === text.length && text.endsWith('\n\n')) {
     const tr = state.tr.delete($from.pos - 2, $from.pos);
     if (dispatch) dispatch(leaveCode(tr, true).scrollIntoView());
@@ -31,6 +44,12 @@ export const codeEnter: Command = (state, dispatch) => {
   dispatch?.(state.tr.insertText('\n').scrollIntoView());
   return true;
 };
+
+/** Whether there's a line of text just before the block the position is in (in the same container). */
+function lineBefore($p: ResolvedPos, depth = $p.depth): boolean {
+  const i = $p.index(depth - 1);
+  return i > 0 && $p.node(depth - 1).child(i - 1).isTextblock;
+}
 
 /** Puts the caret on a new line just after the code block it's in (or the line after it, unless `fresh`). */
 function leaveCode(tr: Transaction, fresh: boolean): Transaction {
@@ -42,10 +61,16 @@ function leaveCode(tr: Transaction, fresh: boolean): Transaction {
   return tr.setSelection(TextSelection.create(tr.doc, after + 1));
 }
 
-/** Out of a code block, onto the line after it (made when there's none): for ArrowDown on the block's last line. */
-export const exitCode: Command = (state, dispatch) => {
+/**
+ * Out of a code block, onto the line after it, for ArrowDown on the block's last line (as drawn: a long line wraps).
+ * A line is made only when there are no words after the block to go to; otherwise the arrow moves as it always does.
+ */
+export const exitCode: Command = (state, dispatch, view) => {
   const { $from, empty } = state.selection;
   if (!empty || !$from.parent.type.spec.code || $from.parent.textContent.includes('\n', $from.parentOffset)) return false;
+  if (view && !view.endOfTextblock('down')) return false;
+  const next = state.doc.resolve($from.after()).nodeAfter;
+  if (!next?.isTextblock && Selection.findFrom(state.doc.resolve($from.after()), 1, true)) return false;
   dispatch?.(leaveCode(state.tr, false).scrollIntoView());
   return true;
 };
@@ -80,7 +105,7 @@ function splitPlain(state: EditorState, dispatch?: (tr: Transaction) => void): b
   if (!tb.isTextblock) return false;
   const p = state.schema.nodes.paragraph;
   if ($c.parentOffset === 0 && tb.content.size && tb.type !== p) tr.insert($c.before(), p.create());
-  else tr.split($c.pos, 1, [{ type: p }]);
+  else keepMarks(tr.split($c.pos, 1, [{ type: p }]), state);
   dispatch?.(tr.scrollIntoView());
   return true;
 }
@@ -96,6 +121,11 @@ export const titleEnter: Command = (state, dispatch) => {
   const { $from, $to } = state.selection;
   if ($from.parent.type.name !== 'calloutTitle' || $from.parent !== $to.parent) return false;
   const tr = state.tr;
+  // before the title's words, with no line above the callout: a plain line opens above it
+  if (state.selection.empty && $from.parentOffset === 0 && $from.parent.content.size && !lineBefore($from, $from.depth - 1)) {
+    dispatch?.(tr.insert($from.before(-1), state.schema.nodes.paragraph.create()).scrollIntoView());
+    return true;
+  }
   if (!state.selection.empty) deleteSelectionSafe(tr);
   tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph }]);
   dispatch?.(tr.scrollIntoView());
@@ -120,7 +150,7 @@ export const enter: Command = first(codeEnter, fenceEnter, listEnter, headingEnt
   const tr = state.tr;
   if (!state.selection.empty) deleteSelectionSafe(tr);
   if (!tr.selection.$from.parent.isTextblock) return false;
-  tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph }]);
+  keepMarks(tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph }]), state);
   dispatch?.(tr.scrollIntoView());
   return true;
 });
@@ -181,6 +211,30 @@ export const backspace: Command = (state, dispatch) => {
     if (dispatch && liftBlocks(tr, [pos])) dispatch(tr);
     return true;
   }
+  // next to code, lines never run into each other (code would take the words' styles and tags off, and a code
+  // block's lines would run together into one): the caret just goes over, and an empty line goes
+  const prev = $c.index(-1) > 0 ? $c.node(-1).child($c.index(-1) - 1) : null;
+  const caret = (at: number) => dispatch?.(tr.setSelection(TextSelection.create(tr.doc, at)).scrollIntoView());
+  if (tb.type.spec.code) {
+    if (!tb.content.size) dispatch?.(tr.setNodeMarkup(pos, state.schema.nodes.paragraph, null));
+    else if (prev?.isTextblock) caret(pos - 1);
+    return true;
+  }
+  if (prev?.type.spec.code && tb.type.name === 'paragraph') {
+    if (!tb.content.size) tr.delete(pos, pos + tb.nodeSize);
+    caret(pos - 1);
+    return true;
+  }
+  // a line just after a quote or callout joins its last line (it went out of it with one Backspace; a second one
+  // doesn't put it back in as a line of its own, it runs on from the line above, as anywhere else)
+  if (tb.type.name === 'paragraph' && $c.depth === 1 && isQuote(prev)) {
+    const end = Selection.findFrom(state.doc.resolve(pos), -1, true);
+    if (!end || end.$from.parent.type.spec.code) return true;
+    if (!tb.content.size) tr.delete(pos, pos + tb.nodeSize);
+    else tr.delete(end.from, $c.pos);
+    dispatch?.(tr.setSelection(TextSelection.create(tr.doc, end.from)).scrollIntoView());
+    return true;
+  }
   const top = topEdge($c, false);
   if (top !== null && top > 0 && state.doc.child(top - 1).type.name === 'media') {
     // only an empty line on its own goes, and only when the picture keeps something other than a picture below it
@@ -194,11 +248,26 @@ export const backspace: Command = (state, dispatch) => {
   return false;
 };
 
-/** Delete at the end of the line just before a picture does nothing (the picture never goes by a stray key). */
-export const deleteForward: Command = (state) => {
+/**
+ * Delete at the end of the line just before a picture does nothing (the picture never goes by a stray key). Next to
+ * code, lines don't run into each other either (as with Backspace): an empty line goes, else nothing.
+ */
+export const deleteForward: Command = (state, dispatch) => {
   const sel = state.selection;
   if (!(sel instanceof TextSelection) || !sel.empty || sel.$from.parentOffset < sel.$from.parent.content.size) return false;
-  const top = topEdge(sel.$from, true);
+  const $c = sel.$from;
+  const tb = $c.parent;
+  const next = $c.node(-1).maybeChild($c.index(-1) + 1);
+  if (next && (tb.type.spec.code ? next.isTextblock : next.type.spec.code)) {
+    const pos = $c.before(), after = $c.after();
+    if (tb.type.spec.code && !next.content.size) dispatch?.(state.tr.delete(after, after + next.nodeSize));
+    else if (!tb.type.spec.code && !tb.content.size && tb.type.name === 'paragraph') {
+      const tr = state.tr.delete(pos, after);
+      dispatch?.(tr.setSelection(TextSelection.create(tr.doc, pos + 1)).scrollIntoView());
+    }
+    return true;
+  }
+  const top = topEdge($c, true);
   return top !== null && state.doc.maybeChild(top + 1)?.type.name === 'media';
 };
 

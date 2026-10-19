@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { docView, setDocView, stepZoom, useDocView, ZOOMS } from '../../lib/docView';
 import { t } from '../../lib/i18n';
 import { Icon, type UiName } from '../icons';
@@ -82,8 +82,9 @@ export function Ribbon(p: RibbonProps) {
   const now = useRef(tab); // the tab, for the effects below
   now.current = tab;
 
+  // (layout effects, these: the right tab is there in the first frame, never the old one for a frame)
   // the picture's tab opens when a picture is selected, and the tab before comes back after
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (context) {
       if (now.current !== 'context') before.current = now.current;
       setTab('context');
@@ -91,7 +92,7 @@ export function Ribbon(p: RibbonProps) {
   }, [!!context]);
 
   // reading: only View has anything to do; writing again starts at Home
-  useEffect(() => {
+  useLayoutEffect(() => {
     // (a picture's tab only stays while its picture does: reading lets the picture go, and View comes up all the same)
     if (now.current === 'context' && context) return;
     if (reading) setTab('view');
@@ -99,7 +100,7 @@ export function Ribbon(p: RibbonProps) {
   }, [reading]);
 
   // On a phone, selecting text brings Home up (the styles are what you'd want), and the tab before back after.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (wide) return;
     const was = now.current;
     if (ranged) {
@@ -113,7 +114,7 @@ export function Ribbon(p: RibbonProps) {
   }, [ranged]);
 
   // a new tab's row starts at its first command
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (scroller.current) scroller.current.scrollLeft = 0;
   }, [shown]);
 

@@ -20,7 +20,6 @@ class ListItemView implements NodeView {
   dom: HTMLElement;
   contentDOM: HTMLElement;
   private box: HTMLElement;
-  private pressed = false;
 
   constructor(private node: PMNode, private view: EditorView, private getPos: () => number | undefined) {
     this.dom = document.createElement('div');
@@ -43,16 +42,27 @@ class ListItemView implements NodeView {
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.contentEditable = 'false';
-    // a tap ticks it without the caret moving or the keyboard coming up
+    // a tap ticks it without the caret moving or the keyboard coming up; a swipe that starts on it scrolls the note
+    // and ticks nothing
     box.addEventListener('mousedown', (e) => e.preventDefault());
+    let from: { x: number; y: number } | null = null;
     box.addEventListener('touchstart', (e) => {
-      this.pressed = true;
-      e.preventDefault();
-    }, { passive: false });
+      const t = e.touches[0];
+      from = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+    }, { passive: true });
+    box.addEventListener('touchmove', (e) => {
+      const t = e.touches[0];
+      if (from && t && Math.hypot(t.clientX - from.x, t.clientY - from.y) > 10) from = null;
+    }, { passive: true });
+    box.addEventListener('touchcancel', () => void (from = null));
     box.addEventListener('touchend', (e) => {
-      if (this.pressed && e.target === box) this.tick();
-      this.pressed = false;
+      const t = e.changedTouches[0];
+      const tap = !!from && !!t && Math.hypot(t.clientX - from.x, t.clientY - from.y) <= 10;
+      from = null;
+      if (!tap) return;
+      // handled here, so no click follows and the focus stays where it was
       e.preventDefault();
+      this.tick();
     });
     box.addEventListener('click', (e) => {
       e.preventDefault(); // drawn from the document, not the browser's own state
@@ -67,6 +77,8 @@ class ListItemView implements NodeView {
   }
 
   private draw() {
+    // the browser may have taken the marker or box out (a phone's Backspace): it goes back in
+    if (!this.dom.contains(this.box)) this.dom.prepend(this.box);
     const a = this.node.attrs as ListItemAttrs;
     const depth = depthOf(a.indent);
     this.dom.className = `md-li md-${a.kind}${a.kind === 'task' && a.checked ? ' is-done' : ''}`;
@@ -100,9 +112,10 @@ class ListItemView implements NodeView {
 class ChipView implements NodeView {
   dom: HTMLElement;
 
-  constructor(private node: PMNode) {
+  /** `quiet`: drawn after the note opened (typed, pasted, undone), so without the sheen the opening plays */
+  constructor(private node: PMNode, quiet: boolean) {
     this.dom = document.createElement('span');
-    this.dom.className = 'note-chip';
+    this.dom.className = quiet ? 'note-chip is-quiet' : 'note-chip';
     this.dom.contentEditable = 'false';
     this.draw();
   }
@@ -167,6 +180,13 @@ export class MediaSlots {
     });
   }
 
+  /** Tells the slots now (the first time, before the page paints, so the pictures come with the words). */
+  flush() {
+    cancelAnimationFrame(this.frame);
+    this.told = this.list();
+    this.onChange(this.told);
+  }
+
   /** Now, without waiting for a frame. */
   list(): MediaSlot[] {
     const out: MediaSlot[] = [];
@@ -206,9 +226,9 @@ export class MediaView implements NodeView {
   destroy() { this.slots.remove(this); }
 }
 
-/** The node views, for EditorView's nodeViews prop. */
-export function nodeViews(slots: MediaSlots): Record<string, NodeViewConstructor> {
-  const chip: NodeViewConstructor = (node) => new ChipView(node);
+/** The node views, for EditorView's nodeViews prop. `settled`: the note has opened (its tags' sheen has played). */
+export function nodeViews(slots: MediaSlots, settled: () => boolean = () => false): Record<string, NodeViewConstructor> {
+  const chip: NodeViewConstructor = (node) => new ChipView(node, settled());
   return {
     listItem: (node, view, getPos) => new ListItemView(node, view, getPos),
     person: chip,

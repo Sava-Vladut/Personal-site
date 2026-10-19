@@ -117,6 +117,7 @@ test('pending location lookup cannot change a note after its details are dismiss
     '../lib/weather': { here: () => location.promise },
     '../lib/dates': { rangeLabel: () => '' },
     './weather': { weatherOf: () => null },
+    './Sheet': { focusIn: () => {}, giveBack: () => {} },
   }, {
     document: { activeElement: null },
     requestAnimationFrame: fn => { frames.set(1, fn); return 1; },

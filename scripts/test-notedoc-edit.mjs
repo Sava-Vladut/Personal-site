@@ -689,3 +689,41 @@ test('every command at every caret leaves a document that writes text reading ba
   if (process.env.LOSSY) console.log(lossy.join('\n'));
   assert.ok(lossy.length < runs / 50, `${lossy.length} of ${runs} lost a style:\n${lossy.slice(0, 5).join('\n')}`);
 });
+
+test('next to code, Backspace and Delete never run lines into it (or a code block into the line above)', () => {
+  // a line after a code block: the caret goes into the code, the words stay where they are
+  assert.equal(after('```\nx\n```\n|**b** *i*', Backspace), '```\nx|\n```\n**b** *i*');
+  // an empty line after it goes
+  assert.equal(after('```\nx\n```\n|\nnext', Backspace), '```\nx|\n```\nnext');
+  // at the start of a code block, its lines stay its own
+  assert.equal(after('a\n```\n|x\ny\n```', Backspace), 'a|\n```\nx\ny\n```');
+  // Delete at the end of the line above a code block, or of the code: nothing runs together
+  assert.equal(after('a|\n```\nx\n```', Delete), 'a|\n```\nx\n```');
+  assert.equal(after('```\nx|\n```\nb', Delete), '```\nx|\n```\nb');
+  assert.equal(after('|\n```\nx\n```', Delete), '```\n|x\n```', 'an empty line before code goes');
+});
+
+test('a line just out of a quote joins its last line on a second Backspace, not back in as its own', () => {
+  let [text, , s] = run('> a\n> |b\n> c', Backspace);
+  assert.equal(text, '> a\n|b\n> c');
+  assert.equal(after(s, Backspace), '> a|b\n> c');
+  assert.equal(after('> a\n|', Backspace), '> a|', 'an empty line after a quote goes');
+});
+
+test('ArrowDown leaves code without making a line when there are words after it to go to', () => {
+  assert.equal(E.exitCode(stateFrom('> ```\n> a|\n> ```\n\nb')), false);
+});
+
+test('a line opens above code or a callout that starts the note', () => {
+  assert.equal(after('```\n|x\n```', E.enter), '\n```\n|x\n```');
+  assert.equal(after('> [!note] |T\n> b', E.enter), '\n> [!note] |T\n> b');
+  assert.equal(after('a\n```\n|x\n```', E.enter), 'a\n```\n\n|x\n```', 'with a line above, Enter is a new line of code');
+});
+
+test('the ribbon lights a style exactly when its button would take it off', () => {
+  const lit = (text) => E.litOf(stateFrom(text));
+  assert.equal(lit('«**bold** »x').bold, true, 'a space selected at the end doesn’t count');
+  assert.equal(lit('x |**bold**').bold, true, 'at the start of a bold word');
+  assert.equal(lit('x| **bold**').bold, false);
+  assert.equal(lit('**bo|ld**').bold, true);
+});

@@ -1,18 +1,7 @@
 /* The note's ribbon and toolbar (components/FormatBar.tsx, components/ribbon/Ribbon.tsx). */
 
-/* ---------- Word blue ----------
-   A restrained accent for the editor's chrome, as Word has: the open tab's underline, a lit command, the Picture
-   tab, focus rings. Shared with the page (headings may wear it too). */
-
-:root {
-  --word: #2b579a;
-  --on-word: #ffffff;
-  --word-wash: color-mix(in oklab, var(--word) 12%, transparent);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) { --word: #7ea6e0; --on-word: #0e1a2c; --word-wash: color-mix(in oklab, var(--word) 16%, transparent); }
-}
-:root[data-theme='dark'] { --word: #7ea6e0; --on-word: #0e1a2c; --word-wash: color-mix(in oklab, var(--word) 16%, transparent); }
+/* Word blue (--word, --on-word, --word-wash) is defined once in notes.css: a restrained accent for the editor's
+   chrome, as Word has: the open tab's underline, a lit command, the Picture tab, focus rings. */
 
 /* the wrapper the bars hang from: no box of its own, it only carries the keyboard's height (--kb) down to them */
 .ribbon-root { display: contents; }
@@ -21,19 +10,30 @@
 
 .format-btn {
   flex: none; width: 40px; height: 40px; border-radius: var(--r-s); display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ink-2); transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-1) ease-out;
+  color: var(--ink-2);
   -webkit-tap-highlight-color: transparent;
 }
+/* every command sinks a little as it's pressed and springs back, as the rest of the app does; its colour eases */
+:is(.format-btn, .rb-big, .rb-style, .rb-pick-btn, .rb-menu button, .rb-zoom, .rb-share, .rb-done, .rb-mode, .rb-tab, .focus-exit) {
+  transition: background-color var(--dur-1), color var(--dur-1), border-color var(--dur-1), opacity var(--dur-1), filter var(--dur-1), scale var(--dur-3) var(--spring);
+}
+:is(.format-btn, .rb-big, .rb-style, .rb-pick-btn, .rb-menu button, .rb-zoom, .rb-share, .rb-done, .rb-mode, .focus-exit):active:not(:disabled) {
+  scale: var(--press, 0.92);
+  transition-duration: var(--dur-1), var(--dur-1), var(--dur-1), var(--dur-1), var(--dur-1), var(--dur-0);
+}
+:is(.rb-big, .rb-style, .rb-menu button, .rb-share, .rb-done, .rb-mode, .focus-exit) { --press: 0.97; }
 @media (hover: hover) { .format-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); } }
-.format-btn:active:not(:disabled) { scale: 0.92; }
 .format-bar .format-btn[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
-.format-bar :is(button, input):focus-visible { outline: 2px solid var(--word); outline-offset: -2px; border-radius: var(--r-xs); }
+/* the ring follows each control's own corners */
+.format-bar :is(button, input):focus-visible { outline: 2px solid var(--word); outline-offset: -2px; }
 .format-bar .format-btn:disabled { opacity: 0.32; }
+/* a tap on a command that can't run now lands on the bar (which keeps the text focused), not on nothing */
+.format-bar button:disabled { pointer-events: none; }
 
 .format-scroll, .format-fixed, .format-group { display: flex; align-items: center; gap: 0; }
 .format-group { flex: none; }
 .format-scroll {
-  flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth;
+  flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none;
   /* a fade at the end says there's more to scroll to; the spacer lets the last button clear it */
   -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
   mask-image: linear-gradient(90deg, #000 calc(100% - 20px), transparent);
@@ -61,6 +61,8 @@
   padding: 4px; border-radius: var(--r-m); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
   animation: rise-in var(--dur-3) var(--ease-emph);
   transition: translate var(--dur-3) var(--ease-emph), opacity var(--dur-2);
+  /* the bar's own shape: what's in it changes, it doesn't */
+  contain: layout style;
 }
 .format-bar.is-strip.is-tucked { translate: -50% calc(100% + 16px + var(--safe-b)); opacity: 0; pointer-events: none; }
 /* the Aa button swaps the add buttons and the text tools; whichever shows eases in */
@@ -83,11 +85,15 @@
     position: fixed; z-index: 30; left: var(--toolbar-left, 50%); translate: -50% 0; bottom: var(--kb, 0px);
     width: var(--toolbar-width, 100%); display: flex; align-items: center; gap: 2px;
     padding: 4px 4px max(4px, calc(var(--safe-b) - var(--kb, 0px)));
+    padding-inline: max(4px, env(safe-area-inset-left)) max(4px, env(safe-area-inset-right));
     background: var(--surface); border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: 0 -8px 24px -18px rgb(0 0 0 / 0.25);
     animation: none;
-    transition: translate var(--dur-3) var(--ease-emph), opacity var(--dur-2);
+    transition: translate var(--dur-2) var(--ease-emph), opacity var(--dur-2);
   }
-  .format-bar.is-phone.is-tucked { translate: -50% calc(100% + 8px); opacity: 0; pointer-events: none; }
+  :root[data-theme='dark'] .format-bar.is-phone { box-shadow: 0 -8px 24px -14px rgb(0 0 0 / 0.6); }
+  /* tucked, it waits just below where it'll be (components/FormatBar.tsx keeps it there until the keyboard is up): it
+     fades up a short way, not a long climb the keyboard's height would cut short */
+  .format-bar.is-phone.is-tucked { translate: -50% 12px; opacity: 0; pointer-events: none; }
   .format-bar.is-strip.in-ribbon { animation: rb-up var(--dur-2) var(--ease-emph); }
   .is-phone .format-btn { width: 44px; height: 44px; }
   .is-phone .format-btn svg { width: 20px; height: 20px; }
@@ -98,8 +104,10 @@
 /* the open tab's name; tapped, the tabs come up above it */
 .rb-pick { position: relative; flex: none; display: flex; align-items: center; padding-right: 5px; margin-right: 2px; background: linear-gradient(var(--line), var(--line)) right center / 1px 22px no-repeat; }
 .rb-pick-btn {
-  height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 10px; border-radius: var(--r-s);
+  height: 44px; display: inline-flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 8px 0 10px; border-radius: var(--r-s);
   font: var(--w-bold) var(--text-m)/1 var(--sans); color: var(--word); white-space: nowrap;
+  /* as wide for Home as for Picture: the commands after it don't shift when the tab changes */
+  min-width: 6.5em;
 }
 .rb-pick-btn svg { transition: rotate var(--dur-2) var(--ease-emph); }
 .rb-pick-btn[aria-expanded='true'] svg { rotate: 180deg; }
@@ -137,9 +145,11 @@
 }
 .is-phone .rb-style-sample { display: none; }
 .is-phone .rb-style-name { font: var(--w-regular) var(--text-base)/1 var(--serif); }
-.is-phone .rb-style.is-h1 .rb-style-name { font-size: 17px; font-weight: var(--w-bold); }
-.is-phone .rb-style.is-h2 .rb-style-name { font-size: 16px; font-weight: 600; }
-.is-phone .rb-style.is-h3 .rb-style-name { font-weight: 600; }
+/* the headings in the note's own look: sans, Heading 1 and 2 in Word's blue */
+.is-phone .rb-style:is(.is-h1, .is-h2, .is-h3) .rb-style-name { font-family: var(--sans); letter-spacing: -0.012em; }
+.is-phone .rb-style.is-h1 .rb-style-name { font-size: var(--text-l); font-weight: 420; color: var(--word-ink); }
+.is-phone .rb-style.is-h2 .rb-style-name { font-weight: var(--w-medium); color: var(--word-ink); }
+.is-phone .rb-style.is-h3 .rb-style-name { font-weight: var(--w-bold); }
 .is-phone .rb-style.is-quote .rb-style-name { font-style: italic; color: var(--ink-2); }
 .is-phone .rb-style[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); }
 .is-phone .rb-style:disabled { opacity: 0.32; }
@@ -148,12 +158,13 @@
 /* ---------- Focus: everything but the page goes, but for a way back ---------- */
 
 .focus-exit {
-  position: fixed; z-index: 36; top: calc(var(--safe-t) + 12px); right: 16px; height: var(--h-s); display: inline-flex; align-items: center; gap: 6px;
+  position: fixed; z-index: 36; top: calc(var(--safe-t) + 12px); right: max(16px, env(safe-area-inset-right)); height: var(--h-s); display: inline-flex; align-items: center; gap: 6px;
   padding: 0 13px 0 11px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
   font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2); opacity: 0.55;
-  transition: opacity var(--dur-2), color var(--dur-1); animation: fade-in var(--dur-3) var(--ease-emph);
+  animation: fade-in var(--dur-3) var(--ease-emph);
 }
-.focus-exit:is(:hover, :focus-visible) { opacity: 1; color: var(--ink); }
+.focus-exit:focus-visible { opacity: 1; color: var(--ink); }
+@media (hover: hover) { .focus-exit:hover { opacity: 1; color: var(--ink); } }
 .focus-exit:focus-visible { outline: 2px solid var(--word); outline-offset: 2px; }
 
 /* ---------- on a computer: the ribbon across the top ----------
@@ -174,7 +185,6 @@
 .ribbon.is-wide {
   position: fixed; z-index: 35; top: 0; left: var(--side-w, 0px); right: 0;
   font: var(--w-regular) var(--text-m)/1.2 var(--sans); color: var(--ink); background: var(--surface);
-  transition: left var(--dur-2) var(--ease);
 }
 .ribbon.is-wide.is-focus { display: none; }
 .ribbon.is-wide .format-btn { width: 32px; height: 32px; border-radius: var(--r-xs); }
@@ -191,7 +201,7 @@
 .rb-title.is-untitled { font-weight: var(--w-medium); color: var(--ink-3); }
 .rb-share, .rb-done {
   flex: none; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: var(--r-xs);
-  font: var(--w-bold) var(--text-m)/1 var(--sans); transition: background-color var(--dur-1), border-color var(--dur-1), filter var(--dur-1);
+  font: var(--w-bold) var(--text-m)/1 var(--sans);
 }
 .rb-share { border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); }
 .rb-share.is-shared svg { color: var(--word); }
@@ -208,7 +218,7 @@
 .rb-tablist { flex: 1; min-width: 0; display: flex; align-items: stretch; gap: 2px; }
 .rb-tab {
   position: relative; flex: none; padding: 0 12px; border-radius: var(--r-xs) var(--r-xs) 0 0;
-  font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2); transition: color var(--dur-1), background-color var(--dur-1);
+  font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2);
 }
 .rb-tab::after {
   content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: var(--r-xs) var(--r-xs) 0 0;
@@ -227,7 +237,7 @@
 .rb-tab.is-context[aria-selected='true'] { color: var(--word); }
 /* Editing / Reading, at the end of the tabs as in Word */
 .rb-mode {
-  flex: none; align-self: center; height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
+  flex: none; align-self: center; height: 26px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; min-width: 7.5em;
   border: 1px solid var(--line); border-radius: var(--r-xs); font: var(--w-medium) var(--text-s)/1 var(--sans); color: var(--ink-2);
 }
 @media (hover: hover) { .rb-mode:hover { background: var(--surface-2); color: var(--ink); } }
@@ -259,14 +269,12 @@
 .ribbon.is-wide .rb-big {
   flex: none; min-width: 54px; max-width: 84px; height: 64px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 7px 6px 4px; border-radius: var(--r-xs); font: var(--w-regular) var(--text-s)/1.15 var(--sans); color: var(--ink); text-align: center;
-  transition: background-color var(--dur-1), color var(--dur-1);
 }
 .ribbon.is-wide .rb-big svg { flex: none; width: 24px; height: 24px; color: var(--ink-2); }
 @media (hover: hover) { .ribbon.is-wide .rb-big:hover:not(:disabled) { background: var(--surface-2); } }
 .ribbon.is-wide .rb-big[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
 .ribbon.is-wide .rb-big[aria-pressed='true'] svg { color: var(--word); }
 .ribbon.is-wide .rb-big:disabled { opacity: 0.32; }
-.ribbon.is-wide .rb-big:active:not(:disabled) { scale: 0.96; }
 
 /* Zoom: −, the percentage (back to 100%), + */
 .rb-zoom {
@@ -280,13 +288,14 @@
 .ribbon.is-wide .rb-style {
   width: 76px; height: 58px; display: flex; flex-direction: column; justify-content: space-between; padding: 7px 7px 5px;
   border: 1px solid transparent; border-radius: var(--r-xs); background: var(--surface); text-align: left; overflow: hidden;
-  transition: border-color var(--dur-1), background-color var(--dur-1);
 }
-.rb-style-sample { display: block; height: 24px; overflow: hidden; white-space: nowrap; font: 400 15px/24px var(--serif); color: var(--ink); }
-.rb-style.is-h1 .rb-style-sample { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--heading-ink, var(--ink)); }
-.rb-style.is-h2 .rb-style-sample { font-size: 17px; font-weight: 600; color: var(--heading-ink, var(--ink)); }
-.rb-style.is-h3 .rb-style-sample { font-size: 15px; font-weight: var(--w-bold); color: var(--heading-ink, var(--ink)); }
-.rb-style.is-quote .rb-style-sample { font-style: italic; color: var(--ink-2); padding-left: 6px; box-shadow: inset 2px 0 var(--line-2); }
+/* each sample in the note's own look (notes.css): Normal the body serif; headings sans, 1 and 2 in Word's blue */
+.rb-style-sample { display: block; height: 24px; overflow: hidden; white-space: nowrap; font: var(--w-regular) var(--text-base)/24px var(--serif); color: var(--ink); }
+.rb-style:is(.is-h1, .is-h2, .is-h3) .rb-style-sample { font-family: var(--sans); letter-spacing: -0.012em; }
+.rb-style.is-h1 .rb-style-sample { font-size: 20px; font-weight: 420; color: var(--word-ink); }
+.rb-style.is-h2 .rb-style-sample { font-size: var(--text-l); font-weight: var(--w-medium); color: var(--word-ink); }
+.rb-style.is-h3 .rb-style-sample { font-weight: var(--w-bold); }
+.rb-style.is-quote .rb-style-sample { font-style: italic; color: var(--ink-2); padding-left: 6px; box-shadow: inset 2px 0 color-mix(in oklab, var(--word-ink) 60%, transparent); }
 .ribbon.is-wide .rb-style-name { font: var(--w-regular) var(--text-xs)/1 var(--sans); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (hover: hover) { .ribbon.is-wide .rb-style:hover:not(:disabled) { border-color: var(--line-2); } }
 .ribbon.is-wide .rb-style[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); }

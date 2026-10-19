@@ -298,3 +298,40 @@ test('pasted plain text is read as Markdown (Shift+paste as it is), and copying 
   paste('# not a heading', true);
   assert.equal(n.text(), '\\# not a heading');
 });
+
+test('closing ** or * around words that hold a link keeps the link, and an escaped star never pairs', () => {
+  const { n, type, view } = mount('see [the site](https://example.com) now');
+  // the caret after "now", then wrap "see … now" as bold by typing the markers around it
+  view.dispatch(view.state.tr.insertText('**', 1));
+  n.focus('end');
+  type('**');
+  assert.equal(n.text(), '**see [the site](https://example.com) now**');
+  const m = mount('a *b [c](https://example.com) d');
+  m.n.focus('end');
+  m.type('*');
+  assert.equal(m.n.text(), 'a *b [c](https://example.com) d*');
+  const e = mount('\\*word');
+  e.n.focus('end');
+  e.type('*');
+  assert.equal(e.n.text(), '\\*word*', 'a star written as itself stays a star');
+});
+
+test('an address typed then a space becomes a link with one space after it', () => {
+  const { n, type, end } = mount('');
+  end();
+  type('go https://example.com ');
+  assert.equal(n.text(), 'go https://example.com ');
+  type('x');
+  assert.equal(n.text(), 'go https://example.com x');
+});
+
+test('the caret at the end of a note ending in a divider goes on a new line, never the divider selected', () => {
+  const { n, view, type } = mount('words\n---');
+  n.focus('end');
+  assert.equal(view.state.selection.constructor.name, 'TextSelection');
+  type('more');
+  assert.match(n.text(), /^words\n---\n+more$/);
+  const t = mount('a\n```\ncode\n```');
+  t.n.insertToken('@[person:p1|Ann]', true);
+  assert.match(t.n.text(), /```\n@\[person:p1\|Ann\]/, 'a tag picked while the note ends in code goes on a line after it');
+});

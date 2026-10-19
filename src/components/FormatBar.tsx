@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from './icons';
+import { keepFocus } from './ribbon/keepFocus';
 import { Ribbon } from './ribbon/Ribbon';
 import type { NoteBodyHandle } from '../editor/NoteBody';
 import { t } from '../lib/i18n';
@@ -71,6 +72,12 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
   const [writing, setWriting] = useState(false);
   const [onBar, setOnBar] = useState(false); // a button of the bar has the focus: tapping one mustn't put the bar away
   const [lit, setLit] = useState(() => note?.lit() ?? null);
+  // the phone's keyboard on its way up: the bar waits for it, then comes up once, where it'll stay (rather than rising
+  // from the bottom of the screen and snapping up when the keyboard's height is known)
+  const [kbWait, setKbWait] = useState(false);
+  const kbUp = useRef(false);
+  const noteNow = useRef(note);
+  noteNow.current = note;
 
   useEffect(() => (note ? note.watch(setLit) : undefined), [note]);
 
@@ -78,11 +85,20 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     const vv = window.visualViewport;
     const el = ref.current;
     if (!vv || !el) return;
-    let frame = 0;
+    let frame = 0, reveal = 0, lastKb = 0;
     const place = () => {
       if (!vv.width || !vv.height) return;
       const layoutHeight = Math.max(innerHeight, document.documentElement.clientHeight);
-      el.style.setProperty('--kb', Math.max(0, Math.round(layoutHeight - vv.height - vv.offsetTop)) + 'px');
+      const kb = Math.max(0, Math.round(layoutHeight - vv.height - vv.offsetTop));
+      el.style.setProperty('--kb', kb + 'px');
+      kbUp.current = kb > 80;
+      if (kb !== lastKb) setKbWait(false);
+      // the keyboard came up over the caret's line: once the bar is above it, the caret is brought back into view
+      if (kb > lastKb + 80 && noteNow.current?.focused()) {
+        cancelAnimationFrame(reveal);
+        reveal = requestAnimationFrame(() => (reveal = requestAnimationFrame(() => noteNow.current?.reveal())));
+      }
+      lastKb = kb;
       el.style.setProperty('--toolbar-left', vv.offsetLeft + vv.width / 2 + 'px');
       el.style.setProperty('--toolbar-width', vv.width + 'px');
     };
@@ -98,6 +114,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     place();
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(reveal);
       vv.removeEventListener('resize', place);
       vv.removeEventListener('scroll', place);
       removeEventListener('resize', schedule);
@@ -118,9 +135,25 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     const bar = (n: EventTarget | null) => !!(n as Element | null)?.closest?.('.format-bar');
     // A tap on the bar under way: if the focus still leaves for nowhere (a browser that doesn't focus buttons and
     // didn't keep it in the text), the bar stays until the tap's click has landed.
-    let pressing = false;
-    const into = (e: FocusEvent) => { setWriting(text(e.target)); setOnBar(bar(e.target)); };
-    const out = (e: FocusEvent) => { setWriting(text(e.relatedTarget)); setOnBar(bar(e.relatedTarget) || (pressing && !e.relatedTarget)); };
+    let pressing = false, was = false, wait = 0;
+    const coarse = matchMedia('(pointer: coarse)');
+    const into = (e: FocusEvent) => {
+      const now = text(e.target);
+      // writing starts on a touch screen with no keyboard up yet: it's coming (or, if it never says so, a moment)
+      if (now && !was && coarse.matches && !kbUp.current) {
+        setKbWait(true);
+        clearTimeout(wait);
+        wait = setTimeout(() => setKbWait(false), 450);
+      }
+      was = now;
+      setWriting(now);
+      setOnBar(bar(e.target));
+    };
+    const out = (e: FocusEvent) => {
+      was = text(e.relatedTarget);
+      setWriting(was);
+      setOnBar(bar(e.relatedTarget) || (pressing && !e.relatedTarget));
+    };
     const down = (e: PointerEvent) => {
       pressing = bar(e.target);
       // a tap elsewhere puts a bar kept up that way away, unless the focus is still in it
@@ -134,6 +167,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     document.addEventListener('click', up, true);
     document.addEventListener('pointercancel', up, true);
     return () => {
+      clearTimeout(wait);
       document.removeEventListener('focusin', into);
       document.removeEventListener('focusout', out);
       document.removeEventListener('pointerdown', down, true);
@@ -176,7 +210,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
 
   // Page entrance transforms temporarily turn fixed descendants into page-relative
   // elements. Keep this keyboard accessory at the document level throughout editing.
-  const away = tucked || !(writing || onBar);
+  const away = tucked || kbWait || !(writing || onBar);
   if (ribbon) {
     // a wrapper of no box of its own, carrying the keyboard's height to the ribbon and the strip
     return createPortal(
@@ -184,7 +218,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
         <Ribbon actions={ribbon} context={context} swapped={!!swap} cmds={note?.cmds ?? null} lit={lit} away={away} done={done} />
         {/* on a phone it docks above the keyboard as the ribbon's bar does; on a computer it floats near the bottom */}
         {swap && (
-          <div class="format-bar is-swapped is-strip in-ribbon" role="toolbar" aria-label={swapLabel}>
+          <div class="format-bar is-swapped is-strip in-ribbon" role="toolbar" aria-label={swapLabel} {...keepFocus}>
             <div class="format-scroll">{swap}</div>
           </div>
         )}
@@ -194,7 +228,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
   }
   if (!swap) return null;
   return createPortal(
-    <div ref={ref} class="format-bar is-swapped is-strip" role="toolbar" aria-label={swapLabel}>
+    <div ref={ref} class="format-bar is-swapped is-strip" role="toolbar" aria-label={swapLabel} {...keepFocus}>
       <div class="format-scroll">{swap}</div>
     </div>,
     document.body,

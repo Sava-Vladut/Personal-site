@@ -11,6 +11,31 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.108.0',
+    date: '2026-10-19',
+    changes: [
+      'A note opens with its words and pictures already in place: nothing jumps down a moment later',
+      'Closing ** or * around words that hold a link or code keeps them, and an escaped \\* never turns into a style',
+      'Backspace and Delete next to a code block no longer run lines into it, and a second Backspace after a quote joins the line above',
+      'Enter at the start of a code block or callout that opens the note makes a line above it',
+      'Bold and the other styles carry on to the next line after Enter, and the ribbon lights a style exactly when pressing it would take it off',
+      'Ctrl+B, I, E and K work on Cyrillic, Greek and other keyboards',
+      'Writing at the end of a note that ends with a divider starts a new line instead of selecting the divider',
+      'Tapping a tag while writing opens its card and keeps the caret after it, so the next key can’t replace it',
+      'A swipe that starts on a task’s circle scrolls the note instead of ticking the task',
+      'Pasting from Word or Excel pastes the text, not a picture of it',
+      'Typing a #tag no longer makes the line jump, highlighting no longer moves the words, and tags sit level with the text',
+      'On a phone, the toolbar waits for the keyboard and rises once, and the line you’re writing stays above it',
+      'The @ suggestions narrow as you type on Android instead of disappearing until the word ends',
+      'Switching between reading and writing moves nothing, and Edit puts the caret where you’re reading, not at the end',
+      'Closing a sheet no longer takes the caret out of the note, and the Link sheet opens on its address',
+      'The status bar only says “Saving…” when saving takes a moment, and never gets stuck on it',
+      'The picture size slider resizes the picture as you drag, and dragging pictures is smoother',
+      'Ribbon buttons press and spring back, the style gallery shows the note’s own heading styles, and Word blue is one colour everywhere',
+      'Pictures dropped on the ribbon or status bar go into the note instead of opening in the browser',
+    ],
+  },
+  {
     version: '1.107.1',
     date: '2026-10-19',
     changes: [

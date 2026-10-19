@@ -13,7 +13,7 @@ import { Icon } from './icons';
 import { ImageSearchSheet } from './ImageSearchSheet';
 import { PeopleChips, PeopleSheet, PersonChip, usePeopleById } from './people';
 import { PhotoImg } from './Photo';
-import { Sheet } from './Sheet';
+import { Sheet, focusIn, giveBack } from './Sheet';
 import { HomeSheet, WeatherMark, placeLabel, weatherLine, weatherOf } from './weather';
 import { count, t } from '../lib/i18n';
 
@@ -103,12 +103,12 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
       setClosing(false);
       const release = pushBack(() => closeRef.current());
       const prev = document.activeElement as HTMLElement | null;
-      const focusFrame = requestAnimationFrame(() => panel.current?.focus({ preventScroll: true }));
+      const focusFrame = requestAnimationFrame(() => focusIn(panel.current));
       return () => {
         locationRequest.current++;
         cancelAnimationFrame(focusFrame);
         release();
-        prev?.focus?.({ preventScroll: true });
+        giveBack(prev, panel.current);
       };
     }
     if (mounted) {

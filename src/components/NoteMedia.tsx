@@ -220,7 +220,7 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
       ref={box}
       class={`media${album ? ' is-album' : ''}${align ? ' is-' + align : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${merging ? ' is-merging' : ''}${live !== null ? ' is-resizing' : ''}`}
       data-key={mediaKey(m)}
-      style={{ width: `${size}%`, maxWidth: ratio ? `calc(70dvh * ${ratio.toFixed(4)})` : undefined }}
+      style={{ width: `${size}%`, maxWidth: ratio ? `calc(70svh * ${ratio.toFixed(4)})` : undefined }}
       onContextMenu={(e) => editing && e.preventDefault()}
     >
       <button
@@ -283,7 +283,7 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
   const shown = live ?? size;
   // The slider resizes the picture as it moves (straight on the page, without a round trip through the note),
   // and the note keeps the size it's let go at.
-  const pic = () => document.querySelector<HTMLElement>(`.note-body > .media[data-key="${CSS.escape(mediaKey(m))}"]`);
+  const pic = () => document.querySelector<HTMLElement>(`.note-body .media[data-key="${CSS.escape(mediaKey(m))}"]`);
   const slide = (v: number) => {
     setLive(v);
     const el = pic();

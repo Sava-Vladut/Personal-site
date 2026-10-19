@@ -126,6 +126,33 @@ export const toggleMarkSmart = (name: MarkName): Command => (state, dispatch) =>
 };
 
 /**
+ * Whether the style shows lit: exactly when its button would take it off (toggleMarkSmart). On a selection, all the
+ * words it would style have it (spaces at the ends left out); at a caret in a word, the word has it; elsewhere, what's
+ * typed next will.
+ */
+export function markLit(state: EditorState, name: MarkName): boolean {
+  const type = state.schema.marks[name];
+  const sel = state.selection;
+  if (!sel.empty) {
+    const ranges = styleRanges(state, type);
+    return ranges.length > 0 && ranges.every((r) => covered(state.doc, r, type));
+  }
+  const $c = sel.$from;
+  const parent = $c.parent;
+  if (parent.isTextblock && !parent.type.spec.code && parent.type.allowsMarkType(type) && !state.storedMarks) {
+    const text = lineText(parent);
+    const off = $c.parentOffset;
+    const inWord = isWordChar(text[off - 1]) && isWordChar(text[off]);
+    const atStyled = !!$c.nodeAfter && !!type.isInSet($c.nodeAfter.marks) && isWordChar(text[off]);
+    if (inWord || atStyled) {
+      const ranges = styleRanges(state, type, wordAround(state));
+      if (ranges.length) return ranges.every((r) => covered(state.doc, r, type));
+    }
+  }
+  return !!type.isInSet(state.storedMarks ?? $c.marks());
+}
+
+/**
  * Clear formatting, as in Word: bold, italic, strike, highlight and code come off the selected words, the whole of
  * each styled run the selection touches; with nothing selected, off the word at the caret (and off what's typed next).
  * Links stay links. False when there was nothing to clear.

@@ -726,7 +726,8 @@ span.inline-media { aspect-ratio: 4 / 3; }
 .media.is-selected .media-pic { outline: 2px solid var(--ink); outline-offset: 3px; touch-action: none; }
 .media-pic { outline: 2px solid transparent; outline-offset: 6px; transition: outline-color var(--dur-2), outline-offset var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out); }
 .media.is-dragging .media-pic { opacity: 0.3; }
-.media:not(.is-resizing) { transition: width var(--dur-2) var(--ease-emph, ease-out); }
+/* a centred picture eases to its new size; one on a side snaps (easing it would reflow the words around it every frame) */
+.media:not(.is-resizing, .is-left, .is-right) { transition: width var(--dur-2) var(--ease-emph, ease-out); }
 @media (hover: hover) and (pointer: fine) { .note-body:not(.is-reading) .media-pic { cursor: grab; } .media.is-selected .media-pic, .is-reading .media-pic { cursor: zoom-in; } }
 .media-corner { position: absolute; z-index: 2; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; touch-action: none; }
 .media-corner::before {

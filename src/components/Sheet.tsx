@@ -4,6 +4,21 @@ import { pushBack } from '../lib/router';
 import { Icon } from './icons';
 import { t } from '../lib/i18n';
 
+/** Focus into a sheet as it opens: the field that asks for it (autofocus), else the sheet itself; not when it's in already. */
+export function focusIn(panel: HTMLElement | null) {
+  if (!panel || panel.contains(document.activeElement)) return;
+  (panel.querySelector<HTMLElement>('[autofocus]') ?? panel).focus({ preventScroll: true });
+}
+
+/**
+ * Focus back where it was before a sheet opened, as it closes — only when it's still in the sheet (or nowhere): what
+ * the sheet did may have put it somewhere on purpose (Edit puts the caret in the note), and that stays.
+ */
+export function giveBack(prev: HTMLElement | null, panel: HTMLElement | null) {
+  const a = document.activeElement;
+  if (!a || a === document.body || panel?.contains(a)) prev?.focus?.({ preventScroll: true });
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -38,14 +53,14 @@ export function Sheet({ open, onClose, title, children, footer, tall, label }: P
       }
       const release = pushBack(() => closeRef.current());
       const prev = document.activeElement as HTMLElement | null;
-      const focusFrame = requestAnimationFrame(() => panel.current?.focus({ preventScroll: true }));
+      const focusFrame = requestAnimationFrame(() => focusIn(panel.current));
       openSheets++;
       document.documentElement.classList.add('sheet-open');
       return () => {
         cancelAnimationFrame(focusFrame);
         release();
         if (--openSheets === 0) document.documentElement.classList.remove('sheet-open');
-        prev?.focus?.({ preventScroll: true });
+        giveBack(prev, panel.current);
       };
     }
     if (mounted) {
