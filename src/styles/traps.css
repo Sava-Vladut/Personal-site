@@ -165,6 +165,19 @@
 .tr-kin-chip span { flex: 1; font: var(--w-medium) var(--text-base) var(--serif); }
 .tr-kin-chip em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: var(--text-m); }
 
+/* the Carnegie principles that disarm it, linking to Win friends */
+.tr-links { display: grid; gap: 8px; }
+.tr-link {
+  display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 12px 14px; text-align: left; border-radius: var(--r-m);
+  background: color-mix(in oklab, var(--t) 8%, var(--surface-2)); transition: background-color var(--dur-1), transform var(--dur-0);
+}
+@media (hover: hover) { .tr-link:hover { background: color-mix(in oklab, var(--t) 14%, var(--surface-2)); } }
+.tr-link:active { transform: scale(0.98); }
+.tr-link-top { display: flex; align-items: center; gap: 6px; color: color-mix(in oklab, var(--t) 75%, var(--ink)); }
+.tr-link-top b { flex: 1; font-size: var(--text-base); font-weight: var(--w-bold); color: var(--ink); }
+.tr-link-go { color: var(--ink-3); }
+.tr-link-how { font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
+
 @media (prefers-reduced-motion: reduce) {
   .tr-map-spin, .tr-d-ink { animation: none; }
 }

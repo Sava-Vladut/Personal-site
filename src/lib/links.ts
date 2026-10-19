@@ -71,16 +71,16 @@ export function typedLink(text: string, caret: number) {
   caret = Math.max(0, Math.min(Math.trunc(caret), text.length));
   const before = text.slice(0, caret);
   const m = /\[\[([^[\]|\r\n]{0,120})$/.exec(before);
-  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1]) || /^(?:photo|image|album|note|book|trap|law):/.test(m[1])) return null;
+  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1]) || /^(?:photo|image|album|note|book|trap|law|principle):/.test(m[1])) return null;
   return { start: m.index, end: caret, q: m[1], link: true as const };
 }
 
-export type LinkSuggestion = { kind: 'note'; item: Entry } | { kind: 'book'; item: Book } | { kind: 'trap'; item: Ref } | { kind: 'law'; item: Ref };
+export type LinkSuggestion = { kind: 'note'; item: Entry } | { kind: 'book'; item: Book } | { kind: 'trap'; item: Ref } | { kind: 'law'; item: Ref } | { kind: 'principle'; item: Ref };
 
 /**
  * What a [[ suggests: with nothing typed yet, your latest notes and the books you're reading; otherwise the best
- * matches by title (or first line), notes first when they match as well, then books, mind traps and laws of power
- * (`refs`, once they're loaded). Never the note being written.
+ * matches by title (or first line), notes first when they match as well, then books, mind traps, laws of power and
+ * Carnegie's principles (`refs`, once they're loaded). Never the note being written.
  */
 export function suggestLinks(q: string, entries: Entry[], books: Book[], self: string, refs: Ref[] | null = null, max = 8): LinkSuggestion[] {
   const notes = entries.filter((e) => e.kind === 'note' && e.id !== self);

@@ -229,3 +229,16 @@ test('[[ suggests mind traps and laws of power by name, after notes and books, a
   assert.equal(env.typedLink('see [[trap:confirmation', 23), null);
   assert.equal(env.resolveNote('trap:confirmation', 'Confirmation bias', [{ ...note('x', 'Confirmation bias') }], []), undefined);
 });
+
+test('[[ suggests Carnegie principles by title and number, and links them by number', () => {
+  const env = load();
+  const ref = (kind, id, name) => ({ kind, id, name, sub: '', line: '', hue: 'joy', to: '' });
+  const refs = [ref('law', '5', 'So Much Depends on Reputation'), ref('principle', '5', 'Talk in terms of the other person’s interests'), ref('principle', '6', 'Make the other person feel important')];
+  assert.deepEqual(plain(env.suggestLinks('principle 5', [], [], 'self', refs).map((s) => `${s.kind}:${s.item.id}`)), ['principle:5']);
+  assert.deepEqual(plain(env.suggestLinks('law 5', [], [], 'self', refs).map((s) => `${s.kind}:${s.item.id}`)), ['law:5']);
+  assert.deepEqual(plain(env.suggestLinks('important', [], [], 'self', refs).map((s) => `${s.kind}:${s.item.id}`)), ['principle:6']);
+  assert.equal(env.refOf(refs[2]), '[[principle:6|Make the other person feel important]]');
+  assert.deepEqual(plain(env.refTarget('principle:6')), { kind: 'principle', id: '6' });
+  assert.equal(env.typedLink('see [[principle:6', 17), null);
+  assert.equal(env.resolveNote('principle:6', 'Make the other person feel important', [{ ...note('x', 'Make the other person feel important') }], []), undefined);
+});

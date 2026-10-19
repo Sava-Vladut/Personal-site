@@ -1,4 +1,5 @@
-// Insert › Mind trap or Law of power: every trap (or law) in a list to search, one tap puts it in the note as a link.
+// Insert › Mind trap, Law of power or Win friends: every trap (law, or Carnegie principle) in a list to search, one tap
+// puts it in the note as a link.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { searchKey } from '../lib/mentions';
 import { useRefs, type Ref, type RefKind } from '../lib/refs';
@@ -15,21 +16,23 @@ export function RefSheet({ kind, onClose, onPick }: { kind: RefKind | null; onCl
     if (kind) setShown(kind), setQ('');
   }, [kind]);
   const trap = shown === 'trap';
+  const title = trap ? t('Insert a mind trap') : shown === 'law' ? t('Insert a law of power') : t('Insert a Carnegie principle');
+  const search = trap ? t('Search mind traps') : shown === 'law' ? t('Search laws, or a number') : t('Search principles, or a number');
   const rows = useMemo(() => {
     const needle = searchKey(q);
     return (list ?? []).filter((r) => r.kind === shown && (!needle || searchKey(`${r.id} ${r.name} ${r.line}`).includes(needle)));
   }, [list, shown, q]);
 
   return (
-    <Sheet open={!!kind} onClose={onClose} title={trap ? t('Insert a mind trap') : t('Insert a law of power')} tall>
+    <Sheet open={!!kind} onClose={onClose} title={title} tall>
       <label class="search">
         <Icon name="search" size={18} />
         <input
           type="search"
-          placeholder={trap ? t('Search mind traps') : t('Search laws, or a number')}
+          placeholder={search}
           value={q}
           onInput={(e) => setQ(e.currentTarget.value)}
-          aria-label={trap ? t('Search mind traps') : t('Search laws, or a number')}
+          aria-label={search}
         />
       </label>
       {!list && <p class="hint center">{t('Loading…')}</p>}

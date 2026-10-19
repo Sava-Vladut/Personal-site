@@ -1,7 +1,7 @@
-// Marks: one small drawing per mind trap and per law of power, in the manner of a magazine spot illustration:
+// Marks: one small drawing per mind trap, per law of power and per principle, in the manner of a magazine spot illustration:
 // ivory cut-paper shapes and loose black brush lines on a flat colour tile (the tile and the wobble that makes
 // the lines look hand-inked live in components/Mark.tsx). Every drawing sits in a 100 × 100 box.
-// Keyed by trap id (data/traps.ts) and law id (data/laws).
+// Keyed by trap id (data/traps.ts), law id (data/laws) and principle id (data/principles).
 
 const INK = '#141413';
 const PAPER = '#faf9f5';
@@ -424,4 +424,135 @@ export const LAW_MARKS: Record<string, string> = {
   formless:
     pk('M50 10Q74 42 74 58Q74 82 50 82Q26 82 26 58Q26 42 50 10Z') + k('M36 60Q36 70 44 72', 2.6) +
     k('M6 92q8-5 16 0t16 0t16 0t16 0t16 0t16 0', 3),
+};
+
+/* ---------- principles ---------- */
+
+/** A dashed or dotted ink line. */
+const dashed = (line: string, a = '1 5') => line.replace('stroke-width', `stroke-dasharray="${a}" stroke-width`);
+
+/** A daisy: six paper petals round an ink heart. */
+const flower = (cx: number, cy: number, r: number) =>
+  [0, 60, 120, 180, 240, 300].map((a) => g(`rotate(${a} ${cx} ${cy})`, pk(oval(cx, cy - r * 0.62, r * 0.36, r * 0.5), 2.4))).join('') + f(circle(cx, cy, r * 0.34));
+
+/** A light bulb, the top of its glass at (x, y). */
+const bulb = (x: number, y: number, s = 1) =>
+  g(`translate(${x} ${y}) scale(${s})`,
+    pk('M0 0Q16 0 16 16Q16 24 8 30V36H-8V30Q-16 24-16 16Q-16 0 0 0Z', W / s),
+    k('M-5 29L-3 20L0 26L3 20L5 29', 2.2 / s),
+    k('M-6 41H6M-4 46H4', 3 / s));
+
+/** A little sailing boat, its mast at x. */
+const boat = (x: number, y: number, s = 1) =>
+  g(`translate(${x} ${y}) scale(${s})`, f('M0-12V8H-11Z'), f('M2-7V8H10Z'), f('M-13 11H13L9 16H-9Z'));
+
+/** A falling drop, s wide-ish, round at the bottom. */
+const drop = (x: number, y: number, s: number) => `M${x} ${n(y - 2 * s)}L${n(x + s)} ${y}A${s} ${s} 0 0 1 ${n(x - s)} ${y}Z`;
+
+export const PRINCIPLE_MARKS: Record<string, string> = {
+  'no-criticism':
+    pk(bubble(12, 12, 64, 46)) + f('M48 18L34 38H44L38 54L56 30H46L52 18Z') + pk('M12 80L80 12L90 22L22 90Z'),
+  appreciation:
+    k('M32 32L44 64M66 28L56 64M50 46V64', 3) + flower(32, 32, 12) + flower(66, 28, 12) + flower(50, 46, 11) +
+    pk('M28 58L50 94L72 58Z') + k('M38 72Q50 78 62 72', 2.6),
+  'eager-want':
+    pk('M24 66V40A26 26 0 0 1 76 40V66H60V40A10 10 0 0 0 40 40V66Z') + f(rect(24, 56, 16, 10)) + f(rect(60, 56, 16, 10)) +
+    k('M32 71v5M68 71v5M50 70v8', 2.6) + k('M14 74q-4 8 0 16M86 74q4 8 0 16', 2.6) + f(heart(32, 86, 6)) + f(star(68, 86, 7, 3, 5)),
+  interested:
+    k('M58 58L86 86', 8) + pk(circle(42, 42, 26)) + person(42, 52, 9) + glint(80, 18, 5) + glint(88, 36, 3),
+  smile:
+    pk(circle(50, 52, 32)) + k('M33 44q5-7 10 0M57 44q5-7 10 0', 3.4) + f('M30 58Q50 86 70 58Z') +
+    glint(14, 16, 6) + glint(88, 18, 4),
+  name:
+    pk(rect(8, 40, 64, 44, 6)) + f('M14 40H66Q72 40 72 46V54H8V46Q8 40 14 40Z') + k('M18 47H40', 2.4).replace(INK, PAPER) +
+    k('M18 72q3-9 6 0t6 0t6 0t6 0t6 0t6 0', 3) +
+    f(oval(68, 30, 5, 3.8)) + f(oval(86, 24, 5, 3.8)) + k('M72.6 30V10L90.6 4V24', 3) + k('M72.6 12L90.6 6', 5),
+  listen:
+    k('M30 40Q37 52 30 64', 3.4) + k('M18 32Q29 52 18 72', 3.4) +
+    pk('M42 36Q42 14 62 14Q82 14 82 36Q82 50 72 58Q66 63 66 72Q66 88 52 88Q42 88 40 80Q48 82 52 76Q56 68 56 62Q56 54 48 50Q42 46 42 36Z') +
+    k('M52 36Q52 26 62 26Q72 26 72 36Q72 44 64 48', 3),
+  'their-interests':
+    pk(bubble(8, 8, 48, 36)) + boat(32, 25, 0.9) + person(18, 90, 9, true) +
+    pk(cloud(72, 42, 6.5)) + boat(72, 39, 0.5) + pk(circle(70, 56, 3), 2.4) + pk(circle(74, 63, 2.2), 2) + person(76, 88, 11),
+  'feel-important':
+    k('M8 92H92', 3) + pk(rect(28, 62, 44, 30, 2)) + f(star(50, 77, 8, 3.4, 5)) + person(50, 50, 11, true) +
+    glint(20, 30, 6) + glint(80, 24, 5) + glint(84, 50, 3.5) + k('M24 12l4 6M70 8l-3 6M12 50l6-2', 2.6),
+  'avoid-argument':
+    pk(fluff(42, 48, 26, 19, 12)) + f(star(32, 48, 8, 3.4, 5)) + k('M46 38L56 44L48 50L58 56', 3) +
+    dashed(k('M12 88Q86 98 86 52Q86 18 58 12', 3)) + f('M50 12L60 5V19Z'),
+  'never-wrong':
+    pk(bubble(10, 8, 62, 46)) + k('M30 18L52 40M52 18L30 40', 6) + hand(72, 96, -12, 0.95),
+  'admit-wrong':
+    hand(40, 100, -6, 1.05) + k('M14 58v12M6 66v12', 3) + pk(bubble(52, 8, 40, 28)) + k('M64 14L80 30M80 14L64 30', 4),
+  friendly:
+    dashed(k('M14 24Q28 8 44 18Q58 28 70 22', 2.4)) +
+    pk('M22 44Q16 90 50 90Q84 90 78 44Z') + pk(rect(18, 36, 64, 10, 4)) +
+    f('M22.5 46H77.5V52Q74 56 70 52Q67 49 66 56Q65 64 60 63Q56 62 56 54Q54 50 48 54Q45 57 44 64Q43 70 39 69Q35 67 36 58Q36 52 30 53Q25 55 23 50Z') +
+    f(heart(50, 76, 7)) +
+    pk(oval(76, 12, 5, 3.5), 2.4) + pk(oval(86, 14, 5, 3.5), 2.4) + f(oval(82, 22, 7, 5)) + k('M80 18V26M85 18V26', 1.8).replace(INK, PAPER),
+  'yes-yes':
+    pk(circle(16, 70, 10)) + k('M11 70l4 4l7-8', 3) + pk(circle(40, 60, 14)) + k('M33 60l5 5l9-11', 3.6) +
+    pk(circle(72, 44, 22)) + k('M61 44l8 8l14-17', 5),
+  'let-them-talk':
+    pk(bubble(26, 8, 66, 42)) + k('M36 20H82M36 29H82M36 38H66', 3) + person(30, 86, 11, true) + person(78, 90, 8),
+  'their-idea':
+    k('M50 2V8M30 10l5 5M70 10l-5 5M24 30h6M76 30h-6', 3) + bulb(50, 14, 0.9) +
+    dashed(k('M4 92Q8 40 30 32', 2.4)) + person(50, 90, 14, true),
+  'their-view':
+    pk(circle(50, 50, 22)) + k(circle(50, 56, 7), 4.4) + k('M43 55Q42 40 56 38', 4.4) +
+    person(50, 90, 8) + g('rotate(180 50 50)', person(50, 90, 8, true)),
+  sympathy:
+    k('M8 8l-3 8M22 4l-3 8M78 4l-3 8M92 10l-3 8', 2.6) + k('M50 18V10', 3.4) + k('M50 50V78Q50 84 56 84', 3.4) +
+    pk('M12 50Q12 18 50 18Q88 18 88 50Q82 44 75.3 50Q69 44 62.7 50Q56 44 50 50Q44 44 37.3 50Q31 44 24.7 50Q18 44 12 50Z') +
+    k('M50 18Q40 30 37.3 50M50 18Q60 30 62.7 50', 2.4) + person(31, 90, 8) + person(70, 90, 8, true),
+  'nobler-motives':
+    pk('M38 46Q20 30 6 34Q14 40 12 44Q22 46 22 50Q30 52 30 56Q36 56 40 54Z') +
+    pk('M62 46Q80 30 94 34Q86 40 88 44Q78 46 78 50Q70 52 70 56Q64 56 60 54Z') +
+    k('M16 40Q26 42 34 46M88 40Q74 42 66 46', 2.2) + pk(heart(50, 52, 16)) + glint(50, 16, 7) + glint(24, 72, 4) + glint(78, 76, 3.5),
+  dramatize:
+    pk('M-4 10H30Q22 50 36 96H-4Z') + pk('M104 10H70Q78 50 64 96H104Z') +
+    k('M10 16Q8 56 16 96M20 16Q16 56 26 96M90 16Q92 56 84 96M80 16Q84 56 74 96', 2.4) +
+    f('M0 0H100V12Q92 20 84 12Q76 20 68 12Q60 20 52 12Q44 20 36 12Q28 20 20 12Q12 20 4 12H0Z') +
+    k('M0 92H100', 3) + pk(star(50, 58, 22, 9, 5)) + glint(50, 28, 4),
+  challenge:
+    k('M8 92H92', 3) + k('M22 92V18M78 92V18', 4) + k('M15 92h14M71 92h14', 4) +
+    pk(rect(14, 22, 72, 7, 3.5)) + f(rect(30, 22, 8, 7)) + f(rect(46, 22, 8, 7)) + f(rect(62, 22, 8, 7)) +
+    k('M50 84V48', 4.4) + f('M39 52L50 36L61 52Z'),
+  'begin-praise':
+    pk('M40 54L28 90L38 86L44 94L50 60Z') + pk('M60 54L72 90L62 86L56 94L50 60Z') +
+    pk(star(50, 38, 28, 22, 16)) + pk(circle(50, 38, 15)) + k('M45 33L51 28V48', 4),
+  indirect:
+    k('M6 12H94', 5) + dashed(k('M16 84L50 18L84 80', 3)) + f(circle(16, 84, 7)) +
+    pk(circle(84, 80, 10)) + k('M80 76l8 8m0-8l-8 8', 2.6) + k('M42 22l-5 3M58 22l5 3', 2.4),
+  'own-mistakes':
+    g('translate(86 14) rotate(135)',
+      pk('M0 0L13-5.5H68V5.5H13Z'), f('M0 0L5-2.1V2.1Z'), k('M60-5.5V5.5', 2.6), pk(rect(68, -5.5, 13, 11, 3))) +
+    k('M8 74L24 90', 3.6) + dashed(k('M24 74L8 90', 3.6), '2 6') +
+    f(circle(32, 82, 1.6)) + f(circle(38, 78, 1.3)) + f(circle(35, 89, 1.5)),
+  'ask-not-order':
+    pk(bubble(30, 8, 62, 50)) + ask(61, 32, 13, 4.4) +
+    pk(circle(20, 76, 13)) + k('M20 68V77', 4) + f(circle(20, 83, 2.2)) + k('M10 86L30 66', 3),
+  'save-face':
+    k('M2 94q8-5 16 0t16 0t16 0t16 0t16 0t16 0', 3) +
+    k(circle(50, 50, 28), 20) + k(circle(50, 50, 28), 13).replace(INK, PAPER) +
+    [45, 135, 225, 315].map((a) => {
+      const r = 28, a1 = ((a - 14) * Math.PI) / 180, a2 = ((a + 14) * Math.PI) / 180;
+      return k(`M${n(50 + r * Math.cos(a1))} ${n(50 + r * Math.sin(a1))}A${r} ${r} 0 0 1 ${n(50 + r * Math.cos(a2))} ${n(50 + r * Math.sin(a2))}`, 13).replace('round', 'butt');
+    }).join('') +
+    pk(circle(50, 50, 13)) + f(circle(45, 47, 1.8)) + f(circle(55, 47, 1.8)) + k('M44 54q6 5 12 0', 2.4),
+  'every-improvement':
+    g('rotate(18 30 36)', k('M18 28Q28 12 38 28', 3.4), k('M42 34L66 24', 5), pk(rect(12, 28, 32, 24, 4)), pk(circle(66, 24, 4), 2.6)) +
+    f(drop(72, 46, 2.2)) + f(drop(78, 54, 2.2)) + f(drop(70, 60, 2.2)) +
+    k('M58 92H94', 3) + k('M76 92V70', 3.4) + pk('M76 80Q63 78 62 68Q75 67 76 80Z', 2.6) + pk('M76 74Q88 70 90 60Q77 59 76 74Z', 2.6) +
+    glint(92, 46, 4.5),
+  'fine-reputation':
+    person(60, 76, 22) + crown(60, 38, 26) + person(28, 88, 10, true) + glint(20, 30, 5) + glint(90, 12, 4),
+  encourage:
+    g('rotate(-30 50 50)', pk(rect(12, 38, 76, 24, 12)), pk(rect(38, 38, 24, 24, 2)),
+      [44, 50, 56].map((x) => [44, 50, 56].map((y) => f(circle(x, y, 1.5))).join('')).join('')) +
+    glint(18, 22, 6) + glint(82, 78, 4.5),
+  'happy-to-do':
+    k('M42 54L28 22M58 54L72 22', 4.4) + pk(rect(18, 4, 64, 20, 4)) + k('M40 14l6 5l12-10', 3.6) +
+    pk('M38 94L42 54Q50 48 58 54L62 94Z') + pk(circle(50, 37, 9)) + f(circle(46.5, 35.5, 1.4)) + f(circle(53.5, 35.5, 1.4)) + k('M46 40q4 3 8 0', 2) +
+    k('M14 44l8 4M10 58h9M86 44l-8 4M90 58h-9', 3),
 };

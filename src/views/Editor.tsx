@@ -42,7 +42,7 @@ import '../styles/document.css';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law' | 'principle';
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 const MAX_PHOTOS = 20;
@@ -748,7 +748,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
   /** Mentions a book, as a link to it. */
   const mentionBook = (b: Book) => insertToken(mentionOf(b, getBooks()));
-  /** Links a mind trap or a law of power. */
+  /** Links a mind trap, a law of power or a Carnegie principle. */
   const insertRef = (r: Ref) => insertToken(refOf(r));
 
   /** The Link sheet, for the link at the caret (or the selected words, or the word at the caret). */
@@ -770,7 +770,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     setMentionState((cur) => (!m ? null : cur && cur.from === m.from && cur.to === m.to && cur.q === m.q && cur.link === m.link ? cur : m));
   };
   const typing = mention;
-  // the mind traps and laws of power are fetched the first time a [[ link is typed
+  // the mind traps, laws of power and principles are fetched the first time a [[ link is typed
   const refs = useRefs(!!typing?.link);
   const suggestions: (Suggestion | LinkSuggestion)[] = !typing ? []
     : typing.link ? suggestLinks(typing.q, allEntries, shelf, draft.id, refs)
@@ -826,7 +826,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (!current) return setMentionState(null);
       token = linkOf(current);
       if (current.emotions[0]) color = `var(--emo-${coreOf(current.emotions[0]).id})`;
-    } else if (s.kind === 'trap' || s.kind === 'law') {
+    } else if (s.kind === 'trap' || s.kind === 'law' || s.kind === 'principle') {
       const current = findRef(refs, s.kind, s.item.id);
       if (!current) return setMentionState(null);
       token = refOf(current);
@@ -1145,7 +1145,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           noteRef.current?.cmds.link(to);
         }}
       />
-      <RefSheet kind={open === 'trap' || open === 'law' ? open : null} onClose={close} onPick={insertRef} />
+      <RefSheet kind={open === 'trap' || open === 'law' || open === 'principle' ? open : null} onClose={close} onPick={insertRef} />
       <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title={t('Mention a book')} status="reading" />
       <SpotifySheet
         open={open === 'spotify'}

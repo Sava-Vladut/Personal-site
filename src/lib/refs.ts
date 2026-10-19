@@ -1,18 +1,19 @@
-// Mind traps and laws of power in a note, as links: [[trap:<id>|Name]] and [[law:<n>|Title]]. They come from the
-// Insights pages' data (data/traps.ts, data/laws), which is big, so it's fetched only once something needs it: a [[
-// being typed, or a note with one of these links in it. Until then a link shows the name it was written with.
+// Mind traps, laws of power and Carnegie's principles in a note, as links: [[trap:<id>|Name]], [[law:<n>|Title]] and
+// [[principle:<n>|Title]]. They come from the Insights pages' data (data/traps.ts, data/laws, data/principles), which
+// is big, so it's fetched only once something needs it: a [[ being typed, or a note with one of these links in it.
+// Until then a link shows the name it was written with.
 import { useEffect, useState } from 'preact/hooks';
 import { score, searchKey } from './mentions';
 
-export type RefKind = 'trap' | 'law';
+export type RefKind = 'trap' | 'law' | 'principle';
 
-/** A trap or a law, as a link shows it. */
+/** A trap, a law or a principle, as a link shows it. */
 export interface Ref {
   kind: RefKind;
-  /** a trap's id, a law's number */
+  /** a trap's id, a law's or a principle's number */
   id: string;
   name: string;
-  /** its family (a trap) or its realm (a law), and how strong it is */
+  /** its family (a trap), its realm (a law) or its part of the book (a principle) */
   sub: string;
   /** the one-line hook */
   line: string;
@@ -25,9 +26,9 @@ export interface Ref {
 let refs: Ref[] | null = null;
 let loading: Promise<Ref[]> | null = null;
 
-/** Fetches the traps and the laws (once). */
+/** Fetches the traps, the laws and the principles (once). */
 export function loadRefs(): Promise<Ref[]> {
-  loading ??= Promise.all([import('../data/traps'), import('../data/laws')]).then(([tr, lw]) => {
+  loading ??= Promise.all([import('../data/traps'), import('../data/laws'), import('../data/principles')]).then(([tr, lw, pr]) => {
     const list: Ref[] = [
       ...tr.TRAPS.map((x): Ref => ({
         kind: 'trap', id: x.id, name: x.name, sub: tr.FAMILIES[x.family].name, line: x.line,
@@ -36,6 +37,10 @@ export function loadRefs(): Promise<Ref[]> {
       ...lw.LAWS.map((x): Ref => ({
         kind: 'law', id: String(x.n), name: x.title, sub: lw.REALMS[x.realm].name, line: x.line,
         hue: lw.REALMS[x.realm].hue, to: `laws?open=${x.n}`,
+      })),
+      ...pr.PRINCIPLES.map((x): Ref => ({
+        kind: 'principle', id: String(x.n), name: x.title, sub: pr.PARTS[x.part].name, line: x.line,
+        hue: pr.PARTS[x.part].hue, to: `friends?open=${x.n}`,
       })),
     ];
     refs = list;
@@ -47,7 +52,7 @@ export function loadRefs(): Promise<Ref[]> {
   return loading;
 }
 
-/** The traps and laws, once they're here (null until then); asks for them the first time. */
+/** The traps, laws and principles, once they're here (null until then); asks for them the first time. */
 export function useRefs(load = true) {
   const [list, setList] = useState(refs);
   useEffect(() => {
@@ -59,9 +64,9 @@ export function useRefs(load = true) {
   return list ?? refs;
 }
 
-/** What a link's target points at: `trap:<id>` or `law:<n>`. */
+/** What a link's target points at: `trap:<id>`, `law:<n>` or `principle:<n>`. */
 export function refTarget(target: string | undefined): { kind: RefKind; id: string } | null {
-  const m = target && /^(trap|law):(.+)$/.exec(target);
+  const m = target && /^(trap|law|principle):(.+)$/.exec(target);
   return m ? { kind: m[1] as RefKind, id: m[2] } : null;
 }
 
@@ -69,14 +74,14 @@ export const findRef = (list: Ref[] | null, kind: RefKind, id: string) => list?.
 
 export const refOf = (r: Ref) => `[[${r.kind}:${r.id}|${r.name.replace(/[\]|\n]/g, ' ')}]]`;
 
-/** The traps and laws that match a [[query (none with nothing typed: the notes come first then). */
+/** The traps, laws and principles that match a [[query (none with nothing typed: the notes come first then). */
 export function suggestRefs(q: string, list: Ref[] | null): [number, Ref][] {
   const needle = searchKey(q);
   if (!needle || !list) return [];
   const least = needle.length < 3 ? 2 : 1;
   const out: [number, Ref][] = [];
   for (const r of list) {
-    const s = r.kind === 'law' ? score(needle, r.name, r.id, `law ${r.id}`) : score(needle, r.name);
+    const s = r.kind === 'trap' ? score(needle, r.name) : score(needle, r.name, r.id, `${r.kind} ${r.id}`);
     if (s >= least) out.push([s - 0.1, r]);
   }
   return out;

@@ -21,8 +21,8 @@
 .mention.is-book { border-radius: var(--r-s); padding-left: 4px; }
 .mention.is-book .book-cover { border-radius: var(--r-2xs); box-shadow: none; }
 .mention.is-book .book-cover-title { display: none; }
-.mention.is-note, .mention.is-trap, .mention.is-law { border-radius: var(--r-s); padding-left: 5px; }
-.mention.is-note > svg, .mention.is-trap > svg, .mention.is-law > svg { flex: none; color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
+.mention.is-note, .mention.is-trap, .mention.is-law, .mention.is-principle { border-radius: var(--r-s); padding-left: 5px; }
+.mention.is-note > svg, .mention.is-trap > svg, .mention.is-law > svg, .mention.is-principle > svg { flex: none; color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
 /* a sheen runs across each tag as the note opens */
 .mention::after {
   content: ''; position: absolute; inset: 0; pointer-events: none; translate: -110% 0;
@@ -42,7 +42,7 @@
 }
 .mention:active { scale: var(--press, 0.93); transition-duration: var(--dur-0), var(--dur-2), var(--dur-2); }
 .mention:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: var(--r-pill); }
-.mention:is(.is-book, .is-note, .is-trap, .is-law):focus-visible { border-radius: var(--r-s); }
+.mention:is(.is-book, .is-note, .is-trap, .is-law, .is-principle):focus-visible { border-radius: var(--r-s); }
 .mention.is-missing { overflow: visible; padding: 0; background: none; box-shadow: none; color: var(--ink-3); font-weight: var(--w-medium); }
 .mention.is-missing::after { display: none; }
 

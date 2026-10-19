@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.111.0',
+    date: '2026-10-19',
+    changes: [
+      'New in Learn: Win friends, Dale Carnegie’s 30 principles from How to Win Friends and Influence People',
+      'Each principle opens to the story behind it, the psychology, a real study, the mind traps it disarms and the laws of power it answers',
+      'Every principle has its own hand-drawn mark, plus a ladder of all 30, a where-to-start map, a principle of the day and a name-the-principle game',
+      'Mark principles you’re practising and count each time you try one',
+      'Mind traps and Laws of power show the principles that answer them',
+      'Link a principle in a note with [[, or from Insert › Win friends',
+    ],
+  },
+  {
     version: '1.110.0',
     date: '2026-10-19',
     changes: [

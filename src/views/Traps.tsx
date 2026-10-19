@@ -1,9 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { goBack } from '../lib/router';
+import { goBack, navigateAfterSheet } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
 import { EVIDENCE, FAMILIES, POWER, REFLECT, TRAPS, power, type Family, type Trap } from '../data/traps';
+import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
@@ -26,6 +27,13 @@ const BY_ID = new Map(TRAPS.map((x) => [x.id, x]));
 const FAMILY_IDS = Object.keys(FAMILIES) as Family[];
 const hueOf = (x: Trap) => FAMILIES[x.family].hue;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** For each trap, the Carnegie principles that disarm it (Win friends), and how. */
+const DISARMS = (() => {
+  const by = new Map<string, { p: Principle; how: string }[]>();
+  for (const p of PRINCIPLES) for (const { id, how } of p.traps) by.set(id, [...(by.get(id) ?? []), { p, how }]);
+  return by;
+})();
 
 /* ---------- small pieces ---------- */
 
@@ -188,7 +196,7 @@ function PowerMap({ open }: { open: (x: Trap) => void }) {
 
 /* ---------- one trap, opened ---------- */
 
-function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCaught: () => void; go: (id: string) => void }) {
+function TrapDetail({ x, caught, onCaught, go, openPrinciple }: { x: Trap; caught: number; onCaught: () => void; go: (id: string) => void; openPrinciple: (n: number) => void }) {
   const p = power(x);
   const [ev, evAbout] = EVIDENCE[x.evidence];
   const bars: [string, number, string][] = [
@@ -248,6 +256,19 @@ function TrapDetail({ x, caught, onCaught, go }: { x: Trap; caught: number; onCa
       <ul class="tr-d-list">{x.life.map((l) => <li>{l}</li>)}</ul>
       <h3 class="tr-d-h">{t('How to get out')}</h3>
       <ol class="tr-d-list escape">{x.escape.map((l) => <li>{l}</li>)}</ol>
+      {!!DISARMS.get(x.id)?.length && (
+        <>
+          <h3 class="tr-d-h">{t('Principles that disarm it')}</h3>
+          <div class="tr-links">
+            {DISARMS.get(x.id)!.map(({ p, how }) => (
+              <button class="tr-link" style={{ '--t': `var(--emo-${PARTS[p.part].hue})` }} onClick={() => openPrinciple(p.n)}>
+                <span class="tr-link-top"><Icon name="heart-handshake" size={15} /> <b>{p.title}</b> <Icon name="arrow-up-right" size={14} class="tr-link-go" /></span>
+                <span class="tr-link-how">{how}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <div class="tr-d-fact">
         <p class="tr-d-study-k"><Icon name="sparkles" size={15} /> {t('Strange but true')}</p>
@@ -291,7 +312,7 @@ function useAccent() {
 
 export function Traps({ query: params }: { query: URLSearchParams }) {
   useAccent();
-  // ?open=<id> opens a trap straight away (the Laws of Power page links here)
+  // ?open=<id> opens a trap straight away (the Laws of power and Win friends pages link here)
   const [open, setOpen] = useState<string | null>(() => (BY_ID.has(params.get('open') ?? '') ? params.get('open') : null));
   const [family, setFamily] = usePref<string>('traps-family', 'all', ['all', ...FAMILY_IDS]);
   const [sort, setSort] = usePref<Sort>('traps-sort', 'power', SORTS);
@@ -317,6 +338,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
     setOpen(id);
     body.current?.closest('.sheet-body')?.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
   };
+  const openPrinciple = (n: number) => { setOpen(null); navigateAfterSheet(`friends?open=${n}`); };
   // the sheet keeps showing the last trap while it slides away
   const last = useRef<Trap | null>(null);
   if (open) last.current = BY_ID.get(open) ?? null;
@@ -446,7 +468,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('#{rank} of {n}', { rank: RANK.get(current.id)!, n: TRAPS.length }) : ''} label={current?.name} tall>
         <div ref={body}>
-          {current && <TrapDetail key={current.id} x={current} caught={caught[current.id] ?? 0} onCaught={() => addCaught(current.id)} go={go} />}
+          {current && <TrapDetail key={current.id} x={current} caught={caught[current.id] ?? 0} onCaught={() => addCaught(current.id)} go={go} openPrinciple={openPrinciple} />}
         </div>
       </Sheet>
     </div>

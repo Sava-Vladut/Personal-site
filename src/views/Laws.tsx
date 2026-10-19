@@ -5,6 +5,7 @@ import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
 import { LAWS, REALMS, roman, type Law, type Realm } from '../data/laws';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
+import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
@@ -26,6 +27,13 @@ const TRAP_BY_ID = new Map(TRAPS.map((x) => [x.id, x]));
 const REALM_IDS = Object.keys(REALMS) as Realm[];
 const hueOf = (x: Law) => REALMS[x.realm].hue;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** For each law, the Carnegie principles that answer it (Win friends), and how. */
+const ANSWERS = (() => {
+  const by = new Map<number, { p: Principle; how: string }[]>();
+  for (const p of PRINCIPLES) for (const { n, how } of p.laws) by.set(n, [...(by.get(n) ?? []), { p, how }]);
+  return by;
+})();
 
 /** Every mind trap the laws spring, most-sprung first, with the laws that spring it. */
 const SPRUNG = (() => {
@@ -246,7 +254,7 @@ function useSeen() {
 
 type Lens = 'player' | 'target';
 
-function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens; seen: { on?: number; by?: number }; onSeen: (k: 'on' | 'by') => void; go: (n: number) => void; openTrap: (id: string) => void }) {
+function LawDetail({ x, lens, seen, onSeen, go, openTrap, openPrinciple }: { x: Law; lens: Lens; seen: { on?: number; by?: number }; onSeen: (k: 'on' | 'by') => void; go: (n: number) => void; openTrap: (id: string) => void; openPrinciple: (n: number) => void }) {
   const realm = REALMS[x.realm];
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
 
@@ -331,6 +339,20 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap }: { x: Law; lens: Lens
         <p>{x.honest}</p>
       </div>
 
+      {!!ANSWERS.get(x.n)?.length && (
+        <>
+          <h3 class="lw-d-h">{t('Carnegie’s answer')}</h3>
+          <div class="lw-springs">
+            {ANSWERS.get(x.n)!.map(({ p, how }) => (
+              <button class="lw-spring" style={{ '--t': `var(--emo-${PARTS[p.part].hue})` }} onClick={() => openPrinciple(p.n)}>
+                <span class="lw-spring-top"><Icon name="heart-handshake" size={15} /> <b>{p.title}</b> <Icon name="arrow-up-right" size={14} class="lw-spring-go" /></span>
+                <span class="lw-spring-how">{how}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       <blockquote class="lw-d-question">
         <small>{t('A question to sit with')}</small>
         {x.question}
@@ -407,6 +429,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
     body.current?.closest('.sheet-body')?.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
   };
   const openTrap = (id: string) => { setOpen(null); navigateAfterSheet(`traps?open=${id}`); };
+  const openPrinciple = (n: number) => { setOpen(null); navigateAfterSheet(`friends?open=${n}`); };
   // the sheet keeps showing the last law while it slides away
   const last = useRef<Law | null>(null);
   if (open) last.current = BY_N.get(open) ?? null;
@@ -550,7 +573,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Law {n} of 48', { n: current.n }) : ''} label={current?.title} tall>
         <div ref={body}>
-          {current && <LawDetail key={current.n} x={current} lens={lens} seen={seen[current.n] ?? {}} onSeen={(k) => addSeen(current.n, k)} go={go} openTrap={openTrap} />}
+          {current && <LawDetail key={current.n} x={current} lens={lens} seen={seen[current.n] ?? {}} onSeen={(k) => addSeen(current.n, k)} go={go} openTrap={openTrap} openPrinciple={openPrinciple} />}
         </div>
       </Sheet>
     </div>
