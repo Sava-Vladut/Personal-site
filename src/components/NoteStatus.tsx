@@ -15,8 +15,8 @@ const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
 /** How much a note holds, as Word's status bar counts it: words, characters (spaces too) and minutes to read. */
 function measure(text: string) {
   const words = stripMarkdown(plainText(text))
-    // a note link's id isn't a word of the note: only its title shows
-    .replace(/\[\[note:[^|\]\n]*\|/g, '[[')
+    // a link's id isn't a word of the note: only its title shows
+    .replace(/\[\[(?:note|trap|law):[^|\]\n]*\|/g, '[[')
     .replace(/^\s*[•☐☑] /gm, '');
   const n = words.match(WORD)?.length ?? 0;
   return { words: n, chars: [...words.replace(/\n/g, '')].length, minutes: n ? Math.max(1, Math.round(n / 220)) : 0 };

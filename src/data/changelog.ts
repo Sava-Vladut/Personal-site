@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.107.0',
+    date: '2026-10-19',
+    changes: [
+      'Link a mind trap or a law of power in a note: type [[ and its name (or “law 12”)',
+      'They show as chips in the note: tap one for its one-line summary and a way to open it',
+    ],
+  },
+  {
     version: '1.106.1',
     date: '2026-10-18',
     changes: [

@@ -6,6 +6,7 @@ import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
 import { KIND_LABEL } from './spotify';
 import { noteLabel, resolveNote } from './links';
+import { refTarget } from './refs';
 import { PERSON, SONG, resolvePerson, resolveSong } from './mentions';
 import { dateName, peopleIn } from './people';
 import { todayKey } from './dates';
@@ -31,6 +32,8 @@ function mentions(text: string, books: Book[]) {
   const entries = getEntries();
   return text
     .replace(MENTION, (_, target: string | undefined, label: string) => {
+      const ref = refTarget(target);
+      if (ref) return ref.kind === 'trap' ? t('“{title}” (mind trap)', { title: label }) : t('“{title}” (law of power {n})', { title: label, n: ref.id });
       const n = target?.startsWith('note:') || !resolveMention(target, label, books) ? resolveNote(target, label, entries, books) : undefined;
       if (n) return t('“{title}” (note, {date})', { title: noteLabel(n), date: longDate(n.date) });
       const b = resolveMention(target, label, books);

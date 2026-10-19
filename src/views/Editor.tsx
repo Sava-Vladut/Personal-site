@@ -8,6 +8,7 @@ import { imageSrc } from '../lib/images';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { linkedFrom, linkOf, noteLabel, suggestLinks, type LinkSuggestion } from '../lib/links';
+import { findRef, refOf, useRefs } from '../lib/refs';
 import { connectSpotify } from '../lib/spotify';
 import {
   blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
@@ -712,8 +713,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     setMentionState((cur) => (!m ? null : cur && cur.from === m.from && cur.to === m.to && cur.q === m.q && cur.link === m.link ? cur : m));
   };
   const typing = mention;
+  // the mind traps and laws of power are fetched the first time a [[ link is typed
+  const refs = useRefs(!!typing?.link);
   const suggestions: (Suggestion | LinkSuggestion)[] = !typing ? []
-    : typing.link ? suggestLinks(typing.q, allEntries, shelf, draft.id)
+    : typing.link ? suggestLinks(typing.q, allEntries, shelf, draft.id, refs)
     : suggest(typing.q, people, shelf, songs, allEntries);
   const canAdd = !!typing && !typing.link && typing.q.trim().length > 1 && !people.some((p) => personNameKey(p.name) === personNameKey(typing.q));
   const choices = suggestions.length + (canAdd ? 1 : 0);
@@ -766,6 +769,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (!current) return setMentionState(null);
       token = linkOf(current);
       if (current.emotions[0]) color = `var(--emo-${coreOf(current.emotions[0]).id})`;
+    } else if (s.kind === 'trap' || s.kind === 'law') {
+      const current = findRef(refs, s.kind, s.item.id);
+      if (!current) return setMentionState(null);
+      token = refOf(current);
+      color = `var(--emo-${current.hue})`;
     } else {
       const current = getSongs().find((song) => song.id === s.item.id);
       if (!current) return setMentionState(null);
@@ -958,7 +966,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       />
       <FormatBar
         note={note}
-        swapLabel={typing?.link ? t('Link a note or a book') : t('Tag someone, a book or music')}
+        swapLabel={typing?.link ? t('Link a note, a book, a bias or a law') : t('Tag someone, a book or music')}
         swap={typing && (
           <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} link={typing.link} />
         )}

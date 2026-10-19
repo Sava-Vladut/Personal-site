@@ -41,7 +41,7 @@ export function mentionOfSong(s: Song, songs: Song[]) {
 export const songsIn = (text: string, songs: Song[]) =>
   text.includes('♪[') ? [...new Set([...text.matchAll(SONG)].map((m) => resolveSong(m[1], m[2], songs)?.id).filter(Boolean) as string[])] : [];
 
-export type MentionKind = 'person' | 'book' | 'song' | 'note';
+export type MentionKind = 'person' | 'book' | 'song' | 'note' | 'trap' | 'law';
 export interface Found { start: number; end: number; kind: MentionKind; core: string | null }
 
 /** Every tag in a stretch of text that points at something you have, with where it sits: for colouring them while writing. */

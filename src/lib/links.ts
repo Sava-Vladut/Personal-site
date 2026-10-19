@@ -5,6 +5,7 @@
 import { MENTION, resolveMention } from './books';
 import { stripMarkdown } from './markdown';
 import { score, searchKey } from './mentions';
+import { suggestRefs, type Ref } from './refs';
 import type { Book, Entry } from './store';
 import { t } from './i18n';
 
@@ -70,17 +71,18 @@ export function typedLink(text: string, caret: number) {
   caret = Math.max(0, Math.min(Math.trunc(caret), text.length));
   const before = text.slice(0, caret);
   const m = /\[\[([^[\]|\r\n]{0,120})$/.exec(before);
-  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1]) || /^(?:photo|image|album|note|book):/.test(m[1])) return null;
+  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1]) || /^(?:photo|image|album|note|book|trap|law):/.test(m[1])) return null;
   return { start: m.index, end: caret, q: m[1], link: true as const };
 }
 
-export type LinkSuggestion = { kind: 'note'; item: Entry } | { kind: 'book'; item: Book };
+export type LinkSuggestion = { kind: 'note'; item: Entry } | { kind: 'book'; item: Book } | { kind: 'trap'; item: Ref } | { kind: 'law'; item: Ref };
 
 /**
  * What a [[ suggests: with nothing typed yet, your latest notes and the books you're reading; otherwise the best
- * matches by title (or first line), notes first when they match as well. Never the note being written.
+ * matches by title (or first line), notes first when they match as well, then books, mind traps and laws of power
+ * (`refs`, once they're loaded). Never the note being written.
  */
-export function suggestLinks(q: string, entries: Entry[], books: Book[], self: string, max = 8): LinkSuggestion[] {
+export function suggestLinks(q: string, entries: Entry[], books: Book[], self: string, refs: Ref[] | null = null, max = 8): LinkSuggestion[] {
   const notes = entries.filter((e) => e.kind === 'note' && e.id !== self);
   const needle = searchKey(q);
   if (!needle)
@@ -92,5 +94,6 @@ export function suggestLinks(q: string, entries: Entry[], books: Book[], self: s
   const least = needle.length < 3 ? 2 : 1; // a letter or two only matches the start of a word
   notes.forEach((item, i) => { const s = score(needle, noteLabel(item)); if (s >= least) all.push([s + 0.2, -i, { kind: 'note', item }]); });
   books.forEach((item, i) => { const s = score(needle, item.title, item.authors); if (s >= least) all.push([s, -i, { kind: 'book', item }]); });
+  suggestRefs(q, refs).forEach(([s, item], i) => all.push([s, -i, { kind: item.kind, item } as LinkSuggestion]));
   return all.sort((a, b) => b[0] - a[0] || b[1] - a[1]).slice(0, max).map((x) => x[2]);
 }

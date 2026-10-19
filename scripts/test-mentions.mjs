@@ -103,6 +103,7 @@ const bundle = await rolldown({
       if (id === '\0review:mentions') return `
         export * from '${new URL('../src/lib/mentions.ts', import.meta.url).pathname}';
         export { linkedFrom, linkOf, linkRanges, noteLabel, resolveNote, suggestLinks, typedLink } from '${new URL('../src/lib/links.ts', import.meta.url).pathname}';
+        export { refOf, refTarget } from '${new URL('../src/lib/refs.ts', import.meta.url).pathname}';
       `;
     },
   }],
@@ -210,4 +211,21 @@ test('[[ suggests other notes first, then books, never the note being written', 
   assert.deepEqual(plain(picks.map((s) => `${s.kind}:${s.item.id}`)), ['note:n1', 'book:b1']);
   const recent = env.suggestLinks('', entries, books, 'self');
   assert.deepEqual(plain(recent.map((s) => `${s.kind}:${s.item.id}`)), ['note:n1', 'note:n2', 'book:b1']);
+});
+
+test('[[ suggests mind traps and laws of power by name, after notes and books, and links them by id', () => {
+  const env = load();
+  const ref = (kind, id, name) => ({ kind, id, name, sub: '', line: '', hue: 'joy', to: '' });
+  const refs = [ref('trap', 'confirmation', 'Confirmation bias'), ref('law', '1', 'Never Outshine the Master'), ref('law', '3', 'Conceal Your Intentions')];
+  const entries = [note('n1', 'Conference day')];
+  const picks = env.suggestLinks('con', entries, [], 'self', refs);
+  assert.deepEqual(plain(picks.map((s) => `${s.kind}:${s.item.id}`)), ['note:n1', 'trap:confirmation', 'law:3']);
+  assert.deepEqual(plain(env.suggestLinks('outshine', [], [], 'self', refs).map((s) => s.item.id)), ['1']);
+  assert.deepEqual(plain(env.suggestLinks('law 3', [], [], 'self', refs).map((s) => s.item.id)), ['3']);
+  assert.deepEqual(plain(env.suggestLinks('', entries, [], 'self', refs).map((s) => s.kind)), ['note']);
+  assert.equal(env.refOf(refs[0]), '[[trap:confirmation|Confirmation bias]]');
+  assert.deepEqual(plain(env.refTarget('law:12')), { kind: 'law', id: '12' });
+  assert.equal(env.refTarget('note:12'), null);
+  assert.equal(env.typedLink('see [[trap:confirmation', 23), null);
+  assert.equal(env.resolveNote('trap:confirmation', 'Confirmation bias', [{ ...note('x', 'Confirmation bias') }], []), undefined);
 });

@@ -40,7 +40,7 @@ import { count, LOCALE, t } from '../lib/i18n';
 const DAYS_PAGE = 20;
 
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
-const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song):[^\]|\n]+\|/g;
+const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song|trap|law):[^\]|\n]+\|/g;
 
 export function Journal() {
   const entries = useEntries();

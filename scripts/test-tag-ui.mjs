@@ -32,6 +32,7 @@ function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height:
         usePeople: () => [{ id: 'person', name: 'Person', emotions: [] }],
         useBooks: () => [], useSongs: () => [], useEntries: () => [],
       },
+      '../lib/refs': { useRefs: () => null, findRef: () => undefined, refTarget: () => null },
     }[id] ?? (id.endsWith('/i18n') ? i18n : {})),
     window: { visualViewport: viewport }, innerWidth: 390, innerHeight: 844,
     matchMedia: () => ({ matches: reduced }),
