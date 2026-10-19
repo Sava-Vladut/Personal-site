@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.3',
+    date: '2026-10-19',
+    changes: [
+      'Win friends: “Talk in terms of the other person’s interests” has its own study, on similarity and liking, instead of repeating the questions study from principle 15',
+    ],
+  },
+  {
     version: '1.112.2',
     date: '2026-10-19',
     changes: [

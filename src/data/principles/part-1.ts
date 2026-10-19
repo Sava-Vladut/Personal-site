@@ -380,9 +380,9 @@ export const PRINCIPLES: Principle[] = [
       { n: 33, how: 'Greene’s thumbscrew is a person’s secret weakness, found and exploited. Carnegie looks for the opposite: a person’s secret pride, found and celebrated.' },
     ],
     study: {
-      who: 'Karen Huang, Michael Yeomans, Alison Wood Brooks, Julia Minson and Francesca Gino, 2017',
-      title: 'It doesn’t hurt to ask',
-      text: 'In online chats between strangers, people who were told to ask many questions were liked more by their partners than those told to ask few. In data from speed dating, people who asked more questions were more likely to get a second date. The most powerful questions were follow-ups: asking more about something the other person had just said. Those questions show that you were listening and are interested in their world. Yet people consistently underestimated how much asking would help.',
+      who: 'Donn Byrne, 1961; Matthew Montoya, Robert Horton and Jeffrey Kirchner, 2008',
+      title: 'The stranger who agrees with you',
+      text: 'Byrne measured students’ views on a range of topics, then showed each of them the answers of a supposed fellow student. In fact the experimenter had filled them in to agree or disagree with the participant’s own. The more the stranger’s answers matched theirs, the more students said they would like that person and would like working with them, though they had never met. Decades of similar studies followed. In 2008 Montoya, Horton and Kirchner pooled more than three hundred of them and found that similarity strongly predicts liking between strangers and in brief encounters. In established relationships, though, what counted was how similar people believed they were, more than how similar they actually were. Common ground opens the door; the feeling of being understood keeps it open. Talking about what someone cares about creates that feeling without pretending you share it.',
     },
     today: [
       'Asking a client about the marathon on their profile before getting down to business',

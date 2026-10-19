@@ -373,9 +373,9 @@ export const RO: Record<number, PrincipleRo> = {
       { how: "Cleștele lui Greene este slăbiciunea secretă a unui om, găsită și exploatată. Carnegie caută opusul: mândria secretă a unui om, găsită și sărbătorită." },
     ],
     study: {
-      who: "Karen Huang, Michael Yeomans, Alison Wood Brooks, Julia Minson și Francesca Gino, 2017",
-      title: "Nu strică să întrebi",
-      text: "În conversații online între necunoscuți, cei cărora li s-a spus să pună multe întrebări au fost plăcuți mai mult de partenerii lor decât cei cărora li s-a spus să pună puține. În datele de la speed dating, cei care puneau mai multe întrebări aveau mai multe șanse să primească o a doua întâlnire. Cele mai puternice întrebări au fost cele de continuare: să întrebi mai mult despre ceva ce tocmai spusese celălalt. Aceste întrebări arată că ai ascultat și că te interesează lumea lui. Totuși, oamenii au subestimat constant cât de mult ajută să întrebi.",
+      who: "Donn Byrne, 1961; Matthew Montoya, Robert Horton și Jeffrey Kirchner, 2008",
+      title: "Necunoscutul care îți dă dreptate",
+      text: "Byrne a măsurat părerile unor studenți despre mai multe subiecte, apoi i-a arătat fiecăruia răspunsurile unui presupus coleg. De fapt, experimentatorul le completase el însuși, ca să se potrivească sau nu cu ale participantului. Cu cât răspunsurile necunoscutului semănau mai mult cu ale lor, cu atât studenții spuneau că l-ar plăcea mai mult și că le-ar plăcea să lucreze cu el, deși nu-l întâlniseră niciodată. Au urmat decenii de studii asemănătoare. În 2008, Montoya, Horton și Kirchner au adunat peste trei sute dintre ele și au constatat că asemănarea prezice puternic simpatia între necunoscuți și în întâlniri scurte. În relațiile de durată însă, a contat mai mult cât de asemănători credeau oamenii că sunt decât cât de asemănători erau de fapt. Terenul comun deschide ușa; sentimentul că ești înțeles o ține deschisă. Să vorbești despre ce îi pasă cuiva creează acest sentiment fără să pretinzi că îl împărtășești.",
     },
     today: [
       "Să-l întrebi pe un client despre maratonul din profilul lui înainte să treci la treabă",
