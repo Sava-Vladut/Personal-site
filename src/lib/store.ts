@@ -836,7 +836,7 @@ darkMq.addEventListener('change', applyTheme);
 
 /* ---------- toasts ---------- */
 
-export interface Toast { id: number; text: string; action?: { label: string; run: () => void } }
+export interface Toast { id: number; text: string; action?: { label: string; run: () => unknown } }
 const toasts$ = observable<Toast[]>([]);
 export const useToasts = toasts$.use;
 let toastId = 0;

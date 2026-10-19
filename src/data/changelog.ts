@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.10',
+    date: '2026-10-19',
+    changes: [
+      'If Undo can’t bring something back, it tells you, instead of quietly closing as if it had worked',
+    ],
+  },
+  {
     version: '1.112.9',
     date: '2026-10-19',
     changes: [

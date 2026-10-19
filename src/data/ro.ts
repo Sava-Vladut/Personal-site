@@ -906,6 +906,7 @@ export const RO: Record<string, string> = {
 
   // ── Editor ──
   'Couldn’t save this note. Try again.': 'Notița nu s-a putut salva. Încearcă din nou.',
+  'Couldn’t undo that. Try again.': 'Nu s-a putut anula. Încearcă din nou.',
   'Couldn’t save the note’s weather.': 'Vremea notiței nu s-a putut salva.',
   'Spotify connected': 'Spotify conectat',
   'Spotify login cancelled': 'Conectarea la Spotify a fost anulată',
