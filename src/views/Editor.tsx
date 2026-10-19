@@ -8,7 +8,7 @@ import { imageSrc } from '../lib/images';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { linkedFrom, linkOf, noteLabel, suggestLinks, type LinkSuggestion } from '../lib/links';
-import { findRef, refOf, useRefs } from '../lib/refs';
+import { findRef, refOf, useRefs, type Ref } from '../lib/refs';
 import { connectSpotify } from '../lib/spotify';
 import {
   blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
@@ -19,6 +19,7 @@ import { coreOf } from '../data/emotions';
 import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
+import { RefSheet } from '../components/RefSheet';
 import { FormatBar } from '../components/FormatBar';
 import { ShareSheet } from '../components/ShareSheet';
 import { takeDown } from '../lib/share';
@@ -41,7 +42,7 @@ import '../styles/document.css';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law';
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 const MAX_PHOTOS = 20;
@@ -685,9 +686,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     write('end');
   };
 
-  /** Mentions a book where the caret is (or at the end of the note, while reading), as a link to it. */
-  const mentionBook = (b: Book) => {
-    const token = mentionOf(b, getBooks());
+  /** Puts a tag's token in where the caret is (or at the end of the note, while reading). */
+  const insertToken = (token: string) => {
     const n = noteRef.current;
     setOpen(null);
     if (n) return n.insertToken(token, reading);
@@ -695,6 +695,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (!d) return;
     update({ text: d.text + (d.text && !/\s$/.test(d.text) ? ' ' : '') + token + ' ' });
   };
+  /** Mentions a book, as a link to it. */
+  const mentionBook = (b: Book) => insertToken(mentionOf(b, getBooks()));
+  /** Links a mind trap or a law of power. */
+  const insertRef = (r: Ref) => insertToken(refOf(r));
 
   /** The Link sheet, for the link at the caret (or the selected words, or the word at the caret). */
   const openLink = () => {
@@ -1017,6 +1021,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           mention: () => startMention('@'),
           linkNote: () => startMention('[['),
           mentionBook: () => setOpen('book'),
+          insertRef: (kind) => setOpen(kind),
         }}
       />
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
@@ -1068,6 +1073,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           noteRef.current?.cmds.link(to);
         }}
       />
+      <RefSheet kind={open === 'trap' || open === 'law' ? open : null} onClose={close} onPick={insertRef} />
       <BookSheet open={open === 'book'} onClose={close} onPick={mentionBook} title={t('Mention a book')} status="reading" />
       <SpotifySheet
         open={open === 'spotify'}

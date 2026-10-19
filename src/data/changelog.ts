@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.107.1',
+    date: '2026-10-19',
+    changes: [
+      'The note’s Insert tab has a new Learn group: Mind trap and Law of power, each opening the full list to search and pick from',
+    ],
+  },
+  {
     version: '1.107.0',
     date: '2026-10-19',
     changes: [

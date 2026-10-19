@@ -50,7 +50,8 @@ export interface RibbonProps {
 
 /**
  * The note editor's ribbon, as Word has it. Home holds Undo, the font styles, the paragraph's (lists, indents, quote)
- * and a gallery of styles, the one at the caret lit; Insert adds pictures, music, a book, a tag, links and blocks;
+ * and a gallery of styles, the one at the caret lit; Insert adds pictures, music, a book, a tag, links, a mind trap
+ * or a law of power, and blocks;
  * View switches between writing and reading, Focus, the zoom, the note's icon and details. While a picture is
  * selected a Picture tab comes up, in the accent colour, and opens by itself; it goes again with the picture.
  *
@@ -248,6 +249,10 @@ export function Ribbon(p: RibbonProps) {
       big('at', t('Mention'), a.mention, { off, title: t('Tag someone, a book or music') }),
       big('file-text', t('Note link'), a.linkNote, { off, title: t('Link another note') }),
       big('link', t('Link'), a.link, { off, on: !!lit?.link, k: 'Ctrl+K' }),
+    ]),
+    group('learn', t('Learn'), [
+      big('spiral', t('Mind trap'), () => a.insertRef('trap'), { off, title: t('Insert a mind trap') }),
+      big('crown', t('Law of power'), () => a.insertRef('law'), { off, title: t('Insert a law of power') }),
     ]),
     group('blocks', t('Blocks'), [
       big('separator-horizontal', t('Divider'), () => cmds?.insert('hr'), { off }),

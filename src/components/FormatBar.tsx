@@ -39,6 +39,8 @@ export interface RibbonActions {
   /** links another note ([[) */
   linkNote: () => void;
   mentionBook: () => void;
+  /** a mind trap or a law of power, picked from the whole list */
+  insertRef: (kind: 'trap' | 'law') => void;
   /** the Link sheet: a web link on the words at the caret */
   link: () => void;
 }

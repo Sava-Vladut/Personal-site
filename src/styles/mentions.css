@@ -68,6 +68,12 @@
 .peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
 .peek-actions { display: flex; gap: 8px; }
 .peek .progress { margin: -4px 0 0; }
+.ref-rows { margin-top: 12px; }
+.ref-row-icon {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-s);
+  color: color-mix(in oklab, var(--c) 70%, var(--ink)); background: color-mix(in oklab, var(--c) 16%, transparent);
+  font-size: var(--text-m); font-variant-numeric: tabular-nums;
+}
 .peek-note-icon {
   flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--r-m);
   color: color-mix(in oklab, var(--c, var(--ink-3)) 70%, var(--ink));
