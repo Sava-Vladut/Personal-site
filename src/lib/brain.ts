@@ -241,8 +241,8 @@ function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string, spa
     const a = mean(late.map(moodOf).filter((m): m is number => m !== null)), b = mean(timed.filter((e) => !late.includes(e)).map(moodOf).filter((m): m is number => m !== null));
     add('night', 75, t('The night shift'),
       a !== null && b !== null && a < b - 0.5
-        ? t('{entries} came after 11 pm, and they run heavier ({a}) than the rest ({b}). A tired amygdala reacts about 60% more strongly (Walker, 2007).', { entries: count(late.length, 'entry', 'entries'), a: a.toFixed(1), b: b.toFixed(1) })
-        : t('{entries} came after 11 pm. A tired amygdala reacts about 60% more strongly (Walker, 2007), so late feelings can be louder than they are by day.', { entries: count(late.length, 'entry', 'entries') }),
+        ? t('{entries} came after 11 pm, and they run heavier ({a}) than the rest ({b}). After a night without sleep, the amygdala reacted about 60% more strongly to upsetting pictures (Yoo and Walker, 2007).', { entries: count(late.length, 'entry', 'entries'), a: a.toFixed(1), b: b.toFixed(1) })
+        : t('{entries} came after 11 pm. After a night without sleep, the amygdala reacted about 60% more strongly to upsetting pictures (Yoo and Walker, 2007), so feelings written short of sleep can be louder than they are by day.', { entries: count(late.length, 'entry', 'entries') }),
       'fear');
   }
 
@@ -278,7 +278,7 @@ function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string, spa
   const run = streaks(list).longest;
   const active = new Set(list.map((e) => e.date)).size;
   add('habit', 45, t('Habit loop'),
-    t('You showed up on {days} of {span} days, with a longest run of {run}. A new habit takes about 66 days on average to feel automatic (Lally, 2009); the basal ganglia are still learning.', { days: active, span, run }),
+    t('You showed up on {days} of {span} days, with a longest run of {run}. In one study a new habit took a median of 66 days to feel automatic, anywhere from 18 to 254 (Lally, 2009); the basal ganglia are still learning.', { days: active, span, run }),
     'hope-interest');
 
   return out.sort((a, b) => b.weight - a.weight);

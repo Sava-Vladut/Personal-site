@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.8',
+    date: '2026-10-19',
+    changes: [
+      'Brain: the late-night insight says what the sleep study measured, a night without sleep, not just a late hour',
+      'Brain: the habit insight gives the 66 days as a median, with the real range of 18 to 254',
+    ],
+  },
+  {
     version: '1.112.7',
     date: '2026-10-19',
     changes: [
