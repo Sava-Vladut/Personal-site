@@ -24,17 +24,19 @@ async function loadModule(file, mocks, globals = {}) {
       },
     }],
   });
-  const { output } = await bundle.generate({ format: 'cjs' });
+  const { output } = await bundle.generate({ format: 'esm', codeSplitting: false });
   await bundle.close();
-  const module = { exports: {} };
-  vm.runInNewContext(output[0].code, {
-    mocks, module, exports: module.exports, console, Blob, URL, TextEncoder, TextDecoder,
+  // Run the ES module as an async function body, so top-level await (the lazily loaded Romanian Learn text) works:
+  // its closing `export { a, b as c }` becomes the function's return value.
+  const code = output[0].code.replace(/^export \{([^}]*)\};?\s*$/m, (_, list) => `return { ${list.split(',').map((s) => s.trim()).filter(Boolean)
+    .map((s) => { const [local, name = local] = s.split(/\s+as\s+/); return `${JSON.stringify(name.replace(/^["']|["']$/g, ''))}: ${local}`; }).join(', ')} };`);
+  return vm.runInNewContext(`(async () => {\n${code}\n})()`, {
+    mocks, console, Blob, URL, TextEncoder, TextDecoder,
     Uint8Array, crypto: webcrypto, AbortController, setTimeout: () => 0, clearTimeout: () => {},
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {} }), navigator: {},
     ...globals,
   });
-  return module.exports;
 }
 
 function memoryDB(initialEntries = []) {

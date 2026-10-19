@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.1',
+    date: '2026-10-19',
+    changes: [
+      'Win friends: the stock-price study under “If you are wrong, admit it” now says what the researchers actually found',
+    ],
+  },
+  {
     version: '1.112.0',
     date: '2026-10-19',
     changes: [

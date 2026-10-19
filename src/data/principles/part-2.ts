@@ -134,7 +134,7 @@ export const PRINCIPLES: Principle[] = [
     study: {
       who: 'Fiona Lee, Christopher Peterson and Larissa Tiedens, 2004',
       title: 'Mea culpa: predicting stock prices from organisational attributions',
-      text: 'The researchers analysed the annual reports of companies explaining bad results. Some blamed outside forces such as the economy or regulation; others blamed their own decisions and said what they would do differently. Companies that took the blame had higher stock prices a year later. In a lab follow-up, people who read a self-blaming report saw the company as more in control and rated its prospects better. The data are correlational, and owning up only helped when it came with a credible plan, but the pattern fits Carnegie: admitting fault read as strength, not weakness.',
+      text: 'The researchers analysed the annual reports of companies explaining bad results. Some blamed outside forces they could not control, such as the economy or regulation; others blamed their own decisions. Companies that took the blame had higher stock prices a year later. In a lab follow-up, people who read a self-blaming report saw the company as more in control of its fate and rated its prospects better. The data are correlational, and what seemed to help was blaming causes the company could control, which suggested it could fix them, but the pattern fits Carnegie: admitting fault read as strength, not weakness.',
     },
     today: [
       'Starting an email to a client with “We got this wrong, and here’s what we’re doing about it”',
