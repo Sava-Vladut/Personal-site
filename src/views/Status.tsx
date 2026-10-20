@@ -16,7 +16,8 @@ type Public = { owner: string; checkin: PublicCheckin | null; updated: number; c
 type State = Public | 'gone' | 'loading' | 'error';
 
 async function read(token: string): Promise<Public | 'gone'> {
-  const r = await fetch(`/api/status/${token}`, { cache: 'no-store' });
+  // a deadline, so a visitor on a stalled connection sees the error page, not "loading" for good
+  const r = await fetch(`/api/status/${token}`, { cache: 'no-store', signal: AbortSignal.timeout(15_000) });
   if (r.status === 404) return 'gone';
   if (!r.ok) throw new Error();
   return r.json();

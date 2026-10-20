@@ -36,6 +36,7 @@ async function call(method: string, countdown?: Countdown) {
     r = await fetch('/api/countdown', {
       method,
       cache: 'no-store',
+      signal: AbortSignal.timeout(15_000), // a stalled connection fails instead of spinning
       headers: countdown ? { 'Content-Type': 'application/json' } : undefined,
       body: countdown ? JSON.stringify({ countdown }) : undefined,
     });

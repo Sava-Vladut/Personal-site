@@ -60,6 +60,7 @@ async function call(method: string, body?: object): Promise<Status> {
     r = await fetch('/api/status', {
       method,
       cache: 'no-store',
+      signal: AbortSignal.timeout(15_000), // a stalled connection fails instead of spinning
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });

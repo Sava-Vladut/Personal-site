@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.14',
+    date: '2026-10-20',
+    changes: [
+      'Sharing, your public status, the countdown and signing in give up after 15 seconds on a stalled connection and say so, instead of spinning',
+      'A shared note or status page shows its error after 15 seconds on a stalled connection, instead of loading forever for whoever opened it',
+    ],
+  },
+  {
     version: '1.112.13',
     date: '2026-10-20',
     changes: [

@@ -108,6 +108,8 @@ async function call<T>(method: string, path: string, body?: BodyInit | object, t
   try {
     r = await fetch('/api/share' + path, {
       method,
+      // a deadline, so a stalled connection fails instead of spinning; a picture upload may take as long as it needs
+      signal: raw ? undefined : AbortSignal.timeout(15_000),
       headers: body === undefined ? undefined : { 'Content-Type': raw ? type! : 'application/json' },
       body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
     });
@@ -165,7 +167,7 @@ export function takeDown(e: Entry | null | undefined) {
 export async function readShared(token: string): Promise<PublicNote & { shared: number } | 'gone'> {
   let r: Response;
   try {
-    r = await fetch(`/api/share/${token}`, { cache: 'no-store' });
+    r = await fetch(`/api/share/${token}`, { cache: 'no-store', signal: AbortSignal.timeout(15_000) });
   } catch {
     throw new Error(t('Couldn’t reach the server. Check your connection.'));
   }

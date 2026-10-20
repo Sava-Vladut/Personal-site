@@ -26,10 +26,10 @@ const calls = [];
 let reply = () => ({ status: 200, body: {} });
 const toasts = [];
 const context = {
-  mocks, toasts, Blob, JSON, Promise, Error, Object, Math, String, Number,
+  mocks, toasts, Blob, JSON, Promise, Error, Object, Math, String, Number, AbortSignal,
   location: { origin: 'https://example.test' },
   fetch: async (url, init = {}) => {
-    calls.push({ url, method: init.method, body: init.body, type: init.headers?.['Content-Type'] });
+    calls.push({ url, method: init.method, body: init.body, type: init.headers?.['Content-Type'], signal: init.signal });
     const r = reply(url, init.method, calls.length);
     return { ok: r.status < 400, status: r.status, json: async () => r.body };
   },
@@ -106,6 +106,8 @@ test('publishing sends only the public copy, then the photos the server is missi
   const sent = JSON.parse(calls[0].body);
   assert.deepEqual(Object.keys(sent).sort(), ['cover', 'date', 'dateEnd', 'images', 'photos', 'text', 'title']);
   assert.equal(calls[1].type, 'image/webp');
+  assert.ok(calls[0].signal instanceof AbortSignal, 'the note itself has a deadline');
+  assert.equal(calls[1].signal, undefined, 'a picture upload takes as long as it needs');
 });
 
 test('publishing with details sends them and remembers the choice', async () => {

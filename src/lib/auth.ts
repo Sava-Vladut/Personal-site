@@ -59,6 +59,7 @@ async function call(method: string, body?: unknown) {
   try {
     r = await fetch('/api/admin', {
       method,
+      signal: AbortSignal.timeout(15_000), // a stalled connection fails instead of spinning
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
