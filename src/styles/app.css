@@ -333,7 +333,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .prompt-last { display: inline-flex; align-items: center; gap: 5px; font-weight: var(--w-medium); }
 .prompt > svg { flex: none; color: var(--ink-3); }
 @media (hover: hover) { .prompt:hover .prompt-last, .prompt:hover > svg { color: var(--ink); } }
-.prompt:active { transform: scale(0.985); }
+.prompt:active { transform: scale(0.98); }
 
 .day { margin-top: 28px; }
 .feed-more { height: 1px; }
