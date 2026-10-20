@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.22',
+    date: '2026-10-20',
+    changes: [
+      'The emotion wheel’s level label and a note’s date line are spaced like the app’s other small capital labels',
+    ],
+  },
+  {
     version: '1.112.21',
     date: '2026-10-20',
     changes: [

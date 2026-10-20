@@ -48,7 +48,7 @@
 }
 .details-date, .details-add { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 22px; font: var(--w-medium) var(--text-s)/1 var(--sans); color: var(--ink-3); white-space: nowrap; }
 /* the date leads, in small capitals, with a dot between it and the rest */
-.details-summary > .details-date:first-child { font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.07em; text-transform: uppercase; }
+.details-summary > .details-date:first-child { font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.08em; text-transform: uppercase; }
 .details-summary > .details-date:first-child:not(:last-child)::after { content: ''; width: 3px; height: 3px; margin-left: 6px; border-radius: 50%; background: var(--line-2); }
 .details-add { color: var(--ink-3); }
 .details-music {
