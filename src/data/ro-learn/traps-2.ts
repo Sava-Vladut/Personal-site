@@ -187,7 +187,7 @@ export const RO: Record<string, TrapRo> = {
     test: {
       q: 'O boală afectează 1 om din 1.000. Un test depistează fiecare caz real, dar spune în mod greșit „pozitiv” și pentru 5% dintre oamenii sănătoși. Ai ieșit pozitiv. Cât de probabil e, aproximativ, să ai boala?',
       options: ['Cam 95%', 'Cam 50%', 'Cam 2%'],
-      reveal: 'Cam 2%. Imaginează-ți 1.000 de oameni: 1 are boala și iese pozitiv. Dintre cei 999 sănătoși, aproximativ 50 ies și ei pozitivi. Așadar, din aproximativ 51 de pozitivi, doar unul e adevărat. Majoritatea medicilor de la Harvard întrebați așa au răspuns 95%.',
+      reveal: 'Cam 2%. Imaginează-ți 1.000 de oameni: 1 are boala și iese pozitiv. Dintre cei 999 sănătoși, aproximativ 50 ies și ei pozitivi. Așadar, din aproximativ 51 de pozitivi, doar unul e adevărat. Întrebați asta la Harvard, aproape jumătate dintre medici și studenți au spus 95%; mai puțin de unul din cinci a răspuns corect.',
     },
   },
   conjunction: {
@@ -356,7 +356,7 @@ export const RO: Record<string, TrapRo> = {
     test: {
       q: 'Ai plătit £100 pentru o excursie și £50 pentru alta, apoi îți dai seama că sunt în același weekend. Ți-ar plăcea mai mult cea de £50. La care mergi?',
       options: ['La cea de £100, am plătit mai mult pe ea', 'La cea de £50, mi-ar plăcea mai mult'],
-      reveal: 'Banii sunt cheltuiți oricum. Doar plăcerea mai e în joc. În studiul original, peste jumătate dintre oameni au ales excursia de £100, de care se așteptau să se bucure mai puțin.',
+      reveal: 'Banii sunt cheltuiți oricum. Doar plăcerea mai e în joc. În studiul original, peste jumătate dintre oameni au ales excursia care costase mai mult, de care se așteptau să se bucure mai puțin.',
     },
   },
   endowment: {

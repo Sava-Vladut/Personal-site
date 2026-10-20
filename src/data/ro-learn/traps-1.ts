@@ -28,7 +28,7 @@ export const RO: Record<string, TrapRo> = {
     test: {
       q: 'Patru cărți au fiecare o literă pe o parte și un număr pe cealaltă. Vezi: E, K, 4, 7. Regula: „Dacă o carte are o vocală pe o parte, are un număr par pe cealaltă.” Pe care cărți trebuie să le întorci ca să testezi regula?',
       options: ['E și 4', 'Doar E', 'E și 7', 'Pe toate patru'],
-      reveal: 'E și 7. Cartea 4 nu poate încălca regula (regula nu spune nimic despre ce se află în spatele unui număr par), dar o vocală în spatele lui 7 ar încălca-o. Cei mai mulți aleg E și 4: caută cărțile care ar putea confirma regula, nu pe cea care ar putea-o infirma.',
+      reveal: 'E și 7. Cartea 4 nu poate încălca regula (regula nu spune nimic despre ce se află în spatele unui număr par), dar o vocală în spatele lui 7 ar încălca-o. Cea mai frecventă alegere e E și 4: oamenii caută cărțile care ar putea confirma regula, nu pe cea care ar putea-o infirma.',
     },
   },
   motivated: {

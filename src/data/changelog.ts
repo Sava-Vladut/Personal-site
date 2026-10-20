@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.16',
+    date: '2026-10-20',
+    changes: [
+      'Mind traps: the base-rate answer says almost half the Harvard doctors said 95%, not most; fewer than one in five got it right',
+      'Mind traps: E and 4 is the most common pick in the card puzzle, not a majority one',
+      'Mind traps: the ski-trip answer no longer puts pounds into a study that used dollars',
+    ],
+  },
+  {
     version: '1.112.15',
     date: '2026-10-20',
     changes: [
