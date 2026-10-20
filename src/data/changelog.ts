@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.19',
+    date: '2026-10-20',
+    changes: [
+      'A journal day’s mood line shines or sways twice when it appears, then rests, and plays again when you hover it',
+    ],
+  },
+  {
     version: '1.112.18',
     date: '2026-10-20',
     changes: [

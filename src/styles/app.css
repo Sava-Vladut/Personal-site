@@ -399,10 +399,13 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   margin-block: -6px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
 }
 .ascii-cloud + .day-mood { margin-left: 0; }
-/* the weather of a day (components/cloud.tsx) reaches the mood line: it shines in sun, flashes with lightning, sways in rain */
+/* the weather of a day (components/cloud.tsx) reaches the mood line: it shines in sun, flashes with lightning, sways in rain.
+   Calm by default like the nav wheel: twice when the day appears, then again while hovered */
 .day-mood { transition: color var(--dur-1), text-shadow var(--dur-1); }
-.day-label[data-weather='sun'] .day-mood { animation: sun-text 4.5s ease-in-out infinite; }
-.day-label[data-weather='rain'] .day-mood { animation: rain-text 5s ease-in-out infinite; }
+.day-label { --day-runs: 2; }
+@media (hover: hover) { .day-label:hover { --day-runs: infinite; } }
+.day-label[data-weather='sun'] .day-mood { animation: sun-text 4.5s ease-in-out var(--day-runs); }
+.day-label[data-weather='rain'] .day-mood { animation: rain-text 5s ease-in-out var(--day-runs); }
 .day-label[data-weather='storm'][data-flash] .day-mood { color: var(--ink); text-shadow: 0 0 10px var(--d1), 0 0 2px var(--d1); }
 .day-label[data-weather='storm'][data-flash] .ascii-cloud { opacity: 1; color: var(--ink); }
 @keyframes sun-text { 50% { text-shadow: 0 0 10px color-mix(in oklab, var(--d1) 70%, transparent); } }
