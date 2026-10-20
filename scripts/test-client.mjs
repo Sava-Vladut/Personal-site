@@ -20,7 +20,7 @@ async function load(file, mocks = {}, globals = {}) {
     : compiled.get(file);
   vm.runInNewContext(code, {
     module, exports: module.exports, require: (id) => mocks[id] ?? (id.endsWith('/i18n') ? i18n : effects[id] ?? {}),
-    console, Blob, URL, URLSearchParams, atob, Uint8Array, Event, AbortController, setTimeout, clearTimeout,
+    console, Blob, URL, URLSearchParams, atob, Uint8Array, Event, AbortController, AbortSignal, setTimeout, clearTimeout,
     ...globals,
     // the start-up code reads the page's address to tell a public note's link from the app
     ...(file === 'src/main.tsx' ? { location: { pathname: '/', ...globals.location } } : {}),
@@ -1029,6 +1029,17 @@ test('README requests share memory cache and forget it on refresh or disconnect'
   assert.equal(calls, 2);
 });
 
+test('a GitHub request that stalls gives up with a timeout, once, instead of spinning', async () => {
+  let calls = 0, signal;
+  const { getGhRepo } = await load('src/lib/github.ts', { './retry': await load('src/lib/retry.ts', {}, { navigator: { onLine: true }, setTimeout: (fn) => setImmediate(fn) }) }, {
+    AbortSignal,
+    fetch: async (_url, init) => { calls++; signal = init.signal; throw Object.assign(new Error('timed out'), { name: 'TimeoutError' }); },
+  });
+  await assert.rejects(getGhRepo(1), (e) => e.status === 504 && /took too long/.test(e.message));
+  assert.equal(calls, 1, 'a timeout is not tried again');
+  assert.ok(signal instanceof AbortSignal, 'the request carries a deadline');
+});
+
 test('reads are tried again when the server can’t be reached, but not when it answered', async () => {
   const { retry } = await load('src/lib/retry.ts', {}, { navigator: { onLine: true }, setTimeout: (fn) => setImmediate(fn) });
   let calls = 0;
@@ -1198,16 +1209,17 @@ test('the wheel keeps your order, hidden places and groups, and new places still
     hidden: ['repos', 'gone'],
     groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
   });
-  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch', 'traps'], 'a new place lands in its usual group');
+  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch'], 'your own grouping stays as you left it');
+  assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch', 'traps']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 
   // every place exactly once, even from a broken save
   const broken = mod.normalize({ top: ['journal', 'journal', 'insights'], kids: { insights: ['journal', 'stats', 'stats'] } });
-  const all = [...broken.top.filter((id) => id !== 'insights'), ...broken.kids.insights];
+  const all = [...broken.top.filter((id) => !broken.kids[id]), ...Object.values(broken.kids).flat()];
   assert.equal(new Set(all).size, all.length);
   assert.equal(all.length, wheel.WHEEL.reduce((n, x) => n + (x.kids?.length ?? 1), 0));
 

@@ -18,6 +18,8 @@ const bundle = await rolldown({
       if (id === 'review:notebody') return '\0' + id;
       // the app's chips read the store; here they're just their names
       if (id.endsWith('/components/mentions')) return '\0mentions';
+      // the traps, laws and principles aren't read here (their Romanian text arrives by top-level await, which this IIFE bundle can't hold)
+      if (/\/data\/(traps|laws|principles)$/.test(id)) return '\0learn-data';
     },
     load(id) {
       if (id === '\0review:notebody') return `
@@ -27,6 +29,7 @@ const bundle = await rolldown({
         export { h, render } from 'preact';
         export { act } from 'preact/test-utils';
       `;
+      if (id === '\0learn-data') return 'export const TRAPS = [], LAWS = [], PRINCIPLES = [], FAMILIES = {}, REALMS = {}, PARTS = {};';
       if (id === '\0mentions') return `
         import { h } from 'preact';
         const chip = (cls) => ({ text }) => h('button', { class: 'mention ' + cls }, text);

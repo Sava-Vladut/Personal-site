@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.12',
+    date: '2026-10-20',
+    changes: [
+      'Spotify and GitHub give up after 20 seconds on a stalled connection and say so, instead of loading forever',
+    ],
+  },
+  {
     version: '1.112.11',
     date: '2026-10-20',
     changes: [

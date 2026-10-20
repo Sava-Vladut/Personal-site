@@ -48,8 +48,11 @@ const get = <T>(path: string) => retry(() => once<T>(path));
 async function once<T>(path: string, method = 'GET'): Promise<T> {
   let res: Response;
   try {
-    res = await fetch('/api/github' + path, { method, credentials: 'same-origin' });
-  } catch {
+    // a little past the server's own 15 s deadline on GitHub, so its answer comes first; a stalled connection would spin forever
+    res = await fetch('/api/github' + path, { method, credentials: 'same-origin', signal: AbortSignal.timeout(20_000) });
+  } catch (e) {
+    // 504, like the server's own timeout, so it isn't tried again after such a long wait
+    if ((e as Error)?.name === 'TimeoutError') throw Object.assign(new Error(t('GitHub took too long to respond. Try again.')), { status: 504 });
     throw new Error(t('Can’t reach the server. GitHub needs the app’s server running (npm start).'));
   }
   const body = await res.json().catch(() => ({}));
