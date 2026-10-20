@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.11',
+    date: '2026-10-20',
+    changes: [
+      'Brain: the nucleus accumbens is described as the research has it: dopamine drives wanting more than enjoying',
+      'Brain: the amygdala errs on the side of caution because a false alarm costs less than a missed threat, not “on purpose”',
+    ],
+  },
+  {
     version: '1.112.10',
     date: '2026-10-19',
     changes: [

@@ -91,11 +91,11 @@ export function pulse(world: string, t: number, ph: number, x: number, y: number
 /** Where each world lives in the brain, and what that part does. */
 export const ZONES: Record<string, { name: string; role: string }> = {
   'hope-interest': { name: t('Prefrontal cortex'), role: t('The planner. It holds goals in mind, weighs what comes next and turns curiosity into action.') },
-  joy: { name: t('Nucleus accumbens'), role: t('The reward hub. Dopamine here makes good things worth repeating, and the wanting often feels better than the having.') },
+  joy: { name: t('Nucleus accumbens'), role: t('The reward hub. Its dopamine drives wanting more than enjoying, which is why the chase can pull harder than the prize.') },
   'love-connection': { name: t('Temporal lobe'), role: t('The social brain. It reads faces, voices and intentions, and it files away the people who matter to you.') },
   'calm-safety': { name: t('Brainstem and vagus nerve'), role: t('The brake pedal. The vagus nerve slows your heart and tells the body it is safe to rest.') },
   sadness: { name: t('Subgenual cingulate'), role: t('A deep, slow hub for low mood and loss. Sadness is the brain slowing down to take in something that mattered.') },
-  fear: { name: t('Amygdala'), role: t('The smoke detector. It flags danger in a fraction of a second, before you have had time to think, and errs on the side of caution on purpose.') },
+  fear: { name: t('Amygdala'), role: t('The smoke detector. It flags danger in a fraction of a second, before you have had time to think, and errs on the side of caution, because a false alarm costs less than a missed threat.') },
   anger: { name: t('Hypothalamus'), role: t('The body’s alarm panel. It turns a perceived wrong or threat into heat, heartbeat and hormones.') },
   'shame-aversion': { name: t('Insula'), role: t('Where the body’s signals become feelings. It fires for disgust, for the sting of social pain and for the urge to look away.') },
 };
