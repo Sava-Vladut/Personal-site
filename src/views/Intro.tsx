@@ -169,7 +169,7 @@ export function Intro({ onEnter }: IntroProps) {
             <li><b>{t('People and media')}</b> {t('The people, books and music that fill your days.')}</li>
             <li><b>{t('Repos')}</b> {t('Code you’ve written, rated and journaled.')}</li>
             <li><b>{t('Stats and your brain')}</b> {t('The patterns between all of it, drawn as a brain like this one.')}</li>
-            <li class="muted">{t('Everything stays in your browser. Sync is end-to-end encrypted.')}</li>
+            <li class="muted">{t('Your journal stays in your browser unless you share it. Sync is end-to-end encrypted.')}</li>
           </ul>
         )}
       </div>

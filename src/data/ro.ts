@@ -1546,7 +1546,7 @@ export const RO: Record<string, string> = {
   'Code you’ve written, rated and journaled.': 'Codul pe care l-ai scris, notat și trecut în jurnal.',
   'Stats and your brain': 'Statistici și creierul tău',
   'The patterns between all of it, drawn as a brain like this one.': 'Tiparele dintre toate acestea, desenate ca un creier ca acesta.',
-  'Everything stays in your browser. Sync is end-to-end encrypted.': 'Totul rămâne în browserul tău. Sincronizarea e criptată cap-coadă.',
+  'Your journal stays in your browser unless you share it. Sync is end-to-end encrypted.': 'Jurnalul tău rămâne în browser, dacă nu alegi să-l împarți. Sincronizarea e criptată cap-coadă.',
   'drag to spin · tap a region to light it': 'trage ca să-l rotești · atinge o regiune ca s-o aprinzi',
   'Sign-in': 'Conectare',
   'Signed in on this device': 'Conectat pe acest dispozitiv',

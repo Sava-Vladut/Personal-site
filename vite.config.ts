@@ -33,8 +33,24 @@ function precache(): Plugin {
   };
 }
 
+// The Latin files of the two typefaces nearly all text is set in, fetched alongside the stylesheet instead of after
+// it: otherwise the first paint is in the fallback fonts and the text visibly reflows when these swap in.
+function preloadFonts(): Plugin {
+  return {
+    name: 'preload-fonts',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler: (_html, { bundle }) =>
+        Object.keys(bundle ?? {})
+          .filter((f) => /(source-serif-4|instrument-sans)-latin-wght-normal-[\w-]+\.woff2$/.test(f))
+          .map((f) => ({ tag: 'link', attrs: { rel: 'preload', as: 'font', type: 'font/woff2', href: '/' + f, crossorigin: true }, injectTo: 'head' as const })),
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [preact(), precache()],
+  plugins: [preact(), precache(), preloadFonts()],
   server: {
     // The Node server (npm start / scripts/dev.mjs) handles /api
     proxy: { '/api': `http://localhost:${process.env.PORT || 8085}` },

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.18',
+    date: '2026-10-20',
+    changes: [
+      'The app’s two typefaces start downloading with the page, so text shows in them sooner, with less of a jump as they swap in',
+      'The welcome screen says your journal stays in your browser unless you share it, rather than “everything”',
+    ],
+  },
+  {
     version: '1.112.17',
     date: '2026-10-20',
     changes: [
