@@ -1396,6 +1396,7 @@ export const RO: Record<string, string> = {
   'Channel': 'Canal',
   'All channels': 'Toate canalele',
   'No channel points': 'Niciun punct de canal',
+  'Channel points couldn’t be loaded.': 'Punctele de canal nu s-au putut încărca.',
   'Points on {channel}': 'Puncte pe {channel}',
   'Points on every channel': 'Puncte pe toate canalele',
   '{n} a day on average': '{n} pe zi în medie',

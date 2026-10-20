@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.13',
+    date: '2026-10-20',
+    changes: [
+      'Channel points stop waiting after 15 seconds on a stalled connection and offer Try again, instead of freezing until you reload',
+      'Channel points’ error messages are in Romanian when the app is',
+    ],
+  },
+  {
     version: '1.112.12',
     date: '2026-10-20',
     changes: [

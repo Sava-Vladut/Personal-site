@@ -1040,6 +1040,22 @@ test('a GitHub request that stalls gives up with a timeout, once, instead of spi
   assert.ok(signal instanceof AbortSignal, 'the request carries a deadline');
 });
 
+test('channel points give up on a stalled request, and the next load fetches again', async () => {
+  const calls = [];
+  const { loadPoints } = await load('src/lib/twitch.ts', { 'preact/hooks': {} }, {
+    AbortSignal,
+    fetch: async (url, init) => {
+      calls.push(init.signal);
+      if (calls.length === 1) throw Object.assign(new Error('timed out'), { name: 'TimeoutError' });
+      return { ok: true, json: async () => ({ channels: [] }) };
+    },
+  });
+  await loadPoints();
+  assert.ok(calls[0] instanceof AbortSignal, 'the request carries a deadline');
+  await loadPoints(true);
+  assert.equal(calls.length, 2, 'a stalled load doesn’t block the next one');
+});
+
 test('reads are tried again when the server can’t be reached, but not when it answered', async () => {
   const { retry } = await load('src/lib/retry.ts', {}, { navigator: { onLine: true }, setTimeout: (fn) => setImmediate(fn) });
   let calls = 0;

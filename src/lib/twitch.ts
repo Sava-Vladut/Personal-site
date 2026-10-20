@@ -2,6 +2,7 @@
 // One copy is kept for the whole app, so the wheel and the page share it, and it's fetched again
 // when it's a minute old.
 import { useEffect, useState } from 'preact/hooks';
+import { t } from './i18n';
 
 export interface Change { day: number; week: number; month: number }
 export interface Channel {
@@ -49,14 +50,15 @@ const set = (next: Partial<State>) => {
 export function loadPoints(force = false) {
   if (pending || (!force && Date.now() - fetchedAt < FRESH && state.data)) return pending;
   set({ loading: true });
-  pending = fetch('/api/twitch')
+  // a deadline, so a stalled connection can't hold `pending` (and with it every refresh) forever
+  pending = fetch('/api/twitch', { signal: AbortSignal.timeout(15_000) })
     .then(async (r) => {
       const body = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(body.error || 'Channel points couldn’t be loaded.');
+      if (!r.ok) throw new Error(body.error || t('Channel points couldn’t be loaded.'));
       fetchedAt = Date.now();
       set({ data: body as Points, error: null, loading: false });
-    })
-    .catch((e: Error) => set({ error: e.message || 'Channel points couldn’t be loaded.', loading: false }))
+    }, () => { throw new Error(t('Couldn’t reach the server. Check your connection.')); })
+    .catch((e: Error) => set({ error: e.message || t('Channel points couldn’t be loaded.'), loading: false }))
     .finally(() => (pending = null));
   return pending;
 }
