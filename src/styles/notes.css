@@ -26,7 +26,7 @@
 .note-head > .eyebrow { margin: 0 0 6px; font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--word-ink); }
 .note-head .editor-top { margin-top: 0; gap: 10px; align-items: flex-start; }
 /* the icon, when there is one: a bare glyph before the title, no box */
-.note-head .icon-pick { width: 34px; height: 34px; margin-top: 2px; border-radius: var(--r-s); background: none; border-color: transparent; }
+.note-head .icon-pick { width: var(--h-s); height: var(--h-s); margin-top: 2px; border-radius: var(--r-s); background: none; border-color: transparent; }
 .note-head .title-input { font: var(--w-regular) 30px/1.15 var(--serif); letter-spacing: -0.022em; padding: 2px 0; }
 /* a cover shows as a soft wash behind the title and the line under it */
 .note-head.has-cover { overflow: hidden; margin-inline: -12px; padding: 10px 12px; border-radius: var(--r-l); }

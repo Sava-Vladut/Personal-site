@@ -169,7 +169,7 @@
 }
 .status-context { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .status-pill {
-  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: var(--r-pill);
+  display: inline-flex; align-items: center; gap: 6px; height: var(--h-s); padding: 0 13px; border-radius: var(--r-pill);
   background: color-mix(in oklab, var(--surface) 72%, transparent); border: 1px solid var(--line);
   font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); font-variant-numeric: tabular-nums;
 }

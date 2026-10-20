@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.21',
+    date: '2026-10-20',
+    changes: [
+      'Segmented controls, status pills, the note icon picker, the ribbon tabs, the wheel editor’s buttons and the desktop New button take their height from the app’s shared button sizes',
+    ],
+  },
+  {
     version: '1.112.20',
     date: '2026-10-20',
     changes: [

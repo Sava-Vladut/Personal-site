@@ -213,7 +213,7 @@
 .rb-titlebar :is(.rb-share, .rb-done):focus-visible { outline-offset: 2px; }
 
 /* the tabs: the open one underlined in the accent colour */
-.rb-tabs { height: 34px; display: flex; align-items: stretch; gap: 8px; padding: 0 10px 0 8px; }
+.rb-tabs { height: var(--h-s); display: flex; align-items: stretch; gap: 8px; padding: 0 10px 0 8px; }
 .is-collapsed .rb-tabs { border-bottom: 1px solid var(--line); }
 .rb-tablist { flex: 1; min-width: 0; display: flex; align-items: stretch; gap: 2px; }
 .rb-tab {
