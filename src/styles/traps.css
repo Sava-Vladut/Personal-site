@@ -66,7 +66,7 @@
 .tr-map-ring circle { fill: none; stroke: var(--line); stroke-width: 0.8; }
 .tr-map-ring text { font-size: 9px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tr-map-spoke { stroke: color-mix(in oklab, var(--c) 30%, var(--line)); stroke-width: 0.8; stroke-dasharray: 2 4; }
-.tr-map-family { font-size: 12px; font-weight: var(--w-bold); fill: color-mix(in oklab, var(--c) 75%, var(--ink)); }
+.tr-map-family { font-size: var(--text-s); font-weight: var(--w-bold); fill: color-mix(in oklab, var(--c) 75%, var(--ink)); }
 .tr-map-kin path { fill: none; stroke: var(--c); stroke-width: 1.2; opacity: 0.6; stroke-dasharray: 3 3; }
 .tr-star { cursor: pointer; outline: none; }
 .tr-star-hit { fill: transparent; }

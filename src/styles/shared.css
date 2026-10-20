@@ -147,7 +147,7 @@
 .status-trail { margin-top: 8px; font-size: var(--text-m); color: var(--ink-3); }
 .status-meter { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
 .status-bars { display: flex; gap: 5px; }
-.status-bars i { width: 26px; height: 8px; border-radius: 4px; background: color-mix(in oklab, var(--c) 16%, var(--surface-2)); }
+.status-bars i { width: 26px; height: 8px; border-radius: var(--r-xs); background: color-mix(in oklab, var(--c) 16%, var(--surface-2)); }
 .status-bars i.on { background: var(--c); }
 .status-level { font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-2); }
 .status-def { max-width: 32ch; margin-top: 16px; font: italic var(--w-regular) var(--text-base)/1.5 var(--serif); color: var(--ink-3); text-wrap: pretty; }

@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.20',
+    date: '2026-10-20',
+    changes: [
+      'Map labels, the countdown badge and the status bars take their sizes, corners and colours from the app’s shared styles, so they stay in step with the rest of the app',
+    ],
+  },
+  {
     version: '1.112.19',
     date: '2026-10-20',
     changes: [

@@ -47,8 +47,8 @@
 .lw-map-frame { fill: none; stroke: var(--line); }
 .lw-map-hot { fill: color-mix(in oklab, var(--accent) 6%, transparent); }
 .lw-map-axis { stroke: var(--line-2); stroke-dasharray: 2 4; }
-.lw-map-quad { font-size: 10px; font-weight: var(--w-bold); fill: var(--ink-3); }
-.lw-map-label { font-size: 10px; fill: var(--ink-3); }
+.lw-map-quad { font-size: var(--text-2xs); font-weight: var(--w-bold); fill: var(--ink-3); }
+.lw-map-label { font-size: var(--text-2xs); fill: var(--ink-3); }
 .lw-map-kin line { stroke: var(--c); stroke-width: 1.2; opacity: 0.6; stroke-dasharray: 3 3; }
 .lw-dot { cursor: pointer; outline: none; }
 .lw-dot-hit { fill: transparent; }

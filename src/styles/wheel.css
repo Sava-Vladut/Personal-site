@@ -287,6 +287,6 @@ button.we-icon:hover { background: color-mix(in oklab, var(--c) 28%, var(--surfa
 .cd-mini .cd-fill { stroke: currentColor; animation: none; transition: none; }
 .cd-trigger .cd-days {
   position: absolute; right: -2px; bottom: 1px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: var(--r-pill);
-  display: grid; place-items: center; font-size: 10px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
-  background: var(--emo-calm-safety); color: #fff; box-shadow: 0 0 0 2px var(--surface);
+  display: grid; place-items: center; font-size: var(--text-2xs); font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+  background: var(--emo-calm-safety); color: var(--on-color); box-shadow: 0 0 0 2px var(--surface);
 }

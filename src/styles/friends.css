@@ -61,8 +61,8 @@
 .wf-map-frame { fill: none; stroke: var(--line); }
 .wf-map-hot { fill: color-mix(in oklab, var(--accent) 9%, transparent); }
 .wf-map-axis { stroke: var(--line-2); stroke-dasharray: 2 4; }
-.wf-map-quad { font-size: 10px; font-weight: var(--w-bold); fill: var(--ink-3); }
-.wf-map-label { font-size: 10px; fill: var(--ink-3); }
+.wf-map-quad { font-size: var(--text-2xs); font-weight: var(--w-bold); fill: var(--ink-3); }
+.wf-map-label { font-size: var(--text-2xs); fill: var(--ink-3); }
 .wf-map-kin line { stroke: var(--c); stroke-width: 1.2; opacity: 0.6; stroke-dasharray: 3 3; }
 .wf-dot { cursor: pointer; outline: none; }
 .wf-dot-hit { fill: transparent; }
