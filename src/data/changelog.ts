@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.17',
+    date: '2026-10-20',
+    changes: [
+      'Laws of power: the Princeton drinking study is described as it measured, by averages, not as what “most” or “each” student said',
+    ],
+  },
+  {
     version: '1.112.16',
     date: '2026-10-20',
     changes: [
