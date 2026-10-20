@@ -96,7 +96,7 @@ async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T>
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const out = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(out.error || 'Something went wrong on the server.');
+  if (!r.ok) throw new Error(out.error || t('Something went wrong on the server.'));
   return out as T;
 }
 

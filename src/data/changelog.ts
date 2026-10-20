@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.112.15',
+    date: '2026-10-20',
+    changes: [
+      'If the synced copy is ever damaged, Settings says so plainly and that your journal on this device is unchanged, instead of a cryptic or blank error',
+      'The channel list’s server error is in Romanian when the app is',
+    ],
+  },
+  {
     version: '1.112.14',
     date: '2026-10-20',
     changes: [

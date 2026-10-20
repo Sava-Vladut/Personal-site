@@ -1319,6 +1319,7 @@ export const RO: Record<string, string> = {
   // ── Sync, viewer, images ──
   'Sync only works over a secure (https) connection.': 'Sincronizarea merge doar printr-o conexiune securizată (https).',
   'Can’t reach the server. It’ll sync when you’re back online.': 'Serverul nu poate fi accesat. Se va sincroniza când revii online.',
+  'The synced copy couldn’t be read. Your journal on this device is unchanged.': 'Copia sincronizată nu a putut fi citită. Jurnalul de pe acest dispozitiv a rămas neschimbat.',
   'The server couldn’t sync ({status}).': 'Serverul nu a putut sincroniza ({status}).',
   'Sync was turned off from another device': 'Sincronizarea a fost oprită de pe alt dispozitiv',
   'Lots of changes at once. Trying again shortly.': 'Multe modificări deodată. Se reîncearcă în curând.',

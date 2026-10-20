@@ -143,8 +143,17 @@ async function download(id: string, key: CryptoKey, rev: string | null) {
   if (res.status === 304) return { rev, doc: null };
   if (res.status === 404) return { rev: null, doc: null };
   if (!res.ok) throw await failure(res);
-  const doc: Doc = JSON.parse(dec.decode(await decrypt(key, await res.arrayBuffer())));
-  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error('The saved sync journal is invalid.');
+  // a copy that can't be decrypted or read: say so plainly (the browser's own message is cryptic, or blank), and that
+  // nothing here was touched, which is true, as this throws before anything is merged
+  const unreadable = () => new Error(t('The synced copy couldn’t be read. Your journal on this device is unchanged.'));
+  const body = await res.arrayBuffer(); // outside: a body cut off by its deadline keeps its own message
+  let doc: Doc;
+  try {
+    doc = JSON.parse(dec.decode(await decrypt(key, body)));
+  } catch {
+    throw unreadable();
+  }
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw unreadable();
   return { rev: res.headers.get('X-Sync-Rev'), doc };
 }
 

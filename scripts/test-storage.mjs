@@ -380,6 +380,17 @@ test('replacing a sync session continues even if the stopped session fails', asy
   assert.equal(sync.useSync().error, undefined);
 });
 
+test('a damaged synced copy is reported plainly and nothing is merged', async () => {
+  const mocks = syncMocks();
+  let merged = 0;
+  mocks['./store'].mergeSynced = async () => { merged++; return { icons: [] }; };
+  const sync = await loadModule('src/lib/sync.ts', mocks, {
+    fetch: async () => new Response(new Uint8Array(64), { status: 200, headers: { 'X-Sync-Rev': '1' } }),
+  });
+  await assert.rejects(sync.joinSync('ABCD-EFGH-JKLM'), /couldn’t be read\. Your journal on this device is unchanged/);
+  assert.equal(merged, 0);
+});
+
 test('a stalled sync request times out instead of blocking every later sync', async () => {
   const timers = new Map();
   let next = 0, calls = 0;
