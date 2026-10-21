@@ -133,7 +133,7 @@ function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: num
       style={{ '--c': `var(--emo-${e.core})`, '--w': `${w}px`, '--l': `${left}px`, '--t': `${py}px`, '--ax': `${ax}px` }}
     >
       <div class="ew-tip-head">
-        <span class="ew-tip-sprite"><Sprite core={e.core} size={22} idle /></span>
+        <span class="ew-tip-sprite"><Sprite core={e.core} size={32} idle /></span>
         <div class="ew-tip-title">
           <div class="ew-tip-name">{e.name}</div>
           <div class="ew-tip-meta">
@@ -387,8 +387,8 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
       const [x, y] = xy(rm, m);
       labels.push(
         <g opacity={outer}>
-          <WheelSprite core={e.core} x={x} y={y - 9} size={20} />
-          <text x={x} y={y + 17} class={`ew-core-label${hot === e.id ? ' hot' : ''}`}>{e.name.split(' / ')[0]}</text>
+          <WheelSprite core={e.core} x={x} y={y - 12} size={30} />
+          <text x={x} y={y + 20} class={`ew-core-label${hot === e.id ? ' hot' : ''}`}>{e.name.split(' / ')[0]}</text>
         </g>,
       );
     } else if (e.depth === 1 && outer > 0.01 && a1 - a0 > 4) {
@@ -436,15 +436,15 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         )}
         {z < 1 && hot && EMOTION[hot]?.depth < 2 && (
           <g opacity={outer}>
-            <WheelSprite core={EMOTION[hot].core} x={C} y={C - 8} size={22} idle />
-            <text x={C} y={C + 18} class="ew-hub-hint">{EMOTION[hot].name.split(' / ')[0]}</text>
+            <WheelSprite core={EMOTION[hot].core} x={C} y={C - 13} size={36} idle />
+            <text x={C} y={C + 24} class="ew-hub-hint">{EMOTION[hot].name.split(' / ')[0]}</text>
           </g>
         )}
         {core && inner > 0.01 && (
           <g opacity={inner}>
-            <WheelSprite core={core.id} x={C} y={C - 16} size={24} idle />
-            <text x={C} y={C + 13} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
-            <text x={C} y={C + 31} class="ew-hub-back">{t('Back')}</text>
+            <WheelSprite core={core.id} x={C} y={C - 21} size={40} idle />
+            <text x={C} y={C + 18} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
+            <text x={C} y={C + 35} class="ew-hub-back">{t('Back')}</text>
           </g>
         )}
         </g>
@@ -456,7 +456,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         {info ? (
           <>
             <div class="ew-cap-head">
-              <Sprite core={info.core} size={16} />
+              <Sprite core={info.core} size={24} />
               <span class="ew-cap-name">{info.depth === 0 ? info.name.split(' / ')[0] : info.name}</span>
               {info.depth > 0 && <span class="ew-cap-path">{trail(info.id)}</span>}
             </div>

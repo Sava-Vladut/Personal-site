@@ -72,7 +72,7 @@ function SpotRow({ e, onGo }: { e: Entry; onGo: () => void }) {
   return (
     <button class="spot-row" onClick={onGo}>
       <span class="spot-ico">
-        {e.kind === 'checkin' && em ? <Sprite core={em.core} size={16} /> : e.icon ? <NoteIcon id={e.icon} size={20} /> : <Icon name="notebook" size={18} />}
+        {e.kind === 'checkin' && em ? <Sprite core={em.core} size={22} /> : e.icon ? <NoteIcon id={e.icon} size={20} /> : <Icon name="notebook" size={18} />}
       </span>
       <span class="spot-main">
         <span class="spot-title">{title}</span>

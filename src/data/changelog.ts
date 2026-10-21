@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.115.1',
+    date: '2026-10-21',
+    changes: [
+      'Emotion characters are bigger everywhere: the wheel, the world picker, chips, the journal and stats',
+      'Their faces are bolder and simpler, so each expression reads at a glance',
+      'The white outline around the characters is gone',
+    ],
+  },
+  {
     version: '1.115.0',
     date: '2026-10-21',
     changes: [

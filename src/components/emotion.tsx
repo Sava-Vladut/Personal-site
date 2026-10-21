@@ -17,7 +17,7 @@ export function EmotionChip({ id, onRemove, path, size = 'md', idle, delay }: {
   const core = e.core;
   return (
     <span class={`emo emo-${size}`}>
-      <Sprite core={core} size={size === 'sm' ? 11 : 13} idle={idle} delay={delay} />
+      <Sprite core={core} size={size === 'sm' ? 16 : 20} idle={idle} delay={delay} />
       <span class="emo-name">{e.depth === 0 ? shortName(id) : e.name}</span>
       {path && e.depth > 0 && <span class="emo-path">{trail(id)}</span>}
       {onRemove && (
@@ -84,7 +84,7 @@ export function IntensityPicker({ value, onChange, cores = [], title = t('How st
             class="intensity-sprite"
             style={{ '--k': value, background: worlds.length > 1 ? `linear-gradient(105deg, ${worlds.map(tint).join(', ')})` : undefined }}
           >
-            {worlds.map((w) => <Sprite core={w} size={worlds.length > 1 ? 22 : 26} idle={value >= 4} />)}
+            {worlds.map((w) => <Sprite core={w} size={worlds.length > 1 ? 28 : 34} idle={value >= 4} />)}
           </span>
         )}
         <div>
@@ -137,7 +137,7 @@ export function WorldGrid({ onSelect, active }: { onSelect: (core: string) => vo
           <div class="worlds-row">
             {ids.map((id, i) => (
               <button class="world" aria-pressed={active === id} onClick={() => onSelect(id)} style={{ '--c': `var(--emo-${id})`, '--i': g * 4 + i }}>
-                <Sprite core={id} size={28} />
+                <Sprite core={id} size={42} />
                 <span>{shortName(id)}</span>
               </button>
             ))}
@@ -161,7 +161,7 @@ export function WorldDetail({ core, onBack, onPick, selected = [] }: {
         <button class="icon-btn" onClick={onBack} aria-label={t('Back to all emotions')}>
           <Icon name="chevron-left" />
         </button>
-        <Sprite core={core} size={22} />
+        <Sprite core={core} size={32} />
         <div>
           <h3 class="world-name">{c.name}</h3>
           <p class="world-def">{c.def}</p>

@@ -36,7 +36,7 @@ export function Dex() {
                 class="dex-mini" data-core={c} style={{ '--c': `var(--emo-${c})`, '--k': i }} aria-label={t('{world}: {n} of {total} found', { world: CORE[c].name, n, total: all.length })}
                 onClick={() => document.getElementById('dex-' + c)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
-                <Sprite core={c} size={18} idle={n > 0} delay={i * 370} />
+                <Sprite core={c} size={26} idle={n > 0} delay={i * 370} />
                 <span class="dex-mini-n">{n}<small>/{all.length}</small></span>
                 <span class="dex-mini-bar"><i style={{ width: `${(n / all.length) * 100}%` }} /></span>
               </button>
@@ -50,7 +50,7 @@ export function Dex() {
         return (
           <section class="dex-world" id={'dex-' + c} data-core={c} style={{ '--c': `var(--emo-${c})` }}>
             <h3 class="dex-title">
-              <Sprite core={c} size={14} idle delay={i * 370} /> {CORE[c].name}
+              <Sprite core={c} size={20} idle delay={i * 370} /> {CORE[c].name}
               <span class="dex-tally">{n}/{all.length}</span>
             </h3>
             <div class="dex-slots">
@@ -71,7 +71,7 @@ export function Dex() {
       <Sheet open={!!open} onClose={() => setOpen(null)} title={e?.name ?? ''}>
         {e && info && (
           <div class="stack">
-            <div class="row gap-s"><Sprite core={e.core} size={18} /><span class="muted">{trail(e.id)}</span></div>
+            <div class="row gap-s"><Sprite core={e.core} size={24} /><span class="muted">{trail(e.id)}</span></div>
             <p class="definition big">{e.def}</p>
             <p class="muted small">{t('Named {count} · first on {date}', { count: count(info.count, 'time', 'times'), date: shortDate(info.first) })}</p>
           </div>

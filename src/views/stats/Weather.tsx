@@ -63,7 +63,7 @@ export function Weather({ s }: { s: S }) {
           <ul>
             {notes.map((n, i) => (
               <li style={{ '--k': i, ...(n.core ? { '--c': `var(--emo-${n.core})` } : {}) }} class={n.core ? 'tinted' : ''}>
-                <span class="ins-ico">{n.core ? <Sprite core={n.core} size={13} /> : <Icon name="sparkles" size={13} />}</span>
+                <span class="ins-ico">{n.core ? <Sprite core={n.core} size={20} /> : <Icon name="sparkles" size={13} />}</span>
                 <span>{n.text}</span>
               </li>
             ))}

@@ -241,7 +241,7 @@ function DayOf({ date, list, compact }: DayProps) {
   return (
     <section ref={ref} class={mood ? 'day has-mood' : 'day'} style={style}>
       <h2 class="day-label">
-        {mood && <Sprite core={mood.worlds[0]} size={12} idle="view" delay={stagger(+date.replace(/-/g, ''))} />}
+        {mood && <Sprite core={mood.worlds[0]} size={18} idle="view" delay={stagger(+date.replace(/-/g, ''))} />}
         <span>{dayLabel(date)}</span>
         {mood && <AsciiCloud world={mood.worlds[0]} seed={stagger(+date.replace(/-/g, ''))} />}
         {mood && <span class="day-mood">{mood.word}</span>}
@@ -287,7 +287,7 @@ function CheckInRun({ list }: { list: Entry[] }) {
   return (
     <div class={open ? 'checkin-run open' : 'checkin-run'}>
       <button class="checkin checkin-fold" style={worlds.length ? { '--c': `var(--emo-${worlds[0]})` } : undefined} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span class="fold-sprites">{worlds.map((c, i) => <Sprite core={c} size={14} idle="view" delay={stagger(list[0].time) + i * 420} />)}</span>
+        <span class="fold-sprites">{worlds.map((c, i) => <Sprite core={c} size={20} idle="view" delay={stagger(list[0].time) + i * 420} />)}</span>
         <span class="checkin-name">{count(list.length, 'check-in', 'check-ins')}</span>
         <span class="checkin-meta">{worlds.map((c) => shortName(c)).join(', ')}</span>
         <span class="checkin-time">{span}</span>
@@ -366,7 +366,7 @@ function CheckInPrompt({ entries }: { entries: Entry[] }) {
     <button class="prompt card" style={em ? { '--c': `var(--emo-${em.core})` } : undefined} onClick={() => navigate('tracker')}>
       <h2 class="prompt-q">{t('How are you feeling?')}</h2>
       {em ? (
-        <span class="prompt-last"><Sprite core={em.core} size={11} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}</span>
+        <span class="prompt-last"><Sprite core={em.core} size={16} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}</span>
       ) : (
         <span class="prompt-sub">{t('Name it to tame it.')}</span>
       )}
@@ -390,7 +390,7 @@ function OnThisDay({ byDay, onOpen }: { byDay: Map<string, Entry[]>; onOpen: (da
     <div class="coming-up">
       <div class="coming-chip card on-this-day" style={c ? { '--c': `var(--emo-${c})` } : undefined}>
         <button class="coming-main" onClick={() => onOpen(date)}>
-          <span class="coming-icon">{c ? <Sprite core={c} size={16} idle /> : <Icon name="clock" size={18} />}</span>
+          <span class="coming-icon">{c ? <Sprite core={c} size={22} idle /> : <Icon name="clock" size={18} />}</span>
           <span class="book-row-main">
             <span class="book-row-title">{years === 1 ? t('A year ago today') : t('{span} ago today', { span: count(years, 'year', 'years') })}</span>
             <span class="book-row-sub">{[mood?.word, title].filter(Boolean).join(' · ') || count(list.length, 'entry', 'entries')}</span>
@@ -576,7 +576,7 @@ export function NoteRow({ e, dated }: { e: Entry; dated?: boolean }) {
       <span class="row-title">{heading || t('Untitled')}</span>
       <span class="row-text">{preview.replace(/\n+/g, ' · ')}</span>
       <span class="row-marks">
-        {worlds.map((c, i) => <Sprite core={c} size={12} idle="view" delay={stagger(e.time) + i * 380} />)}
+        {worlds.map((c, i) => <Sprite core={c} size={18} idle="view" delay={stagger(e.time) + i * 380} />)}
         {pictures > 0 && <Icon name="photo" size={14} />}
         {e.music.length > 0 && <Icon name="music" size={14} />}
       </span>
@@ -594,7 +594,7 @@ export function CheckInRow({ e }: { e: Entry }) {
   const w = weatherOf(e);
   return (
     <button class="checkin" style={em ? { '--c': `var(--emo-${em.core})`, '--k': e.intensity } : undefined} {...hold}>
-      {em ? <Sprite core={em.core} size={16} idle="view" delay={stagger(e.time)} /> : <span />}
+      {em ? <Sprite core={em.core} size={24} idle="view" delay={stagger(e.time)} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : t('Check-in')}</span>
       <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? t('thinking of {names}', { names: people.join(', ') }) : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{w && <WeatherMark w={w} />}{timeLabel(e.time)}</span>

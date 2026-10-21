@@ -54,7 +54,7 @@ export function Sprite({ core, size = 16, color, idle = false, delay }: { core: 
       viewBox="0 0 32 32"
       style={critterStyle(core, delay, color)}
       aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: critter(core, size < 16) }}
+      dangerouslySetInnerHTML={{ __html: critter(core, size < 20) }}
     />
   );
 }

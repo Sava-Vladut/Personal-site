@@ -349,7 +349,7 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, ma
         // the feeling's sprite, living like the journal's; a gathering of pins shows its main one, with a count
         const face = (
           <>
-            {c.core ? <Sprite core={c.core} size={many ? 16 : 14} idle={still ? 'view' : true} delay={(i * 370) % 1300} /> : <Icon name="notebook" size={14} stroke={2} />}
+            {c.core ? <Sprite core={c.core} size={many ? 22 : 20} idle={still ? 'view' : true} delay={(i * 370) % 1300} /> : <Icon name="notebook" size={14} stroke={2} />}
             {many && <span class="map-pin-count">{c.ids.length}</span>}
           </>
         );

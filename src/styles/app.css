@@ -139,16 +139,13 @@ h1, h2, h3, p { margin: 0; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-s); }
 ::selection { background: color-mix(in oklab, var(--ink) 18%, transparent); }
 code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-radius: var(--r-xs); }
-/* the worlds' characters (components/critters.ts): a sticker in the world's --c with a face in a deep shade of it */
+/* the worlds' characters (components/critters.ts): a shape in the world's --c with a face in a deep shade of it */
 .sprite {
   display: inline-block; flex: none; overflow: visible;
   --cr-deep: color-mix(in oklab, var(--c) 22%, #151514);
   --cr-light: color-mix(in oklab, var(--c) 52%, #fff);
   --cr-shade: color-mix(in oklab, var(--c) 70%, #000);
 }
-.cr-ol path { fill: #fff; stroke: #fff; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
-.cr-sh { opacity: 0.16; }
-.cr-sh path { fill: #000; stroke: #000; stroke-width: 3.4; stroke-linejoin: round; stroke-linecap: round; }
 .cr-c { fill: var(--c); }
 .cr-d { fill: var(--cr-deep); }
 .cr-l { fill: var(--cr-light); }
@@ -156,8 +153,8 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 .cr-y { fill: #ffd45e; }
 .cr-p { fill: #ff8fa3; opacity: 0.75; }
 .cr-t { fill: #9fd6ff; }
-.cr-k, .cr-ks { fill: none; stroke: var(--cr-deep); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.cr-ks { stroke: var(--cr-shade); }
+.cr-k, .cr-ks { fill: none; stroke: var(--cr-deep); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cr-ks { stroke: var(--cr-shade); stroke-width: 1.8; }
 
 /* idle loops: the heart beats, the star hops, the leaf sways, the spark twinkles, the ghost floats and glances
    about, rain falls, the flame flickers, the face looks away */
@@ -351,7 +348,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .intensity-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .intensity-count { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .intensity-read { display: flex; align-items: center; gap: 12px; min-height: 40px; }
-.intensity-sprite { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 40px; height: 40px; padding: 0 7px; flex: none; border-radius: var(--r-m); background: color-mix(in oklab, var(--c, var(--ink)) calc(8% + var(--k) * 3%), var(--surface-2)); transition: background-color var(--dur-2); }
+.intensity-sprite { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 52px; height: 52px; padding: 0 7px; flex: none; border-radius: var(--r-m); background: color-mix(in oklab, var(--c, var(--ink)) calc(8% + var(--k) * 3%), var(--surface-2)); transition: background-color var(--dur-2); }
 .intensity-sprite .sprite { flex: none; transform: scale(calc(0.8 + var(--k) * 0.08)); transition: transform var(--dur-3) var(--spring-bouncy); }
 .intensity-label { font-size: var(--text-l); font-weight: var(--w-bold); letter-spacing: -0.01em; color: color-mix(in oklab, var(--c, var(--ink)) 75%, var(--ink)); animation: rise-in var(--dur-2) var(--ease-emph) backwards; }
 .intensity-note { margin-top: 1px; font-size: var(--text-m); color: var(--ink-3); }

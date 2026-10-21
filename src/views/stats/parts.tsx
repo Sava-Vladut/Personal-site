@@ -56,7 +56,7 @@ export function Tile({ icon, label: l, value, small, sub, delta, meter, pips, k 
 export function WorldChip({ core, children }: { core: string; children: preact.ComponentChildren }) {
   return (
     <span class="world-chip" style={{ '--c': `var(--emo-${core})` }}>
-      <Sprite core={core} size={12} />{children}
+      <Sprite core={core} size={18} />{children}
     </span>
   );
 }

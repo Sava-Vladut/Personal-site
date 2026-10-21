@@ -119,7 +119,7 @@ export function Status({ token }: { token: string }) {
         </header>
 
         <section class="status-hero">
-          <div class="status-orb"><Sprite core={em.core} size={68} idle /></div>
+          <div class="status-orb"><Sprite core={em.core} size={88} idle /></div>
           <p class="status-kicker">{owner ? t('{name} is feeling', { name: owner }) : t('I’m feeling')}</p>
           <h1 class="status-name">{feeling}</h1>
           {em.depth > 0 && <p class="status-trail">{trail(em.id)}</p>}

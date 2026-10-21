@@ -150,7 +150,7 @@ export function StatusPanel() {
         <div class="status-preview" style={em ? { '--c': `var(--emo-${em.core})` } : undefined}>
           {em && preview ? (
             <>
-              <Sprite core={em.core} size={22} />
+              <Sprite core={em.core} size={30} />
               <span class="status-preview-main">
                 <span class="status-preview-name">{em.depth === 0 ? shortName(em.id) : em.name} · <span class="muted">{INTENSITY[preview.intensity - 1]} · {timeLabel(preview.time)}</span></span>
                 {preview.text && <span class="status-preview-note">“{preview.text}”</span>}
