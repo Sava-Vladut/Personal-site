@@ -1225,11 +1225,11 @@ test('the wheel keeps your order, hidden places and groups, and new places still
     hidden: ['repos', 'gone'],
     groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
   });
-  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch'], 'your own grouping stays as you left it');
+  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch', 'gops'], 'your own grouping stays as you left it, with a new place added at its end');
   assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['status', 'countdown']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch', 'gops']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 
@@ -1240,7 +1240,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.equal(all.length, wheel.WHEEL.reduce((n, x) => n + (x.kids?.length ?? 1), 0));
 
   // a group with everything in it hidden leaves the wheel; saving the default forgets the save
-  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'map', 'brain', 'twitch', 'traps'] });
+  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'map', 'brain', 'twitch', 'gops', 'traps'] });
   assert.ok(!mod.treeOf(empty).some((n) => n.id === 'insights'));
   mod.saveLayout(saved);
   assert.ok(store.has('mm-wheel-layout'));

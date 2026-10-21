@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.113.0',
+    date: '2026-10-21',
+    changes: [
+      'New page: Global Ops port, on the wheel under Insights, with the game port’s phase, checkpoints, builds, screenshots and log',
+    ],
+  },
+  {
     version: '1.112.23',
     date: '2026-10-20',
     changes: [

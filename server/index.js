@@ -16,6 +16,7 @@
 //    on the server, from the repo's page (server/clone.js).
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
+//  • Global Ops port: the progress the port's loop writes to GOPS_DIR/status.json, read-only (server/gops.js).
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -31,6 +32,7 @@ import { createStatusHandler } from './status.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createTwitchHandler } from './twitch.js';
+import { createGopsHandler } from './gops.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -47,6 +49,8 @@ const STATUS_DIR = process.env.STATUS_DIR || join(ROOT, 'data', 'status');
 const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 // the miner's settings/channels.json, the channels it watches (writable)
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
+// the Global Operations port's dashboard folder, holding the status.json its loop writes
+const GOPS_DIR = process.env.GOPS_DIR || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 // where repos are cloned on the server, and the numeric GitHub user id of the only account allowed to clone
 const CLONE_DIR = process.env.CLONE_DIR || '';
@@ -858,6 +862,7 @@ const sync = createSyncHandler({ directory: SYNC_DIR });
 const share = createShareHandler({ directory: SHARE_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const status = createStatusHandler({ directory: STATUS_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
+const gops = createGopsHandler({ directory: GOPS_DIR });
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -874,6 +879,7 @@ async function api(req, res, url) {
     if (p === '/api/status' || p.startsWith('/api/status/')) return await status.api(req, res, p);
     if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
+    if (p === '/api/gops') return await gops(req, res);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.
