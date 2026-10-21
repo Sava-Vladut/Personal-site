@@ -1863,6 +1863,11 @@ export const RO: Record<string, string> = {
   'Updates by itself · My Mind': 'Se actualizează singură · My Mind',
   '{name} hasn’t checked in yet. This page shows the next one by itself.': '{name} nu a făcut încă niciun check-in. Pagina îl va arăta singură pe următorul.',
   'This page shows the next check-in by itself.': 'Pagina va arăta singură următorul check-in.',
+  // the public status's recent trail (components/StatusTrail.tsx)
+  'Recent trail': 'Istoric recent',
+  'Your last check-ins as coloured dots, feelings only': 'Ultimele check-in-uri ca puncte colorate, doar emoțiile',
+  'Last 5 check-ins': 'Ultimele 5 check-in-uri',
+  'No check-in': 'Niciun check-in',
   // the countdown (views/Countdown.tsx)
   'Countdown': 'Numărătoare inversă',
   'From {start} to {end}': 'Din {start} până pe {end}',

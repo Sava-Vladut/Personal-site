@@ -1,10 +1,11 @@
 // The public status: one link that always shows your latest check-in, for anyone who has it. While it's on, the app sends
 // that check-in's feeling, how strong it was and when; its note, the people you were thinking of (by name), the place's
 // name and the weather only if you chose to show each, and your countdown (src/lib/countdown.ts) beside it if chosen.
-// Nothing else leaves the journal. Turning it on, updating and
+// The recent trail, if chosen, adds the last week's check-ins as feeling, strength and time only. Nothing else leaves the journal. Turning it on, updating and
 // stopping need the admin password; reading needs only the link.
-//   data/status/status.json   { token, show, owner, lang, checkin, updated }: the link's secret, what shows, your name, the page's
-//                             language ('en', 'ro', or '' for the reader's own), the check-in
+//   data/status/status.json   { token, show, owner, lang, checkin, trailBy, recent, updated }: the link's secret, what shows, your
+//                             name, the page's language ('en', 'ro', or '' for the reader's own), the check-in, and the trail:
+//                             'days' (the last 7 days) or 'checkins' (the last 5), from recent [{ emotion, intensity, time }]
 //   data/status/countdown.json { countdown }: the app's one countdown ({ name, start, end }, ms), or null once removed;
 //                             the same on every device, so it lives here. /api/countdown reads and changes it, admin-only.
 // The token is 192 random bits, so the link can't be guessed. Stopping deletes the file, and turning it on again makes a new link.
@@ -19,7 +20,8 @@ import { EMOTION_ID, cleanDetails, escapeHtml } from './share.js';
 const TOKEN = /^[A-Za-z0-9_-]{32}$/;
 const ENTRY_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const MAX_NOTE = 2000;
-const SHOW = ['note', 'people', 'place', 'weather', 'countdown'];
+const SHOW = ['note', 'people', 'place', 'weather', 'countdown', 'trail'];
+const MAX_RECENT = 60;
 const NO_INDEX = { 'X-Robots-Tag': 'noindex, nofollow, noarchive' };
 
 /** Which details the page shows: each off unless it's exactly true. An older status file only knew about the note. */
@@ -34,6 +36,21 @@ export const cleanOwner = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ')
 
 /** The language the page is in for everyone ('en' or 'ro'), or '' to leave it to each reader's device. */
 export const cleanLang = (v) => (v === 'en' || v === 'ro' ? v : '');
+
+/** How the trail reads: one dot a day for the last 7 days ('days'), or the last 5 check-ins ('checkins'). */
+export const cleanTrailBy = (v) => (v === 'checkins' ? 'checkins' : 'days');
+
+/** The trail's check-ins, newest first: a feeling, how strong and when, nothing else. None unless the trail is chosen; a bad one is left out. */
+export function cleanRecent(raw, show) {
+  if (!show.trail || !Array.isArray(raw)) return [];
+  const out = [];
+  for (const r of raw.slice(0, MAX_RECENT)) {
+    if (!r || typeof r !== 'object' || typeof r.emotion !== 'string' || r.emotion.length > 80 || !EMOTION_ID.test(r.emotion)) continue;
+    if (typeof r.time !== 'number' || !Number.isFinite(r.time) || r.time <= 0 || r.time > Date.now() + 86_400_000) continue;
+    out.push({ emotion: r.emotion, intensity: Number.isInteger(r.intensity) && r.intensity >= 1 && r.intensity <= 5 ? r.intensity : 3, time: Math.round(r.time) });
+  }
+  return out.sort((a, b) => b.time - a.time);
+}
 
 /** A check-in as the public page may show it: only these fields, and each detail only when `show` allows it. */
 export function cleanCheckin(raw, show) {
@@ -74,10 +91,11 @@ export function cleanCountdown(raw) {
   return { name, start: Math.round(raw.start), end: Math.round(raw.end) };
 }
 
-/** What anyone with the link gets: never the entry's id, and the countdown only if chosen and not over yet. */
+/** What anyone with the link gets: never the entry's id, the countdown only if chosen and not over yet, the trail only if chosen. */
 const publicOf = (s, countdown) => ({
   owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated,
   ...(s.show.countdown && countdown && countdown.end > Date.now() && { countdown }),
+  ...(s.show.trail && s.recent.length && { trail: { by: s.trailBy, recent: s.recent } }),
 });
 
 export function createStatusHandler({ directory, indexFile, isAdmin, adminConfigured }) {
@@ -97,7 +115,8 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     try {
       const s = JSON.parse(await readFile(file, 'utf8'));
       if (!s || !TOKEN.test(s.token)) return null;
-      return { ...s, show: cleanShow(s.show ?? { note: s.note }), owner: cleanOwner(s.owner), lang: cleanLang(s.lang) };
+      const show = cleanShow(s.show ?? { note: s.note });
+      return { ...s, show, owner: cleanOwner(s.owner), lang: cleanLang(s.lang), trailBy: cleanTrailBy(s.trailBy), recent: cleanRecent(s.recent, show) };
     } catch (error) {
       if (error.code === 'ENOENT' || error instanceof SyntaxError) return null;
       throw error;
@@ -136,7 +155,7 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     return json(res, 200, { countdown });
   }
 
-  const own = (s) => (s ? { token: s.token, show: s.show, owner: s.owner, lang: s.lang, checkin: s.checkin, updated: s.updated } : { token: null });
+  const own = (s) => (s ? { token: s.token, show: s.show, owner: s.owner, lang: s.lang, checkin: s.checkin, trailBy: s.trailBy, recent: s.recent, updated: s.updated } : { token: null });
 
   /** The /api/status routes. Reading /api/status/<token> is public; everything else is the admin's. */
   async function api(req, res, path) {
@@ -155,14 +174,18 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     needAdmin(req);
     if (req.method === 'GET') return json(res, 200, own(await read()));
     if (req.method === 'PUT') {
-      const body = await readJson(req, 16 * 1024);
+      const body = await readJson(req, 24 * 1024); // a long note and a full trail fit
       const show = cleanShow(body?.show);
       const owner = cleanOwner(body?.owner);
       const lang = cleanLang(body?.lang);
       const checkin = cleanCheckin(body?.checkin ?? null, show);
+      // a device on an app from before the trail sends neither: what's kept stays
+      const keep = body?.recent === undefined;
       const s = await locked(async () => {
         const old = await read();
-        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), show, owner, lang, checkin, updated: Date.now() };
+        const trailBy = keep ? old?.trailBy ?? 'days' : cleanTrailBy(body?.trailBy);
+        const recent = cleanRecent(keep ? old?.recent : body?.recent, show);
+        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), show, owner, lang, checkin, trailBy, recent, updated: Date.now() };
         await write(next);
         return next;
       });

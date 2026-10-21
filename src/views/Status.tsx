@@ -2,17 +2,18 @@ import { useEffect, useState } from 'preact/hooks';
 import { EMOTION, shortName } from '../data/emotions';
 import { fmtTemp, weatherIcon, weatherName } from '../data/weather';
 import { addDays, formatDate, keyOf, todayKey } from '../lib/dates';
-import type { PublicCheckin } from '../lib/status';
+import type { PublicCheckin, PublicTrail } from '../lib/status';
 import { countdownName, isRunning, parts, progress, useNow, type Countdown as C } from '../lib/countdown';
 import type { Person } from '../lib/store';
 import { INTENSITY, trail } from '../components/emotion';
 import { Icon, Sprite } from '../components/icons';
 import { Avatar } from '../components/people';
 import { Sky } from '../components/Sky';
+import { StatusTrail } from '../components/StatusTrail';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/shared.css';
 
-type Public = { owner: string; checkin: PublicCheckin | null; updated: number; countdown?: C };
+type Public = { owner: string; checkin: PublicCheckin | null; updated: number; countdown?: C; trail?: PublicTrail };
 type State = Public | 'gone' | 'loading' | 'error';
 
 async function read(token: string): Promise<Public | 'gone'> {
@@ -160,6 +161,8 @@ export function Status({ token }: { token: string }) {
             )}
           </div>
         )}
+
+        {state.trail && <StatusTrail trail={state.trail} />}
 
         {state.countdown && <Countdown c={state.countdown} />}
 

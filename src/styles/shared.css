@@ -182,6 +182,24 @@
 .status-cd-bar { height: 6px; margin-top: 14px; border-radius: var(--r-pill); overflow: hidden; background: color-mix(in oklab, var(--c) 12%, var(--surface-2)); }
 .status-cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c); transform-origin: left; transition: transform 1s linear; }
 .status-cd-sub { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.status-recent { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.status-recent.is-checkins { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.status-recent-slot { display: grid; justify-items: center; align-content: start; gap: 3px; min-width: 0; text-align: center; }
+.status-recent-dot { display: grid; place-items: center; width: 30px; height: 30px; margin-bottom: 4px; }
+.status-recent-dot::before {
+  content: ''; width: calc(30px * var(--s, 1)); height: calc(30px * var(--s, 1)); border-radius: 50%;
+  background: var(--dot); box-shadow: 0 0 0 4px color-mix(in oklab, var(--dot) 16%, transparent);
+}
+.status-recent-dot.is-empty::before { width: 12px; height: 12px; background: none; box-shadow: inset 0 0 0 1.5px var(--line-2); }
+.status-recent-label { max-width: 100%; font-size: var(--text-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status-recent.is-checkins .status-recent-label { color: var(--ink-2); font-weight: var(--w-medium); }
+.status-recent-sub { font-size: var(--text-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.status-recent-slot.is-now .status-recent-label { color: var(--ink); font-weight: var(--w-bold); }
+.status-preview .status-recent { display: flex; gap: 6px; margin-top: 2px; }
+.status-preview .status-recent-dot { width: 14px; height: 14px; margin: 0; }
+.status-preview .status-recent-dot::before { width: calc(14px * var(--s, 1)); height: calc(14px * var(--s, 1)); box-shadow: none; }
+.status-preview .status-recent-dot.is-empty::before { width: 6px; height: 6px; }
+.status-trail-by { margin: 2px 0 6px 30px; }
 .status-view.is-empty .status-countdown { --c: var(--emo-calm-safety); margin-top: 18px; }
 .status-foot { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: var(--text-s); color: var(--ink-3); text-align: center; }
 .status-brand { opacity: 0.8; }

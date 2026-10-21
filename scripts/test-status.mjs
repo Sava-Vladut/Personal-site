@@ -66,7 +66,7 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   assert.equal(r.status, 200);
   const { token, show } = await r.json();
   assert.match(token, /^[A-Za-z0-9_-]{32}$/);
-  assert.deepEqual(show, { note: false, people: false, place: false, weather: false, countdown: false }); // only exactly true turns one on
+  assert.deepEqual(show, { note: false, people: false, place: false, weather: false, countdown: false, trail: false }); // only exactly true turns one on
 
   const pub = await send('GET', '/api/status/' + token);
   assert.equal(pub.status, 200);
@@ -130,7 +130,7 @@ test('a status saved before the other details existed keeps showing its note', a
   const token = 'Q'.repeat(32);
   writeFileSync(join(directory, 'status.json'), JSON.stringify({ token, note: true, checkin: { id: 'x1', emotion: 'joy', name: 'Joy', intensity: 3, time: 5, text: 'Hi' }, updated: 1 }));
   const own = await (await send('GET', '/api/status', { headers: admin })).json();
-  assert.deepEqual(own.show, { note: true, people: false, place: false, weather: false, countdown: false });
+  assert.deepEqual(own.show, { note: true, people: false, place: false, weather: false, countdown: false, trail: false });
   assert.equal(own.owner, '');
   const pub = await (await send('GET', '/api/status/' + token)).json();
   assert.equal(pub.checkin.text, 'Hi');
@@ -157,4 +157,42 @@ test('the countdown: only the admin reads or changes it, and the public page sho
   assert.equal((await (await send('DELETE', '/api/countdown', { headers: admin })).json()).countdown, null);
   assert.equal((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdown, null);
   assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown, undefined);
+});
+
+test('the recent trail: off by default, only feelings and times, and only while chosen', async () => {
+  const now = Date.now();
+  const recent = [
+    { emotion: 'joy/content', intensity: 4, time: now - 3_600_000, text: 'private', id: 'e1', details },
+    { emotion: 'sad', intensity: 9, time: now - 2 * 86_400_000 },
+    { emotion: '<script>', intensity: 2, time: now - 86_400_000 },
+    { emotion: 'fear', intensity: 2, time: now + 7 * 86_400_000 },
+    'nope',
+  ];
+  // not chosen: nothing is kept, and the page gets no trail
+  const off = await (await send('PUT', '/api/status', { headers: admin, body: { checkin: checkin(), recent, trailBy: 'checkins' } })).json();
+  assert.deepEqual(off.recent, []);
+  assert.equal((await (await send('GET', '/api/status/' + off.token)).json()).trail, undefined);
+
+  // chosen: each check-in narrowed to its feeling, strength and time, newest first; bad ones left out
+  const on = await (await send('PUT', '/api/status', { headers: admin, body: { show: { trail: true }, checkin: checkin(), recent: [...recent].reverse(), trailBy: 'checkins' } })).json();
+  assert.equal(on.token, off.token);
+  assert.equal(on.trailBy, 'checkins');
+  const { trail } = await (await send('GET', '/api/status/' + on.token)).json();
+  assert.deepEqual(trail, { by: 'checkins', recent: [{ emotion: 'joy/content', intensity: 4, time: now - 3_600_000 }, { emotion: 'sad', intensity: 3, time: now - 2 * 86_400_000 }] });
+
+  // anything but 'checkins' reads by day, and at most 60 are kept
+  const many = Array.from({ length: 80 }, (_, i) => ({ emotion: 'joy', intensity: 3, time: now - i * 60_000 }));
+  const days = await (await send('PUT', '/api/status', { headers: admin, body: { show: { trail: true }, checkin: checkin(), recent: many, trailBy: 'weeks' } })).json();
+  assert.equal(days.trailBy, 'days');
+  assert.equal(days.recent.length, 60);
+
+  // a device on an older app sends no trail: the kept one stays
+  const old = await (await send('PUT', '/api/status', { headers: admin, body: { show: { trail: true }, checkin: checkin() } })).json();
+  assert.equal(old.recent.length, 60);
+  assert.equal(old.trailBy, 'days');
+
+  // switched off again: the kept trail goes with it
+  const again = await (await send('PUT', '/api/status', { headers: admin, body: { show: {}, checkin: checkin(), recent: many } })).json();
+  assert.deepEqual(again.recent, []);
+  assert.equal((await (await send('GET', '/api/status/' + again.token)).json()).trail, undefined);
 });

@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.114.0',
+    date: '2026-10-21',
+    changes: [
+      'Public status: a new Recent trail switch, off by default, shows your recent check-ins as coloured dots',
+      'The trail reads as the last 7 days (each day’s strongest feeling) or your last 5 check-ins, your choice',
+      'Only the feeling, how strong it was and when go into the trail: no notes, people or places',
+    ],
+  },
+  {
     version: '1.113.1',
     date: '2026-10-21',
     changes: [

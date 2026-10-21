@@ -3,11 +3,12 @@ import { EMOTION, shortName } from '../data/emotions';
 import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
-import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show } from '../lib/status';
+import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, recentTrail, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show, type TrailBy } from '../lib/status';
 import { isRunning, useCountdown } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
 import { ask } from './Confirm';
+import { StatusTrail } from './StatusTrail';
 import { LANGS, LOCALE, lang, t, type Lang } from '../lib/i18n';
 import '../styles/shared.css';
 
@@ -19,11 +20,14 @@ const PARTS: { key: keyof Show; icon: UiName; label: string; hint: string }[] = 
   { key: 'place', icon: 'map-pin', label: t('Place'), hint: t('Where you were, by its name only') },
   { key: 'weather', icon: 'cloud', label: t('Weather'), hint: t('The sky and temperature then') },
   { key: 'countdown', icon: 'hourglass', label: t('Countdown'), hint: '' },
+  { key: 'trail', icon: 'chart-dots', label: t('Recent trail'), hint: t('Your last check-ins as coloured dots, feelings only') },
 ];
+
+const TRAIL_BY: [TrailBy, string][] = [['days', t('Last 7 days')], ['checkins', t('Last 5 check-ins')]];
 
 /**
  * Sharing your status (its page under Insights, views/StatusPage.tsx): one link that always shows your latest check-in. Off until turned on here; the note, the people
- * you were thinking of, the place and the weather each only show when switched on. The link is secret, but anyone who
+ * you were thinking of, the place, the weather and the recent trail each only show when switched on. The link is secret, but anyone who
  * has it can see it, so it can be stopped any time. The page is in the language chosen here, whatever the reader's device uses.
  */
 export function StatusPanel() {
@@ -36,14 +40,16 @@ export function StatusPanel() {
   const [show, setShow] = useState<Show>(SHOW_NONE);
   const [owner, setOwner] = useState('');
   const [pageLang, setPageLang] = useState<Lang>(lang);
+  const [trailBy, setTrailBy] = useState<TrailBy>('days');
   useEffect(() => void loadStatus(), []);
   useEffect(() => {
     if (!status) return;
     setShow(status.show);
     setOwner(status.owner);
+    setTrailBy(status.trailBy);
     // a status from before it had a language showed in English to nearly everyone; a new one starts in the app's
     setPageLang(status.token ? status.lang || 'en' : lang);
-  }, [status?.token, JSON.stringify(status?.show), status?.owner, status?.lang]);
+  }, [status?.token, JSON.stringify(status?.show), status?.owner, status?.lang, status?.trailBy]);
 
   const on = !!status?.token;
   const url = status?.token ? statusUrl(status.token) : '';
@@ -51,6 +57,7 @@ export function StatusPanel() {
   const preview = latest && publicCheckin(latest, show);
   const em = preview && EMOTION[preview.emotion];
   const d = preview?.details;
+  const trail = show.trail ? { by: trailBy, recent: recentTrail(show, entries) } : null;
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -64,7 +71,7 @@ export function StatusPanel() {
     }
   };
   const start = () => run(async () => {
-    await shareStatus(show, owner, pageLang);
+    await shareStatus(show, owner, pageLang, trailBy);
     toast(t('Your status is public'));
   });
   const toggle = (key: keyof Show) => {
@@ -73,7 +80,7 @@ export function StatusPanel() {
     setShow(next);
     if (on) void run(async () => {
       try {
-        await shareStatus(next, owner, pageLang);
+        await shareStatus(next, owner, pageLang, trailBy);
       } catch (e) {
         setShow(before);
         throw e;
@@ -84,7 +91,7 @@ export function StatusPanel() {
     const name = owner.replace(/\s+/g, ' ').trim();
     setOwner(name);
     if (on && name !== status?.owner) void run(async () => {
-      await shareStatus(show, name, pageLang);
+      await shareStatus(show, name, pageLang, trailBy);
       toast(t('Name updated'));
     });
   };
@@ -94,10 +101,23 @@ export function StatusPanel() {
     setPageLang(next);
     if (on) void run(async () => {
       try {
-        await shareStatus(show, owner, next);
+        await shareStatus(show, owner, next, trailBy);
         toast(t('Language updated'));
       } catch (e) {
         setPageLang(before);
+        throw e;
+      }
+    });
+  };
+  const pickTrailBy = (next: TrailBy) => {
+    if (next === trailBy) return;
+    const before = trailBy;
+    setTrailBy(next);
+    if (on) void run(async () => {
+      try {
+        await shareStatus(show, owner, pageLang, next);
+      } catch (e) {
+        setTrailBy(before);
         throw e;
       }
     });
@@ -134,6 +154,7 @@ export function StatusPanel() {
               <span class="status-preview-main">
                 <span class="status-preview-name">{em.depth === 0 ? shortName(em.id) : em.name} · <span class="muted">{INTENSITY[preview.intensity - 1]} · {timeLabel(preview.time)}</span></span>
                 {preview.text && <span class="status-preview-note">“{preview.text}”</span>}
+                {trail && <StatusTrail trail={trail} compact />}
                 {(d?.people || d?.place || d?.weather) && (
                   <span class="status-preview-extra">
                     {d.people && <span><Icon name="heart" size={13} /> {d.people.map((p) => p.name).join(', ')}</span>}
@@ -184,6 +205,13 @@ export function StatusPanel() {
               <button class="switch" role="switch" aria-checked={show[p.key]} aria-label={p.label} onClick={() => toggle(p.key)} disabled={busy} />
             </label>
           ))}
+          {show.trail && (
+            <div class="seg status-trail-by fade-arrive" role="radiogroup" aria-label={t('Recent trail')}>
+              {TRAIL_BY.map(([v, l]) => (
+                <button role="radio" aria-checked={trailBy === v} aria-selected={trailBy === v} onClick={() => pickTrailBy(v)} disabled={busy}>{l}</button>
+              ))}
+            </div>
+          )}
           <p class="share-parts-note">
             <Icon name="lock" size={14} />
             {show.note ? t('Off stays private. Names written in the note can be read by anyone with the link.') : t('Off stays private. People show by name only, a place by its name only.')}
