@@ -1467,6 +1467,8 @@ export const RO: Record<string, string> = {
   'Port': 'Port',
   'Log': 'Jurnal',
   'Open the plain page': 'Deschide pagina simplă',
+  'Shortcuts': 'Scurtături',
+  'known limits to revisit': 'limite de revizuit',
   'A brain in letters, glowing with your journal': 'Un creier din litere, care strălucește cu jurnalul tău',
   'Your journal, as a brain.': 'Jurnalul tău, ca un creier.',
   'Regions': 'Regiuni',

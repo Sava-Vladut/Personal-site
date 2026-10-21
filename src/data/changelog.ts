@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.113.1',
+    date: '2026-10-21',
+    changes: [
+      'Global Ops port: a Shortcuts tile counts the known limits left in the port’s code to revisit',
+    ],
+  },
+  {
     version: '1.113.0',
     date: '2026-10-21',
     changes: [

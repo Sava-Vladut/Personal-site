@@ -27,6 +27,8 @@ interface Status {
     untranslated?: number;
     imports_implemented?: number;
     imports_needed?: number;
+    /** ponytail `shortcut:` markers in the port's code, counted by its dashboard script */
+    shortcuts?: number;
     build?: { ok: boolean; when?: string; tail?: string };
     frames?: { name: string; original: string; port: string; diff_pct?: number }[];
   };
@@ -114,6 +116,7 @@ function Board({ data }: { data: Status }) {
         {m.imports_needed != null && (
           <Tile k={3} icon="list-check" label={t('Windows functions')} value={`${m.imports_implemented ?? 0} / ${m.imports_needed}`} sub={t('implemented')} />
         )}
+        {m.shortcuts != null && <Tile k={4} icon="list" label={t('Shortcuts')} value={String(m.shortcuts)} sub={t('known limits to revisit')} />}
       </div>
 
       {m.build && (
