@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.115.0',
+    date: '2026-10-21',
+    changes: [
+      'New emotion characters: each world is now a little sticker with a face instead of a pixel sprite',
+      'The heart smiles, the star grins, the leaf dozes, the spark looks on, the ghost frets, the cloud cries, the flame glowers and the face blushes and looks away',
+      'Their idle loops are smoother: the heart beats, the star hops, the leaf sways, rain falls and the flame flickers',
+    ],
+  },
+  {
     version: '1.114.0',
     date: '2026-10-21',
     changes: [

@@ -7,6 +7,7 @@ import { CHART_ORDER, CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emo
 import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWeek } from '../lib/dates';
 import { fmtMood, pct, type Bucket } from '../lib/stats';
 import { Icon, Sprite, type UiName } from './icons';
+import { critter, critterStyle } from './critters';
 import { LOCALE, count, noun, t } from '../lib/i18n';
 
 /* ---------- scroll reveal ---------- */
@@ -743,9 +744,7 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
             );
           })}
           {sprites.map((s) => (
-            <svg x={s.x - 7} y={s.y - 7} width={14} height={14} viewBox="0 0 8 8" shape-rendering="crispEdges" pointer-events="none">
-              <path d={spriteD(s.core)} fill={(counts.get(s.core) ?? 0) / maxByDepth[0] > 0.55 ? 'var(--surface)' : `var(--emo-${s.core})`} />
-            </svg>
+            <svg x={s.x - 7} y={s.y - 7} width={14} height={14} viewBox="0 0 32 32" class="sprite" data-k={s.core} style={critterStyle(s.core)} pointer-events="none" dangerouslySetInnerHTML={{ __html: critter(s.core, true) }} />
           ))}
           <text x={c} y={c - 4} text-anchor="middle" class="wheel-num">{sel ? counts.get(sel.id) ?? 0 : total}</text>
           <text x={c} y={c + 14} text-anchor="middle" class="tick">{sel ? noun(counts.get(sel.id) ?? 0, 'time', 'times') : noun(total, 'feeling', 'feelings')}</text>
@@ -755,8 +754,3 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
   );
 }
 
-function spriteD(core: string) {
-  let d = '';
-  CORE[core].sprite.forEach((row, y) => [...row].forEach((ch, x) => ch === 'X' && (d += `M${x} ${y}h1v1h-1z`)));
-  return d;
-}

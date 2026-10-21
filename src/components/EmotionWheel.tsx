@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { CORE, EMOTION, type EmotionDef, type FamilyDef } from '../data/emotions';
-import { Icon, Sprite, useSpriteIdle } from './icons';
+import { Icon, Sprite } from './icons';
+import { critter, critterStyle } from './critters';
 import { haptic } from '../lib/haptics';
 import { trail } from './emotion';
 import { count, t } from '../lib/i18n';
@@ -87,15 +88,19 @@ function labelArc(r: number, a0: number, a1: number) {
     : `M${pt(r, a0)}A${r} ${r} 0 ${big} 1 ${pt(r, a1)}`;
 }
 
-/** A world's sprite drawn inside the wheel; `idle` plays its idle loop. */
-function PixelSprite({ core, x, y, size, idle = false }: { core: string; x: number; y: number; size: number; idle?: boolean }) {
-  const d = useSpriteIdle(core, idle);
+/** A world's character drawn inside the wheel; `idle` plays its idle loop. */
+function WheelSprite({ core, x, y, size, idle = false }: { core: string; x: number; y: number; size: number; idle?: boolean }) {
   return (
-    <path
-      d={d}
-      transform={`translate(${(x - size / 2).toFixed(2)} ${(y - size / 2).toFixed(2)}) scale(${size / 8})`}
-      style={{ fill: `var(--emo-${core})` }}
-      shape-rendering="crispEdges"
+    <svg
+      x={(x - size / 2).toFixed(2)}
+      y={(y - size / 2).toFixed(2)}
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      class={`sprite${idle ? ' idle' : ''}`}
+      data-k={core}
+      style={critterStyle(core)}
+      dangerouslySetInnerHTML={{ __html: critter(core) }}
     />
   );
 }
@@ -382,7 +387,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
       const [x, y] = xy(rm, m);
       labels.push(
         <g opacity={outer}>
-          <PixelSprite core={e.core} x={x} y={y - 9} size={20} />
+          <WheelSprite core={e.core} x={x} y={y - 9} size={20} />
           <text x={x} y={y + 17} class={`ew-core-label${hot === e.id ? ' hot' : ''}`}>{e.name.split(' / ')[0]}</text>
         </g>,
       );
@@ -431,13 +436,13 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         )}
         {z < 1 && hot && EMOTION[hot]?.depth < 2 && (
           <g opacity={outer}>
-            <PixelSprite core={EMOTION[hot].core} x={C} y={C - 8} size={22} idle />
+            <WheelSprite core={EMOTION[hot].core} x={C} y={C - 8} size={22} idle />
             <text x={C} y={C + 18} class="ew-hub-hint">{EMOTION[hot].name.split(' / ')[0]}</text>
           </g>
         )}
         {core && inner > 0.01 && (
           <g opacity={inner}>
-            <PixelSprite core={core.id} x={C} y={C - 16} size={24} idle />
+            <WheelSprite core={core.id} x={C} y={C - 16} size={24} idle />
             <text x={C} y={C + 13} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
             <text x={C} y={C + 31} class="ew-hub-back">{t('Back')}</text>
           </g>
