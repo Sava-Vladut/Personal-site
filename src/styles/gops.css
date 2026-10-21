@@ -1,0 +1,35 @@
+/* ---------- Global Ops port: the stats page's cards, with a checklist, a log and screenshot pairs ---------- */
+
+.gops-card { padding: 16px; }
+.gops-card .chart-title { display: flex; align-items: center; gap: 6px; }
+.gops-card p { margin: 6px 0 0; color: var(--ink-2); }
+
+.gops-blocker { background: color-mix(in oklab, var(--danger) 12%, var(--surface)); }
+.gops-blocker .chart-title { color: var(--danger); }
+.gops-play { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: var(--w-bold); color: var(--ink); text-decoration: none; }
+
+.gops-ok { color: color-mix(in oklab, var(--emo-calm-safety) 70%, var(--ink)); }
+.gops-bad { color: var(--danger); }
+.gops-pre {
+  margin: 10px 0 0; padding: 10px; max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font: var(--text-s) / 1.45 ui-monospace, monospace; background: var(--surface-2); border-radius: var(--r-m);
+}
+
+.gops-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.gops-pair figure { margin: 0; }
+.gops-pair img { display: block; width: 100%; border-radius: var(--r-m); background: var(--surface-2); }
+.gops-pair figcaption { margin-top: 4px; text-align: center; font-size: var(--text-s); color: var(--ink-3); }
+
+.gops-log { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); }
+.gops-log li + li { margin-top: 6px; }
+
+.gops-phase summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; cursor: pointer; }
+.gops-count { flex: none; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.gops-phase ul { list-style: none; margin: 10px 0 0; padding: 0; }
+.gops-phase li { display: flex; gap: 8px; padding: 6px 0; color: var(--ink-2); }
+.gops-phase li + li { border-top: 1px solid var(--line); }
+.gops-phase li svg { flex: none; margin-top: 3px; color: var(--ink-3); }
+.gops-phase li.done { color: var(--ink-3); }
+.gops-phase li.done svg { color: color-mix(in oklab, var(--emo-calm-safety) 70%, var(--ink)); }
+
+.gops-raw { align-self: center; margin: 4px auto 0; }

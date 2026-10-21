@@ -28,6 +28,7 @@ export const WHEEL: WheelNode[] = [
       { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to'), icon: 'chart-bar', to: 'stats' },
       { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', hue: 'calm-safety', to: 'map' },
       { id: 'brain', name: t('Your brain'), sub: t('A brain in letters, glowing with your journal'), icon: 'brain', hue: 'love-connection', to: 'brain' },
+      { id: 'gops', name: t('Global Ops port'), sub: t('The game’s browser port: phase, checkpoints and builds'), icon: 'device-gamepad-2', hue: 'anger', to: 'gops' },
     ],
   },
   // things to read: how minds, power and people work

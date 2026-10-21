@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.116.0',
+    date: '2026-10-21',
+    changes: [
+      'The Global Ops port page is back under Insights, with the plan to bring the game to the browser',
+      'Each phase lists its steps and its go/no-go checkpoint',
+      'New cards: the testing rules, how others port games to the browser, what we know so far and the sources',
+      'Open the full plan shows the whole plan as text',
+    ],
+  },
+  {
     version: '1.115.2',
     date: '2026-10-21',
     changes: [
