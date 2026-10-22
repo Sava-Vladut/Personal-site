@@ -12,10 +12,11 @@ const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const RAMP = ' .,-~:;=!*#%@'; // dark to bright
 const SCRAMBLE = '!<>-_/\\[]{}=+*^?#%&$01';
 const SPARK = '@*+:.'; // a spark's head, then its tail
-const FLY = 0.9;        // seconds each letter takes to fly in
-const ASSEMBLE = 1.9;   // until the last one lands
+const FLY = 0.65;       // seconds each letter takes to fly in
+const ASSEMBLE = 1.3;   // until the last one lands
+const SETTLE = 0.35;    // the whole brain turning a moment before onLanded
 /** How long going in takes: the page waits this long before the app shows. */
-export const DIVE_MS = 1000;
+export const DIVE_MS = 750;
 const CAM = 3.4;        // the eye's distance from the brain's middle
 const SPIN = 0.32;      // radians a second when left alone
 const SPOT_EVERY = 2.6; // seconds each region holds the spotlight
@@ -63,12 +64,14 @@ interface Props {
   quick?: boolean;
   /** The region in the spotlight, whenever it changes: the showcase's, or the one you point at. */
   onSpot?: (world: string) => void;
+  /** Once, when every letter has landed and the whole brain has turned a moment. */
+  onLanded?: () => void;
 }
 
-export function AsciiBrain({ words, label, flinch, diving, quick, onSpot }: Props) {
+export function AsciiBrain({ words, label, flinch, diving, quick, onSpot, onLanded }: Props) {
   const cv = useRef<HTMLCanvasElement>(null);
-  const live = useRef({ words, flinch, diving, onSpot });
-  live.current = { words, flinch, diving, onSpot };
+  const live = useRef({ words, flinch, diving, onSpot, onLanded });
+  live.current = { words, flinch, diving, onSpot, onLanded };
 
   useEffect(() => {
     const el = cv.current!;
@@ -93,7 +96,7 @@ export function AsciiBrain({ words, label, flinch, diving, quick, onSpot }: Prop
     let nextSpark = ASSEMBLE + 0.4;
     let ripple: { x: number; y: number; z: number; t0: number } | null = null;
     let bands: { r0: number; r1: number; shift: number }[] = [], glitchUntil = 0, nextGlitch = ASSEMBLE + 5 + rand() * 6;
-    let flinchAt = -9, seenFlinch = live.current.flinch, diveAt = -1;
+    let flinchAt = -9, seenFlinch = live.current.flinch, diveAt = -1, landed = false;
     const light = { x: -0.45, y: 0.6, z: 0.7 }, aim = { x: -0.45, y: 0.6 };
     let drag: { x: number; y: number; yaw0: number; moved: boolean; last: number; lastYaw: number; vel: number } | null = null;
     let raf = 0, last = 0, visible = true, frameMs = MIN_FRAME, slow = 0;
@@ -159,6 +162,7 @@ export function AsciiBrain({ words, label, flinch, diving, quick, onSpot }: Prop
       s += dt;
       if (flinch !== seenFlinch) { seenFlinch = flinch; flinchAt = s; yawVel += (rand() < 0.5 ? -1 : 1) * 2.4; }
       if (diving && diveAt < 0) diveAt = s;
+      if (!landed && s >= ASSEMBLE + SETTLE) { landed = true; live.current.onLanded?.(); }
       if (!drag) {
         yaw += yawVel * dt;
         yawVel += (SPIN - yawVel) * Math.min(1, dt * 0.9);
@@ -274,7 +278,7 @@ export function AsciiBrain({ words, label, flinch, diving, quick, onSpot }: Prop
       };
 
       // 3. the ring of words, tilted, turning on its own; letters behind the brain are hidden by it
-      const ringIn = clamp((s - ASSEMBLE + 0.5) / 0.9, 0, 1) * fade;
+      const ringIn = clamp((s - ASSEMBLE + 0.4) / 0.7, 0, 1) * fade;
       if (ringIn > 0 && ringText.length) {
         const rr = RING * (1 + dive * 1.2), tilt = 0.4, ct = Math.cos(tilt), st = Math.sin(tilt), roll = 0.12;
         const cr = Math.cos(roll), sr = Math.sin(roll);
@@ -467,7 +471,7 @@ export function AsciiBrain({ words, label, flinch, diving, quick, onSpot }: Prop
         from[i * 3] = (rand() - 0.5) * 5.2;
         from[i * 3 + 1] = 0.35 + rand() * 1.1;
         from[i * 3 + 2] = (rand() - 0.5) * 2;
-        delay[i] = 0.1 + rand() * 0.85;
+        delay[i] = 0.05 + rand() * 0.6;
       }
       step(0);
       draw();

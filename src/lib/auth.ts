@@ -5,6 +5,7 @@
 import { t } from './i18n';
 
 const KEY = 'mm-signed-in';
+const INTRO_SEEN = 'mm-intro-seen';
 
 export interface AuthStatus { configured: boolean; admin: boolean }
 
@@ -20,6 +21,21 @@ export function rememberSignedIn(on: boolean) {
   try {
     if (on) localStorage.setItem(KEY, '1');
     else localStorage.removeItem(KEY);
+  } catch {}
+}
+
+/** Whether the intro has played in this visit (this tab, until it's closed): it plays once when the app opens. */
+export function introSeen(): boolean {
+  try {
+    return sessionStorage.getItem(INTRO_SEEN) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markIntroSeen() {
+  try {
+    sessionStorage.setItem(INTRO_SEEN, '1');
   } catch {}
 }
 

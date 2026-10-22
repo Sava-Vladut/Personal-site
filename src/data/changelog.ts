@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.118.0',
+    date: '2026-10-22',
+    changes: [
+      'The intro now plays when you open the app, then goes into your journal by itself',
+      'Touch the brain while it plays and it stays, so you can spin it and go in with Enter',
+      'The intro is quicker: the brain flies together faster and the dive into the app is shorter',
+    ],
+  },
+  {
     version: '1.117.1',
     date: '2026-10-22',
     changes: [

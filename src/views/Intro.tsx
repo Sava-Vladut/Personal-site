@@ -1,13 +1,14 @@
 // The front door: what a device that isn't signed in sees instead of the journal. A brain drawn in letters turns in a
 // sky of letter clouds, its regions taking turns to light up; sign in and it bursts toward you as the journal comes in.
-// Always dark, whatever the theme: the letters glow better. Signed in, it's at #/intro to look at again.
-import { useEffect, useLayoutEffect, useMemo, useState } from 'preact/hooks';
+// Always dark, whatever the theme: the letters glow better. Signed in, it plays once as the app opens and goes in by
+// itself, unless you reach for it; it's also at #/intro to look at again.
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { AsciiBrain, DIVE_MS, type Word } from '../components/AsciiBrain';
 import { CloudTitle } from '../components/cloud';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
 import { CORES, shortName } from '../data/emotions';
-import { signIn, signedInHere } from '../lib/auth';
+import { introSeen, markIntroSeen, signIn, signedInHere } from '../lib/auth';
 import { ZONES } from '../lib/brainShape';
 import { LANGS, lang, setLang, t } from '../lib/i18n';
 import { goBack } from '../lib/router';
@@ -18,9 +19,9 @@ export interface IntroProps {
   query?: URLSearchParams;
   /** Signed out at startup: called once signed in, with the dive the app should wait for. Without it, Enter goes back. */
   onEnter?: (dive: Promise<void>) => void;
+  /** Opening the app: go in by itself once the brain has landed, unless you touch something first. */
+  auto?: boolean;
 }
-
-const SEEN = 'mm-intro-seen';
 
 /** Feelings for the ring around the brain: two from each world, the worlds taking turns. */
 function ringWords(): Word[] {
@@ -35,15 +36,9 @@ function ringWords(): Word[] {
   return out;
 }
 
-export function Intro({ onEnter }: IntroProps) {
+export function Intro({ onEnter, auto }: IntroProps) {
   const signedIn = useMemo(signedInHere, []);
-  const quick = useMemo(() => {
-    try {
-      return sessionStorage.getItem(SEEN) === '1';
-    } catch {
-      return false;
-    }
-  }, []);
+  const quick = useMemo(introSeen, []);
   const words = useMemo(ringWords, []);
   const [asking, setAsking] = useState(false);
   const [password, setPassword] = useState('');
@@ -53,12 +48,9 @@ export function Intro({ onEnter }: IntroProps) {
   const [diving, setDiving] = useState(false);
   const [about, setAbout] = useState(false);
   const [spot, setSpot] = useState<string | null>(null);
+  const stay = useRef(!auto);
 
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(SEEN, '1');
-    } catch {}
-  }, []);
+  useEffect(markIntroSeen, []);
 
   // always dark in here; the page's own theme comes back on the way out
   useLayoutEffect(() => {
@@ -73,6 +65,7 @@ export function Intro({ onEnter }: IntroProps) {
   }, []);
 
   const enter = () => {
+    stay.current = true;
     setDiving(true);
     const dive = new Promise<void>((done) => setTimeout(done, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : DIVE_MS));
     if (onEnter) onEnter(dive);
@@ -97,7 +90,7 @@ export function Intro({ onEnter }: IntroProps) {
   };
 
   return (
-    <div class={diving ? 'intro diving' : 'intro'}>
+    <div class={diving ? 'intro diving' : 'intro'} onPointerDown={() => { stay.current = true; }}>
       <div class="intro-sky" aria-hidden="true"><Sky /></div>
 
       <header class="intro-top">
@@ -117,6 +110,7 @@ export function Intro({ onEnter }: IntroProps) {
           diving={diving}
           quick={quick}
           onSpot={setSpot}
+          onLanded={() => stay.current || enter()}
         />
         <p class="intro-spot" aria-live="polite" style={spot ? { '--c': `var(--emo-${spot})` } : undefined}>
           {spot && <><i />{ZONES[spot].name}<span> · {shortName(spot)}</span></>}
