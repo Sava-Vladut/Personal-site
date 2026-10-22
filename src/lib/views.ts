@@ -24,7 +24,6 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   friends: () => import('../views/Friends').then((m) => m.Friends),
   status: () => import('../views/StatusPage').then((m) => m.StatusPage),
   countdown: () => import('../views/Countdown').then((m) => m.Countdown),
-  gops: () => import('../views/Gops').then((m) => m.Gops),
   intro: () => import('../views/Intro').then((m) => m.Intro),
 };
 const loaded = new Map<RouteName, View>();

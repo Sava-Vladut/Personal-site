@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.117.1',
+    date: '2026-10-22',
+    changes: [
+      'The Global Ops port page is gone from Insights, now that the port has been deleted',
+    ],
+  },
+  {
     version: '1.117.0',
     date: '2026-10-22',
     changes: [
