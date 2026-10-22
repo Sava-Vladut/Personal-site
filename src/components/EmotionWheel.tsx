@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { CORE, EMOTION, type EmotionDef, type FamilyDef } from '../data/emotions';
-import { Icon, Sprite } from './icons';
-import { critter, critterStyle } from './critters';
+import { Icon, Sprite, useSpriteIdle } from './icons';
 import { haptic } from '../lib/haptics';
 import { trail } from './emotion';
 import { count, t } from '../lib/i18n';
@@ -88,19 +87,15 @@ function labelArc(r: number, a0: number, a1: number) {
     : `M${pt(r, a0)}A${r} ${r} 0 ${big} 1 ${pt(r, a1)}`;
 }
 
-/** A world's character drawn inside the wheel; `idle` plays its idle loop. */
-function WheelSprite({ core, x, y, size, idle = false }: { core: string; x: number; y: number; size: number; idle?: boolean }) {
+/** A world's sprite drawn inside the wheel; `idle` plays its idle loop. */
+function PixelSprite({ core, x, y, size, idle = false }: { core: string; x: number; y: number; size: number; idle?: boolean }) {
+  const d = useSpriteIdle(core, idle);
   return (
-    <svg
-      x={(x - size / 2).toFixed(2)}
-      y={(y - size / 2).toFixed(2)}
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      class={`sprite${idle ? ' idle' : ''}`}
-      data-k={core}
-      style={critterStyle(core)}
-      dangerouslySetInnerHTML={{ __html: critter(core) }}
+    <path
+      d={d}
+      transform={`translate(${(x - size / 2).toFixed(2)} ${(y - size / 2).toFixed(2)}) scale(${size / 8})`}
+      style={{ fill: `var(--emo-${core})` }}
+      shape-rendering="crispEdges"
     />
   );
 }
@@ -133,7 +128,7 @@ function HoldTip({ tip, width, zoomed, selected, times }: { tip: Tip; width: num
       style={{ '--c': `var(--emo-${e.core})`, '--w': `${w}px`, '--l': `${left}px`, '--t': `${py}px`, '--ax': `${ax}px` }}
     >
       <div class="ew-tip-head">
-        <span class="ew-tip-sprite"><Sprite core={e.core} size={32} idle /></span>
+        <span class="ew-tip-sprite"><Sprite core={e.core} size={22} idle /></span>
         <div class="ew-tip-title">
           <div class="ew-tip-name">{e.name}</div>
           <div class="ew-tip-meta">
@@ -387,8 +382,8 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
       const [x, y] = xy(rm, m);
       labels.push(
         <g opacity={outer}>
-          <WheelSprite core={e.core} x={x} y={y - 12} size={30} />
-          <text x={x} y={y + 20} class={`ew-core-label${hot === e.id ? ' hot' : ''}`}>{e.name.split(' / ')[0]}</text>
+          <PixelSprite core={e.core} x={x} y={y - 9} size={20} />
+          <text x={x} y={y + 17} class={`ew-core-label${hot === e.id ? ' hot' : ''}`}>{e.name.split(' / ')[0]}</text>
         </g>,
       );
     } else if (e.depth === 1 && outer > 0.01 && a1 - a0 > 4) {
@@ -436,15 +431,15 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         )}
         {z < 1 && hot && EMOTION[hot]?.depth < 2 && (
           <g opacity={outer}>
-            <WheelSprite core={EMOTION[hot].core} x={C} y={C - 13} size={36} idle />
-            <text x={C} y={C + 24} class="ew-hub-hint">{EMOTION[hot].name.split(' / ')[0]}</text>
+            <PixelSprite core={EMOTION[hot].core} x={C} y={C - 8} size={22} idle />
+            <text x={C} y={C + 18} class="ew-hub-hint">{EMOTION[hot].name.split(' / ')[0]}</text>
           </g>
         )}
         {core && inner > 0.01 && (
           <g opacity={inner}>
-            <WheelSprite core={core.id} x={C} y={C - 21} size={40} idle />
-            <text x={C} y={C + 18} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
-            <text x={C} y={C + 35} class="ew-hub-back">{t('Back')}</text>
+            <PixelSprite core={core.id} x={C} y={C - 16} size={24} idle />
+            <text x={C} y={C + 13} class="ew-hub-name">{core.name.split(' / ')[0]}</text>
+            <text x={C} y={C + 31} class="ew-hub-back">{t('Back')}</text>
           </g>
         )}
         </g>
@@ -456,7 +451,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         {info ? (
           <>
             <div class="ew-cap-head">
-              <Sprite core={info.core} size={24} />
+              <Sprite core={info.core} size={16} />
               <span class="ew-cap-name">{info.depth === 0 ? info.name.split(' / ')[0] : info.name}</span>
               {info.depth > 0 && <span class="ew-cap-path">{trail(info.id)}</span>}
             </div>

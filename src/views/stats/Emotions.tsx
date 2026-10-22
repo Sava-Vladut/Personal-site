@@ -35,7 +35,7 @@ export function Emotions({ s }: { s: S }) {
         <Wheel counts={counts} onSelect={setSel} selected={sel} />
         {e ? (
           <div class="wheel-detail" data-core={e.core} style={{ '--c': `var(--emo-${e.core})` }}>
-            <div class="row gap-s"><Sprite core={e.core} size={22} idle /><b>{e.name}</b><span class="muted small">{trail(e.id)}</span></div>
+            <div class="row gap-s"><Sprite core={e.core} size={16} idle /><b>{e.name}</b><span class="muted small">{trail(e.id)}</span></div>
             <p class="definition">{e.def}</p>
             <p class="muted small">
               {t('{n}× in this period', { n: counts.get(e.id) ?? 0 })}

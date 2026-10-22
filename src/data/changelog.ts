@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.116.1',
+    date: '2026-10-22',
+    changes: [
+      'The original pixel emotion icons are back, replacing the sticker characters with faces',
+    ],
+  },
+  {
     version: '1.116.0',
     date: '2026-10-21',
     changes: [

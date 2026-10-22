@@ -122,7 +122,7 @@ and remaining browser-side and infrastructure scaling limits.
   matches are self-hosted instead: Source Serif 4 (headings, note text) and Instrument Sans (everything else). If the
   Anthropic fonts are installed on a device, the CSS uses them first.
 - **Colour.** Neutral white/graphite UI; colour is reserved for the eight emotion worlds. That palette is checked for
-  colour-blind separation in light and dark mode, and every coloured mark also carries a label or character.
+  colour-blind separation in light and dark mode, and every coloured mark also carries a label or pixel sprite.
 - **Icons.** [Tabler Icons](https://tabler.io/icons) (~4,800 line icons) and Microsoft's
   [Fluent Emoji High Contrast](https://github.com/microsoft/fluentui-emoji) faces, both MIT. About 290 hand-picked ones
   load when the picker opens; the full set loads only when you browse or search all of them.
@@ -137,12 +137,12 @@ and remaining browser-side and infrastructure scaling limits.
 server/index.js          HTTP routing + Spotify proxy, no dependencies
 server/static.js         compressed static hosting and bounded asset cache
 server/sync.js           encrypted sync storage and transfer limits
-src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours
+src/data/emotions.ts     the emotion wheel: 8 worlds → 24 zones → 48 feelings, colours, sprites
 src/data/ro.ts           the Romanian translation, keyed by the English text (see src/lib/i18n.ts)
 src/lib/                 storage (IndexedDB), stats, dates, router, API clients
 src/lib/noteDoc/         a note's text as a ProseMirror document: schema, Markdown in and out, editing commands
 src/editor/              the note editor: the ProseMirror view, its plugins, node views and paste handling
-src/components/          sheets, pickers, charts; critters.ts draws the worlds as characters
+src/components/          sheets, pickers, charts
 src/views/               Journal, Tracker, Editor, Stats, Settings
 src/styles/              shared styling and feature styles, including books, notes and stats
 public/sw.js             offline cache

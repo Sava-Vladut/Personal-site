@@ -322,7 +322,7 @@ export function Brain() {
               class="brain-zone" style={{ '--c': `var(--emo-${id})`, '--lit': brain.regions[id].level }}
               role="radio" aria-checked={world === id} onClick={() => setPick(id)} title={ZONES[id].name}
             >
-              <Sprite core={id} size={20} idle={world === id} />
+              <Sprite core={id} size={14} idle={world === id} />
               <span class="brain-zone-name">{shortName(id)}</span>
               <i class="brain-zone-lit" />
             </button>
@@ -330,7 +330,7 @@ export function Brain() {
         </div>
 
         <div class="brain-detail" style={{ '--c': `var(--emo-${world})` }}>
-          <div class="brain-detail-head"><Sprite core={world} size={24} idle /> <b>{zone.name}</b></div>
+          <div class="brain-detail-head"><Sprite core={world} size={18} idle /> <b>{zone.name}</b></div>
           <p class="brain-role">{zone.role}</p>
           <p class="brain-line">{regionLine(region, brain.span)}</p>
           {shiftLine(region, brain.span) && <p class="brain-shift muted small">{shiftLine(region, brain.span)}</p>}

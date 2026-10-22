@@ -139,50 +139,7 @@ h1, h2, h3, p { margin: 0; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--r-s); }
 ::selection { background: color-mix(in oklab, var(--ink) 18%, transparent); }
 code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2); padding: 1px 5px; border-radius: var(--r-xs); }
-/* the worlds' characters (components/critters.ts): a shape in the world's --c with a face in a deep shade of it */
-.sprite {
-  display: inline-block; flex: none; overflow: visible;
-  --cr-deep: color-mix(in oklab, var(--c) 22%, #151514);
-  --cr-light: color-mix(in oklab, var(--c) 52%, #fff);
-  --cr-shade: color-mix(in oklab, var(--c) 70%, #000);
-}
-.cr-c { fill: var(--c); }
-.cr-d { fill: var(--cr-deep); }
-.cr-l { fill: var(--cr-light); }
-.cr-w { fill: #fff; }
-.cr-y { fill: #ffd45e; }
-.cr-p { fill: #ff8fa3; opacity: 0.75; }
-.cr-t { fill: #9fd6ff; }
-.cr-k, .cr-ks { fill: none; stroke: var(--cr-deep); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.cr-ks { stroke: var(--cr-shade); stroke-width: 1.8; }
-
-/* idle loops: the heart beats, the star hops, the leaf sways, the spark twinkles, the ghost floats and glances
-   about, rain falls, the flame flickers, the face looks away */
-.sprite.idle :is(.cr-b, .cr-face, .cr-drops) {
-  transform-box: fill-box; transform-origin: center;
-  animation-delay: var(--delay, 0ms); animation-iteration-count: infinite;
-}
-.sprite.idle[data-k='love-connection'] .cr-b { animation-name: cr-beat; animation-duration: 1.6s; }
-.sprite.idle[data-k='joy'] .cr-b { animation-name: cr-hop; animation-duration: 1.4s; transform-origin: center bottom; }
-.sprite.idle[data-k='calm-safety'] .cr-b { animation-name: cr-sway; animation-duration: 3.2s; animation-timing-function: ease-in-out; transform-origin: left bottom; }
-.sprite.idle[data-k='hope-interest'] .cr-b { animation-name: cr-twinkle; animation-duration: 2.2s; animation-timing-function: ease-in-out; }
-.sprite.idle[data-k='fear'] .cr-b { animation-name: cr-float; animation-duration: 2.4s; animation-timing-function: ease-in-out; }
-.sprite.idle[data-k='fear'] .cr-face { animation-name: cr-look; animation-duration: 3s; }
-.sprite.idle[data-k='sadness'] .cr-drops { animation-name: cr-rain; animation-duration: 0.9s; animation-timing-function: linear; }
-.sprite.idle[data-k='anger'] .cr-b { animation-name: cr-flicker; animation-duration: 0.5s; animation-direction: alternate; animation-timing-function: ease-in-out; transform-origin: center bottom; }
-.sprite.idle[data-k='shame-aversion'] .cr-face { animation-name: cr-look; animation-duration: 3.6s; }
-@keyframes cr-beat { 0%, 60%, 100% { transform: scale(1); } 68% { transform: scale(1.12); } 76% { transform: scale(1); } 84% { transform: scale(1.08); } }
-@keyframes cr-hop {
-  0%, 55%, 100% { transform: translateY(0) scale(1, 1); } 62% { transform: translateY(0) scale(1.08, 0.92); }
-  75% { transform: translateY(-4px) scale(0.96, 1.05); } 88% { transform: translateY(0) scale(1.04, 0.96); }
-}
-@keyframes cr-sway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
-@keyframes cr-twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(0.86) rotate(20deg); } }
-@keyframes cr-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.4px); } }
-@keyframes cr-look { 0%, 35%, 100% { transform: translateX(0); } 42%, 70% { transform: translateX(-2.4px); } 77%, 90% { transform: translateX(2px); } }
-@keyframes cr-rain { from { transform: translateY(-3px); opacity: 0.2; } 30% { opacity: 1; } to { transform: translateY(4px); opacity: 0; } }
-@keyframes cr-flicker { from { transform: scale(1, 1) skewX(0); } to { transform: scale(0.97, 1.06) skewX(-3deg); } }
-@media (prefers-reduced-motion: reduce) { .sprite.idle * { animation: none !important; } }
+.sprite { display: inline-block; flex: none; image-rendering: pixelated; }
 
 /* ============================================================
    Layout & type
@@ -348,7 +305,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .intensity-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .intensity-count { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .intensity-read { display: flex; align-items: center; gap: 12px; min-height: 40px; }
-.intensity-sprite { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 52px; height: 52px; padding: 0 7px; flex: none; border-radius: var(--r-m); background: color-mix(in oklab, var(--c, var(--ink)) calc(8% + var(--k) * 3%), var(--surface-2)); transition: background-color var(--dur-2); }
+.intensity-sprite { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 40px; height: 40px; padding: 0 7px; flex: none; border-radius: var(--r-m); background: color-mix(in oklab, var(--c, var(--ink)) calc(8% + var(--k) * 3%), var(--surface-2)); transition: background-color var(--dur-2); }
 .intensity-sprite .sprite { flex: none; transform: scale(calc(0.8 + var(--k) * 0.08)); transition: transform var(--dur-3) var(--spring-bouncy); }
 .intensity-label { font-size: var(--text-l); font-weight: var(--w-bold); letter-spacing: -0.01em; color: color-mix(in oklab, var(--c, var(--ink)) 75%, var(--ink)); animation: rise-in var(--dur-2) var(--ease-emph) backwards; }
 .intensity-note { margin-top: 1px; font-size: var(--text-m); color: var(--ink-3); }

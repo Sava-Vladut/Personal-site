@@ -108,7 +108,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
       {p ? (
         <div class="card confirm" style={{ '--c': `var(--emo-${p.core})` }}>
           <div class="confirm-head">
-            <span class="confirm-sprite"><Sprite core={p.core} size={36} /></span>
+            <span class="confirm-sprite"><Sprite core={p.core} size={26} /></span>
             <div class="grow">
               <div class="row gap-s">
                 <h2 class="confirm-name">{p.depth === 0 ? EMOTION[p.core].name : p.name}</h2>

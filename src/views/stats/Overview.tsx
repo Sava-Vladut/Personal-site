@@ -37,7 +37,7 @@ export function Overview({ s, range }: { s: S; range: RangeKey }) {
           </div>
           {lead && (
             <div class="mascot" title={t('Felt most: {world}', { world: shortName(lead) })}>
-              <Sprite core={lead} size={52} idle />
+              <Sprite core={lead} size={38} idle />
               <span>{shortName(lead)}</span>
             </div>
           )}
@@ -68,7 +68,7 @@ export function Overview({ s, range }: { s: S; range: RangeKey }) {
           <ul>
             {notes.map((n, i) => (
               <li style={{ '--k': i, ...(n.core ? { '--c': `var(--emo-${n.core})` } : {}) }} class={n.core ? 'tinted' : ''}>
-                <span class="ins-ico">{n.core ? <Sprite core={n.core} size={20} /> : <Icon name="sparkles" size={13} />}</span>
+                <span class="ins-ico">{n.core ? <Sprite core={n.core} size={13} /> : <Icon name="sparkles" size={13} />}</span>
                 <span>{n.text}</span>
               </li>
             ))}

@@ -134,9 +134,9 @@ function worldsOf(p: Person, moments: Entry[] = []) {
 
 /** Where the feelings float on a card: off to the right, clear of the name, each on its own slow loop. */
 const SPOTS = [
-  { right: '15%', top: '14%', size: 20, dur: 7.4 },
-  { right: '31%', bottom: '13%', size: 17, dur: 9.1 },
-  { right: '7%', bottom: '16%', size: 16, dur: 8.3 },
+  { right: '15%', top: '14%', size: 13, dur: 7.4 },
+  { right: '31%', bottom: '13%', size: 11, dur: 9.1 },
+  { right: '7%', bottom: '16%', size: 10, dur: 8.3 },
 ];
 
 /**

@@ -7,7 +7,6 @@ import { CHART_ORDER, CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emo
 import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWeek } from '../lib/dates';
 import { fmtMood, pct, type Bucket } from '../lib/stats';
 import { Icon, Sprite, type UiName } from './icons';
-import { critter, critterStyle } from './critters';
 import { LOCALE, count, noun, t } from '../lib/i18n';
 
 /* ---------- scroll reveal ---------- */
@@ -197,7 +196,7 @@ export function ChartCard({ title, sub, legend, table, children }: {
 
 export const LegendItem = ({ color, label, line, core }: { color?: string; label: string; line?: boolean; core?: string }) => (
   <span class="legend-item">
-    {core ? <Sprite core={core} size={16} /> : <i class={line ? 'line' : ''} style={{ background: color }} />}
+    {core ? <Sprite core={core} size={11} /> : <i class={line ? 'line' : ''} style={{ background: color }} />}
     {label}
   </span>
 );
@@ -481,7 +480,7 @@ export function HBars({ rows, total }: { rows: { id: string; label: string; coun
     <ul class="hbars">
       {rows.map((r, i) => (
         <li style={{ '--k': i }} {...tipProps(() => <TipRow value={`${r.count} · ${pct(total ? r.count / total : 0)}`} label={r.label} color={`var(--emo-${r.core})`} />, `${r.label}: ${r.count}`)}>
-          <span class="hbar-label"><Sprite core={r.core} size={18} />{r.label}</span>
+          <span class="hbar-label"><Sprite core={r.core} size={12} />{r.label}</span>
           <span class="hbar-track">{r.count > 0 && <i style={{ width: `${(r.count / max) * 100}%`, background: `var(--emo-${r.core})` }} />}</span>
           <span class="hbar-value">{r.count}</span>
         </li>
@@ -552,7 +551,7 @@ export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?
             </>
           ), `${r.label}: ${fmtMood(m)}, ${count(r.n, 'entry', 'entries')}`)}>
             <span class="mr-label">
-              {r.icon ? <Icon name={r.icon} size={15} /> : r.core ? <Sprite core={r.core} size={18} /> : null}
+              {r.icon ? <Icon name={r.icon} size={15} /> : r.core ? <Sprite core={r.core} size={12} /> : null}
               <span>{r.label}</span>
             </span>
             <span class="mr-track">
@@ -744,7 +743,9 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
             );
           })}
           {sprites.map((s) => (
-            <svg x={s.x - 10} y={s.y - 10} width={20} height={20} viewBox="0 0 32 32" class="sprite" data-k={s.core} style={critterStyle(s.core)} pointer-events="none" dangerouslySetInnerHTML={{ __html: critter(s.core, true) }} />
+            <svg x={s.x - 7} y={s.y - 7} width={14} height={14} viewBox="0 0 8 8" shape-rendering="crispEdges" pointer-events="none">
+              <path d={spriteD(s.core)} fill={(counts.get(s.core) ?? 0) / maxByDepth[0] > 0.55 ? 'var(--surface)' : `var(--emo-${s.core})`} />
+            </svg>
           ))}
           <text x={c} y={c - 4} text-anchor="middle" class="wheel-num">{sel ? counts.get(sel.id) ?? 0 : total}</text>
           <text x={c} y={c + 14} text-anchor="middle" class="tick">{sel ? noun(counts.get(sel.id) ?? 0, 'time', 'times') : noun(total, 'feeling', 'feelings')}</text>
@@ -754,3 +755,8 @@ export function Wheel({ counts, onSelect, selected }: { counts: Map<string, numb
   );
 }
 
+function spriteD(core: string) {
+  let d = '';
+  CORE[core].sprite.forEach((row, y) => [...row].forEach((ch, x) => ch === 'X' && (d += `M${x} ${y}h1v1h-1z`)));
+  return d;
+}
