@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.117.0',
+    date: '2026-10-22',
+    changes: [
+      'Export as text now opens a sheet where you choose what goes in before you export',
+      'Pick the days: all time, the last 7, 30 or 90 days, a year, or your own from–to dates',
+      'Turn notes, check-ins, people, books, music and repos on or off, and choose what each entry shows: feelings, people, place, weather, music, picture captions',
+      'With a range picked, people, books and music can be limited to the ones tied to those days',
+      'A new overview adds up your feelings, mood, people and places, with a line per day, week or month',
+      'Optionally opens with a request for the AI to look for patterns and changes',
+      'Copy it straight into an AI chat, or download it; the sheet shows how long it is and remembers your choices',
+    ],
+  },
+  {
     version: '1.116.1',
     date: '2026-10-22',
     changes: [

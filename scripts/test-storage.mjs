@@ -1016,3 +1016,45 @@ test('text exports follow journal dates and resolve tags consistently across col
   assert.ok(text.includes('Thanks Ana for “Dune” (book).'));
   assert.ok(!text.includes('@[Ana]'));
 });
+
+test('text exports keep to the chosen days, parts and details', async () => {
+  const people = [
+    { id: 'ana', name: 'Ana', relation: '', dates: [], text: '', emotions: [] },
+    { id: 'bo', name: 'Bo', relation: '', dates: [], text: '', emotions: [] },
+  ];
+  const books = [
+    { id: 'dune', title: 'Dune', authors: '', status: 'read', rating: 0, started: '2026-09-01', finished: '2026-09-10', page: null, pages: null, emotions: [], from: null, text: '' },
+    { id: 'emma', title: 'Emma', authors: '', status: 'want', rating: 0, started: null, finished: null, page: null, pages: null, emotions: [], from: null, text: '' },
+  ];
+  const songs = [
+    { id: 'blue', music: { id: 'sp-blue', kind: 'track', title: 'Blue' }, repeat: false, rating: 0, emotions: [], from: null, text: '', days: [] },
+    { id: 'red', music: { id: 'sp-red', kind: 'track', title: 'Red' }, repeat: false, rating: 0, emotions: [], from: null, text: '', days: ['2026-08-01'] },
+  ];
+  const entries = [
+    entry({ id: 'old', title: 'Way back', date: '2026-08-01', kind: 'checkin', emotions: ['sadness'], people: ['bo'] }),
+    entry({ id: 'in', title: 'In range', date: '2026-09-05', emotions: ['joy'], text: 'Reading [[Dune]] with @[Ana]', place: { lat: 0, lon: 0, name: 'Home' },
+      music: [{ id: 'sp-blue', kind: 'track', title: 'Blue', link: '' }] }),
+    entry({ id: 'trip', title: 'Long trip', date: '2026-08-28', dateEnd: '2026-09-02', kind: 'checkin', emotions: ['joy'], intensity: 4 }),
+  ];
+  const exporter = await loadModule('src/lib/exportText.ts', {
+    './store': { getEntries: () => entries, getPeople: () => people, getBooks: () => books, getSongs: () => songs, getRepos: () => [] },
+  });
+  const base = { ...exporter.EXPORT_DEFAULT, from: '2026-09-01', to: '2026-09-30' };
+  const text = exporter.exportText(base);
+  assert.ok(text.includes('In range') && text.includes('Long trip'), 'entries overlapping the days are in');
+  assert.ok(!text.includes('Way back'), 'entries outside the days are left out');
+  assert.ok(text.includes('### Ana') && !text.includes('### Bo'), 'only people tagged in those days');
+  assert.ok(text.includes('### Dune') && !text.includes('### Emma'), 'only books read or named in those days');
+  assert.ok(text.includes('### Blue') && !text.includes('### Red'), 'only music attached or played in those days');
+  assert.ok(text.includes('## Overview') && text.includes('Week by week') && text.includes('100% pleasant'));
+  assert.ok(text.includes('- Place: Home') && text.includes('- Music: “Blue”'));
+  assert.ok(text.includes('What I’d like from you'));
+
+  const all = exporter.exportText({ ...base, linked: false });
+  assert.ok(all.includes('### Bo') && all.includes('### Emma'), 'everyone and everything when not tied to the days');
+
+  const lean = exporter.exportText({ ...base, parts: ['checkins'], details: ['feelings'], ask: false, newest: true });
+  assert.ok(lean.includes('Long trip') && !lean.includes('In range'), 'only the chosen kinds');
+  assert.ok(!lean.includes('## Overview') && !lean.includes('## People') && !lean.includes('What I’d like from you'));
+  assert.ok(lean.includes('- Feelings: Joy') && !lean.includes('- Place:'), 'only the chosen details');
+});

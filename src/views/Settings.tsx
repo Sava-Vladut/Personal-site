@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { connectGithub, disconnectGithub, forgetRepos, githubStatus, type GithubStatus } from '../lib/github';
 import { goBack, navigate } from '../lib/router';
-import { exportText } from '../lib/exportText';
 import { deleteAll, exportJSON, getSettings, importJSON, saveEntry, setSettings, toast, useBooks, useEntries, usePeople, useRepos, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
 import { rangeLabel, shortDate, todayKey } from '../lib/dates';
@@ -10,6 +9,7 @@ import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
+import { ExportSheet } from '../components/ExportSheet';
 import { Sheet } from '../components/Sheet';
 import { WheelEditor } from '../components/WheelEditor';
 import { WidgetEditor } from '../components/WidgetEditor';
@@ -59,6 +59,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [gh, setGh] = useState<GithubStatus | null>(null);
   const [setup, setSetup] = useState(false);
   const [changelog, setChangelog] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
@@ -90,14 +91,6 @@ export function Settings({ query }: { query: URLSearchParams }) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `my-mind-${todayKey()}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
-  const downloadText = () => {
-    const blob = new Blob([exportText()], { type: 'text/markdown' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `my-mind-${todayKey()}.md`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
@@ -434,10 +427,10 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <button class="list-row action" onClick={() => setJoining(true)}><span class="row gap-s"><Icon name="key" size={18} /> {t('Load with a code')}</span><Icon name="chevron-right" size={18} /></button>
           )}
           <button class="list-row action" onClick={download}><span class="row gap-s"><Icon name="download" size={18} /> {t('Export backup')}</span><Icon name="chevron-right" size={18} /></button>
-          <button class="list-row action" onClick={downloadText} disabled={!entries.length && !people.length && !books.length && !songs.length && !repos.length}>
+          <button class="list-row action" onClick={() => setExporting(true)} disabled={!entries.length && !people.length && !books.length && !songs.length && !repos.length}>
             <span class="grow">
               <span class="row gap-s"><Icon name="download" size={18} /> {t('Export as text')}</span>
-              <div class="muted small">{t('Your journal, feelings, people, books, music and picture captions in one file, without the pictures. Handy for asking an AI about your life. It can’t be imported back.')}</div>
+              <div class="muted small">{t('Pick the days and what goes in, then download it or copy it straight into an AI chat to ask about your life.')}</div>
             </span>
             <Icon name="chevron-right" size={18} />
           </button>
@@ -475,6 +468,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
       <HomeSheet open={homeOpen} current={settings.home} onClose={() => setHomeOpen(false)} onPick={setHome} />
       <JoinSheet open={joining} onClose={() => setJoining(false)} />
       <ChangelogSheet open={changelog} onClose={() => setChangelog(false)} />
+      <ExportSheet open={exporting} onClose={() => setExporting(false)} />
     </div>
   );
 }
