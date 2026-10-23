@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.126.0',
+    date: '2026-10-23',
+    changes: [
+      'The reminders bar only lists what’s still to do: once today’s song is picked, its line goes away',
+      'The “How are you feeling?” card under the date is gone; the bar’s check-in line takes you to check in',
+    ],
+  },
+  {
     version: '1.125.0',
     date: '2026-10-23',
     changes: [

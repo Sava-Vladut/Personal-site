@@ -74,10 +74,10 @@ function Notice({ c, icon, title, sub, due, onClick }: {
   );
 }
 
-const ico = (name: UiName, cls?: string) => <Icon name={name} size={18} class={cls} />;
+const ico = (name: UiName) => <Icon name={name} size={18} />;
 
 /**
- * Today's song (or a nudge to pick it, with the run you'd keep going), the next check-in every couple of hours while
+ * A nudge to pick today's song while it's unpicked (with the run you'd keep going), the next check-in every couple of hours while
  * you're up (a ring round the last feeling fills until it's due), a nudge in the evening to write about the day, the
  * Twitch channels the miner is watching live, and the news after the app updates.
  */
@@ -95,20 +95,13 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
   const since = last ? now - last.time : Infinity;
   const rows: { key: string; due: boolean; node: ComponentChildren }[] = [];
 
-  if (songs.length) {
-    const song = songs.find((s) => s.days.includes(today));
-    if (song) {
-      rows.push({ key: 'song', due: false, node: (
-        <Notice c="var(--emo-sadness)" icon={ico('vinyl', 'notice-spin')} title={t('Today’s song')}
-          sub={[song.music.title, song.music.sub].filter(Boolean).join(' · ')} onClick={() => navigate('song/' + song.id)} />
-      ) });
-    } else if (awake) {
-      const streak = streakOf(new Set(songs.flatMap((s) => s.days)), today);
-      rows.push({ key: 'song', due: true, node: (
-        <Notice c="var(--emo-sadness)" icon={ico('music')} title={t('Pick today’s song')} due onClick={() => picker.open(today)}
-          sub={streak > 1 ? t('Keep your {n}-day run going', { n: streak }) : t('The day doesn’t have a record yet')} />
-      ) });
-    }
+  // today's song only while it's still to pick
+  if (songs.length && awake && !songs.some((s) => s.days.includes(today))) {
+    const streak = streakOf(new Set(songs.flatMap((s) => s.days)), today);
+    rows.push({ key: 'song', due: true, node: (
+      <Notice c="var(--emo-sadness)" icon={ico('music')} title={t('Pick today’s song')} due onClick={() => picker.open(today)}
+        sub={streak > 1 ? t('Keep your {n}-day run going', { n: streak }) : t('The day doesn’t have a record yet')} />
+    ) });
   }
 
   if (em && since < CHECKIN_EVERY) {

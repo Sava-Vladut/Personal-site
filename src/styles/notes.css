@@ -293,11 +293,11 @@
 .journal-top .filter-note { margin: 10px 0 0; }
 /* what sits on the sky is solid, tinted a touch with it (no blur: these scroll with the page, and a live blur on them
    costs every frame) */
-.journal-top .prompt, .journal-top .notices, .journal-top > .card, .journal-top .search {
+.journal-top .notices, .journal-top > .card, .journal-top .search {
   background: color-mix(in oklab, var(--sky) 5%, var(--bg));
   border-color: color-mix(in oklab, var(--line) 70%, transparent);
 }
-.journal-top :is(.prompt, .notices) { box-shadow: 0 10px 30px -18px color-mix(in oklab, var(--sky) 60%, transparent); }
+.journal-top .notices { box-shadow: 0 10px 30px -18px color-mix(in oklab, var(--sky) 60%, transparent); }
 
 /* where a note was written, and its weather */
 .details-place { flex: 0 1 auto; min-width: 0; max-width: 100%; }

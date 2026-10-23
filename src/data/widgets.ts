@@ -4,7 +4,7 @@
 import type { UiName } from '../components/icons';
 import { t } from '../lib/i18n';
 
-export type WidgetId = 'notices' | 'checkin' | 'on-this-day' | 'coming-up' | 'reading' | 'song' | 'points';
+export type WidgetId = 'notices' | 'on-this-day' | 'coming-up' | 'reading' | 'song' | 'points';
 
 /** A setting of one widget: a few named choices, each a number. */
 export interface WidgetOption {
@@ -26,8 +26,7 @@ export interface WidgetDef {
 }
 
 export const WIDGETS: WidgetDef[] = [
-  { id: 'notices', name: t('Today’s reminders'), sub: t('Today’s song, and a check-in every couple of hours'), icon: 'sparkles', hue: 'hope-interest', zone: 'panel', options: [] },
-  { id: 'checkin', name: t('Check-in'), sub: t('How are you feeling? A tap to name it'), icon: 'mood-plus', hue: 'joy', zone: 'panel', options: [] },
+  { id: 'notices', name: t('Today’s reminders'), sub: t('What’s still to do today: the song, a check-in every couple of hours, and news'), icon: 'sparkles', hue: 'hope-interest', zone: 'panel', options: [] },
   { id: 'on-this-day', name: t('On this day'), sub: t('The same date, a year or more ago'), icon: 'clock', hue: 'hope-interest', zone: 'panel', options: [] },
   {
     id: 'coming-up', name: t('Coming up'), sub: t('Birthdays and dates of the people you keep'), icon: 'cake', hue: 'love-connection', zone: 'panel',

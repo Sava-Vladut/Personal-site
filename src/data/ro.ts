@@ -1104,7 +1104,7 @@ export const RO: Record<string, string> = {
   '{title} is the song of {day}': '{title} e melodia pentru {day}',
   'Today’s song': 'Melodia de azi',
   'Today’s reminders': 'Mementourile zilei',
-  'Today’s song, and a check-in every couple of hours': 'Melodia de azi și un check-in la câteva ore',
+  'What’s still to do today: the song, a check-in every couple of hours, and news': 'Ce mai ai de făcut azi: melodia, un check-in la câteva ore și noutăți',
   '{m}m': '{m} min',
   '{h}h {m}m': '{h} h {m} min',
   '{h}h': '{h} h',

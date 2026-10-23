@@ -211,7 +211,6 @@ function Widget({ id, layout, entries, byDay, onOpenDay, picker, news }: {
 }) {
   switch (id) {
     case 'notices': return <Notices entries={entries} picker={picker} news={news} />;
-    case 'checkin': return <CheckInPrompt entries={entries} />;
     case 'on-this-day': return <OnThisDay byDay={byDay} onOpen={onOpenDay} />;
     case 'coming-up': return <ComingUp within={optionOf(layout, id, 'days')} max={optionOf(layout, id, 'max')} />;
     case 'reading': return <ReadingNow max={optionOf(layout, id, 'max')} />;
@@ -359,24 +358,6 @@ function JournalPoints({ graph }: { graph: boolean }) {
 function JournalSongPicker({ picker }: { picker: DayPick }) {
   const songs = useSongs();
   return <DayPicker songs={songs} picker={picker} />;
-}
-
-/** The nudge to check in, on one line: tap it to pick how you feel. Once you have today, it shows how you last felt. */
-function CheckInPrompt({ entries }: { entries: Entry[] }) {
-  const today = todayKey();
-  const last = entries.find((e) => e.kind === 'checkin' && e.date === today && e.emotions.length);
-  const em = last ? EMOTION[last.emotions[0]] : null;
-  return (
-    <button class="prompt card" style={em ? { '--c': `var(--emo-${em.core})` } : undefined} onClick={() => navigate('tracker')}>
-      <h2 class="prompt-q">{t('How are you feeling?')}</h2>
-      {em ? (
-        <span class="prompt-last"><Sprite core={em.core} size={11} /> {em.depth === 0 ? shortName(em.id) : em.name} · {timeLabel(last!.time)}</span>
-      ) : (
-        <span class="prompt-sub">{t('Name it to tame it.')}</span>
-      )}
-      <Icon name="chevron-right" size={16} />
-    </button>
-  );
 }
 
 /** A day from a year (or more) ago, on today's date: how it felt, and a tap away from what you wrote. */

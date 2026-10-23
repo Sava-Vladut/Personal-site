@@ -3,9 +3,9 @@
 /* the cards under the date, in the order you chose: one even gap, whichever comes first */
 .widgets { display: grid; gap: 10px; margin-top: 10px; }
 .widgets:empty { display: none; }
-.widgets > :is(.prompt, .coming-up, .reading-strip) { margin-top: 0; margin-bottom: 0; }
+.widgets > :is(.coming-up, .reading-strip) { margin-top: 0; margin-bottom: 0; }
 
-/* the bar under the date (Notices): today's song and the next check-in, a line each, in the colour it's about */
+/* the bar under the date (Notices): what's still to do today, a line each, in the colour it's about */
 .notices { display: grid; padding: 4px; }
 .notice {
   position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px 8px 8px; text-align: left;
@@ -39,10 +39,7 @@
 @keyframes notice-breathe { from { scale: 1; opacity: 0.6; } 70%, to { scale: 3; opacity: 0; } }
 /* a channel that's live: a red dot on its badge, like the Twitch page's */
 .notice-live { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #eb0400; box-shadow: 0 0 0 2px var(--bg); }
-/* today's record turns, slowly */
-.notice-spin { animation: notice-turn 8s linear infinite; }
-@keyframes notice-turn { to { rotate: 360deg; } }
-@media (prefers-reduced-motion: reduce) { .notice-dot::before, .notice-spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .notice-dot::before { animation: none; } }
 
 .wd-zone + .wd-zone { margin-top: 18px; }
 .wd-zone-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 4px 8px; }
