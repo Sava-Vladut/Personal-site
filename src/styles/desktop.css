@@ -158,7 +158,7 @@
   .seg.tabs { max-width: 640px; }
   .tab-panel > .stack-l { display: block; column-count: 2; column-gap: 12px; }
   .tab-panel > .stack-l > * { break-inside: avoid; margin: 0 0 12px; }
-  .tab-panel > .stack-l > :is(.hero, .tiles, .insights, .weather-empty) { column-span: all; }
+  .tab-panel > .stack-l > :is(.hero, .tiles, .insights, .weather-empty, .st-brain, :has(> .cloud-chart)) { column-span: all; }
 
   /* ---------- settings: sections in two columns ---------- */
 

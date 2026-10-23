@@ -7,7 +7,6 @@ import { CHART_ORDER, CORE, EMOTION, PICKER_ORDER, shortName } from '../data/emo
 import { WEEKDAYS, addDays, diffDays, monthShort, parseKey, shortDate, startOfWeek } from '../lib/dates';
 import { fmtMood, pct, type Bucket } from '../lib/stats';
 import { Icon, Sprite, type UiName } from './icons';
-import { GlyphFill, dense } from './ascii';
 import { LOCALE, count, noun, t } from '../lib/i18n';
 
 /* ---------- scroll reveal ---------- */
@@ -51,25 +50,6 @@ function dominant(cores: Record<string, number>) {
   return best;
 }
 const stagger = (i: number, n: number) => ({ '--t': (n > 1 ? i / (n - 1) : 0).toFixed(3) });
-
-/* ---------- letters ---------- */
-
-/** Letters for the two sides of zero: what rises, and what falls like rain. */
-const UP = '+*', DOWN = "',.";
-
-/** An SVG pattern of letters on a small grid, to fill an area with or to engrave a bar. */
-function GlyphPattern({ id, chars, color, opacity = 1 }: { id: string; chars: string; color: string; opacity?: number }) {
-  const w = 6, h = 8;
-  return (
-    <pattern id={id} width={w * 2} height={h * 2} patternUnits="userSpaceOnUse">
-      {[[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y], i) => (
-        <text x={x * w + w / 2} y={y * h + h - 1.5} text-anchor="middle" class="glyph" fill={color} fill-opacity={opacity}>{chars[(i * 3 + y) % chars.length]}</text>
-      ))}
-    </pattern>
-  );
-}
-/** Engraved letters sit on solid marks in the surface colour, so they read in light and dark alike. */
-const ENGRAVE = 'var(--surface)';
 
 /* ---------- count-up ---------- */
 
@@ -252,8 +232,7 @@ export const UNPLEASANT = 'var(--neg-a)';
 
 /* ---------- mood over time ---------- */
 
-/** Mood over time: dots in each day's world, the rolling line, and between it and zero the page's letters, rising above and raining below. */
-export function MoodChart({ buckets, step, world }: { buckets: Bucket[]; step: number; world?: string | null }) {
+export function MoodChart({ buckets, step }: { buckets: Bucket[]; step: number }) {
   const [ref, W] = useWidth();
   const [hover, setHover] = useState<number | null>(null);
   const H = 190, L = 30, R = 10, T = 10, B = 24;
@@ -313,10 +292,6 @@ export function MoodChart({ buckets, step, world }: { buckets: Bucket[]; step: n
               <stop offset="0.5" stop-color="var(--accent)" stop-opacity="0.04" />
               <stop offset="1" stop-color="var(--accent)" stop-opacity="0.34" />
             </linearGradient>
-            <GlyphPattern id="gl-mood-up" chars={dense(world)} color="var(--accent)" opacity={0.75} />
-            <GlyphPattern id="gl-mood-down" chars={DOWN} color="var(--accent)" opacity={0.75} />
-            <clipPath id="mood-up"><rect x={L} y={T} width={pw} height={Math.max(0, +zero - T)} /></clipPath>
-            <clipPath id="mood-down"><rect x={L} y={zero} width={pw} height={Math.max(0, T + ph - +zero)} /></clipPath>
           </defs>
           <rect x={L} y={T} width={pw} height={ph} fill="url(#moodwash)" />
           {[5, 0, -5].map((m) => (
@@ -329,12 +304,6 @@ export function MoodChart({ buckets, step, world }: { buckets: Bucket[]; step: n
             <text x={x(i)} y={H - 6} class="tick" text-anchor={n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}>{shortDate(buckets[i].key)}</text>
           ))}
           {area && <path d={area} class="area" fill="url(#moodpool)" />}
-          {area && (
-            <g class="area glyph-area">
-              <path d={area} fill="url(#gl-mood-up)" clip-path="url(#mood-up)" />
-              <path d={area} fill="url(#gl-mood-down)" clip-path="url(#mood-down)" />
-            </g>
-          )}
           {buckets.map((b, i) => {
             if (b.mood === null) return null;
             const world = dominant(b.cores);
@@ -393,10 +362,6 @@ export function BalanceChart({ buckets, step }: { buckets: Bucket[]; step: numbe
     <div ref={ref} class="chart">
       {W > 0 && (
         <svg width={W} height={H} role="img" aria-label={t('Pleasant and unpleasant entries over time')}>
-          <defs>
-            <GlyphPattern id="gl-bal-up" chars={UP} color={ENGRAVE} opacity={0.6} />
-            <GlyphPattern id="gl-bal-down" chars={DOWN} color={ENGRAVE} opacity={0.8} />
-          </defs>
           <line x1={L} x2={L + pw} y1={T} y2={T} class="grid" />
           <line x1={L} x2={L + pw} y1={T + ph} y2={T + ph} class="grid" />
           <text x={L - 8} y={T + 4} class="tick" text-anchor="end">{max}</text>
@@ -415,8 +380,6 @@ export function BalanceChart({ buckets, step }: { buckets: Bucket[]; step: numbe
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
                 {b.pleasant > 0 && <path d={barPath(bx, bw, mid - 1, mid - 1 - s(b.pleasant))} fill={PLEASANT} class="bar up" style={stagger(i, n)} />}
                 {b.unpleasant > 0 && <path d={barPath(bx, bw, mid + 1, mid + 1 + s(b.unpleasant))} fill={UNPLEASANT} class="bar down" style={stagger(i, n)} />}
-                {bw >= 5 && b.pleasant > 0 && <path d={barPath(bx, bw, mid - 1, mid - 1 - s(b.pleasant))} fill="url(#gl-bal-up)" class="bar up" style={stagger(i, n)} />}
-                {bw >= 5 && b.unpleasant > 0 && <path d={barPath(bx, bw, mid + 1, mid + 1 + s(b.unpleasant))} fill="url(#gl-bal-down)" class="bar down" style={stagger(i, n)} />}
               </g>
             );
           })}
@@ -453,7 +416,6 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
     <div ref={ref} class="chart">
       {W > 0 && (
         <svg width={W} height={H} role="img" aria-label={t('Share of each emotion world over time')}>
-          <defs>{CHART_ORDER.map((id) => <GlyphPattern id={`gl-mix-${id}`} chars={dense(id)} color={ENGRAVE} opacity={0.55} />)}</defs>
           <line x1={L} x2={L + pw} y1={T + ph} y2={T + ph} class="axis" />
           {cols.map((c, i) => {
             const x = L + i * band + (band - bw) / 2;
@@ -474,13 +436,9 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
                     y -= h;
                     const last = k === present.length - 1;
                     const segH = Math.max(0, h - (last ? 0 : 2)); // 2px surface gap between segments
-                    // each world in its own letters, engraved on its colour
-                    const glyphs = bw >= 5 ? `url(#gl-mix-${id})` : null;
-                    return last ? (
-                      <><path d={barPath(x, bw, y + h, y)} fill={`var(--emo-${id})`} />{glyphs && <path d={barPath(x, bw, y + h, y)} fill={glyphs} />}</>
-                    ) : (
-                      <><rect x={x} y={y + 2} width={bw} height={segH} fill={`var(--emo-${id})`} />{glyphs && <rect x={x} y={y + 2} width={bw} height={segH} fill={glyphs} />}</>
-                    );
+                    return last
+                      ? <path d={barPath(x, bw, y + h, y)} fill={`var(--emo-${id})`} />
+                      : <rect x={x} y={y + 2} width={bw} height={segH} fill={`var(--emo-${id})`} />;
                   })}
                 </g>
               </g>
@@ -516,18 +474,22 @@ export const WorldLegend = () => <>{CHART_ORDER.map((id) => <LegendItem core={id
 
 /* ---------- horizontal bars (worlds, feelings) ---------- */
 
+/** Ranked rows, like the records' most picked: the name and its count, and a bar in its world's colour under them. */
 export function HBars({ rows, total }: { rows: { id: string; label: string; count: number; core: string }[]; total: number }) {
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
-    <ul class="hbars">
+    <ol class="ranked">
       {rows.map((r, i) => (
-        <li style={{ '--k': i }} {...tipProps(() => <TipRow value={`${r.count} · ${pct(total ? r.count / total : 0)}`} label={r.label} color={`var(--emo-${r.core})`} />, `${r.label}: ${r.count}`)}>
-          <span class="hbar-label"><Sprite core={r.core} size={12} />{r.label}</span>
-          <span class="hbar-track">{r.count > 0 && <i style={{ width: `${(r.count / max) * 100}%`, '--c': `var(--emo-${r.core})` }}><GlyphFill world={r.core} seed={i} /></i>}</span>
-          <span class="hbar-value">{r.count}</span>
+        <li style={{ '--k': i, '--c': `var(--emo-${r.core})`, '--w': r.count / max }} {...tipProps(() => <TipRow value={`${r.count} · ${pct(total ? r.count / total : 0)}`} label={r.label} color={`var(--emo-${r.core})`} />, `${r.label}: ${r.count}`)}>
+          <span class="rk-top">
+            <Sprite core={r.core} size={14} />
+            <span class="rk-name">{r.label}</span>
+            <span class="rk-n"><b>{r.count}</b> <small>{pct(total ? r.count / total : 0)}</small></span>
+          </span>
+          <span class="rk-bar">{r.count > 0 && <i />}</span>
         </li>
       ))}
-    </ul>
+    </ol>
   );
 }
 
@@ -545,10 +507,6 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
     <div ref={ref} class="chart">
       {W > 0 && (
         <svg width={W} height={H} role="img" aria-label={t('Average mood')}>
-          <defs>
-            <GlyphPattern id="gl-mb-up" chars={UP} color={ENGRAVE} opacity={0.6} />
-            <GlyphPattern id="gl-mb-down" chars={DOWN} color={ENGRAVE} opacity={0.8} />
-          </defs>
           <line x1={L} x2={L + pw} y1={T} y2={T} class="grid" />
           <line x1={L} x2={L + pw} y1={T + ph} y2={T + ph} class="grid" />
           <text x={L - 8} y={T + 4} class="tick" text-anchor="end">+5</text>
@@ -565,9 +523,9 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
                 </>
               ), `${r.label}: ${fmtMood(m)}`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
-                {m !== null && Math.abs(m) > 0.02 && [m > 0 ? PLEASANT : UNPLEASANT, m > 0 ? 'url(#gl-mb-up)' : 'url(#gl-mb-down)'].map((fill) => (
-                  <path d={m > 0 ? barPath(x, bw, mid - 1, mid - 1 - s(m)) : barPath(x, bw, mid + 1, mid + 1 + s(m))} fill={fill} class={`bar ${m > 0 ? 'up' : 'down'}`} style={stagger(i, rows.length)} />
-                ))}
+                {m !== null && Math.abs(m) > 0.02 && (
+                  <path d={m > 0 ? barPath(x, bw, mid - 1, mid - 1 - s(m)) : barPath(x, bw, mid + 1, mid + 1 + s(m))} fill={m > 0 ? PLEASANT : UNPLEASANT} class={`bar ${m > 0 ? 'up' : 'down'}`} style={stagger(i, rows.length)} />
+                )}
                 <text x={L + i * band + band / 2} y={H - 6} class="tick" text-anchor="middle">{r.label}</text>
               </g>
             );
@@ -581,7 +539,7 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
 
 /* ---------- mood rows: average mood per group, as bars left (unpleasant) or right (pleasant) of zero ---------- */
 
-export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?: string | null; lead?: ComponentChildren; mood: number | null; n: number }[] }) {
+export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?: string | null; mood: number | null; n: number }[] }) {
   // the longest bar reaches the end of its half, but ±2.5 at least, so small differences don't look dramatic
   const scale = Math.max(2.5, ...rows.map((r) => Math.abs(r.mood ?? 0)));
   return (
@@ -597,12 +555,12 @@ export function MoodRows({ rows }: { rows: { label: string; icon?: UiName; core?
             </>
           ), `${r.label}: ${fmtMood(m)}, ${count(r.n, 'entry', 'entries')}`)}>
             <span class="mr-label">
-              {r.lead ?? (r.icon ? <Icon name={r.icon} size={15} /> : r.core ? <Sprite core={r.core} size={12} /> : null)}
+              {r.icon ? <Icon name={r.icon} size={15} /> : r.core ? <Sprite core={r.core} size={12} /> : null}
               <span>{r.label}</span>
             </span>
             <span class="mr-track">
-              <span class="mr-half neg">{m !== null && m < -0.02 && <i style={{ width: `${w}%`, '--c': UNPLEASANT }}><GlyphFill chars={DOWN} seed={i} /></i>}</span>
-              <span class="mr-half pos">{m !== null && m > 0.02 && <i style={{ width: `${w}%`, '--c': PLEASANT }}><GlyphFill chars={UP} seed={i} /></i>}</span>
+              <span class="mr-half neg">{m !== null && m < -0.02 && <i style={{ width: `${w}%`, background: UNPLEASANT }} />}</span>
+              <span class="mr-half pos">{m !== null && m > 0.02 && <i style={{ width: `${w}%`, background: PLEASANT }} />}</span>
             </span>
             <span class="mr-value">{fmtMood(m)}</span>
           </li>
@@ -628,8 +586,8 @@ export function IntensityChart({ rows }: { rows: { level: number; pleasant: numb
           </>
         ), `${t('Intensity')} ${r.level}: ${r.total}`)}>
           <div class="ic-bar">
-            {r.pleasant > 0 && <i class="pos" style={{ height: `${(r.pleasant / max) * 100}%` }}><GlyphFill chars={UP} seed={r.level} /></i>}
-            {r.unpleasant > 0 && <i class="neg" style={{ height: `${(r.unpleasant / max) * 100}%` }}><GlyphFill chars={DOWN} seed={r.level} /></i>}
+            {r.pleasant > 0 && <i class="pos" style={{ height: `${(r.pleasant / max) * 100}%` }} />}
+            {r.unpleasant > 0 && <i class="neg" style={{ height: `${(r.unpleasant / max) * 100}%` }} />}
           </div>
           <span class="tick-html">{r.level}</span>
         </div>
@@ -640,22 +598,18 @@ export function IntensityChart({ rows }: { rows: { level: number; pleasant: numb
 
 /* ---------- rhythm heatmap: weekday × 3-hour block ---------- */
 
-export function RhythmHeatmap({ heat, max, world }: { heat: number[][]; max: number; world?: string | null }) {
+export function RhythmHeatmap({ heat, max }: { heat: number[][]; max: number }) {
   const BLOCKS = ['0–3', '3–6', '6–9', '9–12', '12–15', '15–18', '18–21', '21–24'];
   const step = (v: number) => (v === 0 ? 0 : Math.min(5, Math.ceil((v / max) * 5)));
-  // busier hours in denser letters
-  const glyphs = '·' + dense(world, 5);
   return (
-    <div class="heat glyphs">
+    <div class="heat">
       <span />
       {['0', '', '6', '', '12', '', '18', ''].map((h) => <span class="tick-html">{h}</span>)}
       {heat.map((row, d) => (
         <>
           <span class="tick-html left">{WEEKDAYS[d].slice(0, 2)}</span>
           {row.map((v, b) => (
-            <span class={`heat-cell s${step(v)}`} style={stagger(d * 8 + b, 56)} {...tipProps(() => <TipRow value={v} label={`${WEEKDAYS[d]} · ${BLOCKS[b]}h`} />, `${WEEKDAYS[d]} ${BLOCKS[b]}: ${v}`)}>
-              <span aria-hidden="true">{glyphs[step(v)]}</span>
-            </span>
+            <span class={`heat-cell s${step(v)}`} style={stagger(d * 8 + b, 56)} {...tipProps(() => <TipRow value={v} label={`${WEEKDAYS[d]} · ${BLOCKS[b]}h`} />, `${WEEKDAYS[d]} ${BLOCKS[b]}: ${v}`)} />
           ))}
         </>
       ))}
@@ -676,8 +630,6 @@ export function MoodCalendar({ calendar, start, end, weekStart }: { calendar: Ma
   const cell = (k: string, inRange: boolean) => {
     const d = calendar.get(k);
     const cls = !inRange ? 'px out' : d ? 'px on' : 'px';
-    // a day in its world's letters, denser the more you wrote
-    const glyph = d?.core ? dense(d.core)[Math.min(2, d.n - 1)] : '';
     const at = Math.min(1, Math.max(0, diffDays(start, k)) / Math.max(1, span - 1));
     return (
       <span
@@ -695,7 +647,7 @@ export function MoodCalendar({ calendar, start, end, weekStart }: { calendar: Ma
             ) : <span>{t('Nothing logged')}</span>}
           </>
         ), shortDate(k)) : {})}
-      >{inRange && glyph && <span aria-hidden="true">{glyph}</span>}</span>
+      />
     );
   };
 

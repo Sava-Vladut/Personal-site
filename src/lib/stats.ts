@@ -137,6 +137,7 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
 
   /* rhythm: weekday × 3-hour block, and mood by weekday / part of day */
   const heat = Array.from({ length: 7 }, () => Array(8).fill(0) as number[]);
+  const heatCores = Array.from({ length: 7 * 8 }, () => new Map<string, number>()); // what was felt in each cell
   const wdMoods: number[][] = Array.from({ length: 7 }, () => []);
   const dpMoods: number[][] = DAYPARTS.map(() => []);
   const dpCounts = DAYPARTS.map(() => 0);
@@ -146,6 +147,7 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
     if (!timed(e)) continue;
     const h = new Date(e.time).getHours();
     heat[weekday(e.date)][Math.floor(h / 3)]++;
+    e.emotions.forEach((id) => inc(heatCores[weekday(e.date) * 8 + Math.floor(h / 3)], coreOf(id).id));
     const p = DAYPARTS.findIndex((d) => d.test(h));
     dpCounts[p]++;
     if (m !== null) dpMoods[p].push(m);
@@ -204,6 +206,8 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
     occurrences,
     heat,
     heatMax: Math.max(1, ...heat.flat()),
+    /** the world felt most in each weekday × 3-hour cell of `heat`, row by row */
+    heatWorlds: heatCores.map((m) => [...m].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null),
     weekdays: wdMoods.map((ms, i) => ({ day: WEEKDAYS[i], mood: mean(ms), n: ms.length })),
     dayparts: DAYPARTS.map((d, i) => ({ name: d.name, when: d.when, mood: mean(dpMoods[i]), n: dpCounts[i] })),
     intensity,

@@ -1,25 +1,19 @@
-import { useContext, useMemo } from 'preact/hooks';
+import { useMemo } from 'preact/hooks';
 import { coreOf } from '../../data/emotions';
 import { fmtTemp } from '../../data/weather';
 import { navigate } from '../../lib/router';
 import { fmtMood, pct, weatherInsights, weatherStats, type Stats as S } from '../../lib/stats';
 import { useSettings } from '../../lib/store';
-import { MoodRows, RevealStack } from '../../components/charts';
-import { AsciiCloud, type Weather as Sky } from '../../components/AsciiCloud';
-import { Icon } from '../../components/icons';
+import { ChartCard, MoodRows, RevealStack } from '../../components/charts';
+import { Icon, Sprite } from '../../components/icons';
 import { PlaceMap, type Pin } from '../../components/PlaceMap';
-import { Readout, Section, Story, Worlds } from './parts';
+import { Tile } from './parts';
 import { count, t } from '../../lib/i18n';
 
 const hours = (h: number | null) => (h === null ? '—' : `${h.toFixed(1)} h`);
 
-/** Each kind of sky, drawn as the journal's little clouds draw the weather. */
-const SKY: Record<string, Sky> = { clear: 'sun', rain: 'rain', storm: 'storm' };
-
 export function Weather({ s }: { s: S }) {
   const settings = useSettings();
-  const lead = useContext(Worlds)[0] ?? 'calm-safety';
-  const cloud = (id: string, seed: number, cols = 9) => <AsciiCloud world={lead} weather={SKY[id] ?? 'drift'} seed={seed} cols={cols} rest />;
   const w = useMemo(() => weatherStats(s.list), [s]);
   const notes = useMemo(() => weatherInsights(w), [w]);
   const pins = useMemo<Pin[]>(
@@ -49,11 +43,11 @@ export function Weather({ s }: { s: S }) {
   return (
     <RevealStack>
       {w.covered ? (
-        <div class="st-readouts">
-          <Readout k={0} label={t('Most common sky')} small value={common.name} lead={cloud(common.id, 3, 12)} sub={t('{share} of entries', { share: pct(common.entries / w.covered) })} />
-          <Readout k={1} label={t('Temperature')} value={w.temp === null ? '—' : fmtTemp(w.temp)} sub={t('on average')} />
-          <Readout k={2} label={t('Daylight')} value={hours(w.daylight)} sub={t('a day, on average')} meter={w.daylight === null ? undefined : w.daylight / 24} />
-          <Readout k={3} label={t('Places')} value={w.places.length} sub={t('{n} of {count}', { n: w.located, count: count(w.total, 'entry', 'entries') })} meter={w.total ? w.located / w.total : 0} />
+        <div class="tiles">
+          <Tile k={0} icon={common.icon} label={t('Most common sky')} small value={common.name} sub={t('{share} of entries', { share: pct(common.entries / w.covered) })} />
+          <Tile k={1} icon="temperature" label={t('Temperature')} value={w.temp === null ? '—' : fmtTemp(w.temp)} sub={t('on average')} />
+          <Tile k={2} icon="sunrise" label={t('Daylight')} value={hours(w.daylight)} sub={t('a day, on average')} />
+          <Tile k={3} icon="map-pin" label={t('Places')} value={w.places.length} sub={t('{n} of {count}', { n: w.located, count: count(w.total, 'entry', 'entries') })} meter={w.total ? w.located / w.total : 0} />
         </div>
       ) : (
         <button class="card weather-hint" onClick={() => navigate('settings')}>
@@ -63,50 +57,62 @@ export function Weather({ s }: { s: S }) {
         </button>
       )}
 
-      {notes.length > 0 && <Story title={t('What stands out')} notes={notes} />}
+      {notes.length > 0 && (
+        <section class="card insights">
+          <h3 class="chart-title"><Icon name="sparkles" size={16} /> {t('What stands out')}</h3>
+          <ul>
+            {notes.map((n, i) => (
+              <li style={{ '--k': i, ...(n.core ? { '--c': `var(--emo-${n.core})` } : {}) }} class={n.core ? 'tinted' : ''}>
+                <span class="ins-ico">{n.core ? <Sprite core={n.core} size={13} /> : <Icon name="sparkles" size={13} />}</span>
+                <span>{n.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {skyRows.length > 0 && (
-        <Section
+        <ChartCard
           title={t('Mood by weather')}
           sub={t('Your average mood under each kind of sky.')}
           table={{ head: [t('Sky'), t('Mood'), t('Entries')], rows: skyRows.map((g) => [g.name, fmtMood(g.mood), g.n]) }}
         >
-          <MoodRows rows={skyRows.map((g, i) => ({ label: g.name, lead: cloud(g.id, i * 5), mood: g.mood, n: g.n }))} />
-        </Section>
+          <MoodRows rows={skyRows.map((g) => ({ label: g.name, icon: g.icon, mood: g.mood, n: g.n }))} />
+        </ChartCard>
       )}
 
       {w.temps.length > 0 && (
-        <Section
+        <ChartCard
           title={t('Mood by temperature')}
           sub={t('The temperature when you wrote, or the day’s high.')}
           table={{ head: [t('Temperature'), t('Mood'), t('Entries')], rows: w.temps.map((b) => [b.name, fmtMood(b.mood), b.n]) }}
         >
           <MoodRows rows={w.temps.map((b) => ({ label: b.name, mood: b.mood, n: b.n }))} />
-        </Section>
+        </ChartCard>
       )}
 
       {w.light.length > 0 && (
-        <Section
+        <ChartCard
           title={t('Mood by daylight')}
           sub={t('Hours between sunrise and sunset on the day.')}
           table={{ head: [t('Daylight'), t('Mood'), t('Entries')], rows: w.light.map((b) => [b.name, fmtMood(b.mood), b.n]) }}
         >
           <MoodRows rows={w.light.map((b) => ({ label: b.name, mood: b.mood, n: b.n }))} />
-        </Section>
+        </ChartCard>
       )}
 
       {w.dark.some((d) => d.n > 0) && (
-        <Section
+        <ChartCard
           title={t('Daylight or dark')}
           sub={t('Whether the sun was up when you checked in.')}
           table={{ head: [t('When'), t('Mood'), t('Entries')], rows: w.dark.map((d) => [d.name, fmtMood(d.mood), d.n]) }}
         >
-          <MoodRows rows={w.dark.map((d, i) => (i ? { label: d.name, icon: 'moon', mood: d.mood, n: d.n } : { label: d.name, lead: cloud('clear', 11), mood: d.mood, n: d.n }))} />
-        </Section>
+          <MoodRows rows={w.dark.map((d, i) => ({ label: d.name, icon: i ? 'moon' : 'sun', mood: d.mood, n: d.n }))} />
+        </ChartCard>
       )}
 
       {w.places.length > 0 && (
-        <Section
+        <ChartCard
           title={t('Places')}
           sub={t('Where you wrote, in the colour of what you felt there.')}
           table={{ head: [t('Place'), t('Mood'), t('Entries')], rows: w.places.map((p) => [p.name, fmtMood(p.mood), p.n]) }}
@@ -114,7 +120,7 @@ export function Weather({ s }: { s: S }) {
           <PlaceMap pins={pins} still onTap={() => navigate('map')} class="map-preview" />
           <MoodRows rows={w.places.slice(0, 8).map((p) => ({ label: p.name, core: p.core, mood: p.mood, n: p.n }))} />
           <button class="btn btn-quiet block map-open" onClick={() => navigate('map')}><Icon name="map" size={18} /> {t('Open the map')}</button>
-        </Section>
+        </ChartCard>
       )}
     </RevealStack>
   );

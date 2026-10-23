@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.121.0',
+    date: '2026-10-23',
+    changes: [
+      'Stats is redesigned again, closer to the journal and your records',
+      'Mood over time is drawn as a sky: each day is a cloud at the height of your mood, in the colour and letters of the world you felt most, with the 7-day average as a line through them',
+      'When you check in is a sky too: clouds bank up at the times you tend to write, in the colour of what you felt then',
+      'Your average mood, entries and active days sit on the sky as tiles, like on your records',
+      'Emotions opens with your brain, lit by the range you picked; tap a part to read about it',
+      'Worlds and top feelings are ranked rows with coloured bars',
+      'The letters inside bars, the small clouds by every title and the strip of days are gone, so the charts are clean again',
+      'Intensity bars stay inside their card',
+    ],
+  },
+  {
     version: '1.120.1',
     date: '2026-10-23',
     changes: [
