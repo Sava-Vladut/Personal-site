@@ -19,9 +19,6 @@
   position: relative; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
   color: var(--c); background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--c) 24%, transparent), color-mix(in oklab, var(--c) 8%, transparent));
 }
-.notice-ring { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -90deg; fill: none; stroke-width: 2; }
-.notice-track { stroke: color-mix(in oklab, var(--c) 18%, transparent); }
-.notice-fill { stroke: var(--c); stroke-linecap: round; transition: stroke-dashoffset 0.8s var(--ease); }
 .notice-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
 .notice-main > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notice-main b { font-size: var(--text-base); font-weight: var(--w-medium); }

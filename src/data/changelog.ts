@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.126.1',
+    date: '2026-10-23',
+    changes: [
+      'The reminders bar no longer counts the hours to your next check-in: it only says you haven’t checked in in a while, once it’s been six hours',
+    ],
+  },
+  {
     version: '1.126.0',
     date: '2026-10-23',
     changes: [

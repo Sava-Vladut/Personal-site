@@ -5,26 +5,19 @@ import { useEffect, useState } from 'preact/hooks';
 import type { Release } from '../data/changelog';
 import { EMOTION, shortName } from '../data/emotions';
 import { useNow } from '../lib/countdown';
-import { timeLabel, todayKey } from '../lib/dates';
+import { todayKey } from '../lib/dates';
 import { count, LOCALE, t } from '../lib/i18n';
 import { dayMood } from '../lib/mood';
 import { navigate } from '../lib/router';
 import { useSongs, type Entry } from '../lib/store';
 import { usePoints } from '../lib/twitch';
-import { Icon, Sprite, type UiName } from './icons';
+import { Icon, type UiName } from './icons';
 import { streakOf, type DayPick } from './SongOfDay';
 
-/** How long after a check-in the bar asks for the next one. */
-const CHECKIN_EVERY = 2 * 3600_000;
+/** How long without a check-in before the bar asks for one. */
+const CHECKIN_AFTER = 6 * 3600_000;
 /** The last version whose news you've opened, on this device. */
 const SEEN = 'mm-seen-version';
-
-/** "1h 20m", "45m": a stretch of time, to the minute. */
-function spanLabel(ms: number) {
-  const m = Math.max(1, Math.round(ms / 60_000));
-  if (m < 60) return t('{m}m', { m });
-  return m % 60 ? t('{h}h {m}m', { h: Math.floor(m / 60), m: m % 60 }) : t('{h}h', { h: m / 60 });
-}
 
 const feltName = (id: string) => {
   const em = EMOTION[id];
@@ -77,8 +70,8 @@ function Notice({ c, icon, title, sub, due, onClick }: {
 const ico = (name: UiName) => <Icon name={name} size={18} />;
 
 /**
- * A nudge to pick today's song while it's unpicked (with the run you'd keep going), the next check-in every couple of hours while
- * you're up (a ring round the last feeling fills until it's due), a nudge in the evening to write about the day, the
+ * A nudge to pick today's song while it's unpicked (with the run you'd keep going), one to check in once it's been a
+ * while (six hours) and you're up, a nudge in the evening to write about the day, the
  * Twitch channels the miner is watching live, and the news after the app updates.
  */
 export function Notices({ entries, picker, news }: { entries: Entry[]; picker: DayPick; news: News }) {
@@ -90,7 +83,8 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
   // no nudges through the night
   const awake = hour >= 8 && hour < 23;
   const todays = entries.filter((e) => e.date === today);
-  const last = todays.find((e) => e.kind === 'checkin' && e.emotions.length);
+  let last: Entry | undefined;
+  for (const e of entries) if (e.kind === 'checkin' && e.emotions.length && (!last || e.time > last.time)) last = e;
   const em = last ? EMOTION[last.emotions[0]] : null;
   const since = last ? now - last.time : Infinity;
   const rows: { key: string; due: boolean; node: ComponentChildren }[] = [];
@@ -104,24 +98,11 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
     ) });
   }
 
-  if (em && since < CHECKIN_EVERY) {
-    const r = 16.5, len = 2 * Math.PI * r;
-    rows.push({ key: 'checkin', due: false, node: (
-      <Notice c={`var(--emo-${em.core})`} onClick={() => navigate('tracker')}
-        icon={<>
-          <svg class="notice-ring" viewBox="0 0 36 36" aria-hidden="true">
-            <circle cx="18" cy="18" r={r} class="notice-track" />
-            <circle cx="18" cy="18" r={r} class="notice-fill" style={{ strokeDasharray: len, strokeDashoffset: len * (1 - since / CHECKIN_EVERY) }} />
-          </svg>
-          <Sprite core={em.core} size={14} />
-        </>}
-        title={t('Next check-in in {time}', { time: spanLabel(CHECKIN_EVERY - since) })}
-        sub={t('Last felt {name} at {time}', { name: feltName(em.id), time: timeLabel(last!.time) })} />
-    ) });
-  } else if (awake) {
+  // a while without a check-in (since the last one, whatever day it was on)
+  if (awake && since >= CHECKIN_AFTER) {
     rows.push({ key: 'checkin', due: true, node: (
-      <Notice c={em ? `var(--emo-${em.core})` : 'var(--emo-joy)'} icon={ico('mood-plus')} title={t('Time to check in')} due onClick={() => navigate('tracker')}
-        sub={em ? t('{time} since {name}', { time: spanLabel(since), name: feltName(em.id) }) : t('Nothing yet today')} />
+      <Notice c={em ? `var(--emo-${em.core})` : 'var(--emo-joy)'} icon={ico('mood-plus')} title={t('You haven’t checked in in a while')} due onClick={() => navigate('tracker')}
+        sub={em ? t('Last felt {name}', { name: feltName(em.id) }) : t('How are you feeling?')} />
     ) });
   }
 
