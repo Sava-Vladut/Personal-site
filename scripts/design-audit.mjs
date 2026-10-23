@@ -105,7 +105,9 @@ function checkDecl(file, line, decl, stack) {
   if (prop === 'box-shadow' && !/var\(--(shadow|glass-shadow)/.test(value)) {
     // a drop shadow: some offset, a real blur and a dark colour; rings and inset highlights are fine
     const drop = value.split(/,(?![^(]*\))/).some((part) => !/inset/.test(part) && /rgb\(0 0 0|rgba\(0, ?0, ?0|black/.test(part) && /\s(\d{2,}|[3-9])px/.test(part))
-    if (drop) add('shadow', file, line, `${selector} { ${decl} }`)
+    // the exceptions design.md allows: drawn objects, physical knobs and the page-slide edge
+    const allowed = /book-cover|record-|cassette|\.shelf|due-card|map-pin|map-marker|sotd-disc|media-corner|slider-thumb|range-thumb|\.switch::after|view-transition/.test(selector)
+    if (drop && !allowed) add('shadow', file, line, `${selector} { ${decl} }`)
   }
 
   // page slides keep their own timing (design.md, Motion)

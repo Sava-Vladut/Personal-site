@@ -112,7 +112,10 @@ Avatars and dots use `50%`. Nested corners: inner radius = outer radius − padd
 | `--glass-shadow` | Glass chrome (in `glass.css`) |
 
 Focus rings, inset highlights and coloured glows are not elevation and stay bespoke. Small physical
-knobs (the switch thumb, slider thumbs) and the page-slide edge may keep their own small shadow.
+knobs (the switch thumb, slider thumbs) and the page-slide edge may keep their own small shadow. So do
+the drawn objects (book covers, records and sleeves, cassettes, the shelf, the library due card, map
+pins, the song-of-the-day disc): their shadow is part of the artwork, like their literal colours.
+Anything that is interface (a card, a pill, a menu) uses the tokens.
 
 ## Layers
 

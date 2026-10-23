@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.2',
+    date: '2026-10-23',
+    changes: [
+      'The sliding tab pill in Stats, Media, Streamer stats, Win friends and Laws of power has the same shadow as other selected tabs, and reads better in dark mode',
+    ],
+  },
+  {
     version: '1.128.1',
     date: '2026-10-23',
     changes: [
