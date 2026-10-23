@@ -33,9 +33,11 @@
 .lw-sq.dark { background: var(--surface-2); }
 .lw-sq-n { font: var(--w-medium) clamp(10px, 2.6vw, 13px)/1 var(--serif); }
 .lw-sq-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); transition: scale var(--dur-2) var(--spring); }
-.lw-sq:hover, .lw-sq:focus-visible, .lw-sq.kin { background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: var(--ink); }
+.lw-sq:focus-visible, .lw-sq.kin { background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: var(--ink); }
+@media (hover: hover) { .lw-sq:hover { background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: var(--ink); } }
 .lw-sq:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
-.lw-sq:hover .lw-sq-dot, .lw-sq:focus-visible .lw-sq-dot { scale: 1.5; }
+.lw-sq:focus-visible .lw-sq-dot { scale: 1.5; }
+@media (hover: hover) { .lw-sq:hover .lw-sq-dot { scale: 1.5; } }
 .lw-sq.dim { opacity: 0.25; }
 .lw-caption { min-height: 44px; margin-top: 10px; display: flex; flex-direction: column; gap: 2px; color: var(--ink-3); font-size: var(--text-m); line-height: 1.4; }
 .lw-caption b { font: var(--w-medium) var(--text-base) var(--serif); color: var(--ink); }

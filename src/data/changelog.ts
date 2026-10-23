@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.118.2',
+    date: '2026-10-23',
+    changes: [
+      'On a phone, squares in Friends and Laws of power and rows in the wheel editor no longer stay highlighted after you tap them',
+    ],
+  },
+  {
     version: '1.118.1',
     date: '2026-10-23',
     changes: [

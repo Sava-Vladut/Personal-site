@@ -124,8 +124,12 @@
     transition: background-color var(--dur-1);
   }
   .note-zoom-track input::-moz-range-thumb { width: 6px; height: 14px; border: 0; border-radius: var(--r-2xs); background: var(--ink-2); }
-  .note-zoom-track input:is(:hover, :active)::-webkit-slider-thumb { background: var(--word-ink); }
-  .note-zoom-track input:is(:hover, :active)::-moz-range-thumb { background: var(--word-ink); }
+  .note-zoom-track input:active::-webkit-slider-thumb { background: var(--word-ink); }
+  .note-zoom-track input:active::-moz-range-thumb { background: var(--word-ink); }
+  @media (hover: hover) {
+    .note-zoom-track input:hover::-webkit-slider-thumb { background: var(--word-ink); }
+    .note-zoom-track input:hover::-moz-range-thumb { background: var(--word-ink); }
+  }
   .note-zoom-value { min-width: 44px; height: 22px; padding: 0 6px; border-radius: var(--r-xs); text-align: right; color: var(--ink-2); }
   @media (hover: hover) { .note-zoom-value:hover { background: var(--surface-2); color: var(--ink); } }
 }
