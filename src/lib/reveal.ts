@@ -9,7 +9,7 @@ const ATTR = 'data-reveal';
 /** The repeating pieces of a page that drift in. Anything inside one that's tagged moves with it, not on its own. */
 const UNITS = [
   '.card', '.entries > *', '.note', '.note-row', '.checkin', '.list-row', '.book-row', '.track', '.person-card',
-  '.repo-item', '.tile', '.status-card', '.spot-row', '.section-title', '.tab-panel > .stack-l > *',
+  '.repo-item', '.tile', '.status-card', '.spot-row', '.section-title', '.tab-panel > .stack-l > *', '.mx-rail', '.mx-run-label',
 ].join(', ');
 /** Never hidden: sheets, dialogs and menus, the note being written, the wheels, the bars and toasts. */
 const SKIP = [

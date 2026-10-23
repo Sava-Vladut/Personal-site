@@ -106,17 +106,6 @@ export function BookSpine({ b, k = 0 }: { b: Book; k?: number }) {
   );
 }
 
-/** One shelf of books, as many planks as it takes. */
-export function Shelf({ books }: { books: Book[] }) {
-  return (
-    <div class="shelf">
-      {books.map((b, i) => (
-        <span class="shelf-slot" key={b.id}><BookSpine b={b} k={i} /></span>
-      ))}
-    </div>
-  );
-}
-
 const sameWork = (b: Book, f: FoundBook) => b.olid === f.olid || (b.title.trim().toLowerCase() === f.title.toLowerCase() && b.authors === f.authors);
 
 /**

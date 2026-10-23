@@ -1,14 +1,14 @@
 import { useId } from 'preact/hooks';
-import { LAW_MARKS, PRINCIPLE_MARKS, TRAP_MARKS } from '../data/marks';
+import { LAW_MARKS, PRINCIPLE_MARKS, SPOT_MARKS, TRAP_MARKS } from '../data/marks';
 import '../styles/mark.css';
 
 /*
- * A mind trap's, a law's or a principle's mark: its drawing (data/marks.ts) on a flat tile in its family's or arena's colour.
+ * A mind trap's, a law's or a principle's mark (or a spot for another screen, `spot:<name>`): its drawing (data/marks.ts) on a flat tile in its family's or arena's colour.
  * The lines are run through a little noise so they waver like brush ink; the noise is seeded from the id,
  * so a mark always wavers the same way.
  */
 
-const ART: Record<string, string> = { ...TRAP_MARKS, ...LAW_MARKS, ...PRINCIPLE_MARKS };
+const ART: Record<string, string> = { ...TRAP_MARKS, ...LAW_MARKS, ...PRINCIPLE_MARKS, ...SPOT_MARKS };
 
 const seedOf = (id: string) => {
   let h = 0;

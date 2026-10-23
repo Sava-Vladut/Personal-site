@@ -12,6 +12,7 @@ import { SpotifySheet } from '../components/SpotifySheet';
 import { BooksTab, bookSummary } from './Books';
 import { MusicTab, musicSummary } from './Music';
 import { t } from '../lib/i18n';
+import '../styles/media.css';
 
 type Tab = 'books' | 'music';
 const TABS: Tab[] = ['music', 'books'];
@@ -29,8 +30,9 @@ function lastTab(): Tab {
 
 /**
  * Your music and your books: a record collection and a shelf. `?tab=books|music`, and `?add` opens its picker.
- * The sky has the title, a line of numbers, the tabs and the search; under it come the day's song and the ways into
- * the rest of the music (at the right on a wide screen), then the collection itself.
+ * The sky has the title, a line of numbers, the tabs and the search. Under it each tab shows what's on now (today's
+ * song, what's on repeat, what you're reading: in a column at the right on a wide screen), then the whole collection
+ * as a list.
  */
 export function Media({ query }: { query: URLSearchParams }) {
   const books = useBooks();
@@ -110,9 +112,7 @@ export function Media({ query }: { query: URLSearchParams }) {
         </div>
       </div>
 
-      <div class="media-panel media-body" key={tab}>
-        {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} picker={picker} />}
-      </div>
+      {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} picker={picker} />}
 
       <DayPicker songs={songs} picker={picker} />
       <BookSheet open={adding === 'books'} onClose={() => setAdding(null)} onPick={(b) => { setAdding(null); navigateAfterSheet('book/' + b.id); }} />

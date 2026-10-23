@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.0',
+    date: '2026-10-23',
+    changes: [
+      'Media is redesigned: what’s on now comes first, then your whole collection as a list instead of one big grid',
+      'Music: today’s song, then rows you swipe through for On repeat, Most picked (with each one’s place) and music waiting in your notes',
+      'Tap a record in “In your notes” to keep it; Ranking opens the full Most picked numbers',
+      'Books: what you’re reading with how far in you are, Want to read as a row of covers, and the books you’ve read as spines on one shelf you swipe along',
+      'All music and All books are lists grouped by the month you added them (or where each book is), by letter for A–Z, or by stars for Top rated',
+      '“See all” on a row filters the list to just those',
+      'On a computer, what’s on now sits in a column at the right of the list',
+      'Empty Music and Books show a small drawing, and the list shows quiet placeholder rows while it loads',
+    ],
+  },
+  {
     version: '1.127.2',
     date: '2026-10-23',
     changes: [

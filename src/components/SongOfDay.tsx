@@ -1,5 +1,5 @@
 // The song of the day: one record from your collection for each day, picked by you (or by a roll of the dice), and
-// the numbers on what you keep coming back to (a small link on the Media page that opens the ranking in a sheet). Its
+// the numbers on what you keep coming back to (the Media page's "Most picked" opens the ranking in a sheet). Its
 // day picker is a sheet too, so that lives apart (useDayPick, DayPicker) where no frosted or clipped panel can trap it.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addDays, dayLabel, todayKey, WEEKDAYS, weekday } from '../lib/dates';
@@ -12,7 +12,7 @@ import { CountUp } from './charts';
 import { Icon } from './icons';
 import { MusicEmbed, MusicThing, musicSub } from './music';
 import { Sheet } from './Sheet';
-import { count, noun, t } from '../lib/i18n';
+import { noun, t } from '../lib/i18n';
 import '../styles/sotd.css';
 
 const STRIP = 14;
@@ -225,7 +225,7 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
 }
 
 /** The songs picked most often for the song of the day, longest-running first, and the runs of days behind them. */
-function usePicked(songs: Song[]) {
+export function usePicked(songs: Song[]) {
   const today = todayKey();
   return useMemo(() => {
     const ranked = songs.filter((s) => s.days.length).sort((a, b) => b.days.length - a.days.length || (b.days[b.days.length - 1] > a.days[a.days.length - 1] ? 1 : -1));
@@ -233,15 +233,12 @@ function usePicked(songs: Song[]) {
     return { ranked, days: days.length, best: bestRunOf(days), streak: streakOf(new Set(days), today) };
   }, [songs, today]);
 }
+export type Picked = ReturnType<typeof usePicked>;
 
-/** A quiet way into the ranking: what you pick most, on a tile like its neighbours. The numbers and the top ten open in a sheet. */
-export function MostPicked({ songs }: { songs: Song[] }) {
-  const [open, setOpen] = useState(false);
-  const stats = usePicked(songs);
+/** The ranking behind the Media page's "Most picked": four numbers, then the top ten as coloured bars. */
+export function MostPickedSheet({ stats, open, onClose }: { stats: Picked; open: boolean; onClose: () => void }) {
   const { ranked } = stats;
-  if (!ranked.length) return null;
-
-  const top = ranked[0].days.length;
+  const top = ranked[0]?.days.length ?? 1;
   const tiles: [number, string, 'calendar' | 'vinyl' | 'flame' | 'trophy'][] = [
     [stats.days, noun(stats.days, 'day', 'days'), 'calendar'],
     [ranked.length, noun(ranked.length, 'song', 'songs'), 'vinyl'],
@@ -250,40 +247,30 @@ export function MostPicked({ songs }: { songs: Song[] }) {
   ];
 
   return (
-    <>
-      <button class="media-link" onClick={() => setOpen(true)}>
-        <span class="media-link-icon"><Icon name="chart-bar" size={19} /></span>
-        <span class="media-link-main">
-          <span class="media-link-title">{t('Most picked')}</span>
-          <span class="media-link-sub">{ranked[0].music.title} · {count(top, 'day', 'days')}</span>
-        </span>
-        <Icon name="chevron-right" size={18} />
-      </button>
-      <Sheet open={open} onClose={() => setOpen(false)} title={<span class="row gap-s"><Icon name="chart-bar" /> {t('Most picked')}</span>} label={t('Most picked')} tall>
-        <div class="sotd-tiles">
-          {tiles.map(([value, label, icon], i) => (
-            <span class="stat" style={{ '--i': i }}>
-              <span class="sotd-tile-n"><Icon name={icon} size={14} stroke={2} /><b><CountUp value={value} /></b></span>
-              <small>{label}</small>
-            </span>
-          ))}
-        </div>
-        <ol class="sotd-rank">
-          {ranked.slice(0, RANKED).map((s, i) => (
-            <li key={s.id} style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i % RANK_COLORS.length]})`, '--w': s.days.length / top }}>
-              <button class="sotd-rank-row" onClick={() => { navigateAfterSheet('song/' + s.id); setOpen(false); }}>
-                <span class={`sotd-place${i < 3 ? ' p' + (i + 1) : ''}`}>{i === 0 ? <Icon name="crown" size={13} stroke={2} /> : i + 1}</span>
-                <MusicThing m={s.music} size={30} />
-                <span class="sotd-rank-main">
-                  <span class="sotd-rank-title"><span>{s.music.title}</span><small>{musicSub(s.music)}</small></span>
-                  <span class="sotd-bar"><i /></span>
-                </span>
-                <span class="sotd-rank-n"><b>{s.days.length}</b><small>{noun(s.days.length, 'day', 'days')}</small></span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      </Sheet>
-    </>
+    <Sheet open={open && ranked.length > 0} onClose={onClose} title={<span class="row gap-s"><Icon name="chart-bar" /> {t('Most picked')}</span>} label={t('Most picked')} tall>
+      <div class="sotd-tiles">
+        {tiles.map(([value, label, icon], i) => (
+          <span class="stat" style={{ '--i': i }}>
+            <span class="sotd-tile-n"><Icon name={icon} size={14} stroke={2} /><b><CountUp value={value} /></b></span>
+            <small>{label}</small>
+          </span>
+        ))}
+      </div>
+      <ol class="sotd-rank">
+        {ranked.slice(0, RANKED).map((s, i) => (
+          <li key={s.id} style={{ '--i': i, '--t': `var(--emo-${RANK_COLORS[i % RANK_COLORS.length]})`, '--w': s.days.length / top }}>
+            <button class="sotd-rank-row" onClick={() => { navigateAfterSheet('song/' + s.id); onClose(); }}>
+              <span class={`sotd-place${i < 3 ? ' p' + (i + 1) : ''}`}>{i === 0 ? <Icon name="crown" size={12} stroke={2} /> : i + 1}</span>
+              <MusicThing m={s.music} size={30} />
+              <span class="sotd-rank-main">
+                <span class="sotd-rank-title"><span>{s.music.title}</span><small>{musicSub(s.music)}</small></span>
+                <span class="sotd-bar"><i /></span>
+              </span>
+              <span class="sotd-rank-n"><b>{s.days.length}</b><small>{noun(s.days.length, 'day', 'days')}</small></span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </Sheet>
   );
 }

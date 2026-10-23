@@ -10,10 +10,6 @@
 
 /* ---------- the shelf: a bookcase of wooden planks, each book a spine in its cover's colour ---------- */
 
-.shelf-group { margin-top: 24px; }
-.shelf-name { margin: 0 2px 10px; }
-.shelf-name .muted { font-weight: var(--w-medium); margin-left: 4px; }
-
 .shelf {
   --row: 226px;      /* a book's room plus the plank under it */
   --plank: 13px;
@@ -198,7 +194,7 @@
 /* put on: the record slides out of its sleeve and turns at 33⅓, the tape's reels wind; on repeat, slowly */
 .record { transition: width var(--dur-4) var(--spring); }
 /* a hover pulls the record out a little; once it's on, it's all the way out */
-@media (hover: hover) { :is(.deck-main, .track, .sleeve, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
+@media (hover: hover) { :is(.deck-main, .track, .mx-item, .mx-row, .song-thing):hover .record-disc { translate: calc(var(--s) * 0.36) 0; } }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record { width: calc(var(--s) * 1.74); }
 :is(.is-on, .is-repeat, .track[aria-pressed='true']) .record-disc { translate: calc(var(--s) * 0.76) 0; }
 :is(.is-on, .track[aria-pressed='true']) :is(.record-spin, .reel) { animation: turn 1.8s linear infinite; }
@@ -230,30 +226,6 @@
 .mini-tape { flex: none; display: inline-flex; align-items: center; justify-content: space-around; width: 18px; height: 12px; padding: 0 2px; border-radius: var(--r-2xs); background: #3d3c42; }
 .mini-tape i { width: 4px; height: 4px; border-radius: 50%; background: #efe9dc; }
 
-/* ---------- the record collection: bare records in a grid, each with its name and rating ---------- */
-
-.sleeves { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 18px 8px; margin-top: 14px; }
-.sleeve {
-  position: relative; display: grid; justify-items: center; align-content: start; gap: 2px; min-width: 0; padding: 6px 4px 8px; text-align: center; border-radius: var(--r-m);
-  animation: spine-in var(--dur-3) var(--spring) calc(min(var(--k), 20) * 25ms) backwards;
-  transition: transform var(--dur-2) var(--spring), scale var(--dur-3) var(--spring);
-  /* records far off screen aren't laid out or painted until they come near it */
-  content-visibility: auto; contain-intrinsic-size: auto 138px auto 160px;
-}
-/* while the records load: blank sleeves where they'll be */
-.sleeve.sleeve-ph { height: 160px; background: var(--surface-2); animation: photo-pulse 1.2s ease-in-out infinite alternate; }
-@media (hover: hover) { .sleeve:hover { transform: translateY(-2px); } }
-.sleeve:active { scale: 0.96; transition-duration: var(--dur-1), var(--dur-1), var(--dur-0); }
-.sleeve:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.sleeve :is(.record, .cassette) { --s: 84px; margin-bottom: 10px; }
-.sleeve-title { max-width: 100%; text-wrap: balance; font: var(--w-bold) var(--text-m)/1.25 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.sleeve-sub { max-width: 100%; font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sleeve .stars { margin-top: 1px; }
-.sleeve-badge {
-  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  color: var(--emo-love-connection); background: color-mix(in oklab, var(--emo-love-connection) 16%, var(--surface));
-}
-
 /* keeping music that's waiting in your notes */
 .mini-keep {
   flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
@@ -278,7 +250,6 @@
 .song-player { margin-top: 16px; animation: fade-in var(--dur-2) ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sleeve, .sleeve.sleeve-ph { animation: none; }
   .spine, .due-card { animation: none; }
   .record-spin, .reel { animation: none !important; }
 }
@@ -295,47 +266,12 @@
 
 /* the records and the shelf: the sky holds the title, a line of numbers, the tabs and the search (Docs and Repos keep the
    .media-top version, with number boxes) */
-.journal-top.media-head { padding-bottom: 14px; margin-bottom: 14px; }
+.journal-top.media-head { padding-bottom: 14px; margin-bottom: 18px; }
 .journal-top.media-head .page-head { margin-bottom: 12px; }
 .media-head :is(.seg, .search) { background: color-mix(in oklab, var(--surface-2) 60%, var(--bg)); } /* opaque, as above */
 .media-bar { display: grid; gap: 10px; }
 .media-bar > .seg.tabs { margin: 0; }
 .media-bar > .search { margin: 0; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
-
-/* today's song, and the ways into what you pick most and what's waiting in your notes */
-.media-side { display: grid; gap: 10px; margin-bottom: 14px; }
-.media-side > .sotd { margin: 0; max-width: none; background: var(--surface); }
-.media-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.media-links:empty { display: none; }
-.media-links > button.media-link:only-of-type { grid-column: 1 / -1; }
-.media-link {
-  display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px 8px 8px; text-align: left; color: var(--ink-3);
-  border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line);
-  transition: border-color var(--dur-1), scale var(--dur-3) var(--spring);
-}
-@media (hover: hover) { .media-link:hover { border-color: var(--line-2); } }
-.media-link:active { scale: 0.98; transition-duration: var(--dur-1), var(--dur-0); }
-.media-link > svg { flex: none; }
-.media-link-icon {
-  flex: none; width: 36px; height: 36px; border-radius: var(--r-m); display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(140deg, color-mix(in oklab, var(--emo-love-connection) 24%, var(--surface)), color-mix(in oklab, var(--emo-hope-interest) 18%, var(--surface)));
-  color: color-mix(in oklab, var(--emo-love-connection) 60%, var(--ink));
-}
-.media-link-main { flex: 1; min-width: 0; display: grid; color: var(--ink); }
-.media-link-title { font: var(--w-medium) var(--text-base)/1.3 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.media-link-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* two tiles side by side on a phone: just their names */
-@media (max-width: 559px) {
-  .media-link-sub, .media-link > svg:last-child { display: none; }
-  .media-link-icon { width: 32px; height: 32px; }
-}
-
-/* the row over the records or the shelf: what to show at the left (only when there is something to choose), the order at the right */
-.media-tools { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-.media-tools .chips.scroll-x { flex: 1; min-width: 0; margin: 0; padding: 0; gap: 6px; }
-.media-tools .chip { height: var(--h-s); padding: 0 11px; font-size: var(--text-m); }
-.media-tools .sort-chip { flex: none; margin-left: auto; }
-.media-panel .reading-now + .media-tools { margin-top: 14px; }
 
 /* the title rises out of the clouds a letter at a time */
 .cloud-title span { display: inline-block; animation: cloud-letter var(--dur-4) var(--ease-emph) calc(var(--i) * 25ms) backwards; }
@@ -345,33 +281,14 @@
 .media-stats { display: flex; gap: 6px; margin-bottom: 8px; }
 .media-stats > .stat { flex: 1 1 0; box-shadow: 0 8px 22px -16px color-mix(in oklab, var(--sky) 70%, transparent); }
 
-/* filters and order on one line that scrolls sideways */
+/* filters on one line that scrolls sideways (Repos) */
 .chips.media-filters { margin-block: 10px 0; gap: 6px; }
 .chips.media-filters .chip { height: var(--h-s); padding: 0 11px; font-size: var(--text-m); }
-.sort-chip { gap: 4px; padding-left: 10px; background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
-.sort-chip span { animation: fade-in var(--dur-2) ease-out; }
 
 .media-panel .section { margin-top: 14px; }
 .media-panel .section-title { margin-bottom: 6px; }
 .media-panel .hint { margin: -2px 0 10px; }
-.media-panel .shelf-group { margin-top: 16px; }
-.media-panel .reading-now { margin-bottom: 0; }
-
-/* what you're reading: cards in a row you swipe through */
-.media-panel .reading-list {
-  display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter);
-  margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) 4px; scrollbar-width: none;
-}
-.media-panel .reading-list::-webkit-scrollbar { display: none; }
-.media-panel .reading-card { flex: 0 0 min(280px, 80%); scroll-snap-align: start; gap: 12px; padding: 8px 12px 8px 8px; }
-.media-panel .reading-card:only-child { flex-basis: 100%; }
-.media-panel .reading-card .book-row-title { font-size: var(--text-base); }
-
-/* shorter books, so more of the shelf fits on a screen */
-.media-panel .shelf { --row: 194px; }
-.media-panel .spine { height: calc(var(--h) * 0.85); }
-
 @media (prefers-reduced-motion: reduce) {
   .cloud-title span, .stat { animation: none; }
-  .sleeve, .media-link, .mini-keep { transition: none; }
+  .mini-keep { transition: none; }
 }

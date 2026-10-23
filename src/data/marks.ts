@@ -556,3 +556,25 @@ export const PRINCIPLE_MARKS: Record<string, string> = {
     pk('M38 94L42 54Q50 48 58 54L62 94Z') + pk(circle(50, 37, 9)) + f(circle(46.5, 35.5, 1.4)) + f(circle(53.5, 35.5, 1.4)) + k('M46 40q4 3 8 0', 2) +
     k('M14 44l8 4M10 58h9M86 44l-8 4M90 58h-9', 3),
 };
+
+/* ---------- spots: marks for screens outside Learn, keyed spot:<name> ---------- */
+
+/** A thin line in paper, for grooves and glints drawn over ink. */
+const pl = (d: string, w = 1.6) => `<path d="${d}" fill="none" stroke="${PAPER}" stroke-width="${w}" stroke-linecap="round"/>`;
+
+export const SPOT_MARKS: Record<string, string> = {
+  // a record sliding out of its sleeve
+  'spot:records':
+    f(circle(64, 50, 25)) +
+    pl('M70.5 30.5A20 20 0 0 1 83.5 46') + pl('M74 61.5A14 14 0 0 1 66.5 63.8') + pl('M80.8 58A19 19 0 0 1 76.5 64', 1.2) +
+    pk(circle(64, 50, 7.5), 2.6) + f(circle(64, 50, 1.6)) +
+    pk(rect(14, 29, 43, 43, 2)) +
+    f('M22 60A13.5 13.5 0 0 1 49 60Z') + k('M22 66h27', 2.8) + glint(42, 39, 4.5),
+  // books standing on a shelf, the last one leaning on its neighbour
+  'spot:shelf':
+    pk(rect(20, 34, 13, 42, 1.5)) + k('M23 41h7M23 69h7', 2.6) +
+    f(rect(33, 26, 15, 50, 1.5)) + pl('M36 33h9M36 68h9', 2.4) +
+    pk(rect(48, 40, 11, 36, 1.5)) + k('M51.5 50v16', 2.6) +
+    g('rotate(-20 72 76)', pk(rect(72, 32, 12, 44, 1.5)), k('M75 39h6M75 69h6', 2.6)) +
+    k('M12 77H88', 4.4) + glint(84, 22, 4),
+};

@@ -295,9 +295,9 @@ than a handful of items.
    own colour when it's known), never white or a hard border.
 3. **Ghosts, not spinners, for content.** When a card, row or list takes longer than ~300ms, show quiet
    placeholder shapes in `--surface-2` with the same size, radius and layout as what's coming (a line for
-   a title, a shorter one for the subtitle, a square for a cover). The first time one is needed, add a
-   shared `.ghost` class in `app.css` rather than one per screen. Ghosts may breathe (a slow opacity
-   pulse, `opacity` only) while loading and stop the moment the content is in. No sweeping shimmer
+   a title, a shorter one for the subtitle, a square for a cover). Build them from the shared `.ghost`
+   class in `app.css` (Media's `GhostRows` is an example), not one per screen. Ghosts may breathe (a slow
+   opacity pulse, `opacity` only) while loading and stop the moment the content is in. No sweeping shimmer
    gradients: they animate `background-position`, which the motion rules forbid.
 4. **Cross-fade the swap.** The content takes the ghost's place in the same box with `.fade-arrive-soft`
    (or `.fade-rows-soft` for a list); never cut from ghost to content.
