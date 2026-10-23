@@ -160,7 +160,7 @@
 
 .focus-exit {
   position: fixed; z-index: 36; top: calc(var(--safe-t) + 12px); right: max(16px, env(safe-area-inset-right)); height: var(--h-s); display: inline-flex; align-items: center; gap: 6px;
-  padding: 0 13px 0 11px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  padding: 0 14px 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
   font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink-2); opacity: 0.55;
   animation: fade-in var(--dur-3) var(--ease-emph);
 }

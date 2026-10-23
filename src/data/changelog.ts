@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.9',
+    date: '2026-10-23',
+    changes: [
+      'Chips, status pills and the note’s focus button have the same inner spacing as small buttons',
+    ],
+  },
+  {
     version: '1.128.8',
     date: '2026-10-23',
     changes: [

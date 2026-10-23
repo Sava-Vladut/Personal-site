@@ -242,7 +242,7 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 .chips.scroll-x::-webkit-scrollbar { display: none; }
 .chip {
   flex: none; display: inline-flex; align-items: center; gap: 6px;
-  height: var(--h-s); padding: 0 13px; border-radius: var(--r-pill);
+  height: var(--h-s); padding: 0 14px; border-radius: var(--r-pill);
   background: var(--surface-2); color: var(--ink-2); font-size: var(--text-m); font-weight: var(--w-medium);
   transition: background-color var(--dur-1), color var(--dur-1);
 }

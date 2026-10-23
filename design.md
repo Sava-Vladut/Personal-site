@@ -161,7 +161,8 @@ component, use 1–5 (and `isolation: isolate` on the component) for local stack
 
 **Inside things.** Cards (`--r-l`) pad `14px 16px`; tiles, wells and compact cards (`--r-m`) pad
 `12px 14px`; list rows pad `13px 16px` and are at
-least 56px tall; buttons pad `0 18px` (`0 14px` small); chips pad `0 13px`.
+least 56px tall; buttons pad `0 18px`; every 34px pill (small buttons, chips, status pills) pads `0 14px` (`12px` on
+the side of a leading icon, where it needs to look balanced).
 
 **Scale.** Spacing uses 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28px (1px and 3px only as optical
 nudges inside controls). Odd values like 5, 7, 9, 11, 13 are usually a near-duplicate of a neighbour.
