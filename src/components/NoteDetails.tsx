@@ -49,6 +49,7 @@ export function DetailsSummary({ draft, onOpen, onMusic }: { draft: Entry; onOpe
   return (
     <div class="details-line">
       <button class="details-summary" onClick={onOpen} aria-label={t('Feelings, people, date, place and cover')}>
+        <span class="details-items">
         <span class="details-date"><Icon name="calendar-event" size={14} /> {rangeLabel(draft.date, draft.dateEnd)}</span>
         {w && <span class={had.w ? 'details-date' : 'details-date fade-arrive'}><WeatherMark w={w} size={14} /></span>}
         {draft.place?.name && <span class={had.place ? 'details-date details-place' : 'details-date details-place fade-arrive'}><Icon name="map-pin" size={14} /> <span>{draft.place.name}</span></span>}
@@ -56,6 +57,9 @@ export function DetailsSummary({ draft, onOpen, onMusic }: { draft: Entry; onOpe
         {draft.emotions.length > 0 && <Bars n={draft.intensity} />}
         {people.map((p) => <PersonChip p={p} size="sm" />)}
         {!draft.emotions.length && <span class="details-add"><Icon name="mood-plus" size={14} /> {t('How does it feel?')}</span>}
+        </span>
+        {/* the chips alone don't read as a button: a chevron that never fades out says the line opens something */}
+        <span class="details-open" aria-hidden="true"><Icon name="chevron-right" size={14} /></span>
       </button>
       {draft.music.length > 0 && (
         <button class="details-music" onClick={onMusic} aria-label={t('Music in this note')}>
