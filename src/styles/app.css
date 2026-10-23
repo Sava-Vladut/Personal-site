@@ -49,6 +49,7 @@
   --text-base: 15px;
   --text-l: 17px;
   --text-xl: 22px;
+  --text-2xl: 28px;
   /* weights: body, labels and serif titles, emphasis and numbers */
   --w-regular: 400;
   --w-medium: 500;

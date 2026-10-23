@@ -1,6 +1,11 @@
+import { createContext } from 'preact';
+import { useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION, shortName } from '../../data/emotions';
-import type { RangeKey, Stats as S } from '../../lib/stats';
-import { CountUp } from '../../components/charts';
+import type { Insight, RangeKey, Stats as S } from '../../lib/stats';
+import { watchView } from '../../lib/inView';
+import { CountUp, type Table } from '../../components/charts';
+import { AsciiMeter, Scramble } from '../../components/ascii';
+import { AsciiCloud } from '../../components/cloud';
 import { Icon, Sprite, type UiName } from '../../components/icons';
 import { t } from '../../lib/i18n';
 
@@ -11,6 +16,11 @@ export const label = (id: string) => (EMOTION[id].depth === 0 ? shortName(id) : 
 
 /** The world felt most in the period, if any feelings were named. */
 export const leadWorld = (s: S) => s.cores.reduce<{ id: string; count: number } | null>((a, c) => (c.count > (a?.count ?? 0) ? c : a), null)?.id ?? null;
+
+/** The page's sky worlds, most felt first: sections without a world of their own wear these. */
+export const Worlds = createContext<string[]>([]);
+
+const seedOf = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 1300, 7);
 
 export function Delta({ cur, prev, digits = 0, unit = '' }: { cur: number | null; prev: number | null | undefined; digits?: number; unit?: string }) {
   if (cur === null || prev === null || prev === undefined) return null;
@@ -23,6 +33,113 @@ export function Delta({ cur, prev, digits = 0, unit = '' }: { cur: number | null
   );
 }
 
+/**
+ * One part of the report, laid out like a day of the journal: its world's sprite and a little cloud of its letters
+ * lead the label, a ribbon runs under it, and a soft aura of its colours drifts behind while it's on screen.
+ * The content sits on a solid card, which can turn into a table.
+ */
+export function Section({ id, title, sub, world, legend, table, bare, children }: {
+  id?: string;
+  title: string;
+  sub?: string;
+  /** the section's own world; the page's leading one otherwise */
+  world?: string | null;
+  legend?: preact.ComponentChildren;
+  table?: Table;
+  /** content that brings its own surfaces, so no card around it */
+  bare?: boolean;
+  children: preact.ComponentChildren;
+}) {
+  const sky = useContext(Worlds);
+  const c = world ?? sky[0] ?? null;
+  const c2 = sky.find((w) => w !== c) ?? c;
+  const [asTable, setAsTable] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    return el ? watchView(el, (on) => el.toggleAttribute('data-live', on)) : undefined;
+  }, []);
+  return (
+    <section ref={ref} id={id} class="st-section" style={c ? { '--d1': `var(--emo-${c})`, '--d2': `var(--emo-${c2})` } : undefined}>
+      <header class="st-head">
+        {c ? <Sprite core={c} size={12} idle="view" delay={seedOf(title)} /> : <Icon name="sparkles" size={13} />}
+        <h3 class="st-title">{title}</h3>
+        {c && <AsciiCloud world={c} seed={seedOf(title)} cols={12} rest />}
+        {table && (
+          <button class="icon-btn small" aria-pressed={asTable} aria-label={asTable ? t('Show chart') : t('Show as table')} title={asTable ? t('Show chart') : t('Show as table')} onClick={() => setAsTable(!asTable)}>
+            <Icon name={asTable ? 'chart-bar' : 'table'} size={18} />
+          </button>
+        )}
+        <i class="st-ribbon" aria-hidden="true" />
+      </header>
+      {sub && <p class="st-sub">{sub}</p>}
+      <div class={bare ? 'st-body bare' : 'card st-body'}>
+        {asTable && table ? (
+          <div class="table-wrap">
+            <table>
+              <thead><tr>{table.head.map((h) => <th>{h}</th>)}</tr></thead>
+              <tbody>{table.rows.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        ) : (
+          <>
+            {legend && <div class="legend">{legend}</div>}
+            {children}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** A figure in the report: a small mono label, the figure set large, and a meter written in letters. */
+export function Readout({ label: l, value, small, sub, delta, meter, marks, lead, k = 0 }: {
+  label: string;
+  value: string | number;
+  /** a word rather than a figure: set smaller so it fits */
+  small?: boolean;
+  sub?: string;
+  delta?: preact.ComponentChildren;
+  /** 0–1: a meter of letters under the figure */
+  meter?: number;
+  /** letters lit or not, like the days of a week */
+  marks?: boolean[];
+  /** something drawn beside the figure: a cloud, a sprite */
+  lead?: preact.ComponentChildren;
+  /** its place in the row, so the readouts arrive one after another */
+  k?: number;
+}) {
+  const sky = useContext(Worlds);
+  return (
+    <div class="st-readout" style={{ '--k': k }}>
+      <div class="st-readout-label">{l}</div>
+      <div class="st-readout-row">
+        <span class={small ? 'st-readout-value small' : 'st-readout-value'}><Scramble value={value} /></span>
+        {lead}
+      </div>
+      {(meter !== undefined || marks) && <AsciiMeter value={meter} marks={marks} cells={12} world={sky[0]} />}
+      <div class="st-readout-sub">{sub}{delta && sub ? ' · ' : ''}{delta}</div>
+    </div>
+  );
+}
+
+/** "What stands out", written out like a note: one sentence after another, each in the colour of its world. */
+export function Story({ notes, title }: { notes: Insight[]; title: string }) {
+  return (
+    <Section title={title}>
+      <p class="st-story">
+        {notes.map((n, i) => (
+          <span class="st-story-line" style={{ '--k': i, ...(n.core ? { '--c': `var(--emo-${n.core})` } : {}) }}>
+            {n.core && <Sprite core={n.core} size={12} />}
+            {n.text}{' '}
+          </span>
+        ))}
+      </p>
+    </Section>
+  );
+}
+
+/** A figure in a tile, for the pages that share the stats' look (Friends, Laws, Traps). */
 export function Tile({ icon, label: l, value, small, sub, delta, meter, pips, k = 0 }: {
   icon: UiName;
   label: string;

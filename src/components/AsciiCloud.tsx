@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'preact/hooks';
 import { watchView } from '../lib/inView';
 import { RAMPS } from './ramps';
 
-const COLS = 18, STEP = 90; // a tiny grid, redrawn ~11 times a second
+const WIDTH = 18, STEP = 90; // a tiny grid, redrawn ~11 times a second
+const REST = 5; // seconds a resting cloud moves for, after it appears or is hovered
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 
 /** What a day's leading feeling does to its cloud: sadness rains, anger storms, joy shines, the rest just drifts. */
-type Weather = 'rain' | 'storm' | 'sun' | 'drift';
+export type Weather = 'rain' | 'storm' | 'sun' | 'drift';
 const WEATHER: Record<string, Weather> = { sadness: 'rain', anger: 'storm', joy: 'sun' };
 const ROWS: Record<Weather, number> = { rain: 5, storm: 5, sun: 5, drift: 3 };
 const BODY: Partial<Record<Weather, string[]>> = { rain: [' ', '.', ':', '~', '=', '≈'], storm: [' ', '.', ':', '+', '%', '#', '@'] };
@@ -18,14 +19,16 @@ const hash = (n: number) => { const v = Math.sin(n * 12.9898) * 43758.5453; retu
 /**
  * A little sky in its world's letters, beside a day's mood line. A day that leaned toward sadness rains, anger
  * brings thunder (the mood line flashes with each strike), joy shines; anything else is a cloud drifting by.
- * Tap it for more of the same: a downpour, a strike, a burst of sun.
+ * Tap it for more of the same: a downpour, a strike, a burst of sun. `weather` sets the weather outright (the
+ * stats' weather tab), `cols` its width, and a `rest`ing cloud moves for a few seconds, then waits for a hover or tap.
  */
-export function AsciiCloud({ world, seed = 0 }: { world: string; seed?: number }) {
+export function AsciiCloud({ world, seed = 0, weather: given, cols = WIDTH, rest = false }: { world: string; seed?: number; weather?: Weather; cols?: number; rest?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const weather = WEATHER[world] ?? 'drift';
+    const COLS = cols;
+    const weather = given ?? WEATHER[world] ?? 'drift';
     const rows = ROWS[weather];
     const label = el.closest<HTMLElement>('.day-label');
     if (label) label.dataset.weather = weather;
@@ -100,30 +103,41 @@ export function AsciiCloud({ world, seed = 0 }: { world: string; seed?: number }
       el.textContent = out;
     };
 
-    let timer = 0, s = 0;
+    let timer = 0, s = 0, until = Infinity, seen = false;
+    const run = () => {
+      clearInterval(timer);
+      timer = seen && !still.matches ? window.setInterval(tick, STEP) : 0;
+      if (rest) until = s + REST;
+    };
     const tick = () => {
+      if (s > until) { clearInterval(timer); timer = 0; return; }
       s += STEP / 1000;
       if (weather === 'sun') rot += (STEP / 1000) * (0.7 + 5 * clamp01(1 - (s - kick) / 1.6));
       if (weather === 'storm' && s > nextStrike) strike(s);
       draw(s);
     };
+    const wake = () => { if (rest && seen && s > until - 1) run(); };
     const tap = () => {
       if (still.matches) return;
+      wake();
       kick = s;
       if (weather === 'storm') strike(s);
     };
     draw(0);
     el.addEventListener('click', tap);
+    const host = el.parentElement;
+    host?.addEventListener('pointerenter', wake);
     const stop = watchView(el, (on) => {
-      clearInterval(timer);
-      timer = on && !still.matches ? window.setInterval(tick, STEP) : 0;
+      seen = on;
+      run();
     });
     return () => {
       stop();
       clearInterval(timer);
       el.removeEventListener('click', tap);
+      host?.removeEventListener('pointerenter', wake);
       if (label) { delete label.dataset.weather; label.removeAttribute('data-flash'); }
     };
-  }, [world, seed]);
+  }, [world, seed, given, cols, rest]);
   return <span ref={ref} class="ascii-cloud" aria-hidden="true" />;
 }

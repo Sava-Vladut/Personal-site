@@ -11,6 +11,23 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.120.0',
+    date: '2026-10-23',
+    changes: [
+      'Stats has a new look, closer to the journal: a weather report of your mind',
+      'Your average mood sits on the sky in large type, with a little cloud of the world you felt most',
+      'A forecast strip under it shows each day of the range as a column of weather in its world’s letters',
+      'Every part of Stats is laid out like a journal day, with its world’s sprite, a small cloud, a coloured ribbon and a soft glow behind',
+      'Figures scramble into place and meters are written in letters',
+      'Charts, bars, the calendar and the check-in heatmap are drawn in each world’s letters',
+      'Emotions opens with your brain, lit by the range you picked; tap a part to read about it',
+      'The Weather tab shows each kind of sky as real ASCII weather: sun, rain, storms and drifting clouds',
+      'In the Dex, missing feelings are faint letters and found ones scramble in',
+      '“What stands out” reads like a note',
+      'The glows on Stats and Channel points no longer pulse forever',
+    ],
+  },
+  {
     version: '1.119.4',
     date: '2026-10-23',
     changes: [
