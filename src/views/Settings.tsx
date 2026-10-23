@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
-import { connectGithub, disconnectGithub, forgetRepos, githubStatus, type GithubStatus } from '../lib/github';
+import { connectGithub, disconnectGithub, forgetRepos, githubStatus, relogin, type GithubStatus } from '../lib/github';
 import { goBack, navigate } from '../lib/router';
 import { deleteAll, exportJSON, getSettings, importJSON, saveEntry, setSettings, toast, useBooks, useEntries, usePeople, useRepos, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
@@ -70,7 +70,12 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   useEffect(() => {
-    const check = () => { spotifyStatus().then(setSp); githubStatus().then(setGh); };
+    let opening = true;
+    const check = () => {
+      spotifyStatus().then(setSp);
+      // GitHub ended this login: opening Settings logs in again by itself, a moment on GitHub and back
+      githubStatus().then((g) => { if (!(opening && relogin(g, '#/settings'))) setGh(g); opening = false; });
+    };
     check();
     // A login that couldn't be checked offline is checked again once the connection is back.
     addEventListener('online', check);
@@ -383,7 +388,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
             {gh && !gh.offline && (gh.connected ? (
               <button class="btn btn-quiet fade-arrive" onClick={async () => { await disconnectGithub(); forgetRepos(); setGh(await githubStatus()); toast(t('GitHub disconnected')); }}>{t('Disconnect')}</button>
             ) : gh.configured && (
-              <button class="btn btn-primary fade-arrive" onClick={connectGithub}>{t('Log in')}</button>
+              <button class="btn btn-primary fade-arrive" onClick={() => connectGithub()}>{t('Log in')}</button>
             ))}
           </div>
         </div>

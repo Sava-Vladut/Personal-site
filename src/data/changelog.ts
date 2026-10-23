@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.10',
+    date: '2026-10-23',
+    changes: [
+      'GitHub no longer drops you when it ends a login: opening Repos or Settings logs you in again by itself, a quick hop to GitHub and back with nothing to click',
+      'A GitHub login that GitHub refused is kept, so it works again by itself if GitHub was wrong, or as soon as you log in on another device',
+      'Logging in to GitHub from Repos brings you back to Repos',
+    ],
+  },
+  {
     version: '1.128.9',
     date: '2026-10-23',
     changes: [

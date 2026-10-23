@@ -26,7 +26,7 @@ function Trouble({ error, status, what, onRetry }: { error: string; status?: num
   return (
     <div class="repo-trouble">
       <p class="muted small">{status === 401 ? t('Log in with GitHub to see {what}.', { what }) : error}</p>
-      {status === 401 ? <button class="btn btn-primary btn-s" onClick={connectGithub}>{t('Log in')}</button> : <button class="btn btn-quiet btn-s" onClick={onRetry}><Icon name="refresh" size={16} /> {t('Try again')}</button>}
+      {status === 401 ? <button class="btn btn-primary btn-s" onClick={() => connectGithub()}>{t('Log in')}</button> : <button class="btn btn-quiet btn-s" onClick={onRetry}><Icon name="refresh" size={16} /> {t('Try again')}</button>}
     </div>
   );
 }
@@ -266,7 +266,7 @@ export function RepoView({ id }: { id: string }) {
             <>
               <h2 class="title-s">{t('This repo isn’t available')}</h2>
               <p>{meta.status === 401 ? t('Log in with GitHub to open it.') : meta.status === 404 ? t('It may have been deleted, renamed or made private.') : meta.error}</p>
-              {meta.status === 401 && <button class="btn btn-primary" onClick={connectGithub}>{t('Log in')}</button>}
+              {meta.status === 401 && <button class="btn btn-primary" onClick={() => connectGithub()}>{t('Log in')}</button>}
             </>
           )}
           <button class="btn btn-quiet" onClick={() => goBack('repos')}>{t('Back to repos')}</button>

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { navigate } from '../lib/router';
-import { ago, connectGithub, forgetRepos, getReadme, githubStatus, listGhRepos, repoFullName, useLoad, type GhRepo, type GithubStatus } from '../lib/github';
+import { ago, connectGithub, forgetRepos, getReadme, githubStatus, listGhRepos, relogin, repoFullName, useLoad, type GhRepo, type GithubStatus } from '../lib/github';
 import { watchView } from '../lib/inView';
 import { readmeExcerpt } from '../components/Readme';
 import { usePref } from '../lib/prefs';
-import { repoIdOf, useReady, useRepos, type Repo } from '../lib/store';
+import { repoIdOf, toast, useReady, useRepos, type Repo } from '../lib/store';
 import { CountUp } from '../components/charts';
 import { feltWorlds } from '../components/cloud';
 import { EmotionChip } from '../components/emotion';
@@ -81,6 +81,8 @@ export function Repos() {
   const [status, setStatus] = useState<GithubStatus>();
   const live = useLoad(async () => {
     const s = await githubStatus();
+    // GitHub ended this login: log in again by itself (a moment on GitHub and back), the page waiting meanwhile
+    if (relogin(s, '#/repos')) return new Promise<never>(() => {});
     setStatus(s);
     if (!s.connected) return { items: [] as GhRepo[] };
     try {
@@ -92,6 +94,13 @@ export function Repos() {
     }
   }, 0);
   const items = live.data?.items;
+  // Back from GitHub's login: only a login that didn't happen is worth a word; the address loses its ?github= either way.
+  useEffect(() => {
+    const g = new URLSearchParams(location.hash.split('?')[1]).get('github');
+    if (!g) return;
+    if (g !== 'connected') toast(g === 'cancelled' ? t('GitHub login cancelled') : t('Couldn’t connect GitHub — try again'));
+    history.replaceState(history.state, '', '#/repos');
+  }, []);
   // Back online after a failed load: try again by itself.
   useEffect(() => {
     if (!live.error) return;
@@ -196,7 +205,7 @@ export function Repos() {
               ? t('The app’s server isn’t running, so GitHub isn’t available.')
               : !status?.configured ? t('GitHub login isn’t set up on this server.')
               : t('Log in with GitHub to list your public and private repos here.')}</p>
-            {status?.configured && <button class="btn btn-primary" onClick={connectGithub}>{t('Log in')}</button>}
+            {status?.configured && <button class="btn btn-primary" onClick={() => connectGithub('#/repos')}>{t('Log in')}</button>}
           </div>
         )}
 

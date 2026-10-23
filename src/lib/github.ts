@@ -13,14 +13,31 @@ export interface GithubStatus {
   private?: number;          // private repos (only when GitHub lets us see them)
   privateVisible?: boolean;
   canClone?: boolean;        // the site's owner, signed in as admin: can clone repos onto the server
+  expired?: boolean;         // GitHub ended this browser's login (its token is gone): relogin() logs in again
   error?: string;
   offline?: boolean;
 }
 
-/** Leaves for GitHub's sign-in; comes back to Settings with ?github=connected. */
-export const connectGithub = () => {
-  location.href = '/api/github/connect';
+/** Leaves for GitHub's sign-in; comes back to `back` (one of the app's pages) with ?github=connected. */
+export const connectGithub = (back = '#/settings') => {
+  location.href = '/api/github/connect?back=' + encodeURIComponent(back);
 };
+
+// GitHub doesn't show its page again for an app you've already allowed, so logging in again is a quick hop there
+// and back. It's tried at most every half hour, so a login GitHub keeps refusing never bounces you back and forth.
+const RELOGIN = 'mm-gh-relogin';
+/** GitHub ended this browser's login: logs in again by itself, coming back to `back`. True when it's on its way. */
+export function relogin(s: GithubStatus, back: string) {
+  if (!s.expired) return false;
+  try {
+    if (Date.now() - Number(localStorage.getItem(RELOGIN)) < 30 * 60_000) return false;
+    localStorage.setItem(RELOGIN, String(Date.now()));
+  } catch {
+    return false;
+  }
+  connectGithub(back);
+  return true;
+}
 export const disconnectGithub = () => fetch('/api/github/disconnect', { method: 'POST' });
 
 /* ---------- repos ---------- */

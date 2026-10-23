@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -357,6 +357,17 @@ test('GitHub login sends you to GitHub asking for repo access, then stores the t
 
   const cancelled = await raw(`/api/github/callback?error=access_denied&state=${state}`, stateCookie);
   assert.match(cancelled.headers.Location, /\?github=cancelled$/);
+
+  // started from another page: the hop keeps it, and the login comes back there
+  assert.equal((await raw('/api/github/connect?back=%23%2Frepos', '', 'GET', 'other.test')).headers.Location, 'https://example.test/api/github/connect?back=%23%2Frepos');
+  const fromRepos = await raw('/api/github/connect?back=%23%2Frepos', '', 'GET', 'example.test');
+  const reposState = new URL(fromRepos.headers.Location).searchParams.get('state');
+  const again = await raw(`/api/github/callback?code=abc&state=${reposState}`, fromRepos.headers['Set-Cookie'][0].split(';')[0]);
+  assert.match(again.headers.Location, /^https:\/\/example\.test\/#\/repos\?github=connected$/);
+  // anything that isn't one of the app's own pages goes back to Settings
+  const odd = await raw('/api/github/connect?back=https%3A%2F%2Fevil.test', '', 'GET', 'example.test');
+  const oddState = new URL(odd.headers.Location).searchParams.get('state');
+  assert.match((await raw(`/api/github/callback?error=access_denied&state=${oddState}`, odd.headers['Set-Cookie'][0].split(';')[0])).headers.Location, /^https:\/\/example\.test\/#\/settings\?github=cancelled$/);
 });
 
 /** GitHub refusing every token, and confirming through its token check that they're gone. Records the tokens asked with. */
@@ -397,11 +408,12 @@ test('GitHub status reports public and private repo counts, and whether private 
   assert.equal(limited.privateVisible, false);
   assert.equal(limited.private, undefined);
 
-  // a revoked token, which GitHub confirms is gone, signs the browser out
+  // a revoked token, which GitHub confirms is gone, is reported as expired so the app logs in again;
+  // the cookie is kept, so a wrong answer from GitHub heals by itself
   globalThis.fetch = revokedGithub();
   const revoked = await raw('/api/github/status', cookie);
-  assert.equal(revoked.body.connected, false);
-  assert.match(revoked.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  assert.deepEqual(revoked.body, { configured: true, connected: false, expired: true });
+  assert.ok(!revoked.headers['Set-Cookie']?.length, 'the cookie is left alone');
 
   const out = await raw('/api/github/disconnect', cookie, 'POST');
   assert.equal(out.status, 204);
@@ -457,11 +469,11 @@ test('GitHub repos, commits and README are read with the sign-in cookie and trim
   assert.equal((await raw('/api/github/repos/42/commits?page=0', cookie)).status, 400);
   assert.equal(seen.length, before);
 
-  // a refused token signs this browser out
+  // a refused token answers 401, and the cookie is kept
   globalThis.fetch = revokedGithub();
   const refused = await raw('/api/github/repos', cookie);
   assert.equal(refused.status, 401);
-  assert.match(refused.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  assert.ok(!refused.headers['Set-Cookie']?.length, 'the cookie is left alone');
 });
 
 test('a Spotify access token refused before its expiry is renewed and the request tried again', async () => {
@@ -537,15 +549,34 @@ test('a GitHub token revoked by newer sign-ins elsewhere is swapped for the acco
   assert.equal(status.body.user.name, 'octo');
   assert.ok(status.headers['Set-Cookie'].some((c) => c.startsWith('mm_gh=') && !c.includes('Max-Age=0')), 'the desktop is handed the newest token');
 
-  // once every token for the account is refused, the browser is signed out and the saved one forgotten
+  // once every token for the account is refused, the request answers 401 and the saved one is forgotten
   globalThis.fetch = revokedGithub();
   const gone = await raw('/api/github/repos', desktop);
   assert.equal(gone.status, 401);
-  assert.match(gone.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  assert.ok(!gone.headers['Set-Cookie']?.length, 'the desktop keeps its cookie');
   const asked = [];
   globalThis.fetch = revokedGithub(asked);
   await raw('/api/github/repos', desktop);
   assert.deepEqual(asked, ['Bearer gho_desktop'], 'nothing saved is left to try');
+
+  // the phone signs in again: the desktop's kept cookie carries on with it, without logging in there
+  const relog = await raw('/api/github/connect', '', 'GET', 'example.test');
+  const relogState = new URL(relog.headers.Location).searchParams.get('state');
+  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user'
+    ? Response.json({ id: 99, login: 'octo' })
+    : Response.json({ access_token: 'gho_phone2' });
+  await raw(`/api/github/callback?code=abc&state=${relogState}`, relog.headers['Set-Cookie'][0].split(';')[0]);
+  globalThis.fetch = async (url, options) => options.headers.Authorization === 'Bearer gho_phone2'
+    ? Response.json({ id: 99, login: 'octo', public_repos: 1 }, { headers: { 'x-oauth-scopes': 'repo' } })
+    : Response.json({ message: 'Bad credentials' }, { status: 401 });
+  assert.equal((await raw('/api/github/status', desktop)).body.connected, true);
+
+  // what happened is kept in data/ across redeploys, with account ids but never a token
+  const log = readFileSync(join(scratch, 'sign-ins.log'), 'utf8');
+  assert.match(log, /GitHub: account 99 signed in/);
+  assert.match(log, /GitHub: account 99's token was refused \(token check answered 404\)/);
+  assert.match(log, /GitHub: account 99 carried on with its newest sign-in/);
+  assert.doesNotMatch(log, /gho_/);
 });
 
 test('GitHub being unreachable reports the sign-in as kept, not signed out', async () => {
