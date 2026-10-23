@@ -444,8 +444,8 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
         <Sky world={WORLD} />
         <PageHead title={t('Laws of power')} back={() => goBack()} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
         <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-          <button role="tab" aria-selected={lens === 'player'} onClick={() => setLens('player')}><Icon name="crown" size={17} /> {t('As the player')}</button>
-          <button role="tab" aria-selected={lens === 'target'} onClick={() => setLens('target')}><Icon name="eye" size={17} /> {t('As the target')}</button>
+          <button role="tab" aria-selected={lens === 'player'} onClick={() => setLens('player')}><Icon name="crown" size={16} /> {t('As the player')}</button>
+          <button role="tab" aria-selected={lens === 'target'} onClick={() => setLens('target')}><Icon name="eye" size={16} /> {t('As the target')}</button>
         </div>
       </div>
 

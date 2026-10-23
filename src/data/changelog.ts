@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.119.4',
+    date: '2026-10-23',
+    changes: [
+      'The tab icons in Media, Friends and Laws of power are the same size as other icons next to text',
+    ],
+  },
+  {
     version: '1.119.3',
     date: '2026-10-23',
     changes: [

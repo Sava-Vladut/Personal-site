@@ -97,8 +97,8 @@ export function Media({ query }: { query: URLSearchParams }) {
 
         <div class="media-bar">
           <div class="seg tabs media-tabs" role="tablist" aria-label={t('Media')} style={{ '--at': TABS.indexOf(tab), '--tabs': TABS.length }}>
-            <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={17} /> {t('Music')}</button>
-            <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={17} /> {t('Books')}</button>
+            <button role="tab" aria-selected={!isBooks} onClick={() => setTab('music')}><Icon name="vinyl" size={16} /> {t('Music')}</button>
+            <button role="tab" aria-selected={isBooks} onClick={() => setTab('books')}><Icon name="books" size={16} /> {t('Books')}</button>
           </div>
 
           {has && (

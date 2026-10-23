@@ -483,8 +483,8 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
         <Sky world={WORLD} />
         <PageHead title={t('Win friends')} back={() => goBack()} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
         <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-          <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Icon name="brain" size={17} /> {t('Why it works')}</button>
-          <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Icon name="list-check" size={17} /> {t('How to practise')}</button>
+          <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Icon name="brain" size={16} /> {t('Why it works')}</button>
+          <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Icon name="list-check" size={16} /> {t('How to practise')}</button>
         </div>
       </div>
 

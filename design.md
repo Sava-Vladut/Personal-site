@@ -182,7 +182,7 @@ next to them:
 | Size | Use |
 |---|---|
 | 14 | Inside chips, small buttons, captions and inline with `--text-m` |
-| 16 | Inside `.btn`, list rows and inline with body text |
+| 16 | Inside `.btn`, segmented tabs (`.seg.tabs`), list rows and inline with body text |
 | 18 | Icon buttons and toolbar buttons (the default for a control) |
 | 20 | Icons on their own: page actions, card headers |
 | 22 | Tab bar |
