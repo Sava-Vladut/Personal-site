@@ -575,7 +575,7 @@ function PublicNotes() {
                 <div class="muted small">{rangeLabel(n.date, n.dateEnd)}</div>
               </div>
               <div class="public-actions">
-                <button class="btn btn-quiet btn-s" onClick={() => copyLink(n)}><Icon name="copy" size={15} /> {t('Copy link')}</button>
+                <button class="btn btn-quiet btn-s" onClick={() => copyLink(n)}><Icon name="copy" size={16} /> {t('Copy link')}</button>
                 <button class="btn btn-quiet btn-s" onClick={() => stop(n)}>{t('Stop')}</button>
               </div>
             </div>

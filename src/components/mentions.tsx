@@ -181,8 +181,8 @@ export function PeekLayer() {
         {b.status === 'reading' && pct !== null && <span class="progress" role="img" aria-label={t('{pct}% read', { pct })}><i style={{ width: pct + '%' }} /></span>}
         {b.rating > 0 && <Stars value={b.rating} size={14} />}
         <div class="peek-actions">
-          <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?book=' + b.id)}><Icon name="pencil" size={15} /> {t('Write')}</button>
-          <button class="btn btn-primary btn-s grow" onClick={() => go('book/' + b.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?book=' + b.id)}><Icon name="pencil" size={16} /> {t('Write')}</button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go('book/' + b.id)}>{t('Open')} <Icon name="arrow-up-right" size={16} /></button>
         </div>
       </>
     );
@@ -203,7 +203,7 @@ export function PeekLayer() {
         {preview && <p class="peek-text">{preview}</p>}
         {n.emotions.length > 0 && <div class="peek-feelings">{n.emotions.slice(0, 3).map((id) => <EmotionChip id={id} size="sm" />)}</div>}
         <div class="peek-actions">
-          <button class="btn btn-primary btn-s grow" onClick={() => go('note/' + n.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go('note/' + n.id)}>{t('Open')} <Icon name="arrow-up-right" size={16} /></button>
         </div>
       </>
     );
@@ -222,7 +222,7 @@ export function PeekLayer() {
         </div>
         <p class="peek-text">{r.line}</p>
         <div class="peek-actions">
-          <button class="btn btn-primary btn-s grow" onClick={() => go(r.to)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go(r.to)}>{t('Open')} <Icon name="arrow-up-right" size={16} /></button>
         </div>
       </>
     );
@@ -244,8 +244,8 @@ export function PeekLayer() {
         {s.rating > 0 && <Stars value={s.rating} size={14} />}
         {playing && <MusicEmbed m={s.music} />}
         <div class="peek-actions">
-          <button class="btn btn-quiet btn-s grow" onClick={() => setPlaying(!playing)}><Icon name={playing ? 'player-pause' : 'player-play'} size={15} /> {playing ? t('Stop') : t('Play')}</button>
-          <button class="btn btn-primary btn-s grow" onClick={() => go('song/' + s.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
+          <button class="btn btn-quiet btn-s grow" onClick={() => setPlaying(!playing)}><Icon name={playing ? 'player-pause' : 'player-play'} size={16} /> {playing ? t('Stop') : t('Play')}</button>
+          <button class="btn btn-primary btn-s grow" onClick={() => go('song/' + s.id)}>{t('Open')} <Icon name="arrow-up-right" size={16} /></button>
         </div>
       </>
     );
@@ -277,8 +277,8 @@ function PersonPeek({ p, moments, last }: { p: Person; moments: number; last?: s
       </div>
       {p.emotions.length > 0 && <div class="peek-feelings">{p.emotions.slice(0, 3).map((id) => <EmotionChip id={id} size="sm" />)}</div>}
       <div class="peek-actions">
-        <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?person=' + p.id)}><Icon name="pencil" size={15} /> {t('Write')}</button>
-        <button class="btn btn-primary btn-s grow" onClick={() => go('person/' + p.id)}>{t('Open')} <Icon name="arrow-up-right" size={15} /></button>
+        <button class="btn btn-quiet btn-s grow" onClick={() => go('note/new?person=' + p.id)}><Icon name="pencil" size={16} /> {t('Write')}</button>
+        <button class="btn btn-primary btn-s grow" onClick={() => go('person/' + p.id)}>{t('Open')} <Icon name="arrow-up-right" size={16} /></button>
       </div>
     </>
   );

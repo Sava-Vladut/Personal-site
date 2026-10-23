@@ -26,7 +26,7 @@ function Trouble({ error, status, what, onRetry }: { error: string; status?: num
   return (
     <div class="repo-trouble">
       <p class="muted small">{status === 401 ? t('Log in with GitHub to see {what}.', { what }) : error}</p>
-      {status === 401 ? <button class="btn btn-primary btn-s" onClick={connectGithub}>{t('Log in')}</button> : <button class="btn btn-quiet btn-s" onClick={onRetry}><Icon name="refresh" size={15} /> {t('Try again')}</button>}
+      {status === 401 ? <button class="btn btn-primary btn-s" onClick={connectGithub}>{t('Log in')}</button> : <button class="btn btn-quiet btn-s" onClick={onRetry}><Icon name="refresh" size={16} /> {t('Try again')}</button>}
     </div>
   );
 }
@@ -173,7 +173,7 @@ function CloneToServer({ id }: { id: string }) {
     <div class="repo-clone">
       {job?.state !== 'done' && (
         <button class="btn btn-quiet btn-s" onClick={start} disabled={running}>
-          {running ? <><Spin /> {t('Cloning onto the server…')}</> : <><Icon name="download" size={15} /> {job?.state === 'failed' ? t('Try the clone again') : t('Clone to the server')}</>}
+          {running ? <><Spin /> {t('Cloning onto the server…')}</> : <><Icon name="download" size={16} /> {job?.state === 'failed' ? t('Try the clone again') : t('Clone to the server')}</>}
         </button>
       )}
       {job?.state === 'done' && <p class="muted small"><Icon name="check" size={14} /> {t('Cloned to {path}', { path: job.path })}</p>}

@@ -150,7 +150,7 @@ function Board({ data, channel, onPick, onEdit }: { data: Points; channel: Chann
         <section class="card tw-list" id="tw-channels">
           <div class="tw-list-head">
             <h3 class="chart-title">{t('Channels')}</h3>
-            <button class="btn btn-quiet btn-s" onClick={onEdit}><Icon name="pencil" size={15} /> {t('Edit')}</button>
+            <button class="btn btn-quiet btn-s" onClick={onEdit}><Icon name="pencil" size={16} /> {t('Edit')}</button>
           </div>
           <ul>
             {data.channels.map((c, i) => (
