@@ -11,13 +11,13 @@ const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const RAMP = ' .,-~:;=!*#%@'; // dark to bright
 const SCRAMBLE = '!<>-_/\\[]{}=+*^?#%&$01';
 const STREAK = '-\\|/'; // a streak's letter by its slant
-const FLY = 0.85;       // seconds each letter takes to close in
-const SPREAD = 0.05;    // the last one sets off this much later
-const LAND = 0.25;      // a letter flashes this long as it lands
-const IGNITE = 0.9;     // when the wave sets off from the front
-const SWEEP = 0.55;     // until it reaches the back
-const HOLD = 1.45;      // the soonest the camera closes in
-const DIVE = 1;         // seconds flying in through the brain
+const FLY = 0.55;       // seconds each letter takes to close in
+const SPREAD = 0.04;    // the last one sets off this much later
+const LAND = 0.16;      // a letter flashes this long as it lands
+const IGNITE = 0.56;    // when the wave sets off from the front
+const SWEEP = 0.36;     // until it reaches the back
+const HOLD = 0.95;      // the soonest the camera closes in
+const DIVE = 0.7;       // seconds flying in through the brain
 const REVEAL = 0.55;    // how far into the dive the journal is put in behind and the iris opens
 const CAM = 3.4, CAM_FAR = 5.2, CAM_IN = 0.1; // the eye's distance from the brain's middle
 const SWIRL = 2.4;      // radians the letters turn as they close in
@@ -116,7 +116,7 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
     const near = CAM_FAR + (CAM - CAM_FAR) * out3(clamp(s / HOLD, 0, 1));
     const cam = near - (near - CAM_IN) * u ** 1.6;
     const fade = u < 0.75 ? 1 : 1 - (u - 0.75) / 0.25;
-    const yaw = -0.55 - WHIP * (1 - out3(clamp(s / 1.5, 0, 1))) + 0.22 * s;
+    const yaw = -0.55 - WHIP * (1 - out3(clamp(s / HOLD, 0, 1))) + 0.22 * s;
     const pitch = -0.16 + 0.06 * Math.sin(s * 0.8);
     const roll = 0.55 * u * u; // a slow barrel roll on the way in
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), cr = Math.cos(roll), sr = Math.sin(roll);
@@ -253,7 +253,7 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
 
   const step = (dt: number) => {
     s += dt;
-    if (diveAt < 0 && isReady && (s >= HOLD || (hurry && s >= 0.35))) {
+    if (diveAt < 0 && isReady && (s >= HOLD || (hurry && s >= 0.25))) {
       diveAt = s;
       cover.classList.add('diving');
     }
@@ -263,7 +263,7 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
       // the app is in behind by now: the iris opens onto it
       leaving = true;
       cover.classList.add('out');
-      setTimeout(finish, 1400); // in case the animation never ends
+      setTimeout(finish, 1000); // in case the animation never ends
     }
   };
 

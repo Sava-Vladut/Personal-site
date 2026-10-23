@@ -15,10 +15,10 @@
   content: ''; position: absolute; left: 50%; top: 50%; z-index: -1; width: 130vmin; aspect-ratio: 1; translate: -50% -50%;
   border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, rgb(144 133 233 / 0.24), rgb(57 135 229 / 0.09) 55%, transparent);
-  opacity: 0; animation: opening-glow 1.3s var(--ease) 0.25s forwards;
+  opacity: 0; animation: opening-glow 0.85s var(--ease) 0.15s forwards;
 }
 .opening canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.opening.diving::before { scale: 2.8; transition: scale 1s cubic-bezier(0.55, 0, 0.8, 0.2); }
+.opening.diving::before { scale: 2.8; transition: scale 0.7s cubic-bezier(0.55, 0, 0.8, 0.2); }
 .opening.out {
   pointer-events: none;
   background:
@@ -26,7 +26,7 @@
     var(--dark);
   -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole) * 1vmax), #000 calc(var(--hole) * 1vmax + 1px));
   mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole) * 1vmax), #000 calc(var(--hole) * 1vmax + 1px));
-  animation: opening-iris 0.7s cubic-bezier(0.7, 0, 0.25, 1) forwards;
+  animation: opening-iris 0.5s cubic-bezier(0.7, 0, 0.25, 1) forwards;
 }
 @keyframes opening-glow { to { opacity: 1; } }
 @keyframes opening-iris {
