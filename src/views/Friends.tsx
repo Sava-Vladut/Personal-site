@@ -605,7 +605,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
           <div class="chips scroll-x wf-chips" role="toolbar" aria-label={t('Part')}>
             <button class="chip" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>{t('All')}</button>
             <button class="chip wf-chip" style={{ '--c': 'var(--accent)' }} aria-pressed={filter === 'practising'} onClick={() => setFilter(filter === 'practising' ? 'all' : 'practising')}>
-              <Icon name="check" size={14} /> {t('Practising')}
+              <Icon name="check" size={16} /> {t('Practising')}
             </button>
             {PART_IDS.map((p) => (
               <button class="chip wf-chip" style={{ '--c': `var(--emo-${PARTS[p].hue})` }} aria-pressed={filter === p} onClick={() => setFilter(filter === p ? 'all' : p)}>{t(PARTS[p].name)}</button>

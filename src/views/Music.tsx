@@ -164,7 +164,7 @@ export function MusicTab({ q, onAdd, picker }: { q: string; onAdd: () => void; p
                 <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>{t('All')} {songs.length}</button>
                 {chips.map(([k, name]) => (
                   <button class="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>
-                    {k === 'repeat' && <Icon name="repeat" size={14} stroke={2} />}
+                    {k === 'repeat' && <Icon name="repeat" size={16} stroke={2} />}
                     {name} {count(k)}
                   </button>
                 ))}

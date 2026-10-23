@@ -185,7 +185,7 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
             <div class="chips export-details" role="group" aria-label={t('In each note and check-in')}>
               {EXPORT_DETAILS.map((d) => (
                 <button class="chip" aria-pressed={s.details.includes(d)} onClick={() => set({ details: EXPORT_DETAILS.filter((x) => toggle(s.details, d).includes(x)) })}>
-                  {s.details.includes(d) && <Icon name="check" size={14} />} {DETAIL[d]}
+                  {s.details.includes(d) && <Icon name="check" size={16} />} {DETAIL[d]}
                 </button>
               ))}
             </div>

@@ -187,8 +187,8 @@ next to them:
 
 | Size | Use |
 |---|---|
-| 14 | Inside chips, captions and inline with `--text-m` |
-| 16 | Inside 34px controls (`.btn-s`, `.icon-btn.small`, editor row tools), segmented tabs (`.seg.tabs`), list rows and inline with body text |
+| 14 | Captions and inline with `--text-m` (not inside a control) |
+| 16 | Inside 34px controls (`.btn-s`, `.icon-btn.small`, chips, editor row tools), segmented tabs (`.seg.tabs`), list rows and inline with body text |
 | 18 | Inside 44px controls: full-size buttons (`.btn`), icon buttons and toolbar buttons (the default for a control) |
 | 20 | Icons on their own: page actions, card headers |
 | 22 | Tab bar |

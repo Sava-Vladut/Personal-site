@@ -166,7 +166,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
           <span class="row gap-s">
             {streak > 1 && <span class="muted small">{t('{n}-day streak', { n: streak })}</span>}
             <button class={`chip status-chip${status?.token ? ' is-on' : ''}`} onClick={() => navigate('status')} aria-label={t('Public status')}>
-              <Icon name="world" size={15} /> {status?.token ? t('Public') : t('Share status')}
+              <Icon name="world" size={16} /> {status?.token ? t('Public') : t('Share status')}
             </button>
           </span>
         </div>

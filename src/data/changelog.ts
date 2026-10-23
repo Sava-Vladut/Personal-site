@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.6',
+    date: '2026-10-23',
+    changes: [
+      'Icons in chips are one size everywhere, including the sort, filter and export ticks',
+    ],
+  },
+  {
     version: '1.128.5',
     date: '2026-10-23',
     changes: [

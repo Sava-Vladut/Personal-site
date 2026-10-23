@@ -13,7 +13,7 @@ export function SortChip({ sort, onSort }: { sort: Sort; onSort: (s: Sort) => vo
   const next = SORTS[(at + 1) % SORTS.length];
   return (
     <button class="chip sort-chip" onClick={() => onSort(next[0])} aria-label={t('Order: {now}. Change to {next}', { now: SORTS[at][1], next: next[1] })} title={t('Order by {next}', { next: next[1] })}>
-      <Icon name="arrow-down" size={14} />
+      <Icon name="arrow-down" size={16} />
       <span key={sort}>{SORTS[at][1]}</span>
     </button>
   );
