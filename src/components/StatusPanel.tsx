@@ -222,10 +222,10 @@ export function StatusPanel() {
           <>
             <div class="share-link fade-arrive">
               <input class="input" readOnly value={url} aria-label={t('Public link')} onFocus={(e) => e.currentTarget.select()} />
-              <button class="btn btn-quiet" onClick={copy}><Icon name="copy" size={16} /> {t('Copy')}</button>
-              {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={16} /></button>}
+              <button class="btn btn-quiet" onClick={copy}><Icon name="copy" size={18} /> {t('Copy')}</button>
+              {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={18} /></button>}
             </div>
-            <a class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 1 }} href={url} target="_blank" rel="noopener"><Icon name="external-link" size={16} /> {t('Open the page')}</a>
+            <a class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 1 }} href={url} target="_blank" rel="noopener"><Icon name="external-link" size={18} /> {t('Open the page')}</a>
             <button class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 2 }} onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
           </>
         ) : (

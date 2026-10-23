@@ -101,7 +101,7 @@ function KeyDateSheet({ open, value, first, hasBirthday, onClose, onSave, onRemo
       title={value ? dateName(value) : t('A date in {name}’s year', { name: first })}
       footer={
         <div class="row gap-s">
-          {value && <button class="btn btn-quiet" onClick={() => onRemove(value.id)}><Icon name="trash" size={17} /> {t('Remove')}</button>}
+          {value && <button class="btn btn-quiet" onClick={() => onRemove(value.id)}><Icon name="trash" size={18} /> {t('Remove')}</button>}
           <button class="btn btn-primary grow" onClick={save} disabled={!yearOk}>{value ? t('Save') : t('Add')}</button>
         </div>
       }

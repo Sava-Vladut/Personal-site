@@ -200,7 +200,7 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
       onClose={close}
       title={title}
       tall
-      footer={current && day ? <button class="btn btn-quiet danger" disabled={busy} onClick={() => { setQ(''); void pick(null, day); }}><Icon name="x" size={16} /> {t('Clear this day')}</button> : undefined}
+      footer={current && day ? <button class="btn btn-quiet danger" disabled={busy} onClick={() => { setQ(''); void pick(null, day); }}><Icon name="x" size={18} /> {t('Clear this day')}</button> : undefined}
     >
       <label class="search">
         <Icon name="search" size={18} />

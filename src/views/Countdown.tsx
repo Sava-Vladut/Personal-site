@@ -82,7 +82,7 @@ function Running({ c, onEdit }: { c: C; onEdit: () => void }) {
           <span>{t('{n}% through', { n: Math.floor(p * 100) })}</span>
           <span><b>{total.d}</b> {t('days in all')}</span>
         </div>
-        {done && <button class="btn btn-quiet" onClick={onEdit}><Icon name="pencil" size={16} /> {t('Set new dates')}</button>}
+        {done && <button class="btn btn-quiet" onClick={onEdit}><Icon name="pencil" size={18} /> {t('Set new dates')}</button>}
       </section>
 
       <div class="tiles">
@@ -141,7 +141,7 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
       title={value ? t('Change the countdown') : t('Add a countdown')}
       footer={
         <div class="row gap-s">
-          {value && <button class="btn btn-quiet" onClick={remove} disabled={busy}><Icon name="trash" size={17} /> {t('Remove')}</button>}
+          {value && <button class="btn btn-quiet" onClick={remove} disabled={busy}><Icon name="trash" size={18} /> {t('Remove')}</button>}
           <button class="btn btn-primary grow" onClick={save} disabled={!ok || busy}>{value ? t('Save') : t('Add')}</button>
         </div>
       }

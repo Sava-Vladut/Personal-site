@@ -133,8 +133,8 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
             {parts_}
             <div class="share-link">
               <input class="input" readOnly value={url} aria-label={t('Public link')} onFocus={(e) => e.currentTarget.select()} />
-              <button class="btn btn-quiet" onClick={copy}><Icon name="copy" size={16} /> {t('Copy')}</button>
-              {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={16} /></button>}
+              <button class="btn btn-quiet" onClick={copy}><Icon name="copy" size={18} /> {t('Copy')}</button>
+              {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={18} /></button>}
             </div>
             {changed ? (
               <div class="share-changed">

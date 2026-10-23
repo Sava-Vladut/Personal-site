@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.120.1',
+    date: '2026-10-23',
+    changes: [
+      'Icons in buttons are one size everywhere: Copy, Share, Download, Remove and the rest now match',
+    ],
+  },
+  {
     version: '1.120.0',
     date: '2026-10-23',
     changes: [

@@ -124,8 +124,8 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
         <>
           <span class="foot-note">{text ? `${count(words, 'word', 'words')} · ${t('about {n} tokens', { n: short(tokens) })}` : t('Nothing chosen')}</span>
           <span class="row gap-s">
-            <button class="btn btn-quiet" onClick={copy} disabled={!text}><Icon name="copy" size={16} /> {t('Copy')}</button>
-            <button class="btn btn-primary" onClick={download} disabled={!text}><Icon name="download" size={16} /> {t('Download')}</button>
+            <button class="btn btn-quiet" onClick={copy} disabled={!text}><Icon name="copy" size={18} /> {t('Copy')}</button>
+            <button class="btn btn-primary" onClick={download} disabled={!text}><Icon name="download" size={18} /> {t('Download')}</button>
           </span>
         </>
       }
