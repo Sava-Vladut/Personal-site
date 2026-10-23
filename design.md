@@ -7,6 +7,9 @@ Every value below is a CSS custom property defined at the top of `src/styles/app
 `src/styles/glass.css`). Use the token, never the raw number. If no token fits, that's a sign to reuse an
 existing pattern, not to add a one-off value.
 
+`node scripts/design-audit.mjs` lists the places where the styles still drift from this file (see
+[Keeping it consistent](#keeping-it-consistent)).
+
 ## Principles
 
 1. **Content is solid, chrome floats.** Cards, notes and charts sit on opaque surfaces. Only things that
@@ -14,10 +17,12 @@ existing pattern, not to add a one-off value.
 2. **Quiet by default.** Nothing loops forever at rest. Decoration plays once when a page appears, or on
    hover/focus, and then stops.
 3. **Fast before fancy.** Page changes take about 0.2s. Entrances are a subtle cascade, never a wait.
-4. **One of each.** One radius per role, one shadow per elevation, three weights. Near-duplicates (550
-   next to 600, 0.26s next to 0.25s) are bugs.
+4. **One of each.** One radius per role, one shadow per elevation, three weights, one way to build each
+   kind of screen. Near-duplicates (550 next to 600, 0.26s next to 0.25s, 17px next to 18px icons) are bugs.
 5. **Dark mode is free.** Use colour tokens and dark mode follows. A literal hex is a dark-mode bug
    waiting to happen.
+6. **Same job, same look.** Two screens that list things, filter things or show an empty state do it with
+   the same components, spacing and wording. A screen that looks different should have a reason.
 
 ## Colour
 
@@ -30,38 +35,57 @@ existing pattern, not to add a one-off value.
 | `--line` / `--line-2` | Hairlines and card borders / input borders, stronger dividers |
 | `--ink` / `--ink-2` / `--ink-3` | Primary text / secondary text / captions, icons, placeholders |
 | `--on-ink` | Text on an ink (primary) button |
-| `--on-color` | Text on a feeling's colour or a photo |
+| `--on-color` | Text and icons on a feeling's colour or a photo (instead of `#fff`) |
 | `--danger` | Destructive actions and errors only |
 | `--pos` / `--neg` | Pleasant / unpleasant in charts |
 | `--emo-*` | The eight emotion worlds (CVD-validated). The only saturated colours in the UI |
 
-Allowed literal colours: scrims over photos and covers, artwork (vinyl, paper, wood), brand marks
-(Twitch purple, Spotify green, GitHub language colours) and the Word look of notes (Word blue, highlighter).
+Tints of a feeling are mixes, not new colours: `color-mix(in oklab, var(--c) 22%, var(--surface))` for a
+tinted background, `color-mix(in oklab, var(--c) 55%, var(--ink))` for text on it (see `.avatar.tinted`).
+
+Allowed literal colours: scrims over photos and covers, artwork (vinyl, paper, wood, the intro's night
+sky), brand marks (Twitch purple, Spotify green, GitHub language colours), the Word look of notes (Word
+blue, highlighter) and `#000` inside `mask-image` (only its alpha counts).
 
 ## Type
 
-Serif (`--serif`) is for titles and names: things that are *yours*. Sans (`--sans`) is for everything else.
+Serif (`--serif`) is for titles and names: things that are *yours*. Sans (`--sans`) is for everything
+else. Mono (`--mono`) is for codes and the intro only.
 
 | Token | Size | Use |
 |---|---|---|
 | `--text-2xs` | 10px | Chart axis and badge labels |
-| `--text-xs` | 11px | Small print, counters |
+| `--text-xs` | 11px | Small print, counters, uppercase labels |
 | `--text-s` | 12px | Captions, eyebrows |
 | `--text-m` | 13px | Secondary text, chips, small buttons |
-| `--text-base` | 15px | Body, buttons |
+| `--text-base` | 15px | Body, buttons, section titles |
 | `--text-l` | 17px | Serif list titles, lead text |
-| `--text-xl` | 22px | Section titles (`.title-s`) |
+| `--text-xl` | 22px | Sub-page titles (`.title-s`) |
 
-Page titles (`.title`) use `clamp(26px, 7.4vw, 34px)`. Inputs stay at **16px** so iOS doesn't zoom.
-Text inside notes scales with zoom and keeps its own document sizes.
+- Page titles (`.title`) use `clamp(26px, 7.4vw, 34px)`.
+- Display text (the note title, big stat numbers) is **28px**. There is no token yet: when you touch one
+  of these (`.title-input`, `.tile-value`, `.mind-card-pct`), add `--text-2xl: 28px` and use it.
+- Inputs stay at **16px** so iOS doesn't zoom.
+- Below 10px only inside SVG drawings (wheel rings, chart dots, maps) and tiny avatars, where the text
+  scales with the drawing.
+- Text inside notes scales with zoom and keeps its own document sizes (and its 420 heading weight).
 
 | Weight | Value | Use |
 |---|---|---|
 | `--w-regular` | 400 | Body text |
 | `--w-medium` | 500 | Labels, chips, serif titles |
-| `--w-bold` | 600 | Buttons, emphasis, numbers |
+| `--w-bold` | 600 | Buttons, emphasis, numbers, section titles |
 
 Nothing else. Headings inside the note body are document styles and may differ.
+
+**Line height:** 1.5 body (set on `body`); 1.45 for multi-line secondary text; 1.25 for serif titles and
+headings; 1.12 for page titles; 1 for single-line numbers, badges and icon labels. Nothing in between.
+
+**Letter spacing:** `-0.015em` page titles, `-0.01em` sub-page titles, `-0.025em` big numbers, `0.02em`
+eyebrows. Uppercase labels are `--text-xs`, `--w-bold`, `0.08em`, `--ink-3` (`.badge`, month names, dates
+in note details). Use uppercase sparingly: one label per block at most.
+
+Numbers that change or line up (counters, stats, times) use `font-variant-numeric: tabular-nums`.
 
 ## Shape
 
@@ -73,7 +97,7 @@ Nothing else. Headings inside the note body are document styles and may differ.
 | `--r-m` | 12px | Inputs, segmented controls, menus |
 | `--r-l` | 16px | Cards |
 | `--r-xl` | 28px | Sheets, banners |
-| `--r-pill` | 999px | Buttons, chips, the tab bar |
+| `--r-pill` | 999px | Buttons, chips, icon buttons, the tab bar |
 
 Avatars and dots use `50%`. Nested corners: inner radius = outer radius − padding (or `inherit`).
 
@@ -87,16 +111,85 @@ Avatars and dots use `50%`. Nested corners: inner radius = outer radius − padd
 | `--shadow-3` | Sheets, dialogs, popovers, dragged items |
 | `--glass-shadow` | Glass chrome (in `glass.css`) |
 
-Focus rings, inset highlights and coloured glows are not elevation and stay bespoke.
+Focus rings, inset highlights and coloured glows are not elevation and stay bespoke. Small physical
+knobs (the switch thumb, slider thumbs) and the page-slide edge may keep their own small shadow.
 
-## Spacing and size
+## Layers
 
-- Page gutter: `--gutter` (16px); page content max 640px on phones (wider layouts in `desktop.css` from 1024px).
-- Controls: `--h-s` (34px) for small buttons, chips and tabs; `--h-m` (44px) for buttons and fields, the
-  minimum touch target.
-- Spacing steps used across the app: 4, 6, 8, 12, 16, 18, 24px. Prefer `gap` on a grid/flex parent over
-  margins on children.
-- Safe areas: `--safe-t` / `--safe-b`; the floating tab bar reserves `--nav-h`.
+Fixed and floating things stack in this order. Pick the layer by role; don't invent a number. Inside a
+component, use 1–5 (and `isolation: isolate` on the component) for local stacking.
+
+| z-index | What |
+|---|---|
+| 30 | Note format toolbar (ribbon) |
+| 35, 36 | Note status bar and top bar; the top bar's button |
+| 40 | Tab bar, desktop sidebar, the full-screen note |
+| 50 | Drop overlay while dragging a file |
+| 60 | Sheets, the intro, a dragged picture |
+| 65 | Nav wheel |
+| 70 | Context menus |
+| 75 | Mention popover |
+| 80 | Toasts |
+| 90 | Tooltips, mention bursts |
+| 1000 | Loading bar at the very top |
+
+## Layout and spacing
+
+**Page shell.** Every screen is a `.page`: max 640px wide on phones, `--gutter` (16px) side padding,
+18px under the safe area. Wider layouts live in `desktop.css` from 1024px. The floating tab bar reserves
+`--nav-h` at the bottom; safe areas use `--safe-t` / `--safe-b`.
+
+**Vertical rhythm.**
+
+| Gap | Between |
+|---|---|
+| 4px | An icon or mark and its label, tight rows of marks |
+| 6px | An eyebrow or subtitle and its title |
+| 8px | Chips, buttons in a row, paragraphs in an empty note |
+| 10px | A section title and its content |
+| 12px | Cards in a stack (`.stack-l`), the page bar and the title |
+| 18px | The page head and the first content |
+| 26px | Sections (`.section`) |
+
+**Inside things.** Cards (`--r-l`) pad `14px 16px`; tiles, wells and compact cards (`--r-m`) pad
+`12px 14px`; list rows pad `13px 16px` and are at
+least 56px tall; buttons pad `0 18px` (`0 14px` small); chips pad `0 13px`.
+
+**Scale.** Spacing uses 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28px (1px and 3px only as optical
+nudges inside controls). Odd values like 5, 7, 9, 11, 13 are usually a near-duplicate of a neighbour.
+Prefer `gap` on a grid/flex parent over margins on children.
+
+**Controls.** `--h-s` (34px) for small buttons, chips, tabs and small icon buttons; `--h-m` (44px) for
+buttons, fields and icon buttons, the minimum touch target.
+
+**Breakpoints.** Phones first, then widen:
+
+| Width | Use |
+|---|---|
+| `max-width: 380px` | Very narrow phones: tighten, hide the extras |
+| `min-width: 560px` | Grids go from one or two columns to more (tiles, rungs) |
+| `min-width: 720px` | Two-column lists and option grids, wider sheets |
+| `min-width: 1024px` (`max-width: 1023.98px`) | Desktop layout: sidebar, wider page (`desktop.css`) |
+| `min-width: 1280px` | Wide desktop |
+
+Other widths (400, 420, 480, 520, 640, 900) are drift: fold them into the nearest of these.
+
+## Icons
+
+Icons come from `<Icon name size />` (`src/components/icons.tsx`, stroke 1.75). Sizes follow the text
+next to them:
+
+| Size | Use |
+|---|---|
+| 14 | Inside chips, small buttons, captions and inline with `--text-m` |
+| 16 | Inside `.btn`, list rows and inline with body text |
+| 18 | Icon buttons and toolbar buttons (the default for a control) |
+| 20 | Icons on their own: page actions, card headers |
+| 22 | Tab bar |
+| 24 | Empty states and big moments |
+
+12 is allowed for tiny marks. 13, 15, 17 and 19 are near-duplicates: round to the role above. Don't
+change the stroke, except the active tab (2 vs 1.6).
 
 ## Motion
 
@@ -113,13 +206,15 @@ Easing: `--ease` (default), `--ease-emph` (pages and sheets: quick start, soft l
 (settles with a hint of overshoot), `--spring-bouncy` (small things that pop).
 
 Rules:
-- **Page transitions:** push 0.22s, pop 0.2s, tab switch a ~0.18s fade-through (`app.css`, "page transitions").
-- **Staggered entrances:** 20–25ms per item, capped around 80–100ms, using `--dur-2`/`--dur-3`.
+- **Page transitions:** push 0.22s, pop 0.2s, tab switch a ~0.18s fade-through (`app.css`, "page
+  transitions"). These, the nav wheel, the intro and decorative loops (anything over 1s) keep their own
+  timings; every other duration is a token.
+- **Staggered entrances:** 20ms per item, everything in by 80ms, using `--dur-2`/`--dur-3`.
 - **Only animate `transform` and `opacity`** in anything that loops or runs while scrolling. Never
   animate `filter`, `box-shadow`, `width`, `stroke-width` or `background-position` in a loop.
 - **No infinite loops at rest.** Decoration runs a few times and stops (e.g. the nav wheel plays twice
   after a page appears, `--nw-runs`, and comes alive again on hover/focus). Loops that show state are fine:
-  a record turning while it plays, a live dot, a spinner.
+  a record turning while it plays, a live dot, a spinner, a countdown ticking once a second.
 - `prefers-reduced-motion` turns animation off globally (end of `app.css`); the sky canvas stops too.
 
 ## Glass
@@ -136,19 +231,47 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 | Class | What it is |
 |---|---|
 | `.btn` + `.btn-primary` / `.btn-quiet` / `.btn-danger`, `.btn-s` | Pill buttons; ink, quiet grey, destructive; small size |
+| `.icon-btn` (`.small`) | Round icon-only button; always has an `aria-label` |
 | `.chip`, `.chips` (`.scroll-x`) | Filter and choice pills; `aria-pressed="true"` turns them ink |
 | `.seg` (`.compact`, `.tabs`) | Segmented control; selected item uses `aria-selected` |
-| `.input`, `.input-s` | Text fields |
+| `.switch` | On/off toggle; `role="switch"` with `aria-checked` |
+| `.input`, `.input-s`, `.field-label` | Text fields and their labels |
 | `.card` | Solid surface, `--r-l`, hairline border |
+| `.list` + `.list-row` (`.action`) | Settings-style rows inside a card; the last row drops its border |
 | `.meter` | Thin progress bar that grows in from the left |
+| `.badge` | Small uppercase status label |
+| `.avatar` (`.tinted`, `.new`) | Round initials or photo for a person |
 | `.page`, `.page-head`, `.title`, `.title-s`, `.subtitle`, `.eyebrow` | Page shell and headings; list screens use `PageHead` |
-| `.empty`, `.empty-note` | Empty states |
+| `.section`, `.section-title` | A titled block within a page |
+| `.empty`, `.empty-note` | Empty states: a centred one for a whole screen, a quiet line inside a section |
 | `.stack-l`, `.row` | Layout helpers |
 | `.glass`, `.glass-btn` (`glass.css`) | Floating chrome |
-| `Sheet`, `Confirm`, `Toasts` (components) | Bottom sheets, confirmations, toasts |
+| `Sheet`, `Confirm`, `Toasts`, `PageHead` (components) | Bottom sheets, confirmations, toasts, list-screen headers |
 
-States: press = `scale(0.98)` over `--dur-0`; hover = one step up in surface (`--surface-2` → `--surface-3`);
-selected = ink background with `--on-ink` text; focus = `:focus-visible` 2px ink outline with 2px offset.
+**States.**
+- Press: `.btn` scales to 0.98 over `--dur-0`. Other tappables (chips, icon buttons, cards, rows) share
+  one rule in `app.css` ("press feedback") that sinks them to `--press` and springs back: 0.93 for small
+  things, 0.98 for big surfaces. Add a new tappable to that list rather than writing a new `:active`.
+- Hover: one step up in surface (`--surface-2` → `--surface-3`), or `opacity: 0.88` on ink buttons.
+  **Always inside `@media (hover: hover)`**, so it doesn't stick after a tap on a phone.
+- Selected: ink background with `--on-ink` text (chips), or a raised `--surface` with `--shadow-1` (segments).
+- Focus: `:focus-visible` 2px ink outline with 2px offset (global). Fields swap the outline for an ink
+  border and a soft 3px ring.
+- Disabled: `opacity: 0.45`, default cursor (global for buttons).
+
+**Same job, same pattern.**
+- Every list screen: `PageHead` (title, actions), then filters as `.chips.scroll-x`, then the list.
+- Every page you go into: `PageHead` with `back` (the glass arrow above the title), then sections.
+- Every empty state: one short sentence in `--ink-3`, and at most one action (`.btn-quiet`).
+- Every destructive action: `.btn-danger` or `.danger` text, behind `Confirm`.
+- Every sheet: `Sheet`, a title, content, then the actions.
+
+## Writing in the UI
+
+- Short, plain and warm. Sentence case everywhere ("Add a note", not "Add A Note"). No full stop on
+  buttons, labels or titles.
+- Buttons say what happens ("Save", "Remove link"), not "OK" or "Submit".
+- Every string goes through `t()` and exists in every language (`npm test` runs `test-i18n`).
 
 ## Performance budget
 
@@ -163,9 +286,25 @@ selected = ink background with `--on-ink` text; focus = `:focus-visible` 2px ink
 ## Checklist for new UI
 
 - [ ] Only tokens for colour, type size, weight, radius, shadow and duration
+- [ ] Spacing, icon sizes, breakpoints and z-index from the tables above
+- [ ] Built from the components above; same pattern as the screens that do the same job
 - [ ] Looks right in dark mode
 - [ ] Touch targets ≥ `--h-m` on phones
 - [ ] Content is opaque; only chrome uses glass
 - [ ] Nothing loops at rest; loops animate `transform`/`opacity` only
-- [ ] Visible `:focus-visible` state; works with reduced motion
+- [ ] Hover inside `@media (hover: hover)`; visible `:focus-visible`; works with reduced motion
 - [ ] Screen-specific CSS imported by its view, not globally
+- [ ] `node scripts/design-audit.mjs` shows no new findings in the files you touched
+
+## Keeping it consistent
+
+`node scripts/design-audit.mjs` scans `src/styles/*.css` and `src/**/*.tsx` and counts drift per rule
+(raw hex, font sizes, weights, radii, shadows and durations; spacing, icon sizes and breakpoints off the
+scale; hover outside `@media (hover: hover)`; unknown z-index layers; raw inline styles). It only reports.
+Some findings are allowed exceptions listed in this file, so judge each one before changing it.
+
+`--rule=<name>` lists every finding for one rule; `--json` prints all of them for comparing runs.
+
+The hourly `/improve consistency` loop works from this list and from a look at whole screens side by side.
+Each run fixes one small, real inconsistency, ships it and reports the count before and after. When a rule
+here turns out to be wrong for good reasons, change this file in the same commit instead of the code.

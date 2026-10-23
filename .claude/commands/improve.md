@@ -25,11 +25,19 @@ Focus for this run: $ARGUMENTS (if empty, rotate: pick the area least touched by
 
 Look for a concrete, provable issue in the chosen area. Read the code before deciding; don't guess.
 
-**Consistency** (the rules live in `design.md`):
-- Raw values where a token exists: hex colours, px font sizes, font weights, radii, shadows, durations
-  in `src/styles/*.css` and inline styles in `src/**/*.tsx`.
-- Near-duplicates design.md calls bugs (550 vs 600, 0.26s vs 0.25s), one-off components that duplicate an
-  existing pattern, inconsistent wording or i18n keys missing in one language.
+**Consistency** (layout and design; the rules live in `design.md`, read it first):
+- Run `npm run design:audit` and note the total. It lists raw values where a token exists, spacing, icon
+  sizes and breakpoints off the scale, hover outside `@media (hover: hover)` and unknown layers. Skip the
+  exceptions design.md allows.
+- Then look at whole screens, not just values: pick two or three views that do the same job (lists,
+  detail pages, empty states, sheets, settings rows) and compare their structure, spacing, headings,
+  icon sizes and wording against design.md's "Same job, same pattern". A one-off component that
+  duplicates an existing one is a good catch.
+- Prefer one coherent fix (e.g. every 17px icon in one component → 16, one screen's header onto
+  `PageHead`) over scattered single values. Visible changes are fine here if they make a screen match
+  design.md; keep them small.
+- If the code is right and design.md is wrong or silent, update design.md instead (same commit).
+- Report the audit total before and after.
 
 **Speed**:
 - Unneeded re-renders (missing memo/keys, state lifted too high), work in render that belongs in an effect
