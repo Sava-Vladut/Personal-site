@@ -265,6 +265,60 @@ Rules:
   a record turning while it plays, a live dot, a spinner, a countdown ticking once a second.
 - `prefers-reduced-motion` turns animation off globally (end of `app.css`); the sky canvas stops too.
 
+## Loading and arrival
+
+Nothing pops, nothing jumps, nothing flashes. Content arrives: it fades and settles into a space that was
+already waiting for it, and the seams between "not here yet" and "here" are hidden.
+
+**What the app already does for you** (reuse these; don't write a new entrance):
+
+| Mechanism | Where | What it does |
+|---|---|---|
+| First paint | `fade-data.css`, `.page[data-boot]` | A cold start's pieces settle in one after another; sidebar and tab bar come with them |
+| Page changes | `app.css`, "page transitions" | Push, pop and tab fade-through via View Transitions |
+| Slow screen | `lib/router.ts`, `html[data-loading]` | A thin bar creeps across the top, only after 120ms |
+| Pictures | `lib/fadeImages.ts`, `fade-images.css` | Every `<img>` still loading is hidden in its slot and fades in from a touch larger. Automatic; opt out with `data-no-fade` |
+| Below the fold | `lib/reveal.ts`, `fade-scroll.css` | Cards, rows and tiles drift up as they scroll into view, once. Automatic for the units listed there; opt out with `data-no-reveal` |
+| Fetched block | `.fade-arrive` / `.fade-arrive-soft` | One block landing (a widget, a preview, a line of fetched text); `--i` staggers blocks that land together |
+| Fetched list | `.fade-rows` / `.fade-rows-soft` | Rows cascade 25ms apart, all moving within 100ms |
+
+Use the `-soft` versions (no blur) for big blocks, for anything Settings › Blur can blur, and for more
+than a handful of items.
+
+**Rules.**
+
+1. **Wait before showing a wait.** A load under ~120ms shows nothing at all. Only after that does a
+   loader appear, and it fades in too. Most loads should never show one.
+2. **Hold the space.** Whatever is loading gets its final size up front: `aspect-ratio` or `width`/`height`
+   on pictures and covers, `min-height` on blocks, `tabular-nums` and a `min-width` on numbers that tick.
+   The page must not shift when content lands. A picture's empty slot is `--surface-2` (or the cover's
+   own colour when it's known), never white or a hard border.
+3. **Ghosts, not spinners, for content.** When a card, row or list takes longer than ~300ms, show quiet
+   placeholder shapes in `--surface-2` with the same size, radius and layout as what's coming (a line for
+   a title, a shorter one for the subtitle, a square for a cover). The first time one is needed, add a
+   shared `.ghost` class in `app.css` rather than one per screen. Ghosts may breathe (a slow opacity
+   pulse, `opacity` only) while loading and stop the moment the content is in. No sweeping shimmer
+   gradients: they animate `background-position`, which the motion rules forbid.
+4. **Cross-fade the swap.** The content takes the ghost's place in the same box with `.fade-arrive-soft`
+   (or `.fade-rows-soft` for a list); never cut from ghost to content.
+5. **Spinners only for actions.** A button that is working shows its label changing ("Saving…") and stays
+   the same width; a full-screen spinner is never the answer. Loading text ("Loading…", "Reading the repo
+   from GitHub…") is a last resort for a slow external service: `--ink-3`, after the 120ms wait, fading in.
+6. **Errors and empty states arrive too.** They come in with `.fade-arrive-soft`, not with a snap, and
+   replace the ghost in the same space.
+7. **Soften the edges.** Where content is cut off, fade it out instead of clipping it hard: a
+   `mask-image` gradient at the end of a horizontal scroller or a clipped preview (`.rd-scroll.is-clipped`
+   does this), a gradient scrim under text on a photo, a slow fade on a sky or a glow behind a page
+   (`.route-status`). Meters and charts draw themselves in (`--dur-5`) instead of appearing full.
+8. **Play once, on arrival.** An entrance plays when the element is put in the page, not on every
+   re-render, refresh or sync. Keep list keys stable, so a refresh doesn't replay the cascade. Content
+   that is already on screen is never faded again.
+9. **Quick and capped.** Arrivals use `--dur-2`/`--dur-3` with `--ease-emph`, staggers stop at 100ms,
+   and the whole screen is in within about 0.4s. Never hold content back for the sake of an animation.
+10. **Reduced motion is instant, and nothing stays hidden.** Everything above is instant under
+    `prefers-reduced-motion` (end of `app.css`), and only elements a script tagged are ever hidden, so if
+    the script fails, content simply shows.
+
 ## Glass
 
 The liquid glass material (`.glass`, `.glass-btn`, `--glass-*`) is for chrome only: the tab bar, toolbar
@@ -342,6 +396,7 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 - [ ] Touch targets ≥ `--h-m` on phones
 - [ ] Content is opaque; only chrome uses glass
 - [ ] Nothing loops at rest; loops animate `transform`/`opacity` only
+- [ ] Loads hold their space, show nothing for ~120ms, use ghosts for content and arrive with a fade
 - [ ] Hover inside `@media (hover: hover)`; visible `:focus-visible`; works with reduced motion
 - [ ] Screen-specific CSS imported by its view, not globally
 - [ ] `node scripts/design-audit.mjs` shows no new findings in the files you touched

@@ -36,6 +36,9 @@ Look for a concrete, provable issue in the chosen area. Read the code before dec
 - Prefer one coherent fix (e.g. every 17px icon in one component → 16, one screen's header onto
   `PageHead`) over scattered single values. Visible changes are fine here if they make a screen match
   design.md; keep them small.
+- Check loading against design.md's "Loading and arrival": content that pops in, shifts the page when it
+  lands, flashes a loader on fast loads, cuts from placeholder to content, or uses bare "Loading…" text
+  or a spinner where a ghost or a fade belongs. Hard clipped edges that should fade count too.
 - If the code is right and design.md is wrong or silent, update design.md instead (same commit).
 - Report the audit total before and after.
 
