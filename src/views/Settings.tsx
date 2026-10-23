@@ -4,7 +4,7 @@ import { connectGithub, disconnectGithub, forgetRepos, githubStatus, type Github
 import { goBack, navigate } from '../lib/router';
 import { deleteAll, exportJSON, getSettings, importJSON, saveEntry, setSettings, toast, useBooks, useEntries, usePeople, useRepos, useSettings, useSongs, type Place, type Settings as S } from '../lib/store';
 import { resolveIcon } from '../lib/icons';
-import { rangeLabel, shortDate, todayKey } from '../lib/dates';
+import { rangeLabel, todayKey } from '../lib/dates';
 import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
@@ -14,12 +14,13 @@ import { Sheet } from '../components/Sheet';
 import { WheelEditor } from '../components/WheelEditor';
 import { WidgetEditor } from '../components/WidgetEditor';
 import { HomeSheet, placeLabel } from '../components/weather';
-import { CHANGELOG, VERSION } from '../data/changelog';
+import { VERSION } from '../data/changelog';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
 import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18n';
 import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
+import { ChangelogSheet } from '../components/Changelog';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -529,19 +530,6 @@ function JoinSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 /** Every version, newest first, with what it changed. */
-function ChangelogSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <Sheet open={open} onClose={onClose} title={<span class="row gap-s"><Icon name="sparkles" /> {t('What’s new')}</span>} label={t('What’s new')} tall>
-      {CHANGELOG.map((r) => (
-        <section class="release" key={r.version}>
-          <h3 class="release-head">{r.version} <span class="muted small">{shortDate(r.date)}</span></h3>
-          <ul>{r.changes.map((c) => <li>{c}</li>)}</ul>
-        </section>
-      ))}
-    </Sheet>
-  );
-}
-
 /** Every note that's public right now, from the server, so any of them can be switched off even if the note itself is gone. */
 function PublicNotes() {
   const entries = useEntries();

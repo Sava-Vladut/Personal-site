@@ -24,7 +24,7 @@ const RANKED = 10;
 const RANK_COLORS = ['joy', 'love-connection', 'hope-interest', 'calm-safety', 'sadness', 'fear', 'anger'];
 
 /** Days in a row with a song, ending today (or yesterday, while today is still open). */
-function streakOf(days: Set<string>, today: string) {
+export function streakOf(days: Set<string>, today: string) {
   let d = days.has(today) ? today : addDays(today, -1);
   let n = 0;
   while (days.has(d)) n++, (d = addDays(d, -1));

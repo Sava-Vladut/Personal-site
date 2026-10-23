@@ -35,7 +35,7 @@ import { usePoints } from '../lib/twitch';
 import { optionOf, shownIn, useWidgets, type WidgetLayout } from '../lib/widgets';
 import type { WidgetId } from '../data/widgets';
 import { count, LOCALE, t } from '../lib/i18n';
-import { useNow } from '../lib/countdown';
+import { Notices, useNews, type News } from '../components/Notices';
 
 /** How many days of the feed are drawn at first; scrolling near the end draws this many more. */
 const DAYS_PAGE = 20;
@@ -55,6 +55,7 @@ export function Journal() {
   const widgets = useWidgets();
   const compact = useSettings().density === 'compact';
   const picker = useDayPick();
+  const news = useNews();
 
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>();
@@ -163,7 +164,7 @@ export function Journal() {
 
       {!filtering && (
         <div class="widgets">
-          {shownIn(widgets, 'panel').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} />)}
+          {shownIn(widgets, 'panel').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} news={news} />)}
         </div>
       )}
 
@@ -174,9 +175,10 @@ export function Journal() {
         </div>
       )}
       </div>
-      {shownIn(widgets, 'side').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} />)}
+      {shownIn(widgets, 'side').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} news={news} />)}
       </aside>
       <JournalSongPicker picker={picker} />
+      {news.sheet}
       <WidgetEditor open={editing} onClose={() => setEditing(false)} />
 
       {ready && !entries.length && (
@@ -204,11 +206,11 @@ export function Journal() {
 }
 
 /** One of the feed's widgets (data/widgets.ts), set up as the layout says. */
-function Widget({ id, layout, entries, byDay, onOpenDay, picker }: {
-  id: WidgetId; layout: WidgetLayout; entries: Entry[]; byDay: Map<string, Entry[]>; onOpenDay: (day: string) => void; picker: DayPick;
+function Widget({ id, layout, entries, byDay, onOpenDay, picker, news }: {
+  id: WidgetId; layout: WidgetLayout; entries: Entry[]; byDay: Map<string, Entry[]>; onOpenDay: (day: string) => void; picker: DayPick; news: News;
 }) {
   switch (id) {
-    case 'notices': return <Notices entries={entries} picker={picker} />;
+    case 'notices': return <Notices entries={entries} picker={picker} news={news} />;
     case 'checkin': return <CheckInPrompt entries={entries} />;
     case 'on-this-day': return <OnThisDay byDay={byDay} onOpen={onOpenDay} />;
     case 'coming-up': return <ComingUp within={optionOf(layout, id, 'days')} max={optionOf(layout, id, 'max')} />;
@@ -357,81 +359,6 @@ function JournalPoints({ graph }: { graph: boolean }) {
 function JournalSongPicker({ picker }: { picker: DayPick }) {
   const songs = useSongs();
   return <DayPicker songs={songs} picker={picker} />;
-}
-
-/** How long after a check-in the bar under the date asks for the next one. */
-const CHECKIN_EVERY = 2 * 3600_000;
-
-/** "1h 20m", "45m": a stretch of time, to the minute. */
-function spanLabel(ms: number) {
-  const m = Math.max(1, Math.round(ms / 60_000));
-  if (m < 60) return t('{m}m', { m });
-  return m % 60 ? t('{h}h {m}m', { h: Math.floor(m / 60), m: m % 60 }) : t('{h}h', { h: m / 60 });
-}
-
-/**
- * The bar under the date: what today is waiting on, a line each. Today's song, or a nudge to pick it, and the next
- * check-in, every couple of hours while you're up (a ring round the last feeling fills until it's due). A line that's
- * due glows, with a dot that breathes, until you see to it.
- */
-function Notices({ entries, picker }: { entries: Entry[]; picker: DayPick }) {
-  const now = useNow(60_000);
-  const songs = useSongs();
-  const today = todayKey();
-  const song = songs.find((s) => s.days.includes(today));
-  const last = entries.find((e) => e.kind === 'checkin' && e.date === today && e.emotions.length);
-  const em = last ? EMOTION[last.emotions[0]] : null;
-  const since = last ? now - last.time : Infinity;
-  const hour = new Date(now).getHours();
-  // no nudges through the night
-  const awake = hour >= 8 && hour < 23;
-  const waiting = since < CHECKIN_EVERY;
-  const r = 16.5, len = 2 * Math.PI * r;
-
-  const songRow = !songs.length ? null : song ? (
-    <button class="notice" style={{ '--c': 'var(--emo-sadness)' }} onClick={() => navigate('song/' + song.id)}>
-      <span class="notice-ico"><Icon name="vinyl" size={18} class="notice-spin" /></span>
-      <span class="notice-main"><b>{t('Today’s song')}</b><small>{[song.music.title, song.music.sub].filter(Boolean).join(' · ')}</small></span>
-      <Icon name="chevron-right" size={16} />
-    </button>
-  ) : awake ? (
-    <button class="notice due" style={{ '--c': 'var(--emo-sadness)' }} onClick={() => picker.open(today)}>
-      <span class="notice-ico"><Icon name="music" size={18} /></span>
-      <span class="notice-main"><b>{t('Pick today’s song')}</b><small>{t('The day doesn’t have a record yet')}</small></span>
-      <i class="notice-dot" aria-hidden="true" />
-      <Icon name="chevron-right" size={16} />
-    </button>
-  ) : null;
-
-  const checkinRow = waiting && em ? (
-    <button class="notice" style={{ '--c': `var(--emo-${em.core})` }} onClick={() => navigate('tracker')}>
-      <span class="notice-ico">
-        <svg class="notice-ring" viewBox="0 0 36 36" aria-hidden="true">
-          <circle cx="18" cy="18" r={r} class="notice-track" />
-          <circle cx="18" cy="18" r={r} class="notice-fill" style={{ strokeDasharray: len, strokeDashoffset: len * (1 - since / CHECKIN_EVERY) }} />
-        </svg>
-        <Sprite core={em.core} size={14} />
-      </span>
-      <span class="notice-main">
-        <b>{t('Next check-in in {time}', { time: spanLabel(CHECKIN_EVERY - since) })}</b>
-        <small>{t('Last felt {name} at {time}', { name: em.depth === 0 ? shortName(em.id) : em.name, time: timeLabel(last!.time) })}</small>
-      </span>
-      <Icon name="chevron-right" size={16} />
-    </button>
-  ) : awake ? (
-    <button class="notice due" style={{ '--c': em ? `var(--emo-${em.core})` : 'var(--emo-joy)' }} onClick={() => navigate('tracker')}>
-      <span class="notice-ico"><Icon name="mood-plus" size={18} /></span>
-      <span class="notice-main">
-        <b>{t('Time to check in')}</b>
-        <small>{em ? t('{time} since {name}', { time: spanLabel(since), name: em.depth === 0 ? shortName(em.id) : em.name }) : t('Nothing yet today')}</small>
-      </span>
-      <i class="notice-dot" aria-hidden="true" />
-      <Icon name="chevron-right" size={16} />
-    </button>
-  ) : null;
-
-  if (!songRow && !checkinRow) return null;
-  return <div class="notices card fade-arrive">{songRow}{checkinRow}</div>;
 }
 
 /** The nudge to check in, on one line: tap it to pick how you feel. Once you have today, it shows how you last felt. */

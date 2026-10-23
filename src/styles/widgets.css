@@ -12,7 +12,7 @@
   border-radius: calc(var(--r-l) - 4px); color: var(--ink);
   transition: background-color var(--dur-2), scale var(--dur-3) var(--spring);
 }
-.notice + .notice::before { content: ''; position: absolute; inset: -0.5px 12px auto 56px; height: 1px; background: var(--line); }
+.notice-slot + .notice-slot > .notice::before { content: ''; position: absolute; inset: -0.5px 12px auto 56px; height: 1px; background: var(--line); }
 .notice:active { scale: 0.98; transition-duration: var(--dur-2), var(--dur-0); }
 @media (hover: hover) { .notice:hover { background: color-mix(in oklab, var(--c) 8%, transparent); } .notice:hover > svg { color: var(--ink); } }
 .notice-ico {
@@ -30,15 +30,19 @@
 /* due: a wash of its colour from the left, its name in it, and a dot that breathes */
 .notice.due { background: linear-gradient(90deg, color-mix(in oklab, var(--c) 13%, transparent), transparent 75%); }
 .notice.due .notice-main b { color: color-mix(in oklab, var(--c) 55%, var(--ink)); }
-.notice-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); animation: notice-breathe 2.6s var(--ease) infinite; }
-@keyframes notice-breathe {
-  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--c) 60%, transparent); }
-  70%, 100% { box-shadow: 0 0 0 7px transparent; }
+.notice-dot { position: relative; isolation: isolate; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+/* its halo grows and fades on the compositor, rather than repainting a box-shadow every frame */
+.notice-dot::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 50%; background: var(--c);
+  animation: notice-breathe 2.6s var(--ease) infinite;
 }
+@keyframes notice-breathe { from { scale: 1; opacity: 0.6; } 70%, to { scale: 3; opacity: 0; } }
+/* a channel that's live: a red dot on its badge, like the Twitch page's */
+.notice-live { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #eb0400; box-shadow: 0 0 0 2px var(--bg); }
 /* today's record turns, slowly */
 .notice-spin { animation: notice-turn 8s linear infinite; }
 @keyframes notice-turn { to { rotate: 360deg; } }
-@media (prefers-reduced-motion: reduce) { .notice-dot, .notice-spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .notice-dot::before, .notice-spin { animation: none; } }
 
 .wd-zone + .wd-zone { margin-top: 18px; }
 .wd-zone-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 4px 8px; }

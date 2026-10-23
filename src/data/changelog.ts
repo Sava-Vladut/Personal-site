@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.125.0',
+    date: '2026-10-23',
+    changes: [
+      'The reminders bar tells you when the app has updated, and a tap opens what’s new',
+      'Picking today’s song reminds you of the run of days you’d keep going',
+      'In the evening, the bar nudges you to write about the day if you haven’t yet',
+      'When a Twitch channel the miner watches is live, the bar says so, with today’s channel points',
+      'Lines that need you come first in the bar; its breathing dot is lighter on the battery',
+    ],
+  },
+  {
     version: '1.124.1',
     date: '2026-10-23',
     changes: [
