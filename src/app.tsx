@@ -10,20 +10,14 @@ import { Icon, type UiName } from './components/icons';
 import { prepareView, viewFor } from './lib/views';
 import { toast } from './lib/store';
 import { t } from './lib/i18n';
+import { useWheel } from './lib/wheelLayout';
+import type { WheelNode } from './data/wheel';
 
 // the Face ID lock is gone: forget the passkey id it kept
 try { localStorage.removeItem('mm-lock'); } catch {}
 
-const NAV: [RouteName, string, UiName, string][] = [
-  ['journal', t('Journal'), 'notebook', ''],
-  ['tracker', t('Check in'), 'mood-smile', 'tracker'],
-  ['people', t('People'), 'users', 'people'],
-  ['media', t('Media'), 'library', 'media'],
-  ['repos', t('Repos'), 'git-branch', 'repos'],
-];
-
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos', map: 'settings', twitch: 'stats', streamer: 'stats', brain: 'stats', traps: 'stats', laws: 'stats', friends: 'stats', status: 'stats', countdown: 'stats' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos' };
 
 export function App() {
   const route = useRoute(prepareView, () => toast(t('Couldn’t open this page. Try again.')));
@@ -55,10 +49,6 @@ export function App() {
   );
 }
 
-/**
- * The phone's bottom bar: just the + in the middle. The places it used to hold (Journal, People,
- * Media) are on the wheel at the top of each page.
- */
 const SIDE_KEY = 'mm-side-hidden';
 
 /** Apply the saved sidebar state before the first paint, so a hidden sidebar never flashes open. */
@@ -70,6 +60,10 @@ function readSideHidden() {
 }
 const sideHiddenAtStart = readSideHidden();
 
+/**
+ * The phone's bottom bar: just the + in the middle. The places it used to hold (Journal, People,
+ * Media) are on the wheel at the top of each page.
+ */
 function TabBar() {
   return (
     <nav class="nav add-nav" aria-label={t('Add')}>
@@ -78,7 +72,10 @@ function TabBar() {
   );
 }
 
-/** The desktop navigation: a sidebar with the same places as the tab bar, plus Stats and Settings. Hidden below 1024px (desktop.css). */
+/**
+ * The desktop navigation: the wheel's places as a list, in the order and groups you gave the wheel, with Check in
+ * after Journal. Hidden below 1024px (desktop.css).
+ */
 function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
   const [hidden, setHidden] = useState(sideHiddenAtStart);
   const toggle = () => {
@@ -88,6 +85,9 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
     else delete document.documentElement.dataset.side;
     try { localStorage.setItem(SIDE_KEY, next ? '1' : '0'); } catch {}
   };
+  const wheel = useWheel();
+  const item = (n: WheelNode) => <NavItem key={n.id} active={active === (n.to || 'journal')} here={here === (n.to || 'journal')} label={n.name} icon={n.icon} path={n.to ?? ''} />;
+  const checkIn = <NavItem key="tracker" active={active === 'tracker'} here={here === 'tracker'} label={t('Check in')} icon="mood-smile" path="tracker" />;
   return (
     <nav class="side" aria-label={t('Main')}>
       <a
@@ -104,9 +104,13 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
         <AddMenu label={t('New')} />
       </div>
       <div class="side-links">
-        {NAV.map(([name, label, icon, path]) => <NavItem key={name} active={active === name} here={here === name} label={label} icon={icon} path={path} />)}
-        <NavItem active={active === 'stats'} here={here === 'stats'} label={t('Stats')} icon="chart-dots" path="stats" />
-        <NavItem active={active === 'settings'} here={here === 'settings'} label={t('Settings')} icon="settings" path="settings" />
+        {!wheel.some((n) => n.id === 'journal') && checkIn}
+        {wheel.map((n) => n.kids ? (
+          <div class="side-group" key={n.id}>
+            <p class="side-label">{n.name}</p>
+            {n.kids.map((k) => item(k))}
+          </div>
+        ) : [item(n), n.id === 'journal' && checkIn])}
       </div>
       <button class="side-toggle" onClick={toggle} aria-expanded={!hidden} aria-label={hidden ? t('Show sidebar') : t('Hide sidebar')}>
         <Icon name={hidden ? 'chevron-right' : 'chevron-left'} size={16} stroke={2} />

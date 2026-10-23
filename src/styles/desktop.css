@@ -46,10 +46,16 @@
     background: radial-gradient(60% 90% at 50% 50%, var(--glass-tint) 25%, transparent 100%);
     opacity: 0.8;
   }
-  .side-links { display: grid; gap: 2px; }
+  /* the wheel's places, its groups under small labels; a long list scrolls inside the sidebar */
+  .side-links {
+    display: grid; align-content: start; gap: 2px; flex: 1; min-height: 0;
+    margin-inline: -4px; padding-inline: 4px; overflow-y: auto; scrollbar-width: none;
+  }
+  .side-group { display: grid; gap: 2px; margin-top: 12px; }
+  .side-label { margin: 0; padding: 0 12px 4px; font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
   .side .nav-item {
     flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
-    height: 42px; padding: 0 12px; border-radius: var(--r-m); font-size: var(--text-base);
+    height: 38px; padding: 0 12px; border-radius: var(--r-m); font-size: var(--text-base);
     transition: background-color var(--dur-1), color var(--dur-1);
   }
   .side .nav-item[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
@@ -106,17 +112,13 @@
   .reading-chip:only-child { flex: none; max-width: 280px; }
   .search { max-width: 460px; }
 
-  /* ---------- journal: the day's panel beside the entries (below 1280px it sits on top) ---------- */
-
-  .route-journal .page .page-head .icon-btn:is([aria-label='Stats'], [aria-label='Settings']) { display: none; }
-
   /* ---------- people ---------- */
 
   .people-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 
   /* ---------- media ---------- */
 
-  /* Docs and Repos: the numbers on the left, the search across the row under them */
+  /* Repos: the numbers on the left, the search across the row under them */
   .media-top {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); column-gap: 20px; align-content: start;
   }
@@ -147,7 +149,6 @@
   .media-panel .reading-card { flex: none; }
   .sleeves { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 24px 12px; }
   .sleeve :is(.record, .cassette) { --s: 104px; }
-  .media-panel .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   /* ---------- tracker ---------- */
 
@@ -158,13 +159,37 @@
   .seg.tabs { max-width: 640px; }
   .tab-panel > .stack-l { display: block; column-count: 2; column-gap: 12px; }
   .tab-panel > .stack-l > * { break-inside: avoid; margin: 0 0 12px; }
-  .tab-panel > .stack-l > :is(.hero, .tiles, .insights, .weather-empty, .st-brain, :has(> .cloud-chart)) { column-span: all; }
+  .tab-panel > .stack-l > :is(.hero, .tiles, .insights, .weather-hint, .st-brain, .wide) { column-span: all; }
 
   /* ---------- settings: sections in two columns ---------- */
 
   .route-settings .page { max-width: 1040px; column-count: 2; column-gap: 32px; }
   .route-settings .page > :is(.page-head, .version, .credit) { column-span: all; }
   .route-settings .page > .section { break-inside: avoid; margin: 0 0 26px; }
+
+  /* the brain stays a picture, not a wall: on Stats and on its own page */
+  .stats-page .brain-stage { max-width: 720px; margin-inline: auto; }
+  /* tiles fill the row however many there are, instead of leaving one alone under three */
+  .stats-page .tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+
+  /* ---------- Laws of power, Win friends, Channel points, Streamer stats: cards in two columns like Stats ---------- */
+
+  :is(.laws-page, .friends-page, .tw-page) .reveal.stack-l { display: block; column-count: 2; column-gap: 12px; }
+  :is(.laws-page, .friends-page, .tw-page) .reveal.stack-l > * { break-inside: avoid; margin: 0 0 12px; }
+  :is(.laws-page, .friends-page, .tw-page) .reveal.stack-l > :is(.hero, .tiles) { column-span: all; }
+  /* the balance over time runs across; the lists sit side by side under it */
+  .tw-page:not(.sr-page) .reveal.stack-l > .chart-card { column-span: all; }
+  .sr-page .reveal.stack-l > :is(.sr-profile, .sr-note, .sr-source) { column-span: all; }
+
+  /* pages of one or two cards don't stretch across the screen */
+  :is(.route-countdown, .route-status, .route-brain) .page { max-width: 880px; }
+
+  /* a person, a book, a song or a repo: wide as before (only a note gets the ribbon and the paper, see document.css) */
+  .page.editor { max-width: none; padding-inline: clamp(36px, 5vw, 96px); }
+
+  /* public pages (a shared note, a status) have no sidebar to make room for */
+  .app.route-shared { padding-left: 0; }
+  .route-shared .page.shared { max-width: 760px; }
 }
 
 @media (min-width: 1280px) {
@@ -200,4 +225,6 @@
   .route-mind .page > :is(.mind-card, .mind-summary) { grid-column: 2; grid-row: 1; margin-top: 0; }
   .route-mind .page > .section { grid-column: 2; grid-row: 2; margin-top: 18px; }
   .route-mind .page > .empty { grid-column: 1 / -1; }
+  /* no people yet: the sky runs across, the note under it */
+  .route-mind .page:has(> .empty) > .journal-top { grid-column: 1 / -1; grid-row: auto; }
 }

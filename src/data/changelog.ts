@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.123.0',
+    date: '2026-10-23',
+    changes: [
+      'On a computer, the sidebar now lists every place on the wheel, grouped and ordered the way you arranged it: Map, Your brain, Mind traps, Laws of power, Win friends, Channel points, Streamer stats, Public status and Countdown are one click away',
+      'The sidebar lights up the page you’re on, instead of Stats for everything under Insights, Learn and Extras',
+      'A person, a book, a song or a repo no longer opens with a big empty gap at the top on a computer',
+      'Laws of power, Win friends, Channel points and Streamer stats lay their cards out in two columns on a computer, like Stats, so the board and maps aren’t screen-tall',
+      'Stats on a computer: the mood and check-in skies, Pleasant vs unpleasant and Emotion mix run across both columns, also when shown as a table, and tiles fill their row',
+      'The brain stays a comfortable size on a wide screen; Countdown, Public status and Your brain don’t stretch across it',
+      'A shared note or public status no longer sits off to the right on a computer',
+    ],
+  },
+  {
     version: '1.122.2',
     date: '2026-10-23',
     changes: [

@@ -33,7 +33,7 @@
   .app.route-note { padding-top: 0; background: var(--doc-canvas); }
   /* the ribbon carries its own title bar (back, title, More, Done), so the floating buttons step aside */
   :root[data-ribbon] .editor-bar { display: none; }
-  .page.editor { max-width: none; padding: calc(var(--ribbon-h, 150px) + 28px) 28px calc(var(--status-h) + 56px); }
+  .route-note .page.editor { max-width: none; padding: calc(var(--ribbon-h, 150px) + 28px) 28px calc(var(--status-h) + 56px); }
   /* what's scrolled to (the caret, a picture) stops clear of the ribbon above and the status bar below */
   :root[data-ribbon] { scroll-padding: calc(var(--ribbon-h, 150px) + 12px) 0 calc(var(--status-h) + 12px); }
   :root[data-ribbon][data-note-focus] { scroll-padding: 12px 0; }
@@ -84,7 +84,7 @@
   :root[data-note-focus] { --side-w: 0px; }
   :root[data-note-focus] .side { display: none; }
   :root[data-note-focus] .note-status { display: none; }
-  :root[data-note-focus] .page.editor { padding-top: 64px; padding-bottom: 72px; }
+  :root[data-note-focus] .route-note .page.editor { padding-top: 64px; padding-bottom: 72px; }
 
   /* ---------- the status bar ---------- */
 

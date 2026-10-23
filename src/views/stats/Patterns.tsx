@@ -11,6 +11,7 @@ export function Patterns({ s, weekStart }: { s: S; weekStart: 0 | 1 }) {
   return (
     <RevealStack>
       <ChartCard
+        wide
         title={t('When you check in')}
         sub={t('A cloud for each time you tend to write, bigger the more often, in the colour of what you felt then.')}
         table={{ head: [t('Day'), '0–6h', '6–12h', '12–18h', '18–24h'], rows: s.heat.map((r, d) => [WEEKDAYS[d], r[0] + r[1], r[2] + r[3], r[4] + r[5], r[6] + r[7]]) }}

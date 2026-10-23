@@ -23,6 +23,7 @@ export function Overview({ s, range }: { s: S; range: RangeKey }) {
   return (
     <RevealStack>
       <ChartCard
+        wide
         title={t('Mood over time')}
         sub={s.step === 1
           ? t('Each cloud is a day, as high as your mood and in the colour of the world you felt most. The line is the 7-day average.')
@@ -54,6 +55,7 @@ export function Overview({ s, range }: { s: S; range: RangeKey }) {
       </div>
 
       <ChartCard
+        wide
         title={s.step === 1 ? t('Pleasant vs unpleasant per day') : t('Pleasant vs unpleasant per week')}
         legend={<><LegendItem color={PLEASANT} label={t('Pleasant')} /><LegendItem color={UNPLEASANT} label={t('Unpleasant')} /></>}
         table={{ head: [s.step === 1 ? t('Day') : t('Week'), t('Pleasant'), t('Unpleasant')], rows: s.buckets.filter((b) => b.pleasant || b.unpleasant).map((b) => [bucketLabel(b, s.step), b.pleasant, b.unpleasant]) }}

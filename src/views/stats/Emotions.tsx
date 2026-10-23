@@ -93,6 +93,7 @@ export function Emotions({ s, range }: { s: S; range: RangeKey }) {
       )}
 
       <ChartCard
+        wide
         title={t('Emotion mix over time')}
         sub={t('Share of each world.')}
         legend={<WorldLegend />}

@@ -156,16 +156,18 @@ export const TipRow = ({ value, label, color }: { value: ComponentChildren; labe
 
 export interface Table { head: string[]; rows: (string | number)[][] }
 
-export function ChartCard({ title, sub, legend, table, children }: {
+/** wide: on desktop the card runs across both of Stats' columns (a time series or a sky). */
+export function ChartCard({ title, sub, legend, table, wide, children }: {
   title: string;
   sub?: string;
   legend?: ComponentChildren;
   table?: Table;
+  wide?: boolean;
   children: ComponentChildren;
 }) {
   const [asTable, setAsTable] = useState(false);
   return (
-    <section class="card chart-card">
+    <section class={wide ? 'card chart-card wide' : 'card chart-card'}>
       <header class="chart-head">
         <div>
           <h3 class="chart-title">{title}</h3>
