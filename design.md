@@ -186,10 +186,58 @@ next to them:
 | 18 | Inside full-size buttons (`.btn`), icon buttons and toolbar buttons (the default for a control) |
 | 20 | Icons on their own: page actions, card headers |
 | 22 | Tab bar |
-| 24 | Empty states and big moments |
+| 24 | Empty states and big moments that have no mark (see below) |
 
 12 is allowed for tiny marks. 13, 15, 17 and 19 are near-duplicates: round to the role above. Don't
 change the stroke, except the active tab (2 vs 1.6).
+
+## Illustrations (marks)
+
+The Learn screens (Mind traps, Laws of power, Win friends) give every entry a **mark**: a small spot
+illustration in the manner of Anthropic's editorial drawings, with ivory cut-paper shapes and loose black
+brush lines on a flat, papery colour tile. `<Mark id hue />` (`src/components/Mark.tsx`) draws the tile and
+runs the lines through a seeded wobble so they look hand-inked; the drawings live in `src/data/marks.ts`.
+
+Line icons are for **doing**, marks are for **meaning**. Use a mark where the app wants to make you
+feel or understand something, and where a line icon would feel thin:
+
+- **Empty states** of whole screens: one mark above the sentence instead of a 24px line icon (no notes yet,
+  no people yet, no songs yet).
+- **Hero moments**: the "today" card on a screen, the top of a detail page, a finished streak or a
+  milestone, the opening of a guide.
+- **Section and hub headers** that introduce a topic (a Learn part, an Insights group), next to the title.
+- **Shared pages** people see from outside the app, where it needs to feel like a printed card.
+
+Never use a mark:
+
+- In controls or chrome: buttons, chips, tabs, the tab bar, toolbars, list-row icons, menus, toasts.
+  Those stay line icons (`<Icon>`), so the app stays quiet.
+- More than once per view at hero size, or as decoration with no meaning behind it.
+- As a stand-in for the emotion sprites or a person's avatar; those already say who and what.
+
+**Sizes** (width = height; the tile's corner is part of the drawing, so don't add a radius):
+
+| Size | Use |
+|---|---|
+| 28 | Inline in a row or a link to another entry |
+| 34 | Related entries ("kin") in a list |
+| 48 | Cards in a grid or list |
+| 64 | The "today" card and section headers |
+| 96 | The top of a detail page, empty states |
+
+32 next to 34 is a near-duplicate: use 34.
+
+**Colour.** `hue` is an emotion world (`--emo-*`), picked by the entry's family, arena or part, or by the
+screen's world for marks elsewhere. The tile mixes it with paper (`mark.css`) and looks the same in both
+themes; the ink (`#141413`) and paper (`#faf9f5`) are artwork, an allowed literal.
+
+**Drawing a new mark.** Add it to `src/data/marks.ts` with the pen helpers there (`k` ink line, `p` cut
+paper, `pk` outlined paper, `f` solid ink, plus `circle`, `star`, `glint`, `heart` and friends) in the
+100 × 100 box, at the standard line width `W`. One idea per drawing, a single clear silhouette, no text,
+only ink and paper (the tile brings the colour), and keep the subject inside the tile's rounded corners.
+Marks outside Learn go in their own map (for example `SPOT_MARKS`, keyed `spot:<name>`) merged into `ART`
+in `Mark.tsx`, so their ids can't collide with trap, law or principle ids. Give the wrapping class a
+component prefix (see the class-collision note in the checklist).
 
 ## Motion
 
@@ -288,6 +336,8 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 - [ ] Only tokens for colour, type size, weight, radius, shadow and duration
 - [ ] Spacing, icon sizes, breakpoints and z-index from the tables above
 - [ ] Built from the components above; same pattern as the screens that do the same job
+- [ ] Line icons in controls; a mark (not a big line icon) for empty states and hero moments where one fits
+- [ ] New top-level classes have a component prefix (`wf-`, `nw-`…); a view imports the lazy stylesheet it uses
 - [ ] Looks right in dark mode
 - [ ] Touch targets ≥ `--h-m` on phones
 - [ ] Content is opaque; only chrome uses glass
