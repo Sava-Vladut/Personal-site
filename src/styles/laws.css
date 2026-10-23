@@ -109,7 +109,7 @@
 .lw-realm-about { margin: 10px 0 0; line-height: 1.45; }
 
 .lw-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-@media (min-width: 900px) { .lw-list { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 720px) { .lw-list { grid-template-columns: 1fr 1fr; } }
 .lw-list li { content-visibility: auto; contain-intrinsic-size: auto 96px; animation: rise-in var(--dur-3) var(--ease-emph) backwards; animation-delay: calc(var(--i) * 25ms); }
 .lw-card {
   display: flex; align-items: center; gap: 14px; width: 100%; height: 100%; padding: 12px 14px; text-align: left;
@@ -162,7 +162,7 @@
 .lw-d-shadow { background: var(--surface-2); border-color: transparent; }
 
 .lw-levers { display: grid; gap: 8px; }
-@media (min-width: 640px) { .lw-levers { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 720px) { .lw-levers { grid-template-columns: 1fr 1fr; } }
 .lw-lever { padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
 .lw-lever b { display: block; margin-bottom: 3px; font-size: var(--text-base); font-weight: var(--w-bold); }
 .lw-lever p { margin: 0; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }

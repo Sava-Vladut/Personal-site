@@ -88,7 +88,7 @@
 .tr-family-about b { color: var(--ink-2); font-weight: var(--w-bold); }
 
 .tr-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-@media (min-width: 900px) { .tr-list { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 720px) { .tr-list { grid-template-columns: 1fr 1fr; } }
 .tr-list li { content-visibility: auto; contain-intrinsic-size: auto 96px; animation: rise-in var(--dur-3) var(--ease-emph) backwards; animation-delay: calc(var(--i) * 25ms); }
 .tr-card {
   display: flex; align-items: center; gap: 14px; width: 100%; height: 100%; padding: 12px 14px; text-align: left;
