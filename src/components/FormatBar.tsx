@@ -204,7 +204,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
       title={t('Hide keyboard')}
       onClick={() => (document.activeElement as HTMLElement | null)?.blur?.()}
     >
-      <Icon name="keyboard-hide" size={19} />
+      <Icon name="keyboard-hide" size={18} />
     </button>
   );
 

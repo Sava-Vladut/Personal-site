@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.11',
+    date: '2026-10-23',
+    changes: [
+      'A picture’s toolbar in a note and the hide-keyboard button use the same icon size as the rest of the note’s toolbar',
+    ],
+  },
+  {
     version: '1.128.10',
     date: '2026-10-23',
     changes: [

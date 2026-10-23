@@ -301,16 +301,16 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
     <>
       <div class="format-group" role="group" aria-label={t('Wrap text')} data-caption={t('Wrap text')}>
         <button class="format-btn" onClick={() => side('left')} aria-pressed={align === 'left'} aria-label={t('Left, text wraps around it')} title={t('Left, text wraps around it')}>
-          <Icon name="float-left" size={19} />
+          <Icon name="float-left" size={18} />
         </button>
         <button class="format-btn" onClick={() => side('center')} aria-pressed={!align} aria-label={t('Centre, on its own line')} title={t('Centre, on its own line')}>
-          <Icon name="float-center" size={19} />
+          <Icon name="float-center" size={18} />
         </button>
         <button class="format-btn" onClick={() => side('right')} aria-pressed={align === 'right'} aria-label={t('Right, text wraps around it')} title={t('Right, text wraps around it')}>
-          <Icon name="float-right" size={19} />
+          <Icon name="float-right" size={18} />
         </button>
         <button class="format-btn" onClick={onWrite} aria-label={t('Write next to it')} title={t('Write next to it')}>
-          <Icon name="cursor-text" size={19} />
+          <Icon name="cursor-text" size={18} />
         </button>
       </div>
       <label class="format-group media-size" title={t('Size')} data-caption={t('Size')}>
@@ -330,23 +330,23 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
       </label>
       <div class="format-group" role="group" aria-label={t('Arrange')} data-caption={t('Arrange')}>
         <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label={t('Move up')} title={t('Move up')}>
-          <Icon name="arrow-up" size={19} />
+          <Icon name="arrow-up" size={18} />
         </button>
         <button class="format-btn" onClick={() => onStep(1)} disabled={!canDown} aria-label={t('Move down')} title={t('Move down')}>
-          <Icon name="arrow-down" size={19} />
+          <Icon name="arrow-down" size={18} />
         </button>
       </div>
       <div class="format-group" role="group" aria-label={t('Picture')} data-caption={t('Picture')}>
         <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
-          <Icon name="maximize" size={19} />
+          <Icon name="maximize" size={18} />
         </button>
         {m.kind === 'album' && (
           <button class="format-btn" onClick={onUngroup} aria-label={t('Ungroup the album')} title={t('Ungroup the album')}>
-            <Icon name="layout-grid-remove" size={19} />
+            <Icon name="layout-grid-remove" size={18} />
           </button>
         )}
         <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? t('Remove the album') : t('Remove')} title={m.kind === 'album' ? t('Remove the album') : t('Remove')}>
-          <Icon name="trash" size={19} />
+          <Icon name="trash" size={18} />
         </button>
       </div>
     </>

@@ -192,7 +192,7 @@ next to them:
 |---|---|
 | 14 | Captions and inline with `--text-m` (not inside a control) |
 | 16 | Inside 34px controls (`.btn-s`, `.icon-btn.small`, chips, editor row tools), segmented tabs (`.seg.tabs`), list rows and inline with body text |
-| 18 | Inside 44px controls: full-size buttons (`.btn`), icon buttons and toolbar buttons (the default for a control) |
+| 18 | Inside 40–44px controls: full-size buttons (`.btn`), icon buttons and toolbar buttons, including the note's `.format-btn` (the default for a control) |
 | 20 | Icons on their own: page actions, card headers |
 | 22 | Tab bar |
 | 24 | Empty states and big moments that have no mark (see below) |
