@@ -11,6 +11,23 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.127.0',
+    date: '2026-10-23',
+    changes: [
+      'The reminders bar knows a lot more: a birthday or anniversary today or tomorrow, how you slept in the morning, a check-in run to keep in the evening, and days without writing',
+      'It notices a heavy few hours, a day lighter than yesterday, and sums up your week on Sunday evening',
+      'It mentions someone you haven’t written about in weeks, or things that have felt heavier with someone lately',
+      'Music: your song on this day years ago, and a song on repeat that has no feelings yet',
+      'Books: one you haven’t touched in a while, one with fewer than 50 pages left, and one finished without a rating',
+      'The countdown’s last day, and a nudge to write about it once it’s over',
+      'Twitch: each live channel on its own line, a points milestone, your best day of the month, and a warning when the miner goes quiet',
+      'Setup: Spotify or GitHub not connected, no home set for the weather, sync failing, and no backup in two months',
+      'A law, principle or mind trap to read each day',
+      'Put any line away with ×: until tomorrow, or longer for ones that would only come back the same',
+      'The bar shows four lines at first, with the rest a tap away',
+    ],
+  },
+  {
     version: '1.126.1',
     date: '2026-10-23',
     changes: [

@@ -699,8 +699,15 @@ function normalizeRepo(raw: any): Repo | null {
   };
 }
 
+const LAST_EXPORT = 'mm-last-export';
+/** When this device last saved a backup (ms), or 0. */
+export function lastExport() {
+  try { return Number(localStorage.getItem(LAST_EXPORT)) || 0; } catch { return 0; }
+}
+
 export async function exportJSON() {
   const entries = entries$.get();
+  try { localStorage.setItem(LAST_EXPORT, String(Date.now())); } catch {}
   const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
   return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), photos }, null, 1);
 }

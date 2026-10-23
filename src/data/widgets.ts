@@ -26,7 +26,7 @@ export interface WidgetDef {
 }
 
 export const WIDGETS: WidgetDef[] = [
-  { id: 'notices', name: t('Today’s reminders'), sub: t('What’s still to do today: the song, a check-in when it’s been a while, and news'), icon: 'sparkles', hue: 'hope-interest', zone: 'panel', options: [] },
+  { id: 'notices', name: t('Today’s reminders'), sub: t('What’s still to do today, and what’s worth knowing'), icon: 'sparkles', hue: 'hope-interest', zone: 'panel', options: [] },
   { id: 'on-this-day', name: t('On this day'), sub: t('The same date, a year or more ago'), icon: 'clock', hue: 'hope-interest', zone: 'panel', options: [] },
   {
     id: 'coming-up', name: t('Coming up'), sub: t('Birthdays and dates of the people you keep'), icon: 'cake', hue: 'love-connection', zone: 'panel',
