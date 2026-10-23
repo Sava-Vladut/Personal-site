@@ -34,7 +34,7 @@ export function Shared({ token }: { token: string }) {
           <div class="empty">
             <h2 class="title-s">{note === 'gone' ? t('This note isn’t shared') : note === 'error' ? t('Couldn’t load this note') : t('Loading…')}</h2>
             {note === 'gone' && <p>{t('The link may have been stopped, or it was typed wrong.')}</p>}
-            {note === 'error' && <><p>{t('Check your connection and try again.')}</p><button class="btn" onClick={load}>{t('Try again')}</button></>}
+            {note === 'error' && <><p>{t('Check your connection and try again.')}</p><button class="btn btn-quiet" onClick={load}><Icon name="refresh" size={18} /> {t('Try again')}</button></>}
           </div>
         </div>
       </main>

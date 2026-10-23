@@ -374,7 +374,11 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 **Same job, same pattern.**
 - Every list screen: `PageHead` (title, actions), then filters as `.chips.scroll-x`, then the list.
 - Every page you go into: `PageHead` with `back` (the glass arrow above the title), then sections.
-- Every empty state: one short sentence in `--ink-3`, and at most one action (`.btn-quiet`).
+- Every first-run empty state (nothing made yet): a short `.title-s` or a mark, one sentence in `--ink-3`,
+  and one action that makes the first thing: `.btn-primary`, or `.btn-quiet` when the screen already
+  shows a primary add button.
+- Every error state (something failed to load): a `.title-s` that says what failed, one sentence on what
+  to do, and a `.btn-quiet` "Try again" with the 18px `refresh` icon. Never a bare `.btn`.
 - Every destructive action: `.btn-danger` or `.danger` text, behind `Confirm`.
 - Every sheet: `Sheet`, a title, content, then the actions.
 

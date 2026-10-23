@@ -20,6 +20,7 @@ import './styles/fade-images.css';
 import './styles/fade-scroll.css';
 import './styles/fade-data.css';
 import { App } from './app';
+import { Icon } from './components/icons';
 import './styles/desktop.css';
 import './styles/opening.css';
 import { applyTheme, init } from './lib/store';
@@ -175,7 +176,7 @@ function failed(e: unknown, databaseError: boolean) {
     <div class="page"><div class="empty">
       <h2 class="title-s">{t('Couldn’t open your journal')}</h2>
       <p>{databaseError ? t('Your browser’s storage is unavailable. Try reopening the app or reloading this page.') : t('Couldn’t load the app. Check your connection and try again.')}</p>
-      <button class="btn" onClick={() => location.reload()}>{t('Try again')}</button>
+      <button class="btn btn-quiet" onClick={() => location.reload()}><Icon name="refresh" size={18} /> {t('Try again')}</button>
     </div></div>,
     document.getElementById('app')!,
   );

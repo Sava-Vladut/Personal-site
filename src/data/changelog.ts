@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.8',
+    date: '2026-10-23',
+    changes: [
+      '“Try again” looks the same everywhere: a shared note or status page that fails to load, and the app’s start-up error, now show a proper button with the refresh icon',
+    ],
+  },
+  {
     version: '1.128.7',
     date: '2026-10-23',
     changes: [

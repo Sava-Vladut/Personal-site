@@ -91,7 +91,7 @@ export function Status({ token }: { token: string }) {
             <div class="empty">
               <h2 class="title-s">{title}</h2>
               {state === 'gone' && <p>{t('The link may have been stopped, or it was typed wrong.')}</p>}
-              {state === 'error' && <><p>{t('Check your connection and try again.')}</p><button class="btn" onClick={() => location.reload()}>{t('Try again')}</button></>}
+              {state === 'error' && <><p>{t('Check your connection and try again.')}</p><button class="btn btn-quiet" onClick={() => location.reload()}><Icon name="refresh" size={18} /> {t('Try again')}</button></>}
               {typeof state === 'object' && <p>{owner ? t('{name} hasn’t checked in yet. This page shows the next one by itself.', { name: owner }) : t('This page shows the next check-in by itself.')}</p>}
             </div>
           )}
