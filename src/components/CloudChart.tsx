@@ -8,13 +8,21 @@ import { useWidth } from './charts';
 import { RAMPS } from './ramps';
 
 export interface Puff {
-  /** where, 0–1 across and down the plot */
+  /** where, in px from the chart's top left */
   x: number;
   y: number;
-  /** radius, as a share of the plot's height */
+  /** radius in px */
   r: number;
   world: string;
 }
+
+/** Seconds the clouds take to roll in, first to last; a mark drawn over one can wait as long (see rollDelay). */
+export const ROLL = 0.8;
+/** When a cloud at x appears, among clouds at xs, so what sits on it can arrive with it. */
+export const rollDelay = (x: number, xs: number[]) => {
+  const lo = Math.min(...xs), hi = Math.max(...xs);
+  return hi > lo ? ((x - lo) / (hi - lo)) * ROLL : 0;
+};
 
 const SCALE = 4;      // the cloud canvas is drawn at 1/4 size
 const SPRITE = 64;    // a soft puff, painted once per world and stamped for every value
@@ -46,14 +54,13 @@ function blob(col: RGB, stops: [number, number][]) {
 }
 
 /**
- * inset: the plot's margins inside the chart, [top, right, bottom, left] in px, so labels drawn over it have room.
- * hot: 0–1 across the plot, where the pointer is: the letters there light up.
+ * puffs: given the chart's width, the clouds to draw, in px: the caller lays them out with what it draws over them.
+ * hot: x in px where the pointer is: the letters there light up.
  * children: what is drawn over the clouds, given the chart's width.
  */
-export function CloudChart({ puffs, height, inset, hot = null, children }: {
-  puffs: Puff[];
+export function CloudChart({ puffs: make, height, hot = null, children }: {
+  puffs: (w: number) => Puff[];
   height: number;
-  inset: [number, number, number, number];
   hot?: number | null;
   children?: (w: number) => ComponentChildren;
 }) {
@@ -62,6 +69,7 @@ export function CloudChart({ puffs, height, inset, hot = null, children }: {
   const glyphRef = useRef<HTMLCanvasElement>(null);
   const live = useRef<{ hot: number | null; redraw?: () => void }>({ hot });
   live.current.hot = hot;
+  const puffs = W ? make(W) : [];
   const key = puffs.map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)},${p.r.toFixed(3)},${p.world}`).join('|');
 
   useEffect(() => {
@@ -72,16 +80,14 @@ export function CloudChart({ puffs, height, inset, hot = null, children }: {
     const dpr = Math.min(devicePixelRatio || 1, 2);
     cv.width = Math.ceil(w / SCALE); cv.height = Math.ceil(h / SCALE);
     gv.width = Math.round(w * dpr); gv.height = Math.round(h * dpr);
-    const [it, ir, ib, il] = inset;
-    const pw = Math.max(1, w - il - ir), ph = Math.max(1, h - it - ib);
     const sp = w < 480 ? 12 : 14, font = w < 480 ? 10 : 11;
 
     const worlds = [...new Set(puffs.map((p) => p.world))];
-    // they roll in left to right, one after another, however much of the plot they fill
-    const rank = new Map([...puffs.keys()].sort((a, b) => puffs[a].x - puffs[b].x).map((k, i) => [k, i]));
+    // they roll in left to right, from the first to the last, however much of the plot they fill
+    const xs = puffs.map((p) => p.x);
     const P = puffs.map((p, i) => ({
-      x: il + p.x * pw, y: it + p.y * ph, r: p.r * ph, w: worlds.indexOf(p.world),
-      at: puffs.length > 1 ? rank.get(i)! / (puffs.length - 1) : 0, phase: hash(i + 1) * Math.PI * 2, rate: 0.3 + hash(i + 9) * 0.35,
+      x: p.x, y: p.y, r: p.r, w: worlds.indexOf(p.world),
+      at: rollDelay(p.x, xs), phase: hash(i + 1) * Math.PI * 2, rate: 0.3 + hash(i + 9) * 0.35,
     }));
     const now = new Float32Array(P.length * 3);
 
@@ -137,7 +143,7 @@ export function CloudChart({ puffs, height, inset, hot = null, children }: {
       // where each puff is now: rolling in from the left at first, then breathing
       for (let i = 0, k = 0; i < P.length; i++, k += 3) {
         const p = P[i];
-        const g = reduced.matches ? 1 : 1 - (1 - clamp((s - p.at * 0.8) / 0.9, 0, 1)) ** 3;
+        const g = reduced.matches ? 1 : 1 - (1 - clamp((s - p.at) / 0.9, 0, 1)) ** 3;
         now[k] = p.x + Math.sin(s * p.rate * 0.7 + p.phase) * 2;
         now[k + 1] = p.y + Math.cos(s * p.rate * 0.6 + p.phase * 1.3) * 1.5;
         now[k + 2] = p.r * g * (1 + 0.07 * Math.sin(s * p.rate + p.phase));
@@ -177,7 +183,7 @@ export function CloudChart({ puffs, height, inset, hot = null, children }: {
       gctx.setTransform(1, 0, 0, 1, 0, 0);
       gctx.clearRect(0, 0, gv.width, gv.height);
       gctx.imageSmoothingEnabled = false;
-      const hx = live.current.hot === null ? null : il + live.current.hot * pw;
+      const hx = live.current.hot;
       const t = s * 1.1, half = tile / 2;
       for (let row = 0, c = 0; row < rows; row++)
         for (let col = 0; col < cols; col++, c++) {
@@ -234,7 +240,7 @@ export function CloudChart({ puffs, height, inset, hot = null, children }: {
       reduced.removeEventListener('change', onMotion);
       live.current.redraw = undefined;
     };
-  }, [W, height, key, inset.join()]);
+  }, [W, height, key]);
 
   // a hover with the clouds standing still (reduced motion, or between frames) still lights the letters
   useEffect(() => live.current.redraw?.(), [hot]);

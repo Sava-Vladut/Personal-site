@@ -316,6 +316,11 @@ html { transition: --accent var(--dur-3) ease; }
 .cc-dot { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
 .cc-hit, .cc-cell { outline: none; cursor: default; }
 .cc-cell:focus-visible { fill: color-mix(in oklab, var(--ink) 6%, transparent); }
+/* each cloud's world sprite sits in it, popping in as its cloud rolls in, with a halo of the card so it reads over the letters */
+.cc-mark { pointer-events: none; }
+.cc-mark .sprite { overflow: visible; filter: drop-shadow(0 0 2px var(--surface)) drop-shadow(0 0 4px color-mix(in oklab, var(--surface) 70%, transparent)); }
+.cc-mark-in { transform-box: fill-box; transform-origin: center; animation: cc-pop var(--dur-4) var(--spring-bouncy) backwards; }
+@keyframes cc-pop { from { opacity: 0; transform: scale(0.3); } }
 
 /* ---------- ranked rows ---------- */
 

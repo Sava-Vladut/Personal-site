@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.122.1',
+    date: '2026-10-23',
+    changes: [
+      'Each cloud in Mood over time and When you check in shows the sprite of the world you felt most',
+      'Mood over time has its old proportions again: even-sized clouds, the same height as before, and the first and last day no longer cut off at the edges',
+    ],
+  },
+  {
     version: '1.122.0',
     date: '2026-10-23',
     changes: [
