@@ -575,7 +575,7 @@ test('a signed-in device opens with the brain once a visit, with the journal loa
   await settle();
   assert.equal(seen, 1, 'it plays once a visit');
   assert.equal(played.length, 1);
-  assert.equal(page.added[0].className, 'opening', 'a dark cover goes over the page at once');
+  assert.equal(page.added[0].className, 'app-opening', 'a dark cover goes over the page at once');
   assert.equal(played[0].cover, page.added[0]);
   assert.equal(inits, 1, 'storage opens while the brain closes in');
   let ready = false;

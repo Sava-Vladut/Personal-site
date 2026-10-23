@@ -130,7 +130,7 @@ async function openWithBrain() {
   let reveal!: () => void;
   const ready = boot(new Promise<void>((done) => { reveal = done; }));
   const cover = document.body.appendChild(document.createElement('div'));
-  cover.className = 'opening';
+  cover.className = 'app-opening';
   try {
     const { playOpening } = await import('./lib/opening');
     await playOpening(cover, ready, reveal);

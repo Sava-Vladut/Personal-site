@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.119.2',
+    date: '2026-10-23',
+    changes: [
+      'Fixed the menu wheel opening as a dark box stuck in the top corner',
+    ],
+  },
+  {
     version: '1.119.1',
     date: '2026-10-23',
     changes: [
