@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.124.0',
+    date: '2026-10-23',
+    changes: [
+      'A reminders bar under the date: today’s song (or a nudge to pick one) and your next check-in, every couple of hours while you’re up',
+      'A ring round your last feeling fills as the next check-in nears; once it’s due, the line glows with a breathing dot until you check in',
+      'Hide or move the bar like any other card, from Edit the feed',
+    ],
+  },
+  {
     version: '1.123.0',
     date: '2026-10-23',
     changes: [

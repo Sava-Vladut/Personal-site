@@ -5,6 +5,41 @@
 .widgets:empty { display: none; }
 .widgets > :is(.prompt, .coming-up, .reading-strip) { margin-top: 0; margin-bottom: 0; }
 
+/* the bar under the date (Notices): today's song and the next check-in, a line each, in the colour it's about */
+.notices { display: grid; padding: 4px; }
+.notice {
+  position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px 8px 8px; text-align: left;
+  border-radius: calc(var(--r-l) - 4px); color: var(--ink);
+  transition: background-color var(--dur-2), scale var(--dur-3) var(--spring);
+}
+.notice + .notice::before { content: ''; position: absolute; inset: -0.5px 12px auto 56px; height: 1px; background: var(--line); }
+.notice:active { scale: 0.98; transition-duration: var(--dur-2), var(--dur-0); }
+@media (hover: hover) { .notice:hover { background: color-mix(in oklab, var(--c) 8%, transparent); } .notice:hover > svg { color: var(--ink); } }
+.notice-ico {
+  position: relative; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  color: var(--c); background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--c) 24%, transparent), color-mix(in oklab, var(--c) 8%, transparent));
+}
+.notice-ring { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -90deg; fill: none; stroke-width: 2; }
+.notice-track { stroke: color-mix(in oklab, var(--c) 18%, transparent); }
+.notice-fill { stroke: var(--c); stroke-linecap: round; transition: stroke-dashoffset 0.8s var(--ease); }
+.notice-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.notice-main > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice-main b { font-size: var(--text-base); font-weight: var(--w-medium); }
+.notice-main small { font-size: var(--text-s); color: var(--ink-3); }
+.notice > svg { flex: none; color: var(--ink-3); transition: color var(--dur-2); }
+/* due: a wash of its colour from the left, its name in it, and a dot that breathes */
+.notice.due { background: linear-gradient(90deg, color-mix(in oklab, var(--c) 13%, transparent), transparent 75%); }
+.notice.due .notice-main b { color: color-mix(in oklab, var(--c) 55%, var(--ink)); }
+.notice-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); animation: notice-breathe 2.6s var(--ease) infinite; }
+@keyframes notice-breathe {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--c) 60%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 7px transparent; }
+}
+/* today's record turns, slowly */
+.notice-spin { animation: notice-turn 8s linear infinite; }
+@keyframes notice-turn { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .notice-dot, .notice-spin { animation: none; } }
+
 .wd-zone + .wd-zone { margin-top: 18px; }
 .wd-zone-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 4px 8px; }
 .wd-zone-head small { font: inherit; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
