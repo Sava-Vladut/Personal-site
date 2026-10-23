@@ -34,8 +34,7 @@ function curve(pts: ([number, number] | null)[]) {
 }
 
 /**
- * Where the days sit: the first and last pulled in from the edges by about half a step so their clouds aren't cut
- * off, and each cloud about as wide as its step, so a week's are clear and a year's run together, never a speck.
+ * Where the days sit: the first and last pulled in from the edges by about half a step, so their clouds aren't cut off.
  */
 function layout(W: number, n: number) {
   const full = Math.max(1, W - L - R);
@@ -44,32 +43,54 @@ function layout(W: number, n: number) {
   const step = n > 1 ? span / (n - 1) : span;
   const x = (i: number) => L + pad + (n > 1 ? (i / (n - 1)) * span : 0);
   const y = (m: number) => T + ((5 - m) / 10) * (H - T - B);
-  return { pad, span, step, x, y, radius: Math.min(22, Math.max(8, step * 0.5)) };
+  return { pad, span, step, x, y };
 }
 
-/** The buckets that get their world's sprite: all of them when there's room, else the busiest of each few. */
-function marked(buckets: Bucket[], step: number) {
-  const every = Math.max(1, Math.ceil(16 / Math.max(1, step)));
-  const out = new Set<number>();
+/** A cloud and its sprite: one day, or a few days together when there isn't room for each. */
+interface Group { from: number; to: number; x: number; mood: number; world: string; entries: number }
+
+/**
+ * The clouds, each with its sprite in the middle: one a day when there's room for a sprite each, else one for every
+ * few days, at their average place and mood (by how much was written), in the world felt most across them.
+ */
+function grouped(buckets: Bucket[], x: (i: number) => number, every: number): Group[] {
+  const out: Group[] = [];
   for (let i = 0; i < buckets.length; i += every) {
-    let best = -1;
-    for (let j = i; j < Math.min(buckets.length, i + every); j++)
-      if (buckets[j].mood !== null && dominant(buckets[j].cores) && (best < 0 || buckets[j].entries.length > buckets[best].entries.length)) best = j;
-    if (best >= 0) out.add(best);
+    const to = Math.min(buckets.length, i + every) - 1;
+    const cores: Record<string, number> = {};
+    let n = 0, sx = 0, sm = 0;
+    for (let j = i; j <= to; j++) {
+      const b = buckets[j];
+      if (b.mood === null) continue;
+      const w = Math.max(1, b.entries.length);
+      n += w; sx += x(j) * w; sm += b.mood * w;
+      for (const k in b.cores) cores[k] = (cores[k] ?? 0) + b.cores[k];
+    }
+    const world = dominant(cores);
+    if (n && world) out.push({ from: i, to, x: sx / n, mood: sm / n, world, entries: n });
   }
   return out;
 }
 
 /**
  * Your mood as a sky: each day (or week) you felt something is a cloud at the height of its mood, in the colour and
- * letters of the world felt most, with that world's sprite in it. The line through them is the rolling average.
+ * letters of the world felt most, with that world's sprite in it (a few days share one when they'd crowd). The line
+ * through them is the rolling average.
  */
 export function MoodSky({ s }: { s: S }) {
   const [hover, setHover] = useState<number | null>(null);
-  const [hotX, setHotX] = useState<number | null>(null); // where the hovered day is, so its cloud lights up
+  const [hotX, setHotX] = useState<number | null>(null); // where the hovered day's cloud is, so it lights up
   const n = s.buckets.length;
-  const most = Math.max(1, ...s.buckets.map((b) => b.entries.length));
-  const felt = s.buckets.flatMap((b, i) => (b.mood !== null && dominant(b.cores) ? [i] : []));
+  /** the clouds for a chart this wide, all laid out the same way for the canvas and for the sprites over it */
+  const clouds = (W: number) => {
+    const { x, y, step } = layout(W, n);
+    const every = Math.max(1, Math.ceil(18 / Math.max(1, step))); // days a sprite stands for, so sprites never crowd
+    const groups = grouped(s.buckets, x, every);
+    const most = Math.max(1, ...groups.map((g) => g.entries));
+    // a cloud is about as wide as the stretch it stands for, and always big enough to hold its sprite
+    const radius = Math.min(22, Math.max(13, step * every * 0.5));
+    return groups.map((g) => ({ ...g, y: y(g.mood), r: radius * (0.8 + 0.3 * Math.sqrt(g.entries / most)) }));
+  };
 
   const tipFor = (i: number) => {
     const b = s.buckets[i], world = dominant(b.cores);
@@ -86,23 +107,17 @@ export function MoodSky({ s }: { s: S }) {
   return (
     <CloudChart
       height={H}
-      puffs={(W) => {
-        const { x, y, radius } = layout(W, n);
-        return felt.map((i) => {
-          const b = s.buckets[i];
-          return { x: x(i), y: y(b.mood!), r: radius * (0.75 + 0.35 * Math.sqrt(b.entries.length / most)), world: dominant(b.cores)! };
-        });
-      }}
+      puffs={(W) => clouds(W).map((c) => ({ x: c.x, y: c.y, r: c.r, world: c.world }))}
       hot={hover === null ? null : hotX}
     >
       {(W) => {
         const { pad, span, step, x, y } = layout(W, n);
+        const cs = clouds(W), xs = cs.map((c) => c.x);
         const ph = H - T - B;
         const line = curve(s.buckets.map((b, i) => (b.rolling === null ? null : [x(i), y(b.rolling)])));
         const ticks = n > 1 ? [0, Math.floor((n - 1) / 2), n - 1] : [0];
-        const marks = marked(s.buckets, step);
-        if (hover !== null) marks.add(hover);
         const size = step >= 30 ? 16 : 13;
+        const lit = hover === null ? -1 : cs.findIndex((c) => hover >= c.from && hover <= c.to);
         const pick = (clientX: number, r: DOMRect) =>
           Math.max(0, Math.min(n - 1, Math.round(((clientX - r.left - pad) / Math.max(1, span)) * (n - 1))));
         const at = (e: Event, i: number) => {
@@ -112,7 +127,7 @@ export function MoodSky({ s }: { s: S }) {
         };
         const show = (e: Event, i: number) => {
           setHover(i);
-          setHotX(x(i));
+          setHotX(cs.find((c) => i >= c.from && i <= c.to)?.x ?? x(i));
           at(e, i);
         };
         const move = (e: PointerEvent) => show(e, pick(e.clientX, (e.currentTarget as SVGRectElement).getBoundingClientRect()));
@@ -125,14 +140,12 @@ export function MoodSky({ s }: { s: S }) {
             ))}
             {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={T + ph} class="cc-cross" />}
             {line && <path d={line} class="cc-line" pathLength={1} />}
-            {[...marks].map((i) => {
-              const b = s.buckets[i], world = dominant(b.cores);
-              if (b.mood === null || !world) return null;
-              const big = i === hover ? size + 4 : size;
+            {cs.map((c, k) => {
+              const big = k === lit ? size + 4 : size;
               return (
-                <g transform={`translate(${(x(i) - big / 2).toFixed(1)},${(y(b.mood) - big / 2).toFixed(1)})`} class="cc-mark">
-                  <g class="cc-mark-in" style={{ animationDelay: `${(0.3 + rollDelay(i, felt)).toFixed(2)}s` }}>
-                    <Sprite core={world} size={big} idle={i === hover} />
+                <g transform={`translate(${(c.x - big / 2).toFixed(1)},${(c.y - big / 2).toFixed(1)})`} class="cc-mark">
+                  <g class="cc-mark-in" style={{ animationDelay: `${(0.3 + rollDelay(c.x, xs)).toFixed(2)}s` }}>
+                    <Sprite core={c.world} size={big} idle={k === lit} />
                   </g>
                 </g>
               );

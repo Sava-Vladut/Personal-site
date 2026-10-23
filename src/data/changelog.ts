@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.122.2',
+    date: '2026-10-23',
+    changes: [
+      'Mood over time: every sprite sits in the middle of its own cloud; on longer ranges a few days share one cloud and sprite instead of leaving clouds without one',
+    ],
+  },
+  {
     version: '1.122.1',
     date: '2026-10-23',
     changes: [
