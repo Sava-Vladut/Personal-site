@@ -137,6 +137,7 @@ component, use 1–5 (and `isolation: isolate` on the component) for local stack
 | 80 | Toasts |
 | 90 | Tooltips, mention bursts |
 | 1000 | Loading bar at the very top |
+| 1100 | The opening as the app starts (`opening.css`), over everything, even the loading bar |
 
 ## Layout and spacing
 
@@ -260,8 +261,9 @@ Easing: `--ease` (default), `--ease-emph` (pages and sheets: quick start, soft l
 
 Rules:
 - **Page transitions:** push 0.22s, pop 0.2s, tab switch a ~0.18s fade-through (`app.css`, "page
-  transitions"). These, the nav wheel, the intro and decorative loops (anything over 1s) keep their own
-  timings; every other duration is a token.
+  transitions"). These, the nav wheel, the opening and the intro (`opening.css`, `intro.css`), clocks
+  that tick once a second (a countdown bar moving `1s linear`) and decorative loops (anything over 1s)
+  keep their own timings; every other duration is a token.
 - **Staggered entrances:** 20ms per item, everything in by 80ms, using `--dur-2`/`--dur-3`.
 - **Only animate `transform` and `opacity`** in anything that loops or runs while scrolling. Never
   animate `filter`, `box-shadow`, `width`, `stroke-width` or `background-position` in a loop.

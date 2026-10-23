@@ -18,7 +18,7 @@ const PER_RULE = args.rule ? Infinity : Number(args.max ?? 5)
 const SPACING = new Set([0, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 44, 48, 56, 64])
 const ICONS = new Set([12, 14, 16, 18, 20, 22, 24, 28, 32])
 const BREAKPOINTS = new Set([380, 560, 720, 1024, 1280])
-const LAYERS = new Set([30, 35, 36, 40, 50, 60, 65, 70, 75, 80, 90, 1000])
+const LAYERS = new Set([30, 35, 36, 40, 50, 60, 65, 70, 75, 80, 90, 1000, 1100])
 
 const RULES = {
   hex: 'Literal hex colour outside a token or custom property',
@@ -110,8 +110,9 @@ function checkDecl(file, line, decl, stack) {
     if (drop && !allowed) add('shadow', file, line, `${selector} { ${decl} }`)
   }
 
-  // page slides keep their own timing (design.md, Motion)
-  if (/^(transition|transition-duration|animation|animation-duration)$/.test(prop) && !/infinite/.test(value) && !/view-transition/.test(selector)) {
+  // page slides, the nav wheel, the opening and the intro, and once-a-second clocks keep their own timing (design.md, Motion)
+  const ownTiming = /view-transition|\.nw-|\.app-opening|\.intro/.test(selector) || /\b1s linear\b/.test(value)
+  if (/^(transition|transition-duration|animation|animation-duration)$/.test(prop) && !/infinite/.test(value) && !ownTiming) {
     // the first time in each comma-separated part is the duration (the second is a delay); anything
     // longer than 1s is a decorative loop, which keeps its own timing
     for (const part of value.split(/,(?![^(]*\))/)) {
