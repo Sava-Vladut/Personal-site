@@ -13,7 +13,7 @@ import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
 import { Stars } from '../components/books';
-import { Spin, languageColor } from '../components/repos';
+import { languageColor } from '../components/repos';
 import { noun, t } from '../lib/i18n';
 import '../styles/repos.css';
 
@@ -181,7 +181,7 @@ export function Repos() {
       </div>
 
       <div class="media-panel">
-        {live.loading && !items && <p class="repo-wait"><Spin /> {t('Reading your repos from GitHub…')}</p>}
+        {live.loading && !items && <p class="repo-wait loading-note">{t('Reading your repos from GitHub…')}</p>}
         {live.error && !live.loading && (
           <div class="empty">
             <p>{live.error}</p>

@@ -95,7 +95,7 @@ function CommitLog({ id }: { id: string }) {
           </ol>
         </section>
       ))}
-      {state.loading && <p class="repo-wait"><Spin /> {t('Reading the commits…')}</p>}
+      {state.loading && <p class="repo-wait loading-note">{t('Reading the commits…')}</p>}
       {state.error && <Trouble error={state.error} status={state.status} what={t('its commits')} onRetry={() => (items.length ? more(next ?? 1) : setRound((r) => r + 1))} />}
       {!state.loading && !state.error && !items.length && <p class="empty-note">{t('No commits yet.')}</p>}
       {!state.loading && next && items.length > 0 && <button class="btn btn-quiet gl-load" onClick={() => more(next)}>{t('Older commits')}</button>}
@@ -124,7 +124,7 @@ function ReadmeFrame({ id, base }: { id: string; base: { repo: string; branch: s
   return (
     <div class="rd-frame">
       <div class="rd-bar" aria-hidden="true"><i /><i /><i /><span>README.md</span></div>
-      {readme.loading && <p class="repo-wait"><Spin /> {t('Reading the README…')}</p>}
+      {readme.loading && <p class="repo-wait loading-note">{t('Reading the README…')}</p>}
       {readme.error && <Trouble error={readme.error} status={readme.status} what={t('its README')} onRetry={readme.reload} />}
       {readme.data && (readme.data.text === null || !readme.data.text.trim()) && <p class="empty-note">{t('This repo has no README.')}</p>}
       {readme.data?.text?.trim() && (
@@ -262,7 +262,7 @@ export function RepoView({ id }: { id: string }) {
     return (
       <div class="page" key="wait">
         <div class="empty">
-          {meta.loading ? <p class="repo-wait"><Spin /> {t('Reading the repo from GitHub…')}</p> : (
+          {meta.loading ? <p class="repo-wait loading-note">{t('Reading the repo from GitHub…')}</p> : (
             <>
               <h2 class="title-s">{t('This repo isn’t available')}</h2>
               <p>{meta.status === 401 ? t('Log in with GitHub to open it.') : meta.status === 404 ? t('It may have been deleted, renamed or made private.') : meta.error}</p>

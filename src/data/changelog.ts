@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.1',
+    date: '2026-10-23',
+    changes: [
+      'GitHub repos, READMEs and commits load with a quiet line instead of a spinner, and quick loads don’t flash it',
+    ],
+  },
+  {
     version: '1.128.0',
     date: '2026-10-23',
     changes: [
