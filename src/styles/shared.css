@@ -177,7 +177,7 @@
 /* the countdown (lib/countdown.ts), when the status shows it */
 .status-cd-clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .status-cd-unit { display: grid; justify-items: center; gap: 1px; padding: 10px 4px 8px; border-radius: var(--r-l); background: color-mix(in oklab, var(--c) 9%, var(--surface-2)); }
-.status-cd-unit b { font: var(--w-bold) 28px/1.1 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: color-mix(in oklab, var(--c) 35%, var(--ink)); }
+.status-cd-unit b { font: var(--w-bold) var(--text-2xl)/1.1 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: color-mix(in oklab, var(--c) 35%, var(--ink)); }
 .status-cd-unit span { font-size: var(--text-xs); color: var(--ink-3); }
 .status-cd-bar { height: 6px; margin-top: 14px; border-radius: var(--r-pill); overflow: hidden; background: color-mix(in oklab, var(--c) 12%, var(--surface-2)); }
 .status-cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c); transform-origin: left; transition: transform 1s linear; }

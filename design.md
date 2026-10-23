@@ -61,10 +61,12 @@ else. Mono (`--mono`) is for codes and the intro only.
 | `--text-base` | 15px | Body, buttons, section titles |
 | `--text-l` | 17px | Serif list titles, lead text |
 | `--text-xl` | 22px | Sub-page titles (`.title-s`) |
+| `--text-2xl` | 28px | Display: titles you type in, big stat numbers, countdown digits |
 
 - Page titles (`.title`) use `clamp(26px, 7.4vw, 34px)`.
-- Display text (the note title, big stat numbers) is **28px**. There is no token yet: when you touch one
-  of these (`.title-input`, `.tile-value`, `.mind-card-pct`), add `--text-2xl: 28px` and use it.
+- Display text is `--text-2xl` (28px): the title fields of books and people (`.title-input`), stat tiles
+  (`.tile-value`), the mind card's percentage and countdown digits. The note editor's own title is a
+  document style and keeps its size.
 - Inputs stay at **16px** so iOS doesn't zoom.
 - Below 10px only inside SVG drawings (wheel rings, chart dots, maps) and tiny avatars, where the text
   scales with the drawing.

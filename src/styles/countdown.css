@@ -23,7 +23,7 @@
   display: grid; gap: 1px; padding: 9px 4px 8px; border-radius: var(--r-m); overflow: hidden;
   background: color-mix(in oklab, var(--accent) 8%, var(--surface-2));
 }
-.cd-unit b { font: var(--w-bold) 26px/1.15 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; animation: cd-tick var(--dur-2) var(--ease-emph); }
+.cd-unit b { font: var(--w-bold) var(--text-2xl)/1.15 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; animation: cd-tick var(--dur-2) var(--ease-emph); }
 .cd-unit span { font-size: var(--text-xs); color: var(--ink-3); }
 @keyframes cd-tick { from { opacity: 0.35; transform: translateY(-6px); } }
 

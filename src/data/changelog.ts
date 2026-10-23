@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.3',
+    date: '2026-10-23',
+    changes: [
+      'Big numbers and titles share one display size: stat tiles, book and person titles, and the countdown, which now matches its public page',
+    ],
+  },
+  {
     version: '1.128.2',
     date: '2026-10-23',
     changes: [
