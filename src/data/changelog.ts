@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.122.0',
+    date: '2026-10-23',
+    changes: [
+      'New in Extras: Streamer stats. Pick one of your mined channels or type any Twitch channel',
+      'See every game they played and for how long, with covers, share of the time and number of streams',
+      'Hours streamed each day, coloured by game, and when they’re usually live, hour by hour in your time',
+      'Average and longest stream, days live, and the time they usually go live',
+      'Audience from TwitchTracker: average and peak viewers, hours watched and rank over 30 days',
+      'Every stream listed with its games as a strip; tap one for its games hour by hour and a link to the VOD',
+      'The server checks your mined channels every 5 minutes, so viewer numbers, followers and old streams build up past Twitch’s 60 days',
+    ],
+  },
+  {
     version: '1.121.0',
     date: '2026-10-23',
     changes: [

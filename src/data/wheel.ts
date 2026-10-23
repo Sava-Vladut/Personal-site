@@ -45,6 +45,7 @@ export const WHEEL: WheelNode[] = [
     kids: [
       { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
+      { id: 'streamer', name: t('Streamer stats'), sub: t('What a Twitch channel plays, when and for how long'), icon: 'device-gamepad-2', hue: 'fear', to: 'streamer' },
       { id: 'status', name: t('Public status'), sub: t('One link that always shows your latest check-in'), icon: 'world', hue: 'joy', to: 'status' },
       { id: 'countdown', name: t('Countdown'), sub: t('Count the days to something, and change when'), icon: 'hourglass', hue: 'calm-safety', to: 'countdown' },
     ],

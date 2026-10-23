@@ -130,7 +130,8 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   brand-twitch brand-github git-branch git-commit coins gift broadcast trending-up brain eye-off world
   indent-increase indent-decrease keyboard-hide h-1 h-2 h-3 letter-case cursor-text file-search file-text help list-tree minimize
   eye spiral folder folder-plus restore
-  arrow-back-up arrow-forward-up clear-formatting pilcrow text-size ruler-2 file-description writing align-left chevron-down chevron-up layout-navbar-collapse layout-navbar-expand point focus-centered`.split(/\s+/);
+  arrow-back-up arrow-forward-up clear-formatting pilcrow text-size ruler-2 file-description writing align-left chevron-down chevron-up layout-navbar-collapse layout-navbar-expand point focus-centered
+  device-gamepad-2`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

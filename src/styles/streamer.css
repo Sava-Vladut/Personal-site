@@ -1,0 +1,151 @@
+/* ============================================================
+   Streamer stats (views/Streamer.tsx): a Twitch channel's games, hours and audience, in Channel points' purple
+   (--accent). Builds on stats.css (hero, tiles, chart cards) and twitch.css (lists, the live dot, the line).
+   Games wear the first five emotion colours in a fixed order; every other game is a quiet grey.
+   ============================================================ */
+
+/* ---------- the header: find a channel, pick one, pick a range ---------- */
+
+.sr-find { display: flex; gap: 8px; margin-top: 4px; }
+.sr-find .search { flex: 1; min-width: 0; margin: 0; background: color-mix(in oklab, var(--surface-2) 60%, var(--bg)); }
+.sr-find .btn { flex: none; }
+.sr-page .stats-top .filters { margin-top: 12px; }
+.sr-page .chips .chip { display: inline-flex; align-items: center; white-space: nowrap; }
+.sr-range { margin: 12px 0 0; }
+
+/* a channel being fetched again stays, faded, instead of blinking out */
+.sr-stale { opacity: 0.6; transition: opacity var(--dur-2); pointer-events: none; }
+
+.sr-note { padding: 14px 16px; color: var(--ink-2); display: grid; gap: 8px; }
+
+/* ---------- who it is ---------- */
+
+.sr-profile { padding: 14px 16px; display: grid; gap: 12px; }
+.sr-who { display: flex; align-items: center; gap: 12px; }
+.sr-avatar {
+  flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in oklab, var(--accent) 40%, transparent);
+}
+.sr-who-text { flex: 1; min-width: 0; }
+.sr-name { font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-meta { margin-top: 2px; font-size: var(--text-s); color: var(--ink-3); }
+.sr-followers { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: var(--text-m); color: var(--ink-3); }
+.sr-followers b { font-size: var(--text-base); font-weight: var(--w-bold); color: var(--ink); }
+.sr-followers .up { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-medium); }
+.sr-followers .down { color: var(--danger); font-weight: var(--w-medium); }
+.sr-live {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-m);
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-2));
+}
+.sr-live img { flex: none; border-radius: var(--r-xs); }
+.sr-live-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sr-live-head { display: flex; align-items: center; font-size: var(--text-s); color: var(--ink-2); }
+.sr-live-text b { font-weight: var(--w-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-live-text small { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-live-n { flex: none; display: grid; justify-items: end; }
+.sr-live-n b { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; }
+.sr-live-n small { font-size: var(--text-s); color: var(--ink-3); }
+.sr-bio { font-size: var(--text-m); line-height: 1.45; color: var(--ink-2); }
+
+/* the hours, with the Twitch mark at the far end */
+.sr-page .tw-hero .hero-row { justify-content: flex-start; align-items: baseline; }
+.sr-mark { margin-left: auto; align-self: center; }
+
+/* ---------- games ---------- */
+
+.sr-games li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; }
+.sr-games li + li { border-top: 1px solid var(--line); }
+.sr-box {
+  display: grid; place-items: center; width: 26px; height: 36px; flex: none; border-radius: var(--r-xs); object-fit: cover;
+  background: color-mix(in oklab, var(--c, var(--ink-3)) 18%, var(--surface-2)); color: color-mix(in oklab, var(--c, var(--ink-3)) 70%, var(--ink));
+}
+.sr-game { display: grid; gap: 4px; min-width: 0; }
+.sr-game b { font-weight: var(--w-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-game small { font-size: var(--text-s); color: var(--ink-3); }
+.sr-game-bar { height: 6px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.sr-game-bar i {
+  display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--c); transform-origin: left;
+  animation: grow-x var(--dur-5) var(--ease-emph) calc(0.1s + var(--k, 0) * 25ms) backwards;
+}
+.sr-game-h { font-weight: var(--w-bold); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.sr-more { margin: 8px 0 6px; }
+
+/* ---------- charts ---------- */
+
+.sr-col { outline: none; }
+.sr-col path { transform-box: fill-box; transform-origin: bottom; animation: grow-y var(--dur-4) var(--ease-emph) calc(0.1s + var(--k, 0) * 8ms) backwards; transition: opacity var(--dur-1); }
+.sr-col:focus-visible path { opacity: 0.75; }
+@media (hover: hover) { .sr-col:hover path { opacity: 0.75; } }
+.sr-vbar { fill: var(--accent); }
+
+/* how often they're live, weekday by hour */
+.sr-heat { display: grid; grid-template-columns: auto repeat(24, minmax(0, 1fr)); gap: 2px; margin-top: 12px; }
+.sr-heat .tick-html { text-align: left; white-space: nowrap; overflow: visible; line-height: 1; padding-right: 6px; align-self: center; }
+.sr-heat > .tick-html:nth-child(-n + 25) { padding: 0 0 4px; }
+.sr-heat i {
+  aspect-ratio: 1 / 1.25; border-radius: var(--r-2xs); outline: none;
+  background: color-mix(in oklab, var(--accent) calc(14% + var(--v) * 86%), var(--surface-2));
+  animation: fade-in var(--dur-3) ease 0.1s backwards;
+}
+.sr-heat i.off { background: var(--surface-2); }
+.sr-heat i:focus-visible { box-shadow: 0 0 0 2px var(--ink); }
+
+/* hours on an average day of the week */
+.sr-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
+.sr-week span { display: grid; grid-template-rows: 44px auto auto; justify-items: center; gap: 4px; }
+.sr-week i {
+  align-self: end; width: min(100%, 24px); height: max(2px, calc(var(--h) * 100%)); border-radius: var(--r-xs) var(--r-xs) 0 0;
+  background: color-mix(in oklab, var(--accent) 45%, var(--surface-2)); transform-origin: bottom;
+  animation: grow-y var(--dur-4) var(--ease-emph) 0.15s backwards;
+}
+.sr-week .best i { background: var(--accent); }
+.sr-week b { font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; line-height: 1; }
+.sr-week small { font-size: var(--text-xs); color: var(--ink-3); line-height: 1; }
+.sr-week-note { margin-top: 8px; text-align: center; }
+
+/* ---------- audience ---------- */
+
+.sr-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+@media (min-width: 560px) { .sr-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sr-stat { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2); min-width: 0; }
+.sr-stat b { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; }
+.sr-stat small { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-sub-title { margin-top: 18px; font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-2); }
+.sr-small { margin: 10px 0 4px; font-size: var(--text-s); line-height: 1.45; color: var(--ink-3); }
+
+/* ---------- streams ---------- */
+
+.sr-stream {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px;
+  width: calc(100% + 16px); margin: 0 -8px; padding: 12px 8px; border-radius: var(--r-m); text-align: left;
+  transition: background-color var(--dur-1);
+}
+@media (hover: hover) { .sr-stream:hover { background: var(--surface-2); } }
+.sr-streams li + li .sr-stream { border-top: 1px solid var(--line); }
+.sr-stream-top { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.sr-stream-top b { display: inline-flex; align-items: center; font-size: var(--text-base); font-weight: var(--w-bold); color: var(--ink); }
+.sr-stream-len { margin-left: auto; font-weight: var(--w-bold); color: var(--ink); }
+.sr-strip { grid-column: 1 / -1; display: flex; gap: 2px; height: 6px; }
+.sr-strip i { min-width: 2px; border-radius: var(--r-2xs); transform-origin: left; animation: grow-x var(--dur-4) var(--ease-emph) calc(0.1s + var(--k, 0) * 25ms) backwards; }
+.sr-strip.big { height: 12px; margin: 14px 0 4px; }
+.sr-strip.big i { border-radius: var(--r-xs); }
+.sr-stream-games { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-stream-v { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-s); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+.sr-source { padding: 4px 2px 8px; font-size: var(--text-s); line-height: 1.45; color: var(--ink-3); }
+
+/* ---------- one stream, in its sheet ---------- */
+
+.sr-detail { display: grid; }
+.sr-detail-when { display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sr-detail-when b { font-weight: var(--w-bold); color: var(--ink); }
+.sr-detail-title { margin-top: 6px; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.sr-chapters { list-style: none; margin: 8px 0 0; padding: 0; }
+.sr-chapters li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; }
+.sr-chapters li + li { border-top: 1px solid var(--line); }
+.sr-chapter-text { display: grid; gap: 2px; min-width: 0; }
+.sr-chapter-text b { display: flex; align-items: center; gap: 6px; font-weight: var(--w-bold); overflow: hidden; white-space: nowrap; }
+.sr-chapter-text small { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.sr-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.sr-curve { margin-top: 14px; }
+.sr-vod { justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; }

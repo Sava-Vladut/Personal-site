@@ -23,7 +23,7 @@ const NAV: [RouteName, string, UiName, string][] = [
 ];
 
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos', map: 'settings', twitch: 'stats', brain: 'stats', traps: 'stats', laws: 'stats', friends: 'stats', status: 'stats', countdown: 'stats' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos', map: 'settings', twitch: 'stats', streamer: 'stats', brain: 'stats', traps: 'stats', laws: 'stats', friends: 'stats', status: 'stats', countdown: 'stats' };
 
 export function App() {
   const route = useRoute(prepareView, () => toast(t('Couldn’t open this page. Try again.')));

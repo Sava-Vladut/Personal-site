@@ -16,6 +16,8 @@
 //    on the server, from the repo's page (server/clone.js).
 //  • channel points: sums up the Twitch Channel Points Miner's analytics (TWITCH_ANALYTICS_DIR), read-only,
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
+//  • streamer stats: what a Twitch channel plays and for how long (server/streamers.js), from Twitch's public API,
+//    with the miner's channels (and any looked up lately) recorded every few minutes into STREAMERS_DIR.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -30,6 +32,7 @@ import { createShareHandler } from './share.js';
 import { createStatusHandler } from './status.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
+import { createStreamerHandler } from './streamers.js';
 import { createTwitchHandler } from './twitch.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,6 +50,8 @@ const STATUS_DIR = process.env.STATUS_DIR || join(ROOT, 'data', 'status');
 const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 // the miner's settings/channels.json, the channels it watches (writable)
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
+// what the streamer stats recorder has seen, one file per channel
+const STREAMERS_DIR = process.env.STREAMERS_DIR || join(ROOT, 'data', 'streamers');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 // where repos are cloned on the server, and the numeric GitHub user id of the only account allowed to clone
 const CLONE_DIR = process.env.CLONE_DIR || '';
@@ -858,6 +863,9 @@ const sync = createSyncHandler({ directory: SYNC_DIR });
 const share = createShareHandler({ directory: SHARE_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const status = createStatusHandler({ directory: STATUS_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
+const streamers = createStreamerHandler({ directory: STREAMERS_DIR, channelsFile: TWITCH_CHANNELS });
+// the recorder runs where the miner does; elsewhere (tests, a laptop) channels are only looked up when asked
+if (TWITCH_CHANNELS) streamers.start();
 
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
@@ -874,6 +882,7 @@ async function api(req, res, url) {
     if (p === '/api/status' || p.startsWith('/api/status/')) return await status.api(req, res, p);
     if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
+    if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.
