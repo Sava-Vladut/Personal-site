@@ -303,7 +303,8 @@ than a handful of items.
    (or `.fade-rows-soft` for a list); never cut from ghost to content.
 5. **Spinners only for actions.** A button that is working shows its label changing ("Saving…") and stays
    the same width; a full-screen spinner is never the answer. Loading text ("Loading…", "Reading the repo
-   from GitHub…") is a last resort for a slow external service: `--ink-3`, after the 120ms wait, fading in.
+   from GitHub…") is a last resort for a slow external service: `--ink-3`, with `.loading-note`, which
+   keeps it hidden for the first 120ms and then lets it rise in.
 6. **Errors and empty states arrive too.** They come in with `.fade-arrive-soft`, not with a snap, and
    replace the ghost in the same space.
 7. **Soften the edges.** Where content is cut off, fade it out instead of clipping it hard: a

@@ -97,7 +97,7 @@ export function Twitch({ query }: { query: URLSearchParams }) {
             <button class="btn btn-quiet" onClick={() => loadPoints(true)}><Icon name="refresh" size={18} /> {t('Try again')}</button>
           </div>
         ) : (
-          <p class="empty-note center">{loading ? t('Loading…') : ''}</p>
+          <p class="empty-note center loading-note">{loading ? t('Loading…') : ''}</p>
         )
       ) : (
         <Board key={channel?.name ?? 'all'} data={data} channel={channel} onPick={select} onEdit={() => setEditing(true)} />

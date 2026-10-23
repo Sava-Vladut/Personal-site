@@ -559,7 +559,7 @@ function PublicNotes() {
         {error ? (
           <div class="list-row"><div class="muted small">{error}</div></div>
         ) : !items ? (
-          <div class="list-row"><div class="muted small">{t('Loading…')}</div></div>
+          <div class="list-row"><div class="muted small loading-note">{t('Loading…')}</div></div>
         ) : !items.length ? (
           <div class="list-row">
             <div>

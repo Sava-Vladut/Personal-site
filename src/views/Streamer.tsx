@@ -124,7 +124,7 @@ export function Streamer({ query }: { query: URLSearchParams }) {
       ) : !login && !choices.loading ? (
         <p class="empty-note center">{t('Type a channel to see what it streams.')}</p>
       ) : (
-        <p class="empty-note center">{login ? t('Reading {name}’s streams…', { name: login }) : t('Loading…')}</p>
+        <p class="empty-note center loading-note">{login ? t('Reading {name}’s streams…', { name: login }) : t('Loading…')}</p>
       )}
     </div>
   );

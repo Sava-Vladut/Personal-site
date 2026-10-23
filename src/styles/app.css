@@ -1065,6 +1065,8 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .confirm, .wheel-detail, .card:has(> .cal) { animation: pop-in var(--dur-3) var(--spring) backwards; }
 .page > .search { animation: rise-in var(--dur-2) var(--ease-emph) backwards; }
 .empty, .empty-note { animation: rise-in var(--dur-2) var(--ease-emph) backwards; }
+/* a wait for something slow shows nothing for its first 120ms, so a quick load never flashes it (design.md, Loading) */
+.loading-note { animation: rise-in var(--dur-2) var(--ease-emph) 120ms backwards; }
 
 /* staggered: each piece follows the one before by a short beat, and everything is in within 80ms */
 :is(.world-detail, .tab-panel > .stack-l, .page[data-boot]) > * { animation: rise-in var(--dur-2) var(--ease-emph) backwards; }

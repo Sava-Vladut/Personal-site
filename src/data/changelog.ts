@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.127.1',
+    date: '2026-10-23',
+    changes: [
+      '“Loading…” in Twitch, Streamer stats and Public notes only shows when loading takes a moment, so quick loads don’t flash it',
+    ],
+  },
+  {
     version: '1.127.0',
     date: '2026-10-23',
     changes: [
