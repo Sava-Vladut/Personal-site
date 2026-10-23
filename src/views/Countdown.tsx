@@ -11,6 +11,7 @@ import { Sky } from '../components/Sky';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/stats.css';
 import '../styles/countdown.css';
+import '../styles/shared.css'; // .share-error
 
 const WORLD = 'calm-safety';
 const when = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });

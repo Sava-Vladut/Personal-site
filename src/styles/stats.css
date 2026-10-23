@@ -62,9 +62,9 @@ html { transition: --accent var(--dur-3) ease; }
   animation: pop-in var(--dur-4) var(--spring-bouncy) 0.1s backwards;
 }
 .split { margin-top: 18px; }
-.split-bar.worlds { height: 12px; }
-.split-bar.worlds i { outline: none; transition: opacity var(--dur-1); }
-@media (hover: hover) { .split-bar.worlds:hover i:not(:hover) { opacity: 0.55; } }
+.split-bar.world-split { height: 12px; }
+.split-bar.world-split i { outline: none; transition: opacity var(--dur-1); }
+@media (hover: hover) { .split-bar.world-split:hover i:not(:hover) { opacity: 0.55; } }
 .split-labels { display: flex; justify-content: space-between; gap: 16px; margin-top: 9px; font-size: var(--text-s); color: var(--ink-2); }
 .split-labels b { color: var(--ink); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
 
@@ -130,10 +130,10 @@ html { transition: --accent var(--dur-3) ease; }
 .chart .dot.ring { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
 .chart .series-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .chart .crosshair { stroke: var(--ink-3); stroke-width: 1; }
-.chart .mark { outline: none; cursor: default; }
-.chart .mark:focus-visible path { opacity: 0.78; }
-@media (hover: hover) { .chart .mark:hover path, .chart .mark:hover rect:not([fill='transparent']) { opacity: 0.78; } }
-.chart .mark:focus-visible > rect[fill='transparent'] { fill: color-mix(in oklab, var(--ink) 6%, transparent); }
+.chart .chart-mark { outline: none; cursor: default; }
+.chart .chart-mark:focus-visible path { opacity: 0.78; }
+@media (hover: hover) { .chart .chart-mark:hover path, .chart .chart-mark:hover rect:not([fill='transparent']) { opacity: 0.78; } }
+.chart .chart-mark:focus-visible > rect[fill='transparent'] { fill: color-mix(in oklab, var(--ink) 6%, transparent); }
 .chart rect[tabindex]:focus { outline: none; }
 
 /* the mood line draws itself and its dots land as it passes them; the accent pools between it and zero */

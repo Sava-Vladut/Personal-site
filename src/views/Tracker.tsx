@@ -15,6 +15,7 @@ import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
 import { useStatus } from '../lib/status';
 import { t } from '../lib/i18n';
+import '../styles/shared.css'; // .status-chip
 
 const localInput = (ms: number) => {
   const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000);

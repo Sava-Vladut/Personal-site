@@ -370,7 +370,7 @@ export function BalanceChart({ buckets, step }: { buckets: Bucket[]; step: numbe
           {buckets.map((b, i) => {
             const bx = L + i * band + (band - bw) / 2;
             return (
-              <g class="mark" {...tipProps(() => (
+              <g class="chart-mark" {...tipProps(() => (
                 <>
                   <div class="tip-title">{bucketLabel(b, step)}</div>
                   <TipRow value={b.pleasant} label={t('pleasant')} color={PLEASANT} />
@@ -422,7 +422,7 @@ export function MixChart({ buckets, step }: { buckets: Bucket[]; step: number })
             let y = T + ph;
             const present = CHART_ORDER.filter((id) => c.cores[id]);
             return (
-              <g class="mark" {...tipProps(() => (
+              <g class="chart-mark" {...tipProps(() => (
                 <>
                   <div class="tip-title">{label(c)}</div>
                   {c.total ? present.map((id) => <TipRow value={pct(c.cores[id] / c.total)} label={shortName(id)} color={`var(--emo-${id})`} />) : <span>{t('No feelings logged')}</span>}
@@ -459,7 +459,7 @@ export function WorldSplit({ cores, total }: { cores: { id: string; count: numbe
   const by = new Map(cores.map((c) => [c.id, c.count]));
   const segs = PICKER_ORDER.map((id) => ({ id, count: by.get(id) ?? 0 })).filter((x) => x.count > 0);
   return (
-    <div class="split-bar worlds">
+    <div class="split-bar world-split">
       {segs.map((x, i) => (
         <i
           style={{ flexGrow: x.count, background: `var(--emo-${x.id})`, '--k': i }}
@@ -512,7 +512,7 @@ export function MoodBars({ rows }: { rows: { label: string; mood: number | null;
             const x = L + i * band + (band - bw) / 2;
             const m = r.mood;
             return (
-              <g class="mark" {...tipProps(() => (
+              <g class="chart-mark" {...tipProps(() => (
                 <>
                   <div class="tip-title">{r.label}</div>
                   <TipRow value={fmtMood(m)} label={t('average mood · {count}', { count: count(r.n, 'entry', 'entries') })} />

@@ -78,7 +78,8 @@
    commands in a row to scroll, and Hide keyboard at the end. */
 
 @media (max-width: 1023.98px) {
-  .editor { padding-bottom: calc(76px + var(--safe-b)); }
+  /* the note's page only: Book, Person, Repo and Song are .editor pages too, with no bar at the bottom */
+  .route-note .editor { padding-bottom: calc(76px + var(--safe-b)); }
   .app.route-note ~ .toasts { bottom: calc(var(--safe-b) + 66px); }
 
   .format-bar.is-phone, .format-bar.is-strip.in-ribbon {

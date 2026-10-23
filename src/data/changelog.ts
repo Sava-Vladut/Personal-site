@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.119.3',
+    date: '2026-10-23',
+    changes: [
+      'Book, person, repo and song pages no longer gain extra space at the bottom on a phone after you’ve opened a note',
+      'The countdown’s share error shows in red even before you’ve visited Settings',
+      'The Public status chip on Tracker looks right even before you’ve visited Settings',
+      'Charts and the emotion bar on Stats no longer borrow styles meant for other parts of the app',
+    ],
+  },
+  {
     version: '1.119.2',
     date: '2026-10-23',
     changes: [
