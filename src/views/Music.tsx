@@ -179,7 +179,7 @@ export function MusicTab({ q, onAdd, picker }: { q: string; onAdd: () => void; p
           <div class="empty">
             <Mark id="spot:records" hue="love-connection" size={96} />
             <p>{t('No records yet')}</p>
-            <button class="btn btn-quiet" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add music')}</button>
+            <button class="btn btn-primary" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add music')}</button>
           </div>
         )}
         {!!songs.length && !shown.length && <p class="empty-note center">{t('No music matches.')}</p>}

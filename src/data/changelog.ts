@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.13',
+    date: '2026-10-23',
+    changes: [
+      'An empty shelf or record collection offers “Add” as the main button, like an empty People or Journal does',
+    ],
+  },
+  {
     version: '1.128.12',
     date: '2026-10-23',
     changes: [

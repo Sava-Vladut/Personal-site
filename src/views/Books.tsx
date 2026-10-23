@@ -146,7 +146,7 @@ export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
           <div class="empty">
             <Mark id="spot:shelf" hue="hope-interest" size={96} />
             <p>{t('No books yet')}</p>
-            <button class="btn btn-quiet" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add a book')}</button>
+            <button class="btn btn-primary" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add a book')}</button>
           </div>
         )}
         {!!books.length && !shown.length && <p class="empty-note center">{t('No books match.')}</p>}
