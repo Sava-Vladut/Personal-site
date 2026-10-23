@@ -263,7 +263,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap, openPrinciple }: { x: 
       <h3 class="lw-d-h">{t('The law')}</h3>
       <p class="lw-d-p">{x.gist}</p>
       <figure class="lw-d-scene">
-        <p class="lw-d-k"><Icon name="book" size={15} /> {t('From history')}</p>
+        <p class="lw-d-k"><Icon name="book" size={14} /> {t('From history')}</p>
         <figcaption><b>{x.scene.who}</b><span>{x.scene.when}</span></figcaption>
         <p>{x.scene.text}</p>
       </figure>
@@ -288,7 +288,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap, openPrinciple }: { x: 
           <div class="lw-springs">
             {traps.map(({ trap, how }) => (
               <button class="lw-spring" style={{ '--t': `var(--emo-${FAMILIES[trap.family].hue})` }} onClick={() => openTrap(trap.id)}>
-                <span class="lw-spring-top"><Icon name="spiral" size={15} /> <b>{trap.name}</b> <Icon name="arrow-up-right" size={14} class="lw-spring-go" /></span>
+                <span class="lw-spring-top"><Icon name="spiral" size={16} /> <b>{trap.name}</b> <Icon name="arrow-up-right" size={14} class="lw-spring-go" /></span>
                 <span class="lw-spring-how">{how}</span>
               </button>
             ))}
@@ -296,7 +296,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap, openPrinciple }: { x: 
         </>
       )}
       <div class="lw-d-study">
-        <p class="lw-d-k"><Icon name="info-circle" size={15} /> {t('The experiment')}</p>
+        <p class="lw-d-k"><Icon name="info-circle" size={14} /> {t('The experiment')}</p>
         <h4>{x.study.title}</h4>
         <p class="lw-d-who">{x.study.who}</p>
         <p>{x.study.text}</p>
@@ -331,11 +331,11 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap, openPrinciple }: { x: 
       {lens === 'player' ? <>{law}{machinery}{defence}</> : <>{defence}{law}{machinery}</>}
 
       <div class="lw-d-shadow">
-        <p class="lw-d-k"><Icon name="moon" size={15} /> {t('The shadow side')}</p>
+        <p class="lw-d-k"><Icon name="moon" size={14} /> {t('The shadow side')}</p>
         <p>{x.shadow}</p>
       </div>
       <div class="lw-d-honest">
-        <p class="lw-d-k"><Icon name="heart" size={15} /> {t('The honest version')}</p>
+        <p class="lw-d-k"><Icon name="heart" size={14} /> {t('The honest version')}</p>
         <p>{x.honest}</p>
       </div>
 
@@ -345,7 +345,7 @@ function LawDetail({ x, lens, seen, onSeen, go, openTrap, openPrinciple }: { x: 
           <div class="lw-springs">
             {ANSWERS.get(x.n)!.map(({ p, how }) => (
               <button class="lw-spring" style={{ '--t': `var(--emo-${PARTS[p.part].hue})` }} onClick={() => openPrinciple(p.n)}>
-                <span class="lw-spring-top"><Icon name="heart-handshake" size={15} /> <b>{p.title}</b> <Icon name="arrow-up-right" size={14} class="lw-spring-go" /></span>
+                <span class="lw-spring-top"><Icon name="heart-handshake" size={16} /> <b>{p.title}</b> <Icon name="arrow-up-right" size={14} class="lw-spring-go" /></span>
                 <span class="lw-spring-how">{how}</span>
               </button>
             ))}

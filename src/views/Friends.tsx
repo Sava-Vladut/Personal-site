@@ -291,7 +291,7 @@ function PrincipleDetail({ x, lens, practice, onToggle, onTried, go, openTrap, o
       <h3 class="wf-d-h">{t('The principle')}</h3>
       <p class="wf-d-p">{x.gist}</p>
       <figure class="wf-d-story">
-        <p class="wf-d-k"><Icon name="book" size={15} /> {t('The story')}</p>
+        <p class="wf-d-k"><Icon name="book" size={14} /> {t('The story')}</p>
         <figcaption><b>{x.story.who}</b><span>{x.story.when}</span></figcaption>
         <p>{x.story.text}</p>
       </figure>
@@ -316,7 +316,7 @@ function PrincipleDetail({ x, lens, practice, onToggle, onTried, go, openTrap, o
           <div class="wf-links">
             {traps.map(({ trap, how }) => (
               <button class="wf-link" style={{ '--t': `var(--emo-${FAMILIES[trap.family].hue})` }} onClick={() => openTrap(trap.id)}>
-                <span class="wf-link-top"><Icon name="spiral" size={15} /> <b>{trap.name}</b> <Icon name="arrow-up-right" size={14} class="wf-link-go" /></span>
+                <span class="wf-link-top"><Icon name="spiral" size={16} /> <b>{trap.name}</b> <Icon name="arrow-up-right" size={14} class="wf-link-go" /></span>
                 <span class="wf-link-how">{how}</span>
               </button>
             ))}
@@ -342,7 +342,7 @@ function PrincipleDetail({ x, lens, practice, onToggle, onTried, go, openTrap, o
         </>
       )}
       <div class="wf-d-study">
-        <p class="wf-d-k"><Icon name="info-circle" size={15} /> {t('The experiment')}</p>
+        <p class="wf-d-k"><Icon name="info-circle" size={14} /> {t('The experiment')}</p>
         <h4>{x.study.title}</h4>
         <p class="wf-d-who">{x.study.who}</p>
         <p>{x.study.text}</p>
@@ -377,11 +377,11 @@ function PrincipleDetail({ x, lens, practice, onToggle, onTried, go, openTrap, o
       {lens === 'why' ? <>{principle}{machinery}{practise}</> : <>{practise}{principle}{machinery}</>}
 
       <div class="wf-d-shadow">
-        <p class="wf-d-k"><Icon name="moon" size={15} /> {t('The shadow side')}</p>
+        <p class="wf-d-k"><Icon name="moon" size={14} /> {t('The shadow side')}</p>
         <p>{x.shadow}</p>
       </div>
       <div class="wf-d-honest">
-        <p class="wf-d-k"><Icon name="heart" size={15} /> {t('The honest version')}</p>
+        <p class="wf-d-k"><Icon name="heart" size={14} /> {t('The honest version')}</p>
         <p>{x.honest}</p>
       </div>
 
@@ -500,7 +500,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
           </span>
           {tryToday && (
             <span class="wf-today-try">
-              <small><Icon name="sparkles" size={13} /> {t('Try today')}</small>
+              <small><Icon name="sparkles" size={14} /> {t('Try today')}</small>
               {tryToday}
             </span>
           )}

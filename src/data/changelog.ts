@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.12',
+    date: '2026-10-23',
+    changes: [
+      'In Mind traps, Laws of power and Win friends, the icons beside section labels and links match the size of their text',
+    ],
+  },
+  {
     version: '1.128.11',
     date: '2026-10-23',
     changes: [

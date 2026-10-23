@@ -226,7 +226,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple }: { x: Trap; caugh
           ))}
         </div>
       </section>
-      <p class={`tr-ev tr-ev-${x.evidence}`}><Icon name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={15} /> <b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</p>
+      <p class={`tr-ev tr-ev-${x.evidence}`}><Icon name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} /> <b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</p>
 
       <blockquote class="tr-d-tell">
         <small>{t('The thought that gives it away')}</small>
@@ -239,7 +239,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple }: { x: Trap; caugh
       <p class="tr-d-p">{x.why}</p>
 
       <div class="tr-d-study">
-        <p class="tr-d-study-k"><Icon name="info-circle" size={15} /> {t('The experiment')}</p>
+        <p class="tr-d-study-k"><Icon name="info-circle" size={14} /> {t('The experiment')}</p>
         <h4>{x.study.title}</h4>
         <p class="tr-d-who">{x.study.who}</p>
         <p>{x.study.text}</p>
@@ -262,7 +262,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple }: { x: Trap; caugh
           <div class="tr-links">
             {DISARMS.get(x.id)!.map(({ p, how }) => (
               <button class="tr-link" style={{ '--t': `var(--emo-${PARTS[p.part].hue})` }} onClick={() => openPrinciple(p.n)}>
-                <span class="tr-link-top"><Icon name="heart-handshake" size={15} /> <b>{p.title}</b> <Icon name="arrow-up-right" size={14} class="tr-link-go" /></span>
+                <span class="tr-link-top"><Icon name="heart-handshake" size={16} /> <b>{p.title}</b> <Icon name="arrow-up-right" size={14} class="tr-link-go" /></span>
                 <span class="tr-link-how">{how}</span>
               </button>
             ))}
@@ -271,7 +271,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple }: { x: Trap; caugh
       )}
 
       <div class="tr-d-fact">
-        <p class="tr-d-study-k"><Icon name="sparkles" size={15} /> {t('Strange but true')}</p>
+        <p class="tr-d-study-k"><Icon name="sparkles" size={14} /> {t('Strange but true')}</p>
         <p>{x.fact}</p>
       </div>
 
