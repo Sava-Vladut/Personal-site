@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.5',
+    date: '2026-10-23',
+    changes: [
+      'The move, hide and remove buttons in the wheel, widget and Twitch channel editors use the same icon size as other small buttons',
+    ],
+  },
+  {
     version: '1.128.4',
     date: '2026-10-23',
     changes: [

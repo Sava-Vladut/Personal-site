@@ -112,9 +112,9 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
               <li key={c}>
                 <span class="tw-edit-n">{i + 1}</span>
                 <span class="tw-edit-name"><b>{c}</b>{status(c) && <small>{status(c)}</small>}</span>
-                <button class="icon-btn small" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('Move {name} up', { name: c })}><Icon name="arrow-up" size={17} /></button>
-                <button class="icon-btn small" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label={t('Move {name} down', { name: c })}><Icon name="arrow-down" size={17} /></button>
-                <button class="icon-btn small" onClick={() => setList(list.filter((x) => x !== c))} disabled={list.length === 1} aria-label={t('Stop mining {name}', { name: c })}><Icon name="trash" size={17} /></button>
+                <button class="icon-btn small" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('Move {name} up', { name: c })}><Icon name="arrow-up" size={16} /></button>
+                <button class="icon-btn small" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label={t('Move {name} down', { name: c })}><Icon name="arrow-down" size={16} /></button>
+                <button class="icon-btn small" onClick={() => setList(list.filter((x) => x !== c))} disabled={list.length === 1} aria-label={t('Stop mining {name}', { name: c })}><Icon name="trash" size={16} /></button>
               </li>
             ))}
           </ol>

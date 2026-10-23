@@ -64,10 +64,10 @@ export function WidgetEditor({ open, onClose }: { open: boolean; onClose: () => 
                           <small>{w.sub}</small>
                         </div>
                         <div class="we-tools">
-                          <button class="icon-btn" disabled={i === 0} onClick={() => shift(w.id, zone, -1)} aria-label={t('Move {name} up', { name: w.name })}><Icon name="arrow-up" size={17} /></button>
-                          <button class="icon-btn" disabled={i === list.length - 1} onClick={() => shift(w.id, zone, 1)} aria-label={t('Move {name} down', { name: w.name })}><Icon name="arrow-down" size={17} /></button>
+                          <button class="icon-btn" disabled={i === 0} onClick={() => shift(w.id, zone, -1)} aria-label={t('Move {name} up', { name: w.name })}><Icon name="arrow-up" size={16} /></button>
+                          <button class="icon-btn" disabled={i === list.length - 1} onClick={() => shift(w.id, zone, 1)} aria-label={t('Move {name} down', { name: w.name })}><Icon name="arrow-down" size={16} /></button>
                           <button class="icon-btn" aria-pressed={!off} onClick={() => toggle(w.id)} aria-label={off ? t('Show {name}', { name: w.name }) : t('Hide {name}', { name: w.name })}>
-                            <Icon name={off ? 'eye-off' : 'eye'} size={17} />
+                            <Icon name={off ? 'eye-off' : 'eye'} size={16} />
                           </button>
                         </div>
                       </div>

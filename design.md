@@ -188,8 +188,8 @@ next to them:
 | Size | Use |
 |---|---|
 | 14 | Inside chips, captions and inline with `--text-m` |
-| 16 | Inside small buttons (`.btn-s`), segmented tabs (`.seg.tabs`), list rows and inline with body text |
-| 18 | Inside full-size buttons (`.btn`), icon buttons and toolbar buttons (the default for a control) |
+| 16 | Inside 34px controls (`.btn-s`, `.icon-btn.small`, editor row tools), segmented tabs (`.seg.tabs`), list rows and inline with body text |
+| 18 | Inside 44px controls: full-size buttons (`.btn`), icon buttons and toolbar buttons (the default for a control) |
 | 20 | Icons on their own: page actions, card headers |
 | 22 | Tab bar |
 | 24 | Empty states and big moments that have no mark (see below) |

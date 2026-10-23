@@ -110,19 +110,19 @@ export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => v
           {own && <button class="we-dot" onClick={() => restyle(id, 'hue')} aria-label={t('Change its colour')} title={t('Change its colour')} />}
           {!group && groups.length > 0 && (
             <label class="we-move" title={t('Move to')}>
-              <Icon name="folder" size={17} />
+              <Icon name="folder" size={16} />
               <select aria-label={t('Move {name} to', { name: n.name })} value={inGroup ?? ''} onChange={(e) => moveTo(id, (e.target as HTMLSelectElement).value)}>
                 <option value="">{t('The ring itself')}</option>
                 {groups.map((g) => <option value={g}>{nodeOf(layout, g).name}</option>)}
               </select>
             </label>
           )}
-          <button class="icon-btn" disabled={i <= 0} onClick={() => shift(id, -1)} aria-label={t('Move {name} up', { name: n.name })}><Icon name="arrow-up" size={17} /></button>
-          <button class="icon-btn" disabled={i >= list.length - 1} onClick={() => shift(id, 1)} aria-label={t('Move {name} down', { name: n.name })}><Icon name="arrow-down" size={17} /></button>
+          <button class="icon-btn" disabled={i <= 0} onClick={() => shift(id, -1)} aria-label={t('Move {name} up', { name: n.name })}><Icon name="arrow-up" size={16} /></button>
+          <button class="icon-btn" disabled={i >= list.length - 1} onClick={() => shift(id, 1)} aria-label={t('Move {name} down', { name: n.name })}><Icon name="arrow-down" size={16} /></button>
           <button class="icon-btn" aria-pressed={!layout.hidden.includes(id)} onClick={() => toggle(id)} aria-label={layout.hidden.includes(id) ? t('Show {name}', { name: n.name }) : t('Hide {name}', { name: n.name })}>
-            <Icon name={layout.hidden.includes(id) ? 'eye-off' : 'eye'} size={17} />
+            <Icon name={layout.hidden.includes(id) ? 'eye-off' : 'eye'} size={16} />
           </button>
-          {own && <button class="icon-btn" onClick={() => ungroup(id)} aria-label={t('Remove the group {name}', { name: n.name })} title={t('Remove the group (what’s in it stays)')}><Icon name="trash" size={17} /></button>}
+          {own && <button class="icon-btn" onClick={() => ungroup(id)} aria-label={t('Remove the group {name}', { name: n.name })} title={t('Remove the group (what’s in it stays)')}><Icon name="trash" size={16} /></button>}
         </div>
       </div>
     );
