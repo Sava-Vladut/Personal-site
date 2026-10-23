@@ -115,9 +115,9 @@ export function SongOfDay({ songs, picker }: { songs: Song[]; picker: DayPick })
         {streak > 1 && <span class="sotd-streak" title={`${t('Days in a row')} · ${t('best streak')} ${best}`}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
         {song && (
           <span class="sotd-tools">
-            <button class="sotd-tool" onClick={() => open(today)} aria-label={t('Change')} title={t('Change')}><Icon name="refresh" size={17} /></button>
-            <button class="sotd-tool" onClick={surprise} disabled={busy || songs.length < 2} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="dice-5" size={17} /></button>
-            <button class="sotd-tool" onClick={() => navigate('song/' + song.id)} aria-label={t('Open')} title={t('Open')}><Icon name="arrow-up-right" size={17} /></button>
+            <button class="sotd-tool" onClick={() => open(today)} aria-label={t('Change')} title={t('Change')}><Icon name="refresh" size={16} /></button>
+            <button class="sotd-tool" onClick={surprise} disabled={busy || songs.length < 2} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="dice-5" size={16} /></button>
+            <button class="sotd-tool" onClick={() => navigate('song/' + song.id)} aria-label={t('Open')} title={t('Open')}><Icon name="arrow-up-right" size={16} /></button>
           </span>
         )}
       </header>

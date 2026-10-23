@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.14',
+    date: '2026-10-23',
+    changes: [
+      'The song of the day’s Change, Shuffle and Open buttons and the status preview’s people, place and weather marks use the standard icon sizes',
+    ],
+  },
+  {
     version: '1.128.13',
     date: '2026-10-23',
     changes: [

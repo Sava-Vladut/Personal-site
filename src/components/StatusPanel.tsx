@@ -157,9 +157,9 @@ export function StatusPanel() {
                 {trail && <StatusTrail trail={trail} compact />}
                 {(d?.people || d?.place || d?.weather) && (
                   <span class="status-preview-extra">
-                    {d.people && <span><Icon name="heart" size={13} /> {d.people.map((p) => p.name).join(', ')}</span>}
-                    {d.place && <span><Icon name="map-pin" size={13} /> {d.place.name}</span>}
-                    {d.weather && <span><Icon name="cloud" size={13} /> {fmtTemp(d.weather.temp)} · {weatherName(d.weather.code)}</span>}
+                    {d.people && <span><Icon name="heart" size={14} /> {d.people.map((p) => p.name).join(', ')}</span>}
+                    {d.place && <span><Icon name="map-pin" size={14} /> {d.place.name}</span>}
+                    {d.weather && <span><Icon name="cloud" size={14} /> {fmtTemp(d.weather.temp)} · {weatherName(d.weather.code)}</span>}
                   </span>
                 )}
               </span>
