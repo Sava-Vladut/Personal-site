@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.7',
+    date: '2026-10-23',
+    changes: [
+      'The Twitch live dot and the photo viewer’s icons take their colours from the app’s shared palette (they look the same)',
+    ],
+  },
+  {
     version: '1.128.6',
     date: '2026-10-23',
     changes: [

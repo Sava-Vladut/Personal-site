@@ -37,6 +37,7 @@ existing pattern, not to add a one-off value.
 | `--on-ink` | Text on an ink (primary) button |
 | `--on-color` | Text and icons on a feeling's colour or a photo (instead of `#fff`) |
 | `--danger` | Destructive actions and errors only |
+| `--live` | Twitch's live red: the live dot only (a brand mark, same in both themes) |
 | `--pos` / `--neg` | Pleasant / unpleasant in charts |
 | `--emo-*` | The eight emotion worlds (CVD-validated). The only saturated colours in the UI |
 
@@ -45,7 +46,8 @@ tinted background, `color-mix(in oklab, var(--c) 55%, var(--ink))` for text on i
 
 Allowed literal colours: scrims over photos and covers, artwork (vinyl, paper, wood, the intro's night
 sky), brand marks (Twitch purple, Spotify green, GitHub language colours), the Word look of notes (Word
-blue, highlighter) and `#000` inside `mask-image` (only its alpha counts).
+blue, highlighter), and black or white in a mask (`mask-image`, or a shape inside an SVG `<mask>`), where
+only the alpha counts.
 
 ## Type
 

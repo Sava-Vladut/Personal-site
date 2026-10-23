@@ -3,7 +3,7 @@
 .tw-live {
   position: relative; isolation: isolate;
   display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; margin-right: 6px; vertical-align: 1px;
-  background: #eb0400;
+  background: var(--live);
 }
 /* its halo (a 3px ring that breathes out to 5px and fades) scales on the compositor instead of repainting a box-shadow every frame */
 .tw-live::before {

@@ -48,7 +48,7 @@
 }
 @keyframes notice-breathe { from { scale: 1; opacity: 0.6; } 70%, to { scale: 3; opacity: 0; } }
 /* a channel that's live: a red dot on its badge, like the Twitch page's */
-.notice-live { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #eb0400; box-shadow: 0 0 0 2px var(--bg); }
+.notice-live { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 2px var(--bg); }
 @media (prefers-reduced-motion: reduce) { .notice-dot::before { animation: none; } }
 
 .wd-zone + .wd-zone { margin-top: 18px; }

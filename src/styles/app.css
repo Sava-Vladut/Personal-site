@@ -19,6 +19,7 @@
   --danger: #b42318;
   --pos: #3a3935;           /* pleasant in charts */
   --neg: #b9b8b2;           /* unpleasant in charts */
+  --live: #eb0400;          /* Twitch's live red: a brand mark, the same in both themes */
   --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 30px -12px rgb(0 0 0 / 0.16);
   /* elevation: resting cards and controls; floating cards and menus (= --shadow); sheets, dialogs and popovers */
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.05);
@@ -809,7 +810,7 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 /* the full-screen viewer (PhotoSwipe) */
 .pswp.viewer { --pswp-bg: #000; }
 .viewer .pswp__top-bar { padding-top: var(--safe-t); height: calc(60px + var(--safe-t)); }
-.viewer .viewer-icn { fill: none; color: #fff; width: 24px; height: 24px; top: 18px; left: 13px; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+.viewer .viewer-icn { fill: none; color: var(--on-color); width: 24px; height: 24px; top: 18px; left: 13px; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
 .viewer .pswp__button[hidden] { display: none; }
 .viewer .pswp__caption {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; padding: 28px 18px calc(var(--safe-b) + 16px);
