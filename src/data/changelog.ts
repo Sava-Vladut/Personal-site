@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.119.0',
+    date: '2026-10-23',
+    changes: [
+      'A new opening when you open the app: just the brain, on a dark screen',
+      'A ring of letters closes in and pulls together into the brain, which spins into place as a wave of colour runs through it',
+      'Then you fly straight into it, the letters streaking past, and your journal opens from the middle',
+      'Tap or press any key to hurry it along',
+      'The sign-in page with the brain hasn’t changed',
+    ],
+  },
+  {
     version: '1.118.2',
     date: '2026-10-23',
     changes: [

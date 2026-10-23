@@ -21,6 +21,7 @@ import './styles/fade-scroll.css';
 import './styles/fade-data.css';
 import { App } from './app';
 import './styles/desktop.css';
+import './styles/opening.css';
 import { applyTheme, init } from './lib/store';
 import { onBlocked } from './lib/db';
 import { initSync } from './lib/sync';
@@ -32,7 +33,7 @@ import { startImageFade } from './lib/fadeImages';
 import { startReveal } from './lib/reveal';
 import { routeName } from './lib/router';
 import { preloadViews, prepareView, viewFor } from './lib/views';
-import { authStatus, introSeen, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
+import { authStatus, introSeen, markIntroSeen, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
 import type { IntroProps } from './views/Intro';
 
 applyTheme();
@@ -65,14 +66,14 @@ onBlocked(() =>
 // A public note's link opens just that note, and a public status's link just the latest check-in, for anyone: no sign-in
 // and nothing of the journal is loaded.
 // Otherwise, a device that's signed in opens the journal at once and checks with the server in the background, first playing
-// the intro when the app opens on the journal; one that isn't (or no longer is) gets the intro, which boots the journal once
-// you sign in.
+// the opening when the app opens on the journal; one that isn't (or no longer is) gets the intro, which boots the journal
+// once you sign in.
 const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
 const status = location.pathname.match(/^\/status\/([A-Za-z0-9_-]{32})\/?$/);
 if (shared) void bootShared(shared[1]);
 else if (status) void bootStatus(status[1]);
 else if (signedInHere()) {
-  if (routeName() === 'journal' && !introSeen() && !matchMedia('(prefers-reduced-motion: reduce)').matches) void openWithIntro();
+  if (routeName() === 'journal' && !introSeen() && !matchMedia('(prefers-reduced-motion: reduce)').matches) void openWithBrain();
   else boot();
   void stillSignedIn().then((ok) => ok || location.reload());
 } else void gate();
@@ -122,25 +123,31 @@ async function gate() {
   );
 }
 
-/** Opening the app, signed in: the intro plays and goes in by itself, while storage and the journal load behind it. */
-async function openWithIntro() {
-  let entered!: (dive: Promise<void>) => void;
-  boot(new Promise<void>((done) => { entered = (dive) => void dive.then(done); }));
+/** Opening the app, signed in: the brain closes in on a dark screen while storage and the journal load behind it, and the
+ * journal opens up from inside it. */
+async function openWithBrain() {
+  markIntroSeen();
+  let reveal!: () => void;
+  const ready = boot(new Promise<void>((done) => { reveal = done; }));
+  const cover = document.body.appendChild(document.createElement('div'));
+  cover.className = 'opening';
   try {
-    await prepareView('intro');
+    const { playOpening } = await import('./lib/opening');
+    await playOpening(cover, ready, reveal);
   } catch {
-    return entered(Promise.resolve()); // offline without it: straight in
+    reveal(); // offline without it: straight in
   }
-  const Intro = viewFor('intro') as ComponentType<IntroProps>;
-  render(<Intro auto onEnter={entered} />, document.getElementById('app')!);
+  cover.remove();
 }
 
-/** Start storage and the first screen together (and the intro's dive, when coming from it). Other screens load only
- * when visited; the service worker still precaches every screen for offline use. */
-function boot(dive?: Promise<void>) {
+/** Start storage and the first screen together (and the intro's dive, when coming from it); the app shows once both are
+ * in and the dive is over. Other screens load only when visited; the service worker still precaches every screen for
+ * offline use. Returns when storage and the screen are in, or one has failed. */
+function boot(dive?: Promise<void>): Promise<unknown> {
   let databaseError = false;
   const database = init().catch((error) => { databaseError = true; throw error; });
-  Promise.all([database, prepareView(routeName()), dive]).then(async () => {
+  const loaded = Promise.all([database, prepareView(routeName())]);
+  Promise.all([loaded, dive]).then(async () => {
     // A deep link may change while storage or a screen is loading.
     let name;
     do { name = routeName(); await prepareView(name); } while (name !== routeName());
@@ -159,6 +166,7 @@ function boot(dive?: Promise<void>) {
     // not over the intro while it's still playing
     (e) => void Promise.resolve(dive).then(() => failed(e, databaseError)),
   );
+  return loaded;
 }
 
 function failed(e: unknown, databaseError: boolean) {

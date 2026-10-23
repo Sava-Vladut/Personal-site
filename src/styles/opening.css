@@ -1,0 +1,35 @@
+/* The opening (lib/opening.ts): a dark screen over the app as it starts, the brain closing in on it, then an iris with a
+   white-hot rim that opens from the middle onto the journal. Its own dark colours, whatever the theme, because the app is
+   already underneath. Loaded with the app shell, so the screen is dark from the first paint. */
+/* the iris's radius, in vmax: a plain number, so it animates smoothly */
+@property --hole { syntax: '<number>'; inherits: false; initial-value: 0; }
+
+.opening {
+  position: fixed; inset: 0; z-index: 1100; overflow: hidden; isolation: isolate;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  --dark: radial-gradient(120% 90% at 50% 46%, #111117, #050507 68%);
+  background: var(--dark);
+}
+/* a soft glow behind the brain, which blooms as you fly in */
+.opening::before {
+  content: ''; position: absolute; left: 50%; top: 50%; z-index: -1; width: 130vmin; aspect-ratio: 1; translate: -50% -50%;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(144 133 233 / 0.24), rgb(57 135 229 / 0.09) 55%, transparent);
+  opacity: 0; animation: opening-glow 1.3s var(--ease) 0.25s forwards;
+}
+.opening canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.opening.diving::before { scale: 2.8; transition: scale 1s cubic-bezier(0.55, 0, 0.8, 0.2); }
+.opening.out {
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, transparent calc(var(--hole) * 1vmax - 1px), rgb(255 244 214 / 0.55) calc(var(--hole) * 1vmax), rgb(144 133 233 / 0.18) calc(var(--hole) * 1vmax + 26px), transparent calc(var(--hole) * 1vmax + 90px)),
+    var(--dark);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole) * 1vmax), #000 calc(var(--hole) * 1vmax + 1px));
+  mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--hole) * 1vmax), #000 calc(var(--hole) * 1vmax + 1px));
+  animation: opening-iris 0.7s cubic-bezier(0.7, 0, 0.25, 1) forwards;
+}
+@keyframes opening-glow { to { opacity: 1; } }
+@keyframes opening-iris {
+  80% { opacity: 1; }
+  to { --hole: 80; opacity: 0; }
+}

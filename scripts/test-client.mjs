@@ -551,72 +551,145 @@ test('a device without the note goes straight in when its cookie is still good, 
   }
 });
 
-test('a signed-in device opens with the intro once a visit, with the journal loading behind it until the dive ends', async () => {
-  const rendered = [], dive = deferred();
-  let inits = 0;
+/** The page as far as the opening touches it: the cover it adds over the app. */
+function openingPage() {
+  const added = [];
+  const cover = () => ({ className: '', removed: false, remove() { this.removed = true; } });
+  return { added, document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {}, createElement: cover, body: { appendChild: (el) => (added.push(el), el) } } };
+}
+
+test('a signed-in device opens with the brain once a visit, with the journal loading behind it until the iris opens', async () => {
+  const rendered = [], played = [], page = openingPage(), finished = deferred();
+  let inits = 0, seen = 0;
   function App() {}
-  function Intro() {}
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => { inits++; } },
-    './lib/auth': { signedInHere: () => true, introSeen: () => false, stillSignedIn: async () => true },
+    './lib/auth': { signedInHere: () => true, introSeen: () => false, markIntroSeen: () => seen++, stillSignedIn: async () => true },
     './lib/router': { routeName: () => 'journal' },
-    './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: (name) => (name === 'intro' ? Intro : null) },
+    './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: () => null },
+    './lib/opening': { playOpening: (cover, ready, reveal) => (played.push({ cover, ready, reveal }), finished.promise) },
   }, {
-    navigator: {}, addEventListener() {}, matchMedia: () => ({ matches: false }),
-    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
+    navigator: {}, addEventListener() {}, matchMedia: () => ({ matches: false }), document: page.document,
   });
   await settle();
-  assert.equal(rendered.length, 1);
-  assert.equal(rendered[0].type, Intro);
-  assert.equal(rendered[0].props.auto, true, 'it goes in by itself');
-  assert.equal(inits, 1, 'storage opens while the intro plays');
-  rendered[0].props.onEnter(dive.promise);
+  assert.equal(seen, 1, 'it plays once a visit');
+  assert.equal(played.length, 1);
+  assert.equal(page.added[0].className, 'opening', 'a dark cover goes over the page at once');
+  assert.equal(played[0].cover, page.added[0]);
+  assert.equal(inits, 1, 'storage opens while the brain closes in');
+  let ready = false;
+  void played[0].ready.then(() => { ready = true; });
   await settle();
-  assert.equal(rendered.length, 1, 'the app waits for the dive to finish');
-  dive.resolve(); await settle();
-  assert.equal(rendered[1].type, App);
+  assert.ok(ready, 'the opening is told once the journal is ready to go in');
+  assert.equal(rendered.length, 0, 'the app waits for the brain to fill the screen');
+  played[0].reveal(); await settle(); await settle();
+  assert.equal(rendered[0].type, App, 'the journal is put in behind the iris');
+  assert.ok(!page.added[0].removed, 'the cover stays while the iris opens');
+  finished.resolve(); await settle();
+  assert.ok(page.added[0].removed, 'and goes once it has');
 });
 
-test('a signed-in device goes straight in after the intro has played, on a deep link, with reduced motion, or when the intro can’t load', async () => {
-  for (const [route, seen, reduced, introLoads] of [['journal', true, false, true], ['brain', false, false, true], ['journal', false, true, true], ['journal', false, false, false]]) {
-    const rendered = [];
+test('a signed-in device goes straight in after the opening has played, on a deep link, with reduced motion, or when the opening can’t load', async () => {
+  for (const [route, seen, reduced, loads] of [['journal', true, false, true], ['brain', false, false, true], ['journal', false, true, true], ['journal', false, false, false]]) {
+    const rendered = [], page = openingPage();
     function App() {}
     await load('src/main.tsx', {
       preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
       './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
-      './lib/auth': { signedInHere: () => true, introSeen: () => seen, stillSignedIn: async () => true },
+      './lib/auth': { signedInHere: () => true, introSeen: () => seen, markIntroSeen() {}, stillSignedIn: async () => true },
       './lib/router': { routeName: () => route },
-      './lib/views': { preloadViews() {}, prepareView: (name) => (name === 'intro' && !introLoads ? Promise.reject(new Error('Offline')) : Promise.resolve()), viewFor() {} },
+      './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor() {} },
+      './lib/opening': { playOpening: async () => { if (!loads) throw new Error('Offline'); await new Promise(() => {}); } },
     }, {
-      navigator: {}, addEventListener() {}, matchMedia: () => ({ matches: reduced }),
-      document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
+      navigator: {}, addEventListener() {}, matchMedia: () => ({ matches: reduced }), document: page.document,
     });
     await settle(); await settle();
-    assert.equal(rendered.length, 1, `${route}, seen ${seen}, reduced ${reduced}, intro loads ${introLoads}`);
+    assert.equal(rendered.length, 1, `${route}, seen ${seen}, reduced ${reduced}, opening loads ${loads}`);
     assert.equal(rendered[0].type, App);
+    assert.ok(page.added.every((el) => el.removed), 'no cover left over the app');
   }
 });
 
-test('a storage failure behind the opening intro waits for the dive instead of covering the brain', async () => {
-  const rendered = [], dive = deferred();
-  function Intro() {}
+test('a storage failure behind the opening waits for the brain to fill the screen instead of covering it', async () => {
+  const rendered = [], played = [], page = openingPage();
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
-    './lib/auth': { signedInHere: () => true, introSeen: () => false, stillSignedIn: async () => true },
+    './lib/auth': { signedInHere: () => true, introSeen: () => false, markIntroSeen() {}, stillSignedIn: async () => true },
     './lib/router': { routeName: () => 'journal' },
-    './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: () => Intro },
+    './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: () => null },
+    './lib/opening': { playOpening: (cover, ready, reveal) => (played.push({ ready, reveal }), new Promise(() => {})) },
   }, {
-    console: { error() {} }, navigator: {}, addEventListener() {}, matchMedia: () => ({ matches: false }),
-    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
+    console: { error() {} }, navigator: {}, addEventListener() {}, matchMedia: () => ({ matches: false }), document: page.document,
   });
   await settle(); await settle();
-  assert.equal(rendered.length, 1);
-  assert.equal(rendered[0].type, Intro);
-  rendered[0].props.onEnter(dive.promise);
-  dive.resolve(); await settle(); await settle();
-  assert.match(JSON.stringify(rendered[1]), /storage is unavailable/);
+  let ready = false;
+  void played[0].ready.catch(() => { ready = true; });
+  await settle();
+  assert.ok(ready, 'the opening hears that storage failed, so it can go in anyway');
+  assert.equal(rendered.length, 0);
+  played[0].reveal(); await settle(); await settle();
+  assert.match(JSON.stringify(rendered[0]), /storage is unavailable/);
+});
+
+test('the opening: letters close in, the brain lights up, the camera flies in, and the journal opens behind an iris', async () => {
+  const shape = await load('src/lib/brainShape.ts');
+  const brain3d = await load('src/lib/brain3d.ts', { './brainShape': shape });
+  const draws = [];
+  const ctx = new Proxy({}, { get: (_t, name) => (name === 'drawImage' ? (...a) => draws.push(a) : () => {}), set: () => true });
+  const canvas = () => ({ width: 0, height: 0, setAttribute() {}, getContext: () => ctx });
+  const atlas = { width: 0, height: 0, getContext: () => ({ fillText() {} }) };
+  const listeners = new Map(), windowListeners = new Map(), classes = new Set();
+  const cover = {
+    appendChild: (el) => el, classList: { add: (c) => classes.add(c) },
+    addEventListener: (n, fn) => listeners.set(n, fn), removeEventListener: (n) => listeners.delete(n),
+  };
+  const timers = [];
+  let frame = null, now = 1000, theme = '#fafaf9';
+  const meta = { getAttribute: () => theme, setAttribute: (_n, v) => { theme = v; } };
+  const { playOpening } = await load('src/lib/opening.ts', {
+    '../data/emotions': { CORES: shape.PATCHES.map((p) => ({ id: p.world, color: ['#000000', '#9085e9'] })) },
+    './brainShape': shape, './brain3d': brain3d,
+  }, {
+    document: { createElement: (tag) => (tag === 'canvas' && !draws.atlas ? (draws.atlas = true, canvas()) : atlas), querySelector: () => meta },
+    requestAnimationFrame: (fn) => { frame = fn; return 1; }, cancelAnimationFrame() {},
+    setTimeout: (fn, ms) => timers.push([fn, ms]), clearTimeout() {},
+    addEventListener: (n, fn) => windowListeners.set(n, fn), removeEventListener: (n) => windowListeners.delete(n),
+    performance: { now: () => now }, devicePixelRatio: 1, innerWidth: 400, innerHeight: 800,
+  });
+  const ready = deferred();
+  let reveals = 0, over = false;
+  const done = playOpening(cover, ready.promise, () => reveals++).then(() => { over = true; });
+  assert.equal(theme, '#050507', 'a dark status bar while it plays');
+  assert.equal(draws.length, 0, 'nothing is built or drawn before the dark screen has painted');
+  timers.shift()[0]();
+  const run = (n) => { let drawn = 0; for (let i = 0; i < n && frame; i++) { draws.length = 0; const f = frame; frame = null; f((now += 17)); drawn = draws.length; } return drawn; };
+  const rows = () => new Set(draws.map((a) => a[2] / a[3]));
+
+  assert.ok(run(20) > 200, 'letters are closing in');
+  const settled = run(70);
+  assert.ok(settled > 500, `a whole brain of letters: ${settled}`);
+  assert.ok([...rows()].some((r) => r >= 3), 'its regions are lit in their own colours');
+  assert.ok(draws.every((a) => Number.isFinite(a[5]) && Number.isFinite(a[6])));
+  assert.ok(!classes.has('diving'), 'it waits for the journal to be ready');
+
+  ready.resolve(); await settle();
+  listeners.get('pointerdown')();
+  run(2);
+  assert.ok(classes.has('diving'), 'then flies in');
+  assert.equal(reveals, 0, 'the journal stays out until the brain fills the screen');
+  run(40);
+  assert.equal(reveals, 1, 'the journal is put in behind');
+  assert.ok(classes.has('out'), 'and the iris opens onto it');
+  assert.ok(!over);
+  listeners.get('animationend')({ animationName: 'opening-glow' });
+  await settle();
+  assert.ok(!over, 'the glow behind the brain finishing doesn’t end it');
+  listeners.get('animationend')({ animationName: 'opening-iris' });
+  await done;
+  assert.equal(theme, '#fafaf9', 'the page’s status bar colour is back');
+  assert.equal(listeners.size + windowListeners.size, 0, 'cleaned up');
 });
 
 test('a signed-in device reloads into the intro once the server says it was signed out', async () => {
