@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.129.1',
+    date: '2026-10-24',
+    changes: [
+      'Notes: a numbered or bulleted line uses the full width of the page on a phone instead of wrapping in a narrow column',
+      'Notes: a callout’s title with bold words or a tag in it wraps as one line of text',
+    ],
+  },
+  {
     version: '1.129.0',
     date: '2026-10-24',
     changes: [

@@ -117,19 +117,24 @@ function Blocks({ blocks, onTask }: { blocks: Block[]; onTask?: (line: number) =
             return <p>{b.lines.map((l, i) => <>{i > 0 && <br />}{inline(l)}</>)}</p>;
           case 'li':
             return (
-              <div class={`md-li md-${b.kind}${b.done ? ' is-done' : ''}`} style={b.depth ? { '--depth': b.depth } : undefined}>
+              // the bullet or number is drawn in the margin from data-marker, as in the editor (notes.css)
+              <div
+                class={`md-li md-${b.kind}${b.done ? ' is-done' : ''}`}
+                data-marker={b.kind === 'task' ? undefined : b.kind === 'ol' ? b.marker : '•'}
+                style={b.depth ? { '--depth': b.depth } : undefined}
+              >
                 {b.kind === 'task' ? (
-                  <input
-                    type="checkbox"
-                    checked={b.done}
-                    disabled={!onTask}
-                    onClick={(e) => { e.stopPropagation(); onTask?.(b.line); }}
-                    aria-label={b.done ? t('Done') : t('To do')}
-                  />
-                ) : (
-                  <span class="md-marker" aria-hidden="true">{b.kind === 'ol' ? b.marker : '•'}</span>
-                )}
-                <span class="md-li-text">{inline(b.text)}</span>
+                  <>
+                    <input
+                      type="checkbox"
+                      checked={b.done}
+                      disabled={!onTask}
+                      onClick={(e) => { e.stopPropagation(); onTask?.(b.line); }}
+                      aria-label={b.done ? t('Done') : t('To do')}
+                    />
+                    <div class="md-li-text">{inline(b.text)}</div>
+                  </>
+                ) : inline(b.text)}
               </div>
             );
           case 'quote':

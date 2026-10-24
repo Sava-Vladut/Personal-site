@@ -5,7 +5,7 @@ import { h, render } from 'preact';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { EditorView, NodeView, NodeViewConstructor } from '@tiptap/pm/view';
 import { toggleTask } from '../lib/noteDoc/edit';
-import { depthOf, type ListItemAttrs } from '../lib/noteDoc';
+import { depthOf, listItemLook, type ListItemAttrs } from '../lib/noteDoc';
 import type { Media } from '../lib/body';
 import { InText, PersonMention, SongMention, WikiLink } from '../components/mentions';
 import { t } from '../lib/i18n';
@@ -13,32 +13,27 @@ import { t } from '../lib/i18n';
 /* ---------- list items ---------- */
 
 /**
- * A bullet, a number or a task. A task's box is a real checkbox outside the text: a tap ticks it (in the reading view
- * too) and the caret stays where it was, the keyboard staying down.
+ * A bullet, a number or a task. A bullet or number is one plain block of words, its marker drawn by CSS in the margin
+ * (schema.ts listItemLook): nothing in the line but the words. A task's box is a real checkbox beside its words (in
+ * the margin too): a tap ticks it (in the reading view too) and the caret stays where it was, the keyboard staying down.
  */
 class ListItemView implements NodeView {
   dom: HTMLElement;
   contentDOM: HTMLElement;
-  private box: HTMLElement;
+  private box: HTMLInputElement | null = null;
 
   constructor(private node: PMNode, private view: EditorView, private getPos: () => number | undefined) {
     this.dom = document.createElement('div');
-    this.contentDOM = document.createElement('span');
-    this.contentDOM.className = 'md-li-text';
-    this.box = this.makeBox();
-    this.dom.append(this.box, this.contentDOM);
+    if (node.attrs.kind === 'task') {
+      this.box = this.makeBox();
+      this.contentDOM = document.createElement('div');
+      this.contentDOM.className = 'md-li-text';
+      this.dom.append(this.box, this.contentDOM);
+    } else this.contentDOM = this.dom;
     this.draw();
   }
 
-  private makeBox(): HTMLElement {
-    const a = this.node.attrs as ListItemAttrs;
-    if (a.kind !== 'task') {
-      const s = document.createElement('span');
-      s.className = 'md-marker';
-      s.contentEditable = 'false';
-      s.setAttribute('aria-hidden', 'true');
-      return s;
-    }
+  private makeBox(): HTMLInputElement {
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.contentEditable = 'false';
@@ -77,17 +72,19 @@ class ListItemView implements NodeView {
   }
 
   private draw() {
-    // the browser may have taken the marker or box out (a phone's Backspace): it goes back in
-    if (!this.dom.contains(this.box)) this.dom.prepend(this.box);
     const a = this.node.attrs as ListItemAttrs;
+    const look = listItemLook(a);
     const depth = depthOf(a.indent);
-    this.dom.className = `md-li md-${a.kind}${a.kind === 'task' && a.checked ? ' is-done' : ''}`;
+    this.dom.className = look.class;
+    if (look['data-marker']) this.dom.setAttribute('data-marker', look['data-marker']);
+    else this.dom.removeAttribute('data-marker');
     if (depth) this.dom.style.setProperty('--depth', String(depth));
     else this.dom.style.removeProperty('--depth');
-    if (this.box instanceof HTMLInputElement) {
-      this.box.checked = a.checked;
-      this.box.setAttribute('aria-label', a.checked ? t('Done') : t('To do'));
-    } else this.box.textContent = a.kind === 'ol' ? a.num + '.' : '•';
+    if (!this.box) return;
+    // the browser may have taken the box out (a phone's Backspace): it goes back in
+    if (!this.dom.contains(this.box)) this.dom.prepend(this.box);
+    this.box.checked = a.checked;
+    this.box.setAttribute('aria-label', a.checked ? t('Done') : t('To do'));
   }
 
   update(node: PMNode) {
@@ -98,11 +95,15 @@ class ListItemView implements NodeView {
   }
 
   stopEvent(e: Event) {
-    return e.target === this.box;
+    return !!this.box && e.target === this.box;
   }
 
   ignoreMutation(m: MutationRecord | { type: 'selection'; target: Node }) {
-    return m.type !== 'selection' && !this.contentDOM.contains(m.target);
+    if (m.type === 'selection') return false;
+    // the line's look (its class, depth and marker) is drawn here, not read back as words
+    if (m.type === 'attributes' && m.target === this.dom) return true;
+    if (this.box && !this.dom.contains(this.box)) queueMicrotask(() => this.draw());
+    return !this.contentDOM.contains(m.target);
   }
 }
 

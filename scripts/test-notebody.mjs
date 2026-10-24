@@ -121,6 +121,37 @@ test('a note opens as its text, drawn as the reading view draws it, and writes b
   assert.equal(ed.querySelector('pre code').textContent, 'code **not bold**');
 });
 
+test('a bullet or numbered line is one plain block of words, its marker drawn in the margin (never an element)', () => {
+  const { n, host, type, press } = mount('1. Academic escape. Getting out this way is hard\n- a point\n- [ ] a task');
+  const [ol, ul, task] = host.querySelectorAll('.note-editor > .md-li');
+  // the words are the line's only content: nothing beside them a phone could type around, delete or squeeze them by
+  assert.equal(ol.getAttribute('data-marker'), '1.');
+  assert.equal(ol.children.length, 0);
+  assert.equal(ol.textContent, 'Academic escape. Getting out this way is hard');
+  assert.equal(ul.getAttribute('data-marker'), '•');
+  assert.equal(ul.children.length, 0);
+  // a task's box sits apart from its words
+  assert.equal(task.hasAttribute('data-marker'), false);
+  assert.deepEqual([...task.children].map((c) => c.tagName + '.' + c.className), ['INPUT.', 'DIV.md-li-text']);
+  // the number follows the list as it changes
+  n.focus(ol.textContent.length + 1);
+  press('Enter');
+  type('Second');
+  const items = host.querySelectorAll('.note-editor > .md-ol');
+  assert.deepEqual([...items].map((li) => li.getAttribute('data-marker')), ['1.', '2.']);
+  assert.equal(items[1].children.length, 0);
+  assert.equal(n.text(), '1. Academic escape. Getting out this way is hard\n2. Second\n- a point\n- [ ] a task');
+  // copied and pasted, the old drawing (a marker beside .md-li-text) and the new one read as the same items: the
+  // marker never comes along as words
+  const legacy = '<div class="md-li md-ul" data-kind="ul"><span class="md-marker" contenteditable="false">•</span><span class="md-li-text">old</span></div>';
+  const fresh = '<div class="md-li md-ul" data-kind="ul" data-marker="•">new</div>';
+  const t = '<div class="md-li md-task" data-kind="task" data-checked="true" data-check="x"><input type="checkbox"><div class="md-li-text">done</div></div>';
+  n.focus('end');
+  press('Enter');
+  n.view.pasteHTML(legacy + fresh + t);
+  assert.match(n.text(), /\n- old\n- new\n- \[x\] done$/);
+});
+
 test('Markdown typed at the start of a line or around words becomes what it writes', () => {
   const { n, type, press, end, seen } = mount('');
   end();

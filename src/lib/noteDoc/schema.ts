@@ -152,6 +152,12 @@ const levelOf = (el: HTMLElement) => {
 
 /* ---------- nodes ---------- */
 
+/** A list item's class, and the bullet or number its margin shows (CSS draws data-marker; a task shows its box). */
+export function listItemLook(a: ListItemAttrs): { class: string; 'data-marker'?: string } {
+  const look = { class: `md-li md-${a.kind}${a.kind === 'task' && a.checked ? ' is-done' : ''}` };
+  return a.kind === 'task' ? look : { ...look, 'data-marker': a.kind === 'ol' ? a.num + '.' : '•' };
+}
+
 /** The text a chip is written as: @[person:id|Name], ♪[song:id|Title], [[note:id|Title]]. */
 export function atomToken(type: string, a: AtomAttrs): string {
   const t = a.target || null;
@@ -202,6 +208,11 @@ const nodes: Record<string, NodeSpec> = {
   /**
    * A list item: a bullet, a number or a task, one line each (lists are flat, as in the text). How deep it sits
    * comes from its indent. `p[data-li]` is what pasted lists are flattened to (src/editor/paste.ts).
+   *
+   * It's drawn as one plain block of words, like a paragraph: the bullet or number is CSS in its left margin (from
+   * data-marker), never an element beside the words. A phone's editing can't type around, delete or squeeze a marker
+   * that isn't there, and the words always get the line's whole width. Only a task has an element of its own, its
+   * box, set apart from its words (.md-li-text).
    */
   listItem: node({
     group: 'flow',
@@ -219,7 +230,8 @@ const nodes: Record<string, NodeSpec> = {
       sep: data('sep', ' '),
     },
     parse: [
-      { tag: 'div.md-li', contentElement: '.md-li-text' },
+      // a task's words (and, in older copies, every item's) sit in .md-li-text beside the box or marker
+      { tag: 'div.md-li', contentElement: (el: HTMLElement) => el.querySelector<HTMLElement>(':scope > .md-li-text') ?? el },
       {
         tag: 'p[data-li]',
         priority: 60, // before a plain paragraph's rule
@@ -237,15 +249,9 @@ const nodes: Record<string, NodeSpec> = {
     render: (n, html) => {
       const a = n.attrs as ListItemAttrs;
       const depth = depthOf(a.indent);
-      const box: DOMOutputSpec = a.kind === 'task'
-        ? ['input', { type: 'checkbox', contenteditable: 'false', ...(a.checked && { checked: '' }) }]
-        : ['span', { class: 'md-marker', contenteditable: 'false', 'aria-hidden': 'true' }, a.kind === 'ol' ? a.num + '.' : '•'];
-      return [
-        'div',
-        merge(html, { class: `md-li md-${a.kind}${a.kind === 'task' && a.checked ? ' is-done' : ''}` }, depth > 0 && { style: `--depth: ${depth}` }),
-        box,
-        ['span', { class: 'md-li-text' }, 0],
-      ];
+      const attrs = merge(html, listItemLook(a), depth > 0 && { style: `--depth: ${depth}` });
+      if (a.kind !== 'task') return ['div', attrs, 0];
+      return ['div', attrs, ['input', { type: 'checkbox', contenteditable: 'false', ...(a.checked && { checked: '' }) }], ['div', { class: 'md-li-text' }, 0]];
     },
   }),
 

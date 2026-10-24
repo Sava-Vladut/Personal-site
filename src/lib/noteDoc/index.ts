@@ -7,7 +7,7 @@
 //
 // The few texts that come back different are listed in scripts/test-notedoc.mjs (`>x` → `> x` and the like).
 export {
-  noteSchema, atomToken, STYLE_MARKS, ATOM_MARKS,
+  noteSchema, atomToken, listItemLook, STYLE_MARKS, ATOM_MARKS,
   type HeadingAttrs, type ListItemAttrs, type CodeBlockAttrs, type CalloutAttrs, type HorizontalRuleAttrs,
   type MediaAttrs, type AtomAttrs, type CodeMarkAttrs, type LinkAttrs,
 } from './schema';
