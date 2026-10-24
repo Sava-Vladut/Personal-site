@@ -31,9 +31,10 @@ const bundle = await rolldown({
       `;
       if (id === '\0learn-data') return 'export const TRAPS = [], LAWS = [], PRINCIPLES = [], FAMILIES = {}, REALMS = {}, PARTS = {};';
       if (id === '\0mentions') return `
-        import { h } from 'preact';
-        const chip = (cls) => ({ text }) => h('button', { class: 'mention ' + cls }, text);
+        import { createContext, h } from 'preact';
+        const chip = (cls) => ({ text }) => h('span', { role: 'button', class: 'mention ' + cls }, text);
         export const PersonMention = chip('is-person'), SongMention = chip('is-song'), WikiLink = chip('is-wiki');
+        export const InText = createContext(false);
       `;
     },
   }],
@@ -202,6 +203,35 @@ test('an @ brings up suggestions, and picking one puts the tag in as a chip with
   // a full stop after the tag takes the place of its space
   type('.');
   assert.equal(n.text(), 'Hi @[person:p1|Ann].');
+});
+
+test('tags inside a selection light up with it, and a tap on one puts the caret on the side tapped', () => {
+  const { view, host } = mount('a @[person:p1|Ann] b');
+  const TextSelection = view.state.selection.constructor; // the editor's own copy (it opens with a caret)
+  const chip = host.querySelector('.note-chip');
+  assert.equal(chip.querySelector('.mention').getAttribute('role'), 'button', 'drawn in the text, not as a <button>');
+  // the chip is at 3 (after "a "), one character long
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 6)));
+  assert.ok(chip.classList.contains('is-in-range'), 'a selection across the tag lights it');
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 2)));
+  assert.ok(!chip.classList.contains('is-in-range'), 'a selection beside it does not');
+  chip.getBoundingClientRect = () => ({ left: 100, right: 140, top: 0, bottom: 20, width: 40, height: 20 });
+  const tap = (clientX) => view.someProp('handleClickOn', (f) => f(view, 3, view.state.doc.nodeAt(3), 3, { clientX }, true));
+  assert.ok(tap(110));
+  assert.equal(view.state.selection.head, 3, 'its left half: before it');
+  assert.ok(tap(130));
+  assert.equal(view.state.selection.head, 4, 'its right half: after it');
+  assert.ok(view.state.selection.empty, 'never the tag itself selected');
+});
+
+test('while reading, Tab reaches the tags; while writing, a press on one leaves the focus in the words', () => {
+  const { n, host } = mount('a @[person:p1|Ann] b', { editable: false });
+  const tag = () => host.querySelector('.note-chip [role="button"]');
+  assert.equal(tag().getAttribute('tabindex'), '0');
+  n.setEditable(true);
+  assert.equal(tag().getAttribute('tabindex'), null);
+  n.setEditable(false);
+  assert.equal(tag().getAttribute('tabindex'), '0');
 });
 
 test('suggestions take Enter while they are up', () => {

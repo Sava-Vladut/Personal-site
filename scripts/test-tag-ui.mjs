@@ -19,12 +19,14 @@ function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height:
     },
     useLayoutEffect(fn) { layouts.push(fn); },
     useEffect(fn) { effects.push(fn); },
+    useContext(context) { return context.value; },
   };
   const vnode = (type, props, key) => ({ type, props, key });
   const module = { exports: {} };
   vm.runInNewContext(code, {
     module, exports: module.exports,
     require: (id) => ({
+      preact: { createContext: (value) => ({ value, Provider: 'provider' }) },
       'preact/hooks': hooks,
       'preact/jsx-runtime': { jsx: vnode, jsxs: vnode, Fragment: 'fragment' },
       '../lib/store': {
@@ -83,6 +85,21 @@ test('touch tagging picks once without relying on a synthesized click and horizo
   button.onPointerCancel();
   button.onPointerUp(event());
   assert.equal(picks, 1, 'a canceled gesture must not insert a tag');
+});
+
+test('a tap on the strip\'s close button puts it away, without a second time from its click', () => {
+  const h = harness();
+  let dismissed = 0, picks = 0;
+  const props = { items: [person('Ana')], active: 0, q: 'a', canAdd: false, onPick: () => picks++, onAdd() {}, onDismiss: () => dismissed++ };
+  const close = buttons(h.render(h.MentionStrip, props)).find((b) => b.props.class === 'mention-close').props;
+  let prevented = false;
+  close.onPointerDown(event({ preventDefault: () => (prevented = true) }));
+  assert.ok(prevented, 'pressing it keeps the caret and the keyboard');
+  close.onPointerUp(event());
+  close.onClick(event({ detail: 1 }));
+  assert.equal(dismissed, 1);
+  assert.equal(picks, 0);
+  assert.ok(!buttons(h.render(h.MentionStrip, { ...props, onDismiss: undefined })).some((b) => b.props.class === 'mention-close'), 'no close button without a way to close');
 });
 
 test('mouse and keyboard clicks still select suggestions and newly created people', () => {

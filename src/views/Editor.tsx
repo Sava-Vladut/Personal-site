@@ -97,6 +97,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // an @tag (or [[ link) being typed: where its @ is and what follows it; and which suggestion is picked
   const [mention, setMentionState] = useState<Typed | null>(null);
   const [pickAt, setPickAt] = useState(0);
+  const arrowed = useRef(false); // whether the arrow keys chose among the suggestions (Return then takes "New person" too)
   const dismissed = useRef(''); // which @ Escape put away, by where it is
   const pickingMention = useRef(false);
   const people = usePeople();
@@ -151,6 +152,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const pendingImports = useRef(0);
   const cancelMove = useRef<(() => void) | null>(null);
   const marginsAt = useRef<{ at: number; m: { top: number; bottom: number } } | null>(null); // margins(), once a frame
+  const selectedOnPress = useRef(false); // whether words were selected as the last press on the page began
   const selBodyAt = useRef<{ version: number; body: Body } | null>(null);
   const addFilesNow = useRef<(files: File[]) => void>(() => {});
   // The note's words and pictures (editor/NoteBody.tsx): its document is the text, written back to the draft a moment
@@ -700,7 +702,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const inView = (): 'end' | number => {
     const r = bodyRef.current?.querySelector('.note-editor')?.getBoundingClientRect();
     const m = margins();
-    if (!r || r.bottom <= innerHeight - m.bottom || r.bottom < m.top || r.top > innerHeight) return 'end';
+    const visH = window.visualViewport?.height ?? innerHeight;
+    if (!r || r.bottom <= visH - m.bottom || r.bottom < m.top || r.top > visH) return 'end';
     return noteRef.current?.posAt(r.left + 2, Math.max(r.top, m.top) + 4) ?? 'end';
   };
   /** Switches to writing, with the caret at a position (or the start or end of the note, or where it was). */
@@ -719,7 +722,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const toggleReading = () => (reading ? write() : setReading(true));
   /** A tap on the words of the reading view starts writing there; links, tags, ticks and selecting text don't. */
   const tapToWrite = (e: MouseEvent) => {
-    if (!reading || (e.target as Element).closest('a, input, button, .media, .note-chip') || !getSelection()?.isCollapsed) return;
+    // a tap that only puts a selection away (a phone clears it before the click) doesn't start writing either
+    if (!reading || selectedOnPress.current || (e.target as Element).closest('a, input, button, .media, .note-chip') || !getSelection()?.isCollapsed) return;
     if (!(e.target as Element).closest('.note-editor')) return;
     write(noteRef.current?.posAt(e.clientX, e.clientY) ?? 'end');
   };
@@ -730,7 +734,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const clickPaper = (e: MouseEvent) => {
     const host = bodyRef.current;
     const target = e.target as Element;
-    if (!host || (target !== e.currentTarget && target !== host && !target.classList?.contains('note-editor-host')) || !getSelection()?.isCollapsed) return;
+    if (!host || selectedOnPress.current || (target !== e.currentTarget && target !== host && !target.classList?.contains('note-editor-host')) || !getSelection()?.isCollapsed) return;
     const words = host.querySelector('.note-editor')?.getBoundingClientRect();
     const foot = (e.currentTarget as HTMLElement).querySelector('.backlinks')?.getBoundingClientRect();
     if (!words || e.clientY <= words.bottom || (foot && e.clientY >= foot.top)) return;
@@ -766,7 +770,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (!m) dismissed.current = '';
     else if (dismissed.current === String(m.from)) m = null;
     // a new query starts at its first suggestion, in the same render (not a frame later with the old one lit)
-    if (!m || m.from !== mention?.from || m.q !== mention?.q) setPickAt(0);
+    if (!m || m.from !== mention?.from || m.q !== mention?.q) {
+      setPickAt(0);
+      arrowed.current = false;
+    }
     setMentionState((cur) => (!m ? null : cur && cur.from === m.from && cur.to === m.to && cur.q === m.q && cur.link === m.link ? cur : m));
   };
   const typing = mention;
@@ -865,9 +872,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (!choices) return false;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       setPickAt((activeChoice + (e.key === 'ArrowDown' ? 1 : -1) + choices) % choices);
+      arrowed.current = true;
       return true;
     }
-    if (e.key === 'Enter' || e.key === 'Tab') {
+    // Return picks what's found. A new person takes a tap on "New person" (or Tab, or the arrows to it): Return after
+    // an @word nobody is called just ends the line, as a phone's keyboard user means it to
+    if ((e.key === 'Enter' || e.key === 'Tab') && (activeChoice < suggestions.length || e.key === 'Tab' || arrowed.current)) {
       pickMention(activeChoice < suggestions.length ? suggestions[activeChoice] : 'new');
       return true;
     }
@@ -894,10 +904,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const shown = (el: Element | null) => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
     const wide = document.querySelector('.ribbon.is-wide:not(.is-focus)');
     const head = document.querySelector('.page.editor .editor-bar');
-    const top = Math.max(wide ? wide.getBoundingClientRect().bottom : 0, shown(head) ? head!.getBoundingClientRect().bottom : 0);
+    // ProseMirror measures the window as the part of the page in view (the visual viewport, 0 to its height). On
+    // Android the layout's innerHeight keeps the keyboard's height, so it can't be what the bar is taken from.
+    const vv = window.visualViewport;
+    const visTop = vv?.offsetTop ?? 0, visH = vv?.height ?? innerHeight;
+    const top = Math.max(visTop, wide ? wide.getBoundingClientRect().bottom : 0, shown(head) ? head!.getBoundingClientRect().bottom : 0);
     const bars = [...document.querySelectorAll('.ribbon-root .format-bar:not(.is-tucked):not(.is-wide), .note-status')].filter(shown);
-    const barTop = Math.min(innerHeight, ...bars.map((b) => b.getBoundingClientRect().top));
-    const m = { top: Math.max(0, top) + 24, bottom: Math.max(0, innerHeight - barTop) + 24 };
+    const barTop = Math.min(visTop + visH, ...bars.map((b) => b.getBoundingClientRect().top));
+    const m = { top: Math.max(0, top) + 24, bottom: Math.max(0, visH - barTop) + 24 };
     marginsAt.current = { at: now, m };
     return m;
   };
@@ -936,7 +950,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         <button class="glass glass-btn tinted" onClick={done} disabled={adding > 0 || coverAdding}>{t('Done')}</button>
       </div>
 
-      <article class="note-sheet" onClick={clickPaper}>
+      <article class="note-sheet" onPointerDown={() => void (selectedOnPress.current = !getSelection()?.isCollapsed)} onClick={clickPaper}>
         <section class={`note-head${draft.cover ? ' has-cover' : ''}`}>
           {draft.cover && <CoverImg cover={draft.cover} class="note-head-cover" />}
           {isCheckin && <div class="eyebrow">{t('Check-in')} · {timeLabel(draft.time)}</div>}
@@ -1044,7 +1058,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         note={note}
         swapLabel={typing?.link ? t('Link a note, a book, a bias or a law') : t('Tag someone, a book or music')}
         swap={typing && (
-          <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} link={typing.link} />
+          <MentionStrip items={suggestions} active={activeChoice} q={typing.q} canAdd={canAdd} onPick={pickMention} onAdd={() => pickMention('new')} onDismiss={() => { dismissed.current = String(typing.from); setMentionState(null); }} link={typing.link} />
         )}
         context={selected && selBody ? { label: t('Picture'), content: (
             <MediaTools

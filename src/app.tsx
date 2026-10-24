@@ -28,9 +28,9 @@ export function App() {
     : route.name === 'media' ? route.query.has('add') ? route.visit : 'media'
     : route.name === 'tracker' ? `${route.query.get('world') ?? ''}|${route.query.get('person') ?? ''}`
     : route.name === 'map' ? route.query.get('focus') ?? '' : undefined;
-  // before paint, so a page transition captures the new page from its top
+  // before paint, so a page transition captures the new page from its top (or, going back, from where it was left)
   useLayoutEffect(() => {
-    if (!history.state?.mmSheet) scrollTo(0, 0);
+    if (!history.state?.mmSheet) scrollTo(0, history.state?.mmY ?? 0);
   }, [route.name, route.id]);
 
   return (

@@ -144,12 +144,30 @@ export const routeName = () => parse(0).name;
 /** Whether pages change with a transition here, rather than at once. */
 export const transitionsOn = () => !!document.startViewTransition && !reduced.matches;
 
-/** In-app navigation. Entries are tagged so goBack() knows whether "back" stays inside the app. */
+/** What the page being left wants back when "back" returns to it (its search, how far down its list goes). */
+let keeping: (() => Record<string, unknown>) | null = null;
+
+/** While a page is up: what it keeps in its history entry as you go on from it, there for it as it comes back. */
+export function keepOnLeave(keep: () => Record<string, unknown>) {
+  keeping = keep;
+  return () => void (keeping === keep && (keeping = null));
+}
+
+/** What the page kept the last time it was left from this history entry, if anything. */
+export const kept = <T>(key: string): Partial<T> => (history.state?.mmKept?.[key] ?? {}) as Partial<T>;
+
+/**
+ * In-app navigation. Entries are tagged so goBack() knows whether "back" stays inside the app, and the page being left
+ * keeps where it was scrolled to (app.tsx scrolls back there).
+ */
 export function navigate(to: string, replace = false, motion?: Motion) {
   asked = motion ?? null;
   const hash = '#/' + to.replace(/^[#/]+/, '');
   if (replace) history.replaceState({ mmInApp: history.state?.mmInApp }, '', hash);
-  else history.pushState({ mmInApp: 1 }, '', hash);
+  else {
+    if (!history.state?.mmSheet) history.replaceState({ ...history.state, mmY: scrollY, mmKept: keeping?.() }, '');
+    history.pushState({ mmInApp: 1 }, '', hash);
+  }
   dispatchEvent(new HashChangeEvent('hashchange'));
 }
 

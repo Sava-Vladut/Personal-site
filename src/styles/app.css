@@ -839,14 +839,15 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .sheet-wrap { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; }
 .sheet-backdrop { position: absolute; inset: 0; background: rgb(12 12 11 / 0.3); animation: fade-in var(--dur-2) ease-out; }
 .sheet {
-  position: relative; width: calc(100% - 16px); max-width: 560px; margin: 0 8px calc(8px + var(--safe-b));
-  max-height: calc(100dvh - 24px - var(--safe-t) - var(--safe-b));
+  /* --kb: the keyboard's height while it's up (Sheet.tsx); the sheet sits on it */
+  position: relative; width: calc(100% - 16px); max-width: 560px; margin: 0 8px calc(8px + max(var(--safe-b), var(--kb, 0px)));
+  max-height: calc(100dvh - 24px - max(var(--safe-t), var(--kb-top, 0px)) - max(var(--safe-b), var(--kb, 0px)));
   display: flex; flex-direction: column; border-radius: var(--r-xl); outline: none;
   animation: sheet-in var(--dur-3) var(--ease-emph);
 }
 .sheet.glass { background: var(--glass-fill-strong); --glass-blur: 28px; }
 .sheet.glass::after { background: linear-gradient(180deg, var(--glass-sheen), transparent 140px); }
-.sheet.tall { height: calc(100dvh - 24px - var(--safe-t) - var(--safe-b)); }
+.sheet.tall { height: calc(100dvh - 24px - max(var(--safe-t), var(--kb-top, 0px)) - max(var(--safe-b), var(--kb, 0px))); }
 .sheet-grip { width: 36px; height: 4px; border-radius: var(--r-pill); background: var(--line-2); margin: 8px auto 2px; flex: none; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px 8px 20px; flex: none; }
 .sheet-title { font: var(--w-medium) var(--text-xl)/1.2 var(--serif); display: flex; align-items: center; }

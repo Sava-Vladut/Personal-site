@@ -2,7 +2,7 @@
 // becomes what it writes, the keys behave as in Word and Notion, the document's shape is kept writable as text, #tags
 // show as tags, and what's typed after an @ (or [[) is reported for the suggestions.
 // The pure parts (what each key and rule does to the document) are in lib/noteDoc/edit, tested in Node.
-import { Plugin, PluginKey, TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
+import { NodeSelection, Plugin, PluginKey, TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
 import { Mark, type Node as PMNode } from '@tiptap/pm/model';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 import { InputRule, inputRules, undoInputRule } from '@tiptap/pm/inputrules';
@@ -208,6 +208,42 @@ const tags = new Plugin<DecorationSet>({
   props: { decorations: (state) => tagsKey.getState(state) },
 });
 
+/* ---------- tags in a selection ---------- */
+
+const CHIP = /^(person|song|wiki)$/;
+
+/**
+ * The tags inside a selection light up with it: a phone draws no selection colour over a chip, so without this a
+ * stretch of text being selected for copying looks as if it stopped at the first tag.
+ */
+const chipsInRange = new Plugin({
+  // and while reading, Tab goes from tag to tag; while writing, a press on one mustn't take the focus from the words
+  view(view) {
+    let was: boolean | null = null;
+    const sync = () => {
+      if (was === view.editable) return;
+      was = view.editable;
+      for (const el of view.dom.querySelectorAll<HTMLElement>('.note-chip [role="button"]')) {
+        if (view.editable) el.removeAttribute('tabindex');
+        else el.tabIndex = 0;
+      }
+    };
+    sync();
+    return { update: sync };
+  },
+  props: {
+    decorations(state) {
+      const sel = state.selection;
+      if (sel.empty || sel instanceof NodeSelection) return null;
+      const found: Decoration[] = [];
+      state.doc.nodesBetween(sel.from, sel.to, (n, pos) => {
+        if (CHIP.test(n.type.name) && pos >= sel.from && pos + n.nodeSize <= sel.to) found.push(Decoration.node(pos, pos + n.nodeSize, { class: 'is-in-range' }));
+      });
+      return found.length ? DecorationSet.create(state.doc, found) : null;
+    },
+  },
+});
+
 /* ---------- suggestions ---------- */
 
 /**
@@ -288,6 +324,7 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
       appendTransaction: (trs, _old, state) => (trs.some((tr) => tr.docChanged) ? normalizeTr(state) : null),
     }),
     tags,
+    chipsInRange,
     suggest(opts.onTyped),
     gapCursor(),
     dropCursor({ color: 'var(--word-ink)', width: 2 }),

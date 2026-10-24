@@ -11,6 +11,25 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.129.0',
+    date: '2026-10-24',
+    changes: [
+      'Notes: selecting text that has a tag in it works on a phone: the handles move past the tag instead of jumping, and the tag lights up as part of the selection',
+      'Notes: a tag opens its card on a tap only, not at the end of a long press or a drag to select, and a double tap no longer opens and shuts it',
+      'Notes: tapping a tag puts the caret on the side you tapped, so you can write before a tag at the start of a line',
+      'Notes: the @ suggestions have a close button, “dinner @ home” no longer brings them up, and Return no longer adds a new person by itself',
+      'Notes: on Android, the line you’re typing stays just above the keyboard instead of jumping a keyboard’s height up',
+      'Notes: a tap to clear a selection, or to put a tag’s card away, does only that: it doesn’t start writing or open what’s underneath',
+      'Notes: a tag’s card follows its tag as the page scrolls instead of closing',
+      'Journal: back from a note, the feed is where you left it, with the same search and day',
+      'Journal: Search on the keyboard puts the keyboard away',
+      'Journal: holding a card and then sliding no longer pins or deletes it behind its menu',
+      'Copy text and Share give a note’s words without Markdown or tag codes',
+      'Sheets with a search field sit above the keyboard, so every result can be reached',
+      'Bigger touch targets for a note’s details line and its music, and for the buttons on a tag’s card',
+    ],
+  },
+  {
     version: '1.128.21',
     date: '2026-10-24',
     changes: [

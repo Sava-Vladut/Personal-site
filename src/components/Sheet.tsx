@@ -74,10 +74,15 @@ export function Sheet({ open, onClose, title, children, footer, tall, label }: P
   useEffect(() => {
     const el = panel.current;
     if (!mounted || !el) return;
-    return dragToDismiss(el, backdrop.current!, (ms) => {
+    const unfit = sitOnKeyboard(el);
+    const undrag = dragToDismiss(el, backdrop.current!, (ms) => {
       exitMs.current = ms;
       closeRef.current();
     });
+    return () => {
+      unfit();
+      undrag();
+    };
   }, [mounted]);
 
   if (!mounted) return null;
@@ -106,6 +111,31 @@ export function Sheet({ open, onClose, title, children, footer, tall, label }: P
       </div>
     </div>
   );
+}
+
+/**
+ * A phone's keyboard covers the bottom of the page without making it shorter: the sheet sits on the keyboard instead
+ * (--kb, its height), so what a search in it finds can be scrolled to, as the note's bar does (FormatBar.tsx). iOS
+ * may also have slid the page up under its top to show the field (--kb-top); the sheet stays below that.
+ */
+function sitOnKeyboard(el: HTMLElement) {
+  const vv = window.visualViewport;
+  if (!vv) return () => {};
+  const fit = () => {
+    if (!vv.width || !vv.height) return;
+    const layoutHeight = Math.max(innerHeight, document.documentElement.clientHeight);
+    const kb = Math.max(0, Math.round(layoutHeight - vv.height - vv.offsetTop));
+    const up = kb > 80;
+    el.style.setProperty('--kb', up ? kb + 'px' : '0px');
+    el.style.setProperty('--kb-top', up ? Math.round(vv.offsetTop) + 'px' : '0px');
+  };
+  vv.addEventListener('resize', fit);
+  vv.addEventListener('scroll', fit);
+  fit();
+  return () => {
+    vv.removeEventListener('resize', fit);
+    vv.removeEventListener('scroll', fit);
+  };
 }
 
 /* ---------- swipe down to dismiss (phones) ----------

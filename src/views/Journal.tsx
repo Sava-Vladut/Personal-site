@@ -3,7 +3,7 @@ import { memo } from 'preact/compat';
 import { usePref } from '../lib/prefs';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
-import { navigate } from '../lib/router';
+import { keepOnLeave, kept, navigate } from '../lib/router';
 import { useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
 import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
@@ -47,10 +47,12 @@ export function Journal() {
   const entries = useEntries();
   const people = usePeople();
   const ready = useReady();
-  const [q, setQ] = useState('');
-  const [searching, setSearching] = useState(false);
+  // back from a note, the feed is as it was left: the same search, the same day, as far down
+  const [was] = useState(() => kept<{ q: string; day: string | null; upTo: number }>('journal'));
+  const [q, setQ] = useState(was.q ?? '');
+  const [searching, setSearching] = useState(!!was.q);
   const [calOpen, setCalOpen] = usePref<boolean>('journal-calendar', false);
-  const [day, setDay] = useState<string | null>(null);
+  const [day, setDay] = useState<string | null>(was.day ?? null);
   const [editing, setEditing] = useState(false);
   const widgets = useWidgets();
   const compact = useSettings().density === 'compact';
@@ -93,8 +95,16 @@ export function Journal() {
   }, [shown]);
 
   // Only the newest days are drawn; the rest come in as you scroll toward them, so a long journal opens (and saves) quickly.
-  const [upTo, setUpTo] = useState(DAYS_PAGE);
-  useEffect(() => setUpTo(DAYS_PAGE), [q, day]);
+  const [upTo, setUpTo] = useState(Math.max(DAYS_PAGE, was.upTo ?? 0));
+  const filter = useRef({ q, day });
+  useEffect(() => {
+    if (filter.current.q === q && filter.current.day === day) return; // not as it comes back
+    filter.current = { q, day };
+    setUpTo(DAYS_PAGE);
+  }, [q, day]);
+  const now = useRef({ q, day, upTo });
+  now.current = { q, day, upTo };
+  useEffect(() => keepOnLeave(() => ({ journal: now.current })), []);
   const hasMore = groups.length > upTo;
   const moreRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -138,7 +148,7 @@ export function Journal() {
       {searching && (
         <label class="search">
           <Icon name="search" size={18} />
-          <input type="search" autoFocus placeholder={t('Search notes, feelings, people, songs and books')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search notes')} />
+          <input type="search" autoFocus={!was.q} enterKeyHint="search" onKeyDown={(e) => e.key === 'Enter' && !e.isComposing && e.currentTarget.blur()} placeholder={t('Search notes, feelings, people, songs and books')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search notes')} />
         </label>
       )}
 

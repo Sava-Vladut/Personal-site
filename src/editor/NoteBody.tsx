@@ -208,11 +208,15 @@ export function NoteBody(p: Props) {
         }
         return true;
       },
-      // A tap on a tag opens its card (its own click) and leaves the caret just after it, never the tag selected (the
-      // next key would replace it)
-      handleClickOn(v, _pos, node, nodePos, _e, direct) {
-        if (!direct || !v.editable || !/^(person|song|wiki)$/.test(node.type.name)) return false;
-        v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, nodePos + node.nodeSize)));
+      // A tap on a tag opens its card (its own click) and leaves the caret beside it, on the side tapped (a tag at the
+      // start of a line can have words put before it), never the tag selected (the next key would replace it). While
+      // reading, the tag isn't selected either.
+      handleClickOn(v, _pos, node, nodePos, e, direct) {
+        if (!direct || !/^(person|song|wiki)$/.test(node.type.name)) return false;
+        if (!v.editable) return true;
+        const r = (v.nodeDOM(nodePos) as HTMLElement | null)?.getBoundingClientRect();
+        const before = !!r && r.width > 0 && e.clientX < r.left + r.width / 2;
+        v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, before ? nodePos : nodePos + node.nodeSize)));
         return true;
       },
       // Ctrl+click (⌘ on a Mac) opens a link while writing, as in Word

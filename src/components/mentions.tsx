@@ -1,7 +1,7 @@
 // Tags in a note, shown: a chip for each person, book, piece of music, linked note, mind trap, law of power or Carnegie principle, which opens a little card about it. And,
 // while writing, the strip of suggestions an @ brings up, and the burst of colour a new tag lands with.
-import type { ComponentChildren } from 'preact';
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { createContext, type ComponentChildren } from 'preact';
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { byline, progressOf, resolveMention, STATUS_LABEL } from '../lib/books';
 import { plainText } from '../lib/body';
@@ -11,6 +11,7 @@ import { previewOf } from '../lib/markdown';
 import { resolvePerson, resolveSong, songsIn, type MentionKind, type Suggestion } from '../lib/mentions';
 import { findRef, refTarget, useRefs, type Ref } from '../lib/refs';
 import { navigate } from '../lib/router';
+import { swallowLiftClick } from '../lib/taps';
 import { observable, useBooks, useEntries, usePeople, useSongs, type Person } from '../lib/store';
 import { BookCover, Stars } from './books';
 import { EmotionChip } from './emotion';
@@ -24,7 +25,7 @@ const tint = (emotions: string[]) => (emotions[0] ? `var(--emo-${coreOf(emotions
 
 /* ---------- the card a tag opens ---------- */
 
-interface Target { kind: MentionKind; id: string; x: number; top: number; bottom: number }
+interface Target { kind: MentionKind; id: string; x: number; top: number; bottom: number; el: Element }
 const peek$ = observable<Target | null>(null);
 const visibleViewport = () => {
   const v = window.visualViewport;
@@ -35,21 +36,52 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 export function openPeek(kind: MentionKind, id: string, el: Element) {
   const r = el.getBoundingClientRect();
   const now = peek$.get();
-  peek$.set(now && now.kind === kind && now.id === id ? null : { kind, id, x: r.left + r.width / 2, top: r.top, bottom: r.bottom });
+  peek$.set(now && now.kind === kind && now.id === id ? null : { kind, id, x: r.left + r.width / 2, top: r.top, bottom: r.bottom, el });
 }
 export const closePeek = () => void (peek$.get() && peek$.set(null));
 
+/**
+ * Whether a tag is drawn in a note's text (the editor, reading or writing). There it's a span acting as a button, not
+ * a <button>: a phone won't start or carry a text selection through a button, and a press on one takes the focus (and
+ * the keyboard) away from the note. `focusable`: while reading, Tab reaches it (plugins.ts keeps that up to date).
+ */
+export const InText = createContext<{ focusable: boolean } | null>(null);
+
 function Chip({ kind, id, c, children }: { kind: MentionKind; id: string; c?: string; children: ComponentChildren }) {
+  const inText = useContext(InText);
+  const press = useRef<{ x: number; y: number; at: number } | null>(null);
+  const props = {
+    class: `mention is-${kind}`,
+    style: c ? { '--c': c } : undefined,
+    'aria-haspopup': 'dialog' as const,
+    onPointerDown: (e: PointerEvent) => void (press.current = { x: e.clientX, y: e.clientY, at: e.timeStamp }),
+    onPointerCancel: () => void (press.current = null),
+    onClick: (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // only a tap opens the card: not the end of a long press or a drag (selecting text), nor a double tap's second.
+      // A press long gone (one that became a selection) says nothing about this click (a screen reader's, say).
+      const p = press.current && e.timeStamp - press.current.at < 5000 ? press.current : null;
+      press.current = null;
+      if (e.detail > 1 || (e.detail && p && (e.timeStamp - p.at > 500 || Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10))) return;
+      openPeek(kind, id, e.currentTarget as Element);
+    },
+  };
+  if (!inText) return <button type="button" {...props}>{children}</button>;
   return (
-    <button
-      type="button"
-      class={`mention is-${kind}`}
-      style={c ? { '--c': c } : undefined}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPeek(kind, id, e.currentTarget); }}
-      aria-haspopup="dialog"
+    <span
+      role="button"
+      tabIndex={inText.focusable ? 0 : undefined}
+      {...props}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        openPeek(kind, id, e.currentTarget);
+      }}
     >
       {children}
-    </button>
+    </span>
   );
 }
 
@@ -115,9 +147,23 @@ export function PeekLayer() {
   useEffect(() => setPlaying(false), [peek?.kind, peek?.id]);
   useEffect(() => {
     if (!peek) return;
-    const away = (e: PointerEvent) => !(e.target as Element).closest?.('.peek, .mention') && closePeek();
+    // a tap beside the card only closes it: it doesn't also land on what's under it (start writing, open a note)
+    const away = (e: PointerEvent) => {
+      if ((e.target as Element).closest?.('.peek, .mention')) return;
+      closePeek();
+      swallowLiftClick();
+    };
     const key = (e: KeyboardEvent) => e.key === 'Escape' && closePeek();
-    const scroll = (e: Event) => !(e.target instanceof Element && e.target.closest('.peek')) && closePeek();
+    // the card follows its tag as the page scrolls (as it does when a phone's keyboard comes up) and goes once the tag is
+    // out of sight; a strip scrolling sideways elsewhere leaves it be
+    const scroll = (e: Event) => {
+      const now = peek$.get();
+      if (!now || (e.target instanceof Element && (e.target.closest('.peek') || !e.target.contains(now.el)))) return;
+      const r = now.el.getBoundingClientRect();
+      const v = visibleViewport();
+      if (!now.el.isConnected || r.bottom < v.top || r.top > v.top + v.height) return closePeek();
+      peek$.set({ ...now, x: r.left + r.width / 2, top: r.top, bottom: r.bottom });
+    };
     const resize = () => setViewport(visibleViewport());
     addEventListener('pointerdown', away, true);
     addEventListener('keydown', key);
@@ -136,7 +182,7 @@ export function PeekLayer() {
       window.visualViewport?.removeEventListener('resize', resize);
       window.visualViewport?.removeEventListener('scroll', resize);
     };
-  }, [peek]);
+  }, [!!peek]);
   useLayoutEffect(() => {
     if (!peek || !ref.current) return;
     setHeight(ref.current.offsetHeight);
@@ -287,13 +333,15 @@ function PersonPeek({ p, moments, last }: { p: Person; moments: number; last?: s
 /* ---------- while writing: what an @ suggests ---------- */
 
 /** The strip that takes the toolbar's place while an @ (or a [[ link) is being typed. Arrow keys move through it, Enter picks. */
-export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, active, q, canAdd, onPick, onAdd, listId = 'mention-suggestions', link }: {
+export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, active, q, canAdd, onPick, onAdd, onDismiss, listId = 'mention-suggestions', link }: {
   items: S[];
   active: number;
   q: string;
   canAdd: boolean;
   onPick: (s: S) => void;
   onAdd: () => void;
+  /** puts the strip away and leaves the @ as it is (a phone's keyboard has no Escape) */
+  onDismiss?: () => void;
   listId?: string;
   /** a [[ link to a note (a book, a mind trap, a law or a principle), not an @tag */
   link?: boolean;
@@ -345,6 +393,7 @@ export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, act
   });
   return (
     <div id={listId} ref={ref} class={`mention-strip${link ? ' is-link' : ''}`} role="listbox" aria-label={link ? t('Link a note, a book, a bias, a law or a principle') : t('Tag someone, a book or music')}>
+      {onDismiss && <button type="button" class="mention-close" tabIndex={-1} aria-label={t('Close')} {...pick(onDismiss)}><Icon name="x" size={16} /></button>}
       <span class="mention-at" aria-hidden="true">{link ? '[[' : '@'}</span>
       {items.map((s: Suggestion | LinkSuggestion, i) => {
         const [label, sub, thumb, c] =

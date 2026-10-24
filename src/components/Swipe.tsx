@@ -58,6 +58,8 @@ export function Swipe({ e, children }: { e: Entry; children: ComponentChildren }
       onPointerMove={(ev) => {
         const d = drag.current;
         if (!d || ev.pointerId !== d.id) return;
+        // held long enough to open the entry's sheet: sliding on from there mustn't pin or delete it behind the sheet
+        if (!d.on && document.documentElement.classList.contains('sheet-open')) return void (drag.current = null);
         const dx = ev.clientX - d.x;
         const dy = ev.clientY - d.y;
         if (!d.on) {

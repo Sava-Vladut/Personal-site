@@ -86,7 +86,8 @@ export function typedMention(text: string, caret: number) {
   const before = text.slice(0, caret);
   const m = /(?:^|[\s([{"'“‘])@([^\r\n\t@[\].,!?;:]{0,120})$/.exec(before); // sentence endings end the query too
   // JavaScript's $ also matches before a final newline, which must actually end a tag.
-  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1])) return null;
+  // an @ with a space after it ("dinner @ home") is an at-sign, not a tag
+  if (!m || m.index + m[0].length !== before.length || /\s{2}$/.test(m[1]) || /^\s/.test(m[1])) return null;
   const start = caret - m[1].length - 1;
   // Moving the caret into an existing tag's label must not offer a nested tag.
   if (/(?:@\[|♪\[|\[\[)[^\]\r\n]*$/.test(before.slice(0, start))) return null;

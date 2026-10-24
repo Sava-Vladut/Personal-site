@@ -124,7 +124,7 @@ const person = (id, name, extra = {}) => ({ id, name, relation: '', emotions: []
 
 test('typed tags terminate on newlines, carriage returns, tabs and sentence punctuation', () => {
   const env = load();
-  for (const value of ['@Ana\n', '@Ana\r', '@Ana\r\n', '@Ana\t', '@Ana.', '@Ana!', '@Ana  ', 'mail@example', 'word@Ana'])
+  for (const value of ['@Ana\n', '@Ana\r', '@Ana\r\n', '@Ana\t', '@Ana.', '@Ana!', '@Ana  ', 'mail@example', 'word@Ana', 'Dinner @ home', '@ '])
     assert.equal(env.typedMention(value, value.length), null, value);
   for (const opening of ['', '(', '[', '{', '“', '‘', '"', "'"])
     assert.deepEqual(plain(env.typedMention(opening + '@An', opening.length + 3)), { start: opening.length, end: opening.length + 3, q: 'An' });

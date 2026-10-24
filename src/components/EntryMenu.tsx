@@ -9,6 +9,7 @@ import { deleteEntry, observable, saveEntry, toast, uid, type Entry } from '../l
 import { Icon, type UiName } from './icons';
 import { Sheet } from './Sheet';
 import { haptic } from '../lib/haptics';
+import { swallowLiftClick } from '../lib/taps';
 import { t } from '../lib/i18n';
 
 const HOLD_MS = 450;
@@ -72,22 +73,6 @@ export function useHold(e: Entry, onTap: () => void) {
   };
 }
 
-/** The finger lifting after a hold still clicks, and by then the sheet's backdrop is under it: don't let that close the sheet. */
-function swallowLiftClick() {
-  const stop = (ev: Event) => {
-    ev.stopPropagation();
-    ev.preventDefault();
-  };
-  const lifted = () => {
-    removeEventListener('pointerup', lifted, true);
-    removeEventListener('pointercancel', lifted, true);
-    setTimeout(() => removeEventListener('click', stop, true), 350);
-  };
-  addEventListener('click', stop, { capture: true, once: true });
-  addEventListener('pointerup', lifted, true);
-  addEventListener('pointercancel', lifted, true);
-}
-
 /** Deletes an entry, with a toast to bring it back. */
 export async function removeEntry(e: Entry) {
   const removed = await deleteEntry(e.id);
@@ -124,7 +109,8 @@ export function EntryMenu() {
     ? entry.title.trim() || text.split('\n')[0].slice(0, 60) || t('Untitled')
     : em ? (em.depth === 0 ? shortName(em.id) : em.name) : t('Check-in');
   const when = entry.dateEnd ? rangeLabel(entry.date, entry.dateEnd) : `${dayLabel(entry.date)} · ${timeLabel(entry.time)}`;
-  const shareText = [entry.title.trim(), plainText(entry.text).trim()].filter(Boolean).join('\n\n');
+  // the words as they read, without the Markdown or the tags' ids (`@[person:…|Ana]` is Ana)
+  const shareText = [entry.title.trim(), text].filter(Boolean).join('\n\n');
 
   const duplicate = async () => {
     const now = Date.now();

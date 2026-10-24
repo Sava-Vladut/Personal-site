@@ -76,6 +76,8 @@
 .peek-head > :is(.record, .cassette, .book-cover) { flex: none; }
 .peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
 .peek-actions { display: flex; gap: 8px; }
+/* a finger's height for the card's buttons on a phone */
+@media (pointer: coarse) { .peek-actions .btn-s { height: var(--h-m); } }
 .peek .progress { margin: -4px 0 0; }
 .ref-rows { margin-top: 12px; }
 .ref-row-icon {
@@ -101,6 +103,12 @@
   flex: none; width: 30px; height: 30px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center;
   font: var(--w-bold) var(--text-base)/1 var(--sans); color: var(--on-ink); background: var(--ink);
 }
+/* puts the strip away: small to see, a finger's width to hit */
+.mention-close {
+  position: relative; flex: none; width: 30px; height: 30px; margin-right: 2px; border-radius: var(--r-pill);
+  display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); background: var(--surface-2);
+}
+.mention-close::before { content: ''; position: absolute; inset: -7px -4px; }
 .mention-pick {
   --tone: var(--c, var(--ink-3));
   flex: none; display: inline-flex; align-items: center; gap: 8px; max-width: 220px; height: 40px; padding: 0 13px 0 6px;

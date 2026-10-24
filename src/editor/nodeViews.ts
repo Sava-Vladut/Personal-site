@@ -7,7 +7,7 @@ import type { EditorView, NodeView, NodeViewConstructor } from '@tiptap/pm/view'
 import { toggleTask } from '../lib/noteDoc/edit';
 import { depthOf, type ListItemAttrs } from '../lib/noteDoc';
 import type { Media } from '../lib/body';
-import { PersonMention, SongMention, WikiLink } from '../components/mentions';
+import { InText, PersonMention, SongMention, WikiLink } from '../components/mentions';
 import { t } from '../lib/i18n';
 
 /* ---------- list items ---------- */
@@ -113,7 +113,7 @@ class ChipView implements NodeView {
   dom: HTMLElement;
 
   /** `quiet`: drawn after the note opened (typed, pasted, undone), so without the sheen the opening plays */
-  constructor(private node: PMNode, quiet: boolean) {
+  constructor(private node: PMNode, quiet: boolean, private view: EditorView) {
     this.dom = document.createElement('span');
     this.dom.className = quiet ? 'note-chip is-quiet' : 'note-chip';
     this.dom.contentEditable = 'false';
@@ -124,7 +124,7 @@ class ChipView implements NodeView {
     const { target, label } = this.node.attrs as { target: string | null; label: string };
     const props = { target: target ?? undefined, text: label };
     const C = this.node.type.name === 'person' ? PersonMention : this.node.type.name === 'song' ? SongMention : WikiLink;
-    render(h(C, props), this.dom);
+    render(h(InText.Provider, { value: { focusable: !this.view.editable } }, h(C, props)), this.dom);
   }
 
   update(node: PMNode) {
@@ -138,7 +138,7 @@ class ChipView implements NodeView {
   selectNode() { this.dom.classList.add('is-selected'); }
   deselectNode() { this.dom.classList.remove('is-selected'); }
   ignoreMutation() { return true; }
-  // the chip's own button opens its peek; ProseMirror still gets the press, to select it
+  // the chip's own click opens its peek; ProseMirror still gets the press, to put the caret beside it
   stopEvent(e: Event) { return e.type === 'click'; }
   destroy() { render(null, this.dom); }
 }
@@ -228,7 +228,7 @@ export class MediaView implements NodeView {
 
 /** The node views, for EditorView's nodeViews prop. `settled`: the note has opened (its tags' sheen has played). */
 export function nodeViews(slots: MediaSlots, settled: () => boolean = () => false): Record<string, NodeViewConstructor> {
-  const chip: NodeViewConstructor = (node) => new ChipView(node, settled());
+  const chip: NodeViewConstructor = (node, view) => new ChipView(node, settled(), view);
   return {
     listItem: (node, view, getPos) => new ListItemView(node, view, getPos),
     person: chip,
