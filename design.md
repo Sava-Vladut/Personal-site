@@ -70,8 +70,9 @@ else. Mono (`--mono`) is for codes and the intro only.
   (`.tile-value`), the mind card's percentage and countdown digits. The note editor's own title is a
   document style and keeps its size.
 - Inputs stay at **16px** so iOS doesn't zoom.
-- Below 10px only inside SVG drawings (wheel rings, chart dots, maps) and tiny avatars, where the text
-  scales with the drawing.
+- Text inside an SVG drawing (wheel rings, chart dots, the Learn maps and gauges) is sized in the
+  drawing's own units and scales with it, so it keeps raw sizes; below 10px is allowed only there and in
+  tiny avatars. Everything outside a drawing uses the tokens.
 - Text inside notes scales with zoom and keeps its own document sizes (and its 420 heading weight).
 
 | Weight | Value | Use |

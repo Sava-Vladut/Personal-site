@@ -51,15 +51,18 @@ function walk(dir, ext, out = []) {
 function auditCss(file) {
   // blank out comments but keep newlines so line numbers stay true
   const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-  const stack = [] // { prelude, isAt }
+  const stack = [] // { prelude, isAt, svg }
   let buf = ''
   let line = 1
   let startLine = 1
-  for (const ch of src) {
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i]
     if (ch === '\n') line++
     if (ch === '{') {
       const prelude = buf.trim()
-      stack.push({ prelude, isAt: prelude.startsWith('@') })
+      // a rule that sets fill or stroke styles SVG: its sizes are in the drawing's units
+      const body = src.slice(i + 1, src.indexOf('}', i + 1))
+      stack.push({ prelude, isAt: prelude.startsWith('@'), svg: /(^|[;\s])(fill|stroke):/.test(body) })
       if (prelude.startsWith('@media')) checkMedia(file, startLine, prelude)
       if (prelude.includes(':hover') && !stack.some((s) => /hover:\s*hover/.test(s.prelude))) add('hover', file, startLine, prelude)
       buf = ''
@@ -93,7 +96,8 @@ function checkDecl(file, line, decl, stack) {
 
   if (/#[0-9a-f]{3,8}\b/i.test(value) && !/mask/.test(prop)) add('hex', file, line, `${selector} { ${decl} }`)
 
-  if (prop === 'font-size' || prop === 'font') {
+  // text inside an SVG drawing is sized in the drawing's units and scales with it (design.md, Type)
+  if ((prop === 'font-size' || prop === 'font') && !stack.at(-1)?.svg) {
     const px = value.match(/(?:^|\s)([\d.]+)px/)
     if (px && !/clamp\(/.test(value) && !(px[1] === '16' && /input|select|textarea|search/.test(selector))) add('font-size', file, line, `${selector} { ${decl} }`)
   }
