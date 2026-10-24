@@ -9,10 +9,10 @@ import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
 import { linkedFrom, linkOf, noteLabel, suggestLinks, type LinkSuggestion } from '../lib/links';
 import { findRef, refOf, useRefs, type Ref } from '../lib/refs';
-import { connectSpotify, nowPlaying } from '../lib/spotify';
+import { connectSpotify } from '../lib/spotify';
 import {
   blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
-  type Book, type Entry, type Music, type Person,
+  type Book, type Entry, type Person,
 } from '../lib/store';
 import { mentionOfPerson, mentionOfSong, suggest, type Suggestion } from '../lib/mentions';
 import { coreOf } from '../data/emotions';
@@ -29,8 +29,7 @@ import { Icon, NoteIcon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { LinkSheet } from '../components/LinkSheet';
 import { NoteBody, pastesPictures, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
-import { CoverImg, DetailsSummary, NoteDetails, withFeeling } from '../components/NoteDetails';
-import { EmotionPicker } from '../components/emotion';
+import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
 import { dropLayout, MediaBlock, MediaTools, sideAt, type Side } from '../components/NoteMedia';
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
@@ -43,7 +42,7 @@ import '../styles/document.css';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'mood' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law' | 'principle';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law' | 'principle';
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 const MAX_PHOTOS = 20;
@@ -995,31 +994,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
 
   const close = () => setOpen(null);
-  const addMusic = (list: Music[]) => {
-    const music = (latest.current ?? draft).music;
-    update({ music: [...music, ...list.filter((m) => !music.some((x) => x.kind === m.kind && x.id === m.id))].slice(0, 20) });
-  };
-  /** The song on Spotify right now, added in one tap. Not logged in (or nothing to add), the Spotify picker opens instead. */
-  const addNowPlaying = async () => {
-    let now;
-    try {
-      now = await nowPlaying();
-    } catch {
-      if (alive.current) setOpen('spotify');
-      return;
-    }
-    if (!alive.current) return;
-    const m = now.current;
-    if (now.reconnect || !m) {
-      if (!now.reconnect) toast(t('Nothing’s playing on Spotify right now'));
-      setOpen('spotify');
-      return;
-    }
-    if ((latest.current ?? draft).music.some((x) => x.kind === m.kind && x.id === m.id)) return toast(t('“{title}” is already in this note', { title: m.title }));
-    addMusic([m]);
-    haptic();
-    toast(t('Added “{title}”', { title: m.title }));
-  };
   const isCheckin = draft.kind === 'checkin';
   const selected = !reading && sel ? slots.find((s) => mediaKey(s.media) === sel)?.media : undefined;
   const selKey = selected ? mediaKey(selected) : '';
@@ -1201,8 +1175,6 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           canAddPhotos: draft.photos.length + adding < MAX_PHOTOS,
           findImage: () => setOpen('images'),
           addMusic: () => setOpen('spotify'),
-          addNowPlaying,
-          addMood: () => setOpen('mood'),
           mention: () => startMention('@'),
           linkNote: () => startMention('[['),
           mentionBook: () => setOpen('book'),
@@ -1268,11 +1240,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         open={open === 'spotify'}
         onClose={close}
         onConnect={async () => { await flush(); if (!dirty.current && alive.current && !removing.current) connectSpotify(saved.current ? '#/note/' + draft.id : '#/note/new'); }}
-        onAdd={addMusic}
+        onAdd={(list) => update({ music: [...draft.music, ...list.filter((m) => !draft.music.some((x) => x.kind === m.kind && x.id === m.id))].slice(0, 20) })}
       />
-      <Sheet open={open === 'mood'} onClose={close} title={t('How does it feel?')}>
-        <EmotionPicker onPick={(eid) => { update({ emotions: withFeeling((latest.current ?? draft).emotions, eid) }); close(); }} selected={draft.emotions} />
-      </Sheet>
     </div>
   );
 }

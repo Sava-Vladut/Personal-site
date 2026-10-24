@@ -35,10 +35,6 @@ export interface RibbonActions {
   findImage: () => void;
   /** music from Spotify */
   addMusic: () => void;
-  /** the song playing on Spotify right now, in one tap */
-  addNowPlaying: () => void;
-  /** how the note feels: the feelings picker */
-  addMood: () => void;
   /** tags someone, a book or music (@) */
   mention: () => void;
   /** links another note ([[) */

@@ -244,10 +244,8 @@ export function Ribbon(p: RibbonProps) {
     ]),
     group('media', t('Media'), [
       big('brand-spotify', t('Music'), a.addMusic, { title: t('Add music from Spotify') }),
-      big('vinyl', t('Now playing'), a.addNowPlaying, { title: t('Add the song playing on Spotify') }),
       big('books', t('Book'), a.mentionBook, { title: t('Mention a book') }),
     ]),
-    group('mood', t('Mood'), big('mood-smile', t('Mood'), a.addMood, { title: t('How does it feel?') })),
     group('links', t('Links'), [
       big('at', t('Mention'), a.mention, { off, title: t('Tag someone, a book or music') }),
       big('file-text', t('Note link'), a.linkNote, { off, title: t('Link another note') }),

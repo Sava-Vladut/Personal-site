@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.131.1',
+    date: '2026-10-24',
+    changes: [
+      'Notes: the Now playing and Mood buttons are gone from the Insert tab again',
+    ],
+  },
+  {
     version: '1.131.0',
     date: '2026-10-24',
     changes: [
