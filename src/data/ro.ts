@@ -820,6 +820,8 @@ export const RO: Record<string, string> = {
   'Add to note': 'Adaugă în notiță',
   'Add {n} to note': 'Adaugă {n} în notiță',
   'Add music from Spotify': 'Adaugă muzică de pe Spotify',
+  'Listening on Spotify': 'Se aude pe Spotify',
+  'listening to {title}': 'ascult {title}',
   'Listening': 'Ascult',
   'Search': 'Caută',
   'Playlists': 'Playlisturi',

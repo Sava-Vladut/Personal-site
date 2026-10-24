@@ -591,7 +591,7 @@ export function CheckInRow({ e }: { e: Entry }) {
     <button class="checkin" style={em ? { '--c': `var(--emo-${em.core})`, '--k': e.intensity } : undefined} {...hold}>
       {em ? <Sprite core={em.core} size={16} idle="view" delay={stagger(e.time)} /> : <span />}
       <span class="checkin-name">{em ? (em.depth === 0 ? shortName(em.id) : em.name) : t('Check-in')}</span>
-      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? t('thinking of {names}', { names: people.join(', ') }) : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
+      <span class="checkin-meta">{[em && em.depth > 0 ? shortName(em.core) : '', people.length ? t('thinking of {names}', { names: people.join(', ') }) : '', e.music[0] ? t('listening to {title}', { title: e.music[0].title }) : '', stripMarkdown(plainText(e.text)).trim().slice(0, 60)].filter(Boolean).join(' · ')}</span>
       <span class="checkin-time">{w && <WeatherMark w={w} />}{timeLabel(e.time)}</span>
     </button>
   );

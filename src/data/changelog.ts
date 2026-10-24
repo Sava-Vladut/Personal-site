@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.132.0',
+    date: '2026-10-24',
+    changes: [
+      'Check-ins: the song you’re playing on Spotify is added to the check-in by itself, shown as a chip you can take off before logging',
+      'Check-ins: the song shows in the check-in’s line as “listening to …”',
+    ],
+  },
+  {
     version: '1.131.1',
     date: '2026-10-24',
     changes: [

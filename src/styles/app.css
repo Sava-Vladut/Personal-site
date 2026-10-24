@@ -1171,6 +1171,8 @@ html[data-loading] { cursor: progress; }
 .person-chip.emo-sm { padding-left: 4px; }
 .person-chip .avatar { font-size: 8px !important; }
 .person-chip.emo-md .avatar { font-size: 9px !important; }
+.song-chip { min-width: 0; }
+.song-chip .emo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .emo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .people-list { margin-top: 12px; }

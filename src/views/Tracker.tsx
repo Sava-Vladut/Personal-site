@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { EMOTION, FEELINGS, shortName } from '../data/emotions';
 import { keyOf, todayKey } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { blankEntry, deleteEntry, getPeople, saveEntry, toast, useEntries, useSettings } from '../lib/store';
+import { blankEntry, deleteEntry, getPeople, saveEntry, toast, useEntries, useSettings, type Music } from '../lib/store';
+import { nowPlaying } from '../lib/spotify';
 import { streaks } from '../lib/stats';
 import { addContext } from '../lib/weather';
 import { IntensityPicker, WorldDetail, WorldGrid, trail } from '../components/emotion';
@@ -11,6 +12,7 @@ import { Sky } from '../components/Sky';
 import { MentionText } from '../components/MentionText';
 import { PageHead } from '../components/PageHead';
 import { Icon, Sprite } from '../components/icons';
+import { MusicThing } from '../components/music';
 import { PeopleChips, PeopleSheet } from '../components/people';
 import { CheckInRow } from './Journal';
 import { useStatus } from '../lib/status';
@@ -37,6 +39,8 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   const tagged = () => { const pid = query.get('person'); return pid && getPeople().some((p) => p.id === pid) ? [pid] : []; };
   const [people, setPeople] = useState<string[]>(tagged);
   const [picking, setPicking] = useState(false);
+  // what's playing on Spotify as you check in: it goes with the check-in unless you take it off
+  const [song, setSong] = useState<Music | null>(null);
   const [saving, setSaving] = useState(false);
   const status = useStatus();
   const submitting = useRef(false);
@@ -59,6 +63,16 @@ export function Tracker({ query }: { query: URLSearchParams }) {
   }, [entries]);
   const streak = useMemo(() => streaks(entries).current, [entries]);
 
+  // Asked once a feeling is picked; quietly nothing when Spotify isn't connected or nothing is playing.
+  const feeling = !!picked;
+  useEffect(() => {
+    setSong(null);
+    if (!feeling) return;
+    let active = true;
+    nowPlaying().then((now) => { if (active && now.playing && now.current) setSong(now.current); }, () => {});
+    return () => { active = false; };
+  }, [feeling]);
+
   const reset = () => {
     setPicked(null);
     setCore(null);
@@ -72,7 +86,9 @@ export function Tracker({ query }: { query: URLSearchParams }) {
     if (!picked || !EMOTION[picked] || submitting.current) return;
     const time = when ? new Date(when).getTime() : Date.now();
     if (!Number.isFinite(time) || time > Date.now()) return toast(t('Choose a valid time that isn’t in the future.'));
-    const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), people, time, date: keyOf(new Date(time)) };
+    // a check-in moved to another time wasn't made to this song
+    const music = song && when === null ? [song] : [];
+    const e = { ...blankEntry('checkin'), emotions: [picked], intensity, text: note.trim(), people, music, time, date: keyOf(new Date(time)) };
     const fresh = EMOTION[picked].depth === 2 && !named.has(picked);
     submitting.current = true;
     setSaving(true);
@@ -137,6 +153,15 @@ export function Tracker({ query }: { query: URLSearchParams }) {
             />
             <div class="meta confirm-people">
               <PeopleChips ids={people} onChange={setPeople} onAdd={() => setPicking(true)} />
+              {song && when === null && (
+                <span class="emo emo-md person-chip song-chip" title={t('Listening on Spotify')}>
+                  <MusicThing m={song} size={20} />
+                  <span class="emo-name">{song.title}</span>
+                  <button class="emo-x" onClick={() => setSong(null)} aria-label={t('Remove {name}', { name: song.title })}>
+                    <Icon name="x" size={14} />
+                  </button>
+                </span>
+              )}
               {when === null ? (
                 <button class="chip" onClick={() => setWhen(localInput(Date.now()))} aria-label={t('When: now. Change time')}>
                   <Icon name="clock" size={16} /> {t('Now')} <Icon name="chevron-down" size={14} />
