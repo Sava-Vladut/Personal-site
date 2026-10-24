@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.131.0',
+    date: '2026-10-24',
+    changes: [
+      'Notes: Insert › Now playing adds the song you’re listening to on Spotify in one tap',
+      'Notes: Insert › Mood opens the feelings picker straight from the ribbon',
+    ],
+  },
+  {
     version: '1.130.0',
     date: '2026-10-24',
     changes: [

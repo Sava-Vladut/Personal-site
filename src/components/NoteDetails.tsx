@@ -78,6 +78,10 @@ function Bars({ n }: { n: number }) {
   );
 }
 
+/** A note's feelings with `eid` added: in place of the same feeling at another depth, and three at most. */
+export const withFeeling = (emotions: string[], eid: string) =>
+  [...emotions.filter((x) => x !== eid && !eid.startsWith(x + '/') && !x.startsWith(eid + '/')), eid].slice(-3);
+
 type Open = null | 'date' | 'emotion' | 'people' | 'cover-search' | 'cover-crop' | 'place';
 
 /**
@@ -128,8 +132,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
 
   const close = () => setSheet(null);
   const addEmotion = (eid: string) => {
-    const list = draft.emotions.filter((x) => x !== eid && !eid.startsWith(x + '/') && !x.startsWith(eid + '/'));
-    update({ emotions: [...list, eid].slice(-3) });
+    update({ emotions: withFeeling(draft.emotions, eid) });
     setSheet(null);
   };
   const pictures: Cover[] = [...draft.photos.map((photo) => ({ photo })), ...draft.images.map((image) => ({ image }))];
