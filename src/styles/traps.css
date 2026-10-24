@@ -1,183 +1,58 @@
 /* ============================================================
-   Mind traps (views/Traps.tsx)
-   Built on the Stats page's shell (stats.css): a sky header, cards and tiles in the page's accent.
-   What's its own: the marks' sizes, the power map and the quizzes. Each trap wears its family's world colour (--c).
+   Mind traps (views/Traps.tsx). The layout, the rows, the quiz and the opened trap are the Learn pages' own
+   (styles/learn.css); what's here is only this page's: the power gauge and the power map. Each trap's colour is
+   its family's world colour (--c). Nothing here moves on its own: the gauge in a sheet fills once after the sheet
+   has landed, and a star grows a little under the pointer.
    ============================================================ */
 
-/* ---------- trap of the day ---------- */
-
-.tr-today { display: flex; flex-direction: column; gap: 10px; width: 100%; text-align: left; transition: border-color var(--dur-2); }
-@media (hover: hover) { .tr-today:hover { border-color: color-mix(in oklab, var(--accent) 30%, var(--line)); } }
-.tr-today:active { transform: scale(0.99); }
-.tr-today-row { display: flex; align-items: center; gap: 14px; }
-.tr-today-ink { flex: none; width: 64px; height: 64px; }
-.tr-today-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.tr-today-name { font: var(--w-medium) var(--text-xl)/1.2 var(--serif); text-wrap: balance; }
-.tr-today-line { color: var(--ink-2); font-size: var(--text-base); line-height: 1.45; }
-.tr-today-tell { padding-top: 10px; border-top: 1px solid var(--line); font: italic var(--w-regular) var(--text-base)/1.45 var(--serif); color: var(--ink-3); }
+/* ---------- the power gauge: power out of 100 as a ring ---------- */
 
 .tr-gauge { flex: none; display: block; }
 .tr-gauge-track { fill: none; stroke: var(--surface-3); stroke-width: 6; }
-.tr-gauge-fill {
-  fill: none; stroke: var(--c); stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 38px 38px;
-  animation: tr-gauge var(--dur-5) var(--ease-emph) var(--dur-0) backwards;
-}
+.tr-gauge-fill { fill: none; stroke: var(--c); stroke-width: 6; stroke-linecap: round; }
+/* in a sheet: drawn once, with the meters, after the sheet has landed */
+.tr-gauge.is-draw .tr-gauge-fill { animation: tr-gauge var(--dur-5) var(--ease-emph) var(--dur-3) backwards; }
 @keyframes tr-gauge { from { stroke-dasharray: 0 999; } }
-.tr-gauge-num { font: var(--w-bold) 20px var(--sans); text-anchor: middle; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.tr-gauge-num { font: var(--w-bold) 20px var(--sans); fill: var(--ink); font-variant-numeric: tabular-nums; }
 
-/* ---------- quizzes ---------- */
-
-.tr-crt { display: grid; gap: 10px; margin-top: 12px; }
-@media (min-width: 1024px) { .tr-crt { grid-template-columns: repeat(3, 1fr); align-items: start; } }
-.tr-quiz { padding: 14px; border-radius: var(--r-m); background: var(--surface-2); }
-.tr-quiz-q { margin: 0 0 10px; font-size: var(--text-base); font-weight: var(--w-medium); line-height: 1.5; }
-.tr-quiz-options { display: grid; gap: 6px; }
-.tr-opt {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--h-m); padding: 10px 12px; text-align: left;
-  border-radius: var(--r-s); background: var(--surface); color: var(--ink); font-size: var(--text-base); line-height: 1.35;
-  transition: background-color var(--dur-1), opacity var(--dur-2), transform var(--dur-0);
+/* the scores well in an opened trap: the gauge, the three meters beside it, the evidence under both */
+.lrn-meters.tr-power { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 14px; row-gap: 12px; }
+.tr-power-meters { display: grid; gap: 10px; min-width: 0; }
+.tr-ev {
+  grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line);
+  font-size: var(--text-m); line-height: 1.45; color: var(--ink-2);
 }
-@media (hover: hover) { .tr-opt:hover:not(:disabled) { background: var(--surface-3); } }
-.tr-opt:active:not(:disabled) { transform: scale(0.98); }
-.tr-opt:disabled { opacity: 0.4; }
-.tr-opt-key { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: var(--text-s); font-weight: var(--w-bold); background: var(--surface-2); color: var(--ink-2); }
-.tr-quiz.done .tr-opt { cursor: default; }
-.tr-opt.picked { background: var(--surface-3); }
-.tr-opt.right { background: color-mix(in oklab, var(--pos) 18%, var(--surface)); opacity: 1; }
-.tr-opt.right .tr-opt-key { background: var(--pos); color: var(--on-color); }
-.tr-opt.wrong { background: color-mix(in oklab, var(--neg) 16%, var(--surface)); }
-.tr-opt.wrong .tr-opt-key { background: var(--neg); color: var(--on-color); }
-.tr-reveal { margin-top: 10px; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); animation: rise-in var(--dur-3) var(--ease-emph); }
-.tr-reveal b { font-weight: var(--w-bold); }
-.tr-reveal b.yes { color: var(--pos); }
-.tr-reveal b.no { color: var(--neg); }
-.tr-crt-score { margin: 12px 0 0; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); animation: rise-in var(--dur-3) var(--ease-emph); }
-.tr-crt-score b { color: var(--ink); }
+.tr-ev > svg { flex: none; margin-top: 2px; color: var(--ink-3); }
+.tr-ev b { font-weight: var(--w-bold); color: var(--ink); }
+
+/* how often you've caught yourself in a trap, on its row's top line */
+.tr-caught { display: inline-flex; align-items: center; gap: 3px; }
+
+/* the method and closing cards: a paragraph, then lists or a link, 10 apart */
 
 /* ---------- the power map ---------- */
 
-.tr-map { position: relative; max-width: 520px; margin: 8px auto 0; }
+.tr-map { max-width: 460px; margin: 0 auto; }
 .tr-map svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: manipulation; }
-/* the spiral eases round into place once rather than turning for good: anything moving inside an SVG repaints the
-   whole map every frame */
-.tr-map-spin { transform-origin: 200px 200px; animation: tr-turn 6s var(--ease) both; }
-@keyframes tr-turn { from { rotate: -40deg; } }
-.tr-map-spiral { fill: none; stroke: var(--line-2); stroke-width: 0.8; stroke-dasharray: 1 5; stroke-linecap: round; }
+/* every label is 14 units or more: at a phone's width the map is drawn at about .7, so they stay near 10px */
 .tr-map-ring circle { fill: none; stroke: var(--line); stroke-width: 0.8; }
-.tr-map-ring text { font-size: 9px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-map-ring text { font: var(--w-medium) 14px var(--sans); fill: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tr-map-spoke { stroke: color-mix(in oklab, var(--c) 30%, var(--line)); stroke-width: 0.8; stroke-dasharray: 2 4; }
-.tr-map-family { font-size: var(--text-s); font-weight: var(--w-bold); fill: color-mix(in oklab, var(--c) 75%, var(--ink)); }
+.tr-map-family { font: var(--w-bold) 15px var(--sans); fill: color-mix(in oklab, var(--c) 75%, var(--ink)); }
 .tr-map-kin path { fill: none; stroke: var(--c); stroke-width: 1.2; opacity: 0.6; stroke-dasharray: 3 3; }
 .tr-star { cursor: pointer; outline: none; }
 .tr-star-hit { fill: transparent; }
-.tr-star-dot { fill: var(--c); stroke: var(--surface); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; transition: scale var(--dur-2) var(--spring); }
-.tr-star.hot .tr-star-dot, .tr-star:focus-visible .tr-star-dot { scale: 1.6; }
-.tr-star.kin .tr-star-dot { scale: 1.25; }
+.tr-star-dot {
+  fill: var(--c); stroke: var(--surface); stroke-width: 1.5; transform-box: fill-box; transform-origin: center;
+  transition: scale var(--dur-2) var(--ease);
+}
+.tr-star.is-hot .tr-star-dot, .tr-star:focus-visible .tr-star-dot { scale: 1.6; }
+.tr-star:focus-visible .tr-star-dot { stroke: var(--ink); }
+.tr-star.is-kin .tr-star-dot { scale: 1.25; }
 .tr-map-hub circle { fill: var(--surface); stroke: var(--line-2); }
-.tr-map-hub text { font: var(--w-bold) 16px var(--sans); fill: var(--ink); font-variant-numeric: tabular-nums; }
-.tr-map-caption { min-height: 44px; margin-top: 8px; display: flex; flex-direction: column; gap: 2px; color: var(--ink-3); font-size: var(--text-m); line-height: 1.4; }
-.tr-map-caption b { font: var(--w-medium) var(--text-base) var(--serif); color: var(--ink); }
-
-/* ---------- the ranking ---------- */
-
-.tr-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.chips.tr-chips { flex: 1 1 260px; margin: 0; }
-.tr-chip[aria-pressed='true'] { background: var(--c); color: var(--on-color); }
-.tr-sort { flex: none; }
-.tr-family-about { margin: 10px 0 0; line-height: 1.45; }
-.tr-family-about b { color: var(--ink-2); font-weight: var(--w-bold); }
-
-.tr-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-@media (min-width: 720px) { .tr-list { grid-template-columns: 1fr 1fr; } }
-.tr-list li { content-visibility: auto; contain-intrinsic-size: auto 96px; animation: rise-in var(--dur-3) var(--ease-emph) backwards; animation-delay: calc(var(--i) * 25ms); }
-.tr-card {
-  display: flex; align-items: center; gap: 14px; width: 100%; height: 100%; padding: 12px 14px; text-align: left;
-  transition: border-color var(--dur-2), transform var(--dur-0);
-}
-@media (hover: hover) {
-  .tr-card:hover { border-color: color-mix(in oklab, var(--c) 40%, var(--line)); }
-  .tr-card:hover .tr-card-ink { rotate: -4deg; }
-}
-.tr-card:active { transform: scale(0.98); }
-.tr-card-ink { flex: none; width: 48px; height: 48px; transition: rotate var(--dur-3) var(--spring); }
-.tr-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.tr-card-top { display: flex; align-items: center; gap: 8px; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 70%, var(--ink-3)); }
-.tr-debated { color: var(--ink-3); border: 1px solid var(--line-2); border-radius: var(--r-pill); padding: 0 6px; font-size: var(--text-xs); }
-.tr-caught-n { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-3); }
-.tr-name { font: var(--w-medium) var(--text-l)/1.3 var(--serif); }
-.tr-line { color: var(--ink-3); font-size: var(--text-m); line-height: 1.4; }
-.tr-power { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 36px; }
-.tr-power b { font-size: var(--text-l); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
-.tr-power small { font-size: var(--text-2xs); color: var(--ink-3); }
-
-/* ---------- method and the end ---------- */
-
-.tr-p { margin: 0; font-size: var(--text-base); line-height: 1.55; color: var(--ink-2); max-width: 62ch; }
-.tr-method-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px; margin-top: 12px; }
-.tr-method-grid div { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
-.tr-method-grid b { font-size: var(--text-base); font-weight: var(--w-bold); }
-.tr-method-grid span { color: var(--ink-2); font-size: var(--text-m); line-height: 1.45; }
-.tr-ev-key { display: grid; gap: 6px; margin-top: 12px; }
-.tr-ev { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; margin: 0; font-size: var(--text-m); color: var(--ink-2); line-height: 1.45; }
-.tr-ev b { font-weight: var(--w-bold); }
-.tr-ev svg { align-self: center; }
-.tr-ev-robust b { color: var(--emo-calm-safety); }
-.tr-ev-good b { color: color-mix(in oklab, var(--emo-sadness) 80%, var(--ink)); }
-.tr-ev-debated b { color: var(--emo-hope-interest); }
-
-.tr-about { display: grid; justify-items: start; gap: 12px; }
-.tr-about p { margin: 0; font-size: var(--text-base); line-height: 1.55; color: var(--ink-2); max-width: 62ch; }
-
-/* ---------- one trap, opened ---------- */
-
-.tr-detail { padding-bottom: 8px; }
-.tr-d-head { text-align: center; padding-top: 4px; }
-.tr-d-ink { width: 96px; height: 96px; margin: 0 auto 8px; animation: pop-in var(--dur-4) var(--spring) backwards; }
-.tr-d-kicker { margin: 0; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 70%, var(--ink-3)); }
-.tr-d-name { margin: 6px 0 0; font: var(--w-medium) clamp(24px, 6.6vw, 29px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
-.tr-d-aka { margin: 4px 0 0; color: var(--ink-3); font-size: var(--text-m); }
-.tr-d-line { margin: 8px auto 0; max-width: 38ch; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); text-wrap: balance; }
-.tr-d-power { display: flex; align-items: center; gap: 14px; margin: 18px 0 8px; padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
-.tr-d-bars { flex: 1; display: grid; gap: 7px; }
-.tr-d-bar { display: grid; grid-template-columns: 52px 1fr 20px; align-items: center; gap: 8px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-2); }
-.tr-d-bar i { height: 6px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
-.tr-d-bar i b { display: block; height: 100%; border-radius: inherit; background: var(--c); transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) var(--dur-1) backwards; }
-.tr-d-bar em { font-style: normal; font-weight: var(--w-bold); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
-.tr-d-tell { margin: 18px 0 4px; padding: 4px 0 4px 14px; border-left: 3px solid var(--c); font: italic var(--w-regular) var(--text-l)/1.45 var(--serif); color: var(--ink); }
-.tr-d-tell small { display: block; margin-bottom: 4px; font: var(--w-medium) var(--text-s) var(--sans); color: var(--ink-3); font-style: normal; }
-.tr-d-h { margin: 24px 0 8px; font-size: var(--text-base); font-weight: var(--w-bold); }
-.tr-d-p { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
-.tr-d-study, .tr-d-fact { margin-top: 16px; padding: 14px 16px; border-radius: var(--r-l); border: 1px solid var(--line); background: var(--surface); }
-.tr-d-fact { background: var(--surface-2); border-color: transparent; }
-.tr-d-study-k { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
-.tr-d-study h4 { margin: 0; font: var(--w-medium) var(--text-l)/1.3 var(--serif); }
-.tr-d-who { margin: 2px 0 8px; font-size: var(--text-m); color: var(--ink-3); }
-.tr-d-study p:last-child, .tr-d-fact p:last-child { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink-2); }
-.tr-d-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); }
-.tr-d-list li::marker { color: var(--c); }
-.tr-d-list.escape li::marker { font-weight: var(--w-bold); }
-.tr-caught { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 20px; }
-.tr-caught b { padding: 1px 8px; border-radius: var(--r-pill); background: var(--c); color: var(--on-color); font-size: var(--text-s); animation: pop-in var(--dur-3) var(--spring); }
-.tr-kin { display: grid; gap: 6px; }
-.tr-kin-chip { display: flex; align-items: center; gap: 10px; min-height: var(--h-m); padding: 6px 12px 6px 6px; border-radius: var(--r-m); background: var(--surface-2); text-align: left; transition: background-color var(--dur-1); }
-@media (hover: hover) { .tr-kin-chip:hover { background: var(--surface-3); } }
-.tr-kin-ink { flex: none; width: 32px; height: 32px; }
-.tr-kin-chip span { flex: 1; font: var(--w-medium) var(--text-base)/1.3 var(--serif); }
-.tr-kin-chip em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: var(--text-m); }
-
-/* the Carnegie principles that disarm it, linking to Win friends */
-.tr-links { display: grid; gap: 8px; }
-.tr-link {
-  display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 12px 14px; text-align: left; border-radius: var(--r-m);
-  background: color-mix(in oklab, var(--t) 8%, var(--surface-2)); transition: background-color var(--dur-1), transform var(--dur-0);
-}
-@media (hover: hover) { .tr-link:hover { background: color-mix(in oklab, var(--t) 14%, var(--surface-2)); } }
-.tr-link:active { transform: scale(0.98); }
-.tr-link-top { display: flex; align-items: center; gap: 6px; color: color-mix(in oklab, var(--t) 75%, var(--ink)); }
-.tr-link-top b { flex: 1; font-size: var(--text-base); font-weight: var(--w-bold); color: var(--ink); }
-.tr-link-go { color: var(--ink-3); }
-.tr-link-how { font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
+.tr-map-hub text { font: var(--w-bold) 18px var(--sans); fill: var(--ink); font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tr-map-spin, .tr-d-ink { animation: none; }
+  .tr-gauge.is-draw .tr-gauge-fill { animation: none; }
+  .tr-star-dot { transition: none; }
 }

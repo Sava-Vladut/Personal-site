@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.133.0',
+    date: '2026-10-24',
+    changes: [
+      'Learn: Mind traps, Laws of power and Win friends share one calmer layout: three figures and the search on the sky, today’s entry, a map and a game in a side column, and the whole list grouped by family, arena or part in compact rows',
+      'Learn: on a wide screen the list sits on the left and the side column on the right, and cards no longer jump between columns when one changes height',
+      'Learn: no more stuttering entrances, colour wash on arrival, spinning spiral or marks that wobble on hover',
+      'Learn: the caption under each map keeps its height, so the page doesn’t bounce as you move across it, and the map labels are bigger',
+      'Learn: in the games and quizzes nothing moves under your finger: the score line is always there and the answer shows below the options',
+      'Learn: opening a related entry in a sheet jumps straight to its top and fades it in, instead of swapping the text mid-scroll',
+      'Learn: an opened entry has clearer chapters, one box style for stories and experiments, and the player/target and why/how tabs now live inside it',
+      'Laws of power: the 8×6 board is gone; Win friends: the ladder of 30 is gone (both are in the grouped list and the map)',
+      'Mind traps: each trap now links to the laws of power that spring it',
+    ],
+  },
+  {
     version: '1.132.0',
     date: '2026-10-24',
     changes: [

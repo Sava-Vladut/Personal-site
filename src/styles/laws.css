@@ -1,197 +1,59 @@
 /* ============================================================
-   The 48 Laws of Power (views/Laws.tsx)
-   Built on the Stats page's shell (stats.css): a sky header, cards and tiles in the page's accent.
-   What's its own: the marks' sizes, the board and the map. Each law wears its arena's world colour (--c).
+   The 48 Laws of Power (views/Laws.tsx). The layout, rows, game, sheet and buttons are the Learn pages' own
+   (styles/learn.css); what's here is this page's map, and the few small pieces only it has.
+   Each law wears its arena's world colour (--c); the page's red is --accent, set on its root.
    ============================================================ */
 
-/* ---------- law of the day ---------- */
+/* ---------- the shadow map: darkness against how often it plays out ---------- */
 
-.lw-today { display: flex; flex-direction: column; gap: 10px; width: 100%; text-align: left; transition: border-color var(--dur-2); }
-@media (hover: hover) { .lw-today:hover { border-color: color-mix(in oklab, var(--accent) 30%, var(--line)); } }
-.lw-today:active { transform: scale(0.99); }
-.lw-today-row { display: flex; align-items: center; gap: 14px; }
-.lw-today-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.lw-today-title { font: var(--w-medium) var(--text-xl)/1.2 var(--serif); text-wrap: balance; }
-.lw-today-line { color: var(--ink-2); font-size: var(--text-base); line-height: 1.45; }
-.lw-today-q { padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
-
-/* ---------- the marks (components/Mark.tsx) ---------- */
-
-.lw-card-mark { width: 48px; height: 48px; transition: rotate var(--dur-3) var(--spring); }
-.lw-today-mark { width: 64px; height: 64px; }
-.lw-kin-mark { width: 34px; height: 34px; }
-
-/* ---------- the board ---------- */
-
-.lw-board-wrap { margin-top: 14px; }
-.lw-board { display: grid; grid-template-columns: repeat(8, 1fr); border-radius: var(--r-s); overflow: hidden; border: 1px solid var(--line-2); }
-.lw-sq {
-  position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  background: var(--surface); color: var(--ink-2);
-  transition: opacity var(--dur-2), background-color var(--dur-1), color var(--dur-1);
-}
-.lw-sq.dark { background: var(--surface-2); }
-.lw-sq-n { font: var(--w-medium) clamp(10px, 2.6vw, 13px)/1 var(--serif); }
-.lw-sq-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); transition: scale var(--dur-2) var(--spring); }
-.lw-sq:focus-visible, .lw-sq.kin { background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: var(--ink); }
-@media (hover: hover) { .lw-sq:hover { background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: var(--ink); } }
-.lw-sq:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
-.lw-sq:focus-visible .lw-sq-dot { scale: 1.5; }
-@media (hover: hover) { .lw-sq:hover .lw-sq-dot { scale: 1.5; } }
-.lw-sq.dim { opacity: 0.25; }
-.lw-caption { min-height: 44px; margin-top: 10px; display: flex; flex-direction: column; gap: 2px; color: var(--ink-3); font-size: var(--text-m); line-height: 1.4; }
-.lw-caption b { font: var(--w-medium) var(--text-base) var(--serif); color: var(--ink); }
-
-/* ---------- the map ---------- */
-
-.lw-map { margin-top: 12px; }
 .lw-map svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: manipulation; }
 .lw-map-frame { fill: none; stroke: var(--line); }
 .lw-map-hot { fill: color-mix(in oklab, var(--accent) 6%, transparent); }
 .lw-map-axis { stroke: var(--line-2); stroke-dasharray: 2 4; }
-.lw-map-quad { font-size: var(--text-2xs); font-weight: var(--w-bold); fill: var(--ink-3); }
-.lw-map-label { font-size: var(--text-2xs); fill: var(--ink-3); }
+/* 12 units of a 400-wide drawing: never under 10px on a phone */
+.lw-map-quad { font-size: 12px; font-weight: var(--w-bold); fill: var(--ink-3); }
+.lw-map-label { font-size: 12px; fill: var(--ink-3); }
 .lw-map-kin line { stroke: var(--c); stroke-width: 1.2; opacity: 0.6; stroke-dasharray: 3 3; }
 .lw-dot { cursor: pointer; outline: none; }
 .lw-dot-hit { fill: transparent; }
-.lw-dot-mark { fill: var(--c); stroke: var(--surface); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; transition: scale var(--dur-2) var(--spring); }
-.lw-dot-n { font-size: 8px; font-weight: var(--w-bold); fill: var(--ink); opacity: 0; transition: opacity var(--dur-1); font-variant-numeric: tabular-nums; pointer-events: none; }
-.lw-dot.hot .lw-dot-mark, .lw-dot:focus-visible .lw-dot-mark { scale: 1.7; }
-.lw-dot.hot .lw-dot-n, .lw-dot:focus-visible .lw-dot-n, .lw-dot.kin .lw-dot-n { opacity: 1; }
-.lw-dot.kin .lw-dot-mark { scale: 1.3; }
-
-/* ---------- the traps they spring ---------- */
-
-.lw-sprung { list-style: none; margin: 10px -8px 0; padding: 0; display: grid; }
-.lw-sprung-row {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 10px;
-  width: 100%; padding: 8px; text-align: left; border-radius: var(--r-s); transition: background-color var(--dur-1);
+.lw-dot-mark {
+  fill: var(--c); stroke: var(--surface); stroke-width: 1.5;
+  transform-box: fill-box; transform-origin: center; transition: scale var(--dur-2) var(--ease);
 }
-@media (hover: hover) { .lw-sprung-row:hover { background: var(--surface-2); } }
-.lw-sprung-name { font-size: var(--text-base); }
-.lw-sprung-n { font-size: var(--text-s); font-weight: var(--w-bold); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.lw-sprung-bar { grid-column: 1 / -1; display: block; height: 4px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
-.lw-sprung-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c); transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) calc(0.1s + var(--i) * 25ms) backwards; }
+.lw-dot-n {
+  font-size: 12px; font-weight: var(--w-bold); fill: var(--ink); font-variant-numeric: tabular-nums; pointer-events: none;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round;
+  opacity: 0; transition: opacity var(--dur-1);
+}
+.lw-dot.hot .lw-dot-mark, .lw-dot:focus-visible .lw-dot-mark { scale: 1.6; }
+.lw-dot.kin .lw-dot-mark { scale: 1.3; }
+.lw-dot.hot .lw-dot-n, .lw-dot:focus-visible .lw-dot-n, .lw-dot.kin .lw-dot-n { opacity: 1; }
 
 /* ---------- name the move ---------- */
 
-.lw-game { margin-top: 12px; }
-.lw-game-score { margin: 0 0 8px; font-size: var(--text-s); font-weight: var(--w-bold); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.lw-game-scene { margin: 0 0 14px; font: var(--w-regular) var(--text-l)/1.5 var(--serif); color: var(--ink); animation: rise-in var(--dur-3) var(--ease-emph); }
-.lw-game-options { display: grid; gap: 6px; }
-@media (min-width: 720px) { .lw-game-options { grid-template-columns: 1fr 1fr; } }
-.lw-opt {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--h-m); padding: 10px 12px; text-align: left;
-  border-radius: var(--r-m); background: var(--surface-2); color: var(--ink); font-size: var(--text-base); line-height: 1.35;
-  transition: background-color var(--dur-1), opacity var(--dur-2), transform var(--dur-0);
+/* room kept for the longest scene (about 8 lines on a phone) and verdict, so nothing jumps between rounds */
+.lrn-q.lw-scene { min-height: 8lh; font-weight: var(--w-regular); }
+.lw-verdict { min-height: calc(3lh + 10px); font-size: var(--text-base); line-height: 1.5; }
+.lw-game-actions { display: flex; gap: 8px; }
+
+/* ---------- the mind traps they spring: the Stats page's ranked rows, each one a button ---------- */
+
+.lw-sprung li { padding: 0; }
+.lw-sprung button {
+  display: grid; gap: 6px; width: 100%; min-width: 0; padding: 7px 2px 8px; border-radius: inherit;
+  text-align: left; color: var(--ink); transition: background-color var(--dur-1);
 }
-@media (hover: hover) { .lw-opt:hover:not(:disabled) { background: var(--surface-3); } }
-.lw-opt:active:not(:disabled) { transform: scale(0.98); }
-.lw-opt:disabled { opacity: 0.4; }
-.lw-opt-key { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: var(--text-s); font-weight: var(--w-bold); background: var(--surface); color: var(--ink-2); }
-.lw-opt.right { background: color-mix(in oklab, var(--pos) 18%, var(--surface)); opacity: 1; }
-.lw-opt.right .lw-opt-key { background: var(--pos); color: var(--on-color); }
-.lw-opt.wrong { background: color-mix(in oklab, var(--neg) 16%, var(--surface)); }
-.lw-opt.wrong .lw-opt-key { background: var(--neg); color: var(--on-color); }
-.lw-game-reveal { margin-top: 12px; animation: rise-in var(--dur-3) var(--ease-emph); }
-.lw-game-reveal p { margin: 0; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); }
-.lw-game-reveal b { font-weight: var(--w-bold); }
-.lw-game-reveal b.yes { color: var(--pos); }
-.lw-game-reveal b.no { color: var(--neg); }
-.lw-game-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.lw-sprung button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-/* ---------- the list ---------- */
+/* ---------- about the book ---------- */
 
-.lw-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.chips.lw-chips { flex: 1 1 260px; margin: 0; }
-.lw-chip[aria-pressed='true'] { background: var(--c); color: var(--on-color); }
-.lw-sort { flex: none; }
-.lw-realm-about { margin: 10px 0 0; line-height: 1.45; }
+.lw-about .btn { margin-top: 12px; }
 
-.lw-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-@media (min-width: 720px) { .lw-list { grid-template-columns: 1fr 1fr; } }
-.lw-list li { content-visibility: auto; contain-intrinsic-size: auto 96px; animation: rise-in var(--dur-3) var(--ease-emph) backwards; animation-delay: calc(var(--i) * 25ms); }
-.lw-card {
-  display: flex; align-items: center; gap: 14px; width: 100%; height: 100%; padding: 12px 14px; text-align: left;
-  transition: border-color var(--dur-2), transform var(--dur-0);
+/* ---------- in the sheet: a small label and what it heads, closer to each other than to the rest ---------- */
+
+.lw-sub { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.lw-sub > .kicker { margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lw-dot-mark { transition: none; }
 }
-@media (hover: hover) {
-  .lw-card:hover { border-color: color-mix(in oklab, var(--c) 40%, var(--line)); }
-  .lw-card:hover .lw-card-mark { rotate: -4deg; }
-}
-.lw-card:active { transform: scale(0.98); }
-.lw-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.lw-card-top { display: flex; align-items: center; gap: 8px; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 70%, var(--ink-3)); }
-.lw-card-seen { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-3); }
-.lw-card-title { font: var(--w-medium) var(--text-l)/1.3 var(--serif); text-wrap: balance; }
-.lw-card-line { color: var(--ink-3); font-size: var(--text-m); line-height: 1.4; }
-.lw-card-dark { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 32px; }
-.lw-card-dark b { font-size: var(--text-l); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
-.lw-card-dark small { font-size: var(--text-2xs); color: var(--ink-3); }
-
-.lw-about { display: grid; justify-items: start; gap: 12px; }
-.lw-about p { margin: 0; font-size: var(--text-base); line-height: 1.55; color: var(--ink-2); max-width: 62ch; }
-
-/* ---------- one law, opened ---------- */
-
-.lw-detail { padding-bottom: 8px; }
-.lw-d-head { text-align: center; padding-top: 4px; }
-.lw-d-mark { width: 96px; height: 96px; margin: 0 auto 10px; animation: pop-in var(--dur-4) var(--spring) backwards; }
-.lw-d-kicker { margin: 0; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 70%, var(--ink-3)); }
-.lw-d-title { margin: 6px 0 0; font: var(--w-medium) clamp(24px, 6.6vw, 29px)/1.15 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
-.lw-d-line { margin: 8px auto 0; max-width: 38ch; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); text-wrap: balance; }
-
-.lw-d-meters { display: grid; gap: 8px; margin: 18px 0 6px; padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
-.lw-meter { display: grid; grid-template-columns: 72px 1fr 20px; align-items: center; gap: 10px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-2); }
-.lw-meter i { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
-.lw-meter b { height: 6px; border-radius: var(--r-2xs); background: var(--surface-3); }
-.lw-meter b.on { background: var(--c); }
-.lw-meter em { font-style: normal; font-weight: var(--w-bold); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
-
-.lw-d-h { display: flex; align-items: center; gap: 8px; margin: 24px 0 8px; font-size: var(--text-base); font-weight: var(--w-bold); }
-.lw-d-p { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
-.lw-d-k { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
-
-.lw-d-scene, .lw-d-study, .lw-d-shadow, .lw-d-honest { margin: 16px 0 0; padding: 14px 16px; border-radius: var(--r-l); border: 1px solid var(--line); background: var(--surface); }
-.lw-d-scene figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin-bottom: 6px; }
-.lw-d-scene figcaption b { font: var(--w-medium) var(--text-l) var(--serif); }
-.lw-d-scene figcaption span, .lw-d-who { font-size: var(--text-m); color: var(--ink-3); }
-.lw-d-study h4 { margin: 0; font: var(--w-medium) var(--text-l)/1.3 var(--serif); }
-.lw-d-who { margin: 2px 0 8px; }
-.lw-d-scene > p:last-child, .lw-d-study p:last-child, .lw-d-shadow p:last-child, .lw-d-honest p:last-child { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink-2); }
-.lw-d-shadow { background: var(--surface-2); border-color: transparent; }
-
-.lw-levers { display: grid; gap: 8px; }
-@media (min-width: 720px) { .lw-levers { grid-template-columns: 1fr 1fr; } }
-.lw-lever { padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
-.lw-lever b { display: block; margin-bottom: 3px; font-size: var(--text-base); font-weight: var(--w-bold); }
-.lw-lever p { margin: 0; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
-
-.lw-springs { display: grid; gap: 8px; }
-.lw-spring {
-  display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 12px 14px; text-align: left; border-radius: var(--r-m);
-  background: color-mix(in oklab, var(--t) 8%, var(--surface-2)); transition: background-color var(--dur-1), transform var(--dur-0);
-}
-@media (hover: hover) { .lw-spring:hover { background: color-mix(in oklab, var(--t) 14%, var(--surface-2)); } }
-.lw-spring:active { transform: scale(0.98); }
-.lw-spring-top { display: flex; align-items: center; gap: 6px; color: color-mix(in oklab, var(--t) 75%, var(--ink)); }
-.lw-spring-top b { flex: 1; font-size: var(--text-base); font-weight: var(--w-bold); color: var(--ink); }
-.lw-spring-go { color: var(--ink-3); }
-.lw-spring-how { font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
-
-.lw-d-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); }
-.lw-d-list li::marker { color: var(--c); }
-.lw-d-list.counter li::marker { font-weight: var(--w-bold); }
-.lw-d-defence { margin-top: 6px; }
-
-.lw-d-question { margin: 20px 0 0; padding: 4px 0 4px 14px; border-left: 3px solid var(--c); font: var(--w-regular) var(--text-l)/1.45 var(--serif); color: var(--ink); }
-.lw-d-question small { display: block; margin-bottom: 4px; font: var(--w-medium) var(--text-s) var(--sans); color: var(--ink-3); }
-
-.lw-d-seen { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
-.lw-seen { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.lw-seen b { padding: 1px 8px; border-radius: var(--r-pill); background: var(--c); color: var(--on-color); font-size: var(--text-s); animation: pop-in var(--dur-3) var(--spring); }
-
-.lw-kin { display: grid; gap: 6px; }
-.lw-kin-chip { display: flex; align-items: center; gap: 10px; min-height: var(--h-m); padding: 6px 12px 6px 6px; border-radius: var(--r-m); background: var(--surface-2); text-align: left; transition: background-color var(--dur-1); }
-@media (hover: hover) { .lw-kin-chip:hover { background: var(--surface-3); } }
-.lw-kin-chip span { flex: 1; font: var(--w-medium) var(--text-base)/1.3 var(--serif); }

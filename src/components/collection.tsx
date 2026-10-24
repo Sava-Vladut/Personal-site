@@ -1,5 +1,6 @@
 // The pieces the Media page builds its two collections from: a section's head, a rail of things you swipe through
-// sideways, the order chip, and a list broken into runs under small headings (styles/media.css).
+// sideways, the order chip (also on the Learn pages; styled in app.css), and a list broken into runs under small headings
+// (styles/media.css).
 import type { ComponentChildren } from 'preact';
 import { Icon, type UiName } from './icons';
 import { t } from '../lib/i18n';
@@ -7,14 +8,15 @@ import { t } from '../lib/i18n';
 export type Sort = 'recent' | 'title' | 'rating';
 export const SORTS: [Sort, string][] = [['recent', t('Recent')], ['title', t('A–Z')], ['rating', t('Top rated')]];
 
-/** One chip for the order: each tap moves to the next. */
-export function SortChip({ sort, onSort }: { sort: Sort; onSort: (s: Sort) => void }) {
-  const at = SORTS.findIndex(([s]) => s === sort);
-  const next = SORTS[(at + 1) % SORTS.length];
+/** One chip for the order: each tap moves to the next. `options` are [value, label] pairs, in the order a tap steps
+ * through them (Media's recent, A–Z, top rated by default). */
+export function SortChip<S extends string>({ sort, onSort, options = SORTS as [S, string][] }: { sort: S; onSort: (s: S) => void; options?: [S, string][] }) {
+  const at = Math.max(0, options.findIndex(([s]) => s === sort));
+  const next = options[(at + 1) % options.length];
   return (
-    <button class="chip sort-chip" onClick={() => onSort(next[0])} aria-label={t('Order: {now}. Change to {next}', { now: SORTS[at][1], next: next[1] })} title={t('Order by {next}', { next: next[1] })}>
+    <button class="chip sort-chip" onClick={() => onSort(next[0])} aria-label={t('Order: {now}. Change to {next}', { now: options[at][1], next: next[1] })} title={t('Order by {next}', { next: next[1] })}>
       <Icon name="arrow-down" size={16} />
-      <span key={sort}>{SORTS[at][1]}</span>
+      <span key={sort}>{options[at][1]}</span>
     </button>
   );
 }

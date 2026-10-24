@@ -156,11 +156,12 @@
   /* tiles fill the row however many there are, instead of leaving one alone under three */
   .stats-page .tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 
-  /* ---------- Laws of power, Win friends, Channel points, Streamer stats: cards in two columns like Stats ---------- */
+  /* ---------- Channel points, Streamer stats: cards in two columns like Stats ---------- */
+  /* (the Learn pages lay themselves out on an explicit grid in learn.css: columns that rebalance move cards about) */
 
-  :is(.laws-page, .friends-page, .tw-page) .reveal.stack-l { display: block; column-count: 2; column-gap: 12px; }
-  :is(.laws-page, .friends-page, .tw-page) .reveal.stack-l > * { break-inside: avoid; margin: 0 0 12px; }
-  :is(.laws-page, .friends-page, .tw-page) .reveal.stack-l > :is(.hero, .tiles) { column-span: all; }
+  .tw-page .reveal.stack-l { display: block; column-count: 2; column-gap: 12px; }
+  .tw-page .reveal.stack-l > * { break-inside: avoid; margin: 0 0 12px; }
+  .tw-page .reveal.stack-l > :is(.hero, .tiles) { column-span: all; }
   /* the balance over time runs across; the lists sit side by side under it */
   .tw-page:not(.sr-page) .reveal.stack-l > .chart-card { column-span: all; }
   .sr-page .reveal.stack-l > :is(.sr-profile, .sr-note, .sr-source) { column-span: all; }

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigateAfterSheet } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
@@ -10,17 +10,19 @@ import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
-import { RevealStack } from '../components/charts';
 import { Sky } from '../components/Sky';
-import { Tile } from './stats/parts';
+import { SortChip } from '../components/collection';
+import { Aside, Caption, DetailHead, GroupHead, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, shuffle, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/friends.css';
 
 /*
- * How to Win Friends and Influence People, under Learn: Laws of power's sibling, on the same sky, cards and tiles.
- * Every principle wears its own mark (data/marks.ts) in its part's colour, and opens to the story behind it, the
- * psychology, the mind traps it disarms (linked to Mind traps), the laws of power it answers (linked to Laws of power)
- * and how to practise it. The data is in data/principles.
+ * How to Win Friends and Influence People, under Learn: Laws of power's sibling, on the same layout (styles/learn.css).
+ * A sky with three figures and the search; a feature column (the principle of the day, where to start, the game and
+ * the connections to the other two pages); and all thirty in the book's four parts as compact rows. Every principle
+ * wears its own mark (data/marks.ts) in its part's colour, and opens to the story behind it, the psychology, the mind
+ * traps it disarms (linked to Mind traps), the laws of power it answers (linked to Laws of power) and how to practise
+ * it. The data is in data/principles.
  */
 
 const BY_N = new Map(PRINCIPLES.map((x) => [x.n, x]));
@@ -29,7 +31,7 @@ const LAW_BY_N = new Map(LAWS.map((x) => [x.n, x]));
 const PART_IDS = Object.keys(PARTS) as Part[];
 const hueOf = (x: Principle) => PARTS[x.part].hue;
 const lawHue = (x: Law) => REALMS[x.realm].hue;
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const trapHue = (x: Trap) => FAMILIES[x.family].hue;
 
 /** Every mind trap the principles disarm, most-disarmed first, with the principles that disarm it. */
 const DISARMED = (() => {
@@ -45,95 +47,27 @@ const ANSWERED = (() => {
   return [...by.entries()].map(([n, list]) => ({ law: LAW_BY_N.get(n)!, list })).sort((a, b) => b.list.length - a.list.length || a.law.n - b.law.n);
 })();
 
-function Meter({ label, value, about }: { label: string; value: number; about: string }) {
-  return (
-    <div class="wf-meter" title={about}>
-      <span>{label}</span>
-      <i>{Array.from({ length: 10 }, (_, i) => <b class={i < value ? 'on' : ''} style={{ '--i': i }} />)}</i>
-      <em>{value}</em>
-    </div>
-  );
-}
-
 /* ---------- what you're practising ---------- */
 
 /** On this device: which principles you're practising, and how often you've tried each. */
-const PRACTICE = 'mm-friends-practice';
 type Practice = Record<number, { on?: boolean; tried?: number }>;
 function usePractice() {
-  const [practice, set] = useState<Practice>(() => {
-    try { return JSON.parse(localStorage.getItem(PRACTICE) || '{}') ?? {}; } catch { return {}; }
-  });
-  const save = (next: Practice) => {
-    set(next);
-    try { localStorage.setItem(PRACTICE, JSON.stringify(next)); } catch {}
-  };
+  const [practice, save] = useLocal<Practice>('mm-friends-practice', {});
   const toggle = (n: number) => save({ ...practice, [n]: { ...practice[n], on: !practice[n]?.on } });
   const tried = (n: number) => save({ ...practice, [n]: { ...practice[n], tried: (practice[n]?.tried ?? 0) + 1 } });
   return [practice, toggle, tried] as const;
 }
 
-/* ---------- the ladder ---------- */
-
-type Filter = 'all' | 'practising' | Part;
-
-/** All thirty, rung by rung, one row for each of the book's four parts. */
-function Ladder({ filter, practice, open }: { filter: Filter; practice: Practice; open: (x: Principle) => void }) {
-  const [hot, setHot] = useState<number | null>(null);
-  const focus = hot ? BY_N.get(hot) ?? null : null;
-  let k = 0;
-  return (
-    <div class="wf-ladder-wrap">
-      <div class="wf-ladder" role="group" aria-label={t('All {n} principles', { n: PRINCIPLES.length })}>
-        {PART_IDS.map((part) => {
-          const list = PRINCIPLES.filter((x) => x.part === part);
-          return (
-            <div class="wf-ladder-row" style={{ '--c': `var(--emo-${PARTS[part].hue})` }}>
-              <p class="wf-ladder-part"><b>{t(PARTS[part].name)}</b> <span>{t(PARTS[part].motto)}</span></p>
-              <div class="wf-rungs">
-                {list.map((x) => {
-                  const dim = (filter === 'practising' && !practice[x.n]?.on) || (filter !== 'all' && filter !== 'practising' && x.part !== filter);
-                  return (
-                    <button
-                      class={`wf-rung${practice[x.n]?.on ? ' on' : ''}${dim ? ' dim' : ''}${focus && focus.kin.includes(x.n) ? ' kin' : ''}`}
-                      style={{ '--i': k++ }}
-                      aria-label={`${x.n}. ${x.title}`}
-                      onClick={() => open(x)}
-                      onPointerEnter={() => setHot(x.n)}
-                      onPointerLeave={() => setHot((h) => (h === x.n ? null : h))}
-                      onFocus={() => setHot(x.n)}
-                      onBlur={() => setHot((h) => (h === x.n ? null : h))}
-                    >
-                      <span class="wf-rung-n">{x.n}</span>
-                      {practice[x.n]?.on ? <Icon name="check" size={12} stroke={2.5} class="wf-rung-tick" /> : <i class="wf-rung-dot" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div class="wf-caption" aria-live="polite">
-        {focus ? (
-          <>
-            <b>{focus.title}</b>
-            <span>{focus.line}</span>
-          </>
-        ) : (
-          <span>{t('Hover or focus a rung to read its principle, tap to open it. A tick means you’re practising it.')}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ---------- where to start ---------- */
 
-/** Every principle by how hard it is against how often it comes up: the easy, common ones are where to begin. */
-function StartMap({ open }: { open: (x: Principle) => void }) {
+/**
+ * Every principle by how hard it is against how often it comes up: the easy, common ones are where to begin. A ring
+ * marks the ones you're practising; what's under the pointer is told in a caption that never changes height.
+ */
+function StartMap({ practice, open }: { practice: Practice; open: (x: Principle) => void }) {
   const [hot, setHot] = useState<number | null>(null);
-  const W = 400, H = 300, P = 30;
+  // narrow enough that 12-unit labels still read at 10px or more on a phone
+  const W = 360, H = 280, P = 30;
   const xOf = (v: number) => P + ((v - 0.5) / 10) * (W - P * 2);
   const yOf = (v: number) => H - P - ((v - 0.5) / 10) * (H - P * 2);
   // principles on the same spot fan out round it, so none hides another
@@ -149,11 +83,12 @@ function StartMap({ open }: { open: (x: Principle) => void }) {
   }, []);
   const focus = hot ? BY_N.get(hot) ?? null : null;
   const quads: [number, number, string, string][] = [
-    [P + 6, P + 4, t('Hard, and rare'), 'start'],
-    [W - P - 6, P + 4, t('The lifelong work'), 'end'],
+    [P + 6, P + 16, t('Hard, and rare'), 'start'],
+    [W - P - 6, P + 16, t('The lifelong work'), 'end'],
     [P + 6, H - P - 8, t('Easy, now and then'), 'start'],
     [W - P - 6, H - P - 8, t('Start here'), 'end'],
   ];
+  const leave = (n: number) => setHot((h) => (h === n ? null : h));
   return (
     <div class="wf-map">
       <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={t('Every principle by how hard it is and how often it comes up')}>
@@ -161,9 +96,9 @@ function StartMap({ open }: { open: (x: Principle) => void }) {
         <line x1={W / 2} y1={P} x2={W / 2} y2={H - P} class="wf-map-axis" />
         <line x1={P} y1={H / 2} x2={W - P} y2={H / 2} class="wf-map-axis" />
         <rect x={P} y={P} width={W - P * 2} height={H - P * 2} class="wf-map-frame" />
-        {quads.map(([x, y, label, anchor]) => <text x={x} y={y + 10} text-anchor={anchor} class="wf-map-quad">{label}</text>)}
-        <text x={W / 2} y={H - 8} text-anchor="middle" class="wf-map-label">{t('How often it comes up')} →</text>
-        <text x={12} y={H / 2} text-anchor="middle" class="wf-map-label" transform={`rotate(-90 12 ${H / 2})`}>{t('How hard it is')} →</text>
+        {quads.map(([x, y, label, anchor]) => <text x={x} y={y} text-anchor={anchor} class="wf-map-quad">{label}</text>)}
+        <text x={W / 2} y={H - 9} text-anchor="middle" class="wf-map-label">{t('How often it comes up')} →</text>
+        <text x={14} y={H / 2} text-anchor="middle" class="wf-map-label" transform={`rotate(-90 14 ${H / 2})`}>{t('How hard it is')} →</text>
         {focus && (
           <g class="wf-map-kin" style={{ '--c': `var(--emo-${hueOf(focus)})` }}>
             {focus.kin.map((k) => {
@@ -172,50 +107,40 @@ function StartMap({ open }: { open: (x: Principle) => void }) {
             })}
           </g>
         )}
-        {dots.map(({ x, px, py }, i) => (
+        {dots.map(({ x, px, py }) => (
           <g
             class={`wf-dot${hot === x.n ? ' hot' : ''}${focus && focus.kin.includes(x.n) ? ' kin' : ''}`}
-            style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': i }}
+            style={{ '--c': `var(--emo-${hueOf(x)})` }}
             role="button"
             tabIndex={0}
-            aria-label={`${x.n}. ${x.title}`}
+            aria-label={`${x.n}. ${x.title}${practice[x.n]?.on ? ` (${t('practising')})` : ''}`}
             onClick={() => open(x)}
             onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open(x))}
             onPointerEnter={() => setHot(x.n)}
-            onPointerLeave={() => setHot((h) => (h === x.n ? null : h))}
+            onPointerLeave={() => leave(x.n)}
             onFocus={() => setHot(x.n)}
-            onBlur={() => setHot((h) => (h === x.n ? null : h))}
+            onBlur={() => leave(x.n)}
           >
             <circle cx={px} cy={py} r={11} class="wf-dot-hit" />
+            {practice[x.n]?.on && <circle cx={px} cy={py} r={8.5} class="wf-dot-on" />}
             <circle cx={px} cy={py} r={5} class="wf-dot-mark" />
-            <text x={px} y={py - 8} text-anchor="middle" class="wf-dot-n">{x.n}</text>
+            <text x={px} y={py - 10} text-anchor="middle" class="wf-dot-n">{x.n}</text>
           </g>
         ))}
       </svg>
-      <div class="wf-caption" aria-live="polite">
-        {focus ? (
-          <>
-            <b>{focus.n}. {focus.title}</b>
-            <span>{t('Hard {h} · everyday {e} · tap to open', { h: focus.hard, e: focus.everyday })}</span>
-          </>
-        ) : (
-          <span>{t('Lower is easier, right is more common. Start in the bottom right.')}</span>
-        )}
-      </div>
+      <Caption
+        title={focus ? `${focus.n}. ${focus.title}` : undefined}
+        sub={focus ? t('Hard {h} · everyday {e} · tap to open', { h: focus.hard, e: focus.everyday }) : undefined}
+        idle={<>
+          {t('Lower is easier, right is more common. Start in the bottom right.')}
+          {Object.values(practice).some((p) => p.on) && <> {t('A ring marks one you’re practising.')}</>}
+        </>}
+      />
     </div>
   );
 }
 
 /* ---------- name the principle ---------- */
-
-function shuffle<T>(list: T[]) {
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 function deal(not?: number) {
   const pool = PRINCIPLES.filter((x) => x.n !== not);
@@ -225,6 +150,10 @@ function deal(not?: number) {
   return { principle, options: shuffle([principle, ...others]) };
 }
 
+/**
+ * A scene, four principles, pick the one at work. Everything is always there (the score line, the verdict's slot,
+ * both buttons) and the scene keeps room for its longest, so the options never move under your finger.
+ */
 function NameThePrinciple({ open }: { open: (x: Principle) => void }) {
   const [round, setRound] = useState(() => deal());
   const [picked, setPicked] = useState<number | null>(null);
@@ -239,42 +168,110 @@ function NameThePrinciple({ open }: { open: (x: Principle) => void }) {
   };
   const next = () => { setRound(deal(answer.n)); setPicked(null); };
   return (
-    <div class="wf-game">
-      {score.played > 0 && <p class="wf-game-score">{t('{right} of {played}', score)}{score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}</p>}
-      <p class="wf-game-scene" key={answer.n}>{answer.scenario}</p>
-      <div class="wf-game-options">
+    <div class="lrn-quiz wf-game">
+      <p class="lrn-q wf-scene">{answer.scenario}</p>
+      <div class="lrn-opts">
         {round.options.map((x, i) => (
-          <button
-            class={`wf-opt${picked === x.n ? ' picked' : ''}${picked != null && x.n === answer.n ? ' right' : ''}${picked === x.n && x.n !== answer.n ? ' wrong' : ''}`}
-            onClick={() => pick(x.n)}
+          <Option
+            index={i}
+            label={x.title}
+            state={picked == null ? 'idle' : x.n === answer.n ? 'right' : picked === x.n ? 'wrong' : 'idle'}
             disabled={picked != null && picked !== x.n && x.n !== answer.n}
-            aria-pressed={picked === x.n}
-          >
-            <span class="wf-opt-key">{String.fromCharCode(65 + i)}</span>
-            <span>{x.title}</span>
-          </button>
+            pressed={picked === x.n}
+            onClick={() => pick(x.n)}
+          />
         ))}
       </div>
-      {picked != null && (
-        <div class="wf-game-reveal" role="status">
-          <p><b class={picked === answer.n ? 'yes' : 'no'}>{picked === answer.n ? t('Right.') : t('It was principle {n}.', { n: answer.n })}</b> {answer.line}</p>
-          <div class="wf-game-actions">
-            <button class="btn btn-quiet btn-s" onClick={() => open(answer)}>{t('Read the principle')}</button>
-            <button class="btn btn-primary btn-s" onClick={next}>{t('Next scene')} <Icon name="chevron-right" size={16} /></button>
-          </div>
+      <div class="wf-verdict" role="status">
+        {picked != null && (
+          <p class="lrn-verdict">
+            <b class={picked === answer.n ? 'is-right' : 'is-wrong'}>{picked === answer.n ? t('Right.') : t('It was principle {n}.', { n: answer.n })}</b> {answer.line}
+          </p>
+        )}
+      </div>
+      <div class="lrn-quiz-foot">
+        <p class="lrn-score">{score.played > 0 ? `${t('{right} of {played}', score)}${score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}` : ''}</p>
+        <span class="wf-game-acts">
+          <button class="btn btn-quiet btn-s" style={picked == null ? { visibility: 'hidden' } : undefined} onClick={() => open(answer)}>{t('Read the principle')}</button>
+          <button class="btn btn-primary btn-s" onClick={next}>{t('Next scene')} <Icon name="chevron-right" size={16} /></button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- where they meet the other two pages ---------- */
+
+/** The laws of power the principles answer most (with the principles that answer each) and the mind traps they disarm most. */
+function Connections({ open, openLaw, openTrap }: { open: (x: Principle) => void; openLaw: (n: number) => void; openTrap: (id: string) => void }) {
+  const laws = ANSWERED.slice(0, 5), traps = DISARMED.slice(0, 5);
+  const lawMax = laws[0]?.list.length ?? 1, trapMax = traps[0]?.list.length ?? 1;
+  return (
+    <section class="card lrn-card">
+      <header class="lrn-card-head">
+        <h3 class="lrn-card-title">{t('Connections')}</h3>
+        <p class="lrn-card-sub">{t('{laws} laws of power answered, {traps} mind traps disarmed', { laws: ANSWERED.length, traps: DISARMED.length })}</p>
+      </header>
+      {laws.length > 0 && (
+        <div class="wf-conn">
+          <h4 class="kicker wf-conn-h">{t('Carnegie vs Greene')}</h4>
+          <p class="wf-conn-sub">{t('The laws of power the principles answer. Tap a law to read it, a number to open its principle.')}</p>
+          <ol class="ranked">
+            {laws.map(({ law, list }) => (
+              <li style={{ '--c': `var(--emo-${lawHue(law)})`, '--w': list.length / lawMax }}>
+                <span class="rk-top">
+                  <button class="wf-rk-main" onClick={() => openLaw(law.n)}>
+                    <Mark id={law.id} hue={lawHue(law)} size={28} />
+                    <span class="wf-rk-body">
+                      <small>{t('Law {n}', { n: law.n })}</small>
+                      <b>{law.title}</b>
+                    </span>
+                  </button>
+                  <span class="wf-pips">
+                    {list.map((x) => (
+                      <button class="wf-pip" style={{ '--c': `var(--emo-${hueOf(x)})` }} title={x.title} aria-label={`${x.n}. ${x.title}`} onClick={() => open(x)}>{x.n}</button>
+                    ))}
+                  </span>
+                </span>
+                <span class="rk-bar"><i /></span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
-    </div>
+      {traps.length > 0 && (
+        <div class="wf-conn">
+          <h4 class="kicker wf-conn-h">{t('The mind traps they disarm')}</h4>
+          <p class="wf-conn-sub">{t('The biases the principles work against most. Tap one to read it in Mind traps.')}</p>
+          <ol class="ranked">
+            {traps.map(({ trap, list }) => (
+              <li style={{ '--c': `var(--emo-${trapHue(trap)})`, '--w': list.length / trapMax }}>
+                <button class="wf-rk" onClick={() => openTrap(trap.id)}>
+                  <span class="rk-top">
+                    <Mark id={trap.id} hue={trapHue(trap)} size={28} />
+                    <span class="rk-name">{trap.name}</span>
+                    <span class="rk-n"><b>{list.length}</b></span>
+                  </span>
+                  <span class="rk-bar"><i /></span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </section>
   );
 }
 
 /* ---------- one principle, opened ---------- */
 
 type Lens = 'why' | 'how';
+const LENSES: Lens[] = ['why', 'how'];
 
-function PrincipleDetail({ x, lens, practice, onToggle, onTried, go, openTrap, openLaw }: {
+function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, openTrap, openLaw }: {
   x: Principle;
   lens: Lens;
+  setLens: (l: Lens) => void;
   practice: { on?: boolean; tried?: number };
   onToggle: () => void;
   onTried: () => void;
@@ -285,156 +282,115 @@ function PrincipleDetail({ x, lens, practice, onToggle, onTried, go, openTrap, o
   const part = PARTS[x.part];
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
   const laws = x.laws.map((s) => ({ ...s, law: LAW_BY_N.get(s.n) })).filter((s): s is typeof s & { law: Law } => !!s.law);
+  const kin = x.kin.map((k) => BY_N.get(k)).filter((k): k is Principle => !!k);
 
-  const principle = (
+  const why = (
     <>
-      <h3 class="wf-d-h">{t('The principle')}</h3>
-      <p class="wf-d-p">{x.gist}</p>
-      <figure class="wf-d-story">
-        <p class="wf-d-k"><Icon name="book" size={14} /> {t('The story')}</p>
-        <figcaption><b>{x.story.who}</b><span>{x.story.when}</span></figcaption>
-        <p>{x.story.text}</p>
-      </figure>
-    </>
-  );
-  const machinery = (
-    <>
-      <h3 class="wf-d-h">{t('Why it works on people')}</h3>
-      <p class="wf-d-p">{x.mind}</p>
-      <h3 class="wf-d-h">{t('The levers it pulls')}</h3>
-      <div class="wf-levers">
-        {x.levers.map((l, i) => (
-          <div class="wf-lever" style={{ '--i': i }}>
-            <b>{l.name}</b>
-            <p>{l.text}</p>
-          </div>
-        ))}
-      </div>
+      <section class="lrn-d-sec">
+        <h3 class="lrn-d-h">{t('The principle')}</h3>
+        <p class="lrn-d-p">{x.gist}</p>
+        <Aside icon="book" label={t('The story')} title={x.story.who} who={x.story.when}>{x.story.text}</Aside>
+      </section>
+      <section class="lrn-d-sec">
+        <h3 class="lrn-d-h">{t('Why it works on people')}</h3>
+        <p class="lrn-d-p">{x.mind}</p>
+        <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
+      </section>
+      <section class="lrn-d-sec">
+        <h3 class="lrn-d-h">{t('The levers it pulls')}</h3>
+        <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}.</b> {l.text}</li>)}</ul>
+      </section>
       {traps.length > 0 && (
-        <>
-          <h3 class="wf-d-h">{t('The mind traps it disarms')}</h3>
-          <div class="wf-links">
-            {traps.map(({ trap, how }) => (
-              <button class="wf-link" style={{ '--t': `var(--emo-${FAMILIES[trap.family].hue})` }} onClick={() => openTrap(trap.id)}>
-                <span class="wf-link-top"><Icon name="spiral" size={16} /> <b>{trap.name}</b> <Icon name="arrow-up-right" size={14} class="wf-link-go" /></span>
-                <span class="wf-link-how">{how}</span>
-              </button>
-            ))}
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('The mind traps it disarms')}</h3>
+          <div class="lrn-links">
+            {traps.map(({ trap, how }) => <LinkRow hue={trapHue(trap)} id={trap.id} title={trap.name} how={how} onClick={() => openTrap(trap.id)} />)}
           </div>
-        </>
+        </section>
       )}
       {laws.length > 0 && (
-        <>
-          <h3 class="wf-d-h">{t('Carnegie vs Greene')}</h3>
-          <p class="wf-d-note">{t('The laws of power it answers, and how.')}</p>
-          <div class="wf-links">
-            {laws.map(({ law, how }) => (
-              <button class="wf-link wf-link-law" style={{ '--t': `var(--emo-${lawHue(law)})` }} onClick={() => openLaw(law.n)}>
-                <span class="wf-link-top">
-                  <Mark id={law.id} hue={lawHue(law)} class="wf-link-mark" />
-                  <b><small>{t('Law {n}', { n: law.n })}</small>{law.title}</b>
-                  <Icon name="arrow-up-right" size={14} class="wf-link-go" />
-                </span>
-                <span class="wf-link-how">{how}</span>
-              </button>
-            ))}
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Carnegie vs Greene')}</h3>
+          <p class="lrn-d-p wf-d-note">{t('The laws of power it answers, and how.')}</p>
+          <div class="lrn-links">
+            {laws.map(({ law, how }) => <LinkRow hue={lawHue(law)} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />)}
           </div>
-        </>
+        </section>
       )}
-      <div class="wf-d-study">
-        <p class="wf-d-k"><Icon name="info-circle" size={14} /> {t('The experiment')}</p>
-        <h4>{x.study.title}</h4>
-        <p class="wf-d-who">{x.study.who}</p>
-        <p>{x.study.text}</p>
-      </div>
-      <h3 class="wf-d-h">{t('Where you’ll meet it today')}</h3>
-      <ul class="wf-d-list">{x.today.map((l) => <li>{l}</li>)}</ul>
+      <section class="lrn-d-sec">
+        <h3 class="lrn-d-h">{t('Where you’ll meet it today')}</h3>
+        <ul class="lrn-list">{x.today.map((l) => <li>{l}</li>)}</ul>
+      </section>
     </>
   );
-  const practise = (
-    <div class="wf-d-practice">
-      <h3 class="wf-d-h">{t('Try this week')}</h3>
-      <ol class="wf-d-list tries">{x.practice.map((l) => <li>{l}</li>)}</ol>
-      <h3 class="wf-d-h">{t('Where it goes wrong')}</h3>
-      <ul class="wf-d-list slips">{x.slips.map((l) => <li>{l}</li>)}</ul>
-    </div>
+  const how = (
+    <>
+      <section class="lrn-d-sec">
+        <h3 class="lrn-d-h">{t('Try this week')}</h3>
+        <ol class="lrn-list is-steps">{x.practice.map((l) => <li>{l}</li>)}</ol>
+      </section>
+      <section class="lrn-d-sec">
+        <h3 class="lrn-d-h">{t('Where it goes wrong')}</h3>
+        <ul class="lrn-list">{x.slips.map((l) => <li>{l}</li>)}</ul>
+      </section>
+    </>
   );
 
   return (
-    <article class="wf-detail" style={{ '--c': `var(--emo-${part.hue})` }}>
-      <header class="wf-d-head">
-        <Mark id={x.id} hue={hueOf(x)} class="wf-d-mark" />
-        <p class="wf-d-kicker">{t('Principle {n}', { n: x.n })} · {t(part.name)}</p>
-        <h2 class="wf-d-title">{x.title}</h2>
-        <p class="wf-d-line">{x.line}</p>
-      </header>
+    <article class="lrn-detail" key={x.n}>
+      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Principle {n}', { n: x.n })} · ${t(part.name)}`} title={x.title} line={x.line} />
 
-      <section class="wf-d-meters">
+      <div class="lrn-meters">
         <Meter label={t('How hard')} value={x.hard} about={t('How hard it is to actually do')} />
         <Meter label={t('Everyday')} value={x.everyday} about={t('How often it comes up in ordinary life')} />
-      </section>
-
-      {lens === 'why' ? <>{principle}{machinery}{practise}</> : <>{practise}{principle}{machinery}</>}
-
-      <div class="wf-d-shadow">
-        <p class="wf-d-k"><Icon name="moon" size={14} /> {t('The shadow side')}</p>
-        <p>{x.shadow}</p>
-      </div>
-      <div class="wf-d-honest">
-        <p class="wf-d-k"><Icon name="heart" size={14} /> {t('The honest version')}</p>
-        <p>{x.honest}</p>
       </div>
 
-      <blockquote class="wf-d-question">
+      {/* the lens: which half you read first (the other follows) */}
+      <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
+        <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Icon name="brain" size={16} /> {t('Why it works')}</button>
+        <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Icon name="list-check" size={16} /> {t('How to practise')}</button>
+      </div>
+
+      {lens === 'why' ? <>{why}{how}</> : <>{how}{why}</>}
+
+      <div class="lrn-pair">
+        <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
+        <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
+      </div>
+
+      <blockquote class="lrn-quote">
         <small>{t('A question to sit with')}</small>
         {x.question}
       </blockquote>
 
-      <div class="wf-d-act">
-        <button class={`btn btn-quiet wf-act${practice.on ? ' on' : ''}`} aria-pressed={!!practice.on} onClick={() => { haptic(practice.on ? 6 : 10); onToggle(); }}>
-          <Icon name={practice.on ? 'check' : 'plus'} size={18} />
-          <span>{practice.on ? t('Practising') : t('Practise this')}</span>
-        </button>
-        <button class="btn btn-quiet wf-act" onClick={() => { haptic(10); onTried(); }}>
-          <Icon name="sparkles" size={18} />
-          <span>{t('I tried it')}</span>
-          {!!practice.tried && <b>×{practice.tried}</b>}
-        </button>
+      <div class="lrn-actions">
+        <Tally icon={practice.on ? 'check' : 'plus'} label={practice.on ? t('Practising') : t('Practise this')} pressed={!!practice.on} onClick={() => { haptic(practice.on ? 6 : 10); onToggle(); }} />
+        <Tally icon="sparkles" label={t('I tried it')} n={practice.tried ?? 0} onClick={() => { haptic(10); onTried(); }} />
       </div>
 
-      <h3 class="wf-d-h">{t('Related principles')}</h3>
-      <div class="wf-kin">
-        {x.kin.map((k) => BY_N.get(k)).filter((k): k is Principle => !!k).map((k) => (
-          <button class="wf-kin-chip" onClick={() => go(k.n)}>
-            <Mark id={k.id} hue={hueOf(k)} class="wf-kin-mark" />
-            <span>{k.title}</span>
-          </button>
-        ))}
-      </div>
+      {kin.length > 0 && (
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Related principles')}</h3>
+          <ol class="lrn-rows">
+            {kin.map((k) => <Row id={k.id} hue={hueOf(k)} top={t('Principle {n}', { n: k.n })} title={k.title} onClick={() => go(k.n)} />)}
+          </ol>
+        </section>
+      )}
     </article>
   );
 }
 
 /* ---------- the page ---------- */
 
-type Sort = 'n' | 'everyday' | 'easy';
-const SORTS: Sort[] = ['n', 'everyday', 'easy'];
-const LENSES: Lens[] = ['why', 'how'];
+type Filter = 'all' | 'practising' | Part;
+// 'n' is the book's order, in its four parts
+type Sort = 'n' | 'easy' | 'everyday';
+const SORTS: Sort[] = ['n', 'easy', 'everyday'];
 const FILTERS: Filter[] = ['all', 'practising', ...PART_IDS];
 const WORLD = 'joy';
 const LEVERS = new Set(PRINCIPLES.flatMap((x) => x.levers.map((l) => l.name.toLowerCase()))).size;
 
-/** The page wears the wheel's yellow for warmth; tiles and card titles read the accent from the root. */
-function useAccent() {
-  useLayoutEffect(() => {
-    const root = document.documentElement.style;
-    root.setProperty('--accent', `var(--emo-${WORLD})`);
-    return () => root.removeProperty('--accent');
-  }, []);
-}
-
 export function Friends({ query: params }: { query: URLSearchParams }) {
-  useAccent();
   // ?open=<n> opens a principle straight away (Laws of power and Mind traps link here)
   const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null);
   const [filter, setFilter] = usePref<Filter>('friends-part', 'all', FILTERS);
@@ -457,13 +413,10 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
   }, [filter, sort, query, practice]);
   const practising = PRINCIPLES.filter((x) => practice[x.n]?.on).length;
   const triedTotal = Object.values(practice).reduce((s, v) => s + (v.tried ?? 0), 0);
-  const picked = filter === 'all' || filter === 'practising' ? null : PARTS[filter];
 
   const openPrinciple = (x: Principle) => { haptic(5); setOpen(x.n); };
-  const go = (n: number) => {
-    setOpen(n);
-    body.current?.closest('.sheet-body')?.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
-  };
+  // another principle from inside the sheet: back to its top at once, in the same tick as the switch
+  const go = (n: number) => { jumpTop(body.current); setOpen(n); };
   const openTrap = (id: string) => { setOpen(null); navigateAfterSheet(`traps?open=${id}`); };
   const openLaw = (n: number) => { setOpen(null); navigateAfterSheet(`laws?open=${n}`); };
   // the sheet keeps showing the last principle while it slides away
@@ -477,191 +430,146 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
   if (!today) return null;
   const tryToday = today.practice[day % Math.max(1, today.practice.length)];
 
+  const row = (x: Principle, rank?: number) => {
+    const p = practice[x.n];
+    return (
+      <Row
+        key={x.n}
+        id={x.id}
+        hue={hueOf(x)}
+        rank={rank}
+        top={<>
+          {rank != null ? t('Principle {n} · {part}', { n: x.n, part: t(PARTS[x.part].name) }) : t('Principle {n}', { n: x.n })}
+          {!!p?.tried && <span class="wf-tried" title={t('I tried it')}><Icon name="sparkles" size={12} />{p.tried}</span>}
+        </>}
+        badge={p?.on ? t('Practising') : undefined}
+        title={x.title}
+        sub={x.line}
+        end={sort === 'everyday'
+          ? <span class="lrn-num"><b>{x.everyday}</b><small>{t('Everyday')}</small></span>
+          : <span class="lrn-num" title={t('How hard: {h} of 10', { h: x.hard })}><b>{x.hard}</b><small>{t('hard')}</small></span>}
+        onClick={() => openPrinciple(x)}
+      />
+    );
+  };
+
   return (
-    <div class="page stats-page friends-page">
-      <div class="journal-top stats-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
+    <div class="page lrn-page friends-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
+      <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
         <PageHead title={t('Win friends')} back={() => goBack()} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
-        <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-          <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Icon name="brain" size={16} /> {t('Why it works')}</button>
-          <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Icon name="list-check" size={16} /> {t('How to practise')}</button>
-        </div>
-      </div>
-
-      <RevealStack>
-        <button class="card hero wf-today" style={{ '--c': `var(--emo-${hueOf(today)})` }} onClick={() => openPrinciple(today)}>
-          <span class="tile-label">{t('Principle of the day')}</span>
-          <span class="wf-today-row">
-            <Mark id={today.id} hue={hueOf(today)} class="wf-today-mark" />
-            <span class="wf-today-body">
-              <span class="wf-today-title">{today.title}</span>
-              <span class="wf-today-line">{today.line}</span>
-            </span>
+        <div class="media-stats stats-figures">
+          <span class="stat" style={{ '--i': 0 }}>
+            <b>{practising}<em class="stat-aside">/{PRINCIPLES.length}</em></b>
+            <small>{t('Practising')}</small>
           </span>
-          {tryToday && (
-            <span class="wf-today-try">
-              <small><Icon name="sparkles" size={14} /> {t('Try today')}</small>
-              {tryToday}
-            </span>
-          )}
-        </button>
-
-        <div class="tiles">
-          <Tile k={0} icon="heart-handshake" label={t('Principles')} value={PRINCIPLES.length} sub={t('in {n} parts', { n: PART_IDS.length })} />
-          <Tile k={1} icon="brain" label={t('Levers')} value={LEVERS} sub={t('from psychology')} />
-          <Tile k={2} icon="spiral" label={t('Mind traps')} value={DISARMED.length} sub={t('that they disarm')} />
-          <Tile k={3} icon="check" label={t('Practising')} value={practising} sub={t('tries logged: {n}', { n: triedTotal })} />
+          <span class="stat" style={{ '--i': 1 }}>
+            <b>{triedTotal}</b>
+            <small>{t('Tries logged')}</small>
+          </span>
+          <span class="stat" style={{ '--i': 2 }}>
+            <b>{LEVERS}</b>
+            <small>{t('Levers from psychology')}</small>
+          </span>
         </div>
-
-        <section class="card chart-card">
-          <header class="chart-head">
-            <div>
-              <h3 class="chart-title">{t('The ladder')}</h3>
-              <p class="chart-sub">{t('Thirty rungs in the book’s four parts, each in its part’s colour.')}</p>
-            </div>
-          </header>
-          <Ladder filter={filter} practice={practice} open={openPrinciple} />
-        </section>
-
-        <section class="card chart-card">
-          <header class="chart-head">
-            <div>
-              <h3 class="chart-title">{t('Where to start')}</h3>
-              <p class="chart-sub">{t('Every principle by how hard it is and how often it comes up')}</p>
-            </div>
-          </header>
-          <StartMap open={openPrinciple} />
-        </section>
-
-        {ANSWERED.length > 0 && (
-          <section class="card chart-card">
-            <header class="chart-head">
-              <div>
-                <h3 class="chart-title">{t('Carnegie vs Greene')}</h3>
-                <p class="chart-sub">{t('The laws of power the principles answer. Tap a law to read it, a number to open its principle.')}</p>
-              </div>
-            </header>
-            <ol class="wf-greene">
-              {ANSWERED.slice(0, 8).map(({ law, list }, i) => (
-                <li style={{ '--c': `var(--emo-${lawHue(law)})`, '--i': i }}>
-                  <button class="wf-greene-law" onClick={() => openLaw(law.n)}>
-                    <Mark id={law.id} hue={lawHue(law)} class="wf-greene-mark" />
-                    <span class="wf-greene-body">
-                      <small>{t('Law {n}', { n: law.n })}</small>
-                      <b>{law.title}</b>
-                    </span>
-                  </button>
-                  <span class="wf-greene-by">
-                    {list.map((x) => (
-                      <button class="wf-pip" style={{ '--c': `var(--emo-${hueOf(x)})` }} title={x.title} aria-label={`${x.n}. ${x.title}`} onClick={() => openPrinciple(x)}>{x.n}</button>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
-
-        {DISARMED.length > 0 && (
-          <section class="card chart-card">
-            <header class="chart-head">
-              <div>
-                <h3 class="chart-title">{t('The mind traps they disarm')}</h3>
-                <p class="chart-sub">{t('The biases the principles work against most. Tap one to read it in Mind traps.')}</p>
-              </div>
-            </header>
-            <ol class="wf-disarmed">
-              {DISARMED.slice(0, 8).map(({ trap, list }, i) => (
-                <li style={{ '--c': `var(--emo-${FAMILIES[trap.family].hue})`, '--i': i }}>
-                  <button class="wf-disarmed-row" onClick={() => openTrap(trap.id)}>
-                    <span class="wf-disarmed-name">{trap.name}</span>
-                    <span class="wf-disarmed-n">{list.length}</span>
-                    <span class="wf-disarmed-bar"><i style={{ width: `${(list.length / DISARMED[0].list.length) * 100}%` }} /></span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
-
-        <section class="card chart-card">
-          <header class="chart-head">
-            <div>
-              <h3 class="chart-title">{t('Name the principle')}</h3>
-              <p class="chart-sub">{t('Which principle is at work?')}</p>
-            </div>
-          </header>
-          <NameThePrinciple open={openPrinciple} />
-        </section>
-      </RevealStack>
-
-      <section class="section">
-        <h2 class="section-title">{t('All {n} principles', { n: PRINCIPLES.length })}</h2>
         <label class="search">
           <Icon name="search" size={18} />
           <input type="search" value={query} onInput={(e) => setQuery(e.currentTarget.value)} placeholder={t('Search principles, levers or things to try')} aria-label={t('Search principles, levers or things to try')} />
         </label>
-        <div class="wf-controls">
-          <div class="chips scroll-x wf-chips" role="toolbar" aria-label={t('Part')}>
-            <button class="chip" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>{t('All')}</button>
-            <button class="chip wf-chip" style={{ '--c': 'var(--accent)' }} aria-pressed={filter === 'practising'} onClick={() => setFilter(filter === 'practising' ? 'all' : 'practising')}>
-              <Icon name="check" size={16} /> {t('Practising')}
-            </button>
-            {PART_IDS.map((p) => (
-              <button class="chip wf-chip" style={{ '--c': `var(--emo-${PARTS[p].hue})` }} aria-pressed={filter === p} onClick={() => setFilter(filter === p ? 'all' : p)}>{t(PARTS[p].name)}</button>
-            ))}
-          </div>
-          <div class="seg compact wf-sort" role="radiogroup" aria-label={t('Sort')}>
-            {([['n', t('In order')], ['everyday', t('Commonest')], ['easy', t('Easiest')]] as [Sort, string][]).map(([v, l]) => (
-              <button role="radio" aria-checked={sort === v} aria-selected={sort === v} onClick={() => setSort(v)}>{l}</button>
-            ))}
-          </div>
+      </div>
+
+      <div class="lrn">
+        <div class="lrn-side">
+          <Today
+            kicker={t('Principle of the day')}
+            id={today.id}
+            hue={hueOf(today)}
+            title={today.title}
+            line={today.line}
+            footLabel={tryToday ? t('Try today') : undefined}
+            foot={tryToday}
+            onClick={() => openPrinciple(today)}
+          />
+
+          <section class="card lrn-card">
+            <header class="lrn-card-head">
+              <h3 class="lrn-card-title">{t('Where to start')}</h3>
+              <p class="lrn-card-sub">{t('Every principle by how hard it is and how often it comes up')}</p>
+            </header>
+            <StartMap practice={practice} open={openPrinciple} />
+          </section>
+
+          <section class="card lrn-card">
+            <header class="lrn-card-head">
+              <h3 class="lrn-card-title">{t('Name the principle')}</h3>
+              <p class="lrn-card-sub">{t('Which principle is at work?')}</p>
+            </header>
+            <NameThePrinciple open={openPrinciple} />
+          </section>
+
+          <Connections open={openPrinciple} openLaw={openLaw} openTrap={openTrap} />
         </div>
-        {picked && <p class="muted small wf-part-about">{t(picked.about)}</p>}
 
-        <ol class="wf-list">
-          {shown.map((x, i) => (
-            <li key={x.n} style={{ '--c': `var(--emo-${hueOf(x)})`, '--i': Math.min(i, 4) }}>
-              <button class="card wf-card" onClick={() => openPrinciple(x)}>
-                <Mark id={x.id} hue={hueOf(x)} class="wf-card-mark" />
-                <span class="wf-card-main">
-                  <span class="wf-card-top">
-                    {t('Principle {n}', { n: x.n })} · {t(PARTS[x.part].name)}
-                    {practice[x.n]?.on && <span class="wf-card-on"><Icon name="check" size={12} /> {t('practising')}</span>}
-                    {!!practice[x.n]?.tried && <span class="wf-card-tried"><Icon name="sparkles" size={12} /> {practice[x.n].tried}</span>}
-                  </span>
-                  <span class="wf-card-title">{x.title}</span>
-                  <span class="wf-card-line">{x.line}</span>
-                </span>
-                <span class="wf-card-hard" title={t('How hard: {h} of 10', { h: x.hard })}>
-                  <b>{x.hard}</b>
-                  <small>{t('hard')}</small>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        {!shown.length && (
-          <p class="empty-note">
-            {filter === 'practising' && !query.trim()
-              ? t('Nothing in practice yet. Open a principle and tap “Practise this”.')
-              : t('No principle matches that. Try talking in terms of what it wants.')}
-          </p>
-        )}
-      </section>
+        <div class="lrn-main">
+          <div>
+            <div class="lrn-head">
+              <div class="chips scroll-x lrn-chips" role="toolbar" aria-label={t('Part')}>
+                <button class="chip" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>{t('All')}</button>
+                <button class="chip lrn-chip" style={{ '--c': 'var(--accent)' }} aria-pressed={filter === 'practising'} onClick={() => setFilter(filter === 'practising' ? 'all' : 'practising')}>
+                  <Icon name="check" size={16} /> {t('Practising')}
+                </button>
+                {PART_IDS.map((p) => (
+                  <button class="chip lrn-chip" style={{ '--c': `var(--emo-${PARTS[p].hue})` }} aria-pressed={filter === p} onClick={() => setFilter(filter === p ? 'all' : p)}>
+                    <i class="lrn-dot" aria-hidden="true" />{t(PARTS[p].name)}
+                  </button>
+                ))}
+              </div>
+              <SortChip<Sort> sort={sort} onSort={setSort} options={[['n', t('In order')], ['easy', t('Easiest')], ['everyday', t('Commonest')]]} />
+            </div>
 
-      <section class="section wf-about">
-        <p>{t('Carnegie wrote the book in 1936 for salesmen and managers, and it has sold more than thirty million copies since. It’s easy to read as a manual for getting your way, and easy to sneer at for the same reason. But nearly every principle rests on one plain fact: people can tell whether you’re actually interested in them. So each principle here has the psychology underneath it, the mind traps it disarms, the laws of power it answers, and an honest version beside the one that turns into flattery.')}</p>
-        <button class="btn btn-quiet" onClick={() => openPrinciple(PRINCIPLES[Math.floor(Math.random() * PRINCIPLES.length)])}><Icon name="dice-5" size={18} /> {t('Draw a principle at random')}</button>
-      </section>
+            {shown.length > 0 && (
+              <div class="lrn-groups">
+                {sort === 'n'
+                  ? PART_IDS.map((part) => {
+                    const list = shown.filter((x) => x.part === part);
+                    return list.length > 0 && (
+                      <section class="lrn-group" key={part}>
+                        <GroupHead hue={PARTS[part].hue} title={t(PARTS[part].name)} motto={t(PARTS[part].motto)} about={t(PARTS[part].about)} count={list.length} />
+                        <ol class="lrn-rows">{list.map((x) => row(x))}</ol>
+                      </section>
+                    );
+                  })
+                  : (
+                    <section class="lrn-group" key={sort}>
+                      <GroupHead title={sort === 'easy' ? t('Easiest') : t('Commonest')} count={shown.length} />
+                      <ol class="lrn-rows">{shown.map((x, i) => row(x, i + 1))}</ol>
+                    </section>
+                  )}
+              </div>
+            )}
+            {!shown.length && (
+              <p class="empty-note">
+                {filter === 'practising' && !query.trim()
+                  ? t('Nothing in practice yet. Open a principle and tap “Practise this”.')
+                  : t('No principle matches that. Try talking in terms of what it wants.')}
+              </p>
+            )}
+          </div>
+
+          <section class="wf-about">
+            <p>{t('Carnegie wrote the book in 1936 for salesmen and managers, and it has sold more than thirty million copies since. It’s easy to read as a manual for getting your way, and easy to sneer at for the same reason. But nearly every principle rests on one plain fact: people can tell whether you’re actually interested in them. So each principle here has the psychology underneath it, the mind traps it disarms, the laws of power it answers, and an honest version beside the one that turns into flattery.')}</p>
+            <button class="btn btn-quiet" onClick={() => openPrinciple(PRINCIPLES[Math.floor(Math.random() * PRINCIPLES.length)])}><Icon name="dice-5" size={18} /> {t('Draw a principle at random')}</button>
+          </section>
+        </div>
+      </div>
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Principle {n} of {total}', { n: current.n, total: PRINCIPLES.length }) : ''} label={current?.title} tall>
         <div ref={body}>
           {current && (
             <PrincipleDetail
-              key={current.n}
               x={current}
               lens={lens}
+              setLens={setLens}
               practice={practice[current.n] ?? {}}
               onToggle={() => toggle(current.n)}
               onTried={() => tried(current.n)}

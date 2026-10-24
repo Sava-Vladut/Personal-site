@@ -1,0 +1,292 @@
+/* ============================================================
+   The Learn pages: Mind traps, Laws of power, Win friends (views/Traps.tsx, Laws.tsx, Friends.tsx; the pieces are
+   components/learn.tsx). One layout for all three, after Media and Stats: a sky with three figures and the search,
+   then a feature column (today's entry, one map, one game) and the whole list in groups of compact rows. On a wide
+   screen the list is at the left and the feature column at the right.
+
+   Calm on purpose: nothing here animates in (the page transition and lib/reveal.ts do that), hovers only change
+   colour, a press sinks to .98 and springs back, and every box whose content changes keeps its size.
+   Spacing: 26 between sections, 24 between groups, 12 between cards, 10 from a head to its content.
+   Each page CSS file keeps only its own map.
+   ============================================================ */
+
+/* ---------- the sky: title, three figures, the search ---------- */
+
+.journal-top.lrn-top { padding-bottom: 18px; margin-bottom: 18px; }
+.lrn-top .page-head { margin-bottom: 14px; }
+.lrn-top .subtitle { color: var(--ink-2); }
+.lrn-top .media-stats { margin: 0; }
+/* opaque over the sky: a see-through blur would be redrawn on every frame the sky moves */
+.lrn-top :is(.stat, .search, .seg) { background: color-mix(in oklab, var(--surface-2) 60%, var(--bg)); }
+.lrn-top .search { margin: 12px 0 0; }
+
+/* ---------- the page: a feature column and the list ---------- */
+
+.lrn { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; align-items: start; }
+.lrn-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.lrn-main { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; align-content: start; }
+
+/* the list's head: the filter chips, and the order chip at the right */
+.lrn-head { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 10px; }
+.lrn-head > .chips { flex: 1; min-width: 0; margin: 0; }
+/* on a phone the chips swipe sideways under the order chip's edge, fading out before it */
+.lrn-head > .chips.scroll-x {
+  margin-inline: calc(-1 * var(--gutter)) 0; padding-inline: var(--gutter) 12px;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent);
+}
+.lrn-head > .sort-chip { align-self: flex-start; }
+.lrn-count { font-family: var(--sans); font-size: var(--text-base); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* a chip for one family / arena / part: a dot in its colour, and a tint of it when picked (set --c on the chip) */
+.lrn-chips { gap: 6px; }
+.lrn-chip[aria-pressed='true'] { background: color-mix(in oklab, var(--c, var(--ink-3)) 22%, var(--surface)); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c, var(--ink-3)) 35%, transparent); }
+.lrn-dot { flex: none; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--ink-3)); }
+
+/* ---------- cards in the feature column ---------- */
+
+.lrn-card { min-width: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); }
+.lrn-card-head { margin-bottom: 10px; }
+.lrn-card-title { margin: 0; font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em; color: var(--ink); text-wrap: balance; }
+.lrn-card-sub { margin: 2px 0 0; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.lrn-card > p { margin: 0; font-size: var(--text-base); line-height: 1.55; color: var(--ink-2); }
+/* text blocks in a card sit 10 apart (a card head keeps its own 10 below it) */
+.lrn-card > :not(.lrn-card-head) + :is(p, ul, ol, .lrn-links) { margin-top: 10px; }
+
+/* today's entry: one button */
+.lrn-today { display: flex; flex-direction: column; gap: 12px; width: 100%; text-align: left; color: var(--ink); }
+.lrn-today-row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.lrn-today-body { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.lrn-today-title { font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; text-wrap: balance; }
+.lrn-today-line { font-size: var(--text-base); line-height: 1.45; color: var(--ink-2); }
+.lrn-today-aside { flex: none; display: flex; align-items: center; }
+.lrn-today-foot {
+  display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--line);
+  font: italic var(--w-regular) var(--text-base)/1.45 var(--serif); color: var(--ink-2);
+}
+.lrn-today-foot > small { font: var(--w-bold) var(--text-xs)/1.4 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- the list: groups of rows ---------- */
+
+.lrn-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.lrn-group { min-width: 0; }
+.lrn-group-head { margin: 0 0 10px; padding-left: 6px; }
+.lrn-group-title { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 0; font: var(--w-medium) var(--text-xl)/1.2 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
+.lrn-group-title .lrn-dot { width: 10px; height: 10px; }
+.lrn-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrn-group-motto { margin: 4px 0 0; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.lrn-group-about { margin: 6px 0 0; max-width: 62ch; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
+
+.lrn-rows { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.lrn-rows > li { display: grid; min-width: 0; }
+@media (min-width: 720px) {
+  .lrn-rows { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); column-gap: 8px; }
+}
+.lrn-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; min-height: 56px; padding: 6px 10px 6px 6px;
+  border-radius: var(--r-m); text-align: left; color: var(--ink);
+}
+@media (hover: hover) { .lrn-row:hover { background: var(--surface-2); } }
+.lrn-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.lrn-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.lrn-row-top { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.lrn-row-title {
+  font: var(--w-medium) var(--text-l)/1.25 var(--serif); color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.lrn-row-sub {
+  font-size: var(--text-m); line-height: 1.45; color: var(--ink-3);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.lrn-row-end { flex: none; display: flex; align-items: center; gap: 8px; color: var(--ink-3); }
+/* a number at a row's end, with its unit under it */
+.lrn-num { display: grid; justify-items: end; min-width: 3ch; line-height: 1.1; }
+.lrn-num b { font-size: var(--text-l); font-weight: var(--w-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+.lrn-num small { font-size: var(--text-2xs); font-weight: var(--w-medium); color: var(--ink-3); }
+/* a place in a ranked list, before the mark */
+.lrn-rank { flex: none; width: 2.2ch; text-align: right; font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.lrn-badge {
+  flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 6px; border-radius: var(--r-pill);
+  background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2);
+  font-size: var(--text-2xs); font-weight: var(--w-bold); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2);
+}
+
+/* ---------- under a map: what's under the pointer, in a box that never changes height ---------- */
+
+/* 60px: a 15px title line, a gap and two 13px lines of the sub (or three of the idle note) */
+.lrn-caption {
+  height: 60px; margin-top: 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden;
+  font-size: var(--text-m); line-height: 1.4; color: var(--ink-3);
+}
+.lrn-caption-title { flex: none; font: var(--w-medium) var(--text-base)/1.35 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrn-caption-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-variant-numeric: tabular-nums; }
+.lrn-caption-idle { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------- quizzes and games ---------- */
+
+.lrn-quiz { min-width: 0; }
+.lrn-quiz + .lrn-quiz { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.lrn-q { margin: 0 0 10px; font-size: var(--text-base); font-weight: var(--w-medium); line-height: 1.5; color: var(--ink); }
+.lrn-opts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.lrn-opt {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--h-m); padding: 10px 12px; text-align: left;
+  border-radius: var(--r-m); background: var(--surface-2); color: var(--ink); font-size: var(--text-base); line-height: 1.35;
+}
+@media (hover: hover) { .lrn-opt:hover:not(:disabled, .is-right, .is-wrong, .is-picked) { background: var(--surface-3); } }
+.lrn-opt:disabled { opacity: 0.4; }
+.lrn-opt[aria-pressed='true']:disabled, .lrn-opt:is(.is-right, .is-wrong, .is-picked):disabled { opacity: 1; }
+.lrn-opt-label { flex: 1; min-width: 0; }
+.lrn-opt-key {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--surface); color: var(--ink-2); font-size: var(--text-s); font-weight: var(--w-bold);
+  transition: background-color var(--dur-2), color var(--dur-2);
+}
+.lrn-opt.is-picked { background: var(--surface-3); }
+.lrn-opt.is-picked .lrn-opt-key { background: var(--ink); color: var(--on-ink); }
+.lrn-opt.is-right { background: color-mix(in oklab, var(--emo-calm-safety) 16%, var(--surface)); }
+.lrn-opt.is-right .lrn-opt-key { background: var(--emo-calm-safety); color: var(--on-color); }
+.lrn-opt.is-wrong { background: color-mix(in oklab, var(--danger) 12%, var(--surface)); }
+.lrn-opt.is-wrong .lrn-opt-key { background: var(--danger); color: var(--on-color); }
+.lrn-opt:is(.is-right, .is-wrong, .is-picked) { cursor: default; }
+
+/* what the answer means: always under the options, fading in */
+.lrn-verdict { margin: 10px 0 0; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); animation: fade-in var(--dur-2) var(--ease); }
+.lrn-verdict b { font-weight: var(--w-bold); color: var(--ink); }
+.lrn-verdict .is-right { color: color-mix(in oklab, var(--emo-calm-safety) 75%, var(--ink)); }
+.lrn-verdict .is-wrong { color: var(--danger); }
+.lrn-quiz-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.lrn-quiz-foot > :last-child:not(:first-child) { margin-left: auto; }
+/* the running score: always there (an empty one keeps its line) and on one line, so nothing near it moves when it counts */
+.lrn-score { flex: 1; min-width: 0; min-height: 1.4em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--text-s); line-height: 1.4; font-weight: var(--w-bold); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.lrn-score:empty::before { content: '\00a0'; }
+
+/* ---------- one entry, opened (in a sheet) ---------- */
+
+/* the article fades in when the sheet switches to another entry (keyed by id); only opacity */
+.lrn-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; padding-bottom: 8px; animation: fade-in var(--dur-2) var(--ease); }
+.lrn-d-head { display: grid; justify-items: center; gap: 6px; padding-top: 4px; text-align: center; }
+.lrn-d-head > .mark { margin-bottom: 6px; }
+.lrn-d-head > .kicker { margin: 0; }
+.lrn-d-title { margin: 0; font: var(--w-medium) clamp(24px, 6.6vw, 28px)/1.12 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
+.lrn-d-line { margin: 2px 0 0; max-width: 38ch; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); text-wrap: balance; }
+.lrn-d-head > :not(.mark, .kicker, .lrn-d-title, .lrn-d-line) { margin: 0; font-size: var(--text-m); color: var(--ink-3); }
+
+/* a chapter: its heading, then what's in it, 12 apart */
+.lrn-d-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.lrn-d-h { display: flex; align-items: center; gap: 8px; margin: 0 0 -2px; font: var(--w-medium) var(--text-l)/1.3 var(--serif); letter-spacing: -0.005em; color: var(--ink); }
+.lrn-d-p { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
+.lrn-d-sec > .seg.tabs { margin: 0; }
+
+/* scores out of ten */
+.lrn-meters { display: grid; gap: 10px; padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
+.lrn-meter { display: grid; grid-template-columns: 72px minmax(0, 1fr) 2.5ch; align-items: center; gap: 10px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-2); }
+.lrn-meter-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrn-meter-track { display: block; height: 6px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+/* drawn once, after the sheet has landed */
+.lrn-meter-track > b {
+  display: block; width: calc(var(--v) * 100%); height: 100%; border-radius: inherit; background: var(--ink-2);
+  transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) var(--dur-3) backwards;
+}
+.lrn-meter-n { font-style: normal; font-weight: var(--w-bold); text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* one box style for every aside: the experiment, the story, the shadow side */
+.lrn-aside { min-width: 0; margin: 0; padding: 12px 14px; border-radius: var(--r-m); background: var(--surface-2); }
+.lrn-aside-k { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.lrn-aside-k > svg { flex: none; }
+.lrn-aside-title { margin: 8px 0 0; font: var(--w-medium) var(--text-base)/1.35 var(--serif); color: var(--ink); }
+.lrn-aside-who { margin: 2px 0 0; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.lrn-aside-body { margin-top: 8px; font-size: var(--text-base); line-height: 1.6; color: var(--ink-2); }
+.lrn-aside-body > p { margin: 0; }
+.lrn-aside-body > p + p { margin-top: 8px; }
+/* two asides side by side when there's room (the shadow side and the honest version) */
+.lrn-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+
+/* bullet and numbered lists */
+.lrn-list { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); }
+.lrn-list li { padding-left: 2px; }
+.lrn-list li::marker { color: var(--ink-3); }
+.lrn-list.is-steps li::marker { font-weight: var(--w-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+/* a list of named things (levers): the name, then its line */
+.lrn-list b { font-weight: var(--w-bold); color: var(--ink); }
+
+/* a line to sit with: the tell, the question */
+.lrn-quote { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--line-2); font: var(--w-regular) var(--text-l)/1.45 var(--serif); color: var(--ink); }
+.lrn-quote > small { display: block; margin-bottom: 6px; font: var(--w-bold) var(--text-xs)/1.4 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+
+/* links to the other Learn pages */
+.lrn-links { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.lrn-link {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; min-width: 0; padding: 12px 14px; text-align: left;
+  border-radius: var(--r-m); background: var(--surface-2); color: var(--ink);
+}
+@media (hover: hover) { .lrn-link:hover { background: var(--surface-3); } }
+.lrn-link > .mark { margin-top: 1px; }
+.lrn-link-ico {
+  flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-top: 1px; border-radius: var(--r-s);
+  background: color-mix(in oklab, var(--c) 18%, var(--surface)); color: color-mix(in oklab, var(--c) 70%, var(--ink));
+}
+.lrn-link-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.lrn-link-k { font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.lrn-link-title { font: var(--w-medium) var(--text-base)/1.35 var(--serif); color: var(--ink); }
+.lrn-link-how { margin-top: 2px; font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); }
+.lrn-link-go { flex: none; margin-top: 4px; color: var(--ink-3); }
+
+/* in a sheet, related entries are rows on a well, one to a line */
+.lrn-detail .lrn-rows { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.lrn-detail .lrn-row { background: var(--surface-2); }
+@media (hover: hover) { .lrn-detail .lrn-row:hover { background: var(--surface-3); } }
+
+/* buttons that count or toggle */
+.lrn-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; }
+.lrn-tally { width: 100%; min-width: 0; padding-inline: 14px; }
+.lrn-tally-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lrn-tally[aria-pressed='true'] { background: var(--surface-3); box-shadow: inset 0 0 0 1.5px var(--line-2); }
+/* the count's slot is always there, so the label doesn't move when it first appears */
+.lrn-tally-n {
+  flex: none; min-width: calc(3ch + 12px); padding: 1px 6px; border-radius: var(--r-pill); text-align: center;
+  background: var(--surface); color: var(--ink); font-size: var(--text-s); font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+}
+.lrn-tally-n:empty { visibility: hidden; }
+
+/* ---------- presses: sink to .98, spring back; hovers change colour only ---------- */
+
+:is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally) {
+  transition: background-color var(--dur-1), color var(--dur-1), border-color var(--dur-1), box-shadow var(--dur-1), opacity var(--dur-2), scale var(--dur-3) var(--spring);
+}
+:is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally):active:not(:disabled) {
+  scale: 0.98; transform: none;
+  transition: background-color var(--dur-1), color var(--dur-1), border-color var(--dur-1), box-shadow var(--dur-1), opacity var(--dur-2), scale var(--dur-0) var(--ease);
+}
+.lrn-opt:is(.is-right, .is-wrong, .is-picked):active { scale: 1; }
+@media (hover: hover) { .lrn-today:hover { border-color: var(--line-2); } }
+
+/* ---------- the Stats pieces the pages still use: no lift, no border change on hover ---------- */
+
+.lrn-page :is(.tile, .stat, .rk-bar i) { animation: none; }
+@media (hover: hover) { .lrn-page .tile:hover, .lrn-page .chart-card:hover { translate: none; border-color: var(--line); } }
+
+/* ---------- a wide screen: the list at the left, the feature column at the right (nothing sticky) ---------- */
+
+@media (min-width: 1024px) {
+  .lrn { grid-template-columns: minmax(0, 1fr) 380px; column-gap: 28px; }
+  .lrn > .lrn-side { grid-column: 2; grid-row: 1; }
+  .lrn > .lrn-main { grid-column: 1; grid-row: 1; }
+  /* the sky: the figures at the left, the search beside them */
+  .journal-top.lrn-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 20px; align-items: end; }
+  .lrn-top > :not(.media-stats, .search, .sky) { grid-column: 1 / -1; }
+  .lrn-top > .media-stats { grid-column: 1; }
+  .lrn-top > .search { grid-column: 2; max-width: none; margin: 0; }
+  .lrn-top .stat { padding: 10px 14px 8px; }
+  .lrn-top .stat b { font-size: var(--text-xl); }
+  .lrn-top .stat small { font-size: var(--text-s); }
+  /* the list column can be ~320px wide here: wrap the chips, as a hidden scrollbar with no fade hides some from a mouse */
+  .lrn-head > .chips.scroll-x { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; -webkit-mask-image: none; mask-image: none; }
+}
+@media (min-width: 1280px) {
+  .lrn { grid-template-columns: minmax(0, 1fr) 420px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lrn-detail, .lrn-verdict, .lrn-meter-track > b { animation: none; }
+  :is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally), :is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally):active:not(:disabled) { transition: background-color var(--dur-1), color var(--dur-1), opacity var(--dur-2); scale: 1; }
+}
