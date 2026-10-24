@@ -6,12 +6,11 @@ import { t } from '../lib/i18n';
 import { EVIDENCE, FAMILIES, POWER, REFLECT, TRAPS, power, type Family, type Trap } from '../data/traps';
 import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { LAWS, REALMS, type Law } from '../data/laws';
-import { Icon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/traps.css';
 
@@ -208,7 +207,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw }: {
           {meters.map(([label, v, about]) => <Meter label={label} value={v} about={about} />)}
         </div>
         <p class="tr-ev">
-          <Icon name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} />
+          <Ico name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} arrive />
           <span><b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</span>
         </p>
       </div>
@@ -343,7 +342,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
         top={
           <>
             {ranked ? t(FAMILIES[x.family].name) : sort === 'name' ? `#${RANK.get(x.id)} · ${t(FAMILIES[x.family].name)}` : `#${RANK.get(x.id)}`}
-            {n > 0 && <span class="tr-caught"><Icon name="eye" size={12} />{n}</span>}
+            {n > 0 && <span class="tr-caught"><Ico name="eye" size={12} />{n}</span>}
           </>
         }
         badge={x.evidence === 'debated' ? t('debated') : undefined}
@@ -379,7 +378,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
           </span>
         </div>
         <label class="search">
-          <Icon name="search" size={18} />
+          <Ico name="search" size={18} />
           <input type="search" value={query} onInput={(e) => setQuery(e.currentTarget.value)} placeholder={t('Search traps or thoughts')} aria-label={t('Search traps or thoughts')} />
         </label>
       </div>

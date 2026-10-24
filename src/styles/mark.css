@@ -6,3 +6,77 @@
 
 .mark { display: block; flex: none; overflow: visible; }
 .mark-tile { fill: color-mix(in oklab, var(--c) 60%, #e6dccb); }
+
+/* ---------- motion: made by hand, in front of you ----------
+   Mark.tsx tags every shape of a drawing: cut paper .mk-pp, ink lines .mk-ln (pathLength 1), dotted lines .mk-dt and
+   solid ink .mk-bl, each with --i, its place in its layer, and the svg with --np/--nl/--nb, how many each layer has.
+   A mark that will arrive renders with .mk-a, in its "not yet drawn" state; .mk-go (set once it's on screen) plays it.
+   Timeline at --k 1 (34px), after --d0 and the per-mark --sd (0–120ms):
+     tile settles 0–280ms, paper laid down from 60ms (spread over 220ms, 320ms each), lines draw on from 180ms
+     (spread over 220ms, 320ms each), solid ink lands from 400ms (spread over 100ms, 280ms each): about 0.7s.
+   Only opacity, scale and stroke-dashoffset move, inside the mark's own box; nothing is left held afterwards
+   (fill-mode backwards: once done, every shape is simply its own drawn self). One-shot, so the ink noise filter re-runs
+   only while a mark is arriving. */
+
+.mark { --k: 1; --d0: 0ms; --ps: 0.92; }
+.mark[width='64'] { --k: 1.2; }
+.mark[width='96'] { --k: 1.5; --ps: 0.88; }
+/* the opened entry's mark waits for its sheet to land */
+.lrn-d-head .mark { --d0: var(--dur-3); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .mk-a .mark-tile, .mk-a .mk-pp, .mk-a .mk-bl { transform-box: fill-box; transform-origin: center; }
+
+  /* before: nothing laid down yet (set at render, so the finished art never flashes first) */
+  .mk-a:not(.mk-go) :is(.mark-tile, .mk-pp, .mk-ln, .mk-dt, .mk-bl) { opacity: 0; }
+
+  .mk-go .mark-tile {
+    animation: mk-tile calc(280ms * var(--k)) var(--ease-emph) backwards;
+    animation-delay: calc(var(--d0) + var(--sd, 0ms));
+  }
+  .mk-go .mk-pp {
+    animation: mk-lay calc(320ms * var(--k)) var(--ease-emph) backwards;
+    animation-delay: calc(var(--d0) + var(--sd, 0ms) + (60ms + 220ms * var(--i) / var(--np)) * var(--k));
+  }
+  /* a brush stroke: eases in, runs, lands softly. The dash is 1.02 long (a hair over the whole line, so rounding never
+     leaves the tail undrawn) on a gap of 2 (so nothing wraps round); it starts at 1.1, past the line's start, so the
+     round cap of a zero-length dash can't sit there as a dot, and the first 12% fades in to hide the tip appearing. */
+  .mk-go .mk-ln {
+    animation: mk-ink calc(320ms * var(--k)) cubic-bezier(0.5, 0.05, 0.2, 1) backwards;
+    animation-delay: calc(var(--d0) + var(--sd, 0ms) + (180ms + 220ms * var(--i) / var(--nl)) * var(--k));
+  }
+  .mk-go .mk-dt {
+    animation: mk-fade calc(260ms * var(--k)) var(--ease) backwards;
+    animation-delay: calc(var(--d0) + var(--sd, 0ms) + (180ms + 220ms * var(--i) / var(--nl)) * var(--k));
+  }
+  .mk-go .mk-bl {
+    animation: mk-blot calc(280ms * var(--k)) var(--spring) backwards;
+    animation-delay: calc(var(--d0) + var(--sd, 0ms) + (400ms + 100ms * var(--i) / var(--nb)) * var(--k));
+  }
+
+  /* hover / press on the row, link or card that holds a mark: the cut paper lifts about a pixel off the tile and the
+     ink slips a hair the other way, then springs back. No rotation (that shimmered through the ink filter).
+     Translating the filtered layer moves its noise with it, so the paper lifts without re-wavering. */
+  .mark-art, .mark :is(.mk-ln, .mk-dt, .mk-bl) { transition: translate var(--dur-3) var(--spring); }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :is(.lrn-row, .lrn-link, .lrn-today, .wf-rk, .wf-rk-main):hover .mark-art { translate: 0 calc(var(--u, 1.5) * -1px); }
+  :is(.lrn-row, .lrn-link, .lrn-today, .wf-rk, .wf-rk-main):hover .mark :is(.mk-ln, .mk-dt, .mk-bl) { translate: 0 calc(var(--u, 1.5) * 0.35px); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* pressed: the paper is pressed flat onto the tile, quickly; it springs back on release */
+  :is(.lrn-row, .lrn-link, .lrn-today, .wf-rk, .wf-rk-main):active .mark-art { translate: 0 calc(var(--u, 1.5) * 0.4px); transition-duration: var(--dur-0); transition-timing-function: var(--ease); }
+  :is(.lrn-row, .lrn-link, .lrn-today, .wf-rk, .wf-rk-main):active .mark :is(.mk-ln, .mk-dt, .mk-bl) { translate: none; transition-duration: var(--dur-0); transition-timing-function: var(--ease); }
+}
+
+@keyframes mk-tile { from { opacity: 0; scale: 0.94; } }
+@keyframes mk-lay { from { opacity: 0; scale: var(--ps); } 60% { opacity: 1; } }
+@keyframes mk-ink {
+  from { opacity: 0; stroke-dasharray: 1.02 2; stroke-dashoffset: 1.1; }
+  12% { opacity: 1; }
+  to { stroke-dasharray: 1.02 2; stroke-dashoffset: 0; }
+}
+@keyframes mk-fade { from { opacity: 0; } }
+@keyframes mk-blot { from { opacity: 0; scale: 0.8; } 50% { opacity: 1; } }

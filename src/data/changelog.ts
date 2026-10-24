@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.134.0',
+    date: '2026-10-24',
+    changes: [
+      'Learn: each hand-drawn mark is made in front of you the first time you see it: the tile settles, the paper is laid down piece by piece, the ink lines draw themselves on and the solid ink lands last',
+      'Learn: hovering or pressing a row, link or today’s card lifts its mark’s cut paper a hair off the tile',
+      'Learn: the icons move with meaning: arrows step forward, the eye blinks, the crown hops, sparkles twinkle, the dice tumbles when you draw at random, the search glass tilts as you type',
+      'Learn: counting pops the icon, Practise draws its check on, and a quiz answer’s tick or cross draws itself (a wrong one gives a small shake)',
+      'Learn: the icons on an opened entry’s boxes draw themselves on once the sheet has landed: the heart beats, the moon swings, the book opens',
+      'Books and Music: the empty-shelf drawings are made in front of you too',
+      'All of it plays once or when you act, never loops, and is off when your device asks for reduced motion',
+    ],
+  },
+  {
     version: '1.133.0',
     date: '2026-10-24',
     changes: [

@@ -6,12 +6,11 @@ import { t } from '../lib/i18n';
 import { LAWS, REALMS, type Law, type Realm } from '../data/laws';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
-import { Icon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, shuffle, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/laws.css';
 
@@ -175,7 +174,7 @@ function NameTheMove({ open }: { open: (x: Law) => void }) {
         {/* always laid out (hidden until you answer), so the card keeps its height between rounds */}
         <div class="lw-game-actions" style={picked == null ? { visibility: 'hidden' } : undefined}>
           <button class="btn btn-quiet btn-s" onClick={() => open(round.law)}>{t('Read the law')}</button>
-          <button class="btn btn-primary btn-s" onClick={next}>{t('Next move')} <Icon name="chevron-right" size={16} /></button>
+          <button class="btn btn-primary btn-s" onClick={next}>{t('Next move')} <Ico name="chevron-right" size={16} /></button>
         </div>
       </div>
     </div>
@@ -265,8 +264,8 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple 
       {/* the lens: read the law as the one playing it (the law first) or as its target (the defence first) */}
       <div class="lrn-d-sec">
         <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-          <button role="tab" aria-selected={lens === 'player'} onClick={() => onLens('player')}><Icon name="crown" size={16} /> {t('As the player')}</button>
-          <button role="tab" aria-selected={lens === 'target'} onClick={() => onLens('target')}><Icon name="eye" size={16} /> {t('As the target')}</button>
+          <button role="tab" aria-selected={lens === 'player'} onClick={() => onLens('player')}><Ico name="crown" size={16} /> {t('As the player')}</button>
+          <button role="tab" aria-selected={lens === 'target'} onClick={() => onLens('target')}><Ico name="eye" size={16} /> {t('As the target')}</button>
         </div>
       </div>
 
@@ -380,7 +379,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
           </span>
         </div>
         <label class="search">
-          <Icon name="search" size={18} />
+          <Ico name="search" size={18} />
           <input type="search" value={query} onInput={(e) => setQuery(e.currentTarget.value)} placeholder={search} aria-label={search} />
         </label>
       </div>
@@ -437,7 +436,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
 
           <section class="card lrn-card lw-about">
             <p>{t('Greene wrote the book without morals on purpose: these are the moves, as courtiers, generals and con artists have made them for centuries. Most people who read it aren’t would-be kings, they’re people who kept losing a game they didn’t know was being played. So each law here also has its shadow side, an honest version, and the signs that someone is playing it on you.')}</p>
-            <button class="btn btn-quiet" onClick={() => openLaw(LAWS[Math.floor(Math.random() * LAWS.length)])}><Icon name="dice-5" size={18} /> {t('Draw a law at random')}</button>
+            <button class="btn btn-quiet" onClick={(e) => { playIcon(e); openLaw(LAWS[Math.floor(Math.random() * LAWS.length)]); }}><Ico name="dice-5" size={18} /> {t('Draw a law at random')}</button>
           </section>
         </div>
 
@@ -480,8 +479,8 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
                             top={sort === 'arena' || picked ? t('Law {n}', { n: x.n }) : `${t('Law {n}', { n: x.n })} · ${t(REALMS[x.realm].name)}`}
                             badge={s?.on || s?.by ? (
                               <>
-                                {!!s.on && <><Icon name="eye" size={12} />{s.on}</>}
-                                {!!s.by && <><Icon name="crown" size={12} />{s.by}</>}
+                                {!!s.on && <><Ico name="eye" size={12} />{s.on}</>}
+                                {!!s.by && <><Ico name="crown" size={12} />{s.by}</>}
                               </>
                             ) : undefined}
                             title={x.title}

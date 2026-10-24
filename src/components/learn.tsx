@@ -1,12 +1,103 @@
 // The pieces the three Learn pages (Mind traps, Laws of power, Win friends) are built from, so they look and move
 // alike (styles/learn.css). Nothing here animates in on its own: the page transition and lib/reveal.ts bring things
 // in, hovers only change colour, a press sinks to .98 and springs back, and anything whose content changes keeps its
-// size. `hue` is always the name of a world colour (the part after --emo-, e.g. 'sadness'), as Mark takes it.
+// size. Only the icons move, inside their own box (Ico, styles/icon-motion.css). `hue` is always the name of a world colour (the part after --emo-, e.g. 'sadness'), as Mark takes it.
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
-import { Icon, type UiName } from './icons';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { UiName } from './icons';
 import { Mark } from './Mark';
+import UI from '../data/ui-icons.json';
+import { svgInner } from '../lib/icons';
 import '../styles/learn.css';
+import '../styles/icon-motion.css';
+
+/*
+ * Icon motion (styles/icon-motion.css). Every interface icon on these pages is an Ico: the same Tabler svg as
+ * components/icons' Icon, plus `ic` and the gesture that fits its meaning (the eye blinks, the crown hops, the
+ * chevron nudges…). The gesture is played by the control the icon sits in (hover, keyboard focus, press) or by a
+ * state change (`is-go`, `is-pop`, `data-play`), never on its own and never in a loop. `--ic-len` is how long the
+ * icon's longest stroke is, for the icons that draw themselves on.
+ */
+const MOTION: Partial<Record<UiName, [gesture: string, len?: number]>> = {
+  search: ['ic-tilt'],
+  eye: ['ic-blink'],
+  crown: ['ic-hop'],
+  brain: ['ic-pulse'],
+  sparkles: ['ic-twinkle', 38],
+  'dice-5': ['ic-tumble'],
+  'chevron-right': ['ic-nudge-r'],
+  'arrow-up-right': ['ic-nudge-ur'],
+  check: ['ic-draw', 22],
+  x: ['ic-draw', 17],
+  'list-check': ['ic-draw', 10],
+  'alert-circle': ['ic-draw', 57],
+  plus: ['ic-turn', 14],
+  book: ['ic-open', 19],
+  heart: ['ic-beat', 56],
+  moon: ['ic-swing', 62],
+  'info-circle': ['ic-drop', 57],
+};
+
+/* icons that play once as they first come into view (`arrive`): one shared observer, each let go after it fires */
+let arrivals: IntersectionObserver | null = null;
+function watchArrival(el: Element) {
+  if (typeof IntersectionObserver === 'undefined') {
+    el.setAttribute('data-in', '');
+    return undefined;
+  }
+  arrivals ??= new IntersectionObserver((list) => {
+    for (const e of list) {
+      if (!e.isIntersecting) continue;
+      e.target.setAttribute('data-in', '');
+      arrivals?.unobserve(e.target);
+    }
+  }, { threshold: 0.35 });
+  arrivals.observe(el);
+  return () => arrivals?.unobserve(el);
+}
+
+/**
+ * An interface icon that moves (see MOTION above): the gesture plays when the control around it is hovered, focused
+ * or pressed. `arrive` draws it on once, a beat after it first comes into view (an aside's label, the evidence line).
+ * `class` adds state classes: `is-go` plays the gesture now (put it on as the state changes, or key the icon so it
+ * mounts with it), `is-pop` pops the whole icon (a count going up).
+ */
+export function Ico({ name, size = 20, stroke = 1.75, class: cls, arrive }: { name: UiName; size?: number; stroke?: number; class?: string; arrive?: boolean }) {
+  const ref = useRef<SVGSVGElement>(null);
+  useEffect(() => (arrive && ref.current ? watchArrival(ref.current) : undefined), [arrive]);
+  const [gesture, len] = MOTION[name] ?? [];
+  return (
+    <svg
+      ref={ref}
+      class={['ic', gesture, arrive && 'is-arrive', cls].filter(Boolean).join(' ')}
+      style={len ? { '--ic-len': len } : undefined}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: svgInner('t:' + name, UI[name], stroke) }}
+    />
+  );
+}
+
+/**
+ * Whether `value` has changed since the component mounted (and stays true after): put a state class on an icon
+ * only once it's live, so the icon moves when you change something, not when the page or sheet first draws it.
+ */
+export function useLive(value: unknown): boolean {
+  const at = useRef({ value, live: false });
+  if (!Object.is(at.current.value, value)) at.current = { value, live: true };
+  return at.current.live;
+}
+
+/** Plays the press gesture of the Ico in the clicked control (the dice tumbling): call it from the control's onClick. */
+export function playIcon(e: Event): void {
+  const svg = (e.currentTarget as Element | null)?.querySelector('.ic');
+  if (!svg) return;
+  svg.removeAttribute('data-play');
+  void svg.getBoundingClientRect(); // let the style drop, so setting it again starts the animation over
+  svg.setAttribute('data-play', '');
+}
 
 /**
  * The card of the day at the top of the feature column: a kicker, the entry's mark (64px), its title and line, an
@@ -156,7 +247,7 @@ export function Option({ index, label, state, disabled, pressed, onClick }: {
       aria-pressed={pressed}
     >
       <span class="lrn-opt-key" aria-hidden={state === 'right' || state === 'wrong'}>
-        {state === 'right' ? <Icon name="check" size={14} stroke={2.25} /> : state === 'wrong' ? <Icon name="x" size={14} stroke={2.25} /> : String.fromCharCode(65 + index)}
+        {state === 'right' ? <Ico name="check" size={14} stroke={2.25} /> : state === 'wrong' ? <Ico name="x" size={14} stroke={2.25} /> : String.fromCharCode(65 + index)}
       </span>
       <span class="lrn-opt-label">{label}</span>
     </button>
@@ -218,7 +309,7 @@ export function Aside({ icon, label, title, who, children }: {
 }) {
   return (
     <aside class="lrn-aside">
-      <p class="lrn-aside-k"><Icon name={icon} size={14} />{label}</p>
+      <p class="lrn-aside-k"><Ico name={icon} size={14} arrive />{label}</p>
       {title != null && title !== false && <h4 class="lrn-aside-title">{title}</h4>}
       {who != null && who !== false && <p class="lrn-aside-who">{who}</p>}
       <div class="lrn-aside-body">{children}</div>
@@ -245,14 +336,14 @@ export function LinkRow({ hue, id, icon, kicker, title, how, onClick }: {
       {id ? (
         <Mark id={id} hue={hue} size={28} />
       ) : (
-        <span class="lrn-link-ico" style={{ '--c': `var(--emo-${hue})` }} aria-hidden="true">{icon && <Icon name={icon} size={16} />}</span>
+        <span class="lrn-link-ico" style={{ '--c': `var(--emo-${hue})` }} aria-hidden="true">{icon && <Ico name={icon} size={16} />}</span>
       )}
       <span class="lrn-link-main">
         {kicker && <small class="lrn-link-k">{kicker}</small>}
         <b class="lrn-link-title">{title}</b>
         {how != null && how !== false && <span class="lrn-link-how">{how}</span>}
       </span>
-      <Icon name="arrow-up-right" size={16} class="lrn-link-go" />
+      <Ico name="arrow-up-right" size={16} class="lrn-link-go" />
     </button>
   );
 }
@@ -270,9 +361,13 @@ export function Tally({ icon, label, n, pressed, onClick }: {
   pressed?: boolean;
   onClick: () => void;
 }) {
+  // the icon is keyed by what it shows, so a new count or a toggle mounts it afresh and its one-shot plays; only once
+  // something has changed here, so opening the sheet doesn't set it off
+  const live = useLive(`${icon}:${n}:${pressed}`);
+  const toggle = n === undefined;
   return (
     <button class="btn btn-quiet lrn-tally" onClick={onClick} aria-pressed={pressed}>
-      <Icon name={icon} size={18} />
+      <Ico key={`${icon}:${n ?? ''}`} name={icon} size={18} class={live ? (toggle ? 'is-go is-pop' : 'is-pop') : undefined} />
       <span class="lrn-tally-label">{label}</span>
       {n !== undefined && <b class="lrn-tally-n">{n > 0 ? `×${n}` : ''}</b>}
     </button>

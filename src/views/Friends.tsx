@@ -6,13 +6,12 @@ import { t } from '../lib/i18n';
 import { PARTS, PRINCIPLES, type Part, type Principle } from '../data/principles';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { LAWS, REALMS, type Law } from '../data/laws';
-import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, shuffle, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLive, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/friends.css';
 
@@ -193,7 +192,7 @@ function NameThePrinciple({ open }: { open: (x: Principle) => void }) {
         <p class="lrn-score">{score.played > 0 ? `${t('{right} of {played}', score)}${score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}` : ''}</p>
         <span class="wf-game-acts">
           <button class="btn btn-quiet btn-s" style={picked == null ? { visibility: 'hidden' } : undefined} onClick={() => open(answer)}>{t('Read the principle')}</button>
-          <button class="btn btn-primary btn-s" onClick={next}>{t('Next scene')} <Icon name="chevron-right" size={16} /></button>
+          <button class="btn btn-primary btn-s" onClick={next}>{t('Next scene')} <Ico name="chevron-right" size={16} /></button>
         </span>
       </div>
     </div>
@@ -347,8 +346,8 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
 
       {/* the lens: which half you read first (the other follows) */}
       <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-        <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Icon name="brain" size={16} /> {t('Why it works')}</button>
-        <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Icon name="list-check" size={16} /> {t('How to practise')}</button>
+        <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Ico name="brain" size={16} /> {t('Why it works')}</button>
+        <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Ico name="list-check" size={16} /> {t('How to practise')}</button>
       </div>
 
       {lens === 'why' ? <>{why}{how}</> : <>{how}{why}</>}
@@ -399,6 +398,8 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
   const [query, setQuery] = useState('');
   const [practice, toggle, tried] = usePractice();
   const body = useRef<HTMLDivElement>(null);
+  // the Practising chip's check draws itself on when you pick it (not when the page opens with it picked)
+  const practisingGo = useLive(filter === 'practising') && filter === 'practising';
 
   const day = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60_000) / 86_400_000);
   const today = PRINCIPLES[day % PRINCIPLES.length];
@@ -440,7 +441,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
         rank={rank}
         top={<>
           {rank != null ? t('Principle {n} · {part}', { n: x.n, part: t(PARTS[x.part].name) }) : t('Principle {n}', { n: x.n })}
-          {!!p?.tried && <span class="wf-tried" title={t('I tried it')}><Icon name="sparkles" size={12} />{p.tried}</span>}
+          {!!p?.tried && <span class="wf-tried" title={t('I tried it')}><Ico name="sparkles" size={12} />{p.tried}</span>}
         </>}
         badge={p?.on ? t('Practising') : undefined}
         title={x.title}
@@ -473,7 +474,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
           </span>
         </div>
         <label class="search">
-          <Icon name="search" size={18} />
+          <Ico name="search" size={18} />
           <input type="search" value={query} onInput={(e) => setQuery(e.currentTarget.value)} placeholder={t('Search principles, levers or things to try')} aria-label={t('Search principles, levers or things to try')} />
         </label>
       </div>
@@ -516,7 +517,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
               <div class="chips scroll-x lrn-chips" role="toolbar" aria-label={t('Part')}>
                 <button class="chip" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>{t('All')}</button>
                 <button class="chip lrn-chip" style={{ '--c': 'var(--accent)' }} aria-pressed={filter === 'practising'} onClick={() => setFilter(filter === 'practising' ? 'all' : 'practising')}>
-                  <Icon name="check" size={16} /> {t('Practising')}
+                  <Ico name="check" size={16} class={practisingGo ? 'is-go' : undefined} /> {t('Practising')}
                 </button>
                 {PART_IDS.map((p) => (
                   <button class="chip lrn-chip" style={{ '--c': `var(--emo-${PARTS[p].hue})` }} aria-pressed={filter === p} onClick={() => setFilter(filter === p ? 'all' : p)}>
@@ -558,7 +559,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
 
           <section class="wf-about">
             <p>{t('Carnegie wrote the book in 1936 for salesmen and managers, and it has sold more than thirty million copies since. It’s easy to read as a manual for getting your way, and easy to sneer at for the same reason. But nearly every principle rests on one plain fact: people can tell whether you’re actually interested in them. So each principle here has the psychology underneath it, the mind traps it disarms, the laws of power it answers, and an honest version beside the one that turns into flattery.')}</p>
-            <button class="btn btn-quiet" onClick={() => openPrinciple(PRINCIPLES[Math.floor(Math.random() * PRINCIPLES.length)])}><Icon name="dice-5" size={18} /> {t('Draw a principle at random')}</button>
+            <button class="btn btn-quiet" onClick={(e) => { playIcon(e); openPrinciple(PRINCIPLES[Math.floor(Math.random() * PRINCIPLES.length)]); }}><Ico name="dice-5" size={18} /> {t('Draw a principle at random')}</button>
           </section>
         </div>
       </div>

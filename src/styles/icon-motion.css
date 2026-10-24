@@ -1,0 +1,180 @@
+/* ============================================================
+   Icon motion on the Learn pages (components/learn.tsx Ico; imported there). Each interface icon has one small
+   gesture that fits what it means, and it moves only inside its own box: transforms on the svg or its <g>/<path>
+   children and stroke drawing, never anything that changes layout, and never the text beside it.
+
+   What sets a gesture off, and nothing else:
+   - the control around it: hover (only with a real pointer), keyboard focus, and a press (a quick squash that springs
+     back, which works on touch too);
+   - a state change: `.is-go` (the icon mounts with it, or gets it, when you change something), `.is-pop` (a count
+     going up), `[data-play]` (learn.tsx playIcon, the dice);
+   - arriving: `.is-arrive` icons (an aside's label, the evidence line) draw themselves on once, a beat after they
+     first come into view (the observer in learn.tsx sets [data-in]); until then they wait, paused, undrawn.
+   No loops, no idle motion. Under reduced motion every icon just shows its final state.
+
+   The vocabulary (the gesture class Ico puts on the svg, from its name):
+     ic-nudge-r, ic-nudge-ur  steps toward where it points (chevron, arrow)   held while hovered, further on a press
+     ic-tilt                  tilts, looking (search)                         while the search field has focus
+     ic-tumble                tilts on hover, tumbles half a turn on a press  (dice; symmetric, so it lands as it was)
+     ic-blink                 the lid closes and opens, the pupil glances     (eye)
+     ic-hop                   hops up with a little tilt                       (crown)
+     ic-pulse                 swells and settles                              (brain)
+     ic-twinkle               turns and sparkles                              (sparkles)
+     ic-draw                  draws itself on                                 (check, x, list-check, alert)
+     ic-turn                  turns a quarter, springing                      (plus; symmetric)
+     ic-beat                  beats once, lub-dub                             (heart)
+     ic-swing                 swings from its top                             (moon)
+     ic-open                  opens a touch                                   (book)
+     ic-drop                  the i drops into the circle                      (info-circle)
+   A keyframe gesture is named by --ic-k (played on the <g>) and/or --ic-pk (played on each <path>), with --ic-t
+   and --ic-e its duration and easing, so each trigger below is written once for all of them.
+   ============================================================ */
+
+.ic {
+  overflow: visible;
+  transition: translate var(--dur-3) var(--spring), rotate var(--dur-3) var(--spring), scale var(--dur-3) var(--spring);
+}
+.ic > g, .ic > g > path { transform-box: fill-box; transform-origin: center; }
+
+/* ---------- the gestures ---------- */
+
+.ic-blink { --ic-k: ic-blink; --ic-t: var(--dur-4); }
+.ic-blink > g > path:first-child { --ic-pk: ic-glance; }
+.ic-hop { --ic-k: ic-hop; --ic-t: var(--dur-4); }
+.ic-pulse { --ic-k: ic-pulse; --ic-t: var(--dur-4); }
+.ic-twinkle { --ic-k: ic-twinkle; --ic-t: var(--dur-4); }
+.ic-draw { --ic-pk: ic-draw; --ic-t: var(--dur-3); --ic-e: var(--ease-emph); }
+.ic-turn { --ic-k: ic-turn; --ic-t: var(--dur-4); --ic-e: var(--spring); }
+.ic-beat { --ic-k: ic-beat; --ic-t: var(--dur-4); }
+.ic-swing { --ic-k: ic-swing; --ic-t: var(--dur-5); }
+.ic-swing > g { transform-origin: center top; }
+.ic-open { --ic-k: ic-open; --ic-t: var(--dur-4); }
+.ic-drop > g > path:nth-child(2) { --ic-pk: ic-drop; }
+/* the dice only tumbles when played (a press), so hovering it after doesn't tumble it again */
+.ic-tumble[data-play] { --ic-k: ic-tumble; --ic-t: var(--dur-4); --ic-e: var(--ease-emph); }
+
+/* ---------- what plays them ---------- */
+
+/* the control's hover (a quiz answer's key is left out: it only moves when the answer shows) */
+@media (hover: hover) {
+  :is(button:not(:disabled, .lrn-opt), a):hover .ic > g { animation: var(--ic-k, none) var(--ic-t, var(--dur-3)) var(--ic-e, var(--ease)); }
+  :is(button:not(:disabled, .lrn-opt), a):hover .ic > g > path { animation: var(--ic-pk, none) var(--ic-t, var(--dur-3)) var(--ic-e, var(--ease)); }
+  :is(button:not(:disabled), a):hover .ic-nudge-r { translate: 2px 0; }
+  :is(button:not(:disabled), a):hover .ic-nudge-ur { translate: 1.5px -1.5px; }
+  :is(button:not(:disabled), a):hover .ic-tumble { rotate: -14deg; }
+}
+/* keyboard focus, and a state change */
+:is(button:not(.lrn-opt), a):focus-visible .ic > g, .ic:is(.is-go, [data-play]) > g {
+  animation: var(--ic-k, none) var(--ic-t, var(--dur-3)) var(--ic-e, var(--ease));
+}
+:is(button:not(.lrn-opt), a):focus-visible .ic > g > path, .ic:is(.is-go, [data-play]) > g > path {
+  animation: var(--ic-pk, none) var(--ic-t, var(--dur-3)) var(--ic-e, var(--ease));
+}
+:is(button, a):focus-visible .ic-nudge-r { translate: 2px 0; }
+:is(button, a):focus-visible .ic-nudge-ur { translate: 1.5px -1.5px; }
+:is(button, a):focus-visible .ic-tumble { rotate: -14deg; }
+
+/* a press: the icon squashes at once and springs back on release; arrows push a step further */
+:is(.btn, .chip, .seg button):active:not(:disabled) .ic { scale: 0.86; transition-duration: var(--dur-0); transition-timing-function: var(--ease); }
+.btn:active:not(:disabled) .ic-nudge-r { translate: 3.5px 0; }
+.lrn-link:active .ic-nudge-ur { translate: 3px -3px; transition-duration: var(--dur-0); transition-timing-function: var(--ease); }
+
+/* a count going up (Tally, keyed by the count so the new icon mounts with it) */
+.ic.is-pop { animation: ic-pop var(--dur-4) var(--spring-bouncy); }
+
+/* the search: the glass tilts while you type */
+.search:focus-within > .ic-tilt { rotate: -16deg; }
+
+/* ---------- quiz answers: the tick or cross draws itself on in its circle; a wrong key shakes once ---------- */
+
+.lrn-opt-key > .ic > g > path { animation: ic-draw var(--dur-4) var(--ease-emph) var(--dur-0) backwards; }
+.lrn-opt.is-wrong > .lrn-opt-key { animation: ic-shake var(--dur-4) var(--ease); }
+
+/* ---------- the list head: the order chip's arrow, and a picked chip's dot ---------- */
+
+.lrn-head .sort-chip > svg { transition: translate var(--dur-3) var(--spring), scale var(--dur-3) var(--spring); }
+@media (hover: hover) { .lrn-head .sort-chip:hover > svg { translate: 0 2px; } }
+.lrn-head .sort-chip:focus-visible > svg { translate: 0 2px; }
+.lrn-head .sort-chip:active > svg { translate: 0 3px; scale: 0.86; transition-duration: var(--dur-0); transition-timing-function: var(--ease); }
+/* the dot of a picked chip grows a little, with a small pop (a transition, so only when you pick it) */
+.lrn-chip .lrn-dot { transition: scale var(--dur-3) var(--spring-bouncy); }
+.lrn-chip[aria-pressed='true'] .lrn-dot { scale: 1.3; }
+
+/* ---------- arriving: drawn on once, after the sheet has landed (--dur-3), then the icon's own gesture ---------- */
+
+.ic.is-arrive > g > path { animation: ic-draw var(--dur-4) var(--ease-emph) var(--dur-3) backwards paused; }
+.ic.is-arrive > g { animation: var(--ic-k, none) var(--ic-t, var(--dur-3)) var(--ic-e, var(--ease)) calc(var(--dur-3) + var(--dur-3)) backwards paused; }
+.ic-drop.is-arrive > g > path:nth-child(2) { animation: ic-drop var(--dur-4) var(--spring) calc(var(--dur-3) + var(--dur-2)) backwards paused; }
+/* keep last: lets them run once the icon is in view */
+.ic.is-arrive[data-in] > g, .ic.is-arrive[data-in] > g > path { animation-play-state: running; }
+
+/* ---------- keyframes (each starts and ends at rest) ---------- */
+
+@keyframes ic-draw {
+  from { stroke-dasharray: var(--ic-len); stroke-dashoffset: var(--ic-len); }
+  to { stroke-dasharray: var(--ic-len); stroke-dashoffset: 0; }
+}
+@keyframes ic-blink {
+  0%, 100% { transform: none; }
+  24%, 36% { transform: scaleY(0.1); }
+  58% { transform: none; }
+}
+@keyframes ic-glance {
+  0%, 58% { transform: none; }
+  78% { transform: translateX(1.25px); }
+  100% { transform: none; }
+}
+@keyframes ic-hop {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(-2.5px) rotate(-8deg); }
+  68% { transform: translateY(0.5px) rotate(2deg); }
+}
+@keyframes ic-pulse {
+  0%, 100% { transform: none; }
+  30% { transform: scale(1.12); }
+  62% { transform: scale(0.97); }
+}
+@keyframes ic-twinkle {
+  0%, 100% { transform: none; }
+  30% { transform: rotate(-12deg) scale(0.84); }
+  65% { transform: rotate(6deg) scale(1.08); }
+}
+@keyframes ic-turn { from { transform: rotate(-90deg); } }
+@keyframes ic-beat {
+  0%, 62%, 100% { transform: none; }
+  14% { transform: scale(1.16); }
+  28% { transform: scale(0.98); }
+  42% { transform: scale(1.09); }
+}
+@keyframes ic-swing {
+  0%, 100% { transform: none; }
+  20% { transform: rotate(-16deg); }
+  45% { transform: rotate(10deg); }
+  70% { transform: rotate(-4deg); }
+}
+@keyframes ic-open {
+  0%, 100% { transform: none; }
+  30% { transform: scaleX(0.84); }
+  65% { transform: scaleX(1.06); }
+}
+@keyframes ic-drop { from { transform: translateY(-5px); opacity: 0; } }
+@keyframes ic-tumble {
+  0% { transform: none; }
+  45% { transform: rotate(100deg) scale(0.8); }
+  100% { transform: rotate(180deg); }
+}
+@keyframes ic-pop { from { transform: scale(0.55); } }
+@keyframes ic-shake {
+  0%, 100% { transform: none; }
+  18% { transform: translateX(-3px); }
+  38% { transform: translateX(2.5px); }
+  58% { transform: translateX(-1.5px); }
+  78% { transform: translateX(0.75px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ic, .ic > g, .ic > g > path, .lrn-head .sort-chip > svg, .lrn-chip .lrn-dot {
+    animation: none !important; transition: none !important; translate: none !important; rotate: none !important; scale: none !important;
+  }
+  .lrn-opt.is-wrong > .lrn-opt-key { animation: none; }
+}
