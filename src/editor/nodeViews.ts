@@ -5,7 +5,7 @@ import { h, render } from 'preact';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { EditorView, NodeView, NodeViewConstructor } from '@tiptap/pm/view';
 import { toggleTask } from '../lib/noteDoc/edit';
-import { depthOf, listItemLook, type ListItemAttrs } from '../lib/noteDoc';
+import type { ListItemAttrs } from '../lib/noteDoc';
 import type { Media } from '../lib/body';
 import { InText, PersonMention, SongMention, WikiLink } from '../components/mentions';
 import { t } from '../lib/i18n';
@@ -21,6 +21,7 @@ class ListItemView implements NodeView {
   dom: HTMLElement;
   contentDOM: HTMLElement;
   private box: HTMLInputElement | null = null;
+  private drawn: Record<string, string> = {};
 
   constructor(private node: PMNode, private view: EditorView, private getPos: () => number | undefined) {
     this.dom = document.createElement('div');
@@ -71,18 +72,19 @@ class ListItemView implements NodeView {
     if (pos !== undefined) toggleTask(pos)(this.view.state, this.view.dispatch);
   }
 
+  /**
+   * The line's element gets the attributes the schema draws it with (toDOM: its class, depth, marker and the data-*
+   * it's read back from). A phone's own Enter, or several lines a keyboard puts in at once, makes the browser copy the
+   * line's element for the new line: the copy then reads back as the same kind of item (a number stays a number),
+   * and ProseMirror can tell a line split in two for the Enter it is.
+   */
   private draw() {
+    const [, attrs] = this.node.type.spec.toDOM!(this.node) as [string, Record<string, string>];
+    for (const k of Object.keys(this.drawn)) if (!(k in attrs)) this.dom.removeAttribute(k);
+    for (const [k, v] of Object.entries(attrs)) if (this.drawn[k] !== v) this.dom.setAttribute(k, v);
+    this.drawn = attrs;
     const a = this.node.attrs as ListItemAttrs;
-    const look = listItemLook(a);
-    const depth = depthOf(a.indent);
-    this.dom.className = look.class;
-    if (look['data-marker']) this.dom.setAttribute('data-marker', look['data-marker']);
-    else this.dom.removeAttribute('data-marker');
-    if (depth) this.dom.style.setProperty('--depth', String(depth));
-    else this.dom.style.removeProperty('--depth');
     if (!this.box) return;
-    // the browser may have taken the box out (a phone's Backspace): it goes back in
-    if (!this.dom.contains(this.box)) this.dom.prepend(this.box);
     this.box.checked = a.checked;
     this.box.setAttribute('aria-label', a.checked ? t('Done') : t('To do'));
   }
@@ -98,13 +100,10 @@ class ListItemView implements NodeView {
     return !!this.box && e.target === this.box;
   }
 
-  ignoreMutation(m: MutationRecord | { type: 'selection'; target: Node }) {
-    if (m.type === 'selection') return false;
-    // the line's look (its class, depth and marker) is drawn here, not read back as words
-    if (m.type === 'attributes' && m.target === this.dom) return true;
-    if (this.box && !this.dom.contains(this.box)) queueMicrotask(() => this.draw());
-    return !this.contentDOM.contains(m.target);
-  }
+  // No ignoreMutation: ProseMirror reads every change the browser makes in the line. A phone's own Enter splits a
+  // task's words (.md-li-text) in two inside it, and a phone's Backspace can take the box out: ProseMirror takes the
+  // first for the Enter it is, and after either draws the line again, box and all. Left unread, the words after the
+  // caret stayed in a stray block outside the note, shown but never saved.
 }
 
 /* ---------- chips ---------- */

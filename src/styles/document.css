@@ -59,6 +59,8 @@
 
   /* Normal, at the page's zoom */
   .note-sheet :is(.md, .read-empty) { font-size: calc(var(--text-l) * var(--z)); }
+  /* a callout's title is set in px (notes.css): it zooms with the words around it */
+  .note-sheet .md .md-callout-title { font-size: calc(var(--text-base) * var(--z)); }
 
   /* ---------- the header: Title, the properties line, then a hairline ---------- */
 

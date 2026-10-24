@@ -11,6 +11,27 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.130.0',
+    date: '2026-10-24',
+    changes: [
+      'Notes: numbered lists count again whatever changes them: deleting or moving lines, pasting, joining lines, or turning items into headings or bullets',
+      'Notes: the phone keyboard’s own Return in a to-do keeps every word and starts a new to-do; a numbered line split on Android stays numbered',
+      'Notes: while you write without stopping, the note saves at least every two seconds, so closing the app can’t lose what you just typed',
+      'Notes: if saving fails, it keeps trying after you leave the note, and the app reconnects to its storage after sitting in the background on iPhone',
+      'Notes: an edit made on another device shows up in a note you have open, instead of being written over by your next key',
+      'Notes: your last words are synced as you leave the app, not the next time you open it',
+      'Notes: a new note you emptied before tapping Done isn’t left behind as a blank note',
+      'Notes: adding a link to selected words puts it on those words, not at the start of the note',
+      'Notes: no stray empty line under a line that ends with a tag',
+      'Notes: text pasted from Notes, Mail or Google Docs keeps its empty lines as they were instead of doubling them',
+      'Notes: iPhone’s double-space full stop after a tag keeps its space',
+      'Notes: Delete at the end of a quote, Quote on lines that are partly quoted, and Enter across list items behave as expected',
+      'Notes: a list copied from a public note pastes back as the same list',
+      'Public notes: spaces, tags, long code lines and pictures look as they do in the app',
+      'Notes: a callout’s title zooms with the page on a computer',
+    ],
+  },
+  {
     version: '1.129.1',
     date: '2026-10-24',
     changes: [

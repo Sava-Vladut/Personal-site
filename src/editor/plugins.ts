@@ -13,7 +13,7 @@ import { gapCursor } from '@tiptap/pm/gapcursor';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
-  BLOCK_RULES, backspace, deleteForward, enter, exitCode, newLine, noteCommands, tab, tidyAfterTag, typedAt, type Typed,
+  BLOCK_RULES, backspace, deleteForward, enter, exitCode, newLine, noteCommands, renumberChanged, tab, tidyAfterTag, typedAt, type Typed,
 } from '../lib/noteDoc/edit';
 
 /* ---------- typing Markdown ---------- */
@@ -301,8 +301,13 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
           if (opts.suggestKey(e)) return true;
           return shortcut(view, e, opts);
         },
-        // a full stop, comma… typed just after a tag takes the place of the space the tag came with
-        handleTextInput: (view, _from, _to, text) => tidyAfterTag(text)(view.state, view.dispatch),
+        // A full stop, comma… typed just after a tag takes the place of the space the tag came with: only when it's
+        // typed at the caret. A phone's keyboard can put it in elsewhere, as iOS's double-space full stop turns the
+        // tag's space into ". " (the "." lands before that space, the caret after it): that stays as written.
+        handleTextInput: (view, from, to, text) => {
+          const sel = view.state.selection;
+          return from === to && sel.empty && sel.from === from && tidyAfterTag(text)(view.state, view.dispatch);
+        },
         handleDOMEvents: {
           // undo and redo from a shake, or the keyboard's own buttons, are the note's
           beforeinput(view, e) {
@@ -323,6 +328,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     new Plugin({
       appendTransaction: (trs, _old, state) => (trs.some((tr) => tr.docChanged) ? normalizeTr(state) : null),
     }),
+    // numbered lists count again wherever a change touched their lines (deleting a selection, joining, pasting, a drag)
+    new Plugin({ appendTransaction: (trs, _old, state) => renumberChanged(trs, state) }),
     tags,
     chipsInRange,
     suggest(opts.onTyped),

@@ -5,9 +5,10 @@
 // Pictures are never taken out by a stray key: Backspace just after one and Delete just before one do nothing (an
 // empty line after a picture goes when it can, as long as the picture keeps a line of text below it).
 import { NodeRange, type Node as PMNode, type ResolvedPos } from '@tiptap/pm/model';
-import { Selection, TextSelection, type Command, type EditorState, type Transaction } from '@tiptap/pm/state';
+import { EditorState, Selection, TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
 import { findWrapping } from '@tiptap/pm/transform';
-import { indentList, itemToParagraph, listEnter, renumber } from './lists';
+import { normalizeTr } from '../normalize';
+import { countOnAfter, indentList, itemToParagraph, listEnter } from './lists';
 import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, replaceSelectionText, selectedBlocks, unCallout } from './util';
 
 const named = (n: PMNode | null | undefined, ...names: string[]) => !!n && names.includes(n.type.name);
@@ -172,6 +173,12 @@ export const newLine: Command = (state, dispatch) => {
 
 /* ---------- Backspace and Delete ---------- */
 
+/** Backspace or Delete on a selection: it goes, as ProseMirror deletes it where it can (deleteSelectionSafe). */
+const deleteSelected: Command = (state, dispatch) => {
+  dispatch?.(deleteSelectionSafe(state.tr).scrollIntoView());
+  return true;
+};
+
 /** The top-level block a position is in, and whether the position is at its very start / end (nested blocks included). */
 function topEdge($c: ResolvedPos, end: boolean): number | null {
   for (let d = $c.depth; d > 0; d--) {
@@ -185,11 +192,13 @@ function topEdge($c: ResolvedPos, end: boolean): number | null {
  * Backspace at the start of a line, as in Notion and Word: a nested item steps out a level, an item, heading or quote
  * line turns back into plain text (numbers after it count again), a callout's title takes the callout with it (its
  * body stays a quote). Just after a picture, an empty line goes when the picture keeps text below it; nothing else does.
- * Otherwise (and anywhere but a line's start) it's the usual Backspace.
+ * Otherwise (and anywhere but a line's start) it's the usual Backspace. A selection is taken out safely (deleteSelectionSafe:
+ * ProseMirror's own throws on one from a quote into a callout).
  */
 export const backspace: Command = (state, dispatch) => {
   const sel = state.selection;
-  if (!(sel instanceof TextSelection) || !sel.empty || sel.$from.parentOffset > 0) return false;
+  if (!sel.empty) return deleteSelected(state, dispatch);
+  if (!(sel instanceof TextSelection) || sel.$from.parentOffset > 0) return false;
   const $c = sel.$from;
   const tb = $c.parent;
   const pos = $c.before();
@@ -250,11 +259,14 @@ export const backspace: Command = (state, dispatch) => {
 
 /**
  * Delete at the end of the line just before a picture does nothing (the picture never goes by a stray key). Next to
- * code, lines don't run into each other either (as with Backspace): an empty line goes, else nothing.
+ * code, lines don't run into each other either (as with Backspace): an empty line goes, else nothing. At the end of a
+ * quote or callout, the line after it runs on from its last line (an empty one just goes), as Backspace at that line's
+ * start does: it never goes into the quote as a line of its own. A selection is taken out as Backspace does it.
  */
 export const deleteForward: Command = (state, dispatch) => {
   const sel = state.selection;
-  if (!(sel instanceof TextSelection) || !sel.empty || sel.$from.parentOffset < sel.$from.parent.content.size) return false;
+  if (!sel.empty) return deleteSelected(state, dispatch);
+  if (!(sel instanceof TextSelection) || sel.$from.parentOffset < sel.$from.parent.content.size) return false;
   const $c = sel.$from;
   const tb = $c.parent;
   const next = $c.node(-1).maybeChild($c.index(-1) + 1);
@@ -268,7 +280,15 @@ export const deleteForward: Command = (state, dispatch) => {
     return true;
   }
   const top = topEdge($c, true);
-  return top !== null && state.doc.maybeChild(top + 1)?.type.name === 'media';
+  const after = top === null ? null : state.doc.maybeChild(top + 1);
+  if (top !== null && isQuote(state.doc.child(top)) && after?.isTextblock) {
+    if (!tb.type.spec.code && !after.type.spec.code && dispatch) {
+      const at = $c.after(1);
+      dispatch((after.content.size ? state.tr.delete($c.pos, at + 1) : state.tr.delete(at, at + after.nodeSize)).scrollIntoView());
+    }
+    return true;
+  }
+  return after?.type.name === 'media';
 };
 
 /* ---------- Tab ---------- */
@@ -342,11 +362,12 @@ function wrapQuote(state: EditorState, tr: Transaction): boolean {
     range = new NodeRange(state.doc.resolve(range.$from.before(d)), state.doc.resolve(range.$to.after(d)), d - 1);
   }
   if (!range) return false;
+  // the blocks between pictures, and between quotes and callouts (their lines are quoted already: they stay as they are)
   const runs: [number, number][] = [];
   let pos = range.start;
   for (let i = range.startIndex; i < range.endIndex; i++) {
     const child = range.parent.child(i);
-    if (child.type.name === 'media') runs.push([pos + child.nodeSize, pos + child.nodeSize]);
+    if (child.type.name === 'media' || isQuote(child)) runs.push([pos + child.nodeSize, pos + child.nodeSize]);
     else if (!runs.length) runs.push([pos, pos + child.nodeSize]);
     else runs[runs.length - 1][1] = pos + child.nodeSize;
     pos += child.nodeSize;
@@ -360,6 +381,9 @@ function wrapQuote(state: EditorState, tr: Transaction): boolean {
     tr.wrap(r, wrapping);
     done = true;
   }
+  // the new quotes join the quotes beside them, and get an empty line from a callout beside them (normalize.ts)
+  const fix = done ? normalizeTr(EditorState.create({ doc: tr.doc })) : null;
+  if (fix) for (const step of fix.steps) tr.step(step);
   return done;
 }
 
@@ -399,13 +423,9 @@ export const setStyle = (style: Style): Command => (state, dispatch) => {
   if (!dispatch) return true;
   const tr = state.tr;
   const { heading } = state.schema.nodes;
-  for (const { node, pos } of [...blocks].reverse()) {
-    const after = pos + node.nodeSize;
-    const kind = node.type.name === 'listItem' ? node.attrs.kind : null;
-    tr.setNodeMarkup(pos, heading, { level, sep: node.type === heading ? node.attrs.sep : ' ' });
-    // numbered items after it count again from its number, as when Backspace takes an item's marker off
-    if (kind === 'ol' && tr.doc.nodeAt(after)?.type.name === 'listItem') renumber(tr, after, Number(node.attrs.num) || 1);
-  }
+  for (const { node, pos } of [...blocks].reverse()) tr.setNodeMarkup(pos, heading, { level, sep: node.type === heading ? node.attrs.sep : ' ' });
+  // numbered items after them count again from their number, as when Backspace takes an item's marker off
+  countOnAfter(tr, blocks.filter((b) => b.node.type.name === 'listItem' && b.node.attrs.kind === 'ol'));
   dispatch(tr.scrollIntoView());
   return true;
 };

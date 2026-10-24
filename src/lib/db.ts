@@ -3,6 +3,13 @@ import { combineDeleted } from './deletions';
 
 const NAME = 'my-mind';
 let dbp: Promise<IDBDatabase> | null = null;
+/** The connection dbp gave, while it's good: the browser can close it under the app (see transaction). */
+let opened: IDBDatabase | null = null;
+const forget = (db: IDBDatabase) => {
+  if (opened !== db) return;
+  opened = null;
+  dbp = null;
+};
 
 /** Called when an older copy of the app (another tab, or the installed app) is holding the database open during an upgrade. */
 let blockedHandler = () => {};
@@ -20,6 +27,10 @@ function open() {
     req.onblocked = () => blockedHandler();
     req.onsuccess = () => {
       const db = req.result;
+      opened = db;
+      // the browser closed it (iOS does for an app left in the background, and when storage is cleared): the next
+      // read or write opens it again
+      db.onclose = () => forget(db);
       // A newer version of the app wants to upgrade: let go and reload into it instead of blocking it.
       db.onversionchange = () => {
         db.close();
@@ -37,13 +48,37 @@ function open() {
   return dbp;
 }
 
+/**
+ * A transaction, on a connection opened again if the browser has let go of the old one. iOS can drop a page's
+ * connection while the app sits in the background, without telling it (no close event): from then on every save would
+ * fail until the page was reloaded, so a note's words written after it would be lost.
+ */
+async function transaction<T>(stores: string | string[], mode: IDBTransactionMode, use: (tx: IDBTransaction) => Promise<T>): Promise<T> {
+  let db = await open();
+  let tx: IDBTransaction;
+  try {
+    tx = db.transaction(stores, mode);
+  } catch (error) {
+    if ((error as DOMException)?.name !== 'InvalidStateError') throw error;
+    forget(db);
+    db = await open();
+    tx = db.transaction(stores, mode);
+  }
+  // used at once, in the same turn: a transaction with nothing asked of it by then can finish on its own
+  return use(tx);
+}
+
+/** A transaction that failed because the connection was lost: the next one opens a new connection. */
+function failed(tx: IDBTransaction) {
+  if (tx.error?.name === 'UnknownError' || tx.error?.name === 'InvalidStateError') forget(tx.db);
+  return tx.error;
+}
+
 async function run<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T> | void): Promise<T> {
-  const db = await open();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, mode);
+  return transaction(store, mode, (tx) => new Promise<T>((resolve, reject) => {
     let req: IDBRequest<T> | void;
     tx.oncomplete = () => resolve(req ? req.result : (undefined as T));
-    tx.onerror = tx.onabort = () => reject(tx.error);
+    tx.onerror = tx.onabort = () => reject(failed(tx));
     try {
       req = fn(tx.objectStore(store));
     } catch (error) {
@@ -51,14 +86,12 @@ async function run<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObject
       tx.abort();
       reject(error);
     }
-  });
+  }));
 }
 
 /** Read and change a shared value in one transaction, including writes from other tabs. */
 async function update<T>(key: string, change: (current: T | undefined) => T): Promise<T> {
-  const database = await open();
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('kv', 'readwrite');
+  return transaction('kv', 'readwrite', (tx) => new Promise<T>((resolve, reject) => {
     const store = tx.objectStore('kv');
     const req = store.get(key);
     let next: T;
@@ -72,16 +105,14 @@ async function update<T>(key: string, change: (current: T | undefined) => T): Pr
       }
     };
     tx.oncomplete = () => resolve(next);
-    tx.onerror = tx.onabort = () => reject(tx.error);
-  });
+    tx.onerror = tx.onabort = () => reject(failed(tx));
+  }));
 }
 
 /** Merge remote notes or a backup against durable records while holding one write transaction. */
 async function reconcileEntries<T extends { id: string; updated: number }>(incoming: T[], deleted: Record<string, number>, normalize: (raw: any) => T | null = (raw) => raw, restore = false) {
-  const database = await open();
   type Result = { entries: T[]; changed: T[]; removed: string[]; deleted: Record<string, number> };
-  return new Promise<Result>((resolve, reject) => {
-    const tx = database.transaction(['entries', 'kv'], 'readwrite');
+  return transaction(['entries', 'kv'], 'readwrite', (tx) => new Promise<Result>((resolve, reject) => {
     const store = tx.objectStore('entries');
     const kv = tx.objectStore('kv');
     const req = store.getAll();
@@ -110,8 +141,8 @@ async function reconcileEntries<T extends { id: string; updated: number }>(incom
     req.onsuccess = () => { entriesReady = true; reconcile(); };
     gone.onsuccess = () => { deletedReady = true; reconcile(); };
     tx.oncomplete = () => resolve(result);
-    tx.onerror = tx.onabort = () => reject(tx.error);
-  });
+    tx.onerror = tx.onabort = () => reject(failed(tx));
+  }));
 }
 
 export const db = {

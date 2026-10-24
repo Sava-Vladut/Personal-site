@@ -44,6 +44,7 @@ function harness(code, initial = {}) {
   const timers = new Map();
   const frames = new Map();
   const messages = [];
+  const delays = []; // what each timer was set to wait (the harness runs them when asked, whatever they say)
   const navigations = [];
   const listeners = new Map();
   const documentListeners = new Map();
@@ -98,7 +99,7 @@ function harness(code, initial = {}) {
     blankPerson: (name = '') => ({ id: 'person-new', name, text: '', emotions: [], relation: '' }),
     blankEntry: (kind) => ({ ...entry, id: 'checkin-new', kind }),
     deleteEntry: async (id) => { const old = entries.get(id); entries.delete(id); return old; },
-    toast: (message) => messages.push(message), isEmpty: () => false,
+    toast: (message) => messages.push(message), isEmpty: initial.isEmpty ?? (() => false),
     usePeople: () => [...people.values()], useEntries: () => initial.entries ?? [], useBooks: () => [...books.values()], useSongs: () => [...songs.values()],
     useSettings: () => ({ picker: 'grid' }),
     BOOK_STATUSES: ['want', 'reading', 'read', 'dnf'], MAX_PERSON_EMOTIONS: 3,
@@ -119,7 +120,7 @@ function harness(code, initial = {}) {
       if (!modules.has(id)) modules.set(id, new Proxy({}, { get: (_, name) => child(name) }));
       return modules.get(id);
     },
-    setTimeout(fn) { const id = {}; timers.set(id, fn); return id; },
+    setTimeout(fn, ms) { const id = {}; timers.set(id, fn); delays.push(ms); return id; },
     clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn); },
     removeEventListener(type, fn) { listeners.get(type)?.delete(fn); },
@@ -134,11 +135,13 @@ function harness(code, initial = {}) {
     getSelection: () => ({ isCollapsed: true }), HTMLDivElement: class {},
     history: { state: {}, replaceState() {} }, location: { hash: '#/note/note-1' },
     confirm: () => true, scrollTo() {}, navigator: {},
+    // the time, when a test sets it
+    ...(initial.clock && { Date: class extends Date { static now() { return initial.clock(); } } }),
   };
   vm.runInNewContext(code, context);
   function vnode(type, props) { return { type, props }; }
   return {
-    entries, people, books, songs, messages, navigations, listeners, documentListeners, document: context.document, resolveImport, rejectImport,
+    entries, people, books, songs, messages, delays, navigations, listeners, documentListeners, document: context.document, resolveImport, rejectImport,
     render(name = 'Editor', props = { id: entry.id, query: new URLSearchParams() }) {
       cursor = 0;
       const tree = context.exports[name](props);
@@ -840,4 +843,139 @@ test('pictures: photos follow the words — one cut from the note waits, and com
   note.setText(marker);
   h.timers();
   assert.deepEqual(Array.from(h.entries.get('note-1').photos, (p) => p.id), [photo.id]);
+});
+
+/* ---------- saving: never losing words ---------- */
+
+const title = (tree) => find(tree, (n) => n.type === 'textarea' && n.props['aria-label'] === 'Title');
+/** An open note with words, its editor the mock above; the store's copy has an `updated` stamp, as saved ones do. */
+function openNote(initial = {}) {
+  let h;
+  const note = mockNote('Existing words', () => h);
+  h = harness(editorCode, { ...initial, entry: { text: 'Existing words', updated: 1, ...initial.entry }, modules: { ...tagModules, ...initial.modules } });
+  const props = { id: 'note-1', query: new URLSearchParams() };
+  withNote(h, note, props);
+  return { h, note, props };
+}
+
+test('saving: writing on without a pause still saves every couple of seconds', () => {
+  let now = 10_000;
+  const { h, note } = openNote({ clock: () => now });
+  note.setText('Existing words and');
+  assert.equal(h.delays.at(-1), 300, 'a change waits for the next pause');
+  now = 11_800;
+  note.setText('Existing words and more');
+  assert.equal(h.delays.at(-1), 200, 'but not past two seconds after the first change waiting');
+  now = 12_500;
+  note.setText('Existing words and more still');
+  assert.equal(h.delays.at(-1), 0);
+  h.timers();
+  assert.equal(h.entries.get('note-1').text, 'Existing words and more still');
+  // saved: the next change waits for its own pause again
+  now = 12_600;
+  note.setText('Existing words and more still, on');
+  assert.equal(h.delays.at(-1), 300);
+});
+
+test('sync: a newer copy arriving while the note is open is taken up, and what is typed next goes on from it', () => {
+  const { h, note, props } = openNote();
+  const remote = { ...h.entries.get('note-1'), title: 'From the laptop', text: 'Written on the laptop', updated: 5 };
+  h.entries.set('note-1', remote); // what sync's merge puts in the store
+  let tree = h.render('Editor', props);
+  assert.equal(note.value, 'Written on the laptop');
+  h.timers();
+  tree = h.render('Editor', props);
+  assert.equal(title(tree).props.value, 'From the laptop');
+  assert.equal(h.entries.get('note-1'), remote, 'taking it up saves nothing');
+  note.setText('Written on the laptop, and on the phone');
+  h.timers();
+  assert.equal(h.entries.get('note-1').text, 'Written on the laptop, and on the phone');
+  assert.equal(h.entries.get('note-1').title, 'From the laptop');
+});
+
+test('sync: a newer copy never replaces words here still waiting to be saved', () => {
+  const { h, note, props } = openNote();
+  note.setText('Typed here just now');
+  h.entries.set('note-1', { ...h.entries.get('note-1'), text: 'Written on the laptop', updated: 5 });
+  h.render('Editor', props);
+  assert.equal(note.value, 'Typed here just now');
+  h.timers();
+  assert.equal(h.entries.get('note-1').text, 'Typed here just now');
+});
+
+test('sync: an older copy (or the one this page saved) changes nothing', () => {
+  const { h, note, props } = openNote({ entry: { updated: 9 } });
+  h.entries.set('note-1', { ...h.entries.get('note-1'), text: 'Older', updated: 3 });
+  h.render('Editor', props);
+  assert.equal(note.value, 'Existing words');
+});
+
+for (const reopened of [false, true]) {
+  test(`leaving: a save that failed is tried again after the note has gone${reopened ? ', unless it was saved again since' : ''}`, async () => {
+    let calls = 0;
+    let h;
+    const save = async (e) => { if (!calls++) throw new Error('Storage busy'); h.entries.set(e.id, e); return e; };
+    ({ h } = openNote({ saveEntry: (e) => save(e) }));
+    const tree = h.render('Editor', { id: 'note-1', query: new URLSearchParams() });
+    title(tree).props.onInput({ currentTarget: { value: 'Last words' } });
+    h.unmount(); // straight out (a swipe back, the app switched away) while it's waiting
+    await settle();
+    assert.equal(calls, 1);
+    assert.match(h.messages[0], /Couldn’t save/);
+    const newer = { ...h.entries.get('note-1'), title: 'Reopened and written in', updated: 7 };
+    if (reopened) h.entries.set('note-1', newer);
+    h.timers();
+    await settle();
+    if (reopened) assert.equal(h.entries.get('note-1'), newer);
+    else assert.equal(h.entries.get('note-1').title, 'Last words');
+  });
+}
+
+test('new note: one typed in and emptied again is not kept on leaving', async () => {
+  const blank = (e) => !e.title.trim() && !e.text.trim();
+  const h = harness(editorCode, { entry: { text: '' }, isEmpty: blank, modules: tagModules });
+  const props = { id: 'new', query: new URLSearchParams() };
+  let tree = h.render('Editor', props);
+  title(tree).props.onInput({ currentTarget: { value: 'A' } });
+  h.timers();
+  await settle();
+  assert.ok(h.entries.has('checkin-new'), 'saved while being written');
+  tree = h.render('Editor', props);
+  title(tree).props.onInput({ currentTarget: { value: '' } });
+  await button(tree, 'Done').props.onClick();
+  assert.equal(h.entries.has('checkin-new'), false);
+  assert.deepEqual(h.navigations, ['back']);
+});
+
+test('note: an existing note emptied is still saved, not taken out', async () => {
+  const blank = (e) => !e.title.trim() && !e.text.trim();
+  const { h, props } = openNote({ isEmpty: blank, entry: { text: '', title: 'Before' } });
+  const tree = h.render('Editor', props);
+  title(tree).props.onInput({ currentTarget: { value: '' } });
+  await button(tree, 'Done').props.onClick();
+  assert.equal(h.entries.get('note-1').title, '');
+});
+
+test('link: the Link sheet puts the link on the words that were selected, not on the note’s start', () => {
+  const { h, note, props } = openNote();
+  note.editable = true;
+  const links = [];
+  note.cmds = { link: (to) => links.push({ to, focused: h.document.activeElement === note.el }) };
+  let tree = h.render('Editor', props);
+  find(tree, (n) => n.type.name === 'FormatBar').props.ribbon.link();
+  tree = h.render('Editor', props);
+  h.document.activeElement = {}; // the sheet's address field
+  find(tree, (n) => n.type.name === 'LinkSheet').props.onDone({ text: 'words', href: 'example.com' });
+  assert.deepEqual(links, [{ to: { text: 'words', href: 'example.com' }, focused: true }]);
+});
+
+test('title: Return goes on to the words, but not the Return that ends an IME composition', () => {
+  const { h, note, props } = openNote();
+  const tree = h.render('Editor', props);
+  const key = (e) => title(tree).props.onKeyDown({ key: 'Enter', preventDefault() {}, ...e });
+  key({ isComposing: true });
+  key({ keyCode: 229 });
+  assert.equal(note.focusCalls, 0);
+  key({});
+  assert.equal(note.focusCalls, 1);
 });

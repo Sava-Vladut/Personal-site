@@ -215,13 +215,16 @@
    ink; a quote is italic behind a blue rule; a highlight is a yellow marker; a link is Word's blue, underlined. Other
    formatted text (a person's or a book's page) keeps the plain styles above. */
 
-.note-body .md { line-height: 1.62; }
+/* spaces and tabs show as written (several in a row, at a line's start), as the editor must show them */
+.note-body .md { line-height: 1.62; white-space: pre-wrap; tab-size: 5; }
 .note-body .md .md-h { font-family: var(--sans); letter-spacing: -0.012em; line-height: 1.25; }
 .note-body .md .md-h1 { font-size: 1.6em; font-weight: 420; color: var(--word-ink); margin: 0.85em 0 0.25em; }
 .note-body .md .md-h2 { font-size: 1.3em; font-weight: var(--w-medium); color: var(--word-ink); margin: 0.8em 0 0.2em; }
 .note-body .md .md-h3 { font-size: 1.1em; font-weight: var(--w-bold); color: var(--ink); margin: 0.7em 0 0.15em; }
 .note-body .md :is(.md-h4, .md-h5, .md-h6) { font-weight: var(--w-bold); color: var(--ink-2); margin: 0.6em 0 0.1em; }
-.note-body .md > .md-h:first-child { margin-top: 0.1em; }
+/* only at the top of the note: a heading after a picture keeps its space above, on a public note's page too (where the
+   words after each picture are a .md of their own) */
+.note-body .md:first-child > .md-h:first-child { margin-top: 0.1em; }
 /* the marker reaches a hair past the letters without pushing them: highlighting moves nothing on the line */
 .note-body .md mark { background: var(--doc-hl); border-radius: var(--r-2xs); padding: 0 1px; margin: 0 -1px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .note-body .md a[href] { color: var(--word-ink); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--word-ink) 50%, transparent); text-underline-offset: 3px; }
@@ -232,6 +235,17 @@
 .note-body .md .md-task { --mark-w: 1.36em; }
 .note-body .md .md-task input { width: 1.18em; height: 1.18em; top: 0.22em; left: calc(var(--depth, 0) * 1.3em + 0.06em); }
 .note-body .md .md-task input::after { width: 0.5em; height: 0.28em; }
+/* Beside a picture on the left, a list line is a box of its own next to the picture. As a line of words it would run
+   under the picture, its bullet, number or box drawn over the picture instead of beside its words. (Beside a picture
+   on the right it stays a line of words, wrapping round the picture and taking the whole width again under it.) */
+.note-editor > .media-node:has(> .media.is-left) ~ .md-li,
+.note-editor > .media-node:has(> .media.is-left) ~ * .md-li,
+.note-body > .media.is-left ~ .md .md-li { display: flow-root; }
+/* a #tag: the same letters on a soft wash that takes no room, so the line doesn't jump as it's typed, and a public
+   note's page shows it as the note does */
+.note-body .md .md-tag { padding: 0; font: inherit; color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-xs); box-shadow: 0 0 0 0.16em var(--surface-2); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+/* a long line of code wraps, as it must while writing (below), on a public note's page too */
+.note-body .md pre code { white-space: pre-wrap; }
 /* blank lines as tall as the editor draws them, on a public note's page too */
 .note-body .md .md-gap { height: 1.62em; }
 /* selected words, a picture: Word's blue, as a selected tag or divider already is */
@@ -258,8 +272,11 @@
 .note-editor .md-task input { touch-action: manipulation; }
 .note-editor .md-task input::before { content: ''; position: absolute; inset: -10px; }
 .note-editor .md-callout-title::before { content: var(--icon); margin-right: 8px; -webkit-user-select: none; user-select: none; }
-/* a #tag while writing: the same letters on a soft wash that takes no room, so the line doesn't jump as it's typed */
-.note-editor .md-tag { padding: 0; font: inherit; color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-xs); box-shadow: 0 0 0 0.16em var(--surface-2); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+/* ProseMirror's stand-in after a tag that ends a line (so Safari and Chrome can put the caret after it), and the one at
+   the caret while a word is composed after a link or a style picked with nothing selected: a picture of nothing, in the
+   line. As a block (every img is one, app.css) it would push what follows onto a line of its own: an empty line under
+   every line that ends with a tag. */
+.note-editor img.ProseMirror-separator { display: inline; border: 0; margin: 0; }
 /* the placeholder takes no room (it spills out of a box 0 wide), so the caret sits where the first letter will */
 .note-editor .is-empty::before {
   content: attr(data-placeholder); display: inline-block; width: 0; white-space: nowrap; color: var(--ink-3); opacity: 0.7;

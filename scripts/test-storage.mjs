@@ -320,6 +320,37 @@ test('IndexedDB opens can retry and failed batches abort their earlier writes', 
   assert.equal(saved.length, 0);
 });
 
+test('IndexedDB opens a new connection when the browser has dropped the old one (iOS, in the background)', async () => {
+  let opens = 0;
+  const saved = [];
+  const connection = (lost) => ({
+    transaction() {
+      if (lost.now) throw Object.assign(new Error('The database connection is closing.'), { name: 'InvalidStateError' });
+      const pending = [];
+      const tx = { error: null, objectStore: () => ({ put: (v) => void pending.push(v), getAll: () => ({ result: saved }) }) };
+      queueMicrotask(() => { saved.push(...pending); tx.oncomplete?.(); });
+      return tx;
+    },
+  });
+  const first = { now: false };
+  const { db } = await loadModule('src/lib/db.ts', {}, {
+    indexedDB: {
+      open() {
+        const request = { result: connection(++opens === 1 ? first : { now: false }) };
+        queueMicrotask(() => request.onsuccess());
+        return request;
+      },
+    },
+  });
+  await db.put({ id: 'before' });
+  first.now = true; // the app sat in the background: its connection is gone, with no close event
+  await db.put({ id: 'after' });
+  assert.equal(opens, 2);
+  assert.deepEqual(saved.map((e) => e.id), ['before', 'after']);
+  await db.put({ id: 'later' });
+  assert.equal(opens, 2, 'the new connection is kept');
+});
+
 function syncMocks() {
   return {
     './store': {

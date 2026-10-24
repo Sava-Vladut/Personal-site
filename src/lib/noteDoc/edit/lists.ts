@@ -2,7 +2,10 @@
 // deep each sits written in its indent. Enter carries a list on, an empty item ends it (a nested one steps out a level
 // first), Tab and Shift+Tab move items in and out, and numbered items are counted again after each change.
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
+import { TextSelection, type Command, type EditorState, type Transaction } from '@tiptap/pm/state';
+import { AttrStep, Mapping, ReplaceAroundStep, type Step } from '@tiptap/pm/transform';
+import { isHistoryTransaction } from '@tiptap/pm/history';
+import { REPLACED } from '../diff';
 import type { ListItemAttrs } from '../schema';
 import type { ListKind } from '../syntax';
 import { deleteSelectionSafe, inTwoSteps, lineText, selectedBlocks, type At } from './util';
@@ -13,36 +16,147 @@ const isItem = (n: PMNode | null | undefined) => n?.type.name === 'listItem';
 const indentWidth = (indent: string) => [...indent].reduce((n, c) => n + (c === '\t' ? 4 : 1), 0);
 
 /**
- * Counts the numbered items again in the run of list items around the item at `pos` (the position before it): 1, 2,
- * 3… at each level. A list keeps the number it starts from (or starts from `from`, when given), and one nested under
- * an item starts from 1. A number already right is left as written (`01` stays).
+ * The run of list items around the item at `pos` (one after another in their container): its first and last index,
+ * and where it starts and ends.
  */
-export function renumber(tr: Transaction, pos: number, from?: number): Transaction {
-  const $p = tr.doc.resolve(pos);
+function runAround(doc: PMNode, pos: number) {
+  const $p = doc.resolve(pos);
   const parent = $p.parent;
+  let a = $p.index(), b = a;
+  let start = pos, end = pos + (parent.maybeChild(a)?.nodeSize ?? 0);
+  while (a > 0 && isItem(parent.child(a - 1))) start -= parent.child(--a).nodeSize;
+  while (b + 1 < parent.childCount && isItem(parent.child(b + 1))) end += parent.child(++b).nodeSize;
+  return { $p, parent, a, b, start, end };
+}
+
+/**
+ * Counts the numbered items again in the run of list items around the item at `pos` (the position before it): 1, 2,
+ * 3… at each level. A list keeps the number it starts from, and one nested under an item starts from 1. With `from`,
+ * the numbered items at `indent` (the item's at `pos` when not given) count on from it there: what's after a numbered
+ * item that stopped being one goes on from its number. A number already right is left as written (`01` stays).
+ */
+export function renumber(tr: Transaction, pos: number, from?: number, indent?: string): Transaction {
+  const { $p, parent, a, b, start } = runAround(tr.doc, pos);
   const at = $p.index();
   if (!isItem(parent.maybeChild(at))) return tr;
-  let a = at, b = at;
-  while (a > 0 && isItem(parent.child(a - 1))) a--;
-  while (b + 1 < parent.childCount && isItem(parent.child(b + 1))) b++;
-  let p = $p.start();
-  for (let k = 0; k < a; k++) p += parent.child(k).nodeSize;
+  let p = start;
   const next = new Map<number, number>(); // by indent: the number the next item there gets
   let prev = -1;
   for (let k = a; k <= b; k++) {
     const node = parent.child(k);
     const attrs = node.attrs as ListItemAttrs;
     const w = indentWidth(attrs.indent);
+    if (k === at && from !== undefined) {
+      const level = indentWidth(indent ?? attrs.indent);
+      for (const x of [...next.keys()]) if (x > level) next.delete(x);
+      next.set(level, from);
+    }
     for (const x of [...next.keys()]) if (x > w) next.delete(x);
     if (attrs.kind === 'ol') {
-      const n = next.get(w) ?? (k === a && from !== undefined ? from : k > a && prev < w ? 1 : Number(attrs.num) || 1);
-      if (Number(attrs.num) !== n) tr.setNodeMarkup(p, null, { ...attrs, num: String(n) });
+      const n = next.get(w) ?? (k > a && prev < w ? 1 : Number(attrs.num) || 1);
+      // (an attribute step: it moves no position, so the caret and selection stay put)
+      if (Number(attrs.num) !== n) tr.setNodeAttribute(p, 'num', String(n));
       next.set(w, n + 1);
     } else next.delete(w);
     prev = w;
     p += node.nodeSize;
   }
   return tr;
+}
+
+/**
+ * After the numbered items `gone` (as they were before `tr`, first to last) stopped being numbered (made plain lines,
+ * headings, bullets or tasks): the numbered items after each run of them count on from the run's first number, at its
+ * level, as Backspace does it to one (1, 2 / 2, 3, as Word does it).
+ */
+export function countOnAfter(tr: Transaction, gone: At[]): Transaction {
+  for (let k = 0; k < gone.length; k++) {
+    const first = gone[k];
+    while (k + 1 < gone.length && gone[k + 1].pos === gone[k].pos + gone[k].node.nodeSize) k++;
+    const after = tr.mapping.map(gone[k].pos + gone[k].node.nodeSize);
+    if (isItem(tr.doc.nodeAt(after))) renumber(tr, after, Number(first.node.attrs.num) || 1, first.node.attrs.indent);
+  }
+  return tr;
+}
+
+/**
+ * Whether `step` only changes a line's attributes and leaves it the same kind of line at the same level (setNodeMarkup:
+ * a task ticked, a number written, a picture sized).
+ */
+function sameLine(step: Step, doc: PMNode): boolean {
+  if (step instanceof AttrStep) return step.attr !== 'kind' && step.attr !== 'indent';
+  if (!(step instanceof ReplaceAroundStep) || step.gapFrom !== step.from + 1 || step.gapTo !== step.to - 1 || step.slice.content.childCount !== 1) return false;
+  const was = doc.nodeAt(step.from), now = step.slice.content.firstChild!;
+  return !!was && was.type === now.type && (!isItem(was) || (was.attrs.kind === now.attrs.kind && was.attrs.indent === now.attrs.indent));
+}
+
+/**
+ * Where `trs` (one after another) changed which lines there are or what kind they are, as ranges in the last one's
+ * document: lines put in, taken out, joined, split, made another kind or moved a level. Words typed or taken out within
+ * a line, styles, and a task ticked don't count. Undo and redo don't either (they put the numbers back as they were),
+ * nor a whole text put in with replaceDoc (it's kept as it's written).
+ */
+function linesChanged(trs: readonly Transaction[]): { from: number; to: number }[] {
+  const inLine = (doc: PMNode, from: number, to: number) => {
+    const $a = doc.resolve(from);
+    return $a.parent.isTextblock && to <= $a.end();
+  };
+  let out: { from: number; to: number }[] = [];
+  for (const tr of trs) {
+    out = out.map((r) => ({ from: tr.mapping.map(r.from, -1), to: tr.mapping.map(r.to, 1) }));
+    const root: Transaction = tr.getMeta('appendedTransaction') ?? tr;
+    if (isHistoryTransaction(root) || root.getMeta(REPLACED)) continue;
+    tr.steps.forEach((step, i) => {
+      const rest = tr.mapping.slice(i + 1);
+      const add = (from: number, to: number) => void out.push({ from: rest.map(from, -1), to: rest.map(to, 1) });
+      const before = tr.docs[i], after = i + 1 < tr.steps.length ? tr.docs[i + 1] : tr.doc;
+      if (sameLine(step, before)) return;
+      if (step instanceof AttrStep) return add(step.pos, step.pos + 1);
+      step.getMap().forEach((oldStart, oldEnd, newStart, newEnd) => {
+        if (!inLine(before, oldStart, oldEnd) || !inLine(after, newStart, newEnd)) add(newStart, newEnd);
+      });
+    });
+  }
+  return out;
+}
+
+/**
+ * The editor's numbering after each change (appendTransaction): the numbered lists whose lines the changes `trs`
+ * touched are counted again, whatever made them (deleting a selection, joining lines, pasting, dragging, a rule). A
+ * list keeps the number it started from, even when its first item went or another took its place. Null when every
+ * number is right, or nothing changed the lines.
+ */
+export function renumberChanged(trs: readonly Transaction[], state: EditorState): Transaction | null {
+  if (!trs.some((tr) => tr.docChanged)) return null;
+  const { doc } = state;
+  const tr = state.tr;
+  const done: { start: number; end: number }[] = [];
+  // the number a list starting at `pos` started from before the changes, when a numbered list started there
+  const before = trs[0].before;
+  const back = new Mapping();
+  for (const t of trs) back.appendMapping(t.mapping);
+  const inverse = back.invert();
+  const startedAt = (pos: number) => {
+    const was = inverse.map(pos, -1);
+    if (!isItem(before.resolve(was).nodeAfter)) return undefined;
+    const run = runAround(before, was);
+    const first = run.parent.child(run.a);
+    return run.start === was && first.attrs.kind === 'ol' ? Number(first.attrs.num) || 1 : undefined;
+  };
+  for (const { from, to } of linesChanged(trs)) {
+    // where lines were only taken out, the ones on either side of the gap
+    const a = Math.max(0, from === to ? from - 1 : from);
+    const b = Math.min(doc.content.size, Math.max(a, from === to ? to + 1 : to));
+    doc.nodesBetween(a, b, (node, pos) => {
+      if (!isItem(node)) return !node.isTextblock;
+      if (done.some((r) => pos >= r.start && pos < r.end)) return false;
+      const run = runAround(doc, pos);
+      done.push(run);
+      renumber(tr, run.start, startedAt(run.start));
+      return false;
+    });
+  }
+  return tr.docChanged ? tr : null;
 }
 
 /** The indent one level in (a tab before it) or out (a tab or up to four spaces off). */
@@ -82,7 +196,7 @@ export function itemToParagraph(tr: Transaction, pos: number): Transaction {
   const node = tr.doc.nodeAt(pos)!;
   tr.setNodeMarkup(pos, tr.doc.type.schema.nodes.paragraph, null);
   const after = pos + node.nodeSize;
-  if (node.attrs.kind === 'ol' && isItem(tr.doc.nodeAt(after))) renumber(tr, after, Number(node.attrs.num) || 1);
+  if (node.attrs.kind === 'ol' && isItem(tr.doc.nodeAt(after))) renumber(tr, after, Number(node.attrs.num) || 1, node.attrs.indent);
   return tr;
 }
 
@@ -90,14 +204,16 @@ export function itemToParagraph(tr: Transaction, pos: number): Transaction {
  * Enter in a list item, as in Word and Obsidian. Before the first word of an item, a plain line opens above it. On an
  * empty item, a nested one steps out a level and a top-level one becomes a plain line (the list ends there). Otherwise
  * the item splits, and the new one gets the same marker: a number counts on, a task starts unticked. The line break and
- * the new marker are two steps to undo, so undo leaves just the line.
+ * the new marker are two steps to undo, so undo leaves just the line. A selection is deleted first: one starting in an
+ * item and running on into other lines leaves the rest of the last one in the item, so the list carries on as well.
  */
 export const listEnter: Command = (state, dispatch, view) => {
   const sel = state.selection;
-  if (!isItem(sel.$from.parent) || sel.$from.parent !== sel.$to.parent) return false;
+  if (!isItem(sel.$from.parent)) return false;
   const tr = state.tr;
   if (!sel.empty) deleteSelectionSafe(tr);
   const $c = tr.selection.$from;
+  if (!tr.selection.empty || !isItem($c.parent)) return false;
   const item = $c.parent;
   const pos = $c.before();
   const attrs = item.attrs as ListItemAttrs;
@@ -158,6 +274,7 @@ export const toggleList = (kind: ListKind): Command => (state, dispatch) => {
   const used = blocks.filter((b, i) => blocks.length === 1 || i === 0 || b.node.type.name !== 'paragraph' || lineText(b.node).trim());
   const off = used.every((b) => isItem(b.node) && b.node.attrs.kind === kind);
   if (!dispatch) return true;
+  const gone = used.filter((b) => isItem(b.node) && b.node.attrs.kind === 'ol' && (off || kind !== 'ol'));
   const tr = state.tr;
   const { paragraph, listItem } = state.schema.nodes;
   let n = used.length;
@@ -180,6 +297,8 @@ export const toggleList = (kind: ListKind): Command => (state, dispatch) => {
     n--;
   }
   if (!off && kind === 'ol') renumber(tr, tr.mapping.map(used[0].pos));
+  // numbered items made plain lines, bullets or tasks: the numbers after them go on from theirs
+  countOnAfter(tr, gone);
   dispatch(tr.scrollIntoView());
   return true;
 };

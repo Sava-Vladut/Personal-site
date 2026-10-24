@@ -4,6 +4,9 @@
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { Transaction } from '@tiptap/pm/state';
 
+/** Meta on replaceDoc's transactions: a whole text put in, kept as it's written (the numbering pass leaves it be). */
+export const REPLACED = 'noteDocReplaced';
+
 /** Changes `tr`'s document into `next` (same schema), replacing only what differs. Returns `tr`. */
 export function replaceDoc(tr: Transaction, next: PMNode): Transaction {
   const cur = tr.doc;
@@ -16,5 +19,5 @@ export function replaceDoc(tr: Transaction, next: PMNode): Transaction {
     endA += overlap;
     endB += overlap;
   }
-  return tr.replace(start, endA, next.slice(start, endB));
+  return tr.setMeta(REPLACED, true).replace(start, endA, next.slice(start, endB));
 }

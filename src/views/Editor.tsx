@@ -46,6 +46,8 @@ type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | '
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 const MAX_PHOTOS = 20;
+/** Writing on without a pause still saves this often (ms): each change otherwise waits for the next pause. */
+const MAX_WAIT = 2000;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
 
 function fit(el: HTMLTextAreaElement | null) {
@@ -117,11 +119,16 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const leaving = useRef(false);
   const contextStarted = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
-  // a save that failed is tried again by itself, a little later each time, while the note is open
+  // a save that failed is tried again by itself, a little later each time (after leaving the note too)
   const retryTimer = useRef<ReturnType<typeof setTimeout>>();
   const retries = useRef(0);
   const latest = useRef(draft);
   latest.current = draft;
+  // the note as this page last saw it stored (as it opened, or as saved from here): a newer copy in the store came
+  // from somewhere else (another device, through sync)
+  const base = useRef<Entry | null>(id !== 'new' ? draft : null);
+  // when the oldest change not saved yet was made (0: none waiting)
+  const changedAt = useRef(0);
   // what the status bar says about saving: only shown, never consulted, so saving works exactly as without it
   const [saveState, setSaveState] = useState<SaveState>(id !== 'new' ? 'saved' : 'idle');
   // the notes that link here, shown at the bottom. Saving while writing hands over a new list of entries, but unless
@@ -199,7 +206,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
     if (!Object.keys(patch).length) {
       // the words came back to what's kept (typed and taken out again): nothing to save, so it's saved
-      if (alive.current && !dirty.current && !pendingSave.current) setSaveState(saved.current ? 'saved' : 'idle');
+      if (alive.current && !dirty.current && !pendingSave.current) {
+        changedAt.current = 0;
+        setSaveState(saved.current ? 'saved' : 'idle');
+        catchUp();
+      }
       return;
     }
     if (alive.current) return update(patch);
@@ -207,12 +218,21 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     latest.current = { ...d, ...patch };
     dirty.current = true;
   };
+  /**
+   * How long a change waits before it's written back or saved: `ms` after it, unless changes have been waiting
+   * MAX_WAIT already — typing on with no pause would otherwise put saving off for as long as it lasts.
+   */
+  const soon = (ms: number) => {
+    const now = Date.now();
+    if (!changedAt.current) changedAt.current = now;
+    return Math.max(0, Math.min(ms, changedAt.current + MAX_WAIT - now));
+  };
   /** The document changed: its text is written back shortly (and on leaving, at once). */
   const docChanged = () => {
     textDirty.current = true;
     setSaveState('saving');
     clearTimeout(textTimer.current);
-    textTimer.current = setTimeout(syncText, 300);
+    textTimer.current = setTimeout(syncText, soon(300));
   };
   /** The note's text now, the document's when it's open. */
   const textNow = () => noteRef.current?.text() ?? (latest.current ? serializeBody(bodyOf(latest.current)) : '');
@@ -228,6 +248,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     syncText();
     clearTimeout(timer.current);
     clearTimeout(retryTimer.current);
+    changedAt.current = 0;
     const d = latest.current;
     if (removing.current || !d) return Promise.resolve(false);
     if (!dirty.current) return pendingSave.current ?? Promise.resolve(saved.current);
@@ -237,8 +258,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       return Promise.resolve(false); // don't keep blank notes
     }
     const request = ++saveRequest.current;
-    const saving = saveEntry(d).then(() => {
+    const saving = saveEntry(d).then((kept) => {
       if (removing.current) return false;
+      if (kept?.id === d.id) base.current = kept;
       if (!saved.current && !contextStarted.current) {
         contextStarted.current = true;
         addPlaceAndWeather(d);
@@ -253,17 +275,41 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     }).catch(() => {
       if (removing.current || request !== saveRequest.current) return false;
       dirty.current = true;
-      if (alive.current) {
-        setSaveState('error');
-        if (retries.current < 6) retryTimer.current = setTimeout(() => flush(true), Math.min(30_000, 2000 * 2 ** retries.current++));
-      }
+      if (alive.current) setSaveState('error');
+      if (retries.current < 6) retryTimer.current = setTimeout(retry, Math.min(30_000, 2000 * 2 ** retries.current++));
       if (!quiet) toast(t('Couldn’t save this note. Try again.'));
       return false;
     }).finally(() => {
       if (pendingSave.current === saving) pendingSave.current = null;
+      catchUp();
     });
     pendingSave.current = saving;
     return saving;
+  };
+
+  /**
+   * A failed save, tried again. Leaving the note doesn't drop it (its words are only here now): it's still tried
+   * after, as long as nothing newer of the note has been saved meanwhile (it reopened and was written in).
+   */
+  const retry = () => {
+    const d = latest.current;
+    if (alive.current || (d && (getEntries().find((e) => e.id === d.id) ?? null) === base.current)) void flush(true);
+  };
+
+  /**
+   * A newer copy of the note came in while it's open (sync, from another device). With nothing here waiting to be
+   * saved, it's taken up, its words into the editor: what's written next goes on from it, rather than this page
+   * saving its older copy over it. Changes here that are still to be saved win, as before.
+   */
+  const catchUp = () => {
+    const b = base.current;
+    if (!alive.current || removing.current || !b || dirty.current || textDirty.current || pendingSave.current) return;
+    const now = getEntries().find((e) => e.id === b.id);
+    if (!now || now === b || now.updated < b.updated) return;
+    base.current = now;
+    latest.current = now;
+    setDraft(now);
+    noteRef.current?.setText(serializeBody(bodyOf(now)));
   };
 
   /** Where you are and the weather, looked up once a new note is kept. Joins the draft if it's still open. */
@@ -292,7 +338,22 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     dirty.current = true;
     setSaveState('saving');
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => flush(), 500);
+    timer.current = setTimeout(() => flush(), soon(500));
+  };
+
+  /**
+   * A note started here and left with nothing in it isn't kept, as one never saved isn't: saved while it was being
+   * written (a word typed, then taken out), leaving takes it out again. Returns that removal; null when the note stays.
+   */
+  const dropBlank = () => {
+    syncText();
+    const d = latest.current;
+    if (id !== 'new' || !d || removing.current || !isEmpty(d) || d.share || (!saved.current && !pendingSave.current)) return null;
+    removing.current = true;
+    clearTimeout(timer.current);
+    clearTimeout(retryTimer.current);
+    dirty.current = false;
+    return Promise.resolve(pendingSave.current).then(() => deleteEntry(d.id)).then(() => {}, () => {});
   };
 
   useEffect(() => {
@@ -317,7 +378,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('pagehide', leave);
       removeEventListener('popstate', syncUrl);
-      flush();
+      if (!dropBlank()) flush();
       // moved to another day, or written offline: that day's weather
       if (saved.current && !removing.current && latest.current && needsWeather(latest.current)) fillWeather();
     };
@@ -364,6 +425,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
   }, [sel]);
 
+  // the notes changed (a save from here, or sync): a newer copy of this one is taken up when nothing here waits
+  useEffect(catchUp, [allEntries]);
 
   if (!draft)
     return (
@@ -403,6 +466,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const done = async () => {
     if (leaving.current) return;
     leaving.current = true;
+    const blank = dropBlank();
+    if (blank) {
+      await blank;
+      if (alive.current) goBack();
+      return;
+    }
     await flush();
     if (!dirty.current && alive.current && !removing.current) goBack();
     else leaving.current = false;
@@ -968,7 +1037,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               value={draft.title}
               maxLength={300}
               onInput={(e) => update({ title: e.currentTarget.value.replace(/\n/g, ' ') })}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), write('start'))}
+              // Return goes on to the words; not the Return that picks a word from a Japanese or Chinese keyboard
+              // (Safari says it's no longer composing by then, but gives it key code 229)
+              onKeyDown={(e) => e.key === 'Enter' && !e.isComposing && e.keyCode !== 229 && (e.preventDefault(), write('start'))}
               aria-label={t('Title')}
             />
           </div>
@@ -1156,7 +1227,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         href={linkTo.href}
         onDone={(to) => {
           close();
-          noteRef.current?.cmds.link(to);
+          // the focus back in the words first, on what was selected: it's still in the sheet's field here, and a
+          // command run from a field acts on the note's start (as from the title) instead
+          const n = noteRef.current;
+          n?.focus();
+          n?.cmds.link(to);
         }}
       />
       <RefSheet kind={open === 'trap' || open === 'law' || open === 'principle' ? open : null} onClose={close} onPick={insertRef} />

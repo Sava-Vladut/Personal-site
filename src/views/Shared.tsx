@@ -99,8 +99,14 @@ function Pic({ m, note, src }: { m: Media; note: Note; src: (it: Item, size: 'th
   const web = (it: Item) => (it.kind === 'image' ? note.images.find((i) => i.url === it.url) : undefined);
   const credit = !album && first.kind === 'image' ? web(first) : undefined;
   const tiles = items.slice(0, 5);
+  // no taller than 70% of the screen, as in the note itself (components/NoteMedia.tsx): an album by its shape, a
+  // picture by its own
+  const ratio = album ? [0, 0, 3 / 2, 4 / 3, 1, 1][tiles.length] : photo ? photo.w / photo.h : credit?.w && credit.h ? credit.w / credit.h : 0;
   return (
-    <figure class={`media shared-media${album ? ' is-album' : ''}${align ? ' is-' + align : ''}`} style={{ width: `${size}%` }}>
+    <figure
+      class={`media shared-media${album ? ' is-album' : ''}${align ? ' is-' + align : ''}`}
+      style={{ width: `${size}%`, maxWidth: ratio ? `calc(70svh * ${ratio.toFixed(4)})` : undefined }}
+    >
       <a class="media-pic" href={src(first, 'full')} target="_blank" rel="noopener noreferrer" aria-label={t('Open the picture')}>
         {album ? (
           <div class={`album n${tiles.length}`}>

@@ -89,6 +89,40 @@ function tables(doc: Document) {
   }
 }
 
+/** Tags that sit inside a line of words (a <br> in one can still be followed by words after it). */
+const INLINE = /^(A|ABBR|B|BDI|BDO|CITE|CODE|DEL|DFN|EM|FONT|I|INS|KBD|LABEL|MARK|Q|S|SAMP|SMALL|SPAN|STRIKE|STRONG|SUB|SUP|TIME|TT|U|VAR)$/;
+/** Blocks that are a line themselves: with only a <br> in them, they're an empty line already. */
+const LINE = /^(P|H[1-6]|LI|DT|DD|PRE)$/;
+
+/** What's next to `n` on one side in its line (out of the spans and the like it's in), blank text skipped. */
+function beside(n: Node, after: boolean): Node | null {
+  for (let at: Node = n; ; at = at.parentNode!) {
+    let s = after ? at.nextSibling : at.previousSibling;
+    while (s && s.nodeType === Node.TEXT_NODE && !/\S/.test(s.textContent ?? '')) s = after ? s.nextSibling : s.previousSibling;
+    if (s) return s;
+    if (!(at.parentNode instanceof Element) || !INLINE.test(at.parentNode.tagName)) return null;
+  }
+}
+
+/** Whether a node is words (or a line break among them), not a block. */
+const inLine = (n: Node | null) => !!n && (!(n instanceof Element) || INLINE.test(n.tagName) || n.tagName === 'BR');
+
+/**
+ * Line breaks as the page showed them. A <br> with words after it breaks the line. One that only ends a line of words
+ * is how editors keep a line's end, and one on its own (between blocks, or alone in one: <div><br></div>) is an empty
+ * line: neither is a second line break, else each empty line copied from Notes, Mail or Google Docs would come in
+ * twice. The <br class="Apple-interchange-newline"> Safari and Chrome put where a copy starts or ends at a line's end
+ * isn't a line at all.
+ */
+function lineBreaks(doc: Document) {
+  for (const br of doc.querySelectorAll('br')) {
+    if (br.classList.contains('Apple-interchange-newline')) br.remove();
+    else if (inLine(beside(br, true))) br.replaceWith(BREAK);
+    else if (inLine(beside(br, false)) || LINE.test(br.parentElement?.tagName ?? '')) br.remove();
+    else br.replaceWith(doc.createElement('p'));
+  }
+}
+
 /** Other apps' HTML, tidied for the note's schema (ProseMirror's transformPastedHTML). */
 export function tidyPastedHTML(html: string): string {
   const clean = html
@@ -99,7 +133,7 @@ export function tidyPastedHTML(html: string): string {
   wordLists(doc);
   webLists(doc);
   tables(doc);
-  for (const br of doc.querySelectorAll('br')) br.replaceWith(BREAK);
+  lineBreaks(doc);
   return doc.body.innerHTML;
 }
 

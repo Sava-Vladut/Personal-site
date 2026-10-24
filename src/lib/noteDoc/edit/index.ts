@@ -11,6 +11,7 @@
 //   Mod-Alt-0…3, Mod-Shift-n → noteCommands.style('normal' | 'h1'…) · Mod-k → the link sheet (linkAt, setLink, removeLink)
 // Typing: BLOCK_RULES as input rules; handleTextInput → tidyAfterTag(text); the suggest plugin reads typedAt(state) and
 // picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
+// After each change (appendTransaction, beside normalizeTr): renumberChanged(trs, state) counts the lists it touched again.
 import type { Command } from '@tiptap/pm/state';
 import type { ListKind } from '../syntax';
 import { insertBlock, setStyle, toggleQuote, type BlockKind, type Style } from './blocks';
@@ -21,7 +22,7 @@ export {
   enter, newLine, backspace, deleteForward, tab, codeEnter, exitCode, fenceEnter, headingEnter, titleEnter, quoteEnter,
   setStyle, toggleQuote, insertBlock, type Style, type BlockKind,
 } from './blocks';
-export { renumber, indentList, itemToParagraph, listEnter, toggleTask, toggleList } from './lists';
+export { renumber, renumberChanged, countOnAfter, indentList, itemToParagraph, listEnter, toggleTask, toggleList } from './lists';
 export {
   toggleMarkSmart, clearFormatting, linkAt, setLink, removeLink, normalizeHref, tidyAfterTag, CLEARED,
   type MarkName, type LinkTarget,

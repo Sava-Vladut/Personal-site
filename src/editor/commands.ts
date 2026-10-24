@@ -24,9 +24,9 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     const v = view();
     if (!v || !v.editable) return false;
     // from the title (the note's other place to write), a command acts on the note's words from their start, not on
-    // wherever the caret was in them last
+    // wherever the caret was in them last; from any other field (a sheet's), on the words where the caret was
     const a = document.activeElement;
-    if (inText && !v.hasFocus() && a instanceof HTMLElement && a.closest('input, textarea, [contenteditable="true"]')) {
+    if (inText && !v.hasFocus() && a instanceof HTMLElement && a.closest('.title-input')) {
       v.dispatch(v.state.tr.setSelection(Selection.findFrom(v.state.doc.resolve(0), 1, true) ?? Selection.atStart(v.state.doc)));
     }
     const done = cmd(v.state, v.dispatch, v);

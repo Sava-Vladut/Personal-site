@@ -356,7 +356,10 @@ export function initSync() {
     saveState();
     clearTimeout(timer);
     // Writing saves after every pause; sending the whole journal each time made typing stutter. Leaving the app sends it at once.
-    timer = setTimeout(syncNow, 5000);
+    // A change saved as the app goes away (the note's last words, saved when it's hidden, after the sync that leaving
+    // started) goes at once too: a phone may not run a timer again until the app is opened.
+    if (document.visibilityState === 'hidden') void syncNow();
+    else timer = setTimeout(syncNow, 5000);
   });
   addEventListener('online', () => syncNow());
   // Pick up edits from other devices when coming back to the app; send pending ones when leaving it.

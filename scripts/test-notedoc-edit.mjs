@@ -18,7 +18,7 @@ const nd = await loadNoteDoc({
 });
 const { edit: E, stateFrom, show, body: B } = nd;
 const { history, undo, redo } = nd.pmHistory;
-const { joinBackward, joinForward } = nd.pmCommands;
+const { joinBackward, joinForward, deleteSelection } = nd.pmCommands;
 
 /** Runs `cmd` on the text, the caret where its markers are: [the text after, what the command returned, the state]. */
 function run(text, cmd, opts = {}) {
@@ -34,8 +34,9 @@ const type = (s, chars) => {
 };
 /** A command made of the first that applies, as a keymap runs them (ours first, then ProseMirror's). */
 const keys = (...cmds) => (s, d) => cmds.some((c) => c(s, d));
-const Backspace = keys(E.backspace, joinBackward);
-const Delete = keys(E.deleteForward, joinForward);
+// (with a selection, the keymap's next is ProseMirror's deleteSelection, as in baseKeymap)
+const Backspace = keys(E.backspace, deleteSelection, joinBackward);
+const Delete = keys(E.deleteForward, deleteSelection, joinForward);
 /** The position just before the `n`th (0-based) textblock of the document. */
 const blockPos = (s, n) => {
   const out = [];
@@ -69,6 +70,17 @@ test('Backspace and Delete join lines; a list marker goes with the line break', 
   let [text, , s] = run('a\n- |item', Backspace);
   assert.equal(text, 'a\n|item');
   assert.equal(after(s, Backspace), 'a|item');
+});
+
+test('Backspace and Delete on a selection from a quote into a callout take it out (ProseMirror’s own throws)', () => {
+  // (put in shape after, as the editor does)
+  const shaped = { plugins: [new nd.pmState.Plugin({ appendTransaction: (trs, _old, state) => nd.normalizeTr(state) })] };
+  for (const cmd of [E.backspace, E.deleteForward]) {
+    const [text, ok] = run(stateFrom('> a«b\n\n> [!note] T»t\n> body', shaped), cmd);
+    assert.equal(ok, true);
+    assert.equal(text, '> a|\n\n> [!note] t\n> body', 'the words at both ends go, the lines stay apart');
+  }
+  assert.equal(after('a«b\nc»d', E.backspace), 'a|d', 'any other selection: as ProseMirror deletes it');
 });
 
 test('Backspace on a numbered item counts the rest again', () => {
@@ -170,6 +182,92 @@ test('numbered lists count on at each level', () => {
   assert.equal(renumbered('|1. a\n- b\n1. c'), '1. |a\n- b\n1. c');
   assert.equal(renumbered('|plain\n1. a'), '|plain\n1. a');
   assert.equal(renumbered('|01. a\n2. b'), '01. |a\n2. b', 'a number already right is left as written');
+});
+
+/** A state with the editor's numbering pass (renumberChanged after each change, as src/editor runs it) and history. */
+const numbered = (text) =>
+  stateFrom(text, { plugins: [history(), new nd.pmState.Plugin({ appendTransaction: (trs, _old, state) => E.renumberChanged(trs, state) })] });
+
+test('numbered lists count again after any change to their lines, whatever made it', () => {
+  const counted = (text, cmd) => after(numbered(text), cmd);
+  assert.equal(counted('1. a«a\n2. b\n3. c»c\n4. d', Backspace), '1. a|c\n2. d', 'a selection across items deleted');
+  assert.equal(counted('1. a\n«2. b\n»3. c', Backspace), '1. a\n2. |c', 'a whole item deleted');
+  assert.equal(counted('1. a|\n2. b\n3. c', Delete), '1. a|b\n2. c', 'the next item joined on');
+  assert.equal(counted('1. a\n|b\n2. c', Backspace), '1. a|b\n2. c', 'a line joined into an item');
+  assert.equal(counted('1. a|\n2. b', E.pasteText('\n1. x\n2. y')), '1. a\n2. x\n3. y\n4. |b', 'a list pasted into one');
+  assert.equal(counted('1. «a»\n2. b', E.pasteText('1. x\n2. y')), '1. x\n2. y\n3. |b');
+  assert.equal(show(type(numbered('1. a\n2. b\n|'), '1. ')), '1. a\n2. b\n3. |', '"1. " typed under a list counts on');
+  assert.equal(counted('3. a\n«4. b\n»5. c', Backspace), '3. a\n4. |c', 'a list keeps the number it starts from');
+  assert.equal(counted('«1. a\n»2. b\n3. c', Backspace), '1. |b\n2. c', 'even when its first item goes');
+  assert.equal(counted('«5. a\n»6. b', Backspace), '5. |b');
+  const moved = (st, d) => {
+    // the last item dragged to the top
+    const last = st.doc.lastChild, at = st.doc.content.size - last.nodeSize;
+    d(st.tr.delete(at, st.doc.content.size).insert(0, last));
+    return true;
+  };
+  assert.equal(nd.serializeNote(run(numbered('1. a\n2. b\n3. c'), moved)[2].doc), '1. c\n2. a\n3. b', 'an item dragged to the top');
+  assert.equal(counted('1. a\n\n«1. b\n»1. c', Backspace), '1. a\n\n1. |c', 'a list apart from it is its own');
+  assert.equal(counted('1. a\n\t1. x\n«\t2. y\n»\t3. z\n2. b', Backspace), '1. a\n\t1. x\n\t2. |z\n2. b', 'each level counts on');
+  // what isn't a change to the list's lines leaves the numbers as they're written
+  assert.equal(show(type(numbered('1. a|\n1. b'), 'x')), '1. ax|\n1. b', 'words typed in an item');
+  assert.equal(counted('1. «a»\n1. b', E.toggleMarkSmart('bold')), '1. **«a»**\n1. b', 'a style');
+  const s = numbered('1. a\n1. b\n- [ ] t|');
+  assert.equal(after(s, E.toggleTask(blockPos(s, 2))), '1. a\n1. b\n- [x] t|', 'a task ticked');
+});
+
+test('undo and a text put in from outside keep the numbers as they were written', () => {
+  const text = '1. a\n1. b\n«1. c\n»1. d';
+  let s = numbered(text);
+  Backspace(s, (tr) => (s = s.apply(tr)));
+  assert.equal(show(s), '1. a\n2. b\n3. |d');
+  undo(s, (tr) => (s = s.apply(tr)));
+  assert.equal(nd.serializeNote(s.doc), text.replace(/[«»]/g, ''), 'undo gives back the numbers written');
+  redo(s, (tr) => (s = s.apply(tr)));
+  assert.equal(nd.serializeNote(s.doc), '1. a\n2. b\n3. d');
+  s = numbered('x|');
+  s = s.apply(nd.replaceDoc(s.tr, nd.parseNote('1. a\n1. b\n5. c')));
+  assert.equal(nd.serializeNote(s.doc), '1. a\n1. b\n5. c');
+});
+
+test('a numbered item that stops being numbered: the numbers after it count on from its own, at its level', () => {
+  assert.equal(after('1. a\n2. |b\n\t1. x\n3. c', E.backspace), '1. a\n|b\n\t1. x\n2. c', 'a nested list under it keeps its numbers');
+  assert.equal(after('1. a\n2. |\n\t1. x\n3. c', E.enter), '1. a\n|\n\t1. x\n2. c');
+  assert.equal(after('1. a\n2. |b\n\t1. x\n3. c', E.setStyle('h1')), '1. a\n# |b\n\t1. x\n2. c');
+  assert.equal(after('1. a\n2. |b\n3. c', E.toggleList('ol')), '1. a\n|b\n2. c', 'numbering taken off');
+  assert.equal(after('1. a\n2. |b\n3. c', E.toggleList('ul')), '1. a\n- |b\n2. c', 'made a bullet');
+  assert.equal(after('1. a\n2. |b\n3. c', E.toggleList('task')), '1. a\n- [ ] |b\n2. c', 'made a task');
+  assert.equal(after('1. «a\n2. b»\n3. c', E.toggleList('ol')), '«a\nb»\n1. c', 'several: from the first one’s number');
+  assert.equal(after('1. a\n2. «b\n3. c»\n4. d', E.toggleList('ul')), '1. a\n- «b\n- c»\n2. d');
+  assert.equal(after('1. «a\n2. b»\n3. c', E.setStyle('h1')), '# «a\n# b»\n1. c');
+});
+
+test('Enter on a selection that starts in a list item carries the list on', () => {
+  assert.equal(after('- a«a\n- b»b', E.enter), '- a\n- |b');
+  assert.equal(after('1. a«b\n2. »c\n3. d', E.enter), '1. a\n2. |c\n3. d');
+  assert.equal(after('- a«a\nb»b', E.enter), '- a\n- |b', 'into a plain line: it joins the item');
+  assert.equal(after('x«x\n- b»b', E.enter), 'x\n|b', 'from a plain line, a plain line');
+});
+
+test('Delete at the end of a quote: the line after runs on from it, never into the quote as a line of its own', () => {
+  assert.equal(after('> q|\na', Delete), '> q|a');
+  assert.equal(after('> [!note] T\n> b|\nx', Delete), '> [!note] T\n> b|x', 'a callout too');
+  assert.equal(after('> [!note] T|\nb', Delete), '> [!note] T|b', 'a callout’s title');
+  assert.equal(after('> > q|\nb', Delete), '> > q|b');
+  assert.equal(after('> q|\n\nb', Delete), '> q|\nb', 'an empty line just goes');
+  assert.equal(after('> q|\n- i', Delete), '> q|i', 'an item’s marker goes with the line break');
+  assert.equal(after('> q|\n```\nx\n```', Delete), '> q|\n```\nx\n```', 'code stays apart');
+  assert.equal(after('> ```\n> x|\n> ```\nb', Delete), '> ```\n> x|\n> ```\nb');
+  // and it's the same text as Backspace at the start of the line after
+  assert.equal(after('> q\n|a', Backspace), '> q|a');
+});
+
+test('Quote on lines some of which are quoted already quotes the rest, without nesting', () => {
+  assert.equal(after('«> a\nb»', E.toggleQuote), '> «a\n> b»');
+  assert.equal(after('«a\n> b»', E.toggleQuote), '> «a\n> b»');
+  assert.equal(after('> «a\n\n> b»', E.toggleQuote), '> «a\n> \n> b»');
+  assert.equal(after('«a\n> b\nc»', E.setStyle('quote')), '> «a\n> b\n> c»');
+  assert.equal(after('> [!note] «T\n> b\nc»', E.toggleQuote), '> [!note] «T\n> b\n\n> c»', 'a callout stays as it is, apart from the quote');
 });
 
 /* ---------- styles and blocks ---------- */

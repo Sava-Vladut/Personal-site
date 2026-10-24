@@ -42,10 +42,20 @@ const bundle = await rolldown({
 const code = (await bundle.generate({ format: 'iife', name: 'NB' })).output[0].code;
 await bundle.close();
 
-/** A page with the editor's code loaded. */
-function page() {
+/**
+ * Phones, as ProseMirror tells them apart (by the browser's name, read once as its code loads): on these it lets the
+ * phone's keyboard change the page itself and reads the change back, its Enter included.
+ */
+const PHONES = {
+  android: { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36', vendor: 'Google Inc.' },
+  ios: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', vendor: 'Apple Computer, Inc.' },
+};
+
+/** A page with the editor's code loaded (as on a phone, with `phone`). */
+function page(phone) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true, runScripts: 'outside-only' });
   const { window } = dom;
+  for (const [k, v] of Object.entries(PHONES[phone] ?? {})) Object.defineProperty(window.navigator, k, { get: () => v });
   // what jsdom lacks and ProseMirror asks for: where things are on the screen (nothing is laid out here)
   window.Range.prototype.getClientRects = () => [];
   window.Range.prototype.getBoundingClientRect = () => ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 });
@@ -60,7 +70,7 @@ const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY' };
 
 /** Mounts the editor on `text`; returns its handle and what it reported. */
 function mount(text, opts = {}) {
-  const window = page();
+  const window = page(opts.phone);
   const { NoteBody, h, render: draw, act } = window.NB;
   const render = (vnode, el) => act(() => draw(vnode, el));
   const host = window.document.createElement('div');
@@ -100,7 +110,25 @@ function mount(text, opts = {}) {
   };
   /** Puts the caret at the end of the note's text. */
   const end = () => n.focus('end');
-  return { n, view, seen, type, press, end, host };
+  return { n, view, seen, type, press, end, host, window };
+}
+
+/**
+ * A phone keyboard's own Enter in the line at `el`, `at` letters into its text: the key goes down (ProseMirror lets it
+ * through on a phone), then the browser splits the block the caret is in, copying its element for the words after
+ * the caret, and ProseMirror reads what changed.
+ */
+function phoneEnter({ view, window }, el, at) {
+  const e = new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+  Object.defineProperty(e, 'keyCode', { value: 13 });
+  view.dom.dispatchEvent(e);
+  const rest = el.firstChild.splitText(at);
+  const next = el.cloneNode(false);
+  el.after(next);
+  if (rest.data) next.append(rest);
+  else (rest.remove(), next.append(window.document.createElement('br')));
+  window.document.getSelection().collapse(next, 0);
+  view.domObserver.flush();
 }
 
 test('a note opens as its text, drawn as the reading view draws it, and writes back exactly', () => {
@@ -150,6 +178,15 @@ test('a bullet or numbered line is one plain block of words, its marker drawn in
   press('Enter');
   n.view.pasteHTML(legacy + fresh + t);
   assert.match(n.text(), /\n- old\n- new\n- \[x\] done$/);
+});
+
+test('a list copied from a public note’s page (drawn without data-*) pastes back as the same items', () => {
+  const { n } = mount('');
+  n.focus('end');
+  // as components/Markdown.tsx draws it
+  n.view.pasteHTML('<div class="md-li md-ol" data-marker="3.">three</div><div class="md-li md-ul" data-marker="•" style="--depth: 1">under</div>'
+    + '<div class="md-li md-task is-done"><input type="checkbox" checked><div class="md-li-text">done</div></div>');
+  assert.equal(n.text(), '3. three\n\t- under\n- [x] done');
 });
 
 test('Markdown typed at the start of a line or around words becomes what it writes', () => {
@@ -398,4 +435,134 @@ test('the caret at the end of a note ending in a divider goes on a new line, nev
   const t = mount('a\n```\ncode\n```');
   t.n.insertToken('@[person:p1|Ann]', true);
   assert.match(t.n.text(), /```\n@\[person:p1\|Ann\]/, 'a tag picked while the note ends in code goes on a line after it');
+});
+
+for (const phone of ['android', 'ios']) {
+  test(`${phone}: the keyboard's Enter in a task's words makes a new task of the words after the caret, none lost`, async () => {
+    for (const at of [2, 4, 0]) {
+      // what Enter does there from a computer's keyboard (the editor's own Enter)
+      const key = mount('- [ ] milk\nafter');
+      key.n.focus(1 + at);
+      key.press('Enter');
+      const want = key.n.text();
+      const m = mount('- [ ] milk\nafter', { phone });
+      m.n.focus(1 + at);
+      // the browser splits the task's words (its .md-li-text), inside the line beside the box
+      phoneEnter(m, m.host.querySelector('.md-task .md-li-text'), at);
+      assert.equal(m.n.text(), want, `Enter ${at} letters in`);
+      if (at === 2) assert.equal(want, '- [ ] mi\n- [ ] lk\nafter');
+      // drawn as the document says: no stray block of words left in a line, each task with its box
+      for (const li of m.host.querySelectorAll('.md-task')) assert.deepEqual([li.querySelectorAll('input').length, li.querySelectorAll('.md-li-text').length], [1, 1]);
+      assert.equal(m.host.querySelector('.note-editor').textContent, key.host.querySelector('.note-editor').textContent);
+      // (iOS's own fallback for an Enter it didn't see comes 200 ms later: it doesn't make another line)
+      await sleep(250);
+      assert.equal(m.n.text(), want);
+    }
+  });
+
+  test(`${phone}: the keyboard's Enter in a numbered line makes the next number`, () => {
+    const m = mount('1. milk\n2. eggs', { phone });
+    m.n.focus(3);
+    phoneEnter(m, m.host.querySelector('.md-ol'), 2);
+    assert.equal(m.n.text(), '1. mi\n2. lk\n3. eggs');
+  });
+}
+
+test('a line copied by the browser reads back as the same kind of item (several lines a keyboard puts in at once)', () => {
+  const { n, host, view } = mount('1. milk\n- [x] done', { phone: 'android' });
+  const ol = host.querySelector('.md-ol');
+  // the line's element says what it is, as the schema's own HTML does
+  assert.equal(ol.getAttribute('data-kind'), 'ol');
+  assert.equal(host.querySelector('.md-task').getAttribute('data-checked'), 'true');
+  n.focus(5);
+  ol.firstChild.appendData(' one');
+  const copy = ol.cloneNode(false);
+  copy.append('two');
+  ol.after(copy);
+  view.domObserver.flush();
+  // and the list counts on (the editor's numbering pass, lib/noteDoc/edit/lists.ts renumberChanged)
+  assert.match(n.text(), /^1\. milk one\n2\. two\n- \[x\] done$/);
+});
+
+test('a phone’s Backspace that takes a task’s box out: the box comes back and the task stays', () => {
+  for (const phone of ['android', 'ios']) {
+    const { n, host, view } = mount('- [ ] milk', { phone });
+    n.focus(1);
+    host.querySelector('.md-task input').remove();
+    view.domObserver.flush();
+    assert.equal(n.text(), '- [ ] milk');
+    assert.equal(host.querySelectorAll('.md-task > input[type=checkbox]').length, 1);
+  }
+});
+
+test('a full stop after a tag takes its space when typed at the caret, not when the keyboard writes ". " itself', () => {
+  for (const phone of ['android', 'ios']) {
+    // typed at the caret, through the page as a phone does: it takes the tag's space
+    const a = mount('Hi @[person:p1|Ann] ', { phone });
+    a.n.focus('end');
+    let t = a.host.querySelector('p').lastChild;
+    t.data = ' .';
+    a.window.document.getSelection().collapse(t, 2);
+    a.view.domObserver.flush();
+    assert.equal(a.n.text(), 'Hi @[person:p1|Ann].');
+    // iOS's double-space full stop: the tag's space becomes ". ", the caret after it; the space stays
+    const b = mount('Hi @[person:p1|Ann] ', { phone });
+    b.n.focus('end');
+    t = b.host.querySelector('p').lastChild;
+    t.data = '. ';
+    b.window.document.getSelection().collapse(t, 2);
+    b.view.domObserver.flush();
+    assert.equal(b.n.text(), 'Hi @[person:p1|Ann]. ');
+    assert.equal(b.view.state.selection.from, b.view.state.doc.content.size - 1, 'the caret after the space');
+  }
+});
+
+test('pasted line breaks come in as the page showed them: an empty line once, a line’s closing <br> as nothing', () => {
+  const cases = [
+    // Notes, Mail and most editors: an empty line is a block holding only a <br>
+    ['<div>one</div><div><br></div><div>two</div>', 'one\n\ntwo'],
+    ['<p>one</p><p><br></p><p>two</p>', 'one\n\ntwo'],
+    // Google Docs: a <br> between paragraphs
+    ['<b style="font-weight:normal;" id="docs-internal-guid-1"><p dir="ltr"><span>one</span></p><br><p dir="ltr"><span>two</span></p></b>', 'one\n\ntwo'],
+    // a copy from Safari or Chrome that started or ended at a line's end
+    ['<br class="Apple-interchange-newline"><p>one</p><p>two</p><br class="Apple-interchange-newline">', 'one\ntwo'],
+    // a <br> keeping a line's end, and two for an empty line in the middle
+    ['<p>one<br>two<br></p>', 'one\ntwo'],
+    ['<div>one<br><br></div><div>two</div>', 'one\n\ntwo'],
+    ['<p>one<br><br>two</p>', 'one\n\ntwo'],
+    ['<span>one<br></span>two', 'one\ntwo'],
+  ];
+  for (const [html, want] of cases) {
+    const { n, view, end } = mount('');
+    end();
+    view.pasteHTML(html);
+    assert.equal(n.text(), want, html);
+  }
+});
+
+test('a ribbon command from the title acts on the words from their start; from another field, where the caret was', () => {
+  const { n, view, window } = mount('one\ntwo');
+  const field = (html) => {
+    const box = window.document.createElement('div');
+    box.innerHTML = html;
+    window.document.body.append(box);
+    return box.firstChild;
+  };
+  n.focus('end');
+  field('<input class="sheet-field">').focus();
+  assert.equal(view.hasFocus(), false);
+  n.cmds.list('ul');
+  assert.equal(n.text(), 'one\n- two', 'a sheet’s field: the caret’s line');
+  field('<textarea class="title-input"></textarea>').focus();
+  n.cmds.list('ul');
+  assert.equal(n.text(), '- one\n- two', 'the title: the first line');
+});
+
+test('numbers count again whatever takes a numbered line out, and undo puts them back as written', () => {
+  const { n, view } = mount('1. a\n2. b\n3. c\n4. d');
+  // from the end of "a" to the end of "b": the second line goes, as a selection deleted or a drag would take it
+  view.dispatch(view.state.tr.delete(2, 5));
+  assert.equal(n.text(), '1. a\n2. c\n3. d');
+  n.cmds.undo();
+  assert.equal(n.text(), '1. a\n2. b\n3. c\n4. d');
 });

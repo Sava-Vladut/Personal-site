@@ -230,8 +230,23 @@ const nodes: Record<string, NodeSpec> = {
       sep: data('sep', ' '),
     },
     parse: [
-      // a task's words (and, in older copies, every item's) sit in .md-li-text beside the box or marker
-      { tag: 'div.md-li', contentElement: (el: HTMLElement) => el.querySelector<HTMLElement>(':scope > .md-li-text') ?? el },
+      // A task's words (and, in older copies, every item's) sit in .md-li-text beside the box or marker. Copied from
+      // the reading view (components/Markdown.tsx), a line has no data-*: what it is comes from how it's drawn.
+      {
+        tag: 'div.md-li',
+        contentElement: (el: HTMLElement) => el.querySelector<HTMLElement>(':scope > .md-li-text') ?? el,
+        getAttrs: (el: HTMLElement) => {
+          const kind = el.classList.contains('md-ol') ? 'ol' : el.classList.contains('md-task') ? 'task' : 'ul';
+          const depth = Number(/--depth:\s*(\d+)/.exec(el.getAttribute('style') ?? '')?.[1]) || 0;
+          const num = /^(\d+)/.exec(el.getAttribute('data-marker') ?? '')?.[1];
+          return {
+            kind,
+            indent: '\t'.repeat(Math.min(6, depth)),
+            ...(kind === 'ol' && num && { num }),
+            ...(kind === 'task' && el.classList.contains('is-done') && { checked: true, check: 'x' }),
+          };
+        },
+      },
       {
         tag: 'p[data-li]',
         priority: 60, // before a plain paragraph's rule
