@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.134.1',
+    date: '2026-10-24',
+    changes: [
+      'Removed the Your brain page: it’s gone from the wheel under Insights (the brain on Stats stays)',
+    ],
+  },
+  {
     version: '1.134.0',
     date: '2026-10-24',
     changes: [

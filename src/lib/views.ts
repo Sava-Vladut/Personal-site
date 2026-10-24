@@ -18,7 +18,6 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   settings: () => import('../views/Settings').then((m) => m.Settings),
   twitch: () => import('../views/Twitch').then((m) => m.Twitch),
   streamer: () => import('../views/Streamer').then((m) => m.Streamer),
-  brain: () => import('../views/BrainView').then((m) => m.BrainView),
   map: () => import('../views/Places').then((m) => m.MapView),
   traps: () => import('../views/Traps').then((m) => m.Traps),
   laws: () => import('../views/Laws').then((m) => m.Laws),

@@ -454,14 +454,14 @@ test('a failed database startup offers recovery without rendering an empty journ
 });
 
 test('startup keeps the app unmounted until the current deep link screen is loaded', async () => {
-  const rendered = [], journal = deferred(), brain = deferred(), timers = [], attributes = new Map();
+  const rendered = [], journal = deferred(), laws = deferred(), timers = [], attributes = new Map();
   let route = 'journal', weather = 0, sync = 0;
   function App() {}
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
     './lib/auth': { signedInHere: () => true, introSeen: () => true, stillSignedIn: async () => true }, './lib/router': { routeName: () => route },
-    './lib/views': { preloadViews() {}, prepareView: name => ({ journal, brain }[name].promise) },
+    './lib/views': { preloadViews() {}, prepareView: name => ({ journal, laws }[name].promise) },
     './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ }, './lib/status': { initStatus() {} },
   }, {
     navigator: {}, addEventListener() {}, setTimeout: fn => timers.push(fn),
@@ -470,9 +470,9 @@ test('startup keeps the app unmounted until the current deep link screen is load
       querySelector: () => ({ setAttribute: (name, value) => attributes.set(name, value) }), addEventListener() {},
     },
   });
-  route = 'brain'; journal.resolve(); await settle();
+  route = 'laws'; journal.resolve(); await settle();
   assert.equal(rendered.length, 0, 'loading the old deep link cannot render the new screen before it is ready');
-  brain.resolve(); await settle();
+  laws.resolve(); await settle();
   assert.equal(rendered[0].type, App); assert.equal(weather, 1); assert.equal(sync, 1);
   timers.forEach(fn => fn());
   assert.ok(attributes.has('data-boot'), 'the initial page keeps its entrance style after startup timers settle');
@@ -591,7 +591,7 @@ test('a signed-in device opens with the brain once a visit, with the journal loa
 });
 
 test('a signed-in device goes straight in after the opening has played, on a deep link, with reduced motion, or when the opening can’t load', async () => {
-  for (const [route, seen, reduced, loads] of [['journal', true, false, true], ['brain', false, false, true], ['journal', false, true, true], ['journal', false, false, false]]) {
+  for (const [route, seen, reduced, loads] of [['journal', true, false, true], ['laws', false, false, true], ['journal', false, true, true], ['journal', false, false, false]]) {
     const rendered = [], page = openingPage();
     function App() {}
     await load('src/main.tsx', {
@@ -991,7 +991,7 @@ test('lazy screens share pending loads, keep loaded screens synchronous and retr
 
 test('navigation waits for a screen and discards stale or unmounted loads', async () => {
   const h = componentHooks(), listeners = new Map(), location = { hash: '#/' }, root = rootElement();
-  const journal = deferred(), settings = deferred(), brain = deferred();
+  const journal = deferred(), settings = deferred(), laws = deferred();
   let failures = 0;
   const { useRoute } = await load('src/lib/router.ts', { 'preact/hooks': h.hooks }, {
     location, matchMedia: () => ({ matches: true }), console: { error() {} },
@@ -999,19 +999,19 @@ test('navigation waits for a screen and discards stale or unmounted loads', asyn
     history: { state: {}, replaceState(_state, _title, hash) { location.hash = hash; } },
     addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name),
   });
-  const prepare = name => ({ journal, settings, brain }[name]?.promise);
+  const prepare = name => ({ journal, settings, laws }[name]?.promise);
   const render = () => h.render(() => useRoute(prepare, () => failures++));
   assert.equal(render().name, 'journal');
   location.hash = '#/settings'; listeners.get('hashchange')();
   assert.equal(render().name, 'journal', 'the current screen stays mounted while loading');
-  location.hash = '#/brain'; listeners.get('hashchange')();
+  location.hash = '#/laws'; listeners.get('hashchange')();
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.equal(root.hasAttribute('data-loading'), true, 'a slow load shows the loading bar');
   settings.resolve(); await settle();
   assert.equal(render().name, 'journal', 'an older slow navigation cannot replace the latest request');
   assert.equal(root.hasAttribute('data-loading'), true, 'the bar stays while a load is still pending');
-  brain.resolve(); await settle();
-  assert.equal(render().name, 'brain');
+  laws.resolve(); await settle();
+  assert.equal(render().name, 'laws');
   assert.equal(root.hasAttribute('data-loading'), false, 'the bar goes once nothing is loading');
   location.hash = '#/note/new'; listeners.get('hashchange')();
   assert.equal(render().name, 'note', 'an already available screen navigates synchronously');
@@ -1366,15 +1366,15 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   // a save from before Mind traps existed, with Media moved into a group of your own and Repos hidden
   const saved = mod.normalize({
     top: ['journal', 'gwork', 'people', 'insights', 'settings', 'repos', 'nope'],
-    kids: { gwork: ['media'], insights: ['stats', 'map', 'brain', 'twitch'] },
+    kids: { gwork: ['media'], insights: ['stats', 'map', 'twitch'] },
     hidden: ['repos', 'gone'],
     groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
   });
-  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'brain', 'twitch'], 'your own grouping stays as you left it');
+  assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'twitch'], 'your own grouping stays as you left it');
   assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'brain', 'twitch']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['streamer', 'status', 'countdown']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'twitch']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['streamer', 'status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 
@@ -1385,7 +1385,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.equal(all.length, wheel.WHEEL.reduce((n, x) => n + (x.kids?.length ?? 1), 0));
 
   // a group with everything in it hidden leaves the wheel; saving the default forgets the save
-  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'map', 'brain', 'twitch', 'traps'] });
+  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'map', 'twitch', 'traps'] });
   assert.ok(!mod.treeOf(empty).some((n) => n.id === 'insights'));
   mod.saveLayout(saved);
   assert.ok(store.has('mm-wheel-layout'));

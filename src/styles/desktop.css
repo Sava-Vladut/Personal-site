@@ -151,7 +151,7 @@
   .route-settings .page > :is(.page-head, .version, .credit) { column-span: all; }
   .route-settings .page > .section { break-inside: avoid; margin: 0 0 26px; }
 
-  /* the brain stays a picture, not a wall: on Stats and on its own page */
+  /* the brain stays a picture, not a wall: on Stats */
   .stats-page .brain-stage { max-width: 720px; margin-inline: auto; }
   /* tiles fill the row however many there are, instead of leaving one alone under three */
   .stats-page .tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
@@ -167,7 +167,7 @@
   .sr-page .reveal.stack-l > :is(.sr-profile, .sr-note, .sr-source) { column-span: all; }
 
   /* pages of one or two cards don't stretch across the screen */
-  :is(.route-countdown, .route-status, .route-brain) .page { max-width: 880px; }
+  :is(.route-countdown, .route-status) .page { max-width: 880px; }
 
   /* a person, a book, a song or a repo: wide as before (only a note gets the ribbon and the paper, see document.css) */
   .page.editor { max-width: none; padding-inline: clamp(36px, 5vw, 96px); }
