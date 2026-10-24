@@ -1510,7 +1510,7 @@ export const RO: Record<string, string> = {
   'Insights': 'Perspective',
   'What your feelings add up to': 'Ce spun sentimentele tale, adunate',
   'Look, sync, privacy and more': 'Aspect, sincronizare, confidențialitate și altele',
-  'Your patterns, your places and your brain': 'Tiparele, locurile și creierul tău',
+  'Your patterns and your places': 'Tiparele și locurile tale',
   'Learn': 'Învață',
   'How minds slip and how power plays': 'Cum greșește mintea și cum se joacă puterea',
   'Extras': 'Extra',

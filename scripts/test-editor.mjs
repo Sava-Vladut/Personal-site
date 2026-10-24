@@ -322,6 +322,8 @@ const trackerModules = {
   '/emotions': { EMOTION: { joy: { id: 'joy', depth: 0, core: 'joy', name: 'Joy' } }, FEELINGS: [], shortName: () => 'Joy' },
   '/dates': { todayKey: () => '2026-10-01', keyOf: (d) => d.toISOString().slice(0, 10) },
   '/stats': { streaks: () => ({ current: 0 }) },
+  // a check-in asks Spotify what's playing as it opens (aebcf60); nothing is, here
+  '/spotify': { nowPlaying: () => Promise.resolve({ playing: false }) },
 };
 function pickFeeling(h) {
   const props = { query: new URLSearchParams() };

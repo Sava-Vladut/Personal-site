@@ -1,15 +1,9 @@
-/* The brain page: a card with the brain drawn in letters, its regions, a brainwave and a few notes from psychology. */
+/* The brain card on Stats › Emotions: the brain drawn in letters, its regions and the chosen region's note. */
 .brain { padding: 18px 16px 16px; --c: var(--ink-3); }
 .brain-title { font: var(--w-medium) var(--text-xl)/1.15 var(--serif); letter-spacing: -0.01em; }
 .brain-head .small { margin-top: 5px; line-height: 1.45; }
-.brain-ranges { margin: 12px 0 0; }
 .brain-stage { margin: 8px -6px 2px; position: relative; }
 .brain-canvas { display: block; width: 100%; touch-action: manipulation; cursor: pointer; }
-
-.brain-scrub { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; }
-.brain-scrub input[type='range'] { flex: 1; min-width: 0; accent-color: var(--c); height: 28px; }
-.brain-play { flex: none; width: var(--h-s); height: var(--h-s); padding: 0; justify-content: center; border-radius: 50%; }
-.brain-when { flex: none; min-width: 84px; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 .brain-zones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 10px 0 12px; }
 .brain-zone {
@@ -30,27 +24,5 @@
 .brain-shift { margin: 3px 0 0; line-height: 1.4; }
 .brain-line { margin: 7px 0 0; font-size: var(--text-m); line-height: 1.45; color: var(--ink); font-weight: var(--w-medium); }
 
-.brain-wave-head { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 0 6px; font-size: var(--text-m); font-weight: var(--w-bold); }
-.brain-wave { display: block; width: 100%; height: auto; overflow: visible; --c: var(--ink-2); animation: brain-sweep var(--dur-5) var(--ease) both; }
-.bw-week { stroke: var(--line); stroke-width: 1; }
-.bw-zero { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 4; }
-.bw-line { fill: none; stroke: var(--c); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
-.bw-dot.up { fill: var(--pos-a); }
-.bw-dot.down { fill: var(--neg-a); }
-.brain-arc { margin: 6px 0 0; }
-@keyframes brain-sweep { from { clip-path: inset(-6px 100% -6px 0); } to { clip-path: inset(-6px 0 -6px 0); } }
-
-.brain-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 4px; }
-.brain-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2); }
-.brain-stats b { font: var(--w-bold) var(--text-xl)/1.1 var(--serif); font-variant-numeric: tabular-nums; }
-.brain-stats b .muted { font-size: var(--text-base); font-weight: var(--w-medium); }
-
-.brain-notes { display: grid; gap: 14px; margin-top: 18px; }
-.brain-note { padding-left: 12px; border-left: 3px solid var(--c, var(--line-2)); }
-.brain-note b { font-size: var(--text-base); }
-.brain-note p { margin: 3px 0 0; color: var(--ink-2); font-size: var(--text-base); line-height: 1.5; }
-.brain-more { justify-self: start; }
-.brain-foot { margin: 16px 0 0; line-height: 1.5; }
-
 @media (min-width: 560px) { .brain-zones { grid-template-columns: repeat(4, 1fr); } }
-@media (prefers-reduced-motion: reduce) { .brain-wave { animation: none; } .brain-zone-lit::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .brain-zone-lit::after { transition: none; } }

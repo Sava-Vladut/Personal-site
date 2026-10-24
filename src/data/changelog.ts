@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.134.2',
+    date: '2026-10-24',
+    changes: [
+      'The styles left over from the removed Your brain page are gone, so the app loads a little less',
+      'The Insights description in the menu is translated into Romanian again',
+    ],
+  },
+  {
     version: '1.134.1',
     date: '2026-10-24',
     changes: [
