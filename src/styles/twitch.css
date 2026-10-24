@@ -71,7 +71,7 @@
 
 .tw-bars { display: grid; gap: 10px; padding-bottom: 6px !important; }
 .tw-bars li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: var(--text-m); }
-.tw-bar-label { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+.tw-bar-label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 .tw-bar-label svg { flex: none; color: color-mix(in oklab, var(--accent) 70%, var(--ink-2)); }
 .tw-bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
 .tw-bar i { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--accent); transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) calc(0.1s + var(--k, 0) * 25ms) backwards; }

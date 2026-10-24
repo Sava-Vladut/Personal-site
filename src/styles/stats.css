@@ -77,7 +77,7 @@ html { transition: --accent var(--dur-3) ease; }
   transition: border-color var(--dur-2), translate var(--dur-3) var(--spring);
 }
 @media (hover: hover) { .tile:hover { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); translate: 0 -2px; } }
-.tile-top { display: flex; align-items: center; gap: 7px; }
+.tile-top { display: flex; align-items: center; gap: 6px; }
 .tile-ico {
   flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--r-s);
   background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));

@@ -29,7 +29,7 @@
 
 /* the title line: what it is, the streak, and three small tools */
 .sotd-head { display: flex; align-items: center; gap: 8px; min-height: 32px; margin-bottom: 2px; }
-.sotd-kicker { margin-right: auto; display: inline-flex; align-items: center; gap: 7px; color: var(--tint); }
+.sotd-kicker { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--tint); }
 .sotd-streak {
   display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px 0 6px; border-radius: var(--r-pill);
   font-size: var(--text-s); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; color: var(--on-color);

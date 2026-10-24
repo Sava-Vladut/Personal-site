@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.20',
+    date: '2026-10-24',
+    changes: [
+      'The song of the day’s label, stat tile labels and Twitch’s bar labels space their icon like the app’s other small labels',
+    ],
+  },
+  {
     version: '1.128.19',
     date: '2026-10-24',
     changes: [
