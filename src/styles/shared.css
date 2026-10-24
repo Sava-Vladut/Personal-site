@@ -157,7 +157,7 @@
   background: color-mix(in oklab, var(--surface) 78%, transparent); border: 1px solid color-mix(in oklab, var(--c) 14%, var(--line));
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: var(--shadow-1);
 }
-.status-card-title { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: var(--text-s); font-weight: var(--w-bold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.status-card-title { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .status-card-title svg { color: var(--c); }
 .status-quote { margin: 0; padding: 22px 20px 20px 22px; }
 .status-quote-mark { position: absolute; top: -6px; left: 14px; font: var(--w-medium) 64px/1 var(--serif); color: var(--c); opacity: 0.55; }

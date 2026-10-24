@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.15',
+    date: '2026-10-24',
+    changes: [
+      'The public status page’s card titles and the small badges use the same uppercase label style as the rest of the app',
+    ],
+  },
+  {
     version: '1.128.14',
     date: '2026-10-23',
     changes: [

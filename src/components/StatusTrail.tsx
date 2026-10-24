@@ -61,7 +61,7 @@ export function StatusTrail({ trail, compact }: { trail: PublicTrail; compact?: 
   if (compact) return list;
   return (
     <section class="status-card status-recent-card">
-      <h2 class="status-card-title"><Icon name="chart-dots" size={15} /> {title}</h2>
+      <h2 class="status-card-title"><Icon name="chart-dots" size={14} /> {title}</h2>
       {list}
     </section>
   );

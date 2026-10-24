@@ -139,7 +139,7 @@ export function Status({ token }: { token: string }) {
 
         {d?.people && (
           <section class="status-card">
-            <h2 class="status-card-title"><Icon name="heart" size={15} /> {t('Thinking of')}</h2>
+            <h2 class="status-card-title"><Icon name="heart" size={14} /> {t('Thinking of')}</h2>
             <div class="status-people">
               {d.people.map((p, i) => (
                 <span key={i} class="status-person">
@@ -187,7 +187,7 @@ function Countdown({ c }: { c: C }) {
   const units: [number, string][] = [[left.d, t('days')], [left.h, t('hours')], [left.m, t('min')], [left.s, t('sec')]];
   return (
     <section class="status-card status-countdown">
-      <h2 class="status-card-title"><Icon name="hourglass" size={15} /> {countdownName(c)}</h2>
+      <h2 class="status-card-title"><Icon name="hourglass" size={14} /> {countdownName(c)}</h2>
       <div class="status-cd-clock" role="timer" aria-label={t('{d} days, {h} hours, {m} minutes and {s} seconds left', { d: left.d, h: left.h, m: left.m, s: left.s })}>
         {units.map(([n, label]) => (
           <span class="status-cd-unit" aria-hidden="true">
