@@ -97,7 +97,8 @@ function checkDecl(file, line, decl, stack) {
     const px = value.match(/(?:^|\s)([\d.]+)px/)
     if (px && !/clamp\(/.test(value) && !(px[1] === '16' && /input|select|textarea|search/.test(selector))) add('font-size', file, line, `${selector} { ${decl} }`)
   }
-  if (prop === 'font-weight' && /^\d+$/.test(value)) add('weight', file, line, `${selector} { ${decl} }`)
+  // the note's Word-style headings keep their 420 (design.md, Type)
+  if (prop === 'font-weight' && /^\d+$/.test(value) && !(value === '420' && /md-h1|rb-style/.test(selector))) add('weight', file, line, `${selector} { ${decl} }`)
   if (prop === 'font' && /^\d{3}\s/.test(value)) add('weight', file, line, `${selector} { ${decl} }`)
 
   if (/^border(-[a-z]+)?-radius$/.test(prop) && /\d+px/.test(value) && !/var\(--r-/.test(value)) add('radius', file, line, `${selector} { ${decl} }`)

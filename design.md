@@ -375,6 +375,10 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 **Same job, same pattern.**
 - Every list screen: `PageHead` (title, actions), then filters as `.chips.scroll-x`, then the list.
 - Every page you go into: `PageHead` with `back` (the glass arrow above the title), then sections.
+- Every page where you edit one thing (a note, a book, a person, a song, a repo): an `.editor-bar`
+  instead of `PageHead`, with the glass back arrow, a glass trash (or a "More" menu when there's more
+  than delete) and a tinted "Done" at the end; the title is the editable field below it.
+- Full-screen views (the map, the photo viewer) float a glass back button over the content instead.
 - Every first-run empty state (nothing made yet): a short `.title-s` or a mark, one sentence in `--ink-3`,
   and one action that makes the first thing: `.btn-primary`, or `.btn-quiet` when the screen already
   shows a primary add button.
