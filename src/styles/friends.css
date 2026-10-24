@@ -182,7 +182,7 @@
 .wf-meter b.on { background: var(--c); }
 .wf-meter em { font-style: normal; font-weight: var(--w-bold); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
 
-.wf-d-h { display: flex; align-items: center; gap: 7px; margin: 24px 0 8px; font-size: var(--text-base); font-weight: var(--w-bold); }
+.wf-d-h { display: flex; align-items: center; gap: 8px; margin: 24px 0 8px; font-size: var(--text-base); font-weight: var(--w-bold); }
 .wf-d-p { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
 .wf-d-k { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
 .wf-d-note { margin: -4px 0 8px; font-size: var(--text-m); color: var(--ink-3); }

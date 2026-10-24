@@ -148,7 +148,7 @@
 .lw-meter b.on { background: var(--c); }
 .lw-meter em { font-style: normal; font-weight: var(--w-bold); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
 
-.lw-d-h { display: flex; align-items: center; gap: 7px; margin: 24px 0 8px; font-size: var(--text-base); font-weight: var(--w-bold); }
+.lw-d-h { display: flex; align-items: center; gap: 8px; margin: 24px 0 8px; font-size: var(--text-base); font-weight: var(--w-bold); }
 .lw-d-p { margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
 .lw-d-k { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
 

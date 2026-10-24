@@ -151,7 +151,8 @@ component, use 1–5 (and `isolation: isolate` on the component) for local stack
 
 | Gap | Between |
 |---|---|
-| 4px | An icon or mark and its label, tight rows of marks |
+| 4px | Tight rows of marks, a mark and a number |
+| 6px / 8px | An icon and its label: 6px next to small text (`--text-m` and below), 8px next to body text and headings |
 | 6px | An eyebrow or subtitle and its title |
 | 8px | Chips, buttons in a row, paragraphs in an empty note |
 | 10px | A section title and its content |

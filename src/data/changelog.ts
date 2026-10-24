@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.18',
+    date: '2026-10-24',
+    changes: [
+      'Section headings with an icon space it the same as buttons do, here and in Laws of power and Win friends',
+    ],
+  },
+  {
     version: '1.128.17',
     date: '2026-10-24',
     changes: [
