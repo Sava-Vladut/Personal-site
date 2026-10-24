@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.16',
+    date: '2026-10-24',
+    changes: [
+      'Removing a person says “Remove person” and “removed”, like removing a book, a song or a repo',
+    ],
+  },
+  {
     version: '1.128.15',
     date: '2026-10-24',
     changes: [

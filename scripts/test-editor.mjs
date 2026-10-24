@@ -308,7 +308,7 @@ for (const kind of ['person', 'book']) {
     const h = harness(kind === 'person' ? personCode : bookCode, initial);
     const tree = h.render(kind === 'person' ? 'PersonView' : 'BookView', { id: kind === 'person' ? person.id : book.id });
     find(tree, (n) => n.type === 'textarea' && n.props['aria-label'] === (kind === 'person' ? 'Name' : 'Title')).props.onInput({ currentTarget: { value: 'Changed' } });
-    await button(tree, kind === 'person' ? 'Delete person' : 'Remove book').props.onClick();
+    await button(tree, kind === 'person' ? 'Remove person' : 'Remove book').props.onClick();
     h.unmount();
     await settle();
     assert.equal(renames, 0);

@@ -176,7 +176,7 @@ export function PersonView({ id }: { id: string }) {
     try {
       const removed = saved.current ? await deletePerson(draft.id) : null;
       if (alive.current) goBack('people');
-      if (removed) toast(t('{name} deleted', { name: removed.name || t('Person') }), { label: t('Undo'), run: () => savePerson(removed) });
+      if (removed) toast(t('{name} removed', { name: removed.name || t('Person') }), { label: t('Undo'), run: () => savePerson(removed) });
     } catch {
       removing.current = false;
       dirty.current = true;
@@ -216,7 +216,7 @@ export function PersonView({ id }: { id: string }) {
       <div class="editor-bar">
         <button class="glass glass-btn round" onClick={done} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <span class="grow" />
-        <button class="glass glass-btn round" onClick={remove} aria-label={t('Delete person')}><Icon name="trash" /></button>
+        <button class="glass glass-btn round" onClick={remove} aria-label={t('Remove person')}><Icon name="trash" /></button>
         <button class="glass glass-btn tinted" onClick={done}>{t('Done')}</button>
       </div>
 
