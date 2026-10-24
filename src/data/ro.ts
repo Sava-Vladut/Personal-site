@@ -1161,8 +1161,6 @@ export const RO: Record<string, string> = {
   'Your best day this month': 'Cea mai bună zi a lunii',
   'Spotify isn’t connected': 'Spotify nu e conectat',
   'Search and Now playing need it': 'Căutarea și „Se ascultă acum” au nevoie de el',
-  'GitHub isn’t connected': 'GitHub nu e conectat',
-  'Your repos can’t update without it': 'Repo-urile tale nu se pot actualiza fără el',
   'Set your home': 'Setează-ți casa',
   'So your check-ins get the weather': 'Ca check-in-urile să primească vremea',
   'Sync isn’t working': 'Sincronizarea nu merge',

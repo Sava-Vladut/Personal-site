@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.21',
+    date: '2026-10-24',
+    changes: [
+      'The home page no longer shows a “GitHub isn’t connected” notice',
+    ],
+  },
+  {
     version: '1.128.20',
     date: '2026-10-24',
     changes: [

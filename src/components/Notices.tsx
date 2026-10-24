@@ -108,16 +108,14 @@ function readHidden(): Record<string, string> {
   }
 }
 
-/** Whether Spotify or GitHub could be connected here and isn't: asked once each time the app opens. */
-let links: Promise<{ spotify: boolean; github: boolean }> | null = null;
-const missingLinks = () => (links ??= Promise.all([
-  import('../lib/spotify').then((m) => m.spotifyStatus()),
-  import('../lib/github').then((m) => m.githubStatus()),
-]).then(([s, g]) => ({ spotify: s.configured && !s.connected && !s.offline, github: g.configured && !g.connected && !g.offline }))
-  .catch(() => ({ spotify: false, github: false })));
+/** Whether Spotify could be connected here and isn't: asked once each time the app opens. (GitHub has no notice: Repos and Settings log it in again.) */
+let links: Promise<{ spotify: boolean }> | null = null;
+const missingLinks = () => (links ??= import('../lib/spotify').then((m) => m.spotifyStatus())
+  .then((s) => ({ spotify: s.configured && !s.connected && !s.offline }))
+  .catch(() => ({ spotify: false })));
 
 function useLinks() {
-  const [v, setV] = useState({ spotify: false, github: false });
+  const [v, setV] = useState({ spotify: false });
   useEffect(() => void missingLinks().then(setV), []);
   return v;
 }
@@ -315,7 +313,6 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
 
   /* setting things up and keeping them safe */
   if (missing.spotify) rows.push({ id: 'link:spotify', keep: 7, c: 'var(--emo-calm-safety)', icon: ico('brand-spotify'), title: t('Spotify isn’t connected'), sub: t('Search and Now playing need it'), go: () => navigate('settings') });
-  if (missing.github) rows.push({ id: 'link:github', keep: 7, c: 'var(--emo-calm-safety)', icon: ico('brand-github'), title: t('GitHub isn’t connected'), sub: t('Your repos can’t update without it'), go: () => navigate('settings') });
   if (!settings.home) rows.push({ id: 'home', keep: 30, c: 'var(--emo-calm-safety)', icon: ico('home'), title: t('Set your home'), sub: t('So your check-ins get the weather'), go: () => navigate('settings') });
   if (sync.on && !sync.busy && (sync.error || (sync.last && now - sync.last > 2 * DAY))) {
     rows.push({ id: 'sync', keep: 1, c: 'var(--emo-fear)', due: true, icon: ico('refresh'), title: sync.error ? t('Sync isn’t working') : t('Not synced for {span}', { span: count(Math.floor((now - sync.last) / DAY), 'day', 'days') }), sub: sync.error || t('Open Settings to check on it'), go: () => navigate('settings') });
