@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.19',
+    date: '2026-10-24',
+    changes: [
+      'Small labels with an icon (journal day labels, Stats’ mood labels, the status page’s time and the share note) space it like the app’s other small labels',
+    ],
+  },
+  {
     version: '1.128.18',
     date: '2026-10-24',
     changes: [
