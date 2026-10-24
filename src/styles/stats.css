@@ -224,7 +224,7 @@ html { transition: --accent var(--dur-3) ease; }
 /* ---------- the dex ---------- */
 
 .dex-worlds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 14px 0 12px; }
-@media (min-width: 480px) { .dex-worlds { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@media (min-width: 560px) { .dex-worlds { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .dex-mini {
   display: grid; justify-items: center; gap: 5px; padding: 10px 4px 9px; border-radius: var(--r-m);
   background: color-mix(in oklab, var(--c) 9%, var(--surface-2));

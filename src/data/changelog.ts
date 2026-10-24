@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.128.17',
+    date: '2026-10-24',
+    changes: [
+      'The brain’s zones and the emotion worlds in Stats widen to more columns at the same screen width as the app’s other grids',
+    ],
+  },
+  {
     version: '1.128.16',
     date: '2026-10-24',
     changes: [

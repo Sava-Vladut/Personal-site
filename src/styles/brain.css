@@ -11,7 +11,7 @@
 .brain-play { flex: none; width: var(--h-s); height: var(--h-s); padding: 0; justify-content: center; border-radius: 50%; }
 .brain-when { flex: none; min-width: 84px; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
-.brain-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 12px; }
+.brain-zones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 10px 0 12px; }
 .brain-zone {
   position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 8px 11px;
   border-radius: var(--r-s); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); font-weight: var(--w-medium); text-align: left;
@@ -52,5 +52,5 @@
 .brain-more { justify-self: start; }
 .brain-foot { margin: 16px 0 0; line-height: 1.5; }
 
-@media (max-width: 520px) { .brain-zones { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 560px) { .brain-zones { grid-template-columns: repeat(4, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .brain-wave { animation: none; } .brain-zone-lit::after { transition: none; } }
