@@ -113,6 +113,12 @@ channels it mines from the page, point `TWITCH_CHANNELS_FILE` at a writable `cha
 that the miner reads on start, restart the miner when that file changes (for example with a systemd `.path` unit), and
 set `ADMIN_PASSWORD`: only browsers signed in with it can save the list.
 
+The Global Ops port page (Extras) follows the browser port of Global Operations being built on the same server. Point
+`GLOPS_DIR` at its folder (read-only is enough): the server reads `port/PORTING_LOG.md` (its Milestones checklist is the
+progress bar), the port's git history and uncommitted changes, build times, the newest `*.log` files and screenshots, and
+`activity.jsonl`, which `tools/activity-hook.sh` there appends to as a Claude Code hook. Admin only. The page refreshes
+every 5 seconds while something in the folder changed in the last ten minutes, every 30 seconds otherwise.
+
 See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
 and remaining browser-side and infrastructure scaling limits.
 

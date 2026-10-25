@@ -40,13 +40,14 @@ export const WHEEL: WheelNode[] = [
   },
   // what's linked to the outside, and small tools
   {
-    id: 'extras', name: t('Extras'), sub: t('GitHub, Twitch, your public link and a countdown'), icon: 'layout-grid', hue: 'fear',
+    id: 'extras', name: t('Extras'), sub: t('GitHub, Twitch, your public link, a countdown and the Global Ops port'), icon: 'layout-grid', hue: 'fear',
     kids: [
       { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
       { id: 'streamer', name: t('Streamer stats'), sub: t('What a Twitch channel plays, when and for how long'), icon: 'device-gamepad-2', hue: 'fear', to: 'streamer' },
       { id: 'status', name: t('Public status'), sub: t('One link that always shows your latest check-in'), icon: 'world', hue: 'joy', to: 'status' },
       { id: 'countdown', name: t('Countdown'), sub: t('Count the days to something, and change when'), icon: 'hourglass', hue: 'calm-safety', to: 'countdown' },
+      { id: 'glops', name: t('Global Ops port'), sub: t('The browser port, live: its log, commits and what’s being worked on'), icon: 'device-gamepad-2', hue: 'hope-interest', to: 'glops' },
     ],
   },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },
