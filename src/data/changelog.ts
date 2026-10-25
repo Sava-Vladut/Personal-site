@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.136.1',
+    date: '2026-10-25',
+    changes: [
+      'The Global Ops page and a repo’s commit list no longer borrow each other’s styles after you’ve opened both',
+    ],
+  },
+  {
     version: '1.136.0',
     date: '2026-10-25',
     changes: [

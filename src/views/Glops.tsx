@@ -62,7 +62,7 @@ export function Glops() {
   const now = useNow(skew);
 
   return (
-    <div class="page stats-page gl-page">
+    <div class="page stats-page ops-page">
       <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-hope-interest)' }}>
         <Sky world="hope-interest" letters="repos" />
         <PageHead
@@ -109,7 +109,7 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
 
   return (
     <RevealStack>
-      <section class="card hero gl-hero">
+      <section class="card hero ops-hero">
         <div class="tile-label">{milestones.length ? t('Milestones') : t('Latest')}</div>
         {milestones.length > 0 && (
           <>
@@ -117,21 +117,21 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
               <span class="hero-num">{done}<small>/{milestones.length}</small></span>
               <span class="hero-scale">{t('{pct}% of the way', { pct: Math.round((done / milestones.length) * 100) })}</span>
             </div>
-            <div class="gl-meter" role="meter" aria-valuemin={0} aria-valuemax={milestones.length} aria-valuenow={done} aria-label={t('Milestones reached')}>
+            <div class="ops-meter" role="meter" aria-valuemin={0} aria-valuemax={milestones.length} aria-valuenow={done} aria-label={t('Milestones reached')}>
               {milestones.map((m, i) => <i class={m.done ? 'on' : ''} style={{ '--k': i }} title={m.text} />)}
             </div>
           </>
         )}
         {latest && (
-          <div class="gl-latest">
-            {latest.date && <span class="gl-date">{shortDate(latest.date)}{latest.when ? ` · ${latest.when}` : ''}</span>}
-            <Markdown text={latest.text} class="gl-md" />
+          <div class="ops-latest">
+            {latest.date && <span class="ops-date">{shortDate(latest.date)}{latest.when ? ` · ${latest.when}` : ''}</span>}
+            <Markdown text={latest.text} class="ops-md" />
           </div>
         )}
-        {intro && <Markdown text={intro} class="gl-md gl-goal" />}
+        {intro && <Markdown text={intro} class="ops-md ops-goal" />}
       </section>
 
-      <div class="tiles gl-tiles">
+      <div class="tiles ops-tiles">
         {data.builds.map((b, k) => {
           const [label, icon] = BUILD[b.name];
           return (
@@ -152,7 +152,7 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
       <Activity events={data.activity} live={data.live} now={now} />
 
       {data.changes.length > 0 && (
-        <section class="card tw-list gl-list">
+        <section class="card tw-list ops-list">
           <h3 class="chart-title">{t('Not committed yet')}</h3>
           <p class="chart-sub">
             {count(data.changes.length, 'file', 'files')} · <b class="up">+{data.changes.reduce((s, c) => s + c.added, 0)}</b>{' '}
@@ -160,10 +160,10 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
           </p>
           <ul>
             {data.changes.map((c, i) => (
-              <li class="gl-file" style={{ '--k': i }} key={c.path}>
-                <span class={`gl-state is-${c.state}`}>{c.state === 'new' ? t('new') : c.state === 'deleted' ? t('gone') : c.state === 'added' ? t('added') : t('changed')}</span>
-                <code class="gl-path">{c.path}</code>
-                <span class="gl-diff"><b class="up">+{c.added}</b> <b class="down">−{c.removed}</b></span>
+              <li class="ops-file" style={{ '--k': i }} key={c.path}>
+                <span class={`ops-state is-${c.state}`}>{c.state === 'new' ? t('new') : c.state === 'deleted' ? t('gone') : c.state === 'added' ? t('added') : t('changed')}</span>
+                <code class="ops-path">{c.path}</code>
+                <span class="ops-diff"><b class="up">+{c.added}</b> <b class="down">−{c.removed}</b></span>
                 <small>{c.at ? ago(c.at, now) : ''}</small>
               </li>
             ))}
@@ -172,13 +172,13 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
       )}
 
       {milestones.length > 0 && (
-        <section class="card tw-list gl-list">
+        <section class="card tw-list ops-list">
           <h3 class="chart-title">{t('Milestones')}</h3>
-          <ul class="gl-checks">
+          <ul class="ops-checks">
             {milestones.map((m, i) => (
               <li class={m.done ? 'is-done' : ''} style={{ '--k': i }}>
                 <Icon name={m.done ? 'circle-check' : 'circle-dashed'} size={18} stroke={2} />
-                <Markdown text={m.text} class="gl-md" />
+                <Markdown text={m.text} class="ops-md" />
               </li>
             ))}
           </ul>
@@ -186,13 +186,13 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
       )}
 
       {next.length > 0 && (
-        <section class="card tw-list gl-list">
+        <section class="card tw-list ops-list">
           <h3 class="chart-title">{t('Next up')}</h3>
-          <ul class="gl-checks">
+          <ul class="ops-checks">
             {next.map((n, i) => (
               <li style={{ '--k': i }}>
                 <Icon name="point" size={18} stroke={2} />
-                <Markdown text={n.text} class="gl-md" />
+                <Markdown text={n.text} class="ops-md" />
               </li>
             ))}
           </ul>
@@ -206,10 +206,10 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
       {data.logs.length > 0 && <Logs logs={data.logs} now={now} />}
 
       {data.shots.length > 0 && (
-        <section class="card tw-list gl-list">
+        <section class="card tw-list ops-list">
           <h3 class="chart-title">{t('Screenshots')}</h3>
           <p class="chart-sub">{t('The newest from the browser test runs')}</p>
-          <div class="gl-shots">
+          <div class="ops-shots">
             {data.shots.map((s) => (
               <a href={`/api/glops/shots/${encodeURIComponent(s.name)}?v=${s.at}`} target="_blank" rel="noopener noreferrer" key={s.name + s.at}>
                 <img src={`/api/glops/shots/${encodeURIComponent(s.name)}?v=${s.at}`} alt={s.name} loading="lazy" decoding="async" />
@@ -221,19 +221,19 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
       )}
 
       {notes.length > 0 && (
-        <section class="card tw-list gl-list">
+        <section class="card tw-list ops-list">
           <h3 class="chart-title">{t('Porting notes')}</h3>
           <p class="chart-sub">{t('From PORTING_LOG.md, updated {when}', { when: data.log.at ? ago(data.log.at, now) : '—' })}</p>
           {notes.map((s) => (
-            <details class="gl-note" key={s.title}>
+            <details class="ops-note" key={s.title}>
               <summary>{s.title}</summary>
-              <Markdown text={s.body} class="gl-md" />
+              <Markdown text={s.body} class="ops-md" />
             </details>
           ))}
         </section>
       )}
 
-      <p class="gl-foot">
+      <p class="ops-foot">
         {error ? <><Icon name="alert-circle" size={15} /> {error} · </> : null}
         {data.live
           ? t('Refreshes every {n} seconds while the port is being worked on.', { n: LIVE_EVERY / 1000 })
@@ -249,18 +249,18 @@ function Activity({ events, live, now }: { events: Happening[]; live: boolean; n
   const [all, setAll] = useState(false);
   const shown = all ? events : events.slice(0, 25);
   return (
-    <section class="card tw-list gl-list">
+    <section class="card tw-list ops-list">
       <div class="tw-list-head">
         <h3 class="chart-title">{live && <span class="tw-live" aria-hidden="true" />}{t('Live activity')}</h3>
         {events.length > 25 && <button class="btn btn-quiet btn-s" onClick={() => setAll(!all)}>{all ? t('Fewer') : t('All {n}', { n: events.length })}</button>}
       </div>
       {events.length ? (
-        <ol class="gl-feed" aria-live="polite">
+        <ol class="ops-feed" aria-live="polite">
           {shown.map((e) => (
             <li key={`${e.t}-${e.s}-${e.tool}`} class={e.ev === 'stop' ? 'is-stop' : ''}>
               <time>{clock(e.t, now)}</time>
-              <span class="gl-tool"><Icon name={e.ev === 'stop' ? 'player-pause' : TOOL_ICON[e.tool] ?? 'dots'} size={14} stroke={2} /> {e.ev === 'stop' ? t('Paused') : e.tool}</span>
-              <span class="gl-what">{e.ev === 'stop' ? t('the session stopped for now') : e.text}</span>
+              <span class="ops-tool"><Icon name={e.ev === 'stop' ? 'player-pause' : TOOL_ICON[e.tool] ?? 'dots'} size={14} stroke={2} /> {e.ev === 'stop' ? t('Paused') : e.tool}</span>
+              <span class="ops-what">{e.ev === 'stop' ? t('the session stopped for now') : e.text}</span>
             </li>
           ))}
         </ol>
@@ -273,14 +273,14 @@ function Activity({ events, live, now }: { events: Happening[]; live: boolean; n
 
 function Timeline({ items, at, now }: { items: LogItem[]; at: number | null; now: number }) {
   return (
-    <section class="card tw-list gl-list">
+    <section class="card tw-list ops-list">
       <h3 class="chart-title">{t('Progress log')}</h3>
       {at && <p class="chart-sub">{t('Updated {when}', { when: ago(at, now) })}</p>}
-      <ol class="gl-timeline">
+      <ol class="ops-timeline">
         {items.map((it, i) => (
           <li style={{ '--k': i }}>
-            {it.date && <span class="gl-date">{shortDate(it.date)}{it.when ? ` · ${it.when}` : ''}</span>}
-            <Markdown text={it.text} class="gl-md" />
+            {it.date && <span class="ops-date">{shortDate(it.date)}{it.when ? ` · ${it.when}` : ''}</span>}
+            <Markdown text={it.text} class="ops-md" />
           </li>
         ))}
       </ol>
@@ -290,20 +290,20 @@ function Timeline({ items, at, now }: { items: LogItem[]; at: number | null; now
 
 function Commits({ commits, now }: { commits: Commit[]; now: number }) {
   return (
-    <section class="card tw-list gl-list">
+    <section class="card tw-list ops-list">
       <h3 class="chart-title">{t('Commits')}</h3>
       <ul>
         {commits.map((c, i) => {
           const body = c.body.replace(/\n*Co-Authored-By:.*$/gim, '').trim();
           return (
-            <li class="gl-commit" style={{ '--k': i }} key={c.hash}>
+            <li class="ops-commit" style={{ '--k': i }} key={c.hash}>
               <details>
                 <summary>
                   <code>{c.hash}</code>
-                  <span class="gl-subject">{c.subject}</span>
+                  <span class="ops-subject">{c.subject}</span>
                   <small>{ago(c.at, now)} · {count(c.files, 'file', 'files')} · <b class="up">+{c.added}</b> <b class="down">−{c.removed}</b></small>
                 </summary>
-                {body ? <p class="gl-body">{body}</p> : <p class="gl-body muted">{t('No description.')}</p>}
+                {body ? <p class="ops-body">{body}</p> : <p class="ops-body muted">{t('No description.')}</p>}
               </details>
             </li>
           );
@@ -316,7 +316,7 @@ function Commits({ commits, now }: { commits: Commit[]; now: number }) {
 /** The newest logs, the most recent open, each scrolled to its end (and kept there as lines come in, unless you scrolled up). */
 function Logs({ logs, now }: { logs: LogFile[]; now: number }) {
   return (
-    <section class="card tw-list gl-list">
+    <section class="card tw-list ops-list">
       <h3 class="chart-title">{t('Logs')}</h3>
       <p class="chart-sub">{t('The last lines of the newest logs')}</p>
       {logs.map((l, i) => <LogTail key={l.path} log={l} open={i === 0} now={now} />)}
@@ -332,7 +332,7 @@ function LogTail({ log, open, now }: { log: LogFile; open: boolean; now: number 
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [log.lines.join('\n')]);
   return (
-    <details class="gl-note gl-log" open={open} onToggle={() => pre.current && (pre.current.scrollTop = pre.current.scrollHeight)}>
+    <details class="ops-note ops-log" open={open} onToggle={() => pre.current && (pre.current.scrollTop = pre.current.scrollHeight)}>
       <summary><code>{log.path}</code> <small>{ago(log.at, now)}</small></summary>
       <pre ref={pre} onScroll={(e) => {
         const el = e.currentTarget;
