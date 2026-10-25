@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.135.1',
+    date: '2026-10-25',
+    changes: [
+      'A shared trap, law or principle opens as a full page of its own, with nothing else from Learn around it',
+      'A shared Learn page shows just that page: no back arrow and no links on to the other Learn pages',
+    ],
+  },
+  {
     version: '1.135.0',
     date: '2026-10-25',
     changes: [

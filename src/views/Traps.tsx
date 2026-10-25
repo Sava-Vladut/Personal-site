@@ -8,7 +8,7 @@ import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { LAWS, REALMS, type Law } from '../data/laws';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
-import { LearnShare, ShareButton, type ShareTarget } from '../components/LearnShare';
+import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
 import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, useLocal } from '../components/learn';
@@ -182,10 +182,11 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
   x: Trap;
   caught: number;
   onCaught: () => void;
-  go: (id: string) => void;
-  openPrinciple: (n: number) => void;
-  openLaw: (n: number) => void;
-  onShare: () => void;
+  /** Left out on a shared link, with the links they follow: only what was shared shows. */
+  go?: (id: string) => void;
+  openPrinciple?: (n: number) => void;
+  openLaw?: (n: number) => void;
+  onShare?: () => void;
 }) {
   const hue = hueOf(x);
   const [ev, evAbout] = EVIDENCE[x.evidence];
@@ -249,7 +250,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
         <ol class="lrn-list is-steps">{x.escape.map((l) => <li>{l}</li>)}</ol>
       </section>
 
-      {disarms.length > 0 && (
+      {openPrinciple && disarms.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Principles that disarm it')}</h3>
           <div class="lrn-links">
@@ -260,7 +261,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
         </section>
       )}
 
-      {laws.length > 0 && (
+      {openLaw && laws.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Laws of power')}</h3>
           <div class="lrn-links">
@@ -279,7 +280,7 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
         <Tally icon="eye" label={t('I caught myself in this one')} n={caught} onClick={() => { haptic(10); onCaught(); }} />
       </div>
 
-      {kin.length > 0 && (
+      {go && kin.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Related traps')}</h3>
           <ol class="lrn-rows">
@@ -302,6 +303,8 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
   // ?open=<id> opens a trap straight away (the Laws of power and Win friends pages link here)
   const [open, setOpen] = useState<string | null>(() => (BY_ID.has(params.get('open') ?? '') ? params.get('open') : null));
   const [sharing, setSharing] = useState<ShareTarget | null>(null);
+  // a shared link to one trap shows just that trap, as a page
+  const [solo] = useState(() => onSharedLink && open !== null);
   const [family, setFamily] = usePref<string>('traps-family', 'all', ['all', ...FAMILY_IDS]);
   const [sort, setSort] = usePref<Sort>('traps-sort', 'family', SORTS);
   const [query, setQuery] = useState('');
@@ -361,11 +364,20 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
       ? FAMILY_IDS.map((f) => ({ key: f, f, list: shown.filter((x) => x.family === f) })).filter((g) => g.list.length)
       : shown.length ? [{ key: sort, f: picked ? (family as Family) : null, list: shown }] : [];
 
+  if (solo && current) {
+    return (
+      <SharedEntry world={WORLD} page="traps-page" title={t('Mind traps')} rank={t('#{rank} of {n}', { rank: RANK.get(current.id)!, n: TRAPS.length })} onShare={() => setSharing({ path: `traps?open=${current.id}`, title: current.name })}>
+        <TrapDetail x={current} caught={caught[current.id] ?? 0} onCaught={() => setCaught({ ...caught, [current.id]: (caught[current.id] ?? 0) + 1 })} />
+        <LearnShare target={sharing} onClose={() => setSharing(null)} />
+      </SharedEntry>
+    );
+  }
+
   return (
     <div class="page lrn-page traps-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Mind traps')} back={() => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'traps', title: t('Mind traps') })} />} subtitle={t('40 ways your brain fools you, ranked by how hard they pull')} />
+        <PageHead title={t('Mind traps')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'traps', title: t('Mind traps') })} />} subtitle={t('40 ways your brain fools you, ranked by how hard they pull')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }} title={t('in {n} families', { n: FAMILY_IDS.length })}>
             <b>{TRAPS.length}</b>
@@ -502,8 +514,8 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
               caught={caught[current.id] ?? 0}
               onCaught={() => setCaught({ ...caught, [current.id]: (caught[current.id] ?? 0) + 1 })}
               go={go}
-              openPrinciple={openPrinciple}
-              openLaw={openLaw}
+              openPrinciple={onSharedLink ? undefined : openPrinciple}
+              openLaw={onSharedLink ? undefined : openLaw}
             />
           )}
         </div>

@@ -21,6 +21,7 @@ import './styles/fade-scroll.css';
 import './styles/fade-data.css';
 import { App } from './app';
 import { Icon } from './components/icons';
+import { Toasts } from './components/Toasts';
 import './styles/desktop.css';
 import './styles/opening.css';
 import { applyTheme, init } from './lib/store';
@@ -32,7 +33,7 @@ import { t } from './lib/i18n';
 import { haptic } from './lib/haptics';
 import { startImageFade } from './lib/fadeImages';
 import { startReveal } from './lib/reveal';
-import { routeName } from './lib/router';
+import { routeName, type RouteName } from './lib/router';
 import { preloadViews, prepareView, viewFor } from './lib/views';
 import { authStatus, introSeen, markIntroSeen, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
 import type { IntroProps } from './views/Intro';
@@ -71,10 +72,10 @@ onBlocked(() =>
 // once you sign in.
 const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
 const status = location.pathname.match(/^\/status\/([A-Za-z0-9_-]{32})\/?$/);
-const learn = location.pathname.match(/^\/learn(?:\/(traps|laws|friends))?\/?$/);
+const learn = location.pathname.match(/^\/learn\/(traps|laws|friends)\/?$/);
 if (shared) void bootShared(shared[1]);
 else if (status) void bootStatus(status[1]);
-else if (learn) void bootLearn(learn[1]);
+else if (learn) void bootLearn(learn[1] as RouteName);
 else if (signedInHere()) {
   if (routeName() === 'journal' && !introSeen() && !matchMedia('(prefers-reduced-motion: reduce)').matches) void openWithBrain();
   else boot();
@@ -101,21 +102,20 @@ async function bootStatus(token: string) {
 }
 
 /**
- * A shared Learn link: just the Learn pages, for anyone, like a public note, in the language it was shared in
- * (lib/i18n.ts reads ?lang=). /learn/traps?open=x&lang=ro becomes /learn?lang=ro#/traps?open=x, so the pages route
- * by the hash as they do in the app.
+ * A shared Learn link (components/LearnShare.tsx): just that page, or just that one entry as a page, for anyone, like a
+ * public note, in the language it was shared in (lib/i18n.ts reads ?lang=). Nothing links on from it.
  */
-async function bootLearn(page?: string) {
-  if (page) {
-    const query = new URLSearchParams(location.search);
-    const lang = query.get('lang');
-    query.delete('lang');
-    history.replaceState(null, '', `/learn${lang === 'en' || lang === 'ro' ? `?lang=${lang}` : ''}#/${page}${query.size ? `?${query}` : ''}`);
-  }
+async function bootLearn(page: RouteName) {
   try {
-    const { LearnPublic, isLearn } = await import('./views/LearnPublic');
-    if (isLearn(routeName())) await prepareView(routeName());
-    render(<LearnPublic />, document.getElementById('app')!);
+    await prepareView(page);
+    const View = viewFor(page);
+    render(
+      <>
+        <main class={`app route-${page}`}><View id="" query={new URLSearchParams(location.search)} /></main>
+        <Toasts />
+      </>,
+      document.getElementById('app')!,
+    );
   } catch (e) {
     failed(e, false);
   }

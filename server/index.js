@@ -938,7 +938,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
       if (url.pathname.startsWith('/s/')) return await share.page(req, res, url.pathname);
       if (url.pathname.startsWith('/status/')) return await status.page(req, res, url.pathname);
-      if (/^\/learn(?:\/(?:traps|laws|friends))?\/?$/.test(url.pathname)) return await learnPage(req, res, url);
+      if (/^\/learn\/(?:traps|laws|friends)\/?$/.test(url.pathname)) return await learnPage(req, res, url);
       return await serveStatic(req, res, url.pathname);
     } catch (e) {
       if (req.aborted || res.destroyed) return;

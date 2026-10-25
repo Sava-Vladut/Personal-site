@@ -9,7 +9,7 @@ import { LAWS, REALMS, type Law } from '../data/laws';
 import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
-import { LearnShare, ShareButton, type ShareTarget } from '../components/LearnShare';
+import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
 import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLive, useLocal } from '../components/learn';
@@ -275,10 +275,11 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
   practice: { on?: boolean; tried?: number };
   onToggle: () => void;
   onTried: () => void;
-  go: (n: number) => void;
-  openTrap: (id: string) => void;
-  openLaw: (n: number) => void;
-  onShare: () => void;
+  /** Left out on a shared link, with the links they follow: only what was shared shows. */
+  go?: (n: number) => void;
+  openTrap?: (id: string) => void;
+  openLaw?: (n: number) => void;
+  onShare?: () => void;
 }) {
   const part = PARTS[x.part];
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
@@ -301,7 +302,7 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
         <h3 class="lrn-d-h">{t('The levers it pulls')}</h3>
         <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}.</b> {l.text}</li>)}</ul>
       </section>
-      {traps.length > 0 && (
+      {openTrap && traps.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('The mind traps it disarms')}</h3>
           <div class="lrn-links">
@@ -309,7 +310,7 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
           </div>
         </section>
       )}
-      {laws.length > 0 && (
+      {openLaw && laws.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Carnegie vs Greene')}</h3>
           <p class="lrn-d-p wf-d-note">{t('The laws of power it answers, and how.')}</p>
@@ -369,7 +370,7 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
         <Tally icon="sparkles" label={t('I tried it')} n={practice.tried ?? 0} onClick={() => { haptic(10); onTried(); }} />
       </div>
 
-      {kin.length > 0 && (
+      {go && kin.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Related principles')}</h3>
           <ol class="lrn-rows">
@@ -395,6 +396,8 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
   // ?open=<n> opens a principle straight away (Laws of power and Mind traps link here)
   const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null);
   const [sharing, setSharing] = useState<ShareTarget | null>(null);
+  // a shared link to one principle shows just that principle, as a page
+  const [solo] = useState(() => onSharedLink && open !== null);
   const [filter, setFilter] = usePref<Filter>('friends-part', 'all', FILTERS);
   const [sort, setSort] = usePref<Sort>('friends-sort', 'n', SORTS);
   const [lens, setLens] = usePref<Lens>('friends-lens', 'why', LENSES);
@@ -457,11 +460,20 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
     );
   };
 
+  if (solo && current) {
+    return (
+      <SharedEntry world={WORLD} page="friends-page" title={t('Win friends')} rank={t('Principle {n} of {total}', { n: current.n, total: PRINCIPLES.length })} onShare={() => setSharing({ path: `friends?open=${current.n}`, title: current.title })}>
+        <PrincipleDetail x={current} lens={lens} setLens={setLens} practice={practice[current.n] ?? {}} onToggle={() => toggle(current.n)} onTried={() => tried(current.n)} />
+        <LearnShare target={sharing} onClose={() => setSharing(null)} />
+      </SharedEntry>
+    );
+  }
+
   return (
     <div class="page lrn-page friends-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Win friends')} back={() => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'friends', title: t('Win friends') })} />} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
+        <PageHead title={t('Win friends')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'friends', title: t('Win friends') })} />} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }}>
             <b>{practising}<em class="stat-aside">/{PRINCIPLES.length}</em></b>
@@ -511,7 +523,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
             <NameThePrinciple open={openPrinciple} />
           </section>
 
-          <Connections open={openPrinciple} openLaw={openLaw} openTrap={openTrap} />
+          {!onSharedLink && <Connections open={openPrinciple} openLaw={openLaw} openTrap={openTrap} />}
         </div>
 
         <div class="lrn-main">
@@ -579,8 +591,8 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
               onToggle={() => toggle(current.n)}
               onTried={() => tried(current.n)}
               go={go}
-              openTrap={openTrap}
-              openLaw={openLaw}
+              openTrap={onSharedLink ? undefined : openTrap}
+              openLaw={onSharedLink ? undefined : openLaw}
             />
           )}
         </div>

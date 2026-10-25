@@ -8,7 +8,7 @@ import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
-import { LearnShare, ShareButton, type ShareTarget } from '../components/LearnShare';
+import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
 import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
@@ -198,10 +198,11 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
   onLens: (l: Lens) => void;
   seen: { on?: number; by?: number };
   onSeen: (k: 'on' | 'by') => void;
-  go: (n: number) => void;
-  openTrap: (id: string) => void;
-  openPrinciple: (n: number) => void;
-  onShare: () => void;
+  /** Left out on a shared link, with the links they follow: only what was shared shows. */
+  go?: (n: number) => void;
+  openTrap?: (id: string) => void;
+  openPrinciple?: (n: number) => void;
+  onShare?: () => void;
 }) {
   const realm = REALMS[x.realm];
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
@@ -224,7 +225,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
         <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}</b>. {l.text}</li>)}</ul>
       </div>
       <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
-      {traps.length > 0 && (
+      {openTrap && traps.length > 0 && (
         <div class="lw-sub">
           <p class="kicker">{t('The mind traps it springs')}</p>
           <div class="lrn-links">
@@ -278,7 +279,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
         <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
       </div>
 
-      {answers.length > 0 && (
+      {openPrinciple && answers.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Carnegie’s answer')}</h3>
           <div class="lrn-links">
@@ -300,7 +301,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
         </div>
       </section>
 
-      {kin.length > 0 && (
+      {go && kin.length > 0 && (
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Related laws')}</h3>
           <ol class="lrn-rows">
@@ -322,6 +323,8 @@ const SORTS: Sort[] = ['arena', 'n', 'dark'];
 export function Laws({ query: params }: { query: URLSearchParams }) {
   const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null);
   const [sharing, setSharing] = useState<ShareTarget | null>(null);
+  // a shared link to one law shows just that law, as a page
+  const [solo] = useState(() => onSharedLink && open !== null);
   const [realm, setRealm] = usePref<string>('laws-realm', 'all', ['all', ...REALM_IDS]);
   const [sort, setSort] = usePref<Sort>('laws-sort', 'arena', SORTS);
   const [lens, setLens] = usePref<Lens>('laws-lens', 'player', LENSES);
@@ -362,11 +365,20 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
   const search = t('Search laws, signs or levers');
   const top = SPRUNG.slice(0, 6);
 
+  if (solo && current) {
+    return (
+      <SharedEntry world={WORLD} page="laws-page" title={t('Laws of power')} rank={t('Law {n} of 48', { n: current.n })} onShare={() => setSharing({ path: `laws?open=${current.n}`, title: current.title })}>
+        <LawDetail x={current} lens={lens} onLens={setLens} seen={seen[current.n] ?? {}} onSeen={(k) => addSeen(current.n, k)} />
+        <LearnShare target={sharing} onClose={() => setSharing(null)} />
+      </SharedEntry>
+    );
+  }
+
   return (
     <div class="page lrn-page laws-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Laws of power')} back={() => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'laws', title: t('Laws of power') })} />} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
+        <PageHead title={t('Laws of power')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'laws', title: t('Laws of power') })} />} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }}>
             <b>{LAWS.length}</b>
@@ -416,26 +428,28 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
             <NameTheMove open={openLaw} />
           </section>
 
-          <section class="card lrn-card">
-            <header class="lrn-card-head">
-              <h3 class="lrn-card-title">{t('The mind traps they spring')} <span class="lrn-count">{SPRUNG.length}</span></h3>
-              <p class="lrn-card-sub">{t('The biases the laws lean on most. Tap one to read it in Mind traps.')}</p>
-            </header>
-            <ol class="ranked lw-sprung">
-              {top.map(({ trap, laws }, i) => (
-                <li style={{ '--k': i, '--c': `var(--emo-${FAMILIES[trap.family].hue})`, '--w': laws.length / top[0].laws.length }}>
-                  <button onClick={() => openTrap(trap.id)} title={laws.map((x) => x.n).join(', ')}>
-                    <span class="rk-top">
-                      <i class="lrn-dot" aria-hidden="true" />
-                      <span class="rk-name">{trap.name}</span>
-                      <span class="rk-n"><b>{laws.length}</b></span>
-                    </span>
-                    <span class="rk-bar"><i /></span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </section>
+          {!onSharedLink && (
+            <section class="card lrn-card">
+              <header class="lrn-card-head">
+                <h3 class="lrn-card-title">{t('The mind traps they spring')} <span class="lrn-count">{SPRUNG.length}</span></h3>
+                <p class="lrn-card-sub">{t('The biases the laws lean on most. Tap one to read it in Mind traps.')}</p>
+              </header>
+              <ol class="ranked lw-sprung">
+                {top.map(({ trap, laws }, i) => (
+                  <li style={{ '--k': i, '--c': `var(--emo-${FAMILIES[trap.family].hue})`, '--w': laws.length / top[0].laws.length }}>
+                    <button onClick={() => openTrap(trap.id)} title={laws.map((x) => x.n).join(', ')}>
+                      <span class="rk-top">
+                        <i class="lrn-dot" aria-hidden="true" />
+                        <span class="rk-name">{trap.name}</span>
+                        <span class="rk-n"><b>{laws.length}</b></span>
+                      </span>
+                      <span class="rk-bar"><i /></span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           <section class="card lrn-card lw-about">
             <p>{t('Greene wrote the book without morals on purpose: these are the moves, as courtiers, generals and con artists have made them for centuries. Most people who read it aren’t would-be kings, they’re people who kept losing a game they didn’t know was being played. So each law here also has its shadow side, an honest version, and the signs that someone is playing it on you.')}</p>
@@ -514,8 +528,8 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
               seen={seen[current.n] ?? {}}
               onSeen={(k) => addSeen(current.n, k)}
               go={go}
-              openTrap={openTrap}
-              openPrinciple={openPrinciple}
+              openTrap={onSharedLink ? undefined : openTrap}
+              openPrinciple={onSharedLink ? undefined : openPrinciple}
             />
           )}
         </div>

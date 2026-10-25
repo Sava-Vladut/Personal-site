@@ -4,9 +4,18 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { LANGS, lang as appLang, t, type Lang } from '../lib/i18n';
 import { toast } from '../lib/store';
+import type { ComponentChildren } from 'preact';
 import { Icon } from './icons';
+import { PageHead } from './PageHead';
 import { Sheet } from './Sheet';
+import { Sky } from './Sky';
 import '../styles/shared.css';
+
+/**
+ * On a shared link (/learn/<page>, main.tsx) only what was shared shows: the page with no way back or on to the other
+ * Learn pages, or one entry as a page of its own (SharedEntry).
+ */
+export const onSharedLink = typeof location !== 'undefined' && /^\/learn\//.test(location.pathname);
 
 /** What to share: `path` is the page and its query as the app routes it ('traps', 'laws?open=3'). */
 export interface ShareTarget { path: string; title: string }
@@ -67,5 +76,28 @@ export function ShareButton({ onClick }: { onClick: () => void }) {
     <button class="glass glass-btn round" onClick={onClick} aria-label={t('Share publicly')} title={t('Share publicly')}>
       <Icon name="share" />
     </button>
+  );
+}
+
+/** A shared entry, on its own full page: the page it's from and where it ranks over the sky, then the entry. */
+export function SharedEntry({ world, page, title, rank, onShare, children }: {
+  world: string;
+  /** the page's class, for its own styles ('traps-page') */
+  page: string;
+  /** the page it's from ("Mind traps") */
+  title: string;
+  /** where it sits on that page ("#3 of 40") */
+  rank: string;
+  onShare: () => void;
+  children: ComponentChildren;
+}) {
+  return (
+    <div class={`page lrn-page lrn-solo ${page}`} style={{ '--accent': `var(--emo-${world})` }}>
+      <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${world})` }}>
+        <Sky world={world} />
+        <PageHead title={title} subtitle={rank} actions={<ShareButton onClick={onShare} />} />
+      </div>
+      {children}
+    </div>
   );
 }
