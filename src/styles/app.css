@@ -161,6 +161,7 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 .page-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .page-title-row > .title { min-width: 0; }
 .page-actions { display: flex; align-items: center; flex: none; }
+.page-bar > .page-actions { margin-left: auto; }
 .title { font: var(--w-medium) clamp(26px, 7.4vw, 34px)/1.12 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
 .title-s { font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; }
 .subtitle { color: var(--ink-3); margin-top: 6px; font-size: var(--text-base); }

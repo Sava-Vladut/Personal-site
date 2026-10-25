@@ -130,7 +130,7 @@ export function Journal() {
       <Sky world={world} />
       <PageHead
         title={longToday()}
-        wheel world={world}
+        stack wheel world={world}
         actions={<>
           {/* searching and the calendar belong to the feed, so they live here; everywhere else is on the wheel */}
           <button class="icon-btn" aria-pressed={searching} aria-label={t('Search')} title={t('Search')} onClick={() => { setSearching(!searching); if (searching) setQ(''); }}>

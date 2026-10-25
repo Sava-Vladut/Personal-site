@@ -328,7 +328,9 @@
 .journal-top .icon-btn[aria-pressed='true'] { background: color-mix(in oklab, var(--surface) 70%, transparent); }
 @media (hover: hover) { .journal-top .icon-btn:hover { background: color-mix(in oklab, var(--surface) 70%, transparent); } }
 .journal-top .page-head { margin-bottom: 18px; }
-/* the date shares its row with the controls: keep it to whole words, a touch smaller so "Wednesday" fits */
+/* the controls sit on their own bar above the date, so the date reads on one line */
+.journal-top .page-bar { margin: -6px 0 4px; }
+/* keep the date to whole words, a touch smaller than other titles so it stays on one line on a phone */
 .journal-top .page-title-row > .title { font-size: clamp(24px, 6.6vw, 29px); overflow-wrap: normal; }
 .journal-top .filter-note { margin: 10px 0 0; }
 /* what sits on the sky is solid, tinted a touch with it (no blur: these scroll with the page, and a live blur on them
