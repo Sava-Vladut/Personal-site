@@ -1,39 +1,49 @@
-// The countdown: one at a time, with a name and the two times it runs between, set and changed on its page under Insights
-// (views/Countdown.tsx). It's kept on the server (/api/countdown, server/status.js) so every device and the public status show the same
-// one, and remembered here for when the server can't be reached. Its button sits next to the wheel (components/PageHead.tsx) until it ends.
+// The countdowns: as many as you like, each with a name and the two times it runs between, started, changed and removed on
+// their page under Insights (views/Countdown.tsx). They're kept on the server (/api/countdown, server/status.js) so every device
+// and the public status show the same ones, and remembered here for when the server can't be reached. The button for the one
+// ending soonest sits next to the wheel (components/PageHead.tsx) while any is still running.
 import { useEffect, useState } from 'preact/hooks';
 import { observable } from './store';
 import { t } from './i18n';
 
-export interface Countdown { name: string; start: number; end: number }
+export interface Countdown { id: string; name: string; start: number; end: number }
+/** One to save: a new one has no id yet, and the server gives it one. */
+type NewCountdown = Omit<Countdown, 'id'> & { id?: string };
 
-const KEY = 'mm-countdown';
+const KEY = 'mm-countdowns';
 /** The one there was before it could be changed (17 to 30 October, 07:00), until the server says otherwise. */
-const FIRST: Countdown = { name: '', start: new Date(2026, 9, 17, 7, 0).getTime(), end: new Date(2026, 9, 30, 7, 0).getTime() };
+const FIRST: Countdown = { id: 'first', name: '', start: new Date(2026, 9, 17, 7, 0).getTime(), end: new Date(2026, 9, 30, 7, 0).getTime() };
 
-function cached(): Countdown | null {
+function cached(): Countdown[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw !== null) return JSON.parse(raw);
+    // from when there was only one
+    const old = localStorage.getItem('mm-countdown');
+    if (old !== null) {
+      const one = JSON.parse(old);
+      return one ? [{ id: 'first', ...one }] : [];
+    }
   } catch {}
-  return FIRST;
+  return [FIRST];
 }
 
-const countdown$ = observable<Countdown | null>(cached());
-export const useCountdown = countdown$.use;
-export const getCountdown = countdown$.get;
+const countdowns$ = observable<Countdown[]>(cached());
+export const useCountdowns = countdowns$.use;
+export const getCountdowns = countdowns$.get;
 
-function keep(c: Countdown | null) {
-  countdown$.set(c);
+function keep(list: Countdown[]) {
+  countdowns$.set(list);
   try {
-    localStorage.setItem(KEY, JSON.stringify(c));
+    localStorage.setItem(KEY, JSON.stringify(list));
+    localStorage.removeItem('mm-countdown');
   } catch {}
 }
 
-async function call(method: string, countdown?: Countdown) {
+async function call(method: string, { countdown, id }: { countdown?: NewCountdown; id?: string } = {}) {
   let r: Response;
   try {
-    r = await fetch('/api/countdown', {
+    r = await fetch('/api/countdown' + (id ? '?id=' + encodeURIComponent(id) : ''), {
       method,
       cache: 'no-store',
       signal: AbortSignal.timeout(15_000), // a stalled connection fails instead of spinning
@@ -45,24 +55,27 @@ async function call(method: string, countdown?: Countdown) {
   }
   const out = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(out.error || t('Something went wrong on the server.'));
-  keep(out.countdown ?? null);
+  if (Array.isArray(out.countdowns)) keep(out.countdowns);
 }
 
-/** Asks the server for the countdown. Quietly keeps the one remembered here if it can't. */
-export const loadCountdown = () => call('GET').catch(() => {});
-/** Sets the countdown, or changes it. */
-export const saveCountdown = (c: Countdown) => call('PUT', c);
-/** Removes it: its button goes, and the public status stops showing it. */
-export const removeCountdown = () => call('DELETE');
+/** Asks the server for the countdowns. Quietly keeps the ones remembered here if it can't. */
+export const loadCountdowns = () => call('GET').catch(() => {});
+/** Starts a countdown, or changes one (matched by its id). */
+export const saveCountdown = (c: NewCountdown) => call('PUT', { countdown: c });
+/** Removes one: the public status stops showing it. */
+export const removeCountdown = (id: string) => call('DELETE', { id });
 
-/** Whether it's still counting down: its button and the public status only show it until it ends. */
-export const isRunning = (c: Countdown | null, now = Date.now()): c is Countdown => !!c && now < c.end;
+/** Whether it's still counting down: the wheel's button and the public status only show it until it ends. */
+export const isRunning = <T extends { end: number }>(c: T | null | undefined, now = Date.now()): c is T => !!c && now < c.end;
+
+/** The ones still counting down, ending soonest first. */
+export const running = <T extends { end: number }>(list: T[], now = Date.now()) => list.filter((c) => now < c.end).sort((a, b) => a.end - b.end);
 
 /** Its name, or "Countdown". */
-export const countdownName = (c: Countdown) => c.name || t('Countdown');
+export const countdownName = (c: { name: string }) => c.name || t('Countdown');
 
 /** How far along it is, 0 to 1. */
-export const progress = (c: Countdown, now: number) => Math.min(1, Math.max(0, (now - c.start) / (c.end - c.start)));
+export const progress = (c: { start: number; end: number }, now: number) => Math.min(1, Math.max(0, (now - c.start) / (c.end - c.start)));
 
 /** A span of time as days, hours, minutes and seconds. */
 export function parts(ms: number) {

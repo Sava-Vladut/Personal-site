@@ -1,13 +1,13 @@
 // The public status: one link (/status/<token>) that always shows your latest check-in, for anyone who has it. It's off
 // until turned on, needs the admin password, and shows the feeling, how strong it was and when; the check-in's note, the
 // people you were thinking of (by name), the place's name and the weather only when each is chosen (Status.show), and
-// your name above it if you gave one; the countdown too, while it lasts, if chosen, and the recent trail (the last week's
+// your name above it if you gave one; the countdowns too, while they last, if chosen, and the recent trail (the last week's
 // check-ins as coloured dots: feeling, strength and time only) if chosen. While it's on, each device that's signed in sends the newest check-in it knows of
 // whenever that changes. Stopping deletes it from the server, and turning it on again makes a new link.
 import { EMOTION, shortName } from '../data/emotions';
 import { getDeleted, getEntries, observable, onEntries, type Entry } from './store';
 import { detailsOf, plainTags, type PublicDetails } from './share';
-import { loadCountdown } from './countdown';
+import { loadCountdowns } from './countdown';
 import { t, type Lang } from './i18n';
 
 /** A check-in as the public page shows it. */
@@ -170,9 +170,9 @@ function check() {
   }, 1500);
 }
 
-/** On a signed-in device: learns whether the status is on, then keeps it showing the newest check-in. Fetches the countdown too. */
+/** On a signed-in device: learns whether the status is on, then keeps it showing the newest check-in. Fetches the countdowns too. */
 export function initStatus() {
-  void loadCountdown();
+  void loadCountdowns();
   void loadStatus().then(check);
   onEntries(check);
 }

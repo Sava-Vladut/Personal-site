@@ -5,7 +5,7 @@ import type { ComponentChildren, FunctionComponent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Release } from '../data/changelog';
 import { coreOf, EMOTION, shortName } from '../data/emotions';
-import { useCountdown, useNow } from '../lib/countdown';
+import { useCountdowns, useNow } from '../lib/countdown';
 import { addDays, DAY, diffDays, keyOf, shortDate, todayKey } from '../lib/dates';
 import { count, LOCALE, t } from '../lib/i18n';
 import { keptLesson, lessonOf, type Lesson } from '../lib/lesson';
@@ -140,7 +140,7 @@ const LESSON_ICON: Record<Lesson['kind'], UiName> = { law: 'crown', principle: '
  * people's dates today or tomorrow · a check-in (how you slept, a run to keep, or a while without one) · today's song
  * · writing (days without a note, or the evening's) · a heavy few hours, a lighter day than yesterday, the week on a
  * Sunday evening · someone you haven't mentioned in weeks, or who's felt heavier lately · your song on this day years
- * ago, a song on repeat with no feelings yet · a book stalled, nearly done or finished without a rating · the countdown
+ * ago, a song on repeat with no feelings yet · a book stalled, nearly done or finished without a rating · a countdown
  * ending or over · Twitch channels live, the miner gone quiet, a points milestone or best day · Spotify or GitHub not
  * connected, no home for the weather, sync failing, no backup in a while · the news after an update · today's lesson.
  */
@@ -151,7 +151,7 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
   const books = useBooks();
   const settings = useSettings();
   const sync = useSync();
-  const cd = useCountdown();
+  const countdowns = useCountdowns();
   const { data: points } = usePoints();
   const missing = useLinks();
   const today = todayKey();
@@ -277,15 +277,15 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
     rows.push({ id: 'rate:' + unrated.id, keep: 7, c: 'var(--emo-joy)', icon: ico('star'), title: t('Rate {title}', { title: unrated.title }), sub: t('And say how it left you'), go: () => navigate('book/' + unrated.id) });
   }
 
-  /* the countdown */
-  if (cd) {
+  /* the countdowns */
+  for (const cd of countdowns) {
     const end = keyOf(new Date(cd.end));
     const name = cd.name || t('Countdown');
     const until = diffDays(today, end);
     if (cd.end > now && until <= 1) {
-      rows.push({ id: 'cd-soon:' + cd.end, c: 'var(--emo-hope-interest)', icon: ico('hourglass'), title: until ? t('{name} is tomorrow', { name }) : t('{name} is today', { name }), sub: t('The countdown’s nearly done'), go: () => navigate('countdown') });
+      rows.push({ id: 'cd-soon:' + cd.id + ':' + cd.end, c: 'var(--emo-hope-interest)', icon: ico('hourglass'), title: until ? t('{name} is tomorrow', { name }) : t('{name} is today', { name }), sub: t('The countdown’s nearly done'), go: () => navigate('countdown') });
     } else if (cd.end <= now && now - cd.end < 3 * DAY) {
-      rows.push({ id: 'cd-over:' + cd.end, keep: 3, c: 'var(--emo-hope-interest)', icon: ico('hourglass'), title: t('{name} is over', { name }), sub: t('Write about how it went?'), go: () => navigate('note/new') });
+      rows.push({ id: 'cd-over:' + cd.id + ':' + cd.end, keep: 3, c: 'var(--emo-hope-interest)', icon: ico('hourglass'), title: t('{name} is over', { name }), sub: t('Write about how it went?'), go: () => navigate('note/new') });
     }
   }
 

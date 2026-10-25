@@ -74,14 +74,14 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   const body = await pub.json();
   assert.deepEqual(Object.keys(body.checkin).sort(), ['emotion', 'intensity', 'name', 'time']); // no id, no note, nothing else
   assert.equal(body.checkin.emotion, 'joy/content');
-  assert.equal(body.countdown, undefined); // the countdown only when chosen
+  assert.equal(body.countdowns, undefined); // the countdowns only when chosen
 
   // showing more keeps the same link, and each detail comes in its narrow shape: names, no ids, no coordinates, no music
   const again = await (await send('PUT', '/api/status', { headers: admin, body: { show: ALL, owner: '  Sava   V ', checkin: checkin() } })).json();
   assert.equal(again.token, token);
   const full = await (await send('GET', '/api/status/' + token)).json();
   assert.equal(full.owner, 'Sava V');
-  assert.deepEqual(Object.keys(full.countdown).sort(), ['end', 'name', 'start']); // the one from before it could be changed, until one is saved
+  assert.deepEqual(Object.keys(full.countdowns[0]).sort(), ['end', 'name', 'start']); // the one from before it could be changed, until one is saved; no id
   assert.equal(full.checkin.text, 'A good @[Ana] day');
   assert.deepEqual(full.checkin.details, { people: [{ name: 'Ana', icon: null }], place: { name: 'Home' }, weather: { code: 2, temp: 21.4, daylight: 11, dark: false } });
 
@@ -90,7 +90,7 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   const some = (await (await send('GET', '/api/status/' + token)).json()).checkin;
   assert.equal(some.text, undefined);
   assert.deepEqual(Object.keys(some.details), ['people']);
-  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown, undefined);
+  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdowns, undefined);
 
   // the page carries the feeling for link previews, and is never indexed
   const page = await send('GET', '/status/' + token);
@@ -137,26 +137,46 @@ test('a status saved before the other details existed keeps showing its note', a
   assert.equal(pub.owner, '');
 });
 
-test('the countdown: only the admin reads or changes it, and the public page shows it while it runs', async () => {
+test('the countdowns: only the admin reads or changes them, there can be several, and the public page shows those still running', async () => {
   assert.equal((await send('GET', '/api/countdown')).status, 401);
   assert.equal((await send('PUT', '/api/countdown', { body: { countdown: { start: 1, end: 2 } } })).status, 401);
   const now = Date.now();
+  await send('DELETE', '/api/countdown?id=first', { headers: admin }); // the one from before
   const set = await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { name: '  Trip   home ', start: now - 1000, end: now + 86_400_000, extra: 1 } } });
   assert.equal(set.status, 200);
-  assert.deepEqual((await set.json()).countdown, { name: 'Trip home', start: now - 1000, end: now + 86_400_000 });
-  assert.deepEqual((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdown.name, 'Trip home');
+  const { countdown: trip, countdowns } = await set.json();
+  assert.match(trip.id, /^[A-Za-z0-9_-]{12}$/); // a new one gets an id
+  assert.deepEqual(trip, { id: trip.id, name: 'Trip home', start: now - 1000, end: now + 86_400_000 });
+  assert.deepEqual(countdowns, [trip]);
   assert.equal((await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { start: now, end: now - 1 } } })).status, 400);
   assert.equal((await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { start: 'x', end: now } } })).status, 400);
+  assert.equal((await send('PUT', '/api/countdown', { headers: admin, body: {} })).status, 400);
 
+  // a second one sits beside the first; changing the first keeps its place
+  const exam = (await (await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { id: 'exam', name: 'Exam', start: now, end: now + 3_600_000 } } })).json()).countdown;
+  await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { ...trip, name: 'Trip' } } });
+  const list = (await (await send('GET', '/api/countdown', { headers: admin })).json()).countdowns;
+  assert.deepEqual(list.map((c) => c.name), ['Trip', 'Exam']);
+
+  // the public page shows the running ones, soonest first, without ids
   const { token } = await (await send('PUT', '/api/status', { headers: admin, body: { show: { countdown: true }, checkin: checkin() } })).json();
-  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown.name, 'Trip home');
-  // once it's over, the public page drops it
-  await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { name: '', start: now - 5000, end: now - 1000 } } });
-  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown, undefined);
+  assert.deepEqual((await (await send('GET', '/api/status/' + token)).json()).countdowns, [{ name: 'Exam', start: exam.start, end: exam.end }, { name: 'Trip', start: trip.start, end: trip.end }]);
+  // once one's over, the public page drops it
+  await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { ...exam, start: now - 5000, end: now - 1000 } } });
+  assert.deepEqual((await (await send('GET', '/api/status/' + token)).json()).countdowns.map((c) => c.name), ['Trip']);
   // removed: gone everywhere, and it stays gone
-  assert.equal((await (await send('DELETE', '/api/countdown', { headers: admin })).json()).countdown, null);
-  assert.equal((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdown, null);
-  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdown, undefined);
+  assert.deepEqual((await (await send('DELETE', '/api/countdown?id=' + trip.id, { headers: admin })).json()).countdowns.map((c) => c.id), ['exam']);
+  await send('DELETE', '/api/countdown?id=exam', { headers: admin });
+  assert.deepEqual((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdowns, []);
+  assert.equal((await (await send('GET', '/api/status/' + token)).json()).countdowns, undefined);
+});
+
+test('the countdowns: a file from when there was only one becomes a list of it', async () => {
+  const now = Date.now();
+  writeFileSync(join(directory, 'countdown.json'), JSON.stringify({ countdown: { name: 'Old', start: now, end: now + 1000 } }));
+  assert.deepEqual((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdowns, [{ id: 'first', name: 'Old', start: now, end: now + 1000 }]);
+  writeFileSync(join(directory, 'countdown.json'), JSON.stringify({ countdown: null }));
+  assert.deepEqual((await (await send('GET', '/api/countdown', { headers: admin })).json()).countdowns, []);
 });
 
 test('the recent trail: off by default, only feelings and times, and only while chosen', async () => {

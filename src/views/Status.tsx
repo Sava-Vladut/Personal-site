@@ -13,7 +13,7 @@ import { StatusTrail } from '../components/StatusTrail';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/shared.css';
 
-type Public = { owner: string; checkin: PublicCheckin | null; updated: number; countdown?: C; trail?: PublicTrail };
+type Public = { owner: string; checkin: PublicCheckin | null; updated: number; countdowns?: Omit<C, 'id'>[]; trail?: PublicTrail };
 type State = Public | 'gone' | 'loading' | 'error';
 
 async function read(token: string): Promise<Public | 'gone'> {
@@ -95,7 +95,7 @@ export function Status({ token }: { token: string }) {
               {typeof state === 'object' && <p>{owner ? t('{name} hasn’t checked in yet. This page shows the next one by itself.', { name: owner }) : t('This page shows the next check-in by itself.')}</p>}
             </div>
           )}
-          {typeof state === 'object' && state.countdown && <Countdown c={state.countdown} />}
+          {typeof state === 'object' && state.countdowns?.map((c) => <Countdown key={c.start + ':' + c.end} c={c} />)}
         </div>
       </main>
     );
@@ -164,7 +164,7 @@ export function Status({ token }: { token: string }) {
 
         {state.trail && <StatusTrail trail={state.trail} />}
 
-        {state.countdown && <Countdown c={state.countdown} />}
+        {state.countdowns?.map((c) => <Countdown key={c.start + ':' + c.end} c={c} />)}
 
         <footer class="status-foot">
           <span>{since ? at(c.time) : t('Checked in {when}', { when: at(c.time) })}</span>
@@ -178,8 +178,8 @@ export function Status({ token }: { token: string }) {
 const pad = (n: number) => String(n).padStart(2, '0');
 const until = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
-/** The countdown (lib/countdown.ts), ticking live, when the status chose to show it. Gone by itself once it ends. */
-function Countdown({ c }: { c: C }) {
+/** A countdown (lib/countdown.ts), ticking live, when the status chose to show them. Gone by itself once it ends. */
+function Countdown({ c }: { c: Omit<C, 'id'> }) {
   const now = useNow(1000);
   if (!isRunning(c, now)) return null;
   const left = parts(c.end - now);

@@ -4,7 +4,7 @@ import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
 import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, recentTrail, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show, type TrailBy } from '../lib/status';
-import { isRunning, useCountdown } from '../lib/countdown';
+import { running, useCountdowns } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
 import { ask } from './Confirm';
@@ -34,7 +34,7 @@ export function StatusPanel() {
   const status = useStatus();
   const loadError = useStatusError();
   const entries = useEntries();
-  const countdown = useCountdown();
+  const countdowns = running(useCountdowns());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [show, setShow] = useState<Show>(SHOW_NONE);
@@ -195,12 +195,12 @@ export function StatusPanel() {
 
         <div class="share-parts">
           <div class="share-parts-head">{t('Also show')}</div>
-          {PARTS.filter((p) => p.key !== 'countdown' || isRunning(countdown)).map((p) => (
+          {PARTS.filter((p) => p.key !== 'countdown' || countdowns.length).map((p) => (
             <label class="share-part" key={p.key}>
               <Icon name={p.icon} size={18} />
               <span class="share-part-main">
-                <span class="share-part-name">{p.label}</span>
-                <span class="share-part-value">{p.key === 'countdown' && countdown ? t('The timer to {when}, ticking live', { when: until.format(countdown.end) }) : p.hint}</span>
+                <span class="share-part-name">{p.key === 'countdown' && countdowns.length > 1 ? t('Countdowns') : p.label}</span>
+                <span class="share-part-value">{p.key !== 'countdown' ? p.hint : countdowns.length > 1 ? t('{n} timers, each ticking live until it ends', { n: countdowns.length }) : countdowns[0] && t('The timer to {when}, ticking live', { when: until.format(countdowns[0].end) })}</span>
               </span>
               <button class="switch" role="switch" aria-checked={show[p.key]} aria-label={p.label} onClick={() => toggle(p.key)} disabled={busy} />
             </label>

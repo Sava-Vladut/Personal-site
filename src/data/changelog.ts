@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.137.0',
+    date: '2026-10-25',
+    changes: [
+      'You can have several countdowns going at once: start a new one with the + on the Countdowns page',
+      'Each running countdown gets its own card with its ring and clock, and its own pencil to change or remove it',
+      'Countdowns that are over move to a list below, where you can give them new dates or remove them',
+      'The button next to the wheel shows the countdown ending soonest, and the public status can show all the running ones',
+    ],
+  },
+  {
     version: '1.136.3',
     date: '2026-10-25',
     changes: [
