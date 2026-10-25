@@ -12,7 +12,7 @@ export interface Law {
   realm: Realm;
   /** One line, the hook: what the law really says, in our words. */
   line: string;
-  /** The law, explained plainly: what it claims and why Greene thinks it holds. */
+  /** The law, explained plainly: what it claims and why it holds. */
   gist: string;
   /** A moment from history where it played out, retold. */
   scene: { who: string; when: string; text: string };

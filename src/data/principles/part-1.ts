@@ -4,9 +4,9 @@ import type { Principle } from './types';
 
 export const PRINCIPLES: Principle[] = [
   {
-    n: 1, id: 'no-criticism', part: 'handling', title: 'Don’t Criticize, Condemn or Complain',
+    n: 1, id: 'no-criticism', part: 'handling', title: 'Don’t Criticise, Condemn or Complain',
     line: 'Criticism almost never changes the person you aim it at. It only teaches them to defend themselves.',
-    gist: 'Carnegie opens the whole book here, because he thinks everything else depends on it. People, he argues, almost never blame themselves for anything. Even the worst of them have a story in which they were justified, so criticism does not land as information. It lands as an attack on their pride, and pride fights back. The result is resentment, excuses and a person less willing to change than before. He points to B. F. Skinner’s finding that animals learn faster when good behaviour is rewarded than when bad behaviour is punished, and says people are no different. Instead of condemning, try to understand why someone did what they did. Any fool can criticise; it takes character to understand and forgive.',
+    gist: 'The book opens here, because everything else depends on it. People, it argues, almost never blame themselves for anything. Even the worst of them have a story in which they were justified, so criticism does not land as information. It lands as an attack on their pride, and pride fights back. The result is resentment, excuses and a person less willing to change than before. It points to B. F. Skinner’s finding that animals learn faster when good behaviour is rewarded than when bad behaviour is punished, and says people are no different. Instead of condemning, try to understand why someone did what they did. Any fool can criticise; it takes character to understand and forgive.',
     story: {
       who: 'Abraham Lincoln',
       when: '1842 and July 1863',
@@ -24,8 +24,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'naive-realism', how: 'You feel you are simply seeing what happened, so their view looks like an excuse. Assuming they have a reasonable story too is the first step out of the trap.' },
     ],
     laws: [
-      { n: 9, how: 'Greene says arguments leave losers who remember. Carnegie agrees and goes further: even a criticism you are right about makes an enemy, so change behaviour by example and encouragement instead.' },
-      { n: 19, how: 'Greene warns that some people never forgive an insult. Carnegie’s answer is simpler: since you can never be sure who those people are, don’t insult anyone. Lincoln learned it with a broadsword in his hand.' },
+      { n: 9, how: 'The law says arguments leave losers who remember. The principle agrees and goes further: even a criticism you are right about makes an enemy, so change behaviour by example and encouragement instead.' },
+      { n: 19, how: 'The law warns that some people never forgive an insult. The principle’s answer is simpler: since you can never be sure who those people are, don’t insult anyone. Lincoln learned it with a broadsword in his hand.' },
     ],
     study: {
       who: 'John Gottman and Robert Levenson, 1980s–1990s',
@@ -57,11 +57,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 2, id: 'appreciation', part: 'handling', title: 'Give Honest and Sincere Appreciation',
     line: 'Everyone is hungry to be noticed for what they do well, and almost no one is fed.',
-    gist: 'Carnegie says the deepest urge in human nature is the desire to be important, to feel valued. People will work, sacrifice and even behave badly to get it, and they rarely get enough. So honest appreciation is one of the most powerful things you can give, and one of the cheapest. He is careful to separate it from flattery. Flattery is counterfeit: it comes from the teeth and is about what you want. Appreciation comes from the heart and is about what they actually did. The habit he asks for is to stop thinking about yourself for a moment, look for what is genuinely good in another person, and tell them.',
+    gist: 'The book says the deepest urge in human nature is the desire to be important, to feel valued. People will work, sacrifice and even behave badly to get it, and they rarely get enough. So honest appreciation is one of the most powerful things you can give, and one of the cheapest. The book is careful to separate appreciation from flattery. Flattery is counterfeit: it comes from the teeth and is about what you want. Appreciation comes from the heart and is about what they actually did. The habit it asks for is to stop thinking about yourself for a moment, look for what is genuinely good in another person, and tell them.',
     story: {
       who: 'Charles Schwab',
       when: 'Early 1900s',
-      text: 'Andrew Carnegie paid Charles Schwab a salary of about a million dollars a year to run his steel business, an enormous sum at the time. Schwab himself said it was not because he knew more about making steel: plenty of the men under him knew more. It was because he knew how to handle people. His method, he said, was appreciation and encouragement. He never criticised anyone, believed in giving people a reason to work, and was hearty in his approval and lavish in his praise. Carnegie adds a second, smaller story: a farm woman who, after years of cooking for the men, put a pile of hay on the table. When they asked if she had gone mad, she said she hadn’t thought they would notice, since in twenty years none of them had ever told her they could tell the difference.',
+      text: 'Andrew Carnegie paid Charles Schwab a salary of about a million dollars a year to run his steel business, an enormous sum at the time. Schwab himself said it was not because he knew more about making steel: plenty of the men under him knew more. It was because he knew how to handle people. His method, he said, was appreciation and encouragement. He never criticised anyone, believed in giving people a reason to work, and was hearty in his approval and lavish in his praise. A second, smaller story goes with it: a farm woman who, after years of cooking for the men, put a pile of hay on the table. When they asked if she had gone mad, she said she hadn’t thought they would notice, since in twenty years none of them had ever told her they could tell the difference.',
     },
     mind: 'People track how they are seen as closely as they track hunger or danger. Feeling valued tells us we are safe in our group, and its absence registers as a quiet threat. Most of what people do well is never mentioned, because good work is expected and only mistakes stand out. So a specific, honest word of thanks fills a real gap. It also changes behaviour: people repeat what gets noticed. The catch is that we badly underestimate how much our thanks will matter, and overestimate how awkward it will be, so we hold back.',
     levers: [
@@ -74,8 +74,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'peak-end', how: 'People remember a stretch of work by its high points and how it ended. A sincere word of thanks at the end of a project can colour the memory of the whole thing.' },
     ],
     laws: [
-      { n: 24, how: 'Greene’s perfect courtier flatters, but subtly and in measure. Carnegie draws the line elsewhere: not at how much you praise, but at whether you mean it. His appreciation is the courtier’s skill with the calculation taken out.' },
-      { n: 12, how: 'Greene uses a well-timed act of generosity to disarm a target. Carnegie warns that people sense the hook, and that praise used as bait is flattery. Real appreciation expects nothing back.' },
+      { n: 24, how: 'The law’s perfect courtier flatters, but subtly and in measure. The principle draws the line elsewhere: not at how much you praise, but at whether you mean it. His appreciation is the courtier’s skill with the calculation taken out.' },
+      { n: 12, how: 'The law uses a well-timed act of generosity to disarm a target. The principle warns that people sense the hook, and that praise used as bait is flattery. Real appreciation expects nothing back.' },
     ],
     study: {
       who: 'Adam Grant and Francesca Gino, 2010',
@@ -107,11 +107,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 3, id: 'eager-want', part: 'handling', title: 'Arouse in the Other Person an Eager Want',
     line: 'Nobody does anything for your reasons. Find theirs.',
-    gist: 'Carnegie says he likes strawberries and cream, but when he goes fishing he baits the hook with worms, because that is what the fish want. People are the same. We talk endlessly about what we want, while everyone else is interested only in what they want. So the only real way to move someone is to talk about what they want and show them how to get it. Borrowing from the psychologist Harry Overstreet, he says: first arouse in the other person an eager want. He who can do this has the whole world with him. This isn’t trickery; it means seeing the situation from the other side before you ask for anything.',
+    gist: 'You may like strawberries and cream, but when you go fishing you bait the hook with worms, because that is what the fish want. People are the same. We talk endlessly about what we want, while everyone else is interested only in what they want. So the only real way to move someone is to talk about what they want and show them how to get it. Borrowing from the psychologist Harry Overstreet, the book says: first arouse in the other person an eager want. He who can do this has the whole world with him. This isn’t trickery; it means seeing the situation from the other side before you ask for anything.',
     story: {
       who: 'Ralph Waldo Emerson and Andrew Carnegie',
       when: '19th century',
-      text: 'Emerson and his son once tried to get a calf into the barn. The son pulled, Emerson pushed, and the calf dug in its legs and refused to move. Their housemaid, who had none of Emerson’s learning, saw what was going on. She put her finger in the calf’s mouth, let it suck, and gently led it into the barn. Carnegie pairs this with a story about his steel-making namesake. Andrew Carnegie’s sister-in-law was worried sick because her two sons at Yale never answered her letters. Carnegie bet that he could get a reply by return post without asking for one. He wrote them a chatty letter and mentioned in a postscript that he was sending each of them five dollars. He didn’t enclose the money. Both boys wrote back at once to thank “Dear Uncle Andrew”.',
+      text: 'Emerson and his son once tried to get a calf into the barn. The son pulled, Emerson pushed, and the calf dug in its legs and refused to move. Their housemaid, who had none of Emerson’s learning, saw what was going on. She put her finger in the calf’s mouth, let it suck, and gently led it into the barn. A second story goes with it, about the steel-making Andrew Carnegie. His sister-in-law was worried sick because her two sons at Yale never answered her letters. Andrew bet that he could get a reply by return post without asking for one. He wrote them a chatty letter and mentioned in a postscript that he was sending each of them five dollars. He didn’t enclose the money. Both boys wrote back at once to thank “Dear Uncle Andrew”.',
     },
     mind: 'Every request lands in a mind already full of its own goals, worries and plans. Pushing your reasons into that mind meets resistance, because they don’t connect to anything there. When a request is framed around what the other person already wants, it stops being a demand and becomes an opportunity, and the person moves of their own accord. The difficulty is that we are trapped in our own point of view. Our wants feel obvious and urgent, and it takes real effort to imagine the same situation from someone else’s side.',
     levers: [
@@ -125,13 +125,13 @@ export const PRINCIPLES: Principle[] = [
       { id: 'framing', how: 'People respond to how a choice is presented. Framing your request in terms of their gains rather than your needs is the honest use of this trap.' },
     ],
     laws: [
-      { n: 13, how: 'Greene says to appeal to people’s self-interest, never to their mercy or gratitude. Carnegie says almost the same thing, but in a warmer register: the aim is to find where your interests genuinely meet theirs.' },
-      { n: 32, how: 'Greene plays to people’s fantasies to sell them illusions. Carnegie’s eager want must be real: if what you promise doesn’t serve them, it is bait, and it will be discovered.' },
+      { n: 13, how: 'The law says to appeal to people’s self-interest, never to their mercy or gratitude. The principle says almost the same thing, but in a warmer register: the aim is to find where your interests genuinely meet theirs.' },
+      { n: 32, how: 'The law plays to people’s fantasies to sell them illusions. The principle’s eager want must be real: if what you promise doesn’t serve them, it is bait, and it will be discovered.' },
     ],
     study: {
       who: 'Matthew Feinberg and Robb Willer, 2015',
       title: 'From gulf to bridge: moral reframing',
-      text: 'Feinberg and Willer first asked people to write an argument that would win over the other side of politics. Almost nobody managed it: only about 9 per cent of liberals arguing for same-sex marriage appealed to conservative values, and about 8 per cent of conservatives arguing for English as the official language appealed to liberal ones. Everyone else argued from their own values. Then the researchers tested reframed arguments. Conservatives who read a case for same-sex marriage built on loyalty and patriotism supported it more than those who read one built on equality, and liberals warmed to English as the official language when it was framed in terms of fairness. The shifts were modest and measured in online surveys straight after reading. In a 2021 field experiment by Joshua Kalla, Ethan Levine and David Broockman, canvassers listened for each voter’s values and tailored their case to them; it had large effects on willingness to act, but weaker evidence of changed views. It is Carnegie’s worm on the hook: the bait has to suit the fish, not the fisherman.',
+      text: 'Feinberg and Willer first asked people to write an argument that would win over the other side of politics. Almost nobody managed it: only about 9 per cent of liberals arguing for same-sex marriage appealed to conservative values, and about 8 per cent of conservatives arguing for English as the official language appealed to liberal ones. Everyone else argued from their own values. Then the researchers tested reframed arguments. Conservatives who read a case for same-sex marriage built on loyalty and patriotism supported it more than those who read one built on equality, and liberals warmed to English as the official language when it was framed in terms of fairness. The shifts were modest and measured in online surveys straight after reading. In a 2021 field experiment by Joshua Kalla, Ethan Levine and David Broockman, canvassers listened for each voter’s values and tailored their case to them; it had large effects on willingness to act, but weaker evidence of changed views. It is the worm on the hook: the bait has to suit the fish, not the fisherman.',
     },
     today: [
       'Pitching a project to your boss in terms of the problem it solves for them',
@@ -158,11 +158,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 4, id: 'interested', part: 'liked', title: 'Become Genuinely Interested in Other People',
     line: 'You make more friends by being interested than by being interesting.',
-    gist: 'Carnegie notes that the dog is the one animal that doesn’t have to work for a living: it gets loved simply by being delighted to see you. That is his point. You can make more friends in two months by taking a real interest in other people than in two years of trying to get them interested in you. Most people are thinking about themselves almost all the time, he says, citing a telephone company study that found “I” was the most common word in calls. So someone who turns their attention outward stands out at once. The interest has to be real: asking about people’s lives, remembering what they said, going out of your way for them. Faked interest, he warns, is quickly detected.',
+    gist: 'The book notes that the dog is the one animal that doesn’t have to work for a living: it gets loved simply by being delighted to see you. That is the point. You can make more friends in two months by taking a real interest in other people than in two years of trying to get them interested in you. Most people are thinking about themselves almost all the time, it says, citing a telephone company study that found “I” was the most common word in calls. So someone who turns their attention outward stands out at once. The interest has to be real: asking about people’s lives, remembering what they said, going out of your way for them. Faked interest, it warns, is quickly detected.',
     story: {
       who: 'Theodore Roosevelt and James Amos',
       when: 'Early 1900s',
-      text: 'James Amos, Theodore Roosevelt’s valet, wrote a book about him. In it he told how his wife once asked the President what a bobwhite was, because she had never seen one. Roosevelt described the bird to her in detail. Some time later the telephone rang in the Amoses’ little cottage on the grounds. It was Roosevelt himself, calling to say that a bobwhite was sitting outside her window, and if she looked out she might see it. Whenever he passed the cottage he would call out to them, even if they were out of sight. Carnegie also tells how Roosevelt, visiting the White House after he had left office, greeted the old servants by name, including the kitchen maids. Staff could not stop talking about it.',
+      text: 'James Amos, Theodore Roosevelt’s valet, wrote a book about him. In it he told how his wife once asked the President what a bobwhite was, because she had never seen one. Roosevelt described the bird to her in detail. Some time later the telephone rang in the Amoses’ little cottage on the grounds. It was Roosevelt himself, calling to say that a bobwhite was sitting outside her window, and if she looked out she might see it. Whenever he passed the cottage he would call out to them, even if they were out of sight. Another account tells how Roosevelt, visiting the White House after he had left office, greeted the old servants by name, including the kitchen maids. Staff could not stop talking about it.',
     },
     mind: 'Interest is a signal of value. When someone asks about our lives and listens to the answers, it tells us we matter to them, and we respond with warmth. It also creates closeness directly: people who take turns asking and sharing feel connected far faster than those who don’t. The obstacle is that most of us are absorbed in ourselves, especially in new or stressful company. We worry about how we come across, which leaves little attention for the other person. Curiosity is partly a choice to move the spotlight off ourselves.',
     levers: [
@@ -175,8 +175,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'fae', how: 'We judge people quickly from a few traits. Getting curious about their circumstances and story replaces the snap judgement with something truer.' },
     ],
     laws: [
-      { n: 14, how: 'Greene says to pose as a friend and work as a spy, asking questions to extract information. Carnegie asks the same questions for the opposite reason: because the answers are worth knowing for their own sake. The difference is the motive, and people can feel it.' },
-      { n: 18, how: 'Greene warns that isolation is dangerous to the powerful. Real interest in others is the most natural defence against it: it keeps you connected, informed and liked.' },
+      { n: 14, how: 'The law says to pose as a friend and work as a spy, asking questions to extract information. The principle asks the same questions for the opposite reason: because the answers are worth knowing for their own sake. The difference is the motive, and people can feel it.' },
+      { n: 18, how: 'The law warns that isolation is dangerous to the powerful. Real interest in others is the most natural defence against it: it keeps you connected, informed and liked.' },
     ],
     study: {
       who: 'Arthur Aron and colleagues, 1997',
@@ -208,11 +208,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 5, id: 'smile', part: 'liked', title: 'Smile',
     line: 'A smile says “I’m glad to see you” before you’ve said anything at all.',
-    gist: 'Actions speak louder than words, Carnegie says, and a smile says: I like you, you make me happy, I am glad to see you. That is why dogs are so loved: they are so obviously pleased when you arrive. He is clear that he means a real smile, not a grin pasted on, which fools no one. And if you don’t feel like smiling, he suggests acting as if you do: behave cheerfully and the feeling often follows. A smile costs nothing, he says, but it brightens the day of whoever receives it, and it can change the mood of a home or an office.',
+    gist: 'Actions speak louder than words, the book says, and a smile says: I like you, you make me happy, I am glad to see you. That is why dogs are so loved: they are so obviously pleased when you arrive. The smile it asks for is a real one, not a grin pasted on, which fools no one. And if you don’t feel like smiling, it suggests acting as if you do: behave cheerfully and the feeling often follows. A smile costs nothing, it says, but it brightens the day of whoever receives it, and it can change the mood of a home or an office.',
     story: {
       who: 'William B. Steinhardt',
       when: '1930s',
-      text: 'One of Carnegie’s students, a New York stockbroker, admitted that in eighteen years of marriage he had rarely smiled at his wife or said more than a few words to her before leaving for work. Carnegie asked the class to smile at people for a week and report back. The next morning Steinhardt smiled at his wife over breakfast and said good morning. She was stunned. He kept it up, and smiled at the doorman, the lift attendant, the cashier and the traders on the floor. Soon, he said, people were smiling back. He found that he got along better at work, complained less and listened more, and that the habit had brought more happiness into his home in two months than in the whole year before.',
+      text: 'A New York stockbroker on a course about dealing with people admitted that in eighteen years of marriage he had rarely smiled at his wife or said more than a few words to her before leaving for work. The class was asked to smile at people for a week and report back. The next morning Steinhardt smiled at his wife over breakfast and said good morning. She was stunned. He kept it up, and smiled at the doorman, the lift attendant, the cashier and the traders on the floor. Soon, he said, people were smiling back. He found that he got along better at work, complained less and listened more, and that the habit had brought more happiness into his home in two months than in the whole year before.',
     },
     mind: 'Faces are the first thing we read about one another, and a smile is the clearest signal of friendly intent we have. People automatically and often unconsciously mirror the expressions they see, and that mirroring nudges their mood in the same direction. So a smile does not only show that you are friendly; it spreads a little friendliness. People also judge someone’s warmth within seconds of seeing them, and that first judgement colours what follows. A real smile, the kind that crinkles the eyes, is hard to fake well, which is why it is trusted.',
     levers: [
@@ -225,8 +225,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'peak-end', how: 'People remember an encounter by its high point and how it ended. A warm greeting and a smile at goodbye shape the memory of the whole exchange.' },
     ],
     laws: [
-      { n: 10, how: 'Greene says to avoid the unhappy and unlucky because moods are infectious. Carnegie agrees that moods spread, and draws the opposite lesson: be the source of a good mood instead of fleeing bad ones.' },
-      { n: 3, how: 'In Greene, a pleasant face is a mask that hides your intentions. Carnegie wants a smile that hides nothing, and warns that a forced one is easily seen through.' },
+      { n: 10, how: 'The law says to avoid the unhappy and unlucky because moods are infectious. The principle agrees that moods spread, and draws the opposite lesson: be the source of a good mood instead of fleeing bad ones.' },
+      { n: 3, how: 'The law treats a pleasant face as a mask that hides your intentions. The principle wants a smile that hides nothing, and warns that a forced one is easily seen through.' },
     ],
     study: {
       who: 'LeeAnne Harker and Dacher Keltner, 2001',
@@ -258,11 +258,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 6, id: 'name', part: 'liked', title: 'Remember That a Person’s Name Is to That Person the Sweetest Sound in Any Language',
     line: 'Remembering someone’s name tells them they made an impression.',
-    gist: 'People are so attached to their names, Carnegie says, that they will pay to see them on buildings and books. Remembering a person’s name and using it is a quiet but powerful compliment. Forgetting it, or getting it wrong, puts you at a real disadvantage. He admits that remembering names takes work, and that most people excuse themselves by saying they are too busy. But Napoleon III, emperor of France, claimed to remember the name of everyone he met, and had a method: if he didn’t hear a name clearly, he asked for it again; if it was unusual, he asked how it was spelled; and he repeated it during the conversation and wrote it down afterwards. Andrew Carnegie, the steel magnate, used names too: he named a steel works after the head of the railway he wanted to sell to.',
+    gist: 'People are so attached to their names, the book says, that they will pay to see them on buildings and books. Remembering a person’s name and using it is a quiet but powerful compliment. Forgetting it, or getting it wrong, puts you at a real disadvantage. The book admits that remembering names takes work, and that most people excuse themselves by saying they are too busy. But Napoleon III, emperor of France, claimed to remember the name of everyone he met, and had a method: if he didn’t hear a name clearly, he asked for it again; if it was unusual, he asked how it was spelled; and he repeated it during the conversation and wrote it down afterwards. Andrew Carnegie, the steel magnate, used names too: he named a steel works after the head of the railway he wanted to sell to.',
     story: {
       who: 'Jim Farley',
       when: '1920s–1932',
-      text: 'Jim Farley never went to high school and worked in a brickyard as a young man, but he rose to run Franklin D. Roosevelt’s campaign for president and became Postmaster General. When Carnegie asked him the secret of his success, Farley said he could call around fifty thousand people by their first names. Whenever he met someone new, he found out their full name, something about their family, their work and their politics, and fixed it in his mind. The next time he saw them, even a year later, he could greet them by name and ask about their wife and children or the hollyhocks in their garden. Before Roosevelt’s 1932 campaign, he travelled thousands of miles across the country meeting local party people, and afterwards wrote to them all, using their first names and signing himself “Jim”.',
+      text: 'Jim Farley never went to high school and worked in a brickyard as a young man, but he rose to run Franklin D. Roosevelt’s campaign for president and became Postmaster General. Asked the secret of his success, Farley said he could call around fifty thousand people by their first names. Whenever he met someone new, he found out their full name, something about their family, their work and their politics, and fixed it in his mind. The next time he saw them, even a year later, he could greet them by name and ask about their wife and children or the hollyhocks in their garden. Before Roosevelt’s 1932 campaign, he travelled thousands of miles across the country meeting local party people, and afterwards wrote to them all, using their first names and signing himself “Jim”.',
     },
     mind: 'Our own name is one of the most deeply learned sounds we know, and the brain is tuned to catch it even when we aren’t listening. Hearing someone else use it signals that we were noticed and remembered as an individual, not one face in a crowd. Names are also strangely hard to remember, much harder than other facts about a person, because a name is arbitrary: it doesn’t connect to anything else you know about them. That is why remembering one takes deliberate effort, and why the effort is noticed.',
     levers: [
@@ -275,8 +275,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'spotlight', how: 'You may worry that forgetting a name will be a terrible embarrassment, so you avoid asking again. In fact people mind far less than you think, and much prefer being asked to being avoided.' },
     ],
     laws: [
-      { n: 19, how: 'Greene warns you to know who you are dealing with. Remembering names, families and interests as Farley did is that knowledge put to a friendly use.' },
-      { n: 5, how: 'Greene says reputation is everything. Farley built his reputation one remembered name at a time, until whole states felt they knew him personally.' },
+      { n: 19, how: 'The law warns you to know who you are dealing with. Remembering names, families and interests as Farley did is that knowledge put to a friendly use.' },
+      { n: 5, how: 'The law says reputation is everything. Farley built his reputation one remembered name at a time, until whole states felt they knew him personally.' },
     ],
     study: {
       who: 'Neville Moray, 1959, and later work by Noelle Wood and Nelson Cowan',
@@ -308,11 +308,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 7, id: 'listen', part: 'liked', title: 'Be a Good Listener. Encourage Others to Talk About Themselves',
     line: 'People will forget what you said, but they’ll remember that you listened.',
-    gist: 'Carnegie says the surest way to be thought a brilliant conversationalist is to listen. Most people are far more interested in themselves and their own problems than in anything you could say, and very few people are ever really heard. So close, attentive listening is itself a gift and a compliment. It means putting your own stories aside, asking questions the other person will enjoy answering, and encouraging them to talk about themselves and their achievements. Many people who fail to make a good impression, he says, fail because they don’t listen: they are so busy thinking about what to say next that they never hear the other person.',
+    gist: 'The book says the surest way to be thought a brilliant conversationalist is to listen. Most people are far more interested in themselves and their own problems than in anything you could say, and very few people are ever really heard. So close, attentive listening is itself a gift and a compliment. It means putting your own stories aside, asking questions the other person will enjoy answering, and encouraging them to talk about themselves and their achievements. Many people who fail to make a good impression, it says, fail because they don’t listen: they are so busy thinking about what to say next that they never hear the other person.',
     story: {
-      who: 'Dale Carnegie and a botanist',
+      who: 'A dinner guest and a botanist',
       when: '1930s',
-      text: 'At a dinner party in New York, Carnegie found himself next to a well-known botanist. He had never spoken to a botanist before and was fascinated. He sat on the edge of his chair and listened as the man talked about exotic plants, experiments in developing new kinds of plants and indoor gardens, and he even asked for advice about a small problem with his own garden. They talked until midnight, though Carnegie said almost nothing. When he left, the botanist told their host that Carnegie was most stimulating and a most interesting conversationalist. Carnegie realised that all he had really done was listen, and that it was enough.',
+      text: 'At a dinner party in New York, one guest found himself next to a well-known botanist. He had never spoken to a botanist before and was fascinated. He sat on the edge of his chair and listened as the man talked about exotic plants, experiments in developing new kinds of plants and indoor gardens, and he even asked for advice about a small problem with his own garden. They talked until midnight, though the guest said almost nothing. When the evening ended, the botanist told their host that the man was most stimulating and a most interesting conversationalist. All he had really done was listen, and it was enough.',
     },
     mind: 'Talking about ourselves is one of life’s quiet pleasures, and the brain treats it as a reward much as it does food or money. So someone who lets us do it, and listens well, becomes associated with that pleasure. Being heard also meets a deeper need: to feel understood. A good listener makes people feel known, and we trust and like people who make us feel known. Listening well is hard because we are impatient to speak, and while someone else talks we are often busy planning our reply.',
     levers: [
@@ -326,8 +326,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'spotlight', how: 'You worry about how you are coming across and how much you are saying. Shift that attention to listening and people will think better of you than if you had performed.' },
     ],
     laws: [
-      { n: 4, how: 'Greene advises saying less than necessary to seem powerful and mysterious. Carnegie also says less, but to hear more: the silence is an invitation, not a mask.' },
-      { n: 21, how: 'Greene suggests seeming less clever than your mark so they feel superior. A good listener lets the other person shine too, but out of real interest, not to lower their guard.' },
+      { n: 4, how: 'The law advises saying less than necessary to seem powerful and mysterious. The principle also says less, but to hear more: the silence is an invitation, not a mask.' },
+      { n: 21, how: 'The law suggests seeming less clever than your mark so they feel superior. A good listener lets the other person shine too, but out of real interest, not to lower their guard.' },
     ],
     study: {
       who: 'Diana Tamir and Jason Mitchell, 2012',
@@ -359,7 +359,7 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 8, id: 'their-interests', part: 'liked', title: 'Talk in Terms of the Other Person’s Interests',
     line: 'The quickest way into someone’s good books is through the thing they love.',
-    gist: 'Carnegie notes that Theodore Roosevelt, whose visitors were constantly amazed by the range of his knowledge, would stay up late the night before a meeting reading about whatever his guest cared about. He knew that the royal road to a person’s heart is to talk about the things they treasure most. This isn’t about pretending to love what they love. It is about meeting them where their interest already is, and letting them lead you there. People light up when they are asked about what they care about, and they remember who asked.',
+    gist: 'The book notes that Theodore Roosevelt, whose visitors were constantly amazed by the range of his knowledge, would stay up late the night before a meeting reading about whatever his guest cared about. He knew that the royal road to a person’s heart is to talk about the things they treasure most. This isn’t about pretending to love what they love. It is about meeting them where their interest already is, and letting them lead you there. People light up when they are asked about what they care about, and they remember who asked.',
     story: {
       who: 'Edward L. Chalif',
       when: '1930s',
@@ -376,8 +376,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'in-group', how: 'Shared interests make someone feel like one of us. Finding where your worlds touch draws you into their circle, which is warm, but it can also blind you to people with nothing in common with you.' },
     ],
     laws: [
-      { n: 43, how: 'Greene says to work on hearts and minds, by appealing to people’s emotions and private passions. Carnegie does the same, but in the open: you are interested in what they love, not using it.' },
-      { n: 33, how: 'Greene’s thumbscrew is a person’s secret weakness, found and exploited. Carnegie looks for the opposite: a person’s secret pride, found and celebrated.' },
+      { n: 43, how: 'The law says to work on hearts and minds, by appealing to people’s emotions and private passions. The principle does the same, but in the open: you are interested in what they love, not using it.' },
+      { n: 33, how: 'The law’s thumbscrew is a person’s secret weakness, found and exploited. The principle looks for the opposite: a person’s secret pride, found and celebrated.' },
     ],
     study: {
       who: 'Donn Byrne, 1961; Matthew Montoya, Robert Horton and Jeffrey Kirchner, 2008',
@@ -409,11 +409,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 9, id: 'feel-important', part: 'liked', title: 'Make the Other Person Feel Important, and Do It Sincerely',
     line: 'Everyone you meet is quietly asking whether they matter. Answer yes.',
-    gist: 'Carnegie calls this the most important rule of all. Almost everyone you meet feels superior to you in some way, he says, and the surest way to their heart is to let them know, subtly and sincerely, that you recognise their importance. He quotes the philosopher John Dewey on the desire to be important as one of the deepest urges in human nature. You do it through small courtesies, through thanks, by asking for people’s views, and by finding something you can honestly admire. The aim isn’t to get anything back. It is the simple pleasure of making someone feel better for having met you.',
+    gist: 'The book calls this the most important rule of all. Almost everyone you meet feels superior to you in some way, it says, and the surest way to their heart is to let them know, subtly and sincerely, that you recognise their importance. The book quotes the philosopher John Dewey on the desire to be important as one of the deepest urges in human nature. You do it through small courtesies, through thanks, by asking for people’s views, and by finding something you can honestly admire. The aim isn’t to get anything back. It is the simple pleasure of making someone feel better for having met you.',
     story: {
-      who: 'Dale Carnegie and a post office clerk',
+      who: 'A customer and a post office clerk',
       when: '1930s',
-      text: 'Carnegie was waiting in line at a post office in New York to send a registered letter. The clerk behind the counter looked bored and fed up with the job: weighing envelopes, handing out stamps, giving change, year after year. Carnegie said to himself: let me try to make this man like me, and to do that I must say something nice, not about me, but about him. What could he honestly admire? Then he saw it. As the clerk weighed his envelope, Carnegie said with real enthusiasm that he certainly wished he had the clerk’s head of hair. The man looked up, surprised, and his face broke into a smile. He said it wasn’t as good as it used to be, but they talked about it, and he left plainly pleased. Carnegie asked himself what he had wanted from the clerk. Nothing, he said, except the joy of having done something for someone.',
+      text: 'A customer was waiting in line at a post office in New York to send a registered letter. The clerk behind the counter looked bored and fed up with the job: weighing envelopes, handing out stamps, giving change, year after year. He said to himself: let me try to make this man like me, and to do that I must say something nice, not about me, but about him. What could he honestly admire? Then he saw it. As the clerk weighed his envelope, he said with real enthusiasm that he certainly wished he had the clerk’s head of hair. The man looked up, surprised, and his face broke into a smile. He said it wasn’t as good as it used to be, but they talked about it, and the clerk was plainly pleased. Afterwards the customer asked himself what he had wanted from the clerk. Nothing, he said, except the joy of having done something for someone.',
     },
     mind: 'The need to feel that we matter, to be seen as worth something to other people, is basic. When it is met, people feel secure, open and generous. When it isn’t, even briefly, they feel it as a kind of pain. Much of everyday life ignores this: people in service jobs are treated as functions, and colleagues are judged on output. Small acts of respect break that pattern. They are noticed precisely because they are rare.',
     levers: [
@@ -426,13 +426,13 @@ export const PRINCIPLES: Principle[] = [
       { id: 'fae', how: 'We treat the clerk, the driver or the waiter as their role, not as a person. Looking for something real to admire in them breaks that habit.' },
     ],
     laws: [
-      { n: 1, how: 'Greene says never outshine the master: let those above you feel brilliant. Carnegie extends the courtesy to everyone, not just those with power, and means it.' },
-      { n: 6, how: 'Greene says to court attention at all costs. Carnegie turns it around: give attention, and people will remember you for how you made them feel.' },
+      { n: 1, how: 'The law says never outshine the master: let those above you feel brilliant. The principle extends the courtesy to everyone, not just those with power, and means it.' },
+      { n: 6, how: 'The law says to court attention at all costs. The principle turns it around: give attention, and people will remember you for how you made them feel.' },
     ],
     study: {
       who: 'Kipling Williams, Christopher Cheung and Wilma Choi, 2000',
       title: 'Cyberball',
-      text: 'Over a thousand people from dozens of countries played a simple online ball-tossing game with two other players. For some, the others soon stopped throwing them the ball. After just a few minutes of being left out, those people reported a lower sense of belonging and lower self-esteem. Later studies found the sting remained even when people were told the other players were computers. Brain scans by Naomi Eisenberger and colleagues suggested that exclusion activates regions also involved in physical pain, though how far social and physical pain really overlap is still debated. The lesson is the flip side of Carnegie’s rule: being overlooked hurts, quickly.',
+      text: 'Over a thousand people from dozens of countries played a simple online ball-tossing game with two other players. For some, the others soon stopped throwing them the ball. After just a few minutes of being left out, those people reported a lower sense of belonging and lower self-esteem. Later studies found the sting remained even when people were told the other players were computers. Brain scans by Naomi Eisenberger and colleagues suggested that exclusion activates regions also involved in physical pain, though how far social and physical pain really overlap is still debated. The lesson is the flip side of this principle: being overlooked hurts, quickly.',
     },
     today: [
       'Asking a junior colleague’s opinion in a meeting, and acting on it',

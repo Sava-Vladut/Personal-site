@@ -214,7 +214,7 @@ function Connections({ open, openLaw, openTrap }: { open: (x: Principle) => void
       </header>
       {laws.length > 0 && (
         <div class="wf-conn">
-          <h4 class="kicker wf-conn-h">{t('Carnegie vs Greene')}</h4>
+          <h4 class="kicker wf-conn-h">{t('Compared with the laws of power')}</h4>
           <p class="wf-conn-sub">{t('The laws of power the principles answer. Tap a law to read it, a number to open its principle.')}</p>
           <ol class="ranked">
             {laws.map(({ law, list }) => (
@@ -312,7 +312,7 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
       )}
       {openLaw && laws.length > 0 && (
         <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Carnegie vs Greene')}</h3>
+          <h3 class="lrn-d-h">{t('Compared with the laws of power')}</h3>
           <p class="lrn-d-p wf-d-note">{t('The laws of power it answers, and how.')}</p>
           <div class="lrn-links">
             {laws.map(({ law, how }) => <LinkRow hue={lawHue(law)} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />)}
@@ -473,7 +473,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
     <div class="page lrn-page friends-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Win friends')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'friends', title: t('Win friends') })} />} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
+        <PageHead title={t('Win friends')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'friends', title: t('Win friends') })} />} subtitle={t('The 30 principles: why they work and how to practise them')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }}>
             <b>{practising}<em class="stat-aside">/{PRINCIPLES.length}</em></b>
@@ -573,7 +573,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
           </div>
 
           <section class="wf-about">
-            <p>{t('Carnegie wrote the book in 1936 for salesmen and managers, and it has sold more than thirty million copies since. It’s easy to read as a manual for getting your way, and easy to sneer at for the same reason. But nearly every principle rests on one plain fact: people can tell whether you’re actually interested in them. So each principle here has the psychology underneath it, the mind traps it disarms, the laws of power it answers, and an honest version beside the one that turns into flattery.')}</p>
+            <p>{t('The book was written in 1936 for salesmen and managers, and it has sold more than thirty million copies since. It’s easy to read as a manual for getting your way, and easy to sneer at for the same reason. But nearly every principle rests on one plain fact: people can tell whether you’re actually interested in them. So each principle here has the psychology underneath it, the mind traps it disarms, the laws of power it answers, and an honest version beside the one that turns into flattery.')}</p>
             <button class="btn btn-quiet" onClick={(e) => { playIcon(e); openPrinciple(PRINCIPLES[Math.floor(Math.random() * PRINCIPLES.length)]); }}><Ico name="dice-5" size={18} /> {t('Draw a principle at random')}</button>
           </section>
         </div>

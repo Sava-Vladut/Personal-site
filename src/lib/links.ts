@@ -80,7 +80,7 @@ export type LinkSuggestion = { kind: 'note'; item: Entry } | { kind: 'book'; ite
 /**
  * What a [[ suggests: with nothing typed yet, your latest notes and the books you're reading; otherwise the best
  * matches by title (or first line), notes first when they match as well, then books, mind traps, laws of power and
- * Carnegie's principles (`refs`, once they're loaded). Never the note being written.
+ * Win friends principles (`refs`, once they're loaded). Never the note being written.
  */
 export function suggestLinks(q: string, entries: Entry[], books: Book[], self: string, refs: Ref[] | null = null, max = 8): LinkSuggestion[] {
   const notes = entries.filter((e) => e.kind === 'note' && e.id !== self);

@@ -1,4 +1,4 @@
-// Mind traps, laws of power and Carnegie's principles in a note, as links: [[trap:<id>|Name]], [[law:<n>|Title]] and
+// Mind traps, laws of power and Win friends principles in a note, as links: [[trap:<id>|Name]], [[law:<n>|Title]] and
 // [[principle:<n>|Title]]. They come from the Insights pages' data (data/traps.ts, data/laws, data/principles), which
 // is big, so it's fetched only once something needs it: a [[ being typed, or a note with one of these links in it.
 // Until then a link shows the name it was written with.

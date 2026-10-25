@@ -4,7 +4,7 @@ export const RO: Record<number, LawRo> = {
   1: {
     title: 'Nu-l eclipsa niciodată stăpânul',
     line: 'Cel de deasupra ta îți iartă greșelile mult mai ușor decât strălucirea.',
-    gist: 'Cei care au putere au nevoie să se simtă în siguranță în ea, iar nimic nu-i neliniștește mai mult decât un subordonat care pare mai talentat, mai fermecător sau mai admirat decât ei. Legea spune: lasă-ți talentul să slujească imaginea lor, nu să se măsoare cu ea. Fă-i să arate mai bine, dă-le lor meritul pentru cele mai bune idei ale tale și lasă-i să se simtă sursa luminii pe care o reflectezi. Raționamentul lui Greene este că nesiguranța crește odată cu rangul. Cu cât stă cineva mai sus, cu atât are mai mult de pierdut, iar o stea în ascensiune seamănă mai degrabă cu o amenințare decât cu un câștig.',
+    gist: 'Cei care au putere au nevoie să se simtă în siguranță în ea, iar nimic nu-i neliniștește mai mult decât un subordonat care pare mai talentat, mai fermecător sau mai admirat decât ei. Legea spune: lasă-ți talentul să slujească imaginea lor, nu să se măsoare cu ea. Fă-i să arate mai bine, dă-le lor meritul pentru cele mai bune idei ale tale și lasă-i să se simtă sursa luminii pe care o reflectezi. Raționamentul legii este că nesiguranța crește odată cu rangul. Cu cât stă cineva mai sus, cu atât are mai mult de pierdut, iar o stea în ascensiune seamănă mai degrabă cu o amenințare decât cu un câștig.',
     scene: {
       who: 'Nicolas Fouquet și Ludovic al XIV-lea',
       when: 'august–septembrie 1661',
@@ -52,7 +52,7 @@ export const RO: Record<number, LawRo> = {
   2: {
     title: 'Nu te încrede prea mult în prieteni, învață să-ți folosești dușmanii',
     line: 'Un prieten crede că îi datorezi ceva; un fost dușman crede că el îți datorează ție.',
-    gist: 'Prietenii sunt angajați și aliați periculoși, susține Greene, pentru că afecțiunea tulbură judecata de ambele părți. Un prieten pe care îl promovezi se poate simți îndreptățit, nu recunoscător, își poate ascunde resentimentele ca să protejeze legătura și știe exact unde ești slab. Un fost dușman, în schimb, are ceva de dovedit: adus de partea ta, muncește mai mult ca să arate că merită încrederea. Logica legii este că loialitatea cumpărată prin obligație e fragilă, pe când cea câștigată printr-o răsturnare e înverșunată.',
+    gist: 'Prietenii sunt angajați și aliați periculoși, susține legea, pentru că afecțiunea tulbură judecata de ambele părți. Un prieten pe care îl promovezi se poate simți îndreptățit, nu recunoscător, își poate ascunde resentimentele ca să protejeze legătura și știe exact unde ești slab. Un fost dușman, în schimb, are ceva de dovedit: adus de partea ta, muncește mai mult ca să arate că merită încrederea. Logica legii este că loialitatea cumpărată prin obligație e fragilă, pe când cea câștigată printr-o răsturnare e înverșunată.',
     scene: {
       who: 'Împăratul Mihail al III-lea și Vasile Macedoneanul',
       when: 'secolul al IX-lea, 856–867',
@@ -100,7 +100,7 @@ export const RO: Record<number, LawRo> = {
   3: {
     title: 'Ascunde-ți intențiile',
     line: 'Dacă văd încotro te îndrepți, pot ajunge acolo înaintea ta și să te blocheze.',
-    gist: 'Odată ce oamenii îți cunosc scopul, i se pot opune, pot concura pentru el sau își pot pregăti o apărare. Așa că legea spune: ține-ți ascunse adevăratele ținte și, dacă poți, dă-le altceva de privit: un scop-momeală credibil sau un spectacol de sinceritate cu inima deschisă, care face suspiciunea să pară nepoliticoasă. Ideea lui Greene este că oamenii sunt previzibili în ce urmăresc. Urmează semnalul evident și au încredere într-un chip care pare să nu ascundă nimic. O cortină de fum nu trebuie să fie perfectă. Trebuie doar să se potrivească cu ce se așteaptă deja cealaltă parte.',
+    gist: 'Odată ce oamenii îți cunosc scopul, i se pot opune, pot concura pentru el sau își pot pregăti o apărare. Așa că legea spune: ține-ți ascunse adevăratele ținte și, dacă poți, dă-le altceva de privit: un scop-momeală credibil sau un spectacol de sinceritate cu inima deschisă, care face suspiciunea să pară nepoliticoasă. Ideea legii este că oamenii sunt previzibili în ce urmăresc. Urmează semnalul evident și au încredere într-un chip care pare să nu ascundă nimic. O cortină de fum nu trebuie să fie perfectă. Trebuie doar să se potrivească cu ce se așteaptă deja cealaltă parte.',
     scene: {
       who: 'Planificatorii aliați ai înșelării, generalul George S. Patton și agentul dublu Juan Pujol García',
       when: '1944',
@@ -148,7 +148,7 @@ export const RO: Record<number, LawRo> = {
   4: {
     title: 'Spune întotdeauna mai puțin decât e nevoie',
     line: 'Fiecare cuvânt în plus este un loc de apucat pentru altcineva.',
-    gist: 'Cu cât vorbești mai mult, cu atât dezvălui, te angajezi și riști mai mult. Cuvintele pot fi citate, înțelese greșit sau întoarse împotriva ta; tăcerea nu. Greene susține că oamenii care vorbesc puțin par mai profunzi și mai puternici, pentru că ceilalți umplu golul cu propriile proiecții și devin neliniștiți încercând să-i descifreze. Un răspuns scurt îți păstrează și opțiunile deschise. Vorbărețul își trădează poziția; cel tăcut îi face pe ceilalți să ghicească.',
+    gist: 'Cu cât vorbești mai mult, cu atât dezvălui, te angajezi și riști mai mult. Cuvintele pot fi citate, înțelese greșit sau întoarse împotriva ta; tăcerea nu. Legea susține că oamenii care vorbesc puțin par mai profunzi și mai puternici, pentru că ceilalți umplu golul cu propriile proiecții și devin neliniștiți încercând să-i descifreze. Un răspuns scurt îți păstrează și opțiunile deschise. Vorbărețul își trădează poziția; cel tăcut îi face pe ceilalți să ghicească.',
     scene: {
       who: 'Calvin Coolidge',
       when: '1923–1929',
@@ -196,7 +196,7 @@ export const RO: Record<number, LawRo> = {
   5: {
     title: 'Reputația contează enorm: păzește-o cu prețul vieții',
     line: 'Numele tău intră în fiecare încăpere înaintea ta și vorbește el cel mai mult.',
-    gist: 'Reputația este o putere pe care nu trebuie să o cheltuiești. Una puternică câștigă bătălii înainte să înceapă, pentru că ceilalți șovăie, se pleacă sau cedează în baza a ceea ce cred despre tine. Greene spune să-ți clădești reputația pe o singură calitate clară (îndrăzneala, onestitatea, viclenia, generozitatea) și să o aperi cu înverșunare, pentru că o singură pată poate desface ani de muncă. Notează și corolarul sumbru: reputația unui adversar este punctul lui slab, iar îndoielile semănate în jurul ei se răspândesc singure.',
+    gist: 'Reputația este o putere pe care nu trebuie să o cheltuiești. Una puternică câștigă bătălii înainte să înceapă, pentru că ceilalți șovăie, se pleacă sau cedează în baza a ceea ce cred despre tine. Legea spune să-ți clădești reputația pe o singură calitate clară (îndrăzneala, onestitatea, viclenia, generozitatea) și să o aperi cu înverșunare, pentru că o singură pată poate desface ani de muncă. Notează și corolarul sumbru: reputația unui adversar este punctul lui slab, iar îndoielile semănate în jurul ei se răspândesc singure.',
     scene: {
       who: 'Zhuge Liang și Sima Yi',
       when: 'cca 228 d.Hr. (după cum e povestit în Romanul celor trei regate, din secolul al XIV-lea)',
@@ -244,7 +244,7 @@ export const RO: Record<number, LawRo> = {
   6: {
     title: 'Caută atenția cu orice preț',
     line: 'Să fii ignorat înseamnă să dispari; chiar și un scandal te ține pe hartă.',
-    gist: 'Greene susține că vizibilitatea este rădăcina puterii. Oamenii judecă după aparențe, iar cei care nu sunt văzuți sunt repede uitați sau trecuți cu vederea. Așa că fă-te magnet: ieși în evidență, creează mister, stârnește controverse dacă trebuie. În opinia lui, chiar și atenția negativă e mai bună decât lipsa ei, pentru că un nume aflat în circulație poate fi reabilitat, pe când obscuritatea nu oferă nimic cu care să lucrezi. Contează și noutatea: odată ce publicul s-a obișnuit cu tine, trebuie să găsești un alt mod de a atrage privirea.',
+    gist: 'Legea susține că vizibilitatea este rădăcina puterii. Oamenii judecă după aparențe, iar cei care nu sunt văzuți sunt repede uitați sau trecuți cu vederea. Așa că fă-te magnet: ieși în evidență, creează mister, stârnește controverse dacă trebuie. În opinia lui, chiar și atenția negativă e mai bună decât lipsa ei, pentru că un nume aflat în circulație poate fi reabilitat, pe când obscuritatea nu oferă nimic cu care să lucrezi. Contează și noutatea: odată ce publicul s-a obișnuit cu tine, trebuie să găsești un alt mod de a atrage privirea.',
     scene: {
       who: 'P. T. Barnum și Joice Heth',
       when: '1835–1836',
@@ -292,7 +292,7 @@ export const RO: Record<number, LawRo> = {
   7: {
     title: 'Pune-i pe alții să muncească pentru tine, dar ia întotdeauna meritul',
     line: 'Istoria ține minte numele de pe ușă, nu mâinile din atelier.',
-    gist: 'Timpul și energia ta sunt limitate, argumentează Greene, așa că folosește priceperea și munca altora ca să-ți înmulțești propria putere, apoi asigură-te că rezultatul poartă numele tău. Meritul, odată revendicat, devine reputație, iar reputația devine putere. Cei care fac munca au rareori platforma să conteste pretenția, iar publicul preferă un singur erou unei mulțimi de contribuitori. Făcut cu iscusință, apari strălucit și productiv, în timp ce adevărata muncă rămâne invizibilă.',
+    gist: 'Timpul și energia ta sunt limitate, argumentează legea, așa că folosește priceperea și munca altora ca să-ți înmulțești propria putere, apoi asigură-te că rezultatul poartă numele tău. Meritul, odată revendicat, devine reputație, iar reputația devine putere. Cei care fac munca au rareori platforma să conteste pretenția, iar publicul preferă un singur erou unei mulțimi de contribuitori. Făcut cu iscusință, apari strălucit și productiv, în timp ce adevărata muncă rămâne invizibilă.',
     scene: {
       who: 'Thomas Edison, echipa lui de la Menlo Park și Nikola Tesla',
       when: '1876–1885',
@@ -340,7 +340,7 @@ export const RO: Record<number, LawRo> = {
   8: {
     title: 'Fă-i pe ceilalți să vină la tine; folosește momeala dacă e nevoie',
     line: 'Cel care alege terenul a câștigat deja jumătate din luptă.',
-    gist: 'Când te duci la alții, joci după regulile lor: teritoriul, momentul și regulile lor. Greene susține că ar trebui, în schimb, să-i faci să vină la tine, oferind o momeală care îi scoate din poziție și îi aduce pe un teren pe care l-ai pregătit. Cel care aleargă după ceva simte că decizia a fost a lui, se angajează mai tare și cheltuiește energie pe care tu o poți economisi. Răbdarea este arma. Cine forțează acțiunea este adesea cel care a pierdut controlul asupra ei.',
+    gist: 'Când te duci la alții, joci după regulile lor: teritoriul, momentul și regulile lor. Legea susține că ar trebui, în schimb, să-i faci să vină la tine, oferind o momeală care îi scoate din poziție și îi aduce pe un teren pe care l-ai pregătit. Cel care aleargă după ceva simte că decizia a fost a lui, se angajează mai tare și cheltuiește energie pe care tu o poți economisi. Răbdarea este arma. Cine forțează acțiunea este adesea cel care a pierdut controlul asupra ei.',
     scene: {
       who: 'Napoleon Bonaparte, țarul Alexandru I și împăratul Francisc al II-lea',
       when: '2 decembrie 1805',
@@ -388,7 +388,7 @@ export const RO: Record<number, LawRo> = {
   9: {
     title: 'Câștigă prin fapte, niciodată prin argumente',
     line: 'O dispută câștigată lasă în urmă un învins care ține minte; o demonstrație lasă doar un fapt.',
-    gist: 'Argumentele rareori schimbă minți, spune Greene. Îi fac pe oameni defensivi și resentimentari, chiar și când ai dreptate, iar victoria e goală, pentru că mândria celuilalt e acum împotriva ta. Mai bine arată decât spune: lasă rezultatele, comportamentul sau o demonstrație isteață să facă dovada, ca ceilalți să ajungă singuri la concluzia ta. Așa câștigi fondul, iar ei își păstrează demnitatea, iar demnitatea lor nu te costă nimic.',
+    gist: 'Argumentele rareori schimbă minți, spune legea. Îi fac pe oameni defensivi și resentimentari, chiar și când ai dreptate, iar victoria e goală, pentru că mândria celuilalt e acum împotriva ta. Mai bine arată decât spune: lasă rezultatele, comportamentul sau o demonstrație isteață să facă dovada, ca ceilalți să ajungă singuri la concluzia ta. Așa câștigi fondul, iar ei își păstrează demnitatea, iar demnitatea lor nu te costă nimic.',
     scene: {
       who: 'Michelangelo și Piero Soderini',
       when: '1504',
@@ -436,7 +436,7 @@ export const RO: Record<number, LawRo> = {
   10: {
     title: 'Infecția: ferește-te de cei nefericiți și ghinioniști',
     line: 'Nenorocirea nu e mereu contagioasă, dar haosul de obicei este.',
-    gist: 'Greene susține că unii oameni poartă necazul după ei: dramă cronică, amărăciune sau autodistrugere care îl trage după sine pe oricine stă aproape. Stările și harababura lor se răspândesc, iar loialitatea sau mila te pot trage într-un dezastru care nu a fost niciodată al tău. Legea spune: judecă oamenii după tiparul vieții lor, nu după farmecul sau rugămințile lor, și ține-te la distanță de cei a căror instabilitate e un obicei. Alege în schimb să fii aproape de cei generoși, energici și norocoși, și ceva din asta se va lipi și de tine.',
+    gist: 'Legea susține că unii oameni poartă necazul după ei: dramă cronică, amărăciune sau autodistrugere care îl trage după sine pe oricine stă aproape. Stările și harababura lor se răspândesc, iar loialitatea sau mila te pot trage într-un dezastru care nu a fost niciodată al tău. Legea spune: judecă oamenii după tiparul vieții lor, nu după farmecul sau rugămințile lor, și ține-te la distanță de cei a căror instabilitate e un obicei. Alege în schimb să fii aproape de cei generoși, energici și norocoși, și ceva din asta se va lipi și de tine.',
     scene: {
       who: 'Lola Montez și regele Ludwig I al Bavariei',
       when: '1846–1848',
@@ -484,7 +484,7 @@ export const RO: Record<number, LawRo> = {
   11: {
     title: 'Învață să-i ții pe oameni dependenți de tine',
     line: 'Fii singurul lucru pe care nu-l pot înlocui și nu-ți vor da drumul niciodată.',
-    gist: 'Independența pare sigură, susține Greene, dar este opusul: dacă alții nu au nevoie de tine, te pot lăsa. Fă-te indispensabil. Ține cunoștințe, abilități sau legături pe care nu le are altcineva și păstrează ceva în rezervă ca să nu poată învăța totul. Cu cât se bazează cineva mai mult pe tine, cu atât ai mai multă libertate și putere. Recunoștința se stinge; nevoia rămâne.',
+    gist: 'Independența pare sigură, susține legea, dar este opusul: dacă alții nu au nevoie de tine, te pot lăsa. Fă-te indispensabil. Ține cunoștințe, abilități sau legături pe care nu le are altcineva și păstrează ceva în rezervă ca să nu poată învăța totul. Cu cât se bazează cineva mai mult pe tine, cu atât ai mai multă libertate și putere. Recunoștința se stinge; nevoia rămâne.',
     scene: {
       who: 'J. Edgar Hoover și președinții pe care i-a servit',
       when: '1924–1972',
@@ -532,7 +532,7 @@ export const RO: Record<number, LawRo> = {
   12: {
     title: 'Folosește sinceritatea și generozitatea selective ca să-ți dezarmezi victima',
     line: 'Un singur act sincer la momentul potrivit cumpără suta de minciuni care urmează.',
-    gist: 'Oamenii sunt suspicioși din oficiu când cineva are ceva de câștigat de la ei, susține Greene, dar suspiciunea aceea se stinge repede odată ce văd dovezi de sinceritate sau generozitate. O singură mărturisire sinceră sau un cadou neașteptat creează o impresie de încredere care colorează tot ce urmează. Legea spune să o folosești deliberat: cheltuiește un pic de adevăr sau un mic dar la început, apoi încasează încrederea aceea pe ceva mai mare. Primele impresii rămân, iar recunoștința scade garda.',
+    gist: 'Oamenii sunt suspicioși din oficiu când cineva are ceva de câștigat de la ei, susține legea, dar suspiciunea aceea se stinge repede odată ce văd dovezi de sinceritate sau generozitate. O singură mărturisire sinceră sau un cadou neașteptat creează o impresie de încredere care colorează tot ce urmează. Legea spune să o folosești deliberat: cheltuiește un pic de adevăr sau un mic dar la început, apoi încasează încrederea aceea pe ceva mai mare. Primele impresii rămân, iar recunoștința scade garda.',
     scene: {
       who: 'Bernard Madoff și investitorii lui',
       when: '1960–2008',

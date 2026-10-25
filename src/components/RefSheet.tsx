@@ -1,4 +1,4 @@
-// Insert › Mind trap, Law of power or Win friends: every trap (law, or Carnegie principle) in a list to search, one tap
+// Insert › Mind trap, Law of power or Win friends: every trap (law, or Win friends principle) in a list to search, one tap
 // puts it in the note as a link.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { searchKey } from '../lib/mentions';
@@ -16,7 +16,7 @@ export function RefSheet({ kind, onClose, onPick }: { kind: RefKind | null; onCl
     if (kind) setShown(kind), setQ('');
   }, [kind]);
   const trap = shown === 'trap';
-  const title = trap ? t('Insert a mind trap') : shown === 'law' ? t('Insert a law of power') : t('Insert a Carnegie principle');
+  const title = trap ? t('Insert a mind trap') : shown === 'law' ? t('Insert a law of power') : t('Insert a Win friends principle');
   const search = trap ? t('Search mind traps') : shown === 'law' ? t('Search laws, or a number') : t('Search principles, or a number');
   const rows = useMemo(() => {
     const needle = searchKey(q);

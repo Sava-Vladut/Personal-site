@@ -821,7 +821,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
   /** Mentions a book, as a link to it. */
   const mentionBook = (b: Book) => insertToken(mentionOf(b, getBooks()));
-  /** Links a mind trap, a law of power or a Carnegie principle. */
+  /** Links a mind trap, a law of power or a Win friends principle. */
   const insertRef = (r: Ref) => insertToken(refOf(r));
 
   /** The Link sheet, for the link at the caret (or the selected words, or the word at the caret). */

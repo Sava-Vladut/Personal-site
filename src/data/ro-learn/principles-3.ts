@@ -7,11 +7,11 @@ export const RO: Record<number, PrincipleRo> = {
   22: {
     title: 'Începe cu laude și cu o apreciere sinceră',
     line: 'Înainte să-i spui cuiva ce are de îndreptat, spune-i, cinstit, ce e deja bun.',
-    gist: 'Carnegie face comparația cu bărbierul, care își spumează clientul înainte să-l radă. Veștile grele se primesc mai ușor după o apreciere sinceră, pentru că omul poate auzi că ai văzut întreaga lui muncă, nu doar defectul. Critica sună atunci ca o observație venită din partea cuiva de partea lui, nu ca o sentință dată de un judecător. El spune limpede că lauda trebuie să fie adevărată și precisă. Un compliment vag, folosit ca să îndulcească lucrurile, se recunoaște ușor, iar omul se încordează în așteptarea loviturii în loc să se relaxeze.',
+    gist: 'Cartea face comparația cu bărbierul, care își spumează clientul înainte să-l radă. Veștile grele se primesc mai ușor după o apreciere sinceră, pentru că omul poate auzi că ai văzut întreaga lui muncă, nu doar defectul. Critica sună atunci ca o observație venită din partea cuiva de partea lui, nu ca o sentință dată de un judecător. Cartea spune limpede că lauda trebuie să fie adevărată și precisă. Un compliment vag, folosit ca să îndulcească lucrurile, se recunoaște ușor, iar omul se încordează în așteptarea loviturii în loc să se relaxeze.',
     story: {
       who: 'Calvin Coolidge și secretara lui',
       when: '1923–1929, Casa Albă a lui Coolidge',
-      text: 'Un prieten al lui Carnegie, oaspete la Casa Albă pentru un weekend, a intrat în biroul președintelui și l-a auzit vorbind cu secretara. Coolidge, cunoscut drept „Silent Cal” (Cal cel Tăcut) pentru cât de puține cuvinte rostea, i-a spus că poartă o rochie frumoasă în dimineața aceea și că e o tânără foarte atrăgătoare. Probabil că fusese cel mai călduros lucru auzit vreodată de la el, iar ea s-a înroșit. Apoi i-a spus să nu i se suie la cap: a vorbit așa ca s-o facă să se simtă bine, iar de acum ar vrea să fie ceva mai atentă la punctuație. Carnegie recunoaște că metoda era puțin cam la vedere. O numește totuși o psihologie superbă, pentru că observația a venit exact când ea era cel mai dispusă să o audă.',
+      text: 'Un oaspete la Casa Albă pentru un weekend a intrat în biroul președintelui și l-a auzit vorbind cu secretara. Coolidge, cunoscut drept „Silent Cal” (Cal cel Tăcut) pentru cât de puține cuvinte rostea, i-a spus că poartă o rochie frumoasă în dimineața aceea și că e o tânără foarte atrăgătoare. Probabil că fusese cel mai călduros lucru auzit vreodată de la el, iar ea s-a înroșit. Apoi i-a spus să nu i se suie la cap: a vorbit așa ca s-o facă să se simtă bine, iar de acum ar vrea să fie ceva mai atentă la punctuație. Metoda era puțin cam la vedere, dar psihologia era superbă, pentru că observația a venit exact când ea era cel mai dispusă să o audă.',
     },
     mind: 'Critica este procesată ca o amenințare la adresa sinelui, iar un sine amenințat se apără înainte să asculte: se explică, minimalizează și contraatacă. O apreciere reală, pusă la început, scade amenințarea. Îi spune omului că statutul lui în ochii tăi nu e în pericol, așa că mintea poate trata ce urmează drept informație, nu drept primejdie. Contează și ordinea, fiindcă prima impresie colorează felul în care sunt citite detaliile de după. Greutatea e că oamenii învață repede tiparele. Dacă lauda vine mereu chiar înaintea unei reclamații, nu mai e auzită ca laudă și începe să sune ca o sirenă de alarmă.',
     levers: [
@@ -24,12 +24,12 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Primul lucru spus devine punctul de reper pentru tot ce urmează. Începe cu ce merge bine și greșeala va fi judecată în raport cu o lucrare în mare parte bună, nu invers.' },
     ],
     laws: [
-      { how: 'Greene se folosește de o demonstrație de onestitate și generozitate ca să-i coboare cuiva garda înainte de mutarea adevărată. Carnegie folosește aceeași ordine, întâi binele și apoi greul, dar cu intenția opusă: lauda e adevărată, iar cererea e pe față.' },
+      { how: 'Legea se folosește de o demonstrație de onestitate și generozitate ca să-i coboare cuiva garda înainte de mutarea adevărată. Principiul folosește aceeași ordine, întâi binele și apoi greul, dar cu intenția opusă: lauda e adevărată, iar cererea e pe față.' },
     ],
     study: {
       who: 'Jay Parkes, Sara Abercrombie și Teresita McCarty, 2013',
       title: 'Sandvișurile de feedback afectează percepțiile, nu performanța',
-      text: 'Studenții au rezolvat o sarcină și au primit feedback fie sub formă de „sandviș”, adică o critică strecurată între două laude, fie în alte formate. Au găsit sandvișul mai util și mai plăcut, dar nu i-a făcut să se descurce mai bine la încercarea următoare. Rezultatul îi dă dreptate lui Carnegie doar pe jumătate. Lauda de la început schimbă felul în care se simte critica, ceea ce contează pentru relație și pentru dorința oamenilor de a mai cere feedback. Nu ea însă învață: asta o face corectura clară și concretă.',
+      text: 'Studenții au rezolvat o sarcină și au primit feedback fie sub formă de „sandviș”, adică o critică strecurată între două laude, fie în alte formate. Au găsit sandvișul mai util și mai plăcut, dar nu i-a făcut să se descurce mai bine la încercarea următoare. Rezultatul confirmă principiul doar pe jumătate. Lauda de la început schimbă felul în care se simte critica, ceea ce contează pentru relație și pentru dorința oamenilor de a mai cere feedback. Nu ea însă învață: asta o face corectura clară și concretă.',
     },
     today: [
       'Începi un code review cu partea din pull request care e cu adevărat bine făcută, înainte să înșiri problemele',
@@ -57,11 +57,11 @@ export const RO: Record<number, PrincipleRo> = {
   23: {
     title: 'Atrage atenția asupra greșelilor oamenilor în mod indirect',
     line: 'Lasă-i pe oameni să-și descopere singuri greșeala și o vor îndrepta fără să simtă nevoia să se apere.',
-    gist: 'O acuzație directă îi pune pe oameni în boxa acuzaților, iar cine e în boxă se apără. Carnegie sugerează să arăți spre problemă, nu spre om: un indiciu, un exemplu, o întrebare, o schimbare discretă în propriul tău comportament, care îl lasă pe celălalt să vadă singur. Unul dintre sfaturile lui practice e mic, dar grăitor. După ce lăudăm pe cineva, mulți spunem „dar” și apoi critica, iar acel „dar” face lauda să sune ca o capcană. Înlocuiește-l cu „și” („ai muncit mult la asta, și dacă strângi puțin finalul, va fi excelent”) și lauda rămâne în picioare.',
+    gist: 'O acuzație directă îi pune pe oameni în boxa acuzaților, iar cine e în boxă se apără. Cartea sugerează să arăți spre problemă, nu spre om: un indiciu, un exemplu, o întrebare, o schimbare discretă în propriul tău comportament, care îl lasă pe celălalt să vadă singur. Unul dintre sfaturile practice ale cărții e mic, dar grăitor. După ce lăudăm pe cineva, mulți spunem „dar” și apoi critica, iar acel „dar” face lauda să sune ca o capcană. Înlocuiește-l cu „și” („ai muncit mult la asta, și dacă strângi puțin finalul, va fi excelent”) și lauda rămâne în picioare.',
     story: {
       who: 'Charles Schwab și placa „Fumatul interzis”',
       when: 'Începutul secolului al XX-lea',
-      text: 'Magnatul oțelului Charles Schwab traversa la amiază una dintre fabricile lui când a dat peste câțiva muncitori care fumau, chiar sub o placă pe care scria „Fumatul interzis”. Putea să arate spre ea și să-i întrebe dacă știu să citească. În schimb, s-a apropiat, i-a dat fiecăruia câte un trabuc și a spus că ar fi bucuros dacă le-ar fuma afară. Ei au înțeles că le văzuse încălcarea regulii. Au înțeles și că nu fuseseră umiliți, ba chiar primiseră un mic cadou. Carnegie spune că oameni ca ei nu puteau să nu admire un șef care se purta așa cu ei.',
+      text: 'Magnatul oțelului Charles Schwab traversa la amiază una dintre fabricile lui când a dat peste câțiva muncitori care fumau, chiar sub o placă pe care scria „Fumatul interzis”. Putea să arate spre ea și să-i întrebe dacă știu să citească. În schimb, s-a apropiat, i-a dat fiecăruia câte un trabuc și a spus că ar fi bucuros dacă le-ar fuma afară. Ei au înțeles că le văzuse încălcarea regulii. Au înțeles și că nu fuseseră umiliți, ba chiar primiseră un mic cadou. Oameni ca ei nu puteau să nu admire un șef care se purta așa cu ei.',
     },
     mind: 'Să ți se spună că greșești e un mic atac la adresa statutului tău și a sentimentului că ești stăpân pe situație, iar reflexul este să le aperi pe amândouă. Oamenii caută scuze, dau vina pe împrejurări sau hotărăsc că cel care critică e nedrept. Un indiciu indirect sare peste lupta aceasta. Omul ajunge singur la concluzie, deci și-o însușește, iar concluziile la care ajungem noi înșine ne conving mult mai mult decât cele primite de la alții. Îi lasă și loc să-și corecteze direcția fără să fie nevoit să recunoască, cu voce tare, că a fost prins.',
     levers: [
@@ -75,12 +75,12 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'E ușor să citești greșeala cuiva ca pe un defect de caracter. Dacă arăți spre situație („placa se vede greu”), nu spre om, reziști acestei judecăți, la fel de mult în tine ca în el.' },
     ],
     laws: [
-      { how: 'Greene spune să câștigi prin fapte, niciodată prin argumente, fiindcă argumentele nu fac decât să întărească partea cealaltă. Trabucurile lui Schwab sunt exact asta: și-a spus punctul de vedere printr-un gest și nu a mai avut deloc cearta.' },
+      { how: 'Legea spune să câștigi prin fapte, niciodată prin argumente, fiindcă argumentele nu fac decât să întărească partea cealaltă. Trabucurile lui Schwab sunt exact asta: și-a spus punctul de vedere printr-un gest și nu a mai avut deloc cearta.' },
     ],
     study: {
       who: 'Avraham Kluger și Angelo DeNisi, 1996',
       title: 'Efectele intervențiilor de feedback asupra performanței',
-      text: 'Această amplă meta-analiză a reunit peste șase sute de mărimi ale efectului din studii despre feedback. În medie, feedbackul a îmbunătățit performanța modest, dar în mai bine de o treime dintre cazuri a înrăutățit-o. Felul dăunător tindea să mute atenția de la sarcină la imaginea de sine a persoanei. Asta susține intuiția lui Carnegie că felul în care corectezi contează la fel de mult ca faptul că o faci. Nu înseamnă însă că mai vag e mai bine: un indiciu care nu e înțeles niciodată e doar un feedback care nu ajunge.',
+      text: 'Această amplă meta-analiză a reunit peste șase sute de mărimi ale efectului din studii despre feedback. În medie, feedbackul a îmbunătățit performanța modest, dar în mai bine de o treime dintre cazuri a înrăutățit-o. Felul dăunător tindea să mute atenția de la sarcină la imaginea de sine a persoanei. Asta susține intuiția că felul în care corectezi contează la fel de mult ca faptul că o faci. Nu înseamnă însă că mai vag e mai bine: un indiciu care nu e înțeles niciodată e doar un feedback care nu ajunge.',
     },
     today: [
       'Întrebi „ce zici de secțiunea asta la a doua citire?” în loc să scrii „partea asta e greșită” pe schița unui coleg',
@@ -108,11 +108,11 @@ export const RO: Record<number, PrincipleRo> = {
   24: {
     title: 'Vorbește despre propriile greșeli înainte de a-l critica pe celălalt',
     line: 'Recunoaște că ai fost și tu acolo, iar corectura ta va suna a ajutor, nu a judecată.',
-    gist: 'Critica se primește mult mai ușor de la cineva care recunoaște că nici el nu e perfect. Dacă începi cu mărturisirea unei greșeli proprii, ideal chiar aceeași, cobori de pe scaunul judecătorului și te așezi lângă celălalt. Îți amintește și ție că ce te desparte de el e experiența, nu virtutea. Carnegie observă că metoda merge chiar și când nu ți-ai îndreptat propriile defecte: faptul că le recunoști îl ajută tot pe celălalt să le recunoască pe ale lui.',
+    gist: 'Critica se primește mult mai ușor de la cineva care recunoaște că nici el nu e perfect. Dacă începi cu mărturisirea unei greșeli proprii, ideal chiar aceeași, cobori de pe scaunul judecătorului și te așezi lângă celălalt. Îți amintește și ție că ce te desparte de el e experiența, nu virtutea. Cartea observă că metoda merge chiar și când nu ți-ai îndreptat propriile defecte: faptul că le recunoști îl ajută tot pe celălalt să le recunoască pe ale lui.',
     story: {
-      who: 'Dale Carnegie și nepoata lui Josephine',
+      who: 'Un angajator și nepoata lui Josephine',
       when: 'New York, înainte de 1936',
-      text: 'Nepoata lui Carnegie, Josephine, a venit la New York să-i fie secretară. Avea nouăsprezece ani, trei ani de la terminarea liceului, aproape nicio experiență în afaceri și greșea destul de des. Într-o zi, gata s-o certe, s-a oprit. Avea dublul vârstei ei și o experiență incomparabil mai mare, deci cum putea să se aștepte să aibă judecata lui? Și cum fusese el la nouăsprezece ani? Și-a amintit gafele prostești pe care le făcuse atunci și și-a recunoscut că ea se descurca mai bine decât el. De atunci, când trebuia să-i arate o greșeală, începea spunându-i că a greșit, dar că Dumnezeu știe că nu e mai rău decât multe dintre cele pe care le făcuse el, și că judecata vine doar cu experiența. Ea a primit bine corecturile și s-a îmbunătățit.',
+      text: 'Nepoata unui om, Josephine, a venit la New York să-i fie secretară. Avea nouăsprezece ani, trei ani de la terminarea liceului, aproape nicio experiență în afaceri și greșea destul de des. Într-o zi, gata s-o certe, s-a oprit. Avea dublul vârstei ei și o experiență incomparabil mai mare, deci cum putea să se aștepte să aibă judecata lui? Și cum fusese el la nouăsprezece ani? Și-a amintit gafele prostești pe care le făcuse atunci și și-a recunoscut că ea se descurca mai bine decât el. De atunci, când trebuia să-i arate o greșeală, începea spunându-i că a greșit, dar că Dumnezeu știe că nu e mai rău decât multe dintre cele pe care le făcuse el, și că judecata vine doar cu experiența. Ea a primit bine corecturile și s-a îmbunătățit.',
     },
     mind: 'Când cel care critică își arată propria fragilitate, conversația trece de la o ierarhie (eu judec, tu ești judecat) la o problemă comună (amândoi greșim; iată una de îndreptat). Asta scade defensiva și îl face pe critic să pară corect. Corectează și o părtinire a criticului. După ce am învățat ceva, ne e greu să ne mai amintim cum era să nu știm, așa că greșelile de începător ale altora par neglijență, nu ceva normal. Dacă îți amintești propriile greșeli de la început, greșeala celuilalt revine la proporții.',
     levers: [
@@ -126,8 +126,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Ești tentat să dai vina pe caracterul lui pentru o greșeală pe care la tine ai pune-o pe seama împrejurărilor. Dacă începi cu propria greșeală, comparația iese la vedere.' },
     ],
     laws: [
-      { how: 'Greene recomandă să-ți arăți un defect inofensiv ca să nu stârnești invidie. Varianta lui Carnegie folosește defecte reale pentru un scop mai bun: nu ca să-ți aperi poziția, ci ca să facă suportabilă corectura altuia.' },
-      { how: 'Tactica de capitulare a lui Greene cedează intenționat ca să capete mai târziu avantajul. Recunoașterea propriilor greșeli e și ea o formă de a te coborî, dar aici nu există nicio contramutare ascunsă; umilința este scopul.' },
+      { how: 'Legea recomandă să-ți arăți un defect inofensiv ca să nu stârnești invidie. Varianta principiului folosește defecte reale pentru un scop mai bun: nu ca să-ți aperi poziția, ci ca să facă suportabilă corectura altuia.' },
+      { how: 'Tactica de capitulare a legii cedează intenționat ca să capete mai târziu avantajul. Recunoașterea propriilor greșeli e și ea o formă de a te coborî, dar aici nu există nicio contramutare ascunsă; umilința este scopul.' },
     ],
     study: {
       who: 'Elliot Aronson, Ben Willerman și Joanne Floyd, 1966',
@@ -160,11 +160,11 @@ export const RO: Record<number, PrincipleRo> = {
   25: {
     title: 'Pune întrebări în loc să dai ordine directe',
     line: 'Oamenii muncesc mai mult pentru ce au ajutat să se hotărască decât pentru ce li se spune să facă.',
-    gist: 'Un ordin spune cuiva ce să facă; o întrebare îl invită să se gândească. Carnegie susține că a întreba („Ce părere ai despre asta?”, „Am putea încerca așa?”) le păstrează oamenilor mândria, îi face să se simtă importanți și îți aduce cooperarea lor, nu doar conformarea. Scoate adesea la iveală idei mai bune decât ale tale, pentru că cei care fac munca știu de obicei lucruri pe care tu nu le știi. Iar greșelile făcute în urma unei întrebări se corectează mai ușor, pentru că nimeni nu și-a pus autoritatea în joc pe ele.',
+    gist: 'Un ordin spune cuiva ce să facă; o întrebare îl invită să se gândească. Cartea susține că a întreba („Ce părere ai despre asta?”, „Am putea încerca așa?”) le păstrează oamenilor mândria, îi face să se simtă importanți și îți aduce cooperarea lor, nu doar conformarea. Scoate adesea la iveală idei mai bune decât ale tale, pentru că cei care fac munca știu de obicei lucruri pe care tu nu le știi. Iar greșelile făcute în urma unei întrebări se corectează mai ușor, pentru că nimeni nu și-a pus autoritatea în joc pe ele.',
     story: {
       who: 'Owen D. Young, în relatarea Idei Tarbell',
       when: 'Cam în 1930',
-      text: 'Jurnalista Ida Tarbell i-a povestit lui Carnegie că, pe când scria o biografie a lui Owen D. Young, șeful General Electric, a stat de vorbă cu un om care lucrase în același birou cu Young timp de trei ani. Acesta spunea că nu-l auzise niciodată pe Young dând un ordin direct. Young făcea în schimb sugestii: „Poate ai putea lua în calcul asta” sau „Crezi că ar merge?”. După ce dicta o scrisoare, îl întreba adesea pe celălalt ce părere are despre ea. Citind schița unui asistent, putea sugera că o altă formulare ar merge mai bine. Îi lăsa pe oameni să facă lucrurile singuri și să învețe din propriile greșeli.',
+      text: 'Jurnalista Ida Tarbell a povestit că, pe când scria o biografie a lui Owen D. Young, șeful General Electric, a stat de vorbă cu un om care lucrase în același birou cu Young timp de trei ani. Acesta spunea că nu-l auzise niciodată pe Young dând un ordin direct. Young făcea în schimb sugestii: „Poate ai putea lua în calcul asta” sau „Crezi că ar merge?”. După ce dicta o scrisoare, îl întreba adesea pe celălalt ce părere are despre ea. Citind schița unui asistent, putea sugera că o altă formulare ar merge mai bine. Îi lăsa pe oameni să facă lucrurile singuri și să învețe din propriile greșeli.',
     },
     mind: 'Oamenii au o nevoie de bază de a simți că sunt stăpâni pe propriile acțiuni. Ordinele amenință această autonomie, iar un sentiment de libertate amenințat răspunde prin împotrivire: ne conformăm cu greu, facem minimul sau ne opunem pe tăcute. Întrebările redau o parte din control. Fac și ceva mai subtil. Când răspund la o întrebare, oamenii își produc propriile motive, iar o idee la care am lucrat o simțim mai mult a noastră, așa că ne pasă mai mult să reușească.',
     levers: [
@@ -177,7 +177,7 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Ordinele se sprijină pe rang, iar rangul obține ascultare fără prea multă gândire sau asumare. Întrebările cer oamenilor să-și pună judecata în lucru, ceea ce prinde și greșelile pe care ascultarea oarbă le-ar lăsa să treacă.' },
     ],
     laws: [
-      { how: 'Greene recomandă să oferi alegeri care duc toate unde vrei tu, ca oamenii să se simtă liberi în timp ce tu rămâi la comandă. O întrebare cu răspunsul sugerat poate fi același truc. Varianta lui Carnegie merge cinstit doar dacă ești pregătit să auzi un răspuns la care nu te-ai așteptat.' },
+      { how: 'Legea recomandă să oferi alegeri care duc toate unde vrei tu, ca oamenii să se simtă liberi în timp ce tu rămâi la comandă. O întrebare cu răspunsul sugerat poate fi același truc. Varianta principiului merge cinstit doar dacă ești pregătit să auzi un răspuns la care nu te-ai așteptat.' },
     ],
     study: {
       who: 'Richard Koestner, Richard Ryan, Frank Bernieri și Kathleen Holt, 1984',
@@ -210,7 +210,7 @@ export const RO: Record<number, PrincipleRo> = {
   26: {
     title: 'Lasă-l pe celălalt să-și păstreze demnitatea',
     line: 'Corectează greșeala, niciodată demnitatea omului.',
-    gist: 'Carnegie crede că acesta este unul dintre cele mai importante principii și unul dintre cele mai ignorate. Criticăm oamenii în fața altora, căutăm vinovați și amenințăm fără să ne oprim să ne gândim la mândria lor, când o clipă de gândire, un cuvânt bun sau puțină înțelegere ar face mult mai mult bine. Chiar și când ai dreptate și celălalt greșește vădit, umilirea cuiva îi distruge dorința de a se îmbunătăți și îl întoarce împotriva ta. El citează cazul liderului turc Mustafa Kemal, care în 1922, după ce învinsese armata greacă, le-a spus generalilor greci prinși să se așeze, fiindcă trebuie să fie obosiți, și a vorbit despre război ca despre un joc în care cei mai buni pierd uneori.',
+    gist: 'Acesta este unul dintre cele mai importante principii ale cărții și unul dintre cele mai ignorate. Criticăm oamenii în fața altora, căutăm vinovați și amenințăm fără să ne oprim să ne gândim la mândria lor, când o clipă de gândire, un cuvânt bun sau puțină înțelegere ar face mult mai mult bine. Chiar și când ai dreptate și celălalt greșește vădit, umilirea cuiva îi distruge dorința de a se îmbunătăți și îl întoarce împotriva ta. Cartea citează cazul liderului turc Mustafa Kemal, care în 1922, după ce învinsese armata greacă, le-a spus generalilor greci prinși să se așeze, fiindcă trebuie să fie obosiți, și a vorbit despre război ca despre un joc în care cei mai buni pierd uneori.',
     story: {
       who: 'Charles Steinmetz și General Electric',
       when: 'Începutul secolului al XX-lea',
@@ -228,8 +228,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Când cineva eșuează, e tentant să tratezi asta ca pe dovada felului în care e. Dacă arăți spre situație („rolul nu se potrivea punctelor tale forte”), cum a făcut GE cu Steinmetz, ții caracterul lui în afara verdictului.' },
     ],
     laws: [
-      { how: 'Greene recomandă să-ți zdrobești total dușmanul, pentru că unul rănit se va întoarce să se răzbune. Carnegie trage concluzia opusă din aceeași observație: umilința naște răzbunare, așa că lasă-i celuilalt demnitatea și nu va deveni niciodată dușman.' },
-      { how: 'Greene avertizează să nu mergi dincolo de țintă în victorie. A salva demnitatea cuiva înseamnă a ști când să te oprești: ai câștigat punctul, iar dacă îl tot reiei, nu faci decât să stârnești resentimente.' },
+      { how: 'Legea recomandă să-ți zdrobești total dușmanul, pentru că unul rănit se va întoarce să se răzbune. Principiul trage concluzia opusă din aceeași observație: umilința naște răzbunare, așa că lasă-i celuilalt demnitatea și nu va deveni niciodată dușman.' },
+      { how: 'Legea avertizează să nu mergi dincolo de țintă în victorie. A salva demnitatea cuiva înseamnă a ști când să te oprești: ai câștigat punctul, iar dacă îl tot reiei, nu faci decât să stârnești resentimente.' },
     ],
     study: {
       who: 'Bert Brown, 1968',
@@ -262,11 +262,11 @@ export const RO: Record<number, PrincipleRo> = {
   27: {
     title: 'Laudă cea mai mică îmbunătățire și laudă fiecare îmbunătățire',
     line: 'Observă cu voce tare fiecare pas mic înainte și oamenii vor continua să-i facă.',
-    gist: 'Carnegie arată că dresorii de animale știu ce uită managerii și părinții: primești mai mult din ce răsplătești. Pomenește un dresor care își lăuda și hrănea câinele la cel mai mic semn de progres. Cu oamenii facem pe dos: tăcem cât merg lucrurile bine și vorbim doar când merg prost. El ne cere să-i prindem pe oameni făcând mai bine, nu doar făcând rău, și să lăudăm chiar și pașii mici, cu căldură și cu precizie. Încurajarea în clipa îmbunătățirii, susține el, este ceea ce transformă un începător șovăitor într-un om care crede că poate.',
+    gist: 'Cartea arată că dresorii de animale știu ce uită managerii și părinții: primești mai mult din ce răsplătești. Cartea pomenește un dresor care își lăuda și hrănea câinele la cel mai mic semn de progres. Cu oamenii facem pe dos: tăcem cât merg lucrurile bine și vorbim doar când merg prost. Cartea ne cere să-i prindem pe oameni făcând mai bine, nu doar făcând rău, și să lăudăm chiar și pașii mici, cu căldură și cu precizie. Încurajarea în clipa îmbunătățirii, susține cartea, este ceea ce transformă un începător șovăitor într-un om care crede că poate.',
     story: {
       who: 'Enrico Caruso și mama lui',
       when: 'Napoli, anii 1880',
-      text: 'Așa cum o spune Carnegie, un băiat de zece ani care muncea într-o fabrică din Napoli își dorea să devină cântăreț. Primul lui profesor l-a descurajat, spunându-i că nu poate cânta deloc și că vocea lui sună ca vântul în obloane. Mama lui, o țărancă săracă, a avut părerea opusă. L-a îmbrățișat, l-a lăudat, i-a spus că deja îl aude cum se îmbunătățește și a umblat desculță ca să strângă bani pentru lecțiile lui de muzică. Lauda ei i-a schimbat cursul vieții. Băiatul era Enrico Caruso, care a devenit cel mai faimos tenor al vremii sale.',
+      text: 'În poveste, un băiat de zece ani care muncea într-o fabrică din Napoli își dorea să devină cântăreț. Primul lui profesor l-a descurajat, spunându-i că nu poate cânta deloc și că vocea lui sună ca vântul în obloane. Mama lui, o țărancă săracă, a avut părerea opusă. L-a îmbrățișat, l-a lăudat, i-a spus că deja îl aude cum se îmbunătățește și a umblat desculță ca să strângă bani pentru lecțiile lui de muzică. Lauda ei i-a schimbat cursul vieții. Băiatul era Enrico Caruso, care a devenit cel mai faimos tenor al vremii sale.',
     },
     mind: 'Un comportament urmat de ceva bun tinde să se repete, iar cu cât răsplata e mai aproape de acțiune, cu atât legătura e mai puternică. Dacă aștepți rezultatul final ca să spui ceva, atunci mulții pași mici de pe drum rămân nerăsplătiți, iar progresul pare invizibil. Lauda fiecărei îmbunătățiri face progresul vizibil, și pentru tine, și pentru cel care învață. Construiește și încredere: oamenii care văd că eforturile lor sunt observate și dau roade ajung să creadă că și mai mult efort va da roade.',
     levers: [
@@ -279,7 +279,7 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Odată ce crezi că cineva e slab, vezi mai ales eșecurile lui. A căuta intenționat îmbunătățirea rupe cercul și te lasă să observi schimbarea pe care altfel ai rata-o.' },
     ],
     laws: [
-      { how: 'Greene avertizează că reforma reușește cel mai bine în pași mici pe care oamenii îi pot asimila. Carnegie aplică aceeași înțelepciune schimbării personale: cere și sărbătorește câte o mică îmbunătățire pe rând, nu o transformare totală.' },
+      { how: 'Legea avertizează că reforma reușește cel mai bine în pași mici pe care oamenii îi pot asimila. Principiul aplică aceeași înțelepciune schimbării personale: cere și sărbătorește câte o mică îmbunătățire pe rând, nu o transformare totală.' },
     ],
     study: {
       who: 'B. F. Skinner și colaboratorii, 1943',
@@ -312,7 +312,7 @@ export const RO: Record<number, PrincipleRo> = {
   28: {
     title: 'Dă-i celuilalt o reputație frumoasă pe care s-o merite',
     line: 'Spune-le oamenilor cine crezi că sunt, iar mulți se vor ridica la nivelul acesta.',
-    gist: 'Dacă vrei ca cineva să se îmbunătățească într-un anume fel, poartă-te ca și cum acea calitate ar fi deja una dintre trăsăturile lui. Carnegie susține că oamenii fac eforturi mari ca să nu dezamăgească o părere bună despre ei înșiși, mai ales una a cuiva pe care îl respectă. În loc de „întârzii mereu”, spune „ești unul dintre cei mai de încredere oameni de aici, de aceea m-a surprins asta”. Omul are acum o reputație de apărat. El împrumută sfatul lui Shakespeare, „ia înfățișarea unei virtuți, dacă nu o ai”, și îl întoarce spre ceilalți: presupune virtutea la alții și spune-o deschis.',
+    gist: 'Dacă vrei ca cineva să se îmbunătățească într-un anume fel, poartă-te ca și cum acea calitate ar fi deja una dintre trăsăturile lui. Cartea susține că oamenii fac eforturi mari ca să nu dezamăgească o părere bună despre ei înșiși, mai ales una a cuiva pe care îl respectă. În loc de „întârzii mereu”, spune „ești unul dintre cei mai de încredere oameni de aici, de aceea m-a surprins asta”. Omul are acum o reputație de apărat. Cartea împrumută sfatul lui Shakespeare, „ia înfățișarea unei virtuți, dacă nu o ai”, și îl întoarce spre ceilalți: presupune virtutea la alții și spune-o deschis.',
     story: {
       who: 'Georgette Leblanc și „Marie Spălătoreasa de vase”',
       when: 'Începutul secolului al XX-lea, din memoriile lui Leblanc',
@@ -329,8 +329,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'O singură calitate puternică, bună, colorează felul în care e văzut întregul om. Dacă numești o forță reală, strălucirea ei se poate întinde asupra zonei în care încearcă să crească.' },
     ],
     laws: [
-      { how: 'Greene spune să te porți ca un rege ca să fii tratat ca unul, pentru că oamenii te iau la valoarea pe care ți-o dai singur. Carnegie îndreaptă același mecanism spre afară: dă o valoare mare altcuiva și el începe să se poarte pe măsură.' },
-      { how: 'Greene spune să-ți păzești reputația cu prețul vieții. Carnegie sugerează să le dai altora o reputație care merită păzită, pentru că o vor păzi la fel de aprig cum și-o păzește Greene pe a lui.' },
+      { how: 'Legea spune să te porți ca un rege ca să fii tratat ca unul, pentru că oamenii te iau la valoarea pe care ți-o dai singur. Principiul îndreaptă același mecanism spre afară: dă o valoare mare altcuiva și el începe să se poarte pe măsură.' },
+      { how: 'Legea spune să-ți păzești reputația cu prețul vieții. Principiul sugerează să le dai altora o reputație care merită păzită, pentru că o vor păzi la fel de aprig cum ți-o păzești tu pe a ta.' },
     ],
     study: {
       who: 'Richard Miller, Philip Brickman și Diana Bolen, 1975',
@@ -363,11 +363,11 @@ export const RO: Record<number, PrincipleRo> = {
   29: {
     title: 'Încurajează. Fă ca greșeala să pară ușor de îndreptat',
     line: 'Fă ca distanța dintre unde se află și unde ar putea ajunge să pară destul de mică ca s-o treacă.',
-    gist: 'Spune-i cuiva că e de speranță pierdută la un lucru, că face totul greșit, și îi iei motivul să încerce. Spune-i că e ușor de îndreptat, că are simț pentru asta, că crezi în el, și va exersa până reușește. Carnegie dă exemplul unui prieten care, pe la patruzeci de ani, a luat lecții de dans ca să-i facă pe plac logodnicei. Primul profesor i-a spus că face totul greșit și că trebuie să o ia de la zero, iar el a renunțat curând. Următorul i-a spus că stilul lui e puțin demodat, dar că bazele sunt bune și că are un simț natural al ritmului. A continuat și s-a îmbunătățit.',
+    gist: 'Spune-i cuiva că e de speranță pierdută la un lucru, că face totul greșit, și îi iei motivul să încerce. Spune-i că e ușor de îndreptat, că are simț pentru asta, că crezi în el, și va exersa până reușește. Cartea dă exemplul unui prieten care, pe la patruzeci de ani, a luat lecții de dans ca să-i facă pe plac logodnicei. Primul profesor i-a spus că face totul greșit și că trebuie să o ia de la zero, iar el a renunțat curând. Următorul i-a spus că stilul lui e puțin demodat, dar că bazele sunt bune și că are un simț natural al ritmului. A continuat și s-a îmbunătățit.',
     story: {
-      who: 'Dale Carnegie și Lowell Thomas',
+      who: 'Lowell Thomas și un prieten',
       when: 'Între cele două războaie mondiale',
-      text: 'Prietenul lui Carnegie, crainicul și scriitorul de călătorii Lowell Thomas, a vrut odată să-l atragă într-un joc de bridge. Carnegie nu jucase niciodată și era sigur că nu poate învăța: i se părea un mister de neînțeles. Thomas i-a spus că nu e nimic de el. Bridge-ul înseamnă doar memorie și judecată, iar cum Carnegie scrisese odată despre memorie, i se va părea floare la ureche. Carnegie s-a așezat și, aproape fără să-și dea seama, juca pentru prima dată în viață, pentru că fusese făcut să simtă că are talent pentru asta și că jocul e ușor.',
+      text: 'Crainicul și scriitorul de călătorii Lowell Thomas a vrut odată să-și atragă un prieten într-un joc de bridge. Prietenul nu jucase niciodată și era sigur că nu poate învăța: i se părea un mister de neînțeles. Thomas i-a spus că nu e nimic de el. Bridge-ul înseamnă doar memorie și judecată, iar cum prietenul scrisese odată despre memorie, i se va părea floare la ureche. Prietenul s-a așezat și, aproape fără să-și dea seama, juca pentru prima dată în viață, pentru că fusese făcut să simtă că are talent pentru asta și că jocul e ușor.',
     },
     mind: 'Dacă oamenii încearcă sau nu depinde mai puțin de cât de grea e de fapt sarcina și mai mult de dacă cred că efortul va da roade. Când o greșeală pare mare, fixă și parte din cine sunt, să încerci pare inutil, iar ei se protejează renunțând. Când pare mică, concretă și remediabilă, efortul pare meritat. Încurajarea schimbă această credință. Funcționează cel mai bine când e întemeiată: o calitate reală pe care omul se poate sprijini și un prim pas concret pe care se poate vedea făcându-l.',
     levers: [
@@ -380,7 +380,7 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Aceeași distanță poate fi încadrată ca „faci totul greșit” sau „ești la o singură schimbare distanță”. Încadrarea hotărăște dacă oamenii văd un zid sau o treaptă.' },
     ],
     laws: [
-      { how: 'Greene recomandă să ascunzi efortul din spatele realizărilor tale, ca ele să pară fără efort, iar tu înzestrat. Carnegie folosește aparența de ușurință pentru celălalt: face sarcina lui să pară ușoară, ca el să îndrăznească să înceapă.' },
+      { how: 'Legea recomandă să ascunzi efortul din spatele realizărilor tale, ca ele să pară fără efort, iar tu înzestrat. Principiul folosește aparența de ușurință pentru celălalt: face sarcina lui să pară ușoară, ca el să îndrăznească să înceapă.' },
     ],
     study: {
       who: 'Claudia Mueller și Carol Dweck, 1998',
@@ -413,11 +413,11 @@ export const RO: Record<number, PrincipleRo> = {
   30: {
     title: 'Fă-l pe celălalt să se bucure să facă ceea ce îi sugerezi',
     line: 'Arată-le oamenilor ce câștigă și cererea devine o ocazie, nu o corvoadă.',
-    gist: 'Carnegie încheie cartea cu o regulă practică: când vrei ca cineva să facă ceva, gândește-te mai întâi ce câștigă el din asta și formulează în așa fel încât să facă bucuros. Fii sincer, știi exact ce vrei, gândește-te la ce își dorește el cu adevărat și potrivește beneficiul nevoilor lui. Povestește despre o femeie al cărei gazon era călcat în picioare de băieții din cartier. Cearta n-a mers, așa că i-a dat celui mai rău dintre ei un titlu, l-a făcut „detectivul” ei și l-a pus să țină intrușii departe. El a luat slujba în serios, iar problema a încetat.',
+    gist: 'Cartea se încheie cu o regulă practică: când vrei ca cineva să facă ceva, gândește-te mai întâi ce câștigă el din asta și formulează în așa fel încât să facă bucuros. Fii sincer, știi exact ce vrei, gândește-te la ce își dorește el cu adevărat și potrivește beneficiul nevoilor lui. Cartea povestește despre o femeie al cărei gazon era călcat în picioare de băieții din cartier. Cearta n-a mers, așa că i-a dat celui mai rău dintre ei un titlu, l-a făcut „detectivul” ei și l-a pus să țină intrușii departe. El a luat slujba în serios, iar problema a încetat.',
     story: {
       who: 'Napoleon Bonaparte',
       when: '1802–1805',
-      text: 'În 1802, Napoleon a creat Legiunea de Onoare și a început să împartă decorațiile ei soldaților. În 1804 a numit optsprezece generali ai săi mareșali ai Imperiului, iar armata lui a numit-o Grande Armée. Criticii s-au plâns că dădea jucării unor veterani încercați. Napoleon a răspuns că oamenii sunt conduși prin jucării sau, după cum se traduce adesea, că oamenii se conduc cu brizbizuri. Carnegie recunoaște că poate părea cinic, dar susține că tehnica de a da titluri și recunoaștere a mers pentru Napoleon și merge în viața obișnuită, pentru că oamenii vor să se simtă importanți în ceea ce fac.',
+      text: 'În 1802, Napoleon a creat Legiunea de Onoare și a început să împartă decorațiile ei soldaților. În 1804 a numit optsprezece generali ai săi mareșali ai Imperiului, iar armata lui a numit-o Grande Armée. Criticii s-au plâns că dădea jucării unor veterani încercați. Napoleon a răspuns că oamenii sunt conduși prin jucării sau, după cum se traduce adesea, că oamenii se conduc cu brizbizuri. Poate părea cinic, dar tehnica de a da titluri și recunoaștere a mers pentru Napoleon și merge în viața obișnuită, pentru că oamenii vor să se simtă importanți în ceea ce fac.',
     },
     mind: 'Oamenii fac mult mai mult și mult mai bine când o activitate pare aleasă și răsplătitoare decât când pare impusă. Felul în care e încadrată o sarcină modelează felul în care e trăită: aceeași treabă poate părea o onoare sau o povară, după ce se spune că înseamnă. Recunoașterea și sentimentul de scop sunt puternice pentru că hrănesc nevoile de a te simți apreciat și de a conta. Riscul este că recompensele externe, împărțite stângaci, îi pot face pe oameni să se simtă controlați și să alunge plăcerea pe care o aveau în muncă.',
     levers: [
@@ -426,12 +426,12 @@ export const RO: Record<number, PrincipleRo> = {
       { name: 'Recunoașterea și statutul', text: 'Oamenii țin la poziție și la respect, nu doar la bani. Titlurile, mulțumirile publice și responsabilitatea semnalează că cineva contează, de aceea au mers medaliile lui Napoleon și insigna de „detectiv” a băiatului.' },
     ],
     traps: [
-      { how: 'O cerere formulată ca oportunitate se simte altfel decât aceeași cerere formulată ca datorie. Principiul lui Carnegie este încadrarea cinstită: să găsești beneficiul real și să-l pui primul.' },
+      { how: 'O cerere formulată ca oportunitate se simte altfel decât aceeași cerere formulată ca datorie. Principiul de aici este încadrarea cinstită: să găsești beneficiul real și să-l pui primul.' },
       { how: 'Un titlu sau o responsabilitate face ca treaba să se simtă a ta, iar oamenii apără ce e al lor. Băiatul-detectiv păzea gazonul pentru că, într-un fel, devenise al lui.' },
     ],
     laws: [
-      { how: 'Greene spune că atunci când ceri ajutor, trebuie să apelezi la interesul propriu, nu la milă sau recunoștință. Carnegie e întru totul de acord, dar insistă că beneficiul trebuie să fie real, nu o promisiune pe care nu intenționezi să o ții.' },
-      { how: 'Greene recomandă să hrănești fanteziile de glorie ale oamenilor. Medaliile lui Napoleon au făcut exact asta. Varianta mai blândă a lui Carnegie dă o recunoaștere care se potrivește cu ceva adevărat din contribuția omului, nu cu o iluzie.' },
+      { how: 'Legea spune că atunci când ceri ajutor, trebuie să apelezi la interesul propriu, nu la milă sau recunoștință. Principiul e întru totul de acord, dar insistă că beneficiul trebuie să fie real, nu o promisiune pe care nu intenționezi să o ții.' },
+      { how: 'Legea recomandă să hrănești fanteziile de glorie ale oamenilor. Medaliile lui Napoleon au făcut exact asta. Varianta mai blândă a principiului dă o recunoaștere care se potrivește cu ceva adevărat din contribuția omului, nu cu o iluzie.' },
     ],
     study: {
       who: 'Dan Ariely, George Loewenstein și Drazen Prelec, 2006',
@@ -455,7 +455,7 @@ export const RO: Record<number, PrincipleRo> = {
       'Să împarți titluri goale, care nu vin cu respect sau autoritate reale',
       'Să faci totul atât de vădit un discurs de vânzare încât omul se simte manevrat, nu apreciat',
     ],
-    shadow: 'Aici Carnegie se apropie cel mai mult de manipularea pură: arta de a-i face pe oameni bucuroși să facă ce voiai tu de la început. Titlurile și brizbizurile pot fi substitute ieftine pentru o plată corectă sau pentru respect real, iar încadrarea poate face o afacere proastă să arate ca un dar. Dacă nu există cu adevărat nimic de câștigat pentru ei, lucrul cinstit este să spui asta, să ceri pe față și să fii recunoscător dacă te ajută oricum.',
+    shadow: 'Aici principiul se apropie cel mai mult de manipularea pură: arta de a-i face pe oameni bucuroși să facă ce voiai tu de la început. Titlurile și brizbizurile pot fi substitute ieftine pentru o plată corectă sau pentru respect real, iar încadrarea poate face o afacere proastă să arate ca un dar. Dacă nu există cu adevărat nimic de câștigat pentru ei, lucrul cinstit este să spui asta, să ceri pe față și să fii recunoscător dacă te ajută oricum.',
     honest: 'Cauți ce ar face cu adevărat treaba bună pentru celălalt, iar dacă nu găsești nimic, îi ceri ca pe o favoare și o recunoști ca atare.',
     question: 'Următorul lucru pe care îl ceri cuiva: ce l-ar face să fie bucuros, nu doar dispus, să-l facă?',
   },

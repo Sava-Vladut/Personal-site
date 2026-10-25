@@ -1,4 +1,4 @@
-// Tags in a note, shown: a chip for each person, book, piece of music, linked note, mind trap, law of power or Carnegie principle, which opens a little card about it. And,
+// Tags in a note, shown: a chip for each person, book, piece of music, linked note, mind trap, law of power or Win friends principle, which opens a little card about it. And,
 // while writing, the strip of suggestions an @ brings up, and the burst of colour a new tag lands with.
 import { createContext, type ComponentChildren } from 'preact';
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';

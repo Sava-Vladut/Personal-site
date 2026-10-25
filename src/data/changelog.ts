@@ -11,6 +11,26 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.136.0',
+    date: '2026-10-25',
+    changes: [
+      'New Global Ops port page under Extras: how the browser port of Global Operations is coming along, live',
+      'It shows the milestones reached, the latest status, what’s next and the whole progress log',
+      'Live activity lists each command and edit made to the port as it happens, with the files not committed yet',
+      'Commits with their messages, the newest build and deploy times, the last lines of the newest logs and the latest screenshots',
+      'It refreshes by itself every 5 seconds while the port is being worked on, every 30 seconds otherwise',
+    ],
+  },
+  {
+    version: '1.135.2',
+    date: '2026-10-25',
+    changes: [
+      'Learn no longer names the books’ authors: the page subtitles, headings, laws and principles now speak of the law, the principle or the book',
+      'Stories that starred the author now tell it about an unnamed person, in English and Romanian',
+      'Wording pass on Learn: two principle titles use British spelling and a few sentences read more cleanly',
+    ],
+  },
+  {
     version: '1.135.1',
     date: '2026-10-25',
     changes: [

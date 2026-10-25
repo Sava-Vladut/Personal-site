@@ -37,7 +37,7 @@ function mentions(text: string, books: Book[]) {
       if (ref)
         return ref.kind === 'trap' ? t('“{title}” (mind trap)', { title: label })
           : ref.kind === 'law' ? t('“{title}” (law of power {n})', { title: label, n: ref.id })
-          : t('“{title}” (Carnegie principle {n})', { title: label, n: ref.id });
+          : t('“{title}” (Win friends principle {n})', { title: label, n: ref.id });
       const n = target?.startsWith('note:') || !resolveMention(target, label, books) ? resolveNote(target, label, entries, books) : undefined;
       if (n) return t('“{title}” (note, {date})', { title: noteLabel(n), date: longDate(n.date) });
       const b = resolveMention(target, label, books);

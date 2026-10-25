@@ -67,7 +67,7 @@
 
 /* how often you've tried it, on a row's top line */
 .wf-tried { display: inline-flex; align-items: center; gap: 3px; }
-/* the line under "Carnegie vs Greene" in an opened principle */
+/* the line under "Compared with the laws of power" in an opened principle */
 .lrn-d-p.wf-d-note { margin-top: -4px; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
 
 .wf-about { display: grid; justify-items: start; gap: 12px; }

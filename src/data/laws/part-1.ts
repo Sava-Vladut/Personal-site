@@ -4,7 +4,7 @@ export const LAWS: Law[] = [
   {
     n: 1, id: 'outshine', title: 'Never Outshine the Master', realm: 'court',
     line: 'The person above you can forgive your mistakes far more easily than your brilliance.',
-    gist: 'Those with power need to feel secure in it, and nothing unsettles them like a subordinate who seems more gifted, more charming or more admired than they are. The law says: let your talent serve their image, not compete with it. Make them look better, give them the credit for your best ideas, and let them feel like the source of the light you reflect. Greene’s reasoning is that insecurity rises with rank. The higher someone sits, the more they have to lose, and the more a rising star looks like a threat rather than an asset.',
+    gist: 'Those with power need to feel secure in it, and nothing unsettles them like a subordinate who seems more gifted, more charming or more admired than they are. The law says: let your talent serve their image, not compete with it. Make them look better, give them the credit for your best ideas, and let them feel like the source of the light you reflect. The law’s reasoning is that insecurity rises with rank. The higher someone sits, the more they have to lose, and the more a rising star looks like a threat rather than an asset.',
     scene: {
       who: 'Nicolas Fouquet and Louis XIV',
       when: 'August–September 1661',
@@ -13,7 +13,7 @@ export const LAWS: Law[] = [
     mind: 'Humans are status-tracking animals. We evolved in groups where rank decided access to food, mates and protection, and the brain still treats a drop in relative standing as a real threat, with the stress hormones to match. A superior judges themselves not only on an absolute scale but against the people nearest them, and a talented subordinate is the nearest comparison of all. When that comparison stings in a domain they care about, they are motivated to reduce it: by distancing you, discounting you or holding you down. Crucially, this rarely feels like envy from the inside. It feels like noticing that you are arrogant, disloyal or not a team player.',
     levers: [
       { name: 'Self-evaluation maintenance', text: 'Abraham Tesser’s model says we bask in the success of people close to us unless it lands in an area central to our own identity, where it turns into a painful comparison. A boss who prides themselves on strategy can enjoy your marketing flair and resent your strategic insight. The law is a rule of thumb for staying on the right side of that line.' },
-      { name: 'Upward social comparison', text: 'Leon Festinger argued in 1954 that we judge ourselves by comparing with others. Comparing upwards can inspire, but when the gap feels unfair or uncloseable it breeds hostility. A subordinate who outshines turns the hierarchy upside down for a moment, and the person on top feels it as a fall.' },
+      { name: 'Upward social comparison', text: 'Leon Festinger argued in 1954 that we judge ourselves by comparing with others. Comparing upwards can inspire, but when the gap feels unfair or unbridgeable it breeds hostility. A subordinate who outshines turns the hierarchy upside down for a moment, and the person on top feels it as a fall.' },
       { name: 'Malicious envy', text: 'Researchers such as Niels van de Ven separate benign envy, which makes us try harder, from malicious envy, which makes us want to pull the other person down. Malicious envy grows when the other’s advantage seems undeserved. Flaunting ease or luck invites it; showing effort and deference softens it.' },
     ],
     traps: [
@@ -53,7 +53,7 @@ export const LAWS: Law[] = [
   {
     n: 2, id: 'friends-enemies', title: 'Never Put Too Much Trust in Friends, Learn How to Use Enemies', realm: 'court',
     line: 'A friend thinks you owe them; a former enemy thinks they owe you.',
-    gist: 'Friends make dangerous employees and allies, Greene argues, because affection blurs judgement on both sides. A friend you promote may feel entitled rather than grateful, may hide resentment to protect the bond, and knows exactly where you are weak. A former enemy, by contrast, has something to prove: brought onside, they work harder to show they deserve the trust. The law’s logic is that loyalty bought by obligation is fragile, while loyalty earned by a reversal is fierce.',
+    gist: 'Friends make dangerous employees and allies, the law argues, because affection blurs judgement on both sides. A friend you promote may feel entitled rather than grateful, may hide resentment to protect the bond, and knows exactly where you are weak. A former enemy, by contrast, has something to prove: brought onside, they work harder to show they deserve the trust. The law’s logic is that loyalty bought by obligation is fragile, while loyalty earned by a reversal is fierce.',
     scene: {
       who: 'Emperor Michael III and Basil the Macedonian',
       when: '9th century, 856–867',
@@ -102,7 +102,7 @@ export const LAWS: Law[] = [
   {
     n: 3, id: 'conceal', title: 'Conceal Your Intentions', realm: 'mask',
     line: 'If they can see where you are going, they can get there first and stand in the way.',
-    gist: 'Once people know your goal, they can resist it, compete for it or prepare a defence. So the law says keep your real aims hidden, and if you can, give people something else to look at: a believable decoy aim, or a show of open-hearted sincerity that makes suspicion seem rude. Greene’s point is that people are predictable in what they watch. They follow the obvious signal and trust a face that seems to hide nothing. A smokescreen does not need to be perfect. It only needs to match what the other side already expects.',
+    gist: 'Once people know your goal, they can resist it, compete for it or prepare a defence. So the law says keep your real aims hidden, and if you can, give people something else to look at: a believable decoy aim, or a show of open-hearted sincerity that makes suspicion seem rude. The law’s point is that people are predictable in what they watch. They follow the obvious signal and trust a face that seems to hide nothing. A smokescreen does not need to be perfect. It only needs to match what the other side already expects.',
     scene: {
       who: 'Allied deception planners, General George S. Patton and the double agent Juan Pujol García',
       when: '1944',
@@ -151,7 +151,7 @@ export const LAWS: Law[] = [
   {
     n: 4, id: 'say-less', title: 'Always Say Less Than Necessary', realm: 'mask',
     line: 'Every extra word is a handhold for someone else.',
-    gist: 'The more you talk, the more you reveal, commit to and risk. Words can be quoted, misread or turned against you; silence cannot. Greene argues that people who say little seem deeper and more powerful, because others fill the gap with their own projections and grow uneasy trying to read them. A short answer also keeps your options open. The talker gives away their position; the quiet one makes the others guess.',
+    gist: 'The more you talk, the more you reveal, commit to and risk. Words can be quoted, misread or turned against you; silence cannot. The law argues that people who say little seem deeper and more powerful, because others fill the gap with their own projections and grow uneasy trying to read them. A short answer also keeps your options open. The talker gives away their position; the quiet one makes the others guess.',
     scene: {
       who: 'Calvin Coolidge',
       when: '1923–1929',
@@ -200,7 +200,7 @@ export const LAWS: Law[] = [
   {
     n: 5, id: 'reputation', title: 'So Much Depends on Reputation: Guard It with Your Life', realm: 'stage',
     line: 'Your name walks into every room before you do, and it does most of the talking.',
-    gist: 'Reputation is power you do not have to spend. A strong one wins battles before they start, because others hesitate, defer or concede on the strength of what they believe about you. Greene says build a reputation on one clear quality (boldness, honesty, cunning, generosity) and protect it fiercely, because one stain can undo years of work. He also notes the dark corollary: an opponent’s reputation is their weak point, and doubts sown about it spread on their own.',
+    gist: 'Reputation is power you do not have to spend. A strong one wins battles before they start, because others hesitate, defer or concede on the strength of what they believe about you. The law says build a reputation on one clear quality (boldness, honesty, cunning, generosity) and protect it fiercely, because one stain can undo years of work. He also notes the dark corollary: an opponent’s reputation is their weak point, and doubts sown about it spread on their own.',
     scene: {
       who: 'Zhuge Liang and Sima Yi',
       when: 'c. 228 CE (as told in the fourteenth-century Romance of the Three Kingdoms)',
@@ -249,7 +249,7 @@ export const LAWS: Law[] = [
   {
     n: 6, id: 'attention', title: 'Court Attention at All Costs', realm: 'stage',
     line: 'To be ignored is to vanish; even a scandal keeps you on the map.',
-    gist: 'Greene claims that visibility is the root of power. People judge by appearances, and those who are not seen are soon forgotten or overlooked. So make yourself a magnet: stand out, create mystery, stir controversy if you must. In his view even negative attention is better than none, because a name in circulation can be redeemed, while obscurity offers nothing to work with. Novelty matters too: once the public grows used to you, you must find a fresh way to catch the eye.',
+    gist: 'The law claims that visibility is the root of power. People judge by appearances, and those who are not seen are soon forgotten or overlooked. So make yourself a magnet: stand out, create mystery, stir controversy if you must. In his view even negative attention is better than none, because a name in circulation can be redeemed, while obscurity offers nothing to work with. Novelty matters too: once the public grows used to you, you must find a fresh way to catch the eye.',
     scene: {
       who: 'P. T. Barnum and Joice Heth',
       when: '1835–1836',
@@ -298,7 +298,7 @@ export const LAWS: Law[] = [
   {
     n: 7, id: 'credit', title: 'Get Others to Do the Work for You, but Always Take the Credit', realm: 'court',
     line: 'History remembers the name on the door, not the hands in the workshop.',
-    gist: 'Your time and energy are limited, Greene argues, so use other people’s skill and labour to multiply your own, then make sure the result is attached to your name. Credit, once claimed, becomes reputation, and reputation becomes power. The people who do the work rarely have the platform to contest the claim, and the public prefers a single hero to a crowd of contributors. Done skilfully, you appear brilliant and productive, while the real labour stays invisible.',
+    gist: 'Your time and energy are limited, the law argues, so use other people’s skill and labour to multiply your own, then make sure the result is attached to your name. Credit, once claimed, becomes reputation, and reputation becomes power. The people who do the work rarely have the platform to contest the claim, and the public prefers a single hero to a crowd of contributors. Done skilfully, you appear brilliant and productive, while the real labour stays invisible.',
     scene: {
       who: 'Thomas Edison, his Menlo Park team and Nikola Tesla',
       when: '1876–1885',
@@ -347,7 +347,7 @@ export const LAWS: Law[] = [
   {
     n: 8, id: 'come-to-you', title: 'Make Other People Come to You: Use Bait if Necessary', realm: 'lure',
     line: 'The one who chooses the ground has already won half the fight.',
-    gist: 'When you go to others, you play on their terms: their territory, their timing, their rules. Greene argues that you should instead make them come to you, by offering bait that pulls them out of position and onto ground you have prepared. Someone who chases feels the decision was their own, commits harder and spends energy you can save. Patience is the weapon here. Whoever forces the action is often the one who has lost control of it.',
+    gist: 'When you go to others, you play on their terms: their territory, their timing, their rules. The law argues that you should instead make them come to you, by offering bait that pulls them out of position and onto ground you have prepared. Someone who chases feels the decision was their own, commits harder and spends energy you can save. Patience is the weapon here. Whoever forces the action is often the one who has lost control of it.',
     scene: {
       who: 'Napoleon Bonaparte, Tsar Alexander I and Emperor Francis II',
       when: '2 December 1805',
@@ -396,7 +396,7 @@ export const LAWS: Law[] = [
   {
     n: 9, id: 'actions', title: 'Win Through Your Actions, Never Through Argument', realm: 'lure',
     line: 'An argument you win leaves a loser who remembers; a demonstration leaves only a fact.',
-    gist: 'Arguments rarely change minds, Greene says. They make people defensive and resentful, even when you are right, and the victory is hollow because the other person’s pride is now against you. Better to show than to tell: let your results, your behaviour or a clever demonstration make the point, so others reach your conclusion on their own. That way you win the substance and they keep their dignity, and their dignity costs you nothing.',
+    gist: 'Arguments rarely change minds, the law says. They make people defensive and resentful, even when you are right, and the victory is hollow because the other person’s pride is now against you. Better to show than to tell: let your results, your behaviour or a clever demonstration make the point, so others reach your conclusion on their own. That way you win the substance and they keep their dignity, and their dignity costs you nothing.',
     scene: {
       who: 'Michelangelo and Piero Soderini',
       when: '1504',
@@ -445,7 +445,7 @@ export const LAWS: Law[] = [
   {
     n: 10, id: 'infection', title: 'Infection: Avoid the Unhappy and Unlucky', realm: 'court',
     line: 'Misfortune is not always contagious, but chaos usually is.',
-    gist: 'Greene argues that some people carry trouble with them: chronic drama, bitterness or self-destruction that drags in whoever stands close. Their moods and their messes spread, and loyalty or pity can pull you into a disaster that was never yours. The law says judge people by the pattern of their lives, not by their charm or their pleas, and keep distance from those whose instability is a habit. Choose to be near the generous, energetic and lucky instead, and some of that will rub off too.',
+    gist: 'The law argues that some people carry trouble with them: chronic drama, bitterness or self-destruction that drags in whoever stands close. Their moods and their messes spread, and loyalty or pity can pull you into a disaster that was never yours. The law says judge people by the pattern of their lives, not by their charm or their pleas, and keep distance from those whose instability is a habit. Choose to be near the generous, energetic and lucky instead, and some of that will rub off too.',
     scene: {
       who: 'Lola Montez and King Ludwig I of Bavaria',
       when: '1846–1848',
@@ -494,7 +494,7 @@ export const LAWS: Law[] = [
   {
     n: 11, id: 'dependent', title: 'Learn to Keep People Dependent on You', realm: 'long',
     line: 'Be the one thing they cannot replace, and they will never let you go.',
-    gist: 'Independence feels safe, Greene argues, but it is the opposite: if others do not need you, they can drop you. Make yourself indispensable instead. Hold knowledge, skills or connections that no one else has, and keep a little in reserve so they cannot learn it all. The more someone relies on you, the more freedom and power you have. Gratitude fades; need lasts.',
+    gist: 'Independence feels safe, the law argues, but it is the opposite: if others do not need you, they can drop you. Make yourself indispensable instead. Hold knowledge, skills or connections that no one else has, and keep a little in reserve so they cannot learn it all. The more someone relies on you, the more freedom and power you have. Gratitude fades; need lasts.',
     scene: {
       who: 'J. Edgar Hoover and the presidents he served',
       when: '1924–1972',
@@ -543,7 +543,7 @@ export const LAWS: Law[] = [
   {
     n: 12, id: 'selective-honesty', title: 'Use Selective Honesty and Generosity to Disarm Your Victim', realm: 'mask',
     line: 'One honest act at the right moment buys a hundred lies a pass.',
-    gist: 'People are suspicious by default when someone has something to gain from them, Greene argues, but that suspicion fades quickly once they see evidence of honesty or generosity. A single candid confession or an unexpected gift creates an impression of trustworthiness that colours everything after. The law says use this deliberately: spend a little truth or a small gift early, then cash in that trust on something larger. First impressions last, and gratitude lowers the guard.',
+    gist: 'People are suspicious by default when someone has something to gain from them, the law argues, but that suspicion fades quickly once they see evidence of honesty or generosity. A single candid confession or an unexpected gift creates an impression of trustworthiness that colours everything after. The law says use this deliberately: spend a little truth or a small gift early, then cash in that trust on something larger. First impressions last, and gratitude lowers the guard.',
     scene: {
       who: 'Bernard Madoff and his investors',
       when: '1960s–2008',

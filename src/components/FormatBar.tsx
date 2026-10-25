@@ -40,7 +40,7 @@ export interface RibbonActions {
   /** links another note ([[) */
   linkNote: () => void;
   mentionBook: () => void;
-  /** a mind trap, a law of power or a Carnegie principle, picked from the whole list */
+  /** a mind trap, a law of power or a Win friends principle, picked from the whole list */
   insertRef: (kind: 'trap' | 'law' | 'principle') => void;
   /** the Link sheet: a web link on the words at the caret */
   link: () => void;

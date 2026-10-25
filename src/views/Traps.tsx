@@ -29,7 +29,7 @@ const FAMILY_IDS = Object.keys(FAMILIES) as Family[];
 const hueOf = (x: Trap) => FAMILIES[x.family].hue;
 const WORLD = 'sadness';
 
-/** For each trap, the Carnegie principles that disarm it (Win friends), and how. */
+/** For each trap, the Win friends principles that disarm it (Win friends), and how. */
 const DISARMS = (() => {
   const by = new Map<string, { p: Principle; how: string }[]>();
   for (const p of PRINCIPLES) for (const { id, how } of p.traps) by.set(id, [...(by.get(id) ?? []), { p, how }]);

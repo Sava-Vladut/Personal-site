@@ -12,7 +12,7 @@ export interface Principle {
   part: Part;
   /** One line, the hook: what the principle really asks of you, in our words. */
   line: string;
-  /** The principle, explained plainly: what Carnegie claims and why he thinks it works. */
+  /** The principle, explained plainly: what it claims and why it works. */
   gist: string;
   /** A story from the book (or from history) where it played out, retold in our words. */
   story: { who: string; when: string; text: string };

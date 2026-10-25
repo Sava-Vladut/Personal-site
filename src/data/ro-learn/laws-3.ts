@@ -4,7 +4,7 @@ export const RO: Record<number, LawRo> = {
   25: {
     title: 'Reinventează-te',
     line: 'Sinele pe care l-ai primit e o ciornă. Cei mai mulți nu deschid niciodată fișierul.',
-    gist: 'Greene susține că identitatea nu e fixată la naștere, ci interpretată, iar cine scrie interpretarea deține o formă discretă de putere. Dacă lași familia, clasa socială sau întâmplarea să te definească, ceilalți te vor citi după scenariul acela și se vor purta cu tine în consecință. Dacă îți modelezi deliberat felul de a fi, vocea și povestea, alegi tu rolul la care oamenii reacționează. Cum oamenii judecă după ce văd, un personaj construit conștient lucrează asupra lor ca și cum ar fi pur și simplu cine ești.',
+    gist: 'Legea susține că identitatea nu e fixată la naștere, ci interpretată, iar cine scrie interpretarea deține o formă discretă de putere. Dacă lași familia, clasa socială sau întâmplarea să te definească, ceilalți te vor citi după scenariul acela și se vor purta cu tine în consecință. Dacă îți modelezi deliberat felul de a fi, vocea și povestea, alegi tu rolul la care oamenii reacționează. Cum oamenii judecă după ce văd, un personaj construit conștient lucrează asupra lor ca și cum ar fi pur și simplu cine ești.',
     scene: {
       who: 'Archibald Leach, ulterior Cary Grant',
       when: '1918–1942',
@@ -53,7 +53,7 @@ export const RO: Record<number, LawRo> = {
   26: {
     title: 'Păstrează-ți mâinile curate',
     line: 'Lasă lovitura să cadă din altă parte și ține-ți mânecile albe.',
-    gist: 'Orice exercitare a puterii face mizerie: decizii nepopulare, cruzime, greșeli. Greene susține că cei puternici supraviețuiesc asigurându-se că mizeria se lipește de altcineva, fie lucrând prin intermediari care fac treaba murdară, fie găsind un țap ispășitor când lucrurile merg prost. Oamenii dau vina pe mâna pe care o văd, nu pe voința din spatele ei. Un lider care pare neatins de părțile urâte își păstrează bunăvoința de care are nevoie ca să conducă.',
+    gist: 'Orice exercitare a puterii face mizerie: decizii nepopulare, cruzime, greșeli. Legea susține că cei puternici supraviețuiesc asigurându-se că mizeria se lipește de altcineva, fie lucrând prin intermediari care fac treaba murdară, fie găsind un țap ispășitor când lucrurile merg prost. Oamenii dau vina pe mâna pe care o văd, nu pe voința din spatele ei. Un lider care pare neatins de părțile urâte își păstrează bunăvoința de care are nevoie ca să conducă.',
     scene: {
       who: 'Elisabeta I, Maria Stuart, regina Scoției, și William Davison',
       when: '1587',
@@ -102,7 +102,7 @@ export const RO: Record<number, LawRo> = {
   27: {
     title: 'Exploatează nevoia oamenilor de a crede și creează în jurul tău un cult',
     line: 'Oamenii plătesc mult pentru certitudine, și încă mai mult ca să aparțină.',
-    gist: 'Greene observă că oamenii flămânzesc după ceva în care să creadă, mai ales în vremuri nesigure sau singuratice. Oferă-le o cauză, o promisiune vagă dar strălucitoare, un ritual și sentimentul de a fi printre aleși, și mulți te vor urma, vor da bani și te vor apăra de cei care se îndoiesc. Șmecheria e să ții mesajul destul de cețos încât oamenii să-l umple cu propriile speranțe, și destul de teatral încât să pară mai mult decât vorbe. Odată ce oamenii au investit în credință, ei o apără în locul tău.',
+    gist: 'Legea observă că oamenii flămânzesc după ceva în care să creadă, mai ales în vremuri nesigure sau singuratice. Oferă-le o cauză, o promisiune vagă dar strălucitoare, un ritual și sentimentul de a fi printre aleși, și mulți te vor urma, vor da bani și te vor apăra de cei care se îndoiesc. Șmecheria e să ții mesajul destul de cețos încât oamenii să-l umple cu propriile speranțe, și destul de teatral încât să pară mai mult decât vorbe. Odată ce oamenii au investit în credință, ei o apără în locul tău.',
     scene: {
       who: 'Franz Anton Mesmer și comisia regală franceză',
       when: '1778–1784',
@@ -152,7 +152,7 @@ export const RO: Record<number, LawRo> = {
   28: {
     title: 'Intră în acțiune cu îndrăzneală',
     line: 'Ezitarea e un semnal, și toți cei din jur îl pot citi.',
-    gist: 'Greene susține că timiditatea e periculoasă pentru că se vede. Dacă intri într-o mișcare cu jumătate de inimă, ceilalți simt îndoiala și te împing înapoi, iar propria ta nesiguranță strică execuția. Îndrăzneala, chiar și când e parțial un joc, îi face pe oameni să se dea la o parte și poate acoperi greșeli pe care prudența le-ar expune. Așa că, spune el, dacă ai de gând să faci ceva, angajează-te complet; dacă nu ești sigur, așteaptă până ești.',
+    gist: 'Legea susține că timiditatea e periculoasă pentru că se vede. Dacă intri într-o mișcare cu jumătate de inimă, ceilalți simt îndoiala și te împing înapoi, iar propria ta nesiguranță strică execuția. Îndrăzneala, chiar și când e parțial un joc, îi face pe oameni să se dea la o parte și poate acoperi greșeli pe care prudența le-ar expune. Așa că, spune el, dacă ai de gând să faci ceva, angajează-te complet; dacă nu ești sigur, așteaptă până ești.',
     scene: {
       who: 'Napoleon Bonaparte și Regimentul 5 de infanterie de linie',
       when: 'martie 1815',
@@ -202,7 +202,7 @@ export const RO: Record<number, LawRo> = {
   29: {
     title: 'Planifică până la capăt',
     line: 'Victoria nu e sfârșitul planului. E începutul următoarei probleme.',
-    gist: 'Greene susține că majoritatea oamenilor planifică doar până la momentul succesului și sunt apoi luați prin surprindere de ce urmează: reacția negativă, rivalul care se ridică, epuizarea. A gândi până la capăt înseamnă a-ți imagina întregul arc, inclusiv cum te vei opri, ce vor face învingătorii și învinșii mai departe și ce uși va trebui să lași deschise. Cu finalul fixat în minte, ești mai puțin tentat de ocolișuri și mai puțin înclinat să-ți depășești măsura. Soarta tot intervine, dar te surprinde mai puțin.',
+    gist: 'Legea susține că majoritatea oamenilor planifică doar până la momentul succesului și sunt apoi luați prin surprindere de ce urmează: reacția negativă, rivalul care se ridică, epuizarea. A gândi până la capăt înseamnă a-ți imagina întregul arc, inclusiv cum te vei opri, ce vor face învingătorii și învinșii mai departe și ce uși va trebui să lași deschise. Cu finalul fixat în minte, ești mai puțin tentat de ocolișuri și mai puțin înclinat să-ți depășești măsura. Soarta tot intervine, dar te surprinde mai puțin.',
     scene: {
       who: 'Otto von Bismarck și regele Wilhelm I al Prusiei',
       when: '1866–1871',
@@ -252,7 +252,7 @@ export const RO: Record<number, LawRo> = {
   30: {
     title: 'Fă ca împlinirile tale să pară fără efort',
     line: 'Arată săritura. Ascunde miile de sărituri de antrenament.',
-    gist: 'Greene susține că efortul vizibil te coboară în ochii celorlalți. Când oamenii văd sudoare, încordare și trudă, văd un om obișnuit care ar putea eșua, iar rezultatul își pierde strălucirea. Când văd ușurință, bănuiesc un dar sau un secret și îți acordă un fel de uimire. Așa că ține munca în spatele cortinei și arată doar grația, și nu-ți explica trucurile, pentru că explicația transformă magia în metodă.',
+    gist: 'Legea susține că efortul vizibil te coboară în ochii celorlalți. Când oamenii văd sudoare, încordare și trudă, văd un om obișnuit care ar putea eșua, iar rezultatul își pierde strălucirea. Când văd ușurință, bănuiesc un dar sau un secret și îți acordă un fel de uimire. Așa că ține munca în spatele cortinei și arată doar grația, și nu-ți explica trucurile, pentru că explicația transformă magia în metodă.',
     scene: {
       who: 'Harry Houdini',
       when: '1899–1926',
@@ -301,7 +301,7 @@ export const RO: Record<number, LawRo> = {
   31: {
     title: 'Controlează opțiunile: pune-i pe ceilalți să joace cu cărțile pe care le împarți tu',
     line: 'Dă oamenilor de ales și vor înceta să mai întrebe cine a scris meniul.',
-    gist: 'Greene susține că cea mai subtilă formă de control este iluzia alegerii. În loc să dai ordine, care stârnesc rezistență, pui în față un număr mic de opțiuni, toate în folosul tău, și lași cealaltă persoană să aleagă. Se simte liberă și responsabilă pentru rezultat, așa că se conformează de bunăvoie. Încadrarea alternativelor astfel încât una să pară evident cea mai bună, sau astfel încât un refuz să pară mai rău decât oricare dintre ele, încheie capcana.',
+    gist: 'Legea susține că cea mai subtilă formă de control este iluzia alegerii. În loc să dai ordine, care stârnesc rezistență, pui în față un număr mic de opțiuni, toate în folosul tău, și lași cealaltă persoană să aleagă. Se simte liberă și responsabilă pentru rezultat, așa că se conformează de bunăvoie. Încadrarea alternativelor astfel încât una să pară evident cea mai bună, sau astfel încât un refuz să pară mai rău decât oricare dintre ele, încheie capcana.',
     scene: {
       who: 'Ivan al IV-lea al Rusiei (Ivan cel Groaznic) și locuitorii Moscovei',
       when: '1564–1565',
@@ -351,7 +351,7 @@ export const RO: Record<number, LawRo> = {
   32: {
     title: 'Mizează pe fanteziile oamenilor',
     line: 'Adevărul trebuie să concureze. O fantezie bună trebuie doar să sosească.',
-    gist: 'Greene susține că realitatea e adesea dezamăgitoare, iar oamenii îl vor răsplăti pe oricine le oferă o scăpare din ea. Cel care promite bogății, romantism, aventură sau salvare adună putere, în timp ce cel care spune adevăruri grele e resimțit cu ostilitate. Fantezia nu trebuie să fie prea îndepărtată: funcționează cel mai bine când pare chiar la îndemână, legată de ceea ce oamenii își doresc deja. Cei care se bucură de un vis nu îl inspectează.',
+    gist: 'Legea susține că realitatea e adesea dezamăgitoare, iar oamenii îl vor răsplăti pe oricine le oferă o scăpare din ea. Cel care promite bogății, romantism, aventură sau salvare adună putere, în timp ce cel care spune adevăruri grele e resimțit cu ostilitate. Fantezia nu trebuie să fie prea îndepărtată: funcționează cel mai bine când pare chiar la îndemână, legată de ceea ce oamenii își doresc deja. Cei care se bucură de un vis nu îl inspectează.',
     scene: {
       who: 'Victor Lustig și negustorul de fier vechi André Poisson',
       when: '1925',
@@ -399,7 +399,7 @@ export const RO: Record<number, LawRo> = {
   33: {
     title: 'Descoperă punctul sensibil al fiecărui om',
     line: 'Toată lumea are un loc sensibil. Găsește-l și nu mai ai nevoie să împingi.',
-    gist: 'Greene susține că fiecare om are o slăbiciune, o nesiguranță, o poftă, o frică sau o nevoie secretă, și că aceasta e pârghia prin care poate fi mișcat. Presiunea directă provoacă rezistență; presiunea pe punctul slab o ocolește. A găsi punctul sensibil înseamnă a observa atent: despre ce vorbesc oamenii prea mult, ce ascund, după ce aleargă. Odată găsit, spune Greene, poate fi folosit ca să lingușești, să ispitești sau să ameninți mult mai eficient decât forța.',
+    gist: 'Legea susține că fiecare om are o slăbiciune, o nesiguranță, o poftă, o frică sau o nevoie secretă, și că aceasta e pârghia prin care poate fi mișcat. Presiunea directă provoacă rezistență; presiunea pe punctul slab o ocolește. A găsi punctul sensibil înseamnă a observa atent: despre ce vorbesc oamenii prea mult, ce ascund, după ce aleargă. Odată găsit, spune legea, poate fi folosit ca să lingușești, să ispitești sau să ameninți mult mai eficient decât forța.',
     scene: {
       who: 'Joseph Duveen și Andrew Mellon',
       when: 'anii 1920–1937',
@@ -447,7 +447,7 @@ export const RO: Record<number, LawRo> = {
   34: {
     title: 'Fii regal în stilul tău: poartă-te ca un rege ca să fii tratat ca un rege',
     line: 'Oamenii își iau semnalul de la tine. Dă-l sus.',
-    gist: 'Greene susține că felul în care te porți îi învață pe ceilalți cum să te trateze. Cine se poartă ca și cum ar merita respect, calm, fără laudă sau rugăminți, tinde să-l primească, în timp ce cine emite îndoială față de propria valoare îi invită pe alții să fie de acord. Ținuta „regală” nu e aroganță, ci o demnitate constantă, definită de tine însuți. Și trebuie să fie stilul tău: unul care te distinge, nu o imitație a altora.',
+    gist: 'Legea susține că felul în care te porți îi învață pe ceilalți cum să te trateze. Cine se poartă ca și cum ar merita respect, calm, fără laudă sau rugăminți, tinde să-l primească, în timp ce cine emite îndoială față de propria valoare îi invită pe alții să fie de acord. Ținuta „regală” nu e aroganță, ci o demnitate constantă, definită de tine însuți. Și trebuie să fie stilul tău: unul care te distinge, nu o imitație a altora.',
     scene: {
       who: 'Napoleon Bonaparte, Papa Pius al VII-lea și, mai târziu, regele Ludovic-Filip',
       when: '1804 și 1830–1848',
@@ -496,7 +496,7 @@ export const RO: Record<number, LawRo> = {
   35: {
     title: 'Stăpânește arta momentului potrivit',
     line: 'Mișcarea potrivită la momentul nepotrivit e mișcarea nepotrivită.',
-    gist: 'Greene susține că puterea depinde la fel de mult de când acționezi, ca de ce faci. Nerăbdarea este o slăbiciune: te face să lovești prea devreme, să-ți arăți cărțile și să-ți cheltuiești puterea înainte ca momentul să fie copt. Maestrul momentului potrivit așteaptă calm în timp ce condițiile se dezvoltă, citește starea vremurilor și apoi se mișcă repede și hotărât când apare ocazia. Răbdarea și viteza sunt două jumătăți ale aceleiași iscusințe.',
+    gist: 'Legea susține că puterea depinde la fel de mult de când acționezi, ca de ce faci. Nerăbdarea este o slăbiciune: te face să lovești prea devreme, să-ți arăți cărțile și să-ți cheltuiești puterea înainte ca momentul să fie copt. Maestrul momentului potrivit așteaptă calm în timp ce condițiile se dezvoltă, citește starea vremurilor și apoi se mișcă repede și hotărât când apare ocazia. Răbdarea și viteza sunt două jumătăți ale aceleiași iscusințe.',
     scene: {
       who: 'Quintus Fabius Maximus și Hannibal',
       when: '217–216 î.Hr.',
@@ -545,7 +545,7 @@ export const RO: Record<number, LawRo> = {
   36: {
     title: 'Disprețuiește ce nu poți avea: ignorarea este cea mai bună răzbunare',
     line: 'Fiecare reacție e un dar de atenție. Alege cine îl primește.',
-    gist: 'Greene susține că a acorda atenție unei probleme mărunte, unui rival sau unei insulte îi dă importanță și putere. Lupta cu un dușman mic îl face mai mare; a alerga după ceva ce nu poți avea te face să pari nevoiaș și ține rana deschisă. Disprețul, adică a lăsa ceva să treacă de parcă n-ar conta, îl lipsește de oxigenul de care are nevoie. Cu cât reacționezi mai mult, cu atât confirmi că lucrul acela te ține în mână.',
+    gist: 'Legea susține că a acorda atenție unei probleme mărunte, unui rival sau unei insulte îi dă importanță și putere. Lupta cu un dușman mic îl face mai mare; a alerga după ceva ce nu poți avea te face să pari nevoiaș și ține rana deschisă. Disprețul, adică a lăsa ceva să treacă de parcă n-ar conta, îl lipsește de oxigenul de care are nevoie. Cu cât reacționezi mai mult, cu atât confirmi că lucrul acela te ține în mână.',
     scene: {
       who: 'Barbra Streisand și fotograful Kenneth Adelman',
       when: '2003',

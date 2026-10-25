@@ -19,7 +19,7 @@ import '../styles/laws.css';
  * The 48 Laws of Power, under Insights, laid out like the other Learn pages (components/learn.tsx): a sky with three
  * figures and the search, then a feature column (the law of the day, the shadow map, a game and the mind traps the
  * laws spring) and every law in its arena, in compact rows. Each law opens to its history, its psychology, the mind
- * traps it springs (linked to the Mind traps page), how to see it coming and Carnegie's answer to it. The data is in
+ * traps it springs (linked to the Mind traps page), how to see it coming and the Win friends answer to it. The data is in
  * data/laws.
  */
 
@@ -30,7 +30,7 @@ const hueOf = (x: Law) => REALMS[x.realm].hue;
 const WORLD = 'anger';
 const LEVERS = new Set(LAWS.flatMap((x) => x.levers.map((l) => l.name.toLowerCase()))).size;
 
-/** For each law, the Carnegie principles that answer it (Win friends), and how. */
+/** For each law, the Win friends principles that answer it (Win friends), and how. */
 const ANSWERS = (() => {
   const by = new Map<number, { p: Principle; how: string }[]>();
   for (const p of PRINCIPLES) for (const { n, how } of p.laws) by.set(n, [...(by.get(n) ?? []), { p, how }]);
@@ -281,7 +281,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
 
       {openPrinciple && answers.length > 0 && (
         <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Carnegie’s answer')}</h3>
+          <h3 class="lrn-d-h">{t('The answer in Win friends')}</h3>
           <div class="lrn-links">
             {answers.map(({ p, how }) => (
               <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
@@ -378,7 +378,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
     <div class="page lrn-page laws-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Laws of power')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'laws', title: t('Laws of power') })} />} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
+        <PageHead title={t('Laws of power')} back={onSharedLink ? undefined : () => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'laws', title: t('Laws of power') })} />} subtitle={t('The 48 laws: the history, the psychology and how to see them coming')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }}>
             <b>{LAWS.length}</b>
@@ -452,7 +452,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
           )}
 
           <section class="card lrn-card lw-about">
-            <p>{t('Greene wrote the book without morals on purpose: these are the moves, as courtiers, generals and con artists have made them for centuries. Most people who read it aren’t would-be kings, they’re people who kept losing a game they didn’t know was being played. So each law here also has its shadow side, an honest version, and the signs that someone is playing it on you.')}</p>
+            <p>{t('The book is deliberately amoral: these are the moves, as courtiers, generals and con artists have made them for centuries. Most people who read it aren’t would-be kings; they’re people who kept losing a game they didn’t know was being played. So each law here also has its shadow side, an honest version, and the signs that someone is playing it on you.')}</p>
             <button class="btn btn-quiet" onClick={(e) => { playIcon(e); openLaw(LAWS[Math.floor(Math.random() * LAWS.length)]); }}><Ico name="dice-5" size={18} /> {t('Draw a law at random')}</button>
           </section>
         </div>

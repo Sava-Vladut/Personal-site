@@ -7,11 +7,11 @@ export const RO: Record<number, PrincipleRo> = {
   10: {
     title: 'Singura cale de a ieși câștigător dintr-o ceartă este să o eviți',
     line: 'Poți câștiga cearta sau poți păstra omul, iar de cele mai multe ori nu le poți avea pe amândouă.',
-    gist: 'Afirmația lui Carnegie e tăioasă: nimeni nu câștigă cu adevărat o ceartă. Dacă pierzi, ai pierdut. Dacă câștigi, celălalt se simte mai mic, îți poartă pică și de obicei se agață și mai tare de părerea lui. O minte schimbată cu de-a sila rămâne aceeași minte. De aceea îți spune să privești impulsul de a te certa ca pe o lumină de avertizare: primește dezacordul ca pe o informație, stăpânește-ți prima reacție defensivă, ascultă până la capăt, caută ce aveți în comun și promite că te vei gândi. Ideea nu e să renunți la părerile tale, ci să nu mai transformi conversațiile în dueluri în care mândria celuilalt este premiul.',
+    gist: 'Afirmația e tăioasă: nimeni nu câștigă cu adevărat o ceartă. Dacă pierzi, ai pierdut. Dacă câștigi, celălalt se simte mai mic, îți poartă pică și de obicei se agață și mai tare de părerea lui. O minte schimbată cu de-a sila rămâne aceeași minte. De aceea îți spune să privești impulsul de a te certa ca pe o lumină de avertizare: primește dezacordul ca pe o informație, stăpânește-ți prima reacție defensivă, ascultă până la capăt, caută ce aveți în comun și promite că te vei gândi. Ideea nu e să renunți la părerile tale, ci să nu mai transformi conversațiile în dueluri în care mândria celuilalt este premiul.',
     story: {
-      who: 'Dale Carnegie și Frank Gammond',
+      who: 'Un invitat la banchet și Frank Gammond',
       when: 'Londra, la scurt timp după Primul Război Mondial',
-      text: 'La un banchet dat în cinstea aviatorului Sir Ross Smith, omul de lângă Carnegie a povestit o întâmplare care se sprijinea pe versul „Există o divinitate care ne croiește sorții, oricât de grosolan i-am ciopli noi” și a spus că e din Biblie. Carnegie știa că e din Shakespeare și a spus-o. Omul a insistat. De cealaltă parte a lui Carnegie stătea vechiul lui prieten Frank Gammond, care își petrecuse ani de zile studiindu-l pe Shakespeare. Rugat să dea verdictul, Gammond l-a lovit pe Carnegie cu piciorul pe sub masă și a spus că domnul are dreptate: era din Biblie. Pe drumul spre casă a recunoscut că, desigur, era din Hamlet. Dar erau oaspeți la o seară veselă, a zis el, iar omul nu ceruse nicio corectură. De ce să-i dovedești că greșește și să te facă să nu-i placi?',
+      text: 'La un banchet dat în cinstea aviatorului Sir Ross Smith, omul așezat lângă un invitat a povestit o întâmplare care se sprijinea pe versul „Există o divinitate care ne croiește sorții, oricât de grosolan i-am ciopli noi” și a spus că e din Biblie. Invitatul știa că e din Shakespeare și a spus-o. Omul a insistat. De cealaltă parte a invitatului stătea vechiul lui prieten Frank Gammond, care își petrecuse ani de zile studiindu-l pe Shakespeare. Rugat să dea verdictul, Gammond l-a lovit cu piciorul pe sub masă și a spus că domnul are dreptate: era din Biblie. Pe drumul spre casă a recunoscut că, desigur, era din Hamlet. Dar erau oaspeți la o seară veselă, a zis el, iar omul nu ceruse nicio corectură. De ce să-i dovedești că greșește și să te facă să nu-i placi?',
     },
     mind: 'Din interior, o ceartă nu pare un schimb de informații. Pare o amenințare. Când o convingere de-a noastră e atacată, mai ales una legată de ceea ce suntem, creierul reacționează cam ca în fața altor pericole sociale: pulsul crește, atenția se îngustează, iar scopul se mută pe tăcute de la aflarea adevărului la a nu pierde. În starea aceea, oamenii nu mai cântăresc argumentele celeilalte părți și încep să le caute cusururi. Fiecare parte îl aude pe celălalt ridicând tonul și ajunge la concluzia că el e nerezonabilul. Contează și publicul: a da înapoi în fața altora costă imagine, deci cu cât cearta e mai publică, cu atât pozițiile se înțepenesc mai tare.',
     levers: [
@@ -25,7 +25,7 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Fiecare parte presupune că vede lumea așa cum e, deci celălalt trebuie să fie părtinitor, needucat sau încăpățânat. Să refuzi cearta înseamnă să recunoști că poate tu ești cel care nu vede limpede.' },
     ],
     laws: [
-      { how: 'Legea lui Greene spune același lucru, în cuvinte mai dure: o victorie obținută prin ceartă e goală, pentru că resentimentul pe care îl lasă durează mai mult decât punctul câștigat. Greene te-ar pune să demonstrezi, Carnegie te-ar pune să asculți mai întâi. Amândoi sunt de acord că vorbele aruncate în mândria cuiva ating rareori ținta.' },
+      { how: 'Legea spune același lucru, în cuvinte mai dure: o victorie obținută prin ceartă e goală, pentru că resentimentul pe care îl lasă durează mai mult decât punctul câștigat. Legea te-ar pune să demonstrezi, principiul te-ar pune să asculți mai întâi. Amândoi sunt de acord că vorbele aruncate în mândria cuiva ating rareori ținta.' },
     ],
     study: {
       who: 'Charles Lord, Lee Ross și Mark Lepper, 1979',
@@ -57,7 +57,7 @@ export const RO: Record<number, PrincipleRo> = {
   11: {
     title: 'Arată respect pentru părerile celuilalt. Nu-i spune niciodată „Greșești”',
     line: '„Greșești” nu e o informație. E o provocare, iar oamenii răspund la provocări înțepenind pe poziție.',
-    gist: 'Să-i spui cuiva că greșește, prin cuvinte, privire sau ton, înseamnă să-i spui că ești mai deștept decât el. Carnegie spune că asta lovește în judecata și în mândria lui și îi dă chef să lovească și el înapoi, așa că nu mai rămâne loc să-și schimbe părerea. Dacă crezi că cineva se înșală, spune el, începe cu ceva de felul „Poate greșesc, mi se întâmplă des, hai să ne uităm la fapte”. E greu să te cerți cu cineva care a admis deja că s-ar putea să greșească. Iar obiceiul are un al doilea câștig: deseori descoperi că tu ești cel care greșea.',
+    gist: 'Să-i spui cuiva că greșește, prin cuvinte, privire sau ton, înseamnă să-i spui că ești mai deștept decât el. Cartea spune că asta lovește în judecata și în mândria lui și îi dă chef să lovească și el înapoi, așa că nu mai rămâne loc să-și schimbe părerea. Dacă crezi că cineva se înșală, spune cartea, începe cu ceva de felul „Poate greșesc, mi se întâmplă des, hai să ne uităm la fapte”. E greu să te cerți cu cineva care a admis deja că s-ar putea să greșească. Iar obiceiul are un al doilea câștig: deseori descoperi că tu ești cel care greșea.',
     story: {
       who: 'Benjamin Franklin',
       when: 'Philadelphia, anii 1720 și 1730',
@@ -75,8 +75,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Cine se simte atacat începe să raționeze spre concluzia care îl protejează. Fără atac, e mai puțin de protejat și mai multe șanse să urmeze dovezile.' },
     ],
     laws: [
-      { how: 'Greene te avertizează să nu-l faci niciodată pe stăpân să se simtă mai puțin isteț decât tine. Carnegie lărgește avertismentul la toată lumea: să corectezi pe oricine pe față îl face să se simtă mai mic, iar oamenii iartă rar asta. Motivul lui Greene e autoprotecția; al lui Carnegie e că pur și simplu nu funcționează.' },
-      { how: 'Greene sfătuiește să gândești ce vrei, dar să nu-ți etalezi părerile care îi pun pe alții în defensivă. Carnegie e de acord cu etalarea, dar merge mai departe: ține-te de propriile păreri mai ușor, pentru că poate tu ești cel care greșește.' },
+      { how: 'Legea te avertizează să nu-l faci niciodată pe stăpân să se simtă mai puțin isteț decât tine. Principiul lărgește avertismentul la toată lumea: să corectezi pe oricine pe față îl face să se simtă mai mic, iar oamenii iartă rar asta. Motivul legii e autoprotecția; al principiului e că pur și simplu nu funcționează.' },
+      { how: 'Legea sfătuiește să gândești ce vrei, dar să nu-ți etalezi părerile care îi pun pe alții în defensivă. Principiul e de acord cu etalarea, dar merge mai departe: ține-te de propriile păreri mai ușor, pentru că poate tu ești cel care greșește.' },
     ],
     study: {
       who: 'Brendan Nyhan și Jason Reifler, 2010; Thomas Wood și Ethan Porter, 2019',
@@ -108,11 +108,11 @@ export const RO: Record<number, PrincipleRo> = {
   12: {
     title: 'Dacă greșești, recunoaște imediat și cu hotărâre',
     line: 'Spune tu primul lucrul aspru despre tine, înainte să apuce altcineva, și de obicei se vor grăbi să-l îndulcească.',
-    gist: 'Când știi că ești în greșeală, spune Carnegie, cea mai bună apărare e să nu te aperi deloc. Recunoaște, repede și pe deplin, înainte ca celălalt să apuce s-o spună. Asta îi ia vântul din pânze: nu mai e nimic de dovedit, iar majoritatea oamenilor răspund la o recunoaștere sinceră devenind generoși. Proștii încearcă să-și apere greșelile, scrie el, și cei mai mulți proști așa fac. Să-ți asumi greșeala îți dă o demnitate pe care scuzele n-o dau niciodată și, pe deasupra, e o ușurare, pentru că nu mai ai nicio poziție de apărat.',
+    gist: 'Când știi că ești în greșeală, spune cartea, cea mai bună apărare e să nu te aperi deloc. Recunoaște, repede și pe deplin, înainte ca celălalt să apuce s-o spună. Asta îi ia vântul din pânze: nu mai e nimic de dovedit, iar majoritatea oamenilor răspund la o recunoaștere sinceră devenind generoși. Proștii încearcă să-și apere greșelile, scrie cartea, și cei mai mulți proști așa fac. Să-ți asumi greșeala îți dă o demnitate pe care scuzele n-o dau niciodată și, pe deasupra, e o ușurare, pentru că nu mai ai nicio poziție de apărat.',
     story: {
-      who: 'Dale Carnegie și un polițist călare',
+      who: 'Un stăpân de câine și un polițist călare',
       when: 'Forest Park, New York, anii 1930',
-      text: 'Lui Carnegie îi plăcea să-și ducă cățelul, pe nume Rex, într-un parc împădurit de lângă casă și să-l lase să alerge fără lesă și fără botniță. Într-o zi l-a oprit un polițist călare și l-a avertizat că data viitoare va fi amendă la tribunal. Carnegie a ascultat o vreme, apoi s-a întors la vechiul obicei. Curând a fost prins din nou. De data asta n-a mai așteptat. A spus pe loc că agentul l-a prins asupra faptului, că nu are scuze și că fusese avertizat. Tonul polițistului s-a schimbat pe dată. A zis că înțelege tentația când nu e nimeni prin preajmă, că un cățel ca ăsta nu face rău nimănui și i-a sugerat lui Carnegie să-l lase să alerge peste deal, unde el nu-l va vedea. Carnegie s-a întors acasă fără amendă.',
+      text: 'Un stăpân de câine avea obiceiul să-și ducă cățelul, pe nume Rex, într-un parc împădurit de lângă casă și să-l lase să alerge fără lesă și fără botniță. Într-o zi l-a oprit un polițist călare și l-a avertizat că data viitoare va fi amendă la tribunal. El a ascultat o vreme, apoi s-a întors la vechiul obicei. Curând a fost prins din nou. De data asta n-a mai așteptat. A spus pe loc că agentul l-a prins asupra faptului, că nu are scuze și că fusese avertizat. Tonul polițistului s-a schimbat pe dată. A zis că înțelege tentația când nu e nimeni prin preajmă, că un cățel ca ăsta nu face rău nimănui și i-a sugerat să-l lase să alerge peste deal, unde el nu-l va vedea. Omul s-a întors acasă fără amendă.',
     },
     mind: 'Un acuzator are nevoie de un inculpat. Când te cerți, îi dai celuilalt pe cineva cu care să se bată și toate motivele să-și susțină cazul. Când îți recunoști vina în termeni mai duri decât ar fi folosit el, îi iei rolul. Nu mai are nevoie să-ți dovedească vinovăția, așa că e liber să facă ce le place oamenilor când au avantajul: să fie generoși. Mai e și un cost al apărării unei greșeli. Fiecare scuză te leagă mai tare de o poziție pe care o știi slabă, iar celălalt vede asta. O recunoaștere rapidă arată a încredere; o apărare lungă arată a frică.',
     levers: [
@@ -126,13 +126,13 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'După ce ne-am apărat deja greșeala, simțim că trebuie să continuăm ca să justificăm efortul. O recunoaștere timpurie oprește investiția înainte să crească.' },
     ],
     laws: [
-      { how: 'Greene spune să-ți ții mâinile curate: lasă un țap ispășitor sau o unealtă să ducă vina. Carnegie spune să-ți iei vina pe tine, imediat. Greene îți apără imaginea pe termen scurt; Carnegie pariază că oamenii au încredere în cel care își asumă greșelile și că această încredere durează mai mult.' },
-      { how: 'Greene avertizează că a părea fără cusur naște invidie și suspiciune și sfătuiește să arăți o slăbiciune inofensivă. O recunoaștere sinceră face asta firesc, fără calcul.' },
+      { how: 'Legea spune să-ți ții mâinile curate: lasă un țap ispășitor sau o unealtă să ducă vina. Principiul spune să-ți iei vina pe tine, imediat. Legea îți apără imaginea pe termen scurt; principiul pariază că oamenii au încredere în cel care își asumă greșelile și că această încredere durează mai mult.' },
+      { how: 'Legea avertizează că a părea fără cusur naște invidie și suspiciune și sfătuiește să arăți o slăbiciune inofensivă. O recunoaștere sinceră face asta firesc, fără calcul.' },
     ],
     study: {
       who: 'Fiona Lee, Christopher Peterson și Larissa Tiedens, 2004',
       title: 'Mea culpa: prezicerea prețului acțiunilor din atribuirile organizaționale',
-      text: 'Cercetătorii au analizat rapoartele anuale ale unor companii care își explicau rezultatele proaste. Unele dădeau vina pe forțe externe pe care nu le puteau controla, ca economia sau reglementările; altele dădeau vina pe propriile decizii. Companiile care și-au asumat vina au avut acțiuni mai scumpe peste un an. Într-un experiment de laborator ulterior, oamenii care citeau un raport în care compania se învinuia o vedeau ca fiind mai stăpână pe soarta ei și îi apreciau mai bine perspectivele. Datele sunt corelaționale, iar ce pare să fi ajutat a fost vina pusă pe cauze pe care compania le putea controla, semn că le putea și repara, dar tiparul se potrivește cu Carnegie: recunoașterea vinei s-a citit ca putere, nu ca slăbiciune.',
+      text: 'Cercetătorii au analizat rapoartele anuale ale unor companii care își explicau rezultatele proaste. Unele dădeau vina pe forțe externe pe care nu le puteau controla, ca economia sau reglementările; altele dădeau vina pe propriile decizii. Companiile care și-au asumat vina au avut acțiuni mai scumpe peste un an. Într-un experiment de laborator ulterior, oamenii care citeau un raport în care compania se învinuia o vedeau ca fiind mai stăpână pe soarta ei și îi apreciau mai bine perspectivele. Datele sunt corelaționale, iar ce pare să fi ajutat a fost vina pusă pe cauze pe care compania le putea controla, semn că le putea și repara, dar tiparul se potrivește cu principiul: recunoașterea vinei s-a citit ca putere, nu ca slăbiciune.',
     },
     today: [
       'Să începi un e-mail către un client cu „Am greșit și iată ce facem în privința asta”',
@@ -159,11 +159,11 @@ export const RO: Record<number, PrincipleRo> = {
   13: {
     title: 'Începe într-un mod prietenos',
     line: 'O picătură de miere prinde mai multe muște decât un butoi de fiere, iar prima picătură contează cel mai mult.',
-    gist: 'Dacă inima cuiva e împotriva ta, spune Carnegie, nicio logică nu-l va aduce de partea ta. Dacă vrei ca cineva să ajungă la părerea ta, începe prin a arăta că ești de partea lui: prietenos, calm, apreciativ. Împrumută vechea fabulă a soarelui și a vântului care se întreceau să-l facă pe un drumeț să-și scoată haina. Vântul a suflat mai tare, iar omul și-a strâns haina mai bine; soarele a strălucit blând, iar omul și-a scos-o. Începutul călduros nu e slăbiciune, susține Carnegie. E pur și simplu singura cale într-o minte care altfel s-ar închide.',
+    gist: 'Dacă inima cuiva e împotriva ta, spune cartea, nicio logică nu-l va aduce de partea ta. Dacă vrei ca cineva să ajungă la părerea ta, începe prin a arăta că ești de partea lui: prietenos, calm, apreciativ. Cartea împrumută vechea fabulă a soarelui și a vântului care se întreceau să-l facă pe un drumeț să-și scoată haina. Vântul a suflat mai tare, iar omul și-a strâns haina mai bine; soarele a strălucit blând, iar omul și-a scos-o. Începutul călduros nu e slăbiciune, susține cartea. E pur și simplu singura cale într-o minte care altfel s-ar închide.',
     story: {
       who: 'John D. Rockefeller Jr. și minerii din Colorado',
       when: '1914–1915',
-      text: 'Greva de la compania Colorado Fuel & Iron, controlată de Rockefeller, a fost una dintre cele mai sângeroase din istoria americană. În aprilie 1914, miliția a atacat o tabără de corturi a minerilor greviști la Ludlow, iar femei și copii au murit în incendiu. Numele Rockefeller era urât în bazinele carbonifere. În 1915, Rockefeller cel tânăr a mers el însuși în Colorado. A vizitat taberele, casele minerilor și le-a cunoscut familiile. Apoi a vorbit în fața reprezentanților minerilor, începând prin a spune cât de mândru e să fie acolo și că, după ce îi vizitase, simțea că îi întâlnește ca pe niște prieteni. A continuat propunând un plan de reprezentare a muncitorilor. Carnegie povestește întâmplarea ca exemplu al felului în care o abordare prietenoasă a putut transforma o mulțime care voise să-l spânzure în ascultători.',
+      text: 'Greva de la compania Colorado Fuel & Iron, controlată de Rockefeller, a fost una dintre cele mai sângeroase din istoria americană. În aprilie 1914, miliția a atacat o tabără de corturi a minerilor greviști la Ludlow, iar femei și copii au murit în incendiu. Numele Rockefeller era urât în bazinele carbonifere. În 1915, Rockefeller cel tânăr a mers el însuși în Colorado. A vizitat taberele, casele minerilor și le-a cunoscut familiile. Apoi a vorbit în fața reprezentanților minerilor, începând prin a spune cât de mândru e să fie acolo și că, după ce îi vizitase, simțea că îi întâlnește ca pe niște prieteni. A continuat propunând un plan de reprezentare a muncitorilor. Întâmplarea e povestită adesea ca exemplu al felului în care o abordare prietenoasă a putut transforma o mulțime care voise să-l spânzure în ascultători.',
     },
     mind: 'Oamenii hotărăsc foarte repede dacă cineva e prieten sau amenințare, iar hotărârea asta colorează tot ce urmează. Cercetările despre primele impresii sugerează că căldura se judecă înaintea competenței și că, odată ce cineva pare ostil, chiar și propunerile rezonabile sună ca niște capcane. Un început prietenos coboară garda înainte să sosească conținutul. Stabilește și o normă: când un om e călduros, celălalt se simte atras să răspundă la fel și devine incomod să fii ostil cu cineva care e amabil cu tine.',
     levers: [
@@ -172,13 +172,13 @@ export const RO: Record<number, PrincipleRo> = {
       { name: 'Contagiunea emoțională', text: 'Elaine Hatfield și colegii ei au descris cum oamenii preiau fără să-și dea seama dispozițiile celor din jur, prin expresia feței, voce și postură. Calmul și căldura se transmit, la fel ca iritarea și suspiciunea.' },
     ],
     traps: [
-      { how: 'O primă impresie caldă se revarsă peste tot restul: propunerea ta pare mai rezonabilă pentru că pari un om de treabă. Carnegie folosește halo-ul în mod deliberat.' },
+      { how: 'O primă impresie caldă se revarsă peste tot restul: propunerea ta pare mai rezonabilă pentru că pari un om de treabă. Principiul folosește halo-ul în mod deliberat.' },
       { how: 'Tonul primului minut ancorează toată conversația. Dacă începi rece, orice încercare ulterioară de căldură trebuie să urce de acolo.' },
       { how: 'Un cuvânt ostil cântărește mai mult decât unul bun și e ținut minte mai mult timp. Dacă începi prietenos, primul lucru pe care îl bagă la dosar nu e o amenințare.' },
     ],
     laws: [
-      { how: 'Greene sfătuiește să arăți generozitate sau sinceritate ca să-i adormi cuiva vigilența înainte să iei ce vrei. Începutul prietenos al lui Carnegie folosește același mecanism, motiv pentru care trebuie să fie sincer: făcut ca truc, e legea lui Greene sub un nume mai frumos.' },
-      { how: 'Greene spune să lucrezi asupra inimilor și minților, nu să forțezi ascultarea. Carnegie e de acord că inimile vin primele și că un om care se simte plăcut e deja pe jumătate convins.' },
+      { how: 'Legea sfătuiește să arăți generozitate sau sinceritate ca să-i adormi cuiva vigilența înainte să iei ce vrei. Începutul prietenos al principiului folosește același mecanism, motiv pentru care trebuie să fie sincer: făcut ca truc, e legea sub un nume mai frumos.' },
+      { how: 'Legea spune să lucrezi asupra inimilor și minților, nu să forțezi ascultarea. Principiul e de acord că inimile vin primele și că un om care se simte plăcut e deja pe jumătate convins.' },
     ],
     study: {
       who: 'Harold Kelley, 1950',
@@ -210,13 +210,13 @@ export const RO: Record<number, PrincipleRo> = {
   14: {
     title: 'Fă-l pe celălalt să spună „Da, da” din primul moment',
     line: 'Începe cu ce aveți în comun. Fiecare „da” îl face mai ușor pe următorul; fiecare „nu” trebuie apărat.',
-    gist: 'Când vorbești cu cineva, spune Carnegie, nu începe cu lucrurile în care nu sunteți de acord. Începe cu ce aveți în comun și revino mereu la asta: amândoi vreți același rezultat, diferiți doar în privința drumului. Un „nu” e un obstacol greu de trecut, pentru că odată rostit, mândria omului cere să stea în spatele lui. În schimb, un șir de răspunsuri „da” îl pune în mișcare spre acord. Vorbitorul iscusit, scrie el, obține de la început o serie de „da”-uri și toată mintea ascultătorului pornește odată cu el.',
+    gist: 'Când vorbești cu cineva, spune cartea, nu începe cu lucrurile în care nu sunteți de acord. Începe cu ce aveți în comun și revino mereu la asta: amândoi vreți același rezultat, diferiți doar în privința drumului. Un „nu” e un obstacol greu de trecut, pentru că odată rostit, mândria omului cere să stea în spatele lui. În schimb, un șir de răspunsuri „da” îl pune în mișcare spre acord. Vorbitorul iscusit, adaugă cartea, obține de la început o serie de „da”-uri și toată mintea ascultătorului pornește odată cu el.',
     story: {
       who: 'Socrate',
       when: 'Atena, secolul al V-lea î.Hr.',
-      text: 'Carnegie îl dă ca exemplu pe Socrate, așa cum îl înfățișează Platon și Xenofon, drept stăpân al acestei metode. Socrate rareori îi spunea cuiva că greșește. În schimb punea întrebări la care interlocutorul putea ușor să încuviințeze: practică un medic medicina spre binele pacientului? Are păstorul grijă de oi? Fiecare răspuns era un da, iar fiecare da se sprijinea pe precedentul, până când celălalt se trezea de acord cu o concluzie pe care ar fi respins-o categoric cu câteva minute înainte. Socrate a fost în cele din urmă judecat și executat, ceea ce amintește că metoda poate irita tot atât cât convinge, dar a modelat învățământul occidental vreme de două mii cinci sute de ani.',
+      text: 'Socrate, așa cum îl înfățișează Platon și Xenofon, este stăpânul acestei metode. Socrate rareori îi spunea cuiva că greșește. În schimb punea întrebări la care interlocutorul putea ușor să încuviințeze: practică un medic medicina spre binele pacientului? Are păstorul grijă de oi? Fiecare răspuns era un da, iar fiecare da se sprijinea pe precedentul, până când celălalt se trezea de acord cu o concluzie pe care ar fi respins-o categoric cu câteva minute înainte. Socrate a fost în cele din urmă judecat și executat, ceea ce amintește că metoda poate irita tot atât cât convinge, dar a modelat învățământul occidental vreme de două mii cinci sute de ani.',
     },
-    mind: 'Oamenilor le place să fie consecvenți. După ce am spus ceva cu voce tare, simțim presiunea de a acționa și a gândi în acord cu asta, în parte ca să părem de încredere în fața altora, în parte ca să ne simțim coerenți față de noi înșine. O serie de încuviințări construiește imaginea unei conversații comune: suntem de aceeași parte, vedem lucrurile la fel. Un „nu”, în schimb, îl leagă pe om de o poziție pe care apoi se simte obligat s-o apere. Ideea lui Carnegie că un „nu” încordează tot corpul nu e bine susținută, dar miezul ei, că angajamentele timpurii le modelează pe cele de mai târziu, este.',
+    mind: 'Oamenilor le place să fie consecvenți. După ce am spus ceva cu voce tare, simțim presiunea de a acționa și a gândi în acord cu asta, în parte ca să părem de încredere în fața altora, în parte ca să ne simțim coerenți față de noi înșine. O serie de încuviințări construiește imaginea unei conversații comune: suntem de aceeași parte, vedem lucrurile la fel. Un „nu”, în schimb, îl leagă pe om de o poziție pe care apoi se simte obligat s-o apere. Ideea că un „nu” încordează tot corpul nu e bine susținută, dar miezul ei, că angajamentele timpurii le modelează pe cele de mai târziu, este.',
     levers: [
       { name: 'Angajament și consecvență', text: 'Robert Cialdini descrie dorința de a fi consecvent cu ce am spus și făcut deja drept una dintre cele mai puternice pârghii ale influenței. Micile acorduri de la început fixează o direcție din care e incomod să te întorci.' },
       { name: 'Autopercepția', text: 'Daryl Bem a propus că oamenii își învață atitudinile și privindu-și comportamentul. Cineva care se aude încuviințând în repetate rânduri începe să se vadă ca unul care e de acord cu tine.' },
@@ -227,7 +227,7 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Odată ce cineva a spus „nu”, își va apăra poziția chiar și în fața unor dovezi bune. Cea mai bună cale de ocolire a capcanei e să n-o declanșezi de la început.' },
     ],
     laws: [
-      { how: 'Greene sfătuiește să controlezi opțiunile, astfel încât orice alegere să ducă unde vrei tu. Un șir de întrebări cu răspuns „da” poate face același lucru. De aceea contează dacă întrebările sunt pași sinceri spre o concluzie comună sau un coridor construit ca să prindă pe cineva.' },
+      { how: 'Legea sfătuiește să controlezi opțiunile, astfel încât orice alegere să ducă unde vrei tu. Un șir de întrebări cu răspuns „da” poate face același lucru. De aceea contează dacă întrebările sunt pași sinceri spre o concluzie comună sau un coridor construit ca să prindă pe cineva.' },
     ],
     study: {
       who: 'Jonathan Freedman și Scott Fraser, 1966',
@@ -259,11 +259,11 @@ export const RO: Record<number, PrincipleRo> = {
   15: {
     title: 'Lasă-l pe celălalt să vorbească cea mai mare parte a timpului',
     line: 'Oamenii sunt rareori convinși de ce le spui tu. Sunt convinși de ce se aud spunând ei.',
-    gist: 'Cei mai mulți dintre noi, încercând să câștigăm pe cineva, vorbim prea mult. Carnegie spune să faci pe dos. Lasă-i să se descarce: ei știu mai multe despre afacerea și problemele lor decât tine. Pune întrebări și ascultă cu răbdare, mai ales când nu sunt de acord, pentru că nu te vor auzi cât timp mai au lucruri de spus. Chiar și prietenii, observă el, preferă să vorbească despre propriile realizări decât să le asculte pe ale tale. Dă-le cuvântul și deseori vor ajunge singuri la concluzia ta sau îți vor arăta de ce a ta era greșită.',
+    gist: 'Cei mai mulți dintre noi, încercând să câștigăm pe cineva, vorbim prea mult. Cartea spune să faci pe dos. Lasă-i să se descarce: ei știu mai multe despre afacerea și problemele lor decât tine. Pune întrebări și ascultă cu răbdare, mai ales când nu sunt de acord, pentru că nu te vor auzi cât timp mai au lucruri de spus. Chiar și prietenii, observă cartea, preferă să vorbească despre propriile realizări decât să le asculte pe ale tale. Dă-le cuvântul și deseori vor ajunge singuri la concluzia ta sau îți vor arăta de ce a ta era greșită.',
     story: {
       who: 'Un vânzător de țesături cu laringită',
       when: 'Statele Unite, anii 1930',
-      text: 'Carnegie povestește despre un vânzător care licita, împotriva unor rivali, să aprovizioneze un an întreg cu stofă de tapițerie unul dintre marii producători americani de automobile. În ziua prezentării, s-a trezit cu o laringită atât de rea, încât abia putea șopti. La ședință a scris un bilet în care spunea că și-a pierdut vocea și nu poate vorbi. Președintele companiei a zis că va vorbi el în locul lui. A deschis eșantioanele, le-a lăudat calitățile și a pledat cauza în fața propriilor colegi, în timp ce vânzătorul doar zâmbea, dădea din cap și făcea câteva gesturi. Vânzătorul a câștigat contractul, cel mai mare din cariera lui, și i-a spus lui Carnegie că l-ar fi pierdut probabil dacă ar fi putut vorbi.',
+      text: 'Un vânzător licita, împotriva unor rivali, să aprovizioneze un an întreg cu stofă de tapițerie unul dintre marii producători americani de automobile. În ziua prezentării, s-a trezit cu o laringită atât de rea, încât abia putea șopti. La ședință a scris un bilet în care spunea că și-a pierdut vocea și nu poate vorbi. Președintele companiei a zis că va vorbi el în locul lui. A deschis eșantioanele, le-a lăudat calitățile și a pledat cauza în fața propriilor colegi, în timp ce vânzătorul doar zâmbea, dădea din cap și făcea câteva gesturi. Vânzătorul a câștigat contractul, cel mai mare din cariera lui, și a spus mai târziu că l-ar fi pierdut probabil dacă ar fi putut vorbi.',
     },
     mind: 'Să vorbim despre propriile păreri și experiențe e în sine o recompensă: aprinde aceleași circuite din creier ca mâncarea și banii. Cine e lăsat să vorbească se simte auzit, iar cine se simte auzit se relaxează. Mai e și un efect mai adânc. Când oamenii își explică poziția cu cuvintele lor, observă adesea punctele slabe fără ca cineva să li le arate, iar o concluzie la care ajungi cu voce tare pare a ta. Între timp, ascultătorul adună singurul lucru pe care vorbitorul nu-l primește niciodată: informații despre ce vrea de fapt celălalt.',
     levers: [
@@ -276,8 +276,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Credem că ceilalți ne urmăresc atent cuvintele. De cele mai multe ori își așteaptă rândul. Dă-le rândul și încep să asculte.' },
     ],
     laws: [
-      { how: 'Greene spune să spui mereu mai puțin decât e necesar, ca alții să se dezvăluie și vorbele tale să cântărească mai mult. Carnegie ajunge la aceeași practică din partea cealaltă: spune mai puțin ca celălalt să se simtă auzit.' },
-      { how: 'Spionul lui Greene ascultă ca să adune arme. Ascultătorul lui Carnegie adună înțelegere. Comportamentul arată la fel; ce faci cu ce auzi decide ce lege urmezi.' },
+      { how: 'Legea spune să spui mereu mai puțin decât e necesar, ca alții să se dezvăluie și vorbele tale să cântărească mai mult. Principiul ajunge la aceeași practică din partea cealaltă: spune mai puțin ca celălalt să se simtă auzit.' },
+      { how: 'Spionul legii ascultă ca să adune arme. Ascultătorul principiului adună înțelegere. Comportamentul arată la fel; ce faci cu ce auzi decide ce lege urmezi.' },
     ],
     study: {
       who: 'Karen Huang, Michael Yeomans, Alison Wood Brooks, Julia Minson și Francesca Gino, 2017',
@@ -309,7 +309,7 @@ export const RO: Record<number, PrincipleRo> = {
   16: {
     title: 'Lasă-l pe celălalt să simtă că ideea îi aparține',
     line: 'O idee pe care i-o dai cuiva e a ta. O idee pe care o găsește el e a lui, și va lupta pentru ea.',
-    gist: 'Oamenii au mult mai multă încredere în concluziile la care au ajuns singuri decât în cele care le-au fost date. De aceea spune Carnegie: nu-ți impune părerile altora. Fă sugestii, pune întrebări și lasă-i să gândească singuri. Adu-le materia primă și lasă-i să construiască ei concluzia. Angajamentul lor față de ea va fi mult mai puternic decât dacă ai fi susținut-o în ceartă, iar tu primești ce voiai. Prețul este meritul, pe care, spune el, ar trebui să fii bucuros să-l dai.',
+    gist: 'Oamenii au mult mai multă încredere în concluziile la care au ajuns singuri decât în cele care le-au fost date. De aceea spune cartea: nu-ți impune părerile altora. Fă sugestii, pune întrebări și lasă-i să gândească singuri. Adu-le materia primă și lasă-i să construiască ei concluzia. Angajamentul lor față de ea va fi mult mai puternic decât dacă ai fi susținut-o în ceartă, iar tu primești ce voiai. Prețul este meritul, pe care, spune cartea, ar trebui să fii bucuros să-l dai.',
     story: {
       who: 'Colonelul Edward House și președintele Woodrow Wilson',
       when: 'Washington, 1913–1919',
@@ -323,11 +323,11 @@ export const RO: Record<number, PrincipleRo> = {
     ],
     traps: [
       { how: 'Supraevaluăm ce ne aparține, iar o idee pe care o socotim a noastră ne aparține. Dacă lași pe cineva să găsească ideea, îi dai înzestrarea.' },
-      { how: 'Oamenii își atribuie ușor meritul pentru ideile bune. Carnegie nu mai luptă cu această tendință și o pune la treabă.' },
+      { how: 'Oamenii își atribuie ușor meritul pentru ideile bune. Principiul nu mai luptă cu această tendință și o pune la treabă.' },
     ],
     laws: [
-      { how: 'Greene spune să-i pui pe alții să muncească, iar meritul să ți-l însușești tu. Carnegie răstoarnă: fă tu munca și lasă-l pe celălalt să-și ia meritul. Greene câștigă faimă; Carnegie câștigă rezultatul și un aliat care crede în el.' },
-      { how: 'Greene sfătuiește să încadrezi alegerile astfel încât oamenii să se simtă liberi când aleg ce vrei tu. A planta o idee poate aluneca exact în asta, deci rămâne cinstit doar dacă ai accepta cu adevărat o altă concluzie.' },
+      { how: 'Legea spune să-i pui pe alții să muncească, iar meritul să ți-l însușești tu. Principiul răstoarnă: fă tu munca și lasă-l pe celălalt să-și ia meritul. Legea câștigă faimă; principiul câștigă rezultatul și un aliat care crede în el.' },
+      { how: 'Legea sfătuiește să încadrezi alegerile astfel încât oamenii să se simtă liberi când aleg ce vrei tu. A planta o idee poate aluneca exact în asta, deci rămâne cinstit doar dacă ai accepta cu adevărat o altă concluzie.' },
     ],
     study: {
       who: 'Michael Norton, Daniel Mochon și Dan Ariely, 2012',
@@ -359,11 +359,11 @@ export const RO: Record<number, PrincipleRo> = {
   17: {
     title: 'Încearcă cu sinceritate să vezi lucrurile din punctul de vedere al celuilalt',
     line: 'Fiecare are un motiv pentru ce face. Găsește-l și ai cheia minții lui.',
-    gist: 'Ceilalți pot greși de tot, spune Carnegie, dar ei nu cred asta. Există un motiv pentru care gândesc și acționează cum o fac, iar dacă îl găsești, îi înțelegi și, adesea, îi înțelegi întreaga personalitate. Înainte de a încerca să-i schimbi cuiva părerea, întreabă-te cum te-ai simți și ai acționa în locul lui. Îți vei economisi timp și iritare și vei vorbi despre ce îl mișcă pe el cu adevărat, nu despre ce te mișcă pe tine. El numește asta formula care face minuni și citează ideea că succesul stă în a lua punctul de vedere al celuilalt și a vedea lucrurile din unghiul lui, ca și din al tău.',
+    gist: 'Ceilalți pot greși de tot, spune cartea, dar ei nu cred asta. Există un motiv pentru care gândesc și acționează cum o fac, iar dacă îl găsești, îi înțelegi și, adesea, îi înțelegi întreaga personalitate. Înainte de a încerca să-i schimbi cuiva părerea, întreabă-te cum te-ai simți și ai acționa în locul lui. Îți vei economisi timp și iritare și vei vorbi despre ce îl mișcă pe el cu adevărat, nu despre ce te mișcă pe tine. Cartea numește asta formula care face minuni și citează ideea că succesul stă în a lua punctul de vedere al celuilalt și a vedea lucrurile din unghiul lui, ca și din al tău.',
     story: {
-      who: 'Dale Carnegie și băieții din parc',
+      who: 'Un om și băieții din parc',
       when: 'Forest Park, New York, anii 1930',
-      text: 'Carnegie se plimba des într-un parc de lângă casă, unde îi plăceau stejarii, și se supăra când vedea focuri mici aprinse de băieți care gătesc sub ei, focuri care se puteau întinde și arde pădurea. La început se ducea la ei hotărât, le spunea că pot ajunge la închisoare pentru că aprind focuri și îi amenința că îi va da pe mâna poliției. Ei ascultau mohorâți și, bănuia el, aprindeau focul din nou de îndată ce pleca. Mai târziu a încercat altceva. Îi întreba dacă se distrează și ce gătesc, le spunea că și lui îi plăcuse să facă focuri când era băiat, apoi le explica faptul că focurile de aici sunt periculoase, că știe că ei nu vor răul, dar alți băieți pot fi neatenți. I-a rugat să acopere jarul cu frunze înainte să plece, iar data viitoare să facă focul dincolo de deal, în groapa cu nisip. Băieții au cooperat de bunăvoie.',
+      text: 'Un om se plimba des într-un parc de lângă casă, unde îi plăceau stejarii, și se supăra când vedea focuri mici aprinse de băieți care gătesc sub ei, focuri care se puteau întinde și arde pădurea. La început se ducea la ei hotărât, le spunea că pot ajunge la închisoare pentru că aprind focuri și îi amenința că îi va da pe mâna poliției. Ei ascultau mohorâți și, bănuia el, aprindeau focul din nou de îndată ce pleca. Mai târziu a încercat altceva. Îi întreba dacă se distrează și ce gătesc, le spunea că și lui îi plăcuse să facă focuri când era băiat, apoi le explica faptul că focurile de aici sunt periculoase, că știe că ei nu vor răul, dar alți băieți pot fi neatenți. I-a rugat să acopere jarul cu frunze înainte să plece, iar data viitoare să facă focul dincolo de deal, în groapa cu nisip. Băieții au cooperat de bunăvoie.',
     },
     mind: 'Ne vedem propriile acțiuni din interior, cu toate motivele și presiunile lor, iar pe ale altora din exterior, ca simplu comportament. Diferența asta îi face pe ceilalți să pară mai nerezonabili decât sunt. Luarea perspectivei lor o închide: aduce în vedere constrângerile, fricile și scopurile lor, ceea ce face comportamentul să aibă sens și arată unde s-ar putea mișca. Schimbă și felul în care ești perceput. Oamenii simt când cineva a încercat să-i înțeleagă, iar asta îi face mult mai dispuși să încerce să înțeleagă și ei.',
     levers: [
@@ -377,8 +377,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Ce e evident pentru tine poate fi invizibil pentru ei, iar tu poate nu-ți dai seama. Să vezi punctul lor de vedere îți arată ce știu ei de fapt.' },
     ],
     laws: [
-      { how: 'Greene spune să știi cu cine ai de-a face, pentru că oamenii reacționează diferit la aceeași mișcare. Carnegie e de acord că trebuie să înțelegi persoana din fața ta, dar pentru el scopul este s-o întâlnești, nu să eviți să calci pe bătături.' },
-      { how: 'Legea lui Greene este să găsești slăbiciunea fiecăruia, șurubul care îl va mișca. Să vezi punctul de vedere al cuiva îți arată și nevoile și fricile lui. Carnegie folosește această cunoaștere ca să le dea oamenilor ce vor; Greene o folosește ca să strângă.' },
+      { how: 'Legea spune să știi cu cine ai de-a face, pentru că oamenii reacționează diferit la aceeași mișcare. Principiul e de acord că trebuie să înțelegi persoana din fața ta, dar aici scopul este s-o întâlnești, nu să eviți să calci pe bătături.' },
+      { how: 'Legea este să găsești slăbiciunea fiecăruia, șurubul care îl va mișca. Să vezi punctul de vedere al cuiva îți arată și nevoile și fricile lui. Principiul folosește această cunoaștere ca să le dea oamenilor ce vor; legea o folosește ca să strângă.' },
     ],
     study: {
       who: 'Adam Galinsky, William Maddux, Debra Gilin și Judith White, 2008',
@@ -410,25 +410,25 @@ export const RO: Record<number, PrincipleRo> = {
   18: {
     title: 'Fii înțelegător față de ideile și dorințele celuilalt',
     line: '„Nu te condamn că simți așa. Dacă aș fi în locul tău, aș simți la fel.”',
-    gist: 'Carnegie propune o formulă magică, care oprește certurile, risipește resentimentele și îi face pe oameni să asculte: „Nu te condamn câtuși de puțin că simți așa. Dacă aș fi în locul tău, aș simți exact la fel.” El spune că o poți spune cu sinceritate de fiecare dată, pentru că, dacă ai avea istoria, temperamentul și împrejurările lor, ai simți ca ei. Cei mai mulți oameni pe care îi întâlnești însetează după înțelegere. Dă-le-o, spune el, și te vor iubi pentru asta. Nu înseamnă acord cu ce vor; înseamnă recunoașterea că are sens să vrei așa ceva.',
+    gist: 'Cartea propune o formulă magică, care oprește certurile, risipește resentimentele și îi face pe oameni să asculte: „Nu te condamn câtuși de puțin că simți așa. Dacă aș fi în locul tău, aș simți exact la fel.” Cartea spune că o poți spune cu sinceritate de fiecare dată, pentru că, dacă ai avea istoria, temperamentul și împrejurările lor, ai simți ca ei. Cei mai mulți oameni pe care îi întâlnești însetează după înțelegere. Dă-le-o, spune cartea, și te vor iubi pentru asta. Nu înseamnă acord cu ce vor; înseamnă recunoașterea că are sens să vrei așa ceva.',
     story: {
-      who: 'Dale Carnegie și o ascultătoare din Philadelphia',
+      who: 'Un vorbitor la radio și o ascultătoare din Philadelphia',
       when: 'Anii 1930, după o emisiune la radio',
-      text: 'Într-o emisiune de radio despre autoarea romanului Femeițe, Louisa May Alcott, Carnegie a spus că ea locuise în Concord, New Hampshire. Era Concord, Massachusetts, iar el a făcut greșeala de două ori. A urmat un val de scrisori, iar o femeie care crescuse lângă Concord, Massachusetts, și locuia în Philadelphia, a scris cu o furie reală. Carnegie a fost tentat să-i răspundă că el făcuse o mică greșeală geografică, dar ea făcuse una mult mai mare de manieră. În schimb i-a telefonat. I-a mulțumit pentru scrisoare, i-a spus că o femeie cu trecutul ei avea tot dreptul să fie enervată și și-a cerut scuze. Ea s-a înmuiat pe dată, și-a cerut scuze pentru propriul ei ton și a spus că ar vrea să-l cunoască mai bine.',
+      text: 'Într-o emisiune de radio despre autoarea romanului Femeițe, Louisa May Alcott, vorbitorul a spus că ea locuise în Concord, New Hampshire. Era Concord, Massachusetts, iar el a făcut greșeala de două ori. A urmat un val de scrisori, iar o femeie care crescuse lângă Concord, Massachusetts, și locuia în Philadelphia, a scris cu o furie reală. A fost tentat să-i răspundă că el făcuse o mică greșeală geografică, dar ea făcuse una mult mai mare de manieră. În schimb i-a telefonat. I-a mulțumit pentru scrisoare, i-a spus că o femeie cu trecutul ei avea tot dreptul să fie enervată și și-a cerut scuze. Ea s-a înmuiat pe dată, și-a cerut scuze pentru propriul ei ton și a spus că ar vrea să-l cunoască mai bine.',
     },
     mind: 'Sentimentele puternice cer să fie recunoscute înainte să dea drumul. Când cineva e supărat și te cerți cu el, lupți și cu sentimentul, nu doar cu argumentul, iar sentimentul de obicei câștigă. Când recunoști că sentimentul lui are sens, îi iei nevoia de a-l tot dovedi. Furia și-a făcut treaba, a fost auzită, și poate scădea. Înțelegerea semnalează și că nu ești dușman, ceea ce mută atenția celuilalt de la a se apăra la a rezolva problema.',
     levers: [
       { name: 'Validarea', text: 'Psihologii fac diferența între a valida un sentiment, adică a spune că e de înțeles, și a fi de acord cu pretenția din spatele lui. Terapii ca terapia dialectic-comportamentală, dezvoltată de Marsha Linehan, fac din validare o abilitate centrală pentru că scade în mod constant intensitatea emoțională.' },
       { name: 'Etichetarea afectului', text: 'Matthew Lieberman și colegii lui au constatat în 2007 că a pune sentimentele în cuvinte reducea activitatea amigdalei, o regiune a creierului implicată în răspunsurile la amenințare. Să numești, cu blândețe, sentimentul celuilalt în locul lui poate ajuta să-l calmezi.' },
-      { name: 'Reciprocitatea bunăvoinței', text: 'Înțelegerea oferită se întoarce adesea ca înțelegere. Când celălalt se simte înțeles, devine mult mai dispus să-ți înțeleagă și lui partea, cum a făcut ascultătoarea furioasă a lui Carnegie.' },
+      { name: 'Reciprocitatea bunăvoinței', text: 'Înțelegerea oferită se întoarce adesea ca înțelegere. Când celălalt se simte înțeles, devine mult mai dispus să-ți înțeleagă și lui partea, cum a făcut ascultătoarea furioasă.' },
     ],
     traps: [
       { how: 'Vedem un om furios și ajungem la concluzia că e genul de om furios. Înțelegerea caută împrejurările care au făcut furia rezonabilă.' },
       { how: 'Când ești calm, e greu să-ți imaginezi cât de intens simte cineva când e supărat și îi subestimezi sentimentul. Înțelegerea deliberată trece peste decalajul acesta dintre cald și rece.' },
     ],
     laws: [
-      { how: 'Efectul de oglindă al lui Greene îi reflectă pe oameni înapoi spre ei înșiși ca să-i dezarmeze sau să-i destabilizeze. Înțelegerea e o oglindă blândă: să arăți cuiva că sentimentul lui e văzut și are sens îl dezarmează, dar îl lasă simțindu-se înțeles, nu păcălit.' },
-      { how: 'Tactica capitulării a lui Greene cedează la suprafață ca să ia forța unui atac. Spunând „Aș simți la fel”, cedezi în privința sentimentului fără să cedezi în privința problemei și deseori obții același rezultat, dar mai cinstit.' },
+      { how: 'Efectul de oglindă al legii îi reflectă pe oameni înapoi spre ei înșiși ca să-i dezarmeze sau să-i destabilizeze. Înțelegerea e o oglindă blândă: să arăți cuiva că sentimentul lui e văzut și are sens îl dezarmează, dar îl lasă simțindu-se înțeles, nu păcălit.' },
+      { how: 'Tactica capitulării a legii cedează la suprafață ca să ia forța unui atac. Spunând „Aș simți la fel”, cedezi în privința sentimentului fără să cedezi în privința problemei și deseori obții același rezultat, dar mai cinstit.' },
     ],
     study: {
       who: 'Chad Shenk și Alan Fruzzetti, 2011',
@@ -460,7 +460,7 @@ export const RO: Record<number, PrincipleRo> = {
   19: {
     title: 'Fă apel la sentimentele nobile',
     line: 'Tratează oamenii ca pe versiunea lor cea mai cumsecade și cei mai mulți vor încerca să fie pe măsură.',
-    gist: 'Carnegie citează observația bancherului J. P. Morgan că oamenii au de obicei două motive pentru ce fac: unul care sună bine și cel adevărat. Pe cel adevărat și-l vor găsi ei singuri, spune Carnegie, dar tuturor ne place să ne vedem idealiști, așa că ne place să auzim motivele care sună bine. Când vrei să schimbi comportamentul cuiva, fă apel la simțul lui de dreptate, de onoare sau de bunătate. Cei mai mulți oameni, spune el, sunt cinstiți și vor să-și îndeplinească obligațiile, iar când îi tratezi așa, de obicei răspund la fel.',
+    gist: 'Cartea citează observația bancherului J. P. Morgan că oamenii au de obicei două motive pentru ce fac: unul care sună bine și cel adevărat. Pe cel adevărat și-l vor găsi ei singuri, spune cartea, dar tuturor ne place să ne vedem idealiști, așa că ne place să auzim motivele care sună bine. Când vrei să schimbi comportamentul cuiva, fă apel la simțul lui de dreptate, de onoare sau de bunătate. Cei mai mulți oameni, spune cartea, sunt cinstiți și vor să-și îndeplinească obligațiile, iar când îi tratezi așa, de obicei răspund la fel.',
     story: {
       who: 'Lordul Northcliffe și John D. Rockefeller Jr.',
       when: 'Începutul secolului al XX-lea',
@@ -477,13 +477,13 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Presupunem că oamenii care ne-au greșit au un caracter prost. Apelul la motivele lor mai bune presupune contrariul și descoperă adesea că motivele lor fuseseră mai bune de la început.' },
     ],
     laws: [
-      { how: 'Greene spune să nu faci niciodată apel la milă sau la recunoștință, doar la interes personal. Carnegie susține contrariul: oamenilor le place să se vadă generoși și corecți, iar un apel la această imagine merge adesea acolo unde un târg n-ar merge. Fiecare are dreptate cu unii oameni, iar oamenii înțelepți învață să-i deosebească.' },
-      { how: 'Greene observă că oamenii tânjesc să creadă în ceva mai mare decât ei. Apelul la sentimentele nobile se adresează aceleiași foamete, dar la scară mică, cinstit și în slujba omului, nu a unui cult.' },
+      { how: 'Legea spune să nu faci niciodată apel la milă sau la recunoștință, doar la interes personal. Principiul susține contrariul: oamenilor le place să se vadă generoși și corecți, iar un apel la această imagine merge adesea acolo unde un târg n-ar merge. Fiecare are dreptate cu unii oameni, iar oamenii înțelepți învață să-i deosebească.' },
+      { how: 'Legea observă că oamenii tânjesc să creadă în ceva mai mare decât ei. Apelul la sentimentele nobile se adresează aceleiași foamete, dar la scară mică, cinstit și în slujba omului, nu a unui cult.' },
     ],
     study: {
       who: 'Adam Grant și David Hofmann, 2011',
       title: 'Nu e totul despre mine: motivarea igienei mâinilor prin concentrarea pe pacienți',
-      text: 'Într-un spital din SUA, cercetătorii au pus afișe deasupra dozatoarelor de săpun și gel. Unul spunea că igiena mâinilor te ferește pe tine de boli; altul spunea că îi ferește pe pacienți de boli; al treilea nu dădea niciun motiv. În două săptămâni, dozatoarele cu afișul centrat pe pacienți au fost folosite vizibil mai mult, iar observatorii au văzut personalul spălându-se pe mâini mai des, în timp ce afișul centrat pe sine a făcut puțină diferență. Medicii și asistentele au fost mișcați mai mult de datoria față de alții decât de propria siguranță. A fost un studiu scurt, într-un singur spital, iar apelurile de acest fel nu funcționează mereu la fel de bine în alte părți, dar e un test izbitor al ideii lui Carnegie.',
+      text: 'Într-un spital din SUA, cercetătorii au pus afișe deasupra dozatoarelor de săpun și gel. Unul spunea că igiena mâinilor te ferește pe tine de boli; altul spunea că îi ferește pe pacienți de boli; al treilea nu dădea niciun motiv. În două săptămâni, dozatoarele cu afișul centrat pe pacienți au fost folosite vizibil mai mult, iar observatorii au văzut personalul spălându-se pe mâini mai des, în timp ce afișul centrat pe sine a făcut puțină diferență. Medicii și asistentele au fost mișcați mai mult de datoria față de alții decât de propria siguranță. A fost un studiu scurt, într-un singur spital, iar apelurile de acest fel nu funcționează mereu la fel de bine în alte părți, dar e un test izbitor al acestei idei.',
     },
     today: [
       'Să-i ceri unui chiriaș care întârzie cu chiria să o trateze ca pe o chestiune de a-și ține cuvântul',
@@ -510,7 +510,7 @@ export const RO: Record<number, PrincipleRo> = {
   20: {
     title: 'Dramatizează-ți ideile',
     line: 'Adevărul nu e de ajuns. Trebuie arătat, atât de viu încât să fie simțit.',
-    gist: 'Aceasta este epoca dramatizării, scria Carnegie în anii 1930: simpla enunțare a unui adevăr nu mai e suficientă. Trebuie făcut viu, interesant și dramatic, așa cum fac filmele, radioul și vitrinele magazinelor. O idee pe care oamenii o pot vedea, atinge sau închipui rămâne în minte acolo unde o afirmație seacă alunecă. Așa că în loc să spui că ai dreptate, arată-o. În loc să înșiri cifre, găsește o scenă care să le facă reale. Spectacolul, susține el, nu e înșelăciune. E respect pentru felul în care funcționează de fapt atenția.',
+    gist: 'Aceasta este epoca dramatizării, scria cartea în anii 1930: simpla enunțare a unui adevăr nu mai e suficientă. Trebuie făcut viu, interesant și dramatic, așa cum fac filmele, radioul și vitrinele magazinelor. O idee pe care oamenii o pot vedea, atinge sau închipui rămâne în minte acolo unde o afirmație seacă alunecă. Așa că în loc să spui că ai dreptate, arată-o. În loc să înșiri cifre, găsește o scenă care să le facă reale. Spectacolul, susține cartea, nu e înșelăciune. E respect pentru felul în care funcționează de fapt atenția.',
     story: {
       who: 'Philadelphia Evening Bulletin',
       when: 'Philadelphia, începutul secolului al XX-lea',
@@ -527,8 +527,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Un singur caz izbitor poate cântări mai mult decât statisticile generale în mintea oamenilor. O demonstrație dramatică poate mișca oamenii acolo unde rata de bază n-ar mișca, motiv pentru care ar trebui să fie cinstită față de rata de bază.' },
     ],
     laws: [
-      { how: 'Greene spune să creezi spectacole captivante, pentru că imaginile mișcă oamenii în feluri în care cuvintele nu pot. Carnegie e de acord pe deplin. Diferența e în scop: Greene folosește spectacolul ca să orbească și să distragă, Carnegie ca să facă adevărul mai ușor de văzut.' },
-      { how: 'Greene spune să cauți atenția cu orice preț. Dramatizarea lui Carnegie câștigă și ea atenție, dar pentru o idee, nu pentru tine.' },
+      { how: 'Legea spune să creezi spectacole captivante, pentru că imaginile mișcă oamenii în feluri în care cuvintele nu pot. Principiul e de acord pe deplin. Diferența e în scop: legea folosește spectacolul ca să orbească și să distragă, principiul ca să facă adevărul mai ușor de văzut.' },
+      { how: 'Legea spune să cauți atenția cu orice preț. Dramatizarea principiului câștigă și ea atenție, dar pentru o idee, nu pentru tine.' },
     ],
     study: {
       who: 'Deborah Small, George Loewenstein și Paul Slovic, 2007',
@@ -560,7 +560,7 @@ export const RO: Record<number, PrincipleRo> = {
   21: {
     title: 'Aruncă o provocare',
     line: 'Oamenii nu muncesc din greu doar pentru bani. Muncesc din greu ca să câștige.',
-    gist: 'Când nimic altceva nu merge, spune Carnegie, aruncă o provocare. Fiecare om de succes iubește jocul: șansa de a-și dovedi valoarea, de a excela, de a câștiga. Banii și ordinele îi fac pe oameni să muncească; o provocare îi face să dea tot ce au mai bun. Făcută bine, nu e o amenințare, ci o invitație: iată ceva greu și care merită făcut, tu ești cel care poate? Citează părerea lui Charles Schwab că drumul spre rezultate este stimularea competiției, nu într-un fel meschin, ci în dorința de a excela.',
+    gist: 'Când nimic altceva nu merge, spune cartea, aruncă o provocare. Fiecare om de succes iubește jocul: șansa de a-și dovedi valoarea, de a excela, de a câștiga. Banii și ordinele îi fac pe oameni să muncească; o provocare îi face să dea tot ce au mai bun. Făcută bine, nu e o amenințare, ci o invitație: iată ceva greu și care merită făcut, tu ești cel care poate? Cartea citează părerea lui Charles Schwab că drumul spre rezultate este stimularea competiției, nu într-un fel meschin, ci în dorința de a excela.',
     story: {
       who: 'Charles Schwab și o oțelărie',
       when: 'Statele Unite, începutul secolului al XX-lea',
@@ -577,8 +577,8 @@ export const RO: Record<number, PrincipleRo> = {
       { how: 'Odată ce un grup stabilește un ritm, ceilalți simt atracția de a-l egala sau depăși. O provocare publică face noua normă vizibilă pentru toți.' },
     ],
     laws: [
-      { how: 'Greene spune să stârnești emoții în adversari ca să facă greșeli. Carnegie stârnește și el emoție, dorința de a câștiga, dar în oamenii lui și ca să-i ajute să dea ce au mai bun, nu ce au mai rău.' },
-      { how: 'Greene observă că un fost dușman muncește mai mult ca să se dovedească. O provocare folosește aceeași energie: nevoia de a dovedi ceva, îndreptată spre o sarcină, nu spre o persoană.' },
+      { how: 'Legea spune să stârnești emoții în adversari ca să facă greșeli. Principiul stârnește și el emoție, dorința de a câștiga, dar în propriii oameni și ca să-i ajute să dea ce au mai bun, nu ce au mai rău.' },
+      { how: 'Legea observă că un fost dușman muncește mai mult ca să se dovedească. O provocare folosește aceeași energie: nevoia de a dovedi ceva, îndreptată spre o sarcină, nu spre o persoană.' },
     ],
     study: {
       who: 'Gary Latham și James Baldes, 1975',

@@ -7,11 +7,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 10, id: 'avoid-argument', title: 'The Only Way to Get the Best of an Argument Is to Avoid It', part: 'convince',
     line: 'You can win the argument or keep the person, and most of the time you cannot do both.',
-    gist: 'Carnegie’s claim is blunt: nobody really wins an argument. If you lose, you lose. If you win, the other person feels smaller, resents you for it and usually holds their view more tightly than before. A mind changed against its will stays the same mind. So he says to treat the urge to argue as a warning light: welcome disagreement as information, hold your first defensive reaction, listen to the end, look for what you agree on, and promise to think it over. The point is not to give up your views but to stop turning conversations into contests where the other person’s pride is the prize.',
+    gist: 'The claim is blunt: nobody really wins an argument. If you lose, you lose. If you win, the other person feels smaller, resents you for it and usually holds their view more tightly than before. A mind changed against its will stays the same mind. So the book says to treat the urge to argue as a warning light: welcome disagreement as information, hold your first defensive reaction, listen to the end, look for what you agree on, and promise to think it over. The point is not to give up your views but to stop turning conversations into contests where the other person’s pride is the prize.',
     story: {
-      who: 'Dale Carnegie and Frank Gammond',
+      who: 'A banquet guest and Frank Gammond',
       when: 'London, shortly after the First World War',
-      text: 'At a banquet in honour of the aviator Sir Ross Smith, the man next to Carnegie told a story that hung on the line “There’s a divinity that shapes our ends, rough-hew them how we will,” and said it came from the Bible. Carnegie knew it was Shakespeare and said so. The man insisted. On Carnegie’s other side sat his old friend Frank Gammond, who had spent years studying Shakespeare. Asked to settle it, Gammond kicked Carnegie under the table and said the gentleman was right: it was from the Bible. On the way home he admitted it was from Hamlet, of course. But they were guests at a happy occasion, he said, and the man had not asked for a correction. Why prove him wrong and make him dislike you?',
+      text: 'At a banquet in honour of the aviator Sir Ross Smith, the man seated next to one guest told a story that hung on the line “There’s a divinity that shapes our ends, rough-hew them how we will,” and said it came from the Bible. The guest knew it was Shakespeare and said so. The man insisted. On the guest’s other side sat his old friend Frank Gammond, who had spent years studying Shakespeare. Asked to settle it, Gammond kicked him under the table and said the gentleman was right: it was from the Bible. On the way home he admitted it was from Hamlet, of course. But they were guests at a happy occasion, he said, and the man had not asked for a correction. Why prove him wrong and make him dislike you?',
     },
     mind: 'An argument does not feel like an exchange of information from the inside. It feels like a threat. When a belief we hold is attacked, especially one tied to who we are, the brain responds much as it does to other social dangers: the heart rate rises, attention narrows and the goal quietly shifts from finding the truth to not losing. In that state people stop weighing the other side’s points and start hunting for flaws in them. Each side hears the other getting louder and concludes that they are the unreasonable one. The audience matters too: backing down in front of others costs face, so the more public the fight, the more fixed both positions become.',
     levers: [
@@ -25,7 +25,7 @@ export const PRINCIPLES: Principle[] = [
       { id: 'naive-realism', how: 'Each side assumes it sees the world as it is, so the other must be biased, ignorant or stubborn. Declining to argue is a way of admitting you might be the one who is not seeing clearly.' },
     ],
     laws: [
-      { n: 9, how: 'Greene’s law says the same thing in harder language: a victory won by argument is hollow, because the resentment it leaves behind outlasts the point you scored. Greene would have you demonstrate instead; Carnegie would have you listen first. Both agree that words fired at someone’s pride rarely land.' },
+      { n: 9, how: 'The law says the same thing in harder language: a victory won by argument is hollow, because the resentment it leaves behind outlasts the point you scored. The law would have you demonstrate instead; the principle would have you listen first. Both agree that words fired at someone’s pride rarely land.' },
     ],
     study: {
       who: 'Charles Lord, Lee Ross and Mark Lepper, 1979',
@@ -58,7 +58,7 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 11, id: 'never-wrong', title: 'Show Respect for the Other Person’s Opinions. Never Say “You’re Wrong”', part: 'convince',
     line: '“You’re wrong” is not information. It is a challenge, and people answer challenges by digging in.',
-    gist: 'Telling someone they are wrong, by word, look or tone, is telling them you are smarter than they are. Carnegie says that strikes at their judgement and pride and makes them want to strike back, which leaves no room for them to change their mind. If you think someone is mistaken, he says, open with something like “I may be wrong, I often am, let’s look at the facts.” It is hard to argue with someone who has already admitted they might be wrong. And the habit has a second benefit: you often discover you were the one who had it wrong.',
+    gist: 'Telling someone they are wrong, by word, look or tone, is telling them you are smarter than they are. The book says that strikes at their judgement and pride and makes them want to strike back, which leaves no room for them to change their mind. If you think someone is mistaken, it says, open with something like “I may be wrong, I often am, let’s look at the facts.” It is hard to argue with someone who has already admitted they might be wrong. And the habit has a second benefit: you often discover you were the one who had it wrong.',
     story: {
       who: 'Benjamin Franklin',
       when: 'Philadelphia, the 1720s and 1730s',
@@ -76,8 +76,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'motivated', how: 'A person who feels attacked starts reasoning towards the conclusion that protects them. Without the attack, there is less to protect and more chance they will follow the evidence.' },
     ],
     laws: [
-      { n: 1, how: 'Greene warns never to make the master feel less clever than you. Carnegie widens that warning to everyone: correcting anyone bluntly makes them feel smaller, and people rarely forgive that. Greene’s reason is self-protection; Carnegie’s is that it simply does not work.' },
-      { n: 38, how: 'Greene advises thinking what you like but not flaunting views that put others on the defensive. Carnegie agrees about the flaunting but goes further: hold your own views more lightly, too, because you may be the one in the wrong.' },
+      { n: 1, how: 'The law warns never to make the master feel less clever than you. The principle widens that warning to everyone: correcting anyone bluntly makes them feel smaller, and people rarely forgive that. The law’s reason is self-protection; the principle’s is that it simply does not work.' },
+      { n: 38, how: 'The law advises thinking what you like but not flaunting views that put others on the defensive. The principle agrees about the flaunting but goes further: hold your own views more lightly, too, because you may be the one in the wrong.' },
     ],
     study: {
       who: 'Brendan Nyhan and Jason Reifler, 2010; Thomas Wood and Ethan Porter, 2019',
@@ -110,11 +110,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 12, id: 'admit-wrong', title: 'If You Are Wrong, Admit It Quickly and Emphatically', part: 'convince',
     line: 'Say the harsh thing about yourself before anyone else can, and they will usually rush to soften it.',
-    gist: 'When you know you are in the wrong, Carnegie says, the best defence is to give none. Admit it, quickly and fully, before the other person has the chance to say it. It takes the wind out of their anger: there is nothing left to prove, and most people respond to a frank admission by becoming generous. Fools try to defend their mistakes, he writes, and most fools do. Owning up gives you a kind of dignity that excuses never do, and it is a relief besides, because you no longer have a position to defend.',
+    gist: 'When you know you are in the wrong, the book says, the best defence is to give none. Admit it, quickly and fully, before the other person has the chance to say it. It takes the wind out of their anger: there is nothing left to prove, and most people respond to a frank admission by becoming generous. Fools try to defend their mistakes, it says, and most fools do. Owning up gives you a kind of dignity that excuses never do, and it is a relief besides, because you no longer have a position to defend.',
     story: {
-      who: 'Dale Carnegie and a mounted policeman',
+      who: 'A dog owner and a mounted policeman',
       when: 'Forest Park, New York, 1930s',
-      text: 'Carnegie liked to take his small dog, Rex, to a wooded park near his home and let him run without a leash or muzzle. One day a mounted policeman stopped him and warned him that next time it would be a court fine. Carnegie obeyed for a while, then slipped back. Soon he was caught again. This time he did not wait. He said straight away that the officer had caught him red-handed, that he had no excuses, and that he had been warned. The policeman’s tone changed at once. He said he understood the temptation when no one was around, that a little dog like that was harmless, and suggested Carnegie just let the dog run over the hill where he would not see it. Carnegie went home without a fine.',
+      text: 'A dog owner liked to take his small dog, Rex, to a wooded park near his home and let Rex run without a leash or muzzle. One day a mounted policeman stopped him and warned him that next time it would be a court fine. He obeyed for a while, then slipped back. Soon he was caught again. This time he did not wait. He said straight away that the officer had caught him red-handed, that he had no excuses, and that he had been warned. The policeman’s tone changed at once. He said he understood the temptation when no one was around, that a little dog like that was harmless, and suggested he just let the dog run over the hill where he would not see it. The man went home without a fine.',
     },
     mind: 'An accuser needs a defendant. When you argue, you give the other person someone to fight and every reason to press their case. When you admit the fault in stronger terms than they would have used, you take that role away. They no longer need to establish your guilt, so they are free to do the thing people like to do once they have the upper hand: be generous. There is also a cost to defending a mistake. Every excuse commits you further to a position you know is weak, and the other person can see it. A quick admission looks like confidence; a long defence looks like fear.',
     levers: [
@@ -128,13 +128,13 @@ export const PRINCIPLES: Principle[] = [
       { id: 'sunk-cost', how: 'Having already defended a mistake, we feel we must keep defending it to justify the effort. An early admission stops that investment before it grows.' },
     ],
     laws: [
-      { n: 26, how: 'Greene says keep your hands clean: let a scapegoat or a cat’s paw carry the blame. Carnegie says pick up the blame yourself, at once. Greene protects your image in the short run; Carnegie bets that people trust the person who owns their mistakes, and that trust lasts longer.' },
-      { n: 46, how: 'Greene warns that seeming flawless breeds envy and suspicion, and advises showing a harmless weakness. An honest admission does that naturally, without the calculation.' },
+      { n: 26, how: 'The law says keep your hands clean: let a scapegoat or a cat’s paw carry the blame. The principle says pick up the blame yourself, at once. The law protects your image in the short run; the principle bets that people trust the person who owns their mistakes, and that trust lasts longer.' },
+      { n: 46, how: 'The law warns that seeming flawless breeds envy and suspicion, and advises showing a harmless weakness. An honest admission does that naturally, without the calculation.' },
     ],
     study: {
       who: 'Fiona Lee, Christopher Peterson and Larissa Tiedens, 2004',
       title: 'Mea culpa: predicting stock prices from organisational attributions',
-      text: 'The researchers analysed the annual reports of companies explaining bad results. Some blamed outside forces they could not control, such as the economy or regulation; others blamed their own decisions. Companies that took the blame had higher stock prices a year later. In a lab follow-up, people who read a self-blaming report saw the company as more in control of its fate and rated its prospects better. The data are correlational, and what seemed to help was blaming causes the company could control, which suggested it could fix them, but the pattern fits Carnegie: admitting fault read as strength, not weakness.',
+      text: 'The researchers analysed the annual reports of companies explaining bad results. Some blamed outside forces they could not control, such as the economy or regulation; others blamed their own decisions. Companies that took the blame had higher stock prices a year later. In a lab follow-up, people who read a self-blaming report saw the company as more in control of its fate and rated its prospects better. The data are correlational, and what seemed to help was blaming causes the company could control, which suggested it could fix them, but the pattern fits the principle: admitting fault read as strength, not weakness.',
     },
     today: [
       'Starting an email to a client with “We got this wrong, and here’s what we’re doing about it”',
@@ -162,11 +162,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 13, id: 'friendly', title: 'Begin in a Friendly Way', part: 'convince',
     line: 'A drop of honey catches more flies than a gallon of gall, and the first drop matters most.',
-    gist: 'If someone’s heart is set against you, Carnegie says, no amount of logic will bring them round. If you want someone to come to your way of thinking, start by showing that you are on their side: friendly, calm, appreciative. He borrows the old fable of the sun and the wind competing to make a traveller take off his coat. The wind blew harder and the man held his coat tighter; the sun shone gently and the man took it off. Opening with warmth is not weakness, Carnegie argues. It is simply the only way into a mind that would otherwise close.',
+    gist: 'If someone’s heart is set against you, the book says, no amount of logic will bring them round. If you want someone to come to your way of thinking, start by showing that you are on their side: friendly, calm, appreciative. The book borrows the old fable of the sun and the wind competing to make a traveller take off his coat. The wind blew harder and the man held his coat tighter; the sun shone gently and the man took it off. Opening with warmth is not weakness, it argues. It is simply the only way into a mind that would otherwise close.',
     story: {
       who: 'John D. Rockefeller Jr. and the Colorado miners',
       when: '1914–1915',
-      text: 'The strike at the Rockefeller-controlled Colorado Fuel and Iron Company was one of the bloodiest in American history. In April 1914 militiamen attacked a tent colony of striking miners at Ludlow, and women and children died in the fire. The Rockefeller name was hated in the coalfields. In 1915 the younger Rockefeller went to Colorado himself. He toured the camps, visited miners’ homes and met their families. Then he spoke to a gathering of the miners’ representatives, opening by saying how proud he was to be there and that, having visited them, he felt he met them as friends. He went on to propose a plan for workers’ representation. Carnegie tells the story as an example of how a friendly approach could turn a crowd that had wanted to hang him into listeners.',
+      text: 'The strike at the Rockefeller-controlled Colorado Fuel and Iron Company was one of the bloodiest in American history. In April 1914 militiamen attacked a tent colony of striking miners at Ludlow, and women and children died in the fire. The Rockefeller name was hated in the coalfields. In 1915 the younger Rockefeller went to Colorado himself. He toured the camps, visited miners’ homes and met their families. Then he spoke to a gathering of the miners’ representatives, opening by saying how proud he was to be there and that, having visited them, he felt he met them as friends. He went on to propose a plan for workers’ representation. The story is often told as an example of how a friendly approach could turn a crowd that had wanted to hang him into listeners.',
     },
     mind: 'People decide very quickly whether someone is a friend or a threat, and that decision colours everything that follows. Research on first impressions suggests warmth is judged before competence, and that once someone seems hostile, even reasonable proposals sound like traps. A friendly opening lowers the guard before the content arrives. It also sets up a norm: when one person is warm, the other feels pulled to match it, and it becomes awkward to be hostile to someone who is being kind to you.',
     levers: [
@@ -175,13 +175,13 @@ export const PRINCIPLES: Principle[] = [
       { name: 'Emotional contagion', text: 'Elaine Hatfield and colleagues described how people unconsciously catch the moods of those around them through facial expressions, voice and posture. Calm and warmth spread, and so do irritation and suspicion.' },
     ],
     traps: [
-      { id: 'halo', how: 'A warm first impression spills over onto everything else: your proposal seems more reasonable because you seem decent. Carnegie is using the halo deliberately.' },
+      { id: 'halo', how: 'A warm first impression spills over onto everything else: your proposal seems more reasonable because you seem decent. The principle is using the halo deliberately.' },
       { id: 'anchoring', how: 'The tone of the first minute anchors the whole conversation. Start cold and every later attempt at warmth has to climb back from there.' },
       { id: 'negativity', how: 'A hostile word weighs more than a kind one, and is remembered longer. Starting friendly means the first thing they file away is not a threat.' },
     ],
     laws: [
-      { n: 12, how: 'Greene advises a show of generosity or honesty to lower someone’s guard before you take what you want. Carnegie’s friendly opening uses the same mechanism, which is exactly why it must be sincere: done as a trick, it is Greene’s law under a nicer name.' },
-      { n: 43, how: 'Greene says to work on hearts and minds rather than force obedience. Carnegie agrees that hearts come first, and that a person who feels liked is already halfway to being persuaded.' },
+      { n: 12, how: 'The law advises a show of generosity or honesty to lower someone’s guard before you take what you want. The principle’s friendly opening uses the same mechanism, which is exactly why it must be sincere: done as a trick, it is the law under a nicer name.' },
+      { n: 43, how: 'The law says to work on hearts and minds rather than force obedience. The principle agrees that hearts come first, and that a person who feels liked is already halfway to being persuaded.' },
     ],
     study: {
       who: 'Harold Kelley, 1950',
@@ -214,13 +214,13 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 14, id: 'yes-yes', title: 'Get the Other Person Saying “Yes, Yes” Immediately', part: 'convince',
     line: 'Start with what you agree on. Every “yes” makes the next one easier; every “no” has to be defended.',
-    gist: 'When you talk with someone, Carnegie says, do not begin with the things you disagree on. Begin with what you share, and keep coming back to it: you both want the same outcome, you differ only on how. A “no” is a hard obstacle to get over, because once a person has said it their pride demands they stand by it. A run of “yes” answers, by contrast, sets them moving in the direction of agreement. The skilled speaker, he writes, gets a number of yes responses at the start and the listener’s whole mind goes along.',
+    gist: 'When you talk with someone, the book says, do not begin with the things you disagree on. Begin with what you share, and keep coming back to it: you both want the same outcome, you differ only on how. A “no” is a hard obstacle to get over, because once a person has said it their pride demands they stand by it. A run of “yes” answers, by contrast, sets them moving in the direction of agreement. The skilled speaker, it adds, gets a number of yes responses at the start and the listener’s whole mind goes along.',
     story: {
       who: 'Socrates',
       when: 'Athens, 5th century BC',
-      text: 'Carnegie points to Socrates, as Plato and Xenophon portray him, as the master of this method. Socrates rarely told anyone they were wrong. Instead he asked questions his partner could easily agree with: does a doctor practise medicine for the patient’s good? Does a shepherd care for the sheep? Each answer was a yes, and each yes built on the last, until the other person found themselves agreeing to a conclusion they would have rejected flatly a few minutes earlier. Socrates was eventually tried and executed, which is a reminder that the method can annoy as well as persuade, but it shaped Western teaching for two and a half thousand years.',
+      text: 'Socrates, as Plato and Xenophon portray him, is the master of this method. Socrates rarely told anyone they were wrong. Instead he asked questions his partner could easily agree with: does a doctor practise medicine for the patient’s good? Does a shepherd care for the sheep? Each answer was a yes, and each yes built on the last, until the other person found themselves agreeing to a conclusion they would have rejected flatly a few minutes earlier. Socrates was eventually tried and executed, which is a reminder that the method can annoy as well as persuade, but it shaped Western teaching for two and a half thousand years.',
     },
-    mind: 'People like to be consistent. Once we have said something out loud, we feel pressure to act and think in line with it, partly to look reliable to others and partly to feel coherent to ourselves. A series of agreements builds a picture of the conversation as a shared one: we are on the same side, we see things the same way. A “no”, on the other hand, commits the person to a position they then feel bound to defend. Carnegie’s claim that a “no” tenses the whole body is not well supported, but the core idea, that early commitments shape later ones, is.',
+    mind: 'People like to be consistent. Once we have said something out loud, we feel pressure to act and think in line with it, partly to look reliable to others and partly to feel coherent to ourselves. A series of agreements builds a picture of the conversation as a shared one: we are on the same side, we see things the same way. A “no”, on the other hand, commits the person to a position they then feel bound to defend. The principle’s claim that a “no” tenses the whole body is not well supported, but the core idea, that early commitments shape later ones, is.',
     levers: [
       { name: 'Commitment and consistency', text: 'Robert Cialdini describes the drive to be consistent with what we have already said and done as one of the strongest levers of influence. Small agreements early on set a direction that is uncomfortable to reverse.' },
       { name: 'Self-perception', text: 'Daryl Bem proposed that people learn their own attitudes partly by watching their behaviour. Someone who hears themselves agreeing repeatedly begins to see themselves as someone who agrees with you.' },
@@ -231,7 +231,7 @@ export const PRINCIPLES: Principle[] = [
       { id: 'perseverance', how: 'Once someone has said “no”, they will defend that position even against good evidence. The best way round the trap is not to set it off in the first place.' },
     ],
     laws: [
-      { n: 31, how: 'Greene advises controlling the options so that every choice leads where you want. A string of yes questions can do the same. That is why it matters whether the questions are honest steps to a shared conclusion or a corridor built to trap someone.' },
+      { n: 31, how: 'The law advises controlling the options so that every choice leads where you want. A string of yes questions can do the same. That is why it matters whether the questions are honest steps to a shared conclusion or a corridor built to trap someone.' },
     ],
     study: {
       who: 'Jonathan Freedman and Scott Fraser, 1966',
@@ -264,11 +264,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 15, id: 'let-them-talk', title: 'Let the Other Person Do a Great Deal of the Talking', part: 'convince',
     line: 'People are rarely persuaded by what you say to them. They are persuaded by what they hear themselves say.',
-    gist: 'Most of us, trying to win someone over, talk too much. Carnegie says do the opposite. Let them talk themselves out: they know more about their business and their problems than you do. Ask questions and listen patiently, especially when they disagree, because they will not hear you while they still have things they want to say. Even friends, he notes, would rather talk about their own achievements than listen to yours. Give people the floor and they will often argue their way to your conclusion, or show you why yours was wrong.',
+    gist: 'Most of us, trying to win someone over, talk too much. The book says to do the opposite. Let them talk themselves out: they know more about their business and their problems than you do. Ask questions and listen patiently, especially when they disagree, because they will not hear you while they still have things they want to say. Even friends, it notes, would rather talk about their own achievements than listen to yours. Give people the floor and they will often argue their way to your conclusion, or show you why yours was wrong.',
     story: {
       who: 'A fabric salesman with laryngitis',
       when: 'United States, 1930s',
-      text: 'Carnegie tells of a salesman bidding, against rivals, to supply upholstery fabric for a year to one of the big American car makers. On the day he was due to present, he woke with laryngitis so bad he could barely whisper. In the meeting he wrote a note saying he had lost his voice and could not speak. The company’s president said he would speak for him. He opened the samples, praised their qualities and argued the case to his own colleagues, while the salesman simply smiled, nodded and made a few gestures. The salesman won the contract, the largest of his career, and told Carnegie he would probably have lost it if he had been able to talk.',
+      text: 'A salesman was bidding, against rivals, to supply upholstery fabric for a year to one of the big American car makers. On the day he was due to present, he woke with laryngitis so bad he could barely whisper. In the meeting he wrote a note saying he had lost his voice and could not speak. The company’s president said he would speak for him. He opened the samples, praised their qualities and argued the case to his own colleagues, while the salesman simply smiled, nodded and made a few gestures. The salesman won the contract, the largest of his career, and later said he would probably have lost it if he had been able to talk.',
     },
     mind: 'Talking about our own views and experiences is rewarding in itself: it lights up the same brain circuits as food and money. A person who is allowed to talk feels heard, and a person who feels heard relaxes. There is also a deeper effect. When people explain their position in their own words, they often notice its weak points without anyone pointing them out, and a conclusion they reach out loud feels like their own. Meanwhile the listener gathers the one thing a talker never gets: information about what the other person actually wants.',
     levers: [
@@ -281,8 +281,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'spotlight', how: 'We think others are paying close attention to what we say. Mostly they are waiting for their turn. Give them the turn and they start listening.' },
     ],
     laws: [
-      { n: 4, how: 'Greene says always say less than necessary, so others reveal themselves and your words carry more weight. Carnegie reaches the same practice from the other side: say less so the other person can feel heard.' },
-      { n: 14, how: 'Greene’s spy listens to gather weapons. Carnegie’s listener gathers understanding. The behaviour looks the same; what you do with what you hear decides which law you are following.' },
+      { n: 4, how: 'The law says always say less than necessary, so others reveal themselves and your words carry more weight. The principle reaches the same practice from the other side: say less so the other person can feel heard.' },
+      { n: 14, how: 'The law’s spy listens to gather weapons. The principle’s listener gathers understanding. The behaviour looks the same; what you do with what you hear decides which law you are following.' },
     ],
     study: {
       who: 'Karen Huang, Michael Yeomans, Alison Wood Brooks, Julia Minson and Francesca Gino, 2017',
@@ -315,7 +315,7 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 16, id: 'their-idea', title: 'Let the Other Person Feel That the Idea Is Theirs', part: 'convince',
     line: 'An idea you hand someone is yours. An idea they find is theirs, and they will fight for it.',
-    gist: 'People trust conclusions they reached themselves far more than ones they were given. So Carnegie says: do not force your opinions on others. Make suggestions, ask questions, and let them think it out. Bring them the raw materials and let them build the conclusion. Their commitment to it will be much stronger than if you had argued it, and you get what you wanted. The price is the credit, which, he says, you should be glad to give away.',
+    gist: 'People trust conclusions they reached themselves far more than ones they were given. So the book says: do not force your opinions on others. Make suggestions, ask questions, and let them think it out. Bring them the raw materials and let them build the conclusion. Their commitment to it will be much stronger than if you had argued it, and you get what you wanted. The price is the credit, which, it says, you should be glad to give away.',
     story: {
       who: 'Colonel Edward House and President Woodrow Wilson',
       when: 'Washington, 1913–1919',
@@ -329,11 +329,11 @@ export const PRINCIPLES: Principle[] = [
     ],
     traps: [
       { id: 'endowment', how: 'We overvalue what we own, and an idea we think of as ours is something we own. Letting someone find the idea hands them the endowment.' },
-      { id: 'self-serving', how: 'People readily credit themselves for good ideas. Carnegie stops fighting this tendency and puts it to use.' },
+      { id: 'self-serving', how: 'People readily credit themselves for good ideas. The principle stops fighting this tendency and puts it to use.' },
     ],
     laws: [
-      { n: 7, how: 'Greene says get others to do the work and take the credit yourself. Carnegie turns it around: do the work and let the other person take the credit. Greene gains glory; Carnegie gains the result, and an ally who believes in it.' },
-      { n: 31, how: 'Greene advises framing the choices so that people feel free while picking what you want. Planting an idea can drift into exactly that, so it stays honest only if you would genuinely accept a different conclusion.' },
+      { n: 7, how: 'The law says get others to do the work and take the credit yourself. The principle turns it around: do the work and let the other person take the credit. The law gains glory; the principle gains the result, and an ally who believes in it.' },
+      { n: 31, how: 'The law advises framing the choices so that people feel free while picking what you want. Planting an idea can drift into exactly that, so it stays honest only if you would genuinely accept a different conclusion.' },
     ],
     study: {
       who: 'Michael Norton, Daniel Mochon and Dan Ariely, 2012',
@@ -366,11 +366,11 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 17, id: 'their-view', title: 'Try Honestly to See Things from the Other Person’s Point of View', part: 'convince',
     line: 'Everyone has a reason for what they do. Find it, and you have the key to their mind.',
-    gist: 'Other people may be completely wrong, Carnegie says, but they do not think so. There is a reason why they think and act as they do, and if you can find it, you understand them and often their whole personality. Before you try to change someone’s mind, ask yourself how you would feel and act in their place. You will save yourself time and irritation, and you will speak to what actually moves them instead of what moves you. He calls this the formula that works wonders, and quotes the idea that success lies in getting the other person’s point of view and seeing things from their angle as well as your own.',
+    gist: 'Other people may be completely wrong, the book says, but they do not think so. There is a reason why they think and act as they do, and if you can find it, you understand them and often their whole personality. Before you try to change someone’s mind, ask yourself how you would feel and act in their place. You will save yourself time and irritation, and you will speak to what actually moves them instead of what moves you. The book calls this the formula that works wonders, and quotes the idea that success lies in getting the other person’s point of view and seeing things from their angle as well as your own.',
     story: {
-      who: 'Dale Carnegie and the boys in the park',
+      who: 'A man and the boys in the park',
       when: 'Forest Park, New York, 1930s',
-      text: 'Carnegie often walked in a park near his home where he loved the oak trees, and he was angry to see small fires lit by boys cooking under them, which could spread and burn the woods. At first he would march up, tell them they could be jailed for lighting fires, and threaten to have them arrested. They obeyed sullenly and, he suspected, lit the fire again as soon as he left. Later he tried something else. He would ask if they were having a good time and what they were cooking, say he had loved building fires as a boy too, and then explain that fires here were dangerous, that he knew they meant no harm but other boys might be careless. He asked them to rake leaves over the embers before they left, and next time to build the fire over the hill in the sandpit. The boys cooperated willingly.',
+      text: 'One man often walked in a park near his home where he loved the oak trees, and he was angry to see small fires lit by boys cooking under them, which could spread and burn the woods. At first he would march up, tell them they could be jailed for lighting fires, and threaten to have them arrested. They obeyed sullenly and, he suspected, lit the fire again as soon as he left. Later he tried something else. He would ask if they were having a good time and what they were cooking, say he had loved building fires as a boy too, and then explain that fires here were dangerous, that he knew they meant no harm but other boys might be careless. He asked them to rake leaves over the embers before they left, and next time to build the fire over the hill in the sandpit. The boys cooperated willingly.',
     },
     mind: 'We see our own actions from the inside, with all their reasons and pressures, and other people’s from the outside, as behaviour only. That gap makes other people seem more unreasonable than they are. Taking their perspective closes it: it brings their constraints, fears and goals into view, which makes their behaviour make sense and shows where they might move. It also changes how you come across. People can tell when someone has tried to understand them, and it makes them far more willing to try to understand back.',
     levers: [
@@ -384,8 +384,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'curse', how: 'What is obvious to you may be invisible to them, and you may not realise it. Seeing their view shows you what they actually know.' },
     ],
     laws: [
-      { n: 19, how: 'Greene says know who you are dealing with, because people react differently to the same move. Carnegie agrees that you must understand the person in front of you, but for him the point is to meet them, not to avoid stepping on the wrong toes.' },
-      { n: 33, how: 'Greene’s law is to find each person’s weakness, the thumbscrew that will move them. Seeing someone’s point of view also shows you their needs and fears. Carnegie uses that knowledge to give people what they want; Greene uses it to squeeze.' },
+      { n: 19, how: 'The law says know who you are dealing with, because people react differently to the same move. The principle agrees that you must understand the person in front of you, but here the point is to meet them, not to avoid stepping on the wrong toes.' },
+      { n: 33, how: 'The law is to find each person’s weakness, the thumbscrew that will move them. Seeing someone’s point of view also shows you their needs and fears. The principle uses that knowledge to give people what they want; the law uses it to squeeze.' },
     ],
     study: {
       who: 'Adam Galinsky, William Maddux, Debra Gilin and Judith White, 2008',
@@ -418,25 +418,25 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 18, id: 'sympathy', title: 'Be Sympathetic with the Other Person’s Ideas and Desires', part: 'convince',
     line: '“I don’t blame you for feeling that way. If I were you, I’d feel the same.”',
-    gist: 'Carnegie offers a magic phrase that stops arguments, dissolves bad feeling and makes people listen: “I don’t blame you one iota for feeling as you do. If I were you, I would feel just as you do.” He says you can mean it every time, because if you had their history, their temperament and their circumstances, you would feel as they do. Most of the people you meet are hungry for sympathy. Give it to them, he says, and they will love you for it. It is not agreement with what they want; it is acknowledgement that wanting it makes sense.',
+    gist: 'The book offers a magic phrase that stops arguments, dissolves bad feeling and makes people listen: “I don’t blame you one iota for feeling as you do. If I were you, I would feel just as you do.” The book says you can mean it every time, because if you had their history, their temperament and their circumstances, you would feel as they do. Most of the people you meet are hungry for sympathy. Give it to them, it says, and they will love you for it. It is not agreement with what they want; it is acknowledgement that wanting it makes sense.',
     story: {
-      who: 'Dale Carnegie and a listener in Philadelphia',
+      who: 'A radio speaker and a listener in Philadelphia',
       when: '1930s, after a radio broadcast',
-      text: 'In a radio talk about the author of Little Women, Louisa May Alcott, Carnegie said she had lived in Concord, New Hampshire. It was Concord, Massachusetts, and he made the mistake twice. A flood of letters followed, and one woman, who had grown up near Concord, Massachusetts, and lived in Philadelphia, wrote with real fury. Carnegie was tempted to reply that he had made one geographical slip, but she had made a much bigger one in manners. Instead he phoned her. He thanked her for her letter, said a woman of her background had every reason to be annoyed, and apologised. She softened at once, apologised for her own temper and said she would like to know him better.',
+      text: 'In a radio talk about the author of Little Women, Louisa May Alcott, the speaker said she had lived in Concord, New Hampshire. It was Concord, Massachusetts, and he made the mistake twice. A flood of letters followed, and one woman, who had grown up near Concord, Massachusetts, and lived in Philadelphia, wrote with real fury. He was tempted to reply that he had made one geographical slip, but she had made a much bigger one in manners. Instead he phoned her. He thanked her for her letter, said a woman of her background had every reason to be annoyed, and apologised. She softened at once, apologised for her own temper and said she would like to know him better.',
     },
     mind: 'Strong feelings demand to be acknowledged before they let go. When someone is upset and you argue with them, you are fighting the feeling as well as the point, and the feeling usually wins. When you recognise that their feeling makes sense, you remove the need to keep proving it. The anger has done its job, being heard, and can subside. Sympathy also signals that you are not an enemy, which turns the other person’s attention from defending themselves to solving the problem.',
     levers: [
       { name: 'Validation', text: 'Psychologists distinguish validating a feeling, saying it is understandable, from agreeing with the claim behind it. Therapies such as dialectical behaviour therapy, developed by Marsha Linehan, make validation a core skill because it reliably lowers emotional intensity.' },
       { name: 'Affect labelling', text: 'Matthew Lieberman and colleagues found in 2007 that putting feelings into words reduced activity in the amygdala, a brain region involved in threat responses. Naming the other person’s feeling for them, gently, can help calm it.' },
-      { name: 'Reciprocity of goodwill', text: 'Sympathy given is often sympathy returned. When the other person feels understood, they become much more willing to understand your side, as Carnegie’s angry listener did.' },
+      { name: 'Reciprocity of goodwill', text: 'Sympathy given is often sympathy returned. When the other person feels understood, they become much more willing to understand your side, as the angry listener did.' },
     ],
     traps: [
       { id: 'fae', how: 'We see an angry person and conclude they are an angry kind of person. Sympathy looks for the circumstances that made the anger reasonable.' },
       { id: 'projection', how: 'When you are calm, it is hard to imagine how strongly someone feels while upset, and you underrate it. Deliberate sympathy bridges that hot–cold gap.' },
     ],
     laws: [
-      { n: 44, how: 'Greene’s mirror effect reflects people back to themselves to disarm or unsettle them. Sympathy is a gentle mirror: showing someone that their feeling is seen and makes sense disarms them, but leaves them feeling understood rather than outplayed.' },
-      { n: 22, how: 'Greene’s surrender tactic yields on the surface to take the force out of an attack. Saying “I would feel the same” yields on the feeling without yielding on the issue, and often achieves the same result more honestly.' },
+      { n: 44, how: 'The law’s mirror effect reflects people back to themselves to disarm or unsettle them. Sympathy is a gentle mirror: showing someone that their feeling is seen and makes sense disarms them, but leaves them feeling understood rather than outplayed.' },
+      { n: 22, how: 'The law’s surrender tactic yields on the surface to take the force out of an attack. Saying “I would feel the same” yields on the feeling without yielding on the issue, and often achieves the same result more honestly.' },
     ],
     study: {
       who: 'Chad Shenk and Alan Fruzzetti, 2011',
@@ -469,7 +469,7 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 19, id: 'nobler-motives', title: 'Appeal to the Nobler Motives', part: 'convince',
     line: 'Treat people as the decent version of themselves, and most will try to live up to it.',
-    gist: 'Carnegie quotes the banker J. P. Morgan’s remark that people usually have two reasons for doing something: one that sounds good and the real one. The real one they will think of themselves, Carnegie says, but all of us like to think of ourselves as idealistic, so we like to hear the reasons that sound good. When you want to change someone’s behaviour, appeal to their sense of fairness, honour or kindness. Most people, he says, are honest and want to meet their obligations, and when you treat them that way they usually respond in kind.',
+    gist: 'The book quotes the banker J. P. Morgan’s remark that people usually have two reasons for doing something: one that sounds good and the real one. The real one they will think of themselves, the book says, but all of us like to think of ourselves as idealistic, so we like to hear the reasons that sound good. When you want to change someone’s behaviour, appeal to their sense of fairness, honour or kindness. Most people, it says, are honest and want to meet their obligations, and when you treat them that way they usually respond in kind.',
     story: {
       who: 'Lord Northcliffe and John D. Rockefeller Jr.',
       when: 'Early 20th century',
@@ -486,13 +486,13 @@ export const PRINCIPLES: Principle[] = [
       { id: 'fae', how: 'We assume people who wrong us have bad character. Appealing to their better motives assumes the opposite, and often finds that they had better motives all along.' },
     ],
     laws: [
-      { n: 13, how: 'Greene says never appeal to mercy or gratitude, only to self-interest. Carnegie argues the opposite: people like to see themselves as generous and fair, and an appeal to that self-image often works where a bargain would not. Each is right about some people, and wise people learn to tell them apart.' },
-      { n: 27, how: 'Greene notes that people hunger to believe in something larger than themselves. Appealing to nobler motives speaks to the same hunger, but on a small scale, honestly, and in service of the person rather than a cult.' },
+      { n: 13, how: 'The law says never appeal to mercy or gratitude, only to self-interest. The principle argues the opposite: people like to see themselves as generous and fair, and an appeal to that self-image often works where a bargain would not. Each is right about some people, and wise people learn to tell them apart.' },
+      { n: 27, how: 'The law notes that people hunger to believe in something larger than themselves. Appealing to nobler motives speaks to the same hunger, but on a small scale, honestly, and in service of the person rather than a cult.' },
     ],
     study: {
       who: 'Adam Grant and David Hofmann, 2011',
       title: 'It’s not all about me: motivating hand hygiene by focusing on patients',
-      text: 'In a US hospital, the researchers put signs above soap and gel dispensers. One said hand hygiene prevents you from catching diseases; another said it prevents patients from catching diseases; a third gave no reason. Over two weeks, dispensers with the patient-focused sign were used noticeably more, and observers saw staff wash their hands more often, while the self-focused sign made little difference. Doctors and nurses were moved more by their duty to others than by their own safety. It was a short study in one hospital, and appeals like this do not always work as well elsewhere, but it is a striking test of Carnegie’s idea.',
+      text: 'In a US hospital, the researchers put signs above soap and gel dispensers. One said hand hygiene prevents you from catching diseases; another said it prevents patients from catching diseases; a third gave no reason. Over two weeks, dispensers with the patient-focused sign were used noticeably more, and observers saw staff wash their hands more often, while the self-focused sign made little difference. Doctors and nurses were moved more by their duty to others than by their own safety. It was a short study in one hospital, and appeals like this do not always work as well elsewhere, but it is a striking test of the idea.',
     },
     today: [
       'Asking a tenant who is late with rent to treat it as a matter of keeping their word',
@@ -520,7 +520,7 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 20, id: 'dramatize', title: 'Dramatize Your Ideas', part: 'convince',
     line: 'The truth is not enough. It has to be shown, vividly enough to be felt.',
-    gist: 'This is the age of dramatisation, Carnegie wrote in the 1930s: merely stating a truth is not enough. It must be made vivid, interesting and dramatic, the way films, radio and shop windows do. A point that people can see, touch or picture sticks where a plain claim slides off. So instead of saying you are right, show it. Instead of listing numbers, find a scene that makes them real. Showmanship, he argues, is not cheating. It is respect for how attention actually works.',
+    gist: 'This is the age of dramatisation, the book declared in the 1930s: merely stating a truth is not enough. It must be made vivid, interesting and dramatic, the way films, radio and shop windows do. A point that people can see, touch or picture sticks where a plain claim slides off. So instead of saying you are right, show it. Instead of listing numbers, find a scene that makes them real. Showmanship, it argues, is not cheating. It is respect for how attention actually works.',
     story: {
       who: 'The Philadelphia Evening Bulletin',
       when: 'Philadelphia, early 20th century',
@@ -537,8 +537,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'base-rate', how: 'A single striking case can outweigh the general statistics in people’s minds. A dramatic demonstration can move people where the base rate would not, which is why it should be honest about the base rate.' },
     ],
     laws: [
-      { n: 37, how: 'Greene says create compelling spectacles, because images move people in ways words cannot. Carnegie agrees completely. The difference is in the purpose: Greene uses spectacle to dazzle and distract, Carnegie to make the truth easier to see.' },
-      { n: 6, how: 'Greene says court attention at all costs. Carnegie’s dramatisation earns attention too, but for an idea rather than for yourself.' },
+      { n: 37, how: 'The law says create compelling spectacles, because images move people in ways words cannot. The principle agrees completely. The difference is in the purpose: the law uses spectacle to dazzle and distract, the principle to make the truth easier to see.' },
+      { n: 6, how: 'The law says court attention at all costs. The principle’s dramatisation earns attention too, but for an idea rather than for yourself.' },
     ],
     study: {
       who: 'Deborah Small, George Loewenstein and Paul Slovic, 2007',
@@ -571,7 +571,7 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 21, id: 'challenge', title: 'Throw Down a Challenge', part: 'convince',
     line: 'People will not work hard for money alone. They will work hard to win.',
-    gist: 'When nothing else works, Carnegie says, throw down a challenge. Every successful person loves the game: the chance to prove their worth, to excel, to win. Money and orders get people to work; a challenge gets them to give their best. Done well, it is not a threat but an invitation: here is something hard and worth doing, are you the one to do it? He quotes Charles Schwab’s view that the way to get things done is to stimulate competition, not in a mean way but in the desire to excel.',
+    gist: 'When nothing else works, the book says, throw down a challenge. Every successful person loves the game: the chance to prove their worth, to excel, to win. Money and orders get people to work; a challenge gets them to give their best. Done well, it is not a threat but an invitation: here is something hard and worth doing, are you the one to do it? The book quotes Charles Schwab’s view that the way to get things done is to stimulate competition, not in a mean way but in the desire to excel.',
     story: {
       who: 'Charles Schwab and a steel mill',
       when: 'United States, early 20th century',
@@ -588,8 +588,8 @@ export const PRINCIPLES: Principle[] = [
       { id: 'conformity', how: 'Once one group sets a pace, others feel the pull to match or beat it. A public challenge makes the new norm visible to everyone.' },
     ],
     laws: [
-      { n: 39, how: 'Greene says stir up emotions in your opponents so they make mistakes. Carnegie stirs up emotion too, the urge to win, but in his own people and to help them do their best rather than their worst.' },
-      { n: 2, how: 'Greene notes that a former enemy works harder to prove themselves. A challenge uses the same energy: the need to prove something, directed at a task rather than a person.' },
+      { n: 39, how: 'The law says stir up emotions in your opponents so they make mistakes. The principle stirs up emotion too, the urge to win, but in your own people and to help them do their best rather than their worst.' },
+      { n: 2, how: 'The law notes that a former enemy works harder to prove themselves. A challenge uses the same energy: the need to prove something, directed at a task rather than a person.' },
     ],
     study: {
       who: 'Gary Latham and James Baldes, 1975',
