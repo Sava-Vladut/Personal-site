@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.136.2',
+    date: '2026-10-25',
+    changes: [
+      'The Global Ops page uses the app’s standard sizes: its tiles widen with the other grids, and its icons and code match the rest of the app',
+    ],
+  },
+  {
     version: '1.136.1',
     date: '2026-10-25',
     changes: [

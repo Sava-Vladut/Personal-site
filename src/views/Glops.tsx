@@ -234,11 +234,11 @@ function Board({ data, now, error, onRefresh }: { data: Progress; now: number; e
       )}
 
       <p class="ops-foot">
-        {error ? <><Icon name="alert-circle" size={15} /> {error} · </> : null}
+        {error ? <><Icon name="alert-circle" size={14} /> {error} · </> : null}
         {data.live
           ? t('Refreshes every {n} seconds while the port is being worked on.', { n: LIVE_EVERY / 1000 })
           : t('Refreshes every {n} seconds; faster once work starts.', { n: IDLE_EVERY / 1000 })}{' '}
-        <button class="btn btn-quiet btn-s" onClick={onRefresh}><Icon name="refresh" size={15} /> {t('Refresh')}</button>
+        <button class="btn btn-quiet btn-s" onClick={onRefresh}><Icon name="refresh" size={16} /> {t('Refresh')}</button>
       </p>
     </RevealStack>
   );
