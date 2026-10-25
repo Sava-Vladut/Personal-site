@@ -13,6 +13,8 @@
 .share-facts li { display: flex; gap: 10px; align-items: flex-start; font-size: var(--text-base); line-height: 1.45; color: var(--ink-2); }
 .share-facts svg { flex: none; margin-top: 2px; color: var(--ink-3); }
 .share-main { width: 100%; height: 48px; justify-content: center; }
+/* a Learn page's link: which language it opens in (components/LearnShare.tsx) */
+.share-lang { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--text-base); color: var(--ink-2); }
 .share-link { display: flex; gap: 8px; align-items: center; }
 .share-link .input { flex: 1; min-width: 0; font-size: var(--text-base); }
 .share-link .btn { flex: none; gap: 6px; }

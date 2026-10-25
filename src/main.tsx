@@ -71,8 +71,10 @@ onBlocked(() =>
 // once you sign in.
 const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
 const status = location.pathname.match(/^\/status\/([A-Za-z0-9_-]{32})\/?$/);
+const learn = location.pathname.match(/^\/learn(?:\/(traps|laws|friends))?\/?$/);
 if (shared) void bootShared(shared[1]);
 else if (status) void bootStatus(status[1]);
+else if (learn) void bootLearn(learn[1]);
 else if (signedInHere()) {
   if (routeName() === 'journal' && !introSeen() && !matchMedia('(prefers-reduced-motion: reduce)').matches) void openWithBrain();
   else boot();
@@ -93,6 +95,27 @@ async function bootStatus(token: string) {
   try {
     const { Status } = await import('./views/Status');
     render(<Status token={token} />, document.getElementById('app')!);
+  } catch (e) {
+    failed(e, false);
+  }
+}
+
+/**
+ * A shared Learn link: just the Learn pages, for anyone, like a public note, in the language it was shared in
+ * (lib/i18n.ts reads ?lang=). /learn/traps?open=x&lang=ro becomes /learn?lang=ro#/traps?open=x, so the pages route
+ * by the hash as they do in the app.
+ */
+async function bootLearn(page?: string) {
+  if (page) {
+    const query = new URLSearchParams(location.search);
+    const lang = query.get('lang');
+    query.delete('lang');
+    history.replaceState(null, '', `/learn${lang === 'en' || lang === 'ro' ? `?lang=${lang}` : ''}#/${page}${query.size ? `?${query}` : ''}`);
+  }
+  try {
+    const { LearnPublic, isLearn } = await import('./views/LearnPublic');
+    if (isLearn(routeName())) await prepareView(routeName());
+    render(<LearnPublic />, document.getElementById('app')!);
   } catch (e) {
     failed(e, false);
   }

@@ -170,6 +170,7 @@
 .lrn-d-title { margin: 0; font: var(--w-medium) clamp(24px, 6.6vw, 28px)/1.12 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
 .lrn-d-line { margin: 2px 0 0; max-width: 38ch; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); text-wrap: balance; }
 .lrn-d-head > :not(.mark, .kicker, .lrn-d-title, .lrn-d-line) { margin: 0; font-size: var(--text-m); color: var(--ink-3); }
+.lrn-d-head > .lrn-d-share { margin-top: 6px; gap: 6px; }
 
 /* a chapter: its heading, then what's in it, 12 apart */
 .lrn-d-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }

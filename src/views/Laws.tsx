@@ -8,6 +8,7 @@ import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
+import { LearnShare, ShareButton, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
 import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
@@ -191,7 +192,7 @@ type Seen = Record<number, { on?: number; by?: number }>;
 type Lens = 'player' | 'target';
 const LENSES: Lens[] = ['player', 'target'];
 
-function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple }: {
+function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple, onShare }: {
   x: Law;
   lens: Lens;
   onLens: (l: Lens) => void;
@@ -200,6 +201,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple 
   go: (n: number) => void;
   openTrap: (id: string) => void;
   openPrinciple: (n: number) => void;
+  onShare: () => void;
 }) {
   const realm = REALMS[x.realm];
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
@@ -254,7 +256,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple 
 
   return (
     <article class="lrn-detail" key={x.n}>
-      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Law {n}', { n: x.n })} · ${t(realm.name)}`} title={x.title} line={x.line} />
+      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Law {n}', { n: x.n })} · ${t(realm.name)}`} title={x.title} line={x.line} onShare={onShare} />
 
       <div class="lrn-meters">
         <Meter label={t('Darkness')} value={x.dark} about={t('How manipulative it is')} />
@@ -319,6 +321,7 @@ const SORTS: Sort[] = ['arena', 'n', 'dark'];
 
 export function Laws({ query: params }: { query: URLSearchParams }) {
   const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null);
+  const [sharing, setSharing] = useState<ShareTarget | null>(null);
   const [realm, setRealm] = usePref<string>('laws-realm', 'all', ['all', ...REALM_IDS]);
   const [sort, setSort] = usePref<Sort>('laws-sort', 'arena', SORTS);
   const [lens, setLens] = usePref<Lens>('laws-lens', 'player', LENSES);
@@ -363,7 +366,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
     <div class="page lrn-page laws-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Laws of power')} back={() => goBack()} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
+        <PageHead title={t('Laws of power')} back={() => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'laws', title: t('Laws of power') })} />} subtitle={t('Robert Greene’s 48 laws: the history, the psychology and how to see them coming')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }}>
             <b>{LAWS.length}</b>
@@ -505,6 +508,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
           {current && (
             <LawDetail
               x={current}
+              onShare={() => setSharing({ path: `laws?open=${current.n}`, title: current.title })}
               lens={lens}
               onLens={setLens}
               seen={seen[current.n] ?? {}}
@@ -516,6 +520,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
           )}
         </div>
       </Sheet>
+      <LearnShare target={sharing} onClose={() => setSharing(null)} />
     </div>
   );
 }

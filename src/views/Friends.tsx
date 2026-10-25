@@ -9,6 +9,7 @@ import { LAWS, REALMS, type Law } from '../data/laws';
 import { Mark } from '../components/Mark';
 import { Sheet } from '../components/Sheet';
 import { PageHead } from '../components/PageHead';
+import { LearnShare, ShareButton, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
 import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLive, useLocal } from '../components/learn';
@@ -267,7 +268,7 @@ function Connections({ open, openLaw, openTrap }: { open: (x: Principle) => void
 type Lens = 'why' | 'how';
 const LENSES: Lens[] = ['why', 'how'];
 
-function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, openTrap, openLaw }: {
+function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, openTrap, openLaw, onShare }: {
   x: Principle;
   lens: Lens;
   setLens: (l: Lens) => void;
@@ -277,6 +278,7 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
   go: (n: number) => void;
   openTrap: (id: string) => void;
   openLaw: (n: number) => void;
+  onShare: () => void;
 }) {
   const part = PARTS[x.part];
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
@@ -337,7 +339,7 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
 
   return (
     <article class="lrn-detail" key={x.n}>
-      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Principle {n}', { n: x.n })} · ${t(part.name)}`} title={x.title} line={x.line} />
+      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Principle {n}', { n: x.n })} · ${t(part.name)}`} title={x.title} line={x.line} onShare={onShare} />
 
       <div class="lrn-meters">
         <Meter label={t('How hard')} value={x.hard} about={t('How hard it is to actually do')} />
@@ -392,6 +394,7 @@ const LEVERS = new Set(PRINCIPLES.flatMap((x) => x.levers.map((l) => l.name.toLo
 export function Friends({ query: params }: { query: URLSearchParams }) {
   // ?open=<n> opens a principle straight away (Laws of power and Mind traps link here)
   const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null);
+  const [sharing, setSharing] = useState<ShareTarget | null>(null);
   const [filter, setFilter] = usePref<Filter>('friends-part', 'all', FILTERS);
   const [sort, setSort] = usePref<Sort>('friends-sort', 'n', SORTS);
   const [lens, setLens] = usePref<Lens>('friends-lens', 'why', LENSES);
@@ -458,7 +461,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
     <div class="page lrn-page friends-page" style={{ '--accent': `var(--emo-${WORLD})` }}>
       <div class="journal-top lrn-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
         <Sky world={WORLD} />
-        <PageHead title={t('Win friends')} back={() => goBack()} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
+        <PageHead title={t('Win friends')} back={() => goBack()} actions={<ShareButton onClick={() => setSharing({ path: 'friends', title: t('Win friends') })} />} subtitle={t('Dale Carnegie’s 30 principles: why they work and how to practise them')} />
         <div class="media-stats stats-figures">
           <span class="stat" style={{ '--i': 0 }}>
             <b>{practising}<em class="stat-aside">/{PRINCIPLES.length}</em></b>
@@ -569,6 +572,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
           {current && (
             <PrincipleDetail
               x={current}
+              onShare={() => setSharing({ path: `friends?open=${current.n}`, title: current.title })}
               lens={lens}
               setLens={setLens}
               practice={practice[current.n] ?? {}}
@@ -581,6 +585,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
           )}
         </div>
       </Sheet>
+      <LearnShare target={sharing} onClose={() => setSharing(null)} />
     </div>
   );
 }

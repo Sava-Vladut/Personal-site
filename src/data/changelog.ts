@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.135.0',
+    date: '2026-10-25',
+    changes: [
+      'Mind traps, Laws of power and Win friends have a Share button: anyone with the link can read the page without signing in',
+      'Every opened trap, law and principle can be shared on its own, and the link opens straight to it',
+      'Pick whether a shared link opens in English or Romanian',
+      'Shared Learn links preview with the page’s name in chats, not as the private journal',
+    ],
+  },
+  {
     version: '1.134.2',
     date: '2026-10-24',
     changes: [

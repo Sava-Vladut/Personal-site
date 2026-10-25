@@ -12,6 +12,9 @@ function read(): Lang {
   // a public status's page is in the language its owner chose for it (server/status.js marks the page), whatever this device uses
   const page = typeof document !== 'undefined' ? document.documentElement?.dataset.mmLang : undefined;
   if (page === 'en' || page === 'ro') return page;
+  // a shared Learn page opens in the language it was shared in (its link's ?lang=, main.tsx), whatever this device uses
+  const shared = typeof location !== 'undefined' && /^\/learn(\/|$)/.test(location.pathname) ? new URLSearchParams(location.search).get('lang') : null;
+  if (shared === 'en' || shared === 'ro') return shared;
   try {
     return localStorage.getItem(KEY) === 'ro' ? 'ro' : 'en';
   } catch {

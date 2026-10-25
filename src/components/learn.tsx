@@ -8,6 +8,7 @@ import type { UiName } from './icons';
 import { Mark } from './Mark';
 import UI from '../data/ui-icons.json';
 import { svgInner } from '../lib/icons';
+import { t } from '../lib/i18n';
 import '../styles/learn.css';
 import '../styles/icon-motion.css';
 
@@ -276,13 +277,15 @@ export function Meter({ label, value, about }: { label: string; value: number; a
  * The top of an opened entry: its mark (96px, still), a `kicker` (one small uppercase line), the `title` and its
  * `line`. `children` go under the line (e.g. Traps' "also called").
  */
-export function DetailHead({ id, hue, kicker, title, line, children }: {
+export function DetailHead({ id, hue, kicker, title, line, children, onShare }: {
   id: string;
   hue: string;
   kicker: string;
   title: string;
   line: ComponentChildren;
   children?: ComponentChildren;
+  /** Shows a quiet "Share" under the head that opens the page's LearnShare for this entry. */
+  onShare?: () => void;
 }) {
   return (
     <header class="lrn-d-head">
@@ -291,6 +294,7 @@ export function DetailHead({ id, hue, kicker, title, line, children }: {
       <h2 class="lrn-d-title">{title}</h2>
       <p class="lrn-d-line">{line}</p>
       {children}
+      {onShare && <button class="btn btn-quiet btn-s lrn-d-share" onClick={onShare}><Ico name="share" size={16} /> {t('Share publicly')}</button>}
     </header>
   );
 }
