@@ -86,8 +86,10 @@ Nothing else. Headings inside the note body are document styles and may differ.
 **Line height:** 1.5 body (set on `body`); 1.45 for multi-line secondary text; 1.25 for serif titles and
 headings; 1.12 for page titles; 1 for single-line numbers, badges and icon labels. Nothing in between.
 
-**Letter spacing:** `-0.015em` page titles, `-0.01em` sub-page titles, `-0.025em` big numbers, `0.02em`
-eyebrows. Uppercase labels are `--text-xs`, `--w-bold`, `0.08em`, `--ink-3` (`.badge`, month names, dates
+**Letter spacing** tightens as type grows: `-0.005em` serif list titles (a note's, a countdown's name),
+`-0.01em` sub-page titles, `-0.015em` page titles, `-0.02em` display numbers (`--text-2xl`), `-0.03em` to
+`-0.04em` hero numbers above 32px, and `0.02em` eyebrows. Nothing in between; the note's own headings are
+document styles and keep theirs. Uppercase labels are `--text-xs`, `--w-bold`, `0.08em`, `--ink-3` (`.badge`, month names, dates
 in note details). Use uppercase sparingly: one label per block at most.
 
 Numbers that change or line up (counters, stats, times) use `font-variant-numeric: tabular-nums`.

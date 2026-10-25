@@ -83,7 +83,7 @@ html { transition: --accent var(--dur-3) ease; }
   background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
 }
 .tile-label { font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
-.tile-value { font-size: var(--text-2xl); font-weight: var(--w-bold); letter-spacing: -0.025em; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile-value { font-size: var(--text-2xl); font-weight: var(--w-bold); letter-spacing: -0.02em; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .tile-sub { font-size: var(--text-s); color: var(--ink-3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .delta { color: var(--ink-2); font-weight: var(--w-medium); white-space: nowrap; }
 .tile-meter { height: 4px; margin-top: 9px; border-radius: var(--r-pill); overflow: hidden; background: var(--surface-3); }

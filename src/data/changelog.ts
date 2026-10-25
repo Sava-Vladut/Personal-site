@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.137.1',
+    date: '2026-10-25',
+    changes: [
+      'Stat tile numbers use the same letter spacing as the other big numbers',
+    ],
+  },
+  {
     version: '1.137.0',
     date: '2026-10-25',
     changes: [
