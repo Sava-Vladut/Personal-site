@@ -853,6 +853,53 @@ test('a rejected page transition still clears navigation state and tolerates inf
   assert.equal(animationAttempts, 1);
 });
 
+test('the sky engine draws once it has a size and a look, steps every running sky from one loop, and stops cleanly', async () => {
+  const calls = { glyphs: 0, puffs: 0 };
+  const ctx = (kind) => new Proxy({}, {
+    get: (_t, name) => name === 'drawImage'
+      ? () => { if (kind === 'glyph') calls.glyphs++; else if (kind === 'cloud') calls.puffs++; }
+      : name === 'createRadialGradient' ? () => ({ addColorStop() {} })
+      : () => {},
+    set: () => true,
+  });
+  const canvas = (kind) => ({ width: 0, height: 0, getContext: () => ctx(kind) });
+  const frames = [];
+  const specs = await load('src/lib/sky/specs.ts');
+  const { SkyScene } = await load('src/lib/sky/engine.ts', { './specs': specs }, {
+    requestAnimationFrame: (fn) => { frames.push(fn); return frames.length; },
+    performance: { now: () => 0 }, ImageBitmap: class {},
+  });
+  const tone = [200, 180, 220];
+  const layer = { tones: [tone, tone, tone], shadow: [tone, tone, tone], light: [tone, tone, tone], atlas: {}, tile: 20 };
+  const look = { dark: false, glyphIdx: [[], [0], [1], [2], [3]], layers: [layer, layer] };
+  let drawn = 0;
+  const make = () => canvas('sprite');
+  const sky = new SkyScene([canvas('cloud'), canvas('glyph'), canvas('cloud'), canvas('glyph')], false, make, () => drawn++);
+  sky.setSize(400, 240, 2);
+  assert.equal(calls.puffs + calls.glyphs, 0, 'nothing to draw with yet');
+  sky.setLook(look);
+  assert.ok(calls.puffs > 0 && calls.glyphs > 0, 'clouds and letters once it has both');
+  assert.equal(drawn, 1, 'tells the page its first frame is down, once');
+
+  // two running skies share one queued frame; a still sky isn't stepped
+  const other = new SkyScene([canvas('cloud'), canvas('glyph'), canvas('cloud'), canvas('glyph')], true, make, () => {});
+  other.setLook(look); other.setSize(200, 120, 1);
+  sky.run(true); other.run(true);
+  assert.equal(frames.length, 1, 'one loop for every sky');
+  const before = calls.glyphs;
+  let now = 1000;
+  for (let i = 0; i < 6; i++) frames.shift()((now += 16));
+  assert.ok(calls.glyphs > before, 'running skies redraw');
+  sky.run(false); other.run(false);
+  frames.splice(0).forEach((f) => f((now += 16)));
+  assert.equal(frames.length, 0, 'no frame is asked for once nothing runs');
+  const still = calls.glyphs;
+  sky.setPointer(100, 100, true);
+  assert.equal(calls.glyphs, still);
+  sky.dispose();
+  assert.equal(drawn, 1);
+});
+
 test('the map heat draws feeling letters where entries gather, and one thread branches out from home to every place', async () => {
   const calls = { glyphs: [], puffs: 0 };
   const ctx = (kind) => new Proxy({}, {
