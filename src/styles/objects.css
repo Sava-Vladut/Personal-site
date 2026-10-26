@@ -275,7 +275,7 @@
 
 /* the title rises out of the clouds a letter at a time */
 .cloud-title span { display: inline-block; animation: cloud-letter var(--dur-4) var(--ease-emph) calc(var(--i) * 25ms) backwards; }
-@keyframes cloud-letter { from { opacity: 0; translate: 0 0.4em; filter: blur(6px); } }
+@keyframes cloud-letter { from { opacity: 0; translate: 0 0.4em; } } /* no blur: one per letter was a repaint each frame */
 
 /* a row of small numbers, each popping in after the last (the .stat itself is in app.css) */
 .media-stats { display: flex; gap: 6px; margin-bottom: 8px; }

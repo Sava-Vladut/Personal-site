@@ -537,15 +537,17 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
     const scrolled = () => { rect = null; };
 
     const retheme = () => { palette(); draw(); };
-    // a full-screen layer ([data-cover], e.g. the wheel) hides the skies under it: they wait, and its own sky goes on
+    // a full-screen layer ([data-cover], e.g. the wheel) hides the skies under it: they wait, and its own sky goes on.
+    // While a page change slides ([data-nav], lib/router.ts) every sky holds still, so the slide gets the frames
     const front = !!host.closest('[data-cover]');
     const recover = () => {
-      covered = !front && document.documentElement.hasAttribute('data-covered');
+      const root = document.documentElement;
+      covered = root.hasAttribute('data-nav') || (!front && root.hasAttribute('data-covered'));
       covered ? stop() : schedule();
     };
     const onRoot = (list: MutationRecord[]) => {
       if (list.some((m) => m.attributeName === 'data-theme')) retheme();
-      if (list.some((m) => m.attributeName === 'data-covered')) recover();
+      if (list.some((m) => m.attributeName === 'data-covered' || m.attributeName === 'data-nav')) recover();
     };
     const onVisibility = () => (document.hidden ? stop() : schedule());
     const onMotion = () => (reduced.matches ? (stop(), draw()) : schedule());
@@ -563,7 +565,7 @@ export function Sky({ world, worlds, letters, small }: { world?: string | null; 
     resize();
     ro.observe(host);
     io.observe(host);
-    mo.observe(document.documentElement, { attributeFilter: ['data-theme', 'data-covered'] });
+    mo.observe(document.documentElement, { attributeFilter: ['data-theme', 'data-covered', 'data-nav'] });
     darkQuery.addEventListener('change', retheme);
     reduced.addEventListener('change', onMotion);
     document.addEventListener('visibilitychange', onVisibility);

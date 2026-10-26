@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.137.4',
+    date: '2026-10-26',
+    changes: [
+      'The open wheel no longer keeps the processor busy: its slow sway plays once and then rests',
+      'Lists, widgets and cloud titles fade in without a blur, so they land smoothly on phones',
+      'Skies hold still while a page slides in, so page changes are smoother',
+      'The live dot on Status and the ring around the + button animate without repainting',
+    ],
+  },
+  {
     version: '1.137.3',
     date: '2026-10-26',
     changes: [

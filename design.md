@@ -274,6 +274,11 @@ Rules:
 - **Staggered entrances:** 20ms per item, everything in by 80ms, using `--dur-2`/`--dur-3`.
 - **Only animate `transform` and `opacity`** in anything that loops or runs while scrolling. Never
   animate `filter`, `box-shadow`, `width`, `stroke-width` or `background-position` in a loop.
+  Entrances that many elements play at once follow the same rule (no `filter: blur()` fade-ins), and a
+  ring or glow that grows is its own element scaling and fading, not an animated `box-shadow`.
+- **Don't loop a custom property** (`@property` + keyframes on `--x`): it can't run on the compositor, so
+  it re-styles and repaints everything that reads it each frame. The open wheel's sway plays once.
+- Skies (and other canvases) hold still while a page change slides (`data-nav` on `<html>`).
 - **No infinite loops at rest.** Decoration runs a few times and stops (e.g. the nav wheel plays twice
   after a page appears, `--nw-runs`, and comes alive again on hover/focus). Loops that show state are fine:
   a record turning while it plays, a live dot, a spinner, a countdown ticking once a second.
@@ -296,8 +301,8 @@ already waiting for it, and the seams between "not here yet" and "here" are hidd
 | Fetched block | `.fade-arrive` / `.fade-arrive-soft` | One block landing (a widget, a preview, a line of fetched text); `--i` staggers blocks that land together |
 | Fetched list | `.fade-rows` / `.fade-rows-soft` | Rows cascade 25ms apart, all moving within 100ms |
 
-Use the `-soft` versions (no blur) for big blocks, for anything Settings › Blur can blur, and for more
-than a handful of items.
+Neither fades out of a blur: an animated `filter` repaints every frame on every row and made lists
+stutter on phones. The `-soft` versions rise a pixel less; either is fine.
 
 **Rules.**
 

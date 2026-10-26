@@ -177,9 +177,16 @@
   display: block; width: 100%; height: 100%; overflow: visible;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-  animation: nw-sway 8.67s ease-in-out infinite alternate;
+  animation: nw-sway 17.34s 1;
 }
-@keyframes nw-sway { from { --nw-sway: -7deg; } to { --nw-sway: 7deg; } }
+/* one slow sway out and back, then it rests at 0: animating --nw-sway re-styles and repaints the whole wheel each frame,
+   which kept a CPU core busy for as long as the wheel stayed open. Eased like a pendulum (fastest through the middle) */
+@keyframes nw-sway {
+  0% { --nw-sway: 0deg; animation-timing-function: cubic-bezier(0.33, 0.67, 0.67, 1); }
+  25% { --nw-sway: -7deg; animation-timing-function: ease-in-out; }
+  75% { --nw-sway: 7deg; animation-timing-function: cubic-bezier(0.33, 0, 0.67, 0.33); }
+  100% { --nw-sway: 0deg; }
+}
 .nw-spin { rotate: var(--spin, 0deg); transform-box: view-box; transform-origin: 200px 200px; }
 .nw-turn { rotate: var(--nw-sway); transform-box: view-box; transform-origin: 200px 200px; }
 .nw-turn .nw-label { rotate: calc(-1 * (var(--nw-sway) + var(--spin, 0deg))); transform-box: view-box; }

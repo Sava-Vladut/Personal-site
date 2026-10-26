@@ -35,6 +35,7 @@ export function AddMenu({ label }: { label?: string }) {
           <>
             {/* the sidebar's button carries a little sky of its own: clouds drifting behind letters */}
             {label && <span class="nav-new-sky" aria-hidden="true"><Sky world="hope-interest" small /></span>}
+            {!label && <span class="add-ping" aria-hidden="true" />}
             <span class="nav-plus"><Icon name="plus" size={label ? 20 : 28} stroke={2} /></span>
             {label && <span class="nav-new-label">{label}</span>}
           </>
