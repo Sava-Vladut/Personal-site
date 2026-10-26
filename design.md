@@ -419,6 +419,8 @@ brackets), applied to this one. When a screen breaks one, fixing it is worth mor
    - Every tappable thing is at least `--h-m` (44px) to a finger. A smaller visual can keep a larger hit
      area with a `::before` that extends it (as `.mention-close` and the note's details line do).
    - Keep at least 8px between two tappable things, so a thumb doesn't land on the neighbour.
+   - A row that holds a switch is its `<label>` (`label.list-row`, `.share-part`), so the whole row flips
+     it, not only the 50×30 switch.
    - The main action of a screen or sheet sits where the thumb already is: at the bottom on a phone, full
      width in a sheet. Rare and destructive actions go out of the way (a "More" menu, the end of a list),
      never next to the one people tap most.

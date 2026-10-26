@@ -273,13 +273,13 @@ export function Settings({ query }: { query: URLSearchParams }) {
       <section class="section">
         <h2 class="section-title">{t('Privacy')}</h2>
         <div class="card list">
-          <div class="list-row">
+          <label class="list-row">
             <div>
               <div class="row gap-s"><Icon name="eye-off" size={18} /> {t('Blur notes & people')}</div>
               <div class="muted small">{t('Blurs your notes and the people in your lists, so no one can read them over your shoulder. Open a note to read it, or point at it on a computer.')}</div>
             </div>
             <button class="switch" role="switch" aria-checked={settings.blur} aria-label={t('Blur notes & people')} onClick={() => setSettings({ blur: !settings.blur })} />
-          </div>
+          </label>
         </div>
       </section>
 
@@ -302,14 +302,14 @@ export function Settings({ query }: { query: URLSearchParams }) {
       <section class="section">
         <h2 class="section-title">{t('Weather & places')}</h2>
         <div class="card list">
-          <div class="list-row">
+          <label class="list-row">
             <div>
               <div class="row gap-s"><Icon name="haze" size={18} /> {t('Weather')}</div>
               <div class="muted small">{t('Adds the weather and hours of daylight to your entries, so Stats can show how they go with your mood. Open-Meteo is only sent a location, never what you write.')}</div>
             </div>
             <button class="switch" role="switch" aria-checked={settings.weather} aria-label={t('Weather')} onClick={toggleWeather} />
-          </div>
-          <div class="list-row">
+          </label>
+          <label class="list-row">
             <div>
               <div class="row gap-s"><Icon name="map-pin" size={18} /> {t('Places')}</div>
               <div class="muted small">{locating ? t('Finding you…') : t('Saves where you are when you write, and puts your entries on a map. Uses your location, with names from OpenStreetMap.')}</div>
@@ -320,7 +320,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
               )}
             </div>
             <button class="switch" role="switch" aria-checked={settings.places} aria-label={t('Places')} onClick={togglePlaces} disabled={locating} />
-          </div>
+          </label>
           {(settings.weather || settings.home) && (
             <button class="list-row action" onClick={() => setHomeOpen(true)}>
               <span class="grow">
@@ -406,7 +406,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
               </div>
             </div>
           </div>
-          <div class="list-row">
+          <label class="list-row">
             <div>
               <div class="row gap-s"><Icon name="cloud" size={18} /> {t('Save on server')}</div>
               <div class="muted small">
@@ -418,7 +418,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
               </div>
             </div>
             <button class="switch" role="switch" aria-checked={sync.on} aria-label={t('Save on server')} onClick={toggleSync} />
-          </div>
+          </label>
           {sync.on && sync.code && (
             <div class="list-row">
               <div>

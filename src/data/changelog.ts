@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.4',
+    date: '2026-10-26',
+    changes: [
+      'In Settings, tapping anywhere on a setting’s row turns it on or off, not only the small switch',
+    ],
+  },
+  {
     version: '1.138.3',
     date: '2026-10-26',
     changes: [

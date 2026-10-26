@@ -982,6 +982,8 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
 .list { overflow: hidden; }
 .list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; min-height: 56px; border-bottom: 1px solid var(--line); }
 .list-row:not(:has(~ .list-row)) { border-bottom: 0; }
+/* a row that is a switch's label: the whole row flips it, not only the 50×30 switch */
+label.list-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .list-row .muted.small { margin-top: 3px; line-height: 1.45; }
 .list-row .settings-tip { margin-top: 8px; }
 .settings-tip b { font-weight: var(--w-bold); color: var(--ink-2); }
