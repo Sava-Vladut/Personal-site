@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { watchView } from '../lib/inView';
 import { usePhotoUrl, type Photo } from '../lib/photos';
 
-/** A photo stored on this device. Keeps its shape while the file loads from IndexedDB. */
-export function PhotoImg({ photo, class: cls, alt = '', fit = true, ...rest }: { photo: Photo; class?: string; alt?: string; fit?: boolean } & Omit<JSX.HTMLAttributes<HTMLImageElement>, 'src'>) {
+/** A photo stored on this device. Keeps its shape while the file loads from IndexedDB. `card`: shown small, in a list,
+ * so a smaller copy is enough (lib/photos.ts). */
+export function PhotoImg({ photo, class: cls, alt = '', fit = true, card = false, ...rest }: { photo: Photo; class?: string; alt?: string; fit?: boolean; card?: boolean } & Omit<JSX.HTMLAttributes<HTMLImageElement>, 'src'>) {
   const ref = useRef<HTMLSpanElement>(null);
   const [near, setNear] = useState(false);
-  const url = usePhotoUrl(photo.id, near);
+  const url = usePhotoUrl(photo.id, near, card);
   useEffect(() => {
     if (near || !ref.current) return;
     return watchView(ref.current, (on) => { if (on) setNear(true); });

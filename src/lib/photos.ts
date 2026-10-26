@@ -11,6 +11,8 @@ export interface Photo {
 interface PhotoRecord extends Photo {
   blob: Blob;
   created: number;
+  /** A smaller copy for cards (CARD_SIDE), made the first time a card shows the photo. Stays on this device. */
+  card?: Blob;
 }
 
 const MAX_SIDE = 2048;
@@ -21,6 +23,18 @@ const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).s
 
 function encode(canvas: HTMLCanvasElement, type: string) {
   return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
+}
+
+/** WebP where the browser can write it, else JPEG with transparent areas on white instead of black. */
+async function encodeWeb(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+  let blob = await encode(canvas, 'image/webp');
+  if (!blob || blob.type !== 'image/webp') {
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    blob = await encode(canvas, 'image/jpeg');
+  }
+  return blob;
 }
 
 async function shrink(file: Blob): Promise<PhotoRecord> {
@@ -43,14 +57,7 @@ async function shrink(file: Blob): Promise<PhotoRecord> {
   } finally {
     bmp.close();
   }
-  let blob = await encode(canvas, 'image/webp');
-  if (!blob || blob.type !== 'image/webp') {
-    // No WebP encoder (older Safari): JPEG, with transparent areas on white instead of black.
-    ctx.globalCompositeOperation = 'destination-over';
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, w, h);
-    blob = await encode(canvas, 'image/jpeg');
-  }
+  const blob = await encodeWeb(canvas, ctx); // no WebP encoder (older Safari): JPEG
   if (!blob) throw new Error('Could not encode image');
   return { ...base, blob };
 }
@@ -63,6 +70,10 @@ const listeners = new Map<string, Set<() => void>>();
 
 function cachePhoto(id: string, blob: Blob) {
   const previous = loaded.get(id);
+  const card = loaded.get(cardKey(id)); // a new file for this photo: its card copy is made again from it
+  if (card) URL.revokeObjectURL(card);
+  loaded.delete(cardKey(id));
+  loading.delete(cardKey(id));
   const url = URL.createObjectURL(blob);
   loaded.set(id, url);
   loading.set(id, Promise.resolve(url));
@@ -95,16 +106,78 @@ export function photoUrl(id: string) {
   return p;
 }
 
-export function usePhotoUrl(id: string, active = true) {
-  const [url, setUrl] = useState(() => loaded.get(id) ?? null);
+/* ---------- card-sized copies ----------
+   A journal card shows a photo a few hundred px wide, but photos are kept at up to 2048px: decoding those while a list
+   scrolls is what makes it stutter on a phone. The first time a card shows a photo, a copy at most CARD_SIDE px is made
+   (one at a time, so a fast scroll doesn't pile the work up) and kept next to the photo; it never syncs or exports. */
+
+const CARD_SIDE = 960; // sharp across a phone's card at 3x, about a quarter of the pixels
+const cardKey = (id: string) => id + ' card';
+let making: Promise<unknown> = Promise.resolve();
+
+async function cardBlob(r: PhotoRecord): Promise<Blob | null> {
+  if (r.card) return r.card;
+  // already small, or a GIF that would lose its animation: the photo itself is the card's
+  if (Math.max(r.w, r.h) <= CARD_SIDE * 1.25 || r.blob.type === 'image/gif') return null;
+  const made = making.then(async () => {
+    const bmp = await createImageBitmap(r.blob);
+    const scale = Math.min(1, CARD_SIDE / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bmp.width * scale));
+    canvas.height = Math.max(1, Math.round(bmp.height * scale));
+    const ctx = canvas.getContext('2d');
+    try {
+      if (!ctx) return null;
+      ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    } finally {
+      bmp.close();
+    }
+    return encodeWeb(canvas, ctx);
+  });
+  making = made.catch(() => null);
+  const card = await made;
+  if (card) void db.putPhotos([{ ...r, card }]).catch(() => {}); // made once; next time it's just read
+  return card;
+}
+
+/** The card-sized copy's address (the photo's own when it's small already). */
+function photoCardUrl(id: string) {
+  const key = cardKey(id);
+  let p = loading.get(key);
+  if (!p) {
+    p = db.photo<PhotoRecord>(id).then(async (r) => {
+      if (!r) { loading.delete(key); return null; }
+      const card = await cardBlob(r).catch(() => null);
+      if (!card) {
+        // small already (or no copy could be made): the card shows the photo itself, from now on without asking again
+        const url = await photoUrl(id);
+        if (loading.get(key) !== p) return url;
+        if (url) loaded.set(key, url);
+        else loading.delete(key);
+        return url;
+      }
+      if (loading.get(key) !== p) return loaded.get(key) ?? null;
+      const url = URL.createObjectURL(card);
+      loaded.set(key, url);
+      return url;
+    }, () => { loading.delete(key); return photoUrl(id); });
+    loading.set(key, p);
+  }
+  return p;
+}
+
+/** A photo's address once `active` (it's near the screen); `card` asks for the card-sized copy. */
+export function usePhotoUrl(id: string, active = true, card = false) {
+  const key = card ? cardKey(id) : id;
+  const [url, setUrl] = useState(() => loaded.get(key) ?? null);
   useEffect(() => {
-    if (!active && !loaded.has(id)) { setUrl(null); return; }
+    if (!active && !loaded.has(key)) { setUrl(null); return; }
     let live = true;
     let request = 0;
     const refresh = () => {
       const current = ++request;
-      setUrl(loaded.get(id) ?? null);
-      if (!loaded.has(id)) photoUrl(id).then((u) => live && current === request && setUrl(u));
+      setUrl(loaded.get(key) ?? null);
+      if (!loaded.has(key)) (card ? photoCardUrl(id) : photoUrl(id)).then((u) => live && current === request && setUrl(u));
     };
     const subs = listeners.get(id) ?? new Set<() => void>();
     listeners.set(id, subs);
@@ -115,7 +188,7 @@ export function usePhotoUrl(id: string, active = true) {
       subs.delete(refresh);
       if (!subs.size) listeners.delete(id);
     };
-  }, [id, active]);
+  }, [id, active, card]);
   return url;
 }
 

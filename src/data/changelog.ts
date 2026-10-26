@@ -22,6 +22,11 @@ export const CHANGELOG: Release[] = [
       'Buttons and cards over a moving sky (page headers, the public status page, the sign-in page) no longer re-blur it every frame',
       'The New button\'s sky in the sidebar only drifts while you point at it',
       'Sunny days glow without repainting their text, and the Stats brain draws its letters much faster',
+      'Photos on journal cards use a lighter copy made once on this device, so scrolling a journal full of photos stays smooth',
+      'Searching the journal and People no longer re-reads every note on every key',
+      'The opening animation keeps its frames: syncing and loading wait until the journal has opened',
+      'Charts, tooltips, tagged-name cards, sheets and long text boxes do less work while you drag, scroll or type',
+      'Syncing doesn\'t send the whole journal in the middle of a sentence',
     ],
   },
   {

@@ -126,9 +126,13 @@ function sitOnKeyboard(el: HTMLElement) {
     const layoutHeight = Math.max(innerHeight, document.documentElement.clientHeight);
     const kb = Math.max(0, Math.round(layoutHeight - vv.height - vv.offsetTop));
     const up = kb > 80;
+    const next = `${up ? kb : 0}|${up ? Math.round(vv.offsetTop) : 0}`;
+    if (next === last) return; // the viewport scrolls often; only a real change re-styles the sheet
+    last = next;
     el.style.setProperty('--kb', up ? kb + 'px' : '0px');
     el.style.setProperty('--kb-top', up ? Math.round(vv.offsetTop) + 'px' : '0px');
   };
+  let last = '';
   vv.addEventListener('resize', fit);
   vv.addEventListener('scroll', fit);
   fit();
@@ -148,7 +152,7 @@ const SPRING_BACK = CSS.supports('animation-timing-function', 'linear(0, 1)')
 
 function dragToDismiss(el: HTMLElement, backdrop: HTMLElement, dismiss: (ms: number) => void) {
   let start: { x: number; y: number; dragging: boolean } | null = null;
-  let dy = 0, v = 0, lastY = 0, lastT = 0;
+  let dy = 0, v = 0, lastY = 0, lastT = 0, height = 1;
 
   const scrolled = (t: Element | null) => {
     for (; t && t !== el; t = t.parentElement) if (t.scrollTop > 0) return true;
@@ -156,7 +160,7 @@ function dragToDismiss(el: HTMLElement, backdrop: HTMLElement, dismiss: (ms: num
   };
   const set = (y: number) => {
     el.style.transform = y ? `translateY(${y}px)` : '';
-    backdrop.style.opacity = y > 0 ? String(Math.max(0, 1 - y / el.offsetHeight)) : '';
+    backdrop.style.opacity = y > 0 ? String(Math.max(0, 1 - y / height)) : ''; // height read once, as the drag starts
   };
 
   const onStart = (e: TouchEvent) => {
@@ -181,6 +185,7 @@ function dragToDismiss(el: HTMLElement, backdrop: HTMLElement, dismiss: (ms: num
       lastT = e.timeStamp;
       el.getAnimations().forEach((a) => a.finish()); // don't fight the opening slide
       backdrop.getAnimations().forEach((a) => a.finish());
+      height = el.offsetHeight || 1;
     }
     if (e.cancelable) e.preventDefault();
     const raw = y - start.y;

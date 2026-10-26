@@ -21,16 +21,16 @@ import { count, t } from '../lib/i18n';
  * A note's cover picture, filling whatever box it's put in, cropped the way it was adjusted. The crop's point sits at the
  * same place in the box (that's what object-position does with a covering picture) and the zoom grows around it.
  */
-export function CoverImg({ cover, class: cls }: { cover: Cover; class?: string }) {
+export function CoverImg({ cover, class: cls, card }: { cover: Cover; class?: string; card?: boolean }) {
   const c = cover.crop;
   const at = c && `${c.x * 100}% ${c.y * 100}%`;
   const style = c && { objectPosition: at, transformOrigin: at, transform: c.zoom > 1 ? `scale(${c.zoom})` : undefined };
   return (
     <span class={`cover-img ${cls ?? ''}`}>
       {'photo' in cover ? (
-        <PhotoImg photo={cover.photo} fit={false} alt="" style={style} />
+        <PhotoImg photo={cover.photo} fit={false} alt="" style={style} card={card} />
       ) : (
-        <img src={imageSrc(cover.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" style={style} />
+        <img src={imageSrc(cover.image, 'full')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" style={style} />
       )}
     </span>
   );

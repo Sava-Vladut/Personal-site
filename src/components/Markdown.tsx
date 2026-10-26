@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { useMemo } from 'preact/hooks';
 import { PersonMention, SongMention, WikiLink } from './mentions';
 import { inline as pieces } from '../lib/inline';
 import { t } from '../lib/i18n';
@@ -154,5 +155,6 @@ function Blocks({ blocks, onTask }: { blocks: Block[]; onTask?: (line: number) =
 
 /** A stretch of note text, formatted. Tasks can be ticked when `onTask` is given (with the line's number). */
 export function Markdown({ text, onTask, class: cls }: { text: string; onTask?: (line: number) => void; class?: string }) {
-  return <div class={`md${cls ? ' ' + cls : ''}`}><Blocks blocks={parse(text)} onTask={onTask} /></div>;
+  const blocks = useMemo(() => parse(text), [text]); // parsed once per text, not on every render of what holds it
+  return <div class={`md${cls ? ' ' + cls : ''}`}><Blocks blocks={blocks} onTask={onTask} /></div>;
 }

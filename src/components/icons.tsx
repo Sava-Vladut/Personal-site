@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { watchView } from '../lib/inView';
+import { pageCovered } from '../lib/covered';
 import UI from '../data/ui-icons.json';
 import { CORE, SPRITE_IDLE } from '../data/emotions';
 import { useIconCache } from '../lib/store';
@@ -60,6 +61,8 @@ export function useSpriteIdle(core: string, on: boolean, delay = 0) {
     let n = 0, t = 0;
     const next = (wait: number) => {
       t = window.setTimeout(() => {
+        // a hidden tab, or a page under a sheet or the wheel: keep the beat but don't redraw
+        if (document.hidden || pageCovered()) return next(wait);
         n = (n + 1) % loop.length;
         setFrame(loop[n][0]);
         next(loop[n][1]);

@@ -349,9 +349,11 @@ export async function removeServerCopy() {
 /* ---------- when to sync ---------- */
 
 let timer: ReturnType<typeof setTimeout> | undefined;
+let changedAt = 0;
 export function initSync() {
   onLocalChange(() => {
     if (!state) return;
+    changedAt = Date.now();
     state.dirty = true;
     saveState();
     clearTimeout(timer);
@@ -366,6 +368,8 @@ export function initSync() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' || state?.dirty) syncNow();
   });
-  setInterval(() => document.visibilityState === 'visible' && syncNow(), 60_000);
+  // the minute's check for other devices' edits skips a moment of writing: the pause after it sends (and checks) anyway,
+  // and serialising the whole journal mid-sentence made typing catch
+  setInterval(() => document.visibilityState === 'visible' && Date.now() - changedAt > 5000 && syncNow(), 60_000);
   syncNow();
 }

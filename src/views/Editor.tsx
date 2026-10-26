@@ -50,8 +50,17 @@ const MAX_PHOTOS = 20;
 const MAX_WAIT = 2000;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
 
-function fit(el: HTMLTextAreaElement | null) {
+const lengths = new WeakMap<HTMLTextAreaElement, number>();
+/** Grows (or shrinks) the box to its text. Text that only got longer is measured once; collapsing the box to measure it
+ * again (a second full layout on every key) is only for text that may have got shorter, or when `force`d (a new width). */
+function fit(el: HTMLTextAreaElement | null, force = false) {
   if (!el) return;
+  const len = el.value.length, before = lengths.get(el);
+  lengths.set(el, len);
+  if (!force && before !== undefined && len >= before && el.style.height) {
+    if (el.scrollHeight > el.clientHeight) el.style.height = el.scrollHeight + 'px';
+    return;
+  }
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
 }
@@ -61,7 +70,7 @@ function useAutosize(value: string) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => fit(ref.current), [value]);
   useEffect(() => {
-    const on = () => fit(ref.current);
+    const on = () => fit(ref.current, true);
     addEventListener('resize', on);
     // measured again once the serif has loaded: it can take another line, which would be cut off
     let live = true;

@@ -48,6 +48,14 @@ export function useLastThought() {
   }, [moments, pages]);
 }
 
+/** What search looks through for someone, once per version of them (a saved person is a new object). */
+const searched = new WeakMap<Person, string>();
+function searchText(p: Person) {
+  let s = searched.get(p);
+  if (s === undefined) searched.set(p, (s = `${p.name} ${p.relation} ${plainText(p.text)}`.toLowerCase()));
+  return s;
+}
+
 export function People() {
   const people = usePeople();
   const ready = useReady();
@@ -61,7 +69,7 @@ export function People() {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const list = people.filter((p) => {
       if (!words.length) return true;
-      const hay = `${p.name} ${p.relation} ${plainText(p.text)}`.toLowerCase();
+      const hay = searchText(p);
       return words.every((w) => hay.includes(w));
     });
     if (sort === 'recent') list.sort((a, b) => (last.get(b.id) ?? 0) - (last.get(a.id) ?? 0) || b.updated - a.updated);

@@ -156,7 +156,7 @@ function CloneToServer({ id }: { id: string }) {
   // a clone in progress is checked on every couple of seconds
   useEffect(() => {
     if (job?.state !== 'running') return;
-    const timer = setInterval(find, 2000);
+    const timer = setInterval(() => !document.hidden && find(), 2000);
     return () => clearInterval(timer);
   }, [job?.state, id]);
 

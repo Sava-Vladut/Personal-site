@@ -13,8 +13,17 @@ import { t } from '../lib/i18n';
 
 const nameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
-function fit(el: HTMLTextAreaElement | null) {
+const lengths = new WeakMap<HTMLTextAreaElement, number>();
+/** Grows (or shrinks) the box to its text. Text that only got longer is measured once; collapsing the box to measure it
+ * again (a second full layout on every key) is only for text that may have got shorter, or when `force`d (a new width). */
+function fit(el: HTMLTextAreaElement | null, force = false) {
   if (!el) return;
+  const len = el.value.length, before = lengths.get(el);
+  lengths.set(el, len);
+  if (!force && before !== undefined && len >= before && el.style.height) {
+    if (el.scrollHeight > el.clientHeight) el.style.height = el.scrollHeight + 'px';
+    return;
+  }
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
 }
@@ -48,10 +57,15 @@ export function MentionText({ value, onChange, onPerson, class: cls, placeholder
 
   const reading = !focused && !writing && mentionsIn(value, people, books, songs).length > 0;
 
-  useLayoutEffect(() => { if (autosize) fit(ref.current); }, [value, reading, autosize]);
+  const wasReading = useRef(reading);
+  useLayoutEffect(() => {
+    const switched = wasReading.current !== reading;
+    wasReading.current = reading;
+    if (autosize) fit(ref.current, switched);
+  }, [value, reading, autosize]);
   useEffect(() => {
     if (!autosize) return;
-    const on = () => fit(ref.current);
+    const on = () => fit(ref.current, true);
     addEventListener('resize', on);
     return () => removeEventListener('resize', on);
   }, [autosize]);

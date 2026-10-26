@@ -156,13 +156,21 @@ export function PeekLayer() {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && closePeek();
     // the card follows its tag as the page scrolls (as it does when a phone's keyboard comes up) and goes once the tag is
     // out of sight; a strip scrolling sideways elsewhere leaves it be
-    const scroll = (e: Event) => {
+    // measured once a frame, however many scroll events arrive in it
+    let frame = 0;
+    const follow = () => {
+      frame = 0;
       const now = peek$.get();
-      if (!now || (e.target instanceof Element && (e.target.closest('.peek') || !e.target.contains(now.el)))) return;
+      if (!now) return;
       const r = now.el.getBoundingClientRect();
       const v = visibleViewport();
       if (!now.el.isConnected || r.bottom < v.top || r.top > v.top + v.height) return closePeek();
       peek$.set({ ...now, x: r.left + r.width / 2, top: r.top, bottom: r.bottom });
+    };
+    const scroll = (e: Event) => {
+      const now = peek$.get();
+      if (!now || (e.target instanceof Element && (e.target.closest('.peek') || !e.target.contains(now.el)))) return;
+      frame ||= requestAnimationFrame(follow);
     };
     const resize = () => setViewport(visibleViewport());
     addEventListener('pointerdown', away, true);
@@ -174,6 +182,7 @@ export function PeekLayer() {
     window.visualViewport?.addEventListener('scroll', resize);
     resize();
     return () => {
+      cancelAnimationFrame(frame);
       removeEventListener('pointerdown', away, true);
       removeEventListener('keydown', key);
       removeEventListener('scroll', scroll, { capture: true });

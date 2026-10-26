@@ -181,11 +181,17 @@ function boot(dive?: Promise<void>): Promise<unknown> {
       // Keep the entrance style on this page for its lifetime. Removing it after a
       // timeout starts the normal page-in animation and briefly hides the page again.
       document.querySelector('.app .page')?.setAttribute('data-boot', '');
-      startWeather();
-      initSync();
-      initStatus();
-      enableOffline();
-      preloadViews();
+      const start = () => {
+        startWeather();
+        initSync();
+        initStatus();
+        enableOffline();
+        preloadViews();
+      };
+      // the journal is put in mid-way through the opening (or the intro's dive): what runs in the background waits
+      // until the iris has opened, so it doesn't take that animation's frames
+      if (dive) setTimeout(start, 800);
+      else start();
     },
     // not over the intro while it's still playing
     (e) => void Promise.resolve(dive).then(() => failed(e, databaseError)),

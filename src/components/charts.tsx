@@ -102,14 +102,28 @@ export const showTip = (x: number, y: number, content: ComponentChildren) => {
   lastShow = performance.now();
   setTip({ x, y, content });
 };
-export const hideTip = () => tip && setTip(null);
+export const hideTip = () => { moving = null; if (tip) setTip(null); };
+
+// a pointer moving over a mark asks for its tooltip at most once a frame (building it and redrawing the layer on every
+// pointermove, at up to 120 a second, made dragging across a chart stutter)
+let moving: { x: number; y: number; content: () => ComponentChildren } | null = null;
+let moveFrame = 0;
+const moveTip = (x: number, y: number, content: () => ComponentChildren) => {
+  moving = { x, y, content };
+  moveFrame ||= requestAnimationFrame(() => {
+    moveFrame = 0;
+    const m = moving;
+    moving = null;
+    if (m) showTip(m.x, m.y, m.content());
+  });
+};
 
 /** Spread onto any mark: tooltip on hover, tap and keyboard focus. */
 export function tipProps(content: () => ComponentChildren, label?: string) {
   return {
     tabIndex: 0,
     'aria-label': label,
-    onPointerMove: (e: PointerEvent) => showTip(e.clientX, e.clientY, content()),
+    onPointerMove: (e: PointerEvent) => moveTip(e.clientX, e.clientY, content),
     onPointerDown: (e: PointerEvent) => showTip(e.clientX, e.clientY, content()),
     onPointerLeave: (e: PointerEvent) => e.pointerType === 'mouse' && hideTip(),
     onFocus: (e: FocusEvent) => {

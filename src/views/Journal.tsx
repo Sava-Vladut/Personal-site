@@ -43,6 +43,18 @@ const DAYS_PAGE = 20;
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song|trap|law):[^\]|\n]+\|/g;
 
+/** What search looks through in a note, worked out once per version of it (a saved note is a new object), so typing a
+ * search doesn't re-read every note's text on every key. */
+const searchText = new WeakMap<Entry, string>();
+function haystack(e: Entry) {
+  let s = searchText.get(e);
+  if (s === undefined) {
+    s = `${e.title} ${plainText(e.text).replace(TAG_ID, '$1')} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
+    searchText.set(e, s);
+  }
+  return s;
+}
+
 export function Journal() {
   const entries = useEntries();
   const people = usePeople();
@@ -71,12 +83,13 @@ export function Journal() {
 
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const names = new Map(people.map((p) => [p.id, p.name]));
+    const names = new Map(people.map((p) => [p.id, p.name.toLowerCase()]));
     return entries.filter((e) => {
       if (day && !(e.date === day || (e.dateEnd && e.date <= day && day <= e.dateEnd))) return false;
       if (words.length) {
-        const hay = `${e.title} ${plainText(e.text).replace(TAG_ID, '$1')} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.people.map((id) => names.get(id) ?? '').join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
-        if (!words.every((w) => hay.includes(w))) return false;
+        const hay = haystack(e);
+        const who = e.people.length ? e.people.map((id) => names.get(id) ?? '').join(' ') : '';
+        if (!words.every((w) => hay.includes(w) || who.includes(w))) return false;
       }
       return true;
     });
@@ -390,7 +403,7 @@ function OnThisDay({ byDay, onOpen }: { byDay: Map<string, Entry[]>; onOpen: (da
     <div class="coming-up">
       <div class="coming-chip card on-this-day" style={c ? { '--c': `var(--emo-${c})` } : undefined}>
         <button class="coming-main" onClick={() => onOpen(date)}>
-          <span class="coming-icon">{c ? <Sprite core={c} size={16} idle /> : <Icon name="clock" size={18} />}</span>
+          <span class="coming-icon">{c ? <Sprite core={c} size={16} idle="view" /> : <Icon name="clock" size={18} />}</span>
           <span class="book-row-main">
             <span class="book-row-title">{years === 1 ? t('A year ago today') : t('{span} ago today', { span: count(years, 'year', 'years') })}</span>
             <span class="book-row-sub">{[mood?.word, title].filter(Boolean).join(' · ') || count(list.length, 'entry', 'entries')}</span>
@@ -493,12 +506,20 @@ function heroOf(e: Entry): { photo: Photo } | { image: WebImage } | null {
   return image ? { image } : null;
 }
 
+/** What a card shows of a note's text, read once per version of the note (a saved note is a new object): a sync or a
+ * saved person redraws every card, and reading each body again then made the journal catch. */
+const cardText = new WeakMap<Entry, { heading: string; preview: string; hero: ReturnType<typeof heroOf> }>();
+function cardOf(e: Entry) {
+  let c = cardText.get(e);
+  if (!c) cardText.set(e, (c = { ...previewOf(plainText(e.text), e.title), hero: e.cover ? null : heroOf(e) }));
+  return c;
+}
+
 export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const byId = usePeopleById();
   const shelf = useBooks();
   const books = booksIn(e.text, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
-  const { heading, preview } = previewOf(plainText(e.text), e.title);
-  const hero = e.cover ? null : heroOf(e);
+  const { heading, preview, hero } = cardOf(e);
   const pictures = e.photos.length + e.images.length;
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));
@@ -512,7 +533,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const mood = worlds.length ? { '--c1': `var(--emo-${worlds[0]})`, '--c2': `var(--emo-${worlds[1] ?? worlds[0]})`, '--k': e.intensity, '--t': stagger(e.time) } : undefined;
   return (
     <button class={`note card${e.cover ? ' has-cover' : ''}${mood ? ' has-mood' : ''}`} style={mood} {...hold}>
-      {e.cover && <CoverImg cover={e.cover} class="note-cover" />}
+      {e.cover && <CoverImg cover={e.cover} class="note-cover" card />}
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
         <div class="note-main">
@@ -526,7 +547,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
       {preview && <p class="note-text">{preview}</p>}
       {hero && (
         <div class={`note-hero${'photo' in hero ? ' is-photo' : ''}`} style={'photo' in hero ? heroShape(hero.photo) : undefined}>
-          {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" referrerpolicy="no-referrer" />}
+          {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} card /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />}
         </div>
       )}
       {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0 || !!e.place?.name || !!e.share) && (
@@ -553,8 +574,8 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
           </div>
           {strip > 0 && (
             <div class="note-imgs">
-              {photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} />)}
-              {images.slice(0, Math.max(0, 3 - photos.length)).map((img) => <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" referrerpolicy="no-referrer" />)}
+              {photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} card />)}
+              {images.slice(0, Math.max(0, 3 - photos.length)).map((img) => <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />)}
               {strip > 3 && <span class="more">+{strip - 3}</span>}
             </div>
           )}
