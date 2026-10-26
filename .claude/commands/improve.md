@@ -1,6 +1,6 @@
 ---
-description: One small, safe improvement pass (consistency, speed or stability), verified, shipped and deployed. Built to run under /loop.
-argument-hint: "[focus: consistency | speed | stability | <area>]"
+description: One small, safe improvement pass (usability, consistency, speed or stability), verified, shipped and deployed. Built to run under /loop.
+argument-hint: "[focus: usability | consistency | speed | stability | <area>]"
 ---
 
 You're doing **one** improvement iteration on this app (My Mind, live at https://savavlad.com). Keep it
@@ -42,6 +42,34 @@ Look for a concrete, provable issue in the chosen area. Read the code before dec
 - If the code is right and design.md is wrong or silent, update design.md instead (same commit).
 - Report the audit total before and after.
 
+**Usability** (how easy the controls are to use; the rules live in design.md's "Ease of use", read it first):
+- Pick **one job** people come for, rotating so recent `Loop:` commits don't repeat it: check in a feeling,
+  write or find a note, add a person, a book or a song, set a countdown, share something, change a
+  setting, move around with the wheel or the tab bar, use a Learn page.
+- Walk that job step by step in the code, from the first tap to done, and write down:
+  - **taps**: how many to finish (goal: three or fewer), and any step that could be prefilled or skipped;
+  - **targets**: the hit size of each control (CSS size plus padding, any `::before` extension) and the
+    gap to its neighbours: below 44px, or closer than 8px to another target, is a finding;
+  - **reach**: is the main action where the thumb is (bottom of a phone screen or sheet), and are
+    destructive actions kept away from frequent ones;
+  - **choices**: how many equal-looking options compete at once; more than one primary action is a finding;
+  - **recognition**: icons without a visible label that aren't universal, state that isn't shown (current
+    tab, active filter, what a filter hides), back that loses the place;
+  - **feedback**: what answers each tap, and what shows while something slow happens;
+  - **forgiveness**: what a mistake costs: is there Undo, is typed text kept when saving fails, does a
+    `Confirm` guard something that could simply be undone;
+  - **prevention**: actions possible when they shouldn't be, wrong keyboard type, no default.
+- Fix the **single biggest friction** on that path. Good fixes: a bigger hit area, the main action moved
+  within thumb reach, a label on a mystery icon, Undo instead of a confirm, keeping text on error, one
+  step removed, a prefilled field, a visible "3 hidden by filter".
+- Guardrails: don't remove features, don't move navigation people already know (the tab bar, back, Done),
+  and don't redesign a whole screen in one run. One friction point, one commit. If the code already does
+  the right thing everywhere on that path, say so and pick nothing.
+- You can't open a browser here, so reason from the code (sizes, handlers, states) and say in the report
+  what you checked and what you couldn't.
+- Report the job, the friction found (with numbers: taps, pixel sizes, choices), the fix, and the numbers
+  after. If design.md's "Ease of use" is wrong or silent about something the app does well, update it.
+
 **Speed**:
 - Unneeded re-renders (missing memo/keys, state lifted too high), work in render that belongs in an effect
   or a cache, large imports that could be lazy, oversized assets, slow server paths
@@ -55,7 +83,8 @@ Look for a concrete, provable issue in the chosen area. Read the code before dec
 - A test in `scripts/test-*.mjs` that covers a path that currently has none.
 
 Pick the highest-value item that fits in one small diff. If nothing worthwhile is left in the area, say so
-and end — don't invent churn. Never change behaviour or design the user would notice beyond the fix itself.
+and end — don't invent churn. Never change behaviour or design the user would notice beyond the fix itself
+(a usability fix is a change people notice by design; keep it to that one friction point).
 
 ## 2. Make the change
 

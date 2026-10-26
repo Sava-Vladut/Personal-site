@@ -391,6 +391,74 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 - Every destructive action: `.btn-danger` or `.danger` text, behind `Confirm`.
 - Every sheet: `Sheet`, a title, content, then the actions.
 
+## Ease of use
+
+Looking consistent is half the job; the other half is that every control is easy to find, easy to hit and
+hard to get wrong. These rules come from how people actually use apps (the psychology behind each is in
+brackets), applied to this one. When a screen breaks one, fixing it is worth more than any pixel.
+
+1. **Big and close (Fitts's law).** The time to hit something grows with distance and shrinks with size.
+   - Every tappable thing is at least `--h-m` (44px) to a finger. A smaller visual can keep a larger hit
+     area with a `::before` that extends it (as `.mention-close` and the note's details line do).
+   - Keep at least 8px between two tappable things, so a thumb doesn't land on the neighbour.
+   - The main action of a screen or sheet sits where the thumb already is: at the bottom on a phone, full
+     width in a sheet. Rare and destructive actions go out of the way (a "More" menu, the end of a list),
+     never next to the one people tap most.
+
+2. **Fewer choices at once (Hick's law).** Decisions slow down as options pile up.
+   - One primary (`.btn-primary`) action per screen or sheet. Everything else is quiet or tucked away.
+   - Show the common case and disclose the rest on demand (a "More" menu, a collapsed details section,
+     "See all"). Don't put ten equal buttons in a row.
+
+3. **Recognise, don't remember (recognition over recall).** People shouldn't have to keep the app's state
+   in their head.
+   - An icon on its own must be universal (back, close, plus, trash, search). Anything else gets a visible
+     label, or at least a `title` and an `aria-label`.
+   - Always show where you are and what's on: the selected tab or chip, an active filter, the count of
+     what a filter hides, the current sort.
+   - Going back returns to where you were (same tab, same scroll), not to the top.
+
+4. **Answer every touch (feedback within ~100ms).** A tap with no visible answer gets tapped again.
+   - Every tappable thing has a press state (design.md, States). Toggles change instantly, even if
+     saving takes longer.
+   - Anything slower than a moment shows its progress on the control itself ("Saving…", a disabled
+     button), and success is confirmed (a toast, the item appearing). Important actions also give a short
+     haptic (`lib/haptics`).
+
+5. **Forgive mistakes (undo beats confirm).** People act first and think second; confirmation dialogs get
+   tapped through on autopilot.
+   - Reversible actions happen at once and offer **Undo** in a toast (as removing a book, a person or a
+     song already does). Keep `Confirm` for what really can't be undone.
+   - Never lose what someone typed: save as they go, keep the text when a save fails, and say what went
+     wrong and what to do next (the error state in Components).
+
+6. **Prevent the error in the first place.** Better than a good error message.
+   - Disable what can't be done right now, and say why if it isn't obvious.
+   - Use the right keyboard (`inputmode`, `type`, `autocomplete`), sensible defaults, and remember the
+     last choice where it's likely to be repeated.
+
+7. **Work like everything else (Jakob's law).** People spend most of their time in other apps, and bring
+   those habits here.
+   - The same action lives in the same place on every screen: back top-left, Done top-right in editors,
+     add as a + in the header, more options behind "…".
+   - The same gesture means the same thing everywhere (a swipe, a long press). If one list swipes to
+     delete, they all do, or none do.
+
+8. **Short paths (effort).** Count the taps for the jobs people come for (check in a feeling, write a
+   note, add a book or a song). Three or fewer is the goal. Prefill what's known, and remember the last
+   choice.
+
+9. **Light on the mind (cognitive load).** Group related controls, give each card one idea, keep the
+   words plain (Writing in the UI) and let whitespace separate what's different.
+
+10. **Usable by everyone.** Focus order follows the screen, every control has a name a screen reader can
+    say, text stays readable when it's made bigger, and nothing important depends on colour alone or on
+    motion.
+
+**Checking a screen.** Pick the main job it's for and walk it step by step in the code: how many taps,
+how big and how far each target is, what answers each tap, what happens when the network is slow or a
+save fails, and how a mistake is undone. The biggest friction on that path is the thing to fix.
+
 ## Writing in the UI
 
 - Short, plain and warm. Sentence case everywhere ("Add a note", not "Add A Note"). No full stop on
@@ -417,6 +485,7 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 - [ ] New top-level classes have a component prefix (`wf-`, `nw-`…); a view imports the lazy stylesheet it uses
 - [ ] Looks right in dark mode
 - [ ] Touch targets ≥ `--h-m` on phones
+- [ ] One primary action; the main job takes few taps; every tap answers; mistakes can be undone
 - [ ] Content is opaque; only chrome uses glass
 - [ ] Nothing loops at rest; loops animate `transform`/`opacity` only
 - [ ] Loads hold their space, show nothing for ~120ms, use ghosts for content and arrive with a fade
