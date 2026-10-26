@@ -6,7 +6,6 @@ import { RevealStack } from '../components/charts';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { Sheet } from '../components/Sheet';
-import { ask } from '../components/Confirm';
 import { Sky } from '../components/Sky';
 import { LOCALE, count, t } from '../lib/i18n';
 import '../styles/stats.css';
@@ -164,8 +163,21 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
     }
   };
   const save = () => ok && run(() => saveCountdown({ ...(value && { id: value.id }), name: name.trim(), start: s, end: e }), value ? t('Countdown changed') : t('Countdown started'));
+  // gone at once, with Undo (as a book, a person or a song is): the same countdown comes back by its id
   const remove = async () => {
-    if (value && await ask({ title: t('Remove the countdown?'), text: t('It goes from every device, and the public status stops showing it.'), ok: t('Remove'), danger: true })) run(() => removeCountdown(value.id), t('Countdown removed'));
+    if (!value) return;
+    const { id, name: was, start: from, end: to } = value;
+    setBusy(true);
+    setError('');
+    try {
+      await removeCountdown(id);
+      toast(t('Countdown removed'), { label: t('Undo'), run: () => saveCountdown({ id, name: was, start: from, end: to }) });
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

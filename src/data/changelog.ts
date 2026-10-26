@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.2',
+    date: '2026-10-26',
+    changes: [
+      'Removing a countdown happens at once with Undo, like removing a book or a person, instead of asking first',
+    ],
+  },
+  {
     version: '1.138.1',
     date: '2026-10-26',
     changes: [
