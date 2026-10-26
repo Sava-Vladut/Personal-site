@@ -193,7 +193,7 @@
 
 /* the title bar: back, the note's name, then Share, More and Done */
 .rb-titlebar {
-  height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 10px 0 6px;
+  height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 6px;
   background: var(--bg); border-bottom: 1px solid var(--line);
 }
 .rb-doc { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; margin-left: 4px; color: var(--ink-3); }
@@ -201,9 +201,11 @@
 .rb-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--w-bold); color: var(--ink); }
 .rb-title.is-untitled { font-weight: var(--w-medium); color: var(--ink-3); }
 .rb-share, .rb-done {
-  flex: none; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: var(--r-xs);
+  position: relative; flex: none; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: var(--r-xs);
   font: var(--w-bold) var(--text-m)/1 var(--sans);
 }
+/* 30px to see, the bar's full 44px to hit (a touch screen this wide is a tablet) */
+.rb-share::before, .rb-done::before { content: ''; position: absolute; inset: -7px 0; }
 .rb-share { border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); }
 .rb-share.is-shared svg { color: var(--word); }
 .rb-done { margin-left: 4px; padding: 0 16px; background: var(--word); color: var(--on-word); }

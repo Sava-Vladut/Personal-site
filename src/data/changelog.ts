@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.3',
+    date: '2026-10-26',
+    changes: [
+      'On a tablet or a wide screen, the note’s Share and Done buttons are easier to hit and sit further apart',
+    ],
+  },
+  {
     version: '1.138.2',
     date: '2026-10-26',
     changes: [
