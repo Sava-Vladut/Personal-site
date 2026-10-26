@@ -293,7 +293,9 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 }
 .emo-sm { height: 24px; padding: 0 9px; font-size: var(--text-s); gap: 5px; font-weight: var(--w-medium); color: var(--ink-2); }
 .emo-path { color: var(--ink-3); font-weight: var(--w-regular); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.emo-x { width: 22px; height: 22px; margin-right: -5px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3); }
+.emo-x { position: relative; width: 22px; height: 22px; margin-right: -5px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3); }
+/* small to see, a finger's size to hit: about 40×42, reaching only halfway into the 8px gap to the next chip */
+.emo-x::before { content: ''; position: absolute; inset: -10px -10px -10px -8px; }
 @media (hover: hover) { .emo-x:hover { background: var(--surface-3); color: var(--ink); } }
 
 /* a small number with its label (records, repos, most picked) */
