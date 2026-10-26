@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import vm from 'node:vm';
@@ -101,6 +102,8 @@ const bundle = await rolldown({
       if (/^\.\.\/data\/(traps|laws|principles)$/.test(id)) return '\0learn-data';
     },
     load(id) {
+      // English only: the Romanian dictionary arrives by top-level await too
+      if (id.endsWith('/src/lib/i18n.ts')) return readFileSync(id, 'utf8').replace("await import('../data/ro')", 'null');
       if (id === '\0store') return 'export const getBooks = () => [];';
       if (id === '\0learn-data') return 'export const TRAPS = [], LAWS = [], PRINCIPLES = [], FAMILIES = {}, REALMS = {}, PARTS = {};';
       if (id === '\0review:mentions') return `

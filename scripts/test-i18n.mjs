@@ -5,13 +5,15 @@ import test from 'node:test';
 import vm from 'node:vm';
 import { rolldown } from 'rolldown';
 
+// One module and everything it imports, run with the given globals. As an ES module turned into an async function,
+// since lib/i18n.ts waits for its Romanian dictionary with a top-level await (CommonJS can't hold one).
 async function load(file, globals = {}) {
   const bundle = await rolldown({ input: file });
-  const code = (await bundle.generate({ format: 'cjs' })).output[0].code;
+  let code = (await bundle.generate({ format: 'esm', codeSplitting: false })).output[0].code;
   await bundle.close();
-  const module = { exports: {} };
-  vm.runInNewContext(code, { module, exports: module.exports, Intl, ...globals });
-  return module.exports;
+  code = code.replace(/export\s*\{([^}]*)\};?\s*$/, (_, list) => `return { ${list.split(',').map((s) => s.trim()).filter(Boolean)
+    .map((s) => { const [local, name = local] = s.split(/\s+as\s+/); return `${name}: ${local}`; }).join(', ')} };`);
+  return vm.runInNewContext(`(async () => {\n${code}\n})()`, { Intl, ...globals });
 }
 
 async function sources(dir) {

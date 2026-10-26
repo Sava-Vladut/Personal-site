@@ -20,13 +20,15 @@
   background: conic-gradient(from 0deg, var(--emo-calm-safety), var(--emo-hope-interest), var(--emo-love-connection), var(--emo-fear), var(--emo-sadness), var(--emo-calm-safety));
   filter: blur(9px); opacity: 0.46;
   animation: nw-spin 9.3s linear infinite paused, nw-glow 4.8s ease-in-out var(--nw-runs, 2);
-  transition: opacity var(--dur-2), inset var(--dur-2) var(--spring);
+  transition: opacity var(--dur-2), transform var(--dur-2) var(--spring);
 }
-@media (hover: hover) { .nw-trigger:hover::before { opacity: 0.72; inset: -3px; } }
+/* it grows by scaling (the compositor's job), not by moving its edges, which would re-blur it each frame; transform,
+   so it adds to the breathing (scale) and turning (rotate) instead of replacing them */
+@media (hover: hover) { .nw-trigger:hover::before { opacity: 0.72; transform: scale(1.14); } }
 /* starts and ends at rest size, so it settles without a jump when the show stops */
 @keyframes nw-glow { 0%, 100% { scale: 1; } 30% { scale: 0.82; } 70% { scale: 1.16; } }
 /* the mark gives a twirl, and rings of light roll out from it */
-.nw-mark { animation: nw-twirl 4.67s var(--spring) var(--nw-runs, 2), nw-turn 40s linear infinite; }
+.nw-mark { animation: nw-twirl 4.67s var(--spring) var(--nw-runs, 2), nw-turn 40s linear 3; } /* three slow turns, then still */
 @keyframes nw-twirl { 0%, 78% { rotate: 0deg; scale: 1; } 88% { scale: 1.16; } 100% { rotate: 360deg; scale: 1; } }
 /* the resting turn uses transform, so it adds to the twirl's rotate instead of replacing it */
 @keyframes nw-turn { to { transform: rotate(360deg); } }
@@ -100,7 +102,7 @@
   position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: var(--h);
   box-shadow: 0 0 6px 1px var(--h); animation: nw-pop 0.43s cubic-bezier(0.1, 0.7, 0.3, 1) both;
 }
-@keyframes nw-shock { from { scale: 0.6; opacity: 0.9; } to { scale: 1.9; opacity: 0; border-width: 0.5px; } }
+@keyframes nw-shock { from { scale: 0.6; opacity: 0.9; } to { scale: 1.9; opacity: 0; } } /* scale and fade only: no border repaint */
 @keyframes nw-pop { from { transform: rotate(var(--a)) translateY(-12px); } to { transform: rotate(var(--a)) translateY(-40px) scale(0.2); opacity: 0; } }
 
 /* until someone has opened the wheel once: it hops, calls out with rings, and a little label points at it */

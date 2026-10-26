@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
+import { readFileSync } from 'node:fs';
 import { rolldown } from 'rolldown';
 
 // The note's editor itself (src/editor/NoteBody.tsx): the ProseMirror view with its plugins, node views and paste
@@ -22,6 +23,8 @@ const bundle = await rolldown({
       if (/\/data\/(traps|laws|principles)$/.test(id)) return '\0learn-data';
     },
     load(id) {
+      // English only: the Romanian dictionary arrives by top-level await too
+      if (id.endsWith('/src/lib/i18n.ts')) return readFileSync(id, 'utf8').replace("await import('../data/ro')", 'null');
       if (id === '\0review:notebody') return `
         export { NoteBody } from '${root}src/editor/NoteBody.tsx';
         export { tidyPastedHTML } from '${root}src/editor/paste.ts';

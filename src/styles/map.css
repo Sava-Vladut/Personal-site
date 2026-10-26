@@ -13,6 +13,9 @@
 .map-tiles { position: absolute; inset: 0; pointer-events: none; }
 .map-tile { position: absolute; left: 0; top: 0; max-width: none; opacity: 0; transition: opacity var(--dur-2); }
 .map-tile.is-in { opacity: 1; }
+/* on a map that moves, every tile is its own layer: a pan only moves layers and the colour filter below is applied by the
+   GPU to what they make, instead of the whole tiled area being repainted and filtered on every frame */
+.map:not(.is-still) .map-tile { will-change: transform; }
 /* OpenStreetMap's colours, quietened to the app's white and graphite (and turned over for the dark theme) */
 .map-tiles { filter: grayscale(0.9) contrast(0.88) brightness(1.04); }
 :root[data-theme='dark'] .map-tiles { filter: invert(1) hue-rotate(180deg) grayscale(0.9) brightness(0.82) contrast(0.92); }

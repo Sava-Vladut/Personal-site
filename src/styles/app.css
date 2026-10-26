@@ -325,7 +325,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 @media (hover: hover) { .intensity-track:hover i:not(.on) { background: var(--line-2); } }
 .intensity-track:focus-visible { outline: 2px solid var(--c, var(--ink)); outline-offset: 2px; }
 .intensity[data-level='5'] .intensity-track i.on { box-shadow: 0 0 14px color-mix(in oklab, var(--c, var(--ink)) 45%, transparent); }
-.intensity[data-level='5'] .intensity-track i.on:last-of-type { animation: bob 1.8s ease-in-out infinite; }
+.intensity[data-level='5'] .intensity-track i.on:last-of-type { animation: bob 1.8s ease-in-out 3; } /* bobs as the top level is picked, then rests */
 .intensity-ends { display: flex; justify-content: space-between; margin-top: -4px; font-size: var(--text-xs); color: var(--ink-3); }
 
 /* Navigation: the floating glass tab bar lives in glass.css */
@@ -860,7 +860,9 @@ html.is-moving, html.is-moving * { cursor: grabbing !important; user-select: non
   display: flex; flex-direction: column; border-radius: var(--r-xl); outline: none;
   animation: sheet-in var(--dur-3) var(--ease-emph);
 }
-.sheet.glass { background: var(--glass-fill-strong); --glass-blur: 28px; }
+.sheet.glass { background: var(--glass-fill-strong); }
+/* following a finger, the sheet's backdrop would be re-blurred every frame: it's plain frost until it settles (Sheet.tsx) */
+.sheet.glass.is-dragged { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in oklab, var(--glass-fill-strong) 70%, var(--surface)); }
 .sheet.glass::after { background: linear-gradient(180deg, var(--glass-sheen), transparent 140px); }
 .sheet.tall { height: calc(100dvh - 24px - max(var(--safe-t), var(--kb-top, 0px)) - max(var(--safe-b), var(--kb, 0px))); }
 .sheet-grip { width: 36px; height: 4px; border-radius: var(--r-pill); background: var(--line-2); margin: 8px auto 2px; flex: none; }

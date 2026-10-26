@@ -288,6 +288,8 @@ Rules:
 - **Skies draw off the main thread.** `components/Sky.tsx` only watches the page; `lib/sky/engine.ts`
   draws, in a worker (`lib/sky/worker.ts`, OffscreenCanvas) where the browser allows, all skies from one
   frame loop. A sky that's always on screen (the sidebar's New button) is `calm`: still until pointed at.
+- `npm run motion:audit` counts what costs frames (loops that never stop, repainting animations and
+  transitions, animated custom properties, backdrop blurs). Decorative loops that never stop should be 0.
 - **Canvas letters come from an atlas** (every glyph in every shade painted once, then `drawImage` with
   `globalAlpha`), never `fillText` per cell per frame.
 - **No infinite loops at rest.** Decoration runs a few times and stops (e.g. the nav wheel plays twice

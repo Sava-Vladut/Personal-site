@@ -8,11 +8,22 @@ import { join, relative, sep } from 'node:path';
 // and one online visit is enough to work offline (Safari / iOS Home Screen included).
 function precache(): Plugin {
   let outDir = 'dist';
+  let romanian = '';
   return {
     name: 'precache-sw',
     apply: 'build',
     configResolved: (c) => void (outDir = c.build.outDir),
+    generateBundle(_options, bundle) {
+      for (const file of Object.values(bundle)) if (file.type === 'chunk' && file.facadeModuleId?.endsWith('/src/data/ro.ts')) romanian = file.fileName;
+    },
     closeBundle() {
+      // The Romanian dictionary only loads where it's read (lib/i18n.ts). theme.js runs first on every page, so it starts
+      // that download on a Romanian device while the app's own files are still coming in, instead of after them.
+      if (romanian) {
+        const theme = join(outDir, 'theme.js');
+        writeFileSync(theme, readFileSync(theme, 'utf8') +
+          `\ntry {\n  if (localStorage.getItem('mm-lang') === 'ro') {\n    var ro = document.createElement('link');\n    ro.rel = 'modulepreload'; ro.href = '/${romanian}';\n    document.head.appendChild(ro);\n  }\n} catch (e) {}\n`);
+      }
       const walk = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]));
       const files = walk(outDir)

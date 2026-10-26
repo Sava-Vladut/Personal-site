@@ -1,7 +1,8 @@
 // The app is written in English; Romanian comes from a dictionary keyed by the English text, so any string
 // without a translation simply stays in English. The language is kept per device and read once when the
 // app starts: switching reloads the page, so every screen, date and feeling name changes together.
-import { RO, RO_PLURAL } from '../data/ro';
+// The dictionary (about 150 KB) is only loaded on a device that reads Romanian (see `ro` below).
+import type * as Romanian from '../data/ro';
 
 export type Lang = 'en' | 'ro';
 export const LANGS: [Lang, string][] = [['en', 'English'], ['ro', 'Română']];
@@ -23,6 +24,12 @@ function read(): Lang {
 }
 
 export const lang: Lang = read();
+// A top-level await: every module that shows text waits for the dictionary, so nothing is ever put on screen in the
+// wrong language, and English devices never download it. public/theme.js starts fetching it before the app does
+// (vite.config.ts writes its address there).
+const ro: typeof Romanian | null = lang === 'ro' ? await import('../data/ro') : null;
+const RO: Record<string, string> = ro?.RO ?? {};
+const RO_PLURAL: Record<string, [string, string]> = ro?.RO_PLURAL ?? {};
 /** For dates, times and numbers. */
 export const LOCALE = lang === 'ro' ? 'ro-RO' : 'en-GB';
 

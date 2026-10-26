@@ -48,7 +48,11 @@ function harness(code, initial = {}) {
   const navigations = [];
   const listeners = new Map();
   const documentListeners = new Map();
+  // like the store, every change to the notes is heard by whoever listens (onEntries)
+  const entrySubs = new Set();
   const entries = new Map();
+  const putEntry = entries.set.bind(entries);
+  entries.set = (id, e) => { putEntry(id, e); entrySubs.forEach((f) => f()); return entries; };
   const entry = {
     id: 'note-1', kind: 'note', title: 'Before', text: 'Existing words',
     date: '2026-09-27', dateEnd: null, time: 1, icon: null, emotions: [], intensity: 3,
@@ -100,7 +104,7 @@ function harness(code, initial = {}) {
     blankEntry: (kind) => ({ ...entry, id: 'checkin-new', kind }),
     deleteEntry: async (id) => { const old = entries.get(id); entries.delete(id); return old; },
     toast: (message) => messages.push(message), isEmpty: initial.isEmpty ?? (() => false),
-    usePeople: () => [...people.values()], useEntries: () => initial.entries ?? [], useBooks: () => [...books.values()], useSongs: () => [...songs.values()],
+    usePeople: () => [...people.values()], useEntries: () => initial.entries ?? [], onEntries: (f) => { entrySubs.add(f); return () => entrySubs.delete(f); }, useBooks: () => [...books.values()], useSongs: () => [...songs.values()],
     useSettings: () => ({ picker: 'grid' }),
     BOOK_STATUSES: ['want', 'reading', 'read', 'dnf'], MAX_PERSON_EMOTIONS: 3,
   };
@@ -121,6 +125,7 @@ function harness(code, initial = {}) {
       return modules.get(id);
     },
     setTimeout(fn, ms) { const id = {}; timers.set(id, fn); delays.push(ms); return id; },
+    queueMicrotask: (fn) => queueMicrotask(fn),
     clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn); },
     removeEventListener(type, fn) { listeners.get(type)?.delete(fn); },

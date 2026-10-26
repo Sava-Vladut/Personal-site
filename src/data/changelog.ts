@@ -28,6 +28,10 @@ export const CHANGELOG: Release[] = [
       'Charts, tooltips, tagged-name cards, sheets and long text boxes do less work while you drag, scroll or type',
       'Syncing doesn\'t send the whole journal in the middle of a sentence',
       'The + button\'s glass rests its lens while the page scrolls, so scrolling stays smooth on Android and desktop Chrome',
+      'No decoration loops forever any more: the wheel button, the top feeling level and the rest play a few times, then rest',
+      'A sheet you drag down drops its blur until it settles, and the map pans without repainting its tiles',
+      'The app starts lighter in English: the Romanian dictionary only loads on a device set to Romanian',
+      'Writing a note no longer redraws the whole page after every autosave',
     ],
   },
   {

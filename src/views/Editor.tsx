@@ -11,7 +11,7 @@ import { linkedFrom, linkOf, noteLabel, suggestLinks, type LinkSuggestion } from
 import { findRef, refOf, useRefs, type Ref } from '../lib/refs';
 import { connectSpotify } from '../lib/spotify';
 import {
-  blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, saveEntry, savePerson, toast, useBooks, useEntries, usePeople, useSongs,
+  blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, onEntries, saveEntry, savePerson, toast, useBooks, usePeople, useSongs,
   type Book, type Entry, type Person,
 } from '../lib/store';
 import { mentionOfPerson, mentionOfSong, suggest, type Suggestion } from '../lib/mentions';
@@ -65,6 +65,31 @@ function fit(el: HTMLTextAreaElement | null, force = false) {
   el.style.height = el.scrollHeight + 'px';
 }
 
+/**
+ * The store's notes, for tag suggestions and what links here. Saving while writing (every pause) hands the store a new
+ * list in which only this note changed: that doesn't redraw the editor, which has those words already; `changed` still
+ * hears of it, to take up a newer copy of this note from another device.
+ */
+function useNotesAround(id: string | undefined, changed: () => void): Entry[] {
+  const [list, setList] = useState(getEntries);
+  const heard = useRef(changed);
+  heard.current = changed;
+  useEffect(() => {
+    // only this note's words changed: what links here, which points at its name (its title, or its first line when it
+    // has none), kind or date, can't have
+    const quiet = (a: Entry, b: Entry) => a.id === id && b.id === id && a.title === b.title && a.kind === b.kind && a.date === b.date
+      && (!!a.title.trim() || noteLabel(a) === noteLabel(b));
+    const take = () => {
+      const next = getEntries();
+      setList((prev) => (prev.length === next.length && prev.every((e, i) => e === next[i] || quiet(e, next[i])) ? prev : next));
+    };
+    const stop = onEntries(() => { take(); queueMicrotask(() => heard.current()); });
+    take(); // a change between the first render and now
+    return stop;
+  }, [id]);
+  return list;
+}
+
 /** Keeps the title box as tall as its text, again when the window is resized. */
 function useAutosize(value: string) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -114,7 +139,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const people = usePeople();
   const shelf = useBooks();
   const songs = useSongs();
-  const allEntries = useEntries();
+  const allEntries = useNotesAround(draft?.id, () => catchUp());
   // Notes that already have words open formatted, to read; the pencil (or a tap on the words) switches to writing.
   const [reading, setReading] = useState(() => !!draft && id !== 'new' && !!plainText(draft.text).trim());
   // for what's finished after a wait (photos read in): reading or writing then, not when it started

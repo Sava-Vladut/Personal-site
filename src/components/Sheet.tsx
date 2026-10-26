@@ -186,6 +186,7 @@ function dragToDismiss(el: HTMLElement, backdrop: HTMLElement, dismiss: (ms: num
       el.getAnimations().forEach((a) => a.finish()); // don't fight the opening slide
       backdrop.getAnimations().forEach((a) => a.finish());
       height = el.offsetHeight || 1;
+      el.classList.add('is-dragged'); // frost without the blur while it follows the finger (app.css)
     }
     if (e.cancelable) e.preventDefault();
     const raw = y - start.y;
@@ -206,12 +207,14 @@ function dragToDismiss(el: HTMLElement, backdrop: HTMLElement, dismiss: (ms: num
       const ms = Math.round(Math.min(280, Math.max(140, (h - dy) / Math.max(v, 1.6))));
       const ease = 'cubic-bezier(0.25, 0.8, 0.4, 1)';
       el.animate([{ transform: from }, { transform: `translateY(${h + 32}px)` }], { duration: ms, easing: ease, fill: 'forwards' });
+      // stays plain frost on its way out
       backdrop.animate([{ opacity: backdrop.style.opacity || 1 }, { opacity: 0 }], { duration: ms, easing: ease, fill: 'forwards' });
       dismiss(ms + 20);
     } else {
       const opacity = backdrop.style.opacity || '1';
       set(0);
-      el.animate([{ transform: from }, { transform: 'none' }], { duration: 520, easing: SPRING_BACK });
+      el.animate([{ transform: from }, { transform: 'none' }], { duration: 520, easing: SPRING_BACK }).finished
+        .then(() => el.classList.remove('is-dragged'), () => el.classList.remove('is-dragged'));
       backdrop.animate([{ opacity }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
     }
     dy = v = 0;
