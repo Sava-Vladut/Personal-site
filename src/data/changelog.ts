@@ -27,6 +27,7 @@ export const CHANGELOG: Release[] = [
       'The opening animation keeps its frames: syncing and loading wait until the journal has opened',
       'Charts, tooltips, tagged-name cards, sheets and long text boxes do less work while you drag, scroll or type',
       'Syncing doesn\'t send the whole journal in the middle of a sentence',
+      'The + button\'s glass rests its lens while the page scrolls, so scrolling stays smooth on Android and desktop Chrome',
     ],
   },
   {

@@ -277,8 +277,19 @@ Rules:
   Entrances that many elements play at once follow the same rule (no `filter: blur()` fade-ins), and a
   ring or glow that grows is its own element scaling and fading, not an animated `box-shadow`.
 - **Don't loop a custom property** (`@property` + keyframes on `--x`): it can't run on the compositor, so
-  it re-styles and repaints everything that reads it each frame. The open wheel's sway plays once.
-- Skies (and other canvases) hold still while a page change slides (`data-nav` on `<html>`).
+  it re-styles and repaints everything that reads it each frame. The open wheel's sway only plays while
+  the wheel opens. Don't transition one on `<html>` during a page slide either (`html:not([data-nav])`).
+- **Turn whole pictures, not their parts.** An SVG's children rotating repaint the whole SVG every frame;
+  give a turning part its own `<svg>` (or HTML box) and rotate that (the wheel's letter rings).
+- **No backdrop blur over anything that moves** (a sky, a canvas, a map): it re-blurs every frame. Glass
+  in a sky banner (`.journal-top .glass`) and cards on the status page are solid.
+- Skies (and other canvases and timers that animate) hold still while a page change slides, the wheel
+  covers the page or a sheet is open: ask `lib/covered.ts` (`pageCovered()`, `onCovered()`).
+- **Skies draw off the main thread.** `components/Sky.tsx` only watches the page; `lib/sky/engine.ts`
+  draws, in a worker (`lib/sky/worker.ts`, OffscreenCanvas) where the browser allows, all skies from one
+  frame loop. A sky that's always on screen (the sidebar's New button) is `calm`: still until pointed at.
+- **Canvas letters come from an atlas** (every glyph in every shade painted once, then `drawImage` with
+  `globalAlpha`), never `fillText` per cell per frame.
 - **No infinite loops at rest.** Decoration runs a few times and stops (e.g. the nav wheel plays twice
   after a page appears, `--nw-runs`, and comes alive again on hover/focus). Loops that show state are fine:
   a record turning while it plays, a live dot, a spinner, a countdown ticking once a second.

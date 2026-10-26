@@ -80,7 +80,18 @@ export function useLens(ref: { current: HTMLElement | null }, { strength = 22, b
     el.style.setProperty('--lens', `url(#${id})`);
     el.style.setProperty('--glass-blur', `${blur}px`);
     el.classList.add('lensed');
+    // an SVG filter in a backdrop is worked out without the GPU, again on every frame the page moves behind it: while
+    // the page scrolls the glass is plain frost, and it bends again once scrolling stops
+    let calm = 0;
+    const scrolling = () => {
+      if (!calm) el.style.removeProperty('--lens');
+      clearTimeout(calm);
+      calm = window.setTimeout(() => { calm = 0; el.style.setProperty('--lens', `url(#${id})`); }, 180);
+    };
+    addEventListener('scroll', scrolling, { passive: true, capture: true });
     return () => {
+      removeEventListener('scroll', scrolling, { capture: true });
+      clearTimeout(calm);
       ro.disconnect();
       filter.remove();
       el.style.removeProperty('--lens');

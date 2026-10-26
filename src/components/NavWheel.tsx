@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { createPortal } from 'preact/compat';
+import { createPortal, memo } from 'preact/compat';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { WheelNode } from '../data/wheel';
 import { navigateAfterSheet, pushBack, routeName, transitionsOn } from '../lib/router';
@@ -94,7 +94,8 @@ function sector(r0: number, r1: number, a0: number, a1: number): string | null {
 }
 
 /** A ring of the sky's letters, spaced out to go once around. */
-function Letters({ r, world, class: cls }: { r: number; world: string; class: string }) {
+// memo: the rings don't change while the wheel zooms, which redraws everything else every frame
+const Letters = memo(function Letters({ r, world, class: cls }: { r: number; world: string; class: string }) {
   const ramp = (RAMPS[world] ?? RAMPS.default).slice(1).flatMap((level) => [...level.replace(/\s/g, '')]);
   const n = Math.round((2 * Math.PI * r) / 13);
   const text = Array.from({ length: n }, (_, i) => ramp[(i * 5 + (i >> 2)) % ramp.length]).join('');
@@ -106,7 +107,7 @@ function Letters({ r, world, class: cls }: { r: number; world: string; class: st
       <text><textPath href={`#${id}`} textLength={2 * Math.PI * r - 8} lengthAdjust="spacing">{text}</textPath></text>
     </svg>
   );
-}
+});
 
 /** Opening the wheel once, ever, ends the nudges that point at its button. */
 const SEEN = 'mm-wheel-seen';
