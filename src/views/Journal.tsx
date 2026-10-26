@@ -134,9 +134,21 @@ export function Journal() {
   const today = todayKey();
   const mood = entries.find((e) => e.kind === 'checkin' && e.date === today && e.emotions.length);
   const world = (mood && coreOf(mood.emotions[0])?.id) || null;
+  // once the feed has been laid out (and scrolled back to where it was left), days below the screen skip drawing until
+  // they come near it (app.css). The days on screen or above it are marked to stay drawn: a guessed size there could
+  // move what you're looking at.
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      for (const el of pageRef.current?.querySelectorAll('.day') ?? []) if (el.getBoundingClientRect().top < innerHeight) el.setAttribute('data-near', '');
+      setSettled(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <div class="page">
+    <div ref={pageRef} class="page" data-settled={settled ? '' : undefined}>
       {/* the day and the check-in, set apart from the notes below on a panel of their own */}
       <aside class="journal-side">
       <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>

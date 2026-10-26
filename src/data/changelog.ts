@@ -32,6 +32,7 @@ export const CHANGELOG: Release[] = [
       'A sheet you drag down drops its blur until it settles, and the map pans without repainting its tiles',
       'The app starts lighter in English: the Romanian dictionary only loads on a device set to Romanian',
       'Writing a note no longer redraws the whole page after every autosave',
+      'In a long journal, days further down aren\'t drawn until you scroll near them',
     ],
   },
   {

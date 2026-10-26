@@ -343,6 +343,12 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 }
 .editor .day-label { position: static; background: none; padding-inline: 0; margin-inline: 2px; }
 .entries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+/* A long journal: once the feed has been laid out and put back where it was left (Journal.tsx, data-settled), the days
+   below the screen skip style, layout and paint until they come near it. Days on screen or above it then ([data-near])
+   are always drawn, so a size guessed for a skipped day can only ever move what's below the screen. Each remembers the
+   size it was drawn at (auto). The padding, taken back by the margin, leaves the cards' shadows room in the containment. */
+.day > .entries:not(.compact) { contain-intrinsic-size: auto 480px; padding: 10px; margin: -10px; }
+.page[data-settled] .day:not([data-near]) > .entries:not(.compact) { content-visibility: auto; }
 
 .note { display: block; width: 100%; text-align: left; padding: 14px 16px; transition: border-color var(--dur-1); }
 @media (hover: hover) { .note:hover { border-color: var(--line-2); } }
