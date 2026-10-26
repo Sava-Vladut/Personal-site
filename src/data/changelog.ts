@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.137.3',
+    date: '2026-10-26',
+    changes: [
+      'When a journal search or day finds nothing, a Clear filters button takes you straight back to everything',
+      'The journal’s day filter says “Show all days” (and no longer “Senin” in Romanian)',
+    ],
+  },
+  {
     version: '1.137.2',
     date: '2026-10-26',
     changes: [

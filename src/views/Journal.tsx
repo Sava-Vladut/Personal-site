@@ -181,7 +181,7 @@ export function Journal() {
       {day && (
         <div class="row between filter-note">
           <span>{t('Showing {day}', { day: rangeLabel(day, null) })}</span>
-          <button class="link" onClick={() => setDay(null)}>{t('Clear')}</button>
+          <button class="link" onClick={() => setDay(null)}>{t('Show all days')}</button>
         </div>
       )}
       </div>
@@ -201,7 +201,12 @@ export function Journal() {
           </div>
         </div>
       )}
-      {ready && !!entries.length && !shown.length && <p class="empty-note center">{t('Nothing matches these filters.')}</p>}
+      {ready && !!entries.length && !shown.length && (
+        <div class="empty-note center">
+          <p>{t('Nothing matches these filters.')}</p>
+          <button class="btn btn-quiet" onClick={() => { setQ(''); setDay(null); }}>{t('Clear filters')}</button>
+        </div>
+      )}
 
       {pinned.length > 0 && (
         <section class="day pinned">

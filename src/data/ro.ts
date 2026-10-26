@@ -903,6 +903,8 @@ export const RO: Record<string, string> = {
   'Write down what’s on your mind, or check in with how you feel right now.': 'Scrie ce ai pe suflet sau notează cum te simți chiar acum.',
   'Write a note': 'Scrie o notiță',
   'Nothing matches these filters.': 'Nimic nu se potrivește acestor filtre.',
+  'Clear filters': 'Șterge filtrele',
+  'Show all days': 'Toate zilele',
   'Pinned': 'Fixate',
   'How are you feeling?': 'Cum te simți?',
   'Name it to tame it.': 'Numește-o ca s-o îmblânzești.',

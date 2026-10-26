@@ -203,6 +203,8 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 .empty p { color: var(--ink-3); max-width: 34ch; }
 .empty-note { color: var(--ink-3); font-size: var(--text-base); padding: 14px 2px; }
 .empty-note p + p { margin-top: 8px; }
+/* a way out of an empty result, a step below the line that explains it */
+.empty-note > .btn { margin-top: 10px; }
 .filter-note { font-size: var(--text-m); color: var(--ink-2); margin: 4px 0 -4px; }
 
 /* ============================================================
