@@ -237,6 +237,8 @@ export function PersonView({ id }: { id: string }) {
             placeholder={t('Name')}
             value={draft.name}
             maxLength={120}
+            autocapitalize="words"
+            enterkeyhint="next"
             onInput={(e) => update({ name: e.currentTarget.value.replace(/\n/g, ' ') })}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), textRef.current?.focus())}
             aria-label={t('Name')}
