@@ -11,7 +11,9 @@
   --pos-a: color-mix(in oklab, var(--accent) 72%, var(--ink));
   --neg-a: color-mix(in oklab, var(--accent) 24%, var(--neg));
 }
-html { transition: --accent var(--dur-3) ease; }
+/* eases to a new colour on the page, but not while a page change slides: --accent is on the root, so a transition then
+   would re-style the whole document every frame of the slide */
+html:not([data-nav]) { transition: --accent var(--dur-3) ease; }
 
 /* ---------- the header: a sky, the tabs and the range ---------- */
 

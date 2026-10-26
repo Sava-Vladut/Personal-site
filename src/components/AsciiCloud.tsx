@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { watchView } from '../lib/inView';
+import { pageCovered } from '../lib/covered';
 import { RAMPS } from './ramps';
 
 const COLS = 18, STEP = 90; // a tiny grid, redrawn ~11 times a second
@@ -13,6 +14,17 @@ const BODY: Partial<Record<Weather, string[]>> = { rain: [' ', '.', ':', '~', '=
 const SEAT = 1.4; // a cell is taller than it is wide
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+// Every cloud on screen steps together on one timer, and they all hold still while the tab is hidden, a page change
+// slides, or the wheel or a sheet is over the page (lib/covered.ts).
+const ticking = new Set<() => void>();
+let timer = 0;
+function setTicking(tick: () => void, on: boolean) {
+  if (on) ticking.add(tick);
+  else ticking.delete(tick);
+  if (ticking.size && !timer) timer = window.setInterval(() => { if (!document.hidden && !pageCovered()) for (const t of ticking) t(); }, STEP);
+  else if (!ticking.size && timer) { clearInterval(timer); timer = 0; }
+}
 const hash = (n: number) => { const v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); };
 
 /**
@@ -28,6 +40,9 @@ export function AsciiCloud({ world, seed = 0 }: { world: string; seed?: number }
     const weather = WEATHER[world] ?? 'drift';
     const rows = ROWS[weather];
     const label = el.closest<HTMLElement>('.day-label');
+    // one text node, rewritten in place: changing its data doesn't wake the page's MutationObservers (lib/reveal.ts,
+    // lib/fadeImages.ts) the way replacing the span's content would, ~11 times a second
+    const text = el.appendChild(document.createTextNode(''));
     if (label) label.dataset.weather = weather;
     const ramp = RAMPS[world] ?? RAMPS.default;
     const body = BODY[weather] ?? ramp;
@@ -97,10 +112,10 @@ export function AsciiCloud({ world, seed = 0 }: { world: string; seed?: number }
         }
         if (y < rows - 1) out += '\n';
       }
-      el.textContent = out;
+      if (text.data !== out) text.data = out;
     };
 
-    let timer = 0, s = 0;
+    let s = 0;
     const tick = () => {
       s += STEP / 1000;
       if (weather === 'sun') rot += (STEP / 1000) * (0.7 + 5 * clamp01(1 - (s - kick) / 1.6));
@@ -114,13 +129,11 @@ export function AsciiCloud({ world, seed = 0 }: { world: string; seed?: number }
     };
     draw(0);
     el.addEventListener('click', tap);
-    const stop = watchView(el, (on) => {
-      clearInterval(timer);
-      timer = on && !still.matches ? window.setInterval(tick, STEP) : 0;
-    });
+    const stop = watchView(el, (on) => setTicking(tick, on && !still.matches));
     return () => {
       stop();
-      clearInterval(timer);
+      setTicking(tick, false);
+      text.remove();
       el.removeEventListener('click', tap);
       if (label) { delete label.dataset.weather; label.removeAttribute('data-flash'); }
     };

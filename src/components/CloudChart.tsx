@@ -3,6 +3,7 @@
 // are and thin to dust between. The clouds roll in from the left, then breathe and drift a little while on screen.
 // What has to be read exactly (lines, labels, the marks you hover) is drawn over them in SVG by the caller.
 import type { ComponentChildren } from 'preact';
+import { onCovered, pageCovered } from '../lib/covered';
 import { useEffect, useRef } from 'preact/hooks';
 import { useWidth } from './charts';
 import { RAMPS } from './ramps';
@@ -215,9 +216,11 @@ export function CloudChart({ puffs: make, height, hot = null, children }: {
       schedule();
     };
     const schedule = () => {
-      if (!raf && visible && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame);
+      if (!raf && visible && !document.hidden && !reduced.matches && !pageCovered()) raf = requestAnimationFrame(frame);
     };
     const stop = () => { cancelAnimationFrame(raf); raf = 0; last = 0; };
+    // holds still under a sheet or the wheel and while a page change slides (lib/covered.ts)
+    const unCover = onCovered(() => (pageCovered() ? stop() : schedule()));
     const still = () => draw(reduced.matches ? 4 : clock / 1000);
     live.current.redraw = () => { if (!raf) still(); };
 
@@ -234,6 +237,7 @@ export function CloudChart({ puffs: make, height, hot = null, children }: {
     reduced.addEventListener('change', onMotion);
     return () => {
       stop();
+      unCover();
       io.disconnect();
       mo.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);

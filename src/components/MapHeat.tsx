@@ -5,6 +5,7 @@
 // thick near home, tapering to fine tips, in the colours of the places it joins, made of the same letters, with a
 // glow seeping outward along it. It keeps the same width at every zoom.
 import { useEffect, useRef } from 'preact/hooks';
+import { onCovered, pageCovered } from '../lib/covered';
 import { RAMPS } from './Sky';
 
 export interface HeatPoint {
@@ -378,8 +379,10 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       schedule();
     };
     const schedule = () => {
-      if (!raf && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame);
+      if (!raf && !document.hidden && !reduced.matches && !pageCovered()) raf = requestAnimationFrame(frame);
     };
+    // holds still under a sheet or the wheel and while a page change slides (lib/covered.ts)
+    const unCover = onCovered(() => (pageCovered() ? (cancelAnimationFrame(raf), (raf = 0)) : schedule()));
     // without motion, it's drawn once for every change of the map instead
     poke.current = () => { if (reduced.matches) draw(0); };
     const onVisibility = () => (document.hidden ? (cancelAnimationFrame(raf), (raf = 0)) : schedule());
@@ -391,6 +394,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
     onMotion();
     return () => {
       cancelAnimationFrame(raf);
+      unCover();
       mo.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       reduced.removeEventListener('change', onMotion);

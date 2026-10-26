@@ -11,11 +11,12 @@
   transition: border-color var(--dur-3), box-shadow var(--dur-3);
 }
 .sotd-aura { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-/* each light is a soft radial gradient rather than a blurred circle, so drifting it only moves a layer */
+/* each light is a soft radial gradient rather than a blurred circle, so drifting it only moves a layer; it drifts out
+   and back twice, then rests */
 .sotd-aura i {
   --a: var(--c); position: absolute; width: 60%; aspect-ratio: 1; border-radius: 50%; opacity: 0.42;
   background: radial-gradient(closest-side, var(--a) 35%, transparent);
-  animation: sotd-drift 14s ease-in-out infinite alternate;
+  animation: sotd-drift 14s ease-in-out 2 alternate;
 }
 .sotd-aura i:nth-child(1) { left: -18%; top: -40%; }
 .sotd-aura i:nth-child(2) { --a: var(--emo-love-connection); right: -22%; top: 10%; opacity: 0.26; animation-duration: 18s; animation-delay: -6s; }
@@ -37,7 +38,7 @@
   box-shadow: 0 4px 12px -6px var(--emo-hope-interest);
   animation: pop-in var(--dur-3) var(--spring) 0.15s backwards;
 }
-.sotd-streak svg { animation: sotd-flicker 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
+.sotd-streak svg { animation: sotd-flicker 1.6s ease-in-out 3; transform-origin: 50% 90%; }
 @keyframes sotd-flicker { 50% { transform: scale(1.12) rotate(-4deg); } }
 .sotd-tools { display: flex; gap: 1px; margin-right: -4px; }
 .sotd-tool {
@@ -48,13 +49,13 @@
 .sotd-tool:active:not(:disabled) { scale: 0.88; transition-duration: var(--dur-1), var(--dur-1), var(--dur-0); }
 .sotd-tool:disabled { opacity: 0.4; }
 
-/* a little equaliser by the title: it dances while the song plays, and breathes while it waits */
+/* a little equaliser by the title: it dances while the song plays, and breathes a couple of times while it waits */
 .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
-.eq i { width: 3px; height: 100%; border-radius: var(--r-2xs); background: currentColor; transform-origin: bottom; animation: eq 2.4s ease-in-out infinite; }
+.eq i { width: 3px; height: 100%; border-radius: var(--r-2xs); background: currentColor; transform-origin: bottom; animation: eq 2.4s ease-in-out 2; }
 .eq i:nth-child(2) { animation-delay: -0.6s; }
 .eq i:nth-child(3) { animation-delay: -1.3s; }
 .eq i:nth-child(4) { animation-delay: -0.2s; }
-.eq.is-on i { animation-duration: var(--dur-5); }
+.eq.is-on i { animation-duration: var(--dur-5); animation-iteration-count: infinite; }
 @keyframes eq { 0%, 100% { transform: scaleY(0.3); } 30% { transform: scaleY(1); } 60% { transform: scaleY(0.55); } }
 
 /* today's record */
@@ -106,7 +107,7 @@
 .sotd-day.has:not(:has(img)) .sotd-disc::after { content: ''; width: 40%; height: 40%; border-radius: 50%; background: var(--c); }
 .sotd-day.is-today small { color: var(--tint); }
 .sotd-day.is-today .sotd-disc { outline: 2px solid var(--c); outline-offset: 2px; }
-.sotd-day.is-today.has .sotd-disc { animation: turn 6s linear infinite; }
+.sotd-day.is-today.has .sotd-disc { animation: turn 6s linear 2; }
 @media (hover: hover) { .sotd-day:hover .sotd-disc { transform: scale(1.15); } }
 
 .sotd-picks { margin-top: 10px; }

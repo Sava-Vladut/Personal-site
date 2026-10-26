@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { ZONES, type BrainState } from '../lib/brain';
 import { BOX_H, BOX_W, BOX_Y0, PATCHES, folds, grooveDist, partAt, patchAt, pulse } from '../lib/brainShape';
 import { watchView } from '../lib/inView';
+import { onCovered, pageCovered } from '../lib/covered';
 import { RAMPS } from './Sky';
 
 const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -18,6 +19,9 @@ const rgb = (css: string): [number, number, number] => {
   return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) || 0) as [number, number, number];
 };
 const mixRgb = (a: number[], b: number[], k: number) => a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',');
+/** Every letter the brain draws with, once: its column in the letter atlas. */
+const CHARS = [...new Set([PLAIN, ...PATCHES.map((p) => RAMPS[p.world] ?? PLAIN)].flat().join('').replace(/\s/g, ''))];
+const COLUMN = new Map(CHARS.map((c, i) => [c, i]));
 
 interface Grid {
   cols: number; rows: number; cw: number; ch: number;
@@ -77,6 +81,30 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
     let w = 0, h = 0, dpr = 1, raf = 0, last = 0, visible = false, ink = [0, 0, 0], colors: Record<string, number[]> = {};
     let regionColors: Record<string, string> = {};
     const t0 = performance.now();
+    // every letter in every colour (the cortex, the cerebellum, then each region), painted once; a frame then draws each
+    // cell as a small copy at its own opacity instead of setting a colour and laying out text thousands of times
+    const atlas = document.createElement('canvas');
+    let atlasKey = '', tile = 0;
+    let regionRow: Record<string, number> = {};
+    const paint = (cortex: string, cerebellum: string, font: number) => {
+      const key = `${cortex}|${cerebellum}|${Object.values(regionColors).join('|')}|${font}|${dpr}`;
+      if (key === atlasKey) return;
+      atlasKey = key;
+      const worlds = Object.keys(regionColors);
+      regionRow = Object.fromEntries(worlds.map((k, i) => [k, i + 2]));
+      const rows = [cortex, cerebellum, ...worlds.map((k) => regionColors[k])];
+      tile = Math.ceil(font * dpr * 1.5);
+      atlas.width = CHARS.length * tile;
+      atlas.height = rows.length * tile;
+      const a = atlas.getContext('2d')!;
+      a.font = `${font * dpr}px ${FONT}`;
+      a.textAlign = 'center';
+      a.textBaseline = 'middle';
+      rows.forEach((color, r) => {
+        a.fillStyle = `rgb(${color})`;
+        CHARS.forEach((ch, c) => a.fillText(ch, c * tile + tile / 2, r * tile + tile / 2));
+      });
+    };
 
     const palette = () => {
       const css = getComputedStyle(el);
@@ -99,11 +127,10 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
       const rr = rp ? (now - rp.at) / 900 : 2;
       if (rp && rr > 1.4) ripple.current = null;
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      ctx.font = `${g.cw / 0.6}px ${FONT}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      paint(cortexRgb, cerebellumRgb, g.cw / 0.6);
+      const half = tile / 2;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, el.width, el.height);
       for (let r = 0; r < g.rows; r++) {
         for (let c = 0; c < g.cols; c++) {
           const i = r * g.cols + c;
@@ -111,7 +138,7 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
           if (!part) continue;
           const x = g.x[i], y = g.y[i], ph = g.ph[i];
           const px = (c + 0.5) * g.cw, py = (r + 0.5) * g.ch;
-          let ramp = PLAIN, level: number, color: string, alpha: number;
+          let ramp = PLAIN, level: number, row: number, alpha: number;
           const p = g.patch[i];
           const ring = rp ? Math.max(0, 1 - Math.abs(Math.hypot(x - rp.x, y - rp.y) - rr * 0.7) / 0.07) : 0;
           if (p >= 0) {
@@ -122,20 +149,20 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
             const chosen = world === selected;
             level = reg.level > 0 ? (0.12 + reg.level * (0.28 + 0.6 * beat)) * (0.55 + 0.45 * brain.force + 0.15) : 0.1;
             level = Math.min(1, level + ring * 0.4 + (chosen ? 0.12 : 0));
-            color = regionColors[world];
+            row = regionRow[world] ?? 0;
             alpha = reg.level > 0 ? Math.min(1, 0.3 + level * 0.8) * (chosen || !selected ? 1 : 0.8) : 0.16;
             if (reg.level > 0) alpha *= 0.55 + 0.45 * mute;
           } else {
             const f = g.fold[i];
             if (part === 2) {
               level = 0.15 + 0.4 * f;
-              color = cerebellumRgb;
+              row = 1;
               alpha = (0.2 + 0.2 * (0.5 + 0.5 * Math.sin(s * 0.7 + x * 5))) * mute;
             } else {
               if (f === 0) { if (g.edge[i]) continue; level = 0.1; } else level = 0.12 + 0.5 * f;
               if (g.edge[i]) level = Math.max(level, 0.78);
               const wave = 0.5 + 0.5 * Math.sin(s * 0.8 - (x * 4.2 + y * 2.6));
-              color = cortexRgb;
+              row = 0;
               alpha = (0.14 + 0.5 * level) * (0.6 + 0.4 * wave * (0.5 + brain.force)) * mute;
               alpha = Math.min(1, alpha + ring * 0.5);
             }
@@ -143,10 +170,12 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
           const k = Math.min(ramp.length - 1, Math.max(p >= 0 && level > 0 ? 1 : 0, Math.floor(level * ramp.length)));
           const glyph = ramp[k];
           if (!glyph.trim()) continue;
-          ctx.fillStyle = `rgba(${color},${alpha.toFixed(2)})`;
-          ctx.fillText(glyph.length > 1 ? glyph[Math.abs(Math.floor(ph * 1000)) % glyph.length] : glyph, px, py);
+          const ch = glyph.length > 1 ? glyph[Math.abs(Math.floor(ph * 1000)) % glyph.length] : glyph;
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(atlas, (COLUMN.get(ch) ?? 0) * tile, row * tile, tile, tile, Math.round(px * dpr - half), Math.round(py * dpr - half), tile, tile);
         }
       }
+      ctx.globalAlpha = 1;
     };
     redraw.current = draw;
 
@@ -167,12 +196,12 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
     };
     const frame = (now: number) => {
       raf = 0;
-      if (!visible || document.hidden || reduced.matches || document.documentElement.hasAttribute('data-covered')) return;
+      if (!visible || document.hidden || reduced.matches || pageCovered()) return;
       if (now - last >= 42) { last = now; draw(); }
       raf = requestAnimationFrame(frame);
     };
     const resume = () => {
-      const on = visible && !document.hidden && !reduced.matches && !document.documentElement.hasAttribute('data-covered');
+      const on = visible && !document.hidden && !reduced.matches && !pageCovered();
       if (on) { if (!raf) raf = requestAnimationFrame(frame); }
       else { cancelAnimationFrame(raf); raf = 0; }
     };
@@ -181,11 +210,9 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
     const ro = new ResizeObserver(size);
     ro.observe(el.parentElement!);
     const stop = watchView(el, (on) => { visible = on; resume(); });
-    const theme = new MutationObserver((records) => {
-      if (records.some((r) => r.attributeName === 'data-theme')) { palette(); draw(); }
-      if (records.some((r) => r.attributeName === 'data-covered')) resume();
-    });
-    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-covered'] });
+    const theme = new MutationObserver(() => { palette(); draw(); });
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    const unCover = onCovered(resume); // holds still under a sheet or the wheel and while a page change slides
     const dark = matchMedia('(prefers-color-scheme: dark)');
     const onScheme = () => { palette(); draw(); };
     dark.addEventListener('change', onScheme);
@@ -195,7 +222,7 @@ export function BrainCanvas({ brain, selected, onPick }: { brain: BrainState; se
     resume();
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect(); stop(); theme.disconnect();
+      ro.disconnect(); stop(); theme.disconnect(); unCover();
       dark.removeEventListener('change', onScheme);
       reduced.removeEventListener('change', onMotion);
       document.removeEventListener('visibilitychange', resume);

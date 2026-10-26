@@ -871,6 +871,7 @@ test('the map heat draws feeling letters where entries gather, and one thread br
     'preact/hooks': { useRef: (v) => ({ current: refs.length ? refs.shift() : v }), useEffect: (fn) => fn() },
     './Sky': { RAMPS: { default: [' ', '.', ':', '+', '*', 'o', 'O', '#'], joy: [' ', '·', '.', '+', '*', 'o', 'O', '@'] } },
     'preact/jsx-runtime': { jsx: () => null, jsxs: () => null, Fragment: 'f' },
+    '../lib/covered': { onCovered: () => () => {}, pageCovered: () => false },
   }, {
     document: { createElement: () => canvas('atlas'), documentElement: { dataset: { theme: 'dark' } }, hidden: false, addEventListener() {}, removeEventListener() {} },
     getComputedStyle: () => ({ getPropertyValue: (n) => (n === '--emo-joy' ? '#eda100' : '#808080') }),
@@ -1114,10 +1115,13 @@ test('people indexes are shared across cards and refreshed when the people colle
 
 test('the brain stops drawing while covered, hidden or out of view and releases all animation work', async () => {
   const effects = [], listeners = new Map(), frames = new Map(), observers = [];
-  let nextFrame = 0, viewed, covered = false, draws = 0, resize;
-  const root = { hasAttribute: () => covered };
-  const document = { documentElement: root, hidden: false, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) };
-  const context = { setTransform() {}, clearRect() { draws++; }, fillText() {} };
+  let nextFrame = 0, viewed, covered = false, draws = 0, resize, coverWatch;
+  const root = { hasAttribute: () => false };
+  const context = { setTransform() {}, clearRect() { draws++; }, fillText() {}, drawImage() {} };
+  const document = {
+    documentElement: root, hidden: false, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name),
+    createElement: () => ({ width: 0, height: 0, getContext: () => ({ fillText() {} }) }),
+  };
   const canvas = { getContext: () => context, parentElement: { getBoundingClientRect: () => ({ width: 320 }) }, style: {} };
   const shape = await load('src/lib/brainShape.ts');
   let ref = 0;
@@ -1127,6 +1131,7 @@ test('the brain stops drawing while covered, hidden or out of view and releases 
     '../lib/brainShape': shape,
     '../lib/brain': { ZONES: Object.fromEntries(shape.PATCHES.map(p => [p.world, {}])) },
     '../lib/inView': { watchView: (_el, cb) => { viewed = cb; return () => { viewed = null; }; } },
+    '../lib/covered': { pageCovered: () => covered, onCovered: (fn) => { coverWatch = fn; return () => { coverWatch = null; }; } },
     './Sky': { RAMPS: Object.fromEntries(['default', ...shape.PATCHES.map(p => p.world)].map(world => [world, [' ', '.', '#']])) },
   }, {
     document, devicePixelRatio: 1, performance: { now: () => 100 },
@@ -1142,14 +1147,14 @@ test('the brain stops drawing while covered, hidden or out of view and releases 
   assert.equal(frames.size, 0);
   const drawn = draws; resize(); assert.equal(draws, drawn, 'unchanged size does not rebuild or redraw the brain');
   viewed(true); assert.equal(frames.size, 1);
-  covered = true; observers[0]([{ attributeName: 'data-covered' }]); assert.equal(frames.size, 0);
-  covered = false; observers[0]([{ attributeName: 'data-covered' }]); assert.equal(frames.size, 1);
+  covered = true; coverWatch(); assert.equal(frames.size, 0);
+  covered = false; coverWatch(); assert.equal(frames.size, 1);
   document.hidden = true; listeners.get('visibilitychange')(); assert.equal(frames.size, 0);
   document.hidden = false; listeners.get('visibilitychange')(); assert.equal(frames.size, 1);
   viewed(false); assert.equal(frames.size, 0);
   viewed(true);
   cleanups.forEach(cleanup => cleanup?.());
-  assert.equal(frames.size, 0); assert.equal(listeners.size, 0); assert.equal(viewed, null);
+  assert.equal(frames.size, 0); assert.equal(listeners.size, 0); assert.equal(viewed, null); assert.equal(coverWatch, null);
 });
 
 test('README card excerpts keep prose without badges, code, tables or interactive markup', async () => {

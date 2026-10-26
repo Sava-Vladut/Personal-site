@@ -403,13 +403,19 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .day-mood { transition: color var(--dur-1), text-shadow var(--dur-1); }
 .day-label { --day-runs: 2; }
 @media (hover: hover) { .day-label:hover { --day-runs: infinite; } }
-.day-label[data-weather='sun'] .day-mood { animation: sun-text 4.5s ease-in-out var(--day-runs); }
+/* the sun's glow is a soft light behind the words that fades up and down (opacity only), not an animated text-shadow */
+.day-label[data-weather='sun'] .day-mood { position: relative; isolation: isolate; }
+.day-label[data-weather='sun'] .day-mood::before {
+  content: ''; position: absolute; inset: -8px -12px; z-index: -1; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--d1) 32%, transparent), transparent);
+  opacity: 0; animation: sun-glow 4.5s ease-in-out var(--day-runs);
+}
 .day-label[data-weather='rain'] .day-mood { animation: rain-text 5s ease-in-out var(--day-runs); }
 .day-label[data-weather='storm'][data-flash] .day-mood { color: var(--ink); text-shadow: 0 0 10px var(--d1), 0 0 2px var(--d1); }
 .day-label[data-weather='storm'][data-flash] .ascii-cloud { opacity: 1; color: var(--ink); }
-@keyframes sun-text { 50% { text-shadow: 0 0 10px color-mix(in oklab, var(--d1) 70%, transparent); } }
+@keyframes sun-glow { 50% { opacity: 1; } }
 @keyframes rain-text { 50% { opacity: 0.7; transform: translateY(1px); } }
-@media (prefers-reduced-motion: reduce) { .day-label[data-weather] .day-mood { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .day-label[data-weather] .day-mood, .day-label[data-weather] .day-mood::before { animation: none; } }
 .day-ribbon { position: absolute; left: 2px; right: 2px; bottom: 0; height: 2px; border-radius: var(--r-2xs); opacity: 0.7; }
 
 .day.has-mood { position: relative; isolation: isolate; --aura: 15%; }
@@ -421,7 +427,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
     radial-gradient(50% 55% at 80% 62%, color-mix(in oklab, var(--d2) calc(var(--aura) * 0.8), transparent), transparent 72%);
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 55%, transparent);
   mask-image: linear-gradient(180deg, transparent, #000 18%, #000 55%, transparent);
-  animation: aura-drift 26s ease-in-out infinite alternate paused;
+  animation: aura-drift 26s ease-in-out 2 alternate both paused;
 }
 @keyframes aura-drift {
   0% { transform: translate3d(-5%, 0, 0) scale(1); }
@@ -436,7 +442,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   background:
     radial-gradient(42% 46% at 58% 48%, color-mix(in oklab, var(--c1) var(--glow), transparent), transparent),
     radial-gradient(34% 40% at 30% 68%, color-mix(in oklab, var(--c2) calc(var(--glow) * 0.75), transparent), transparent);
-  animation: glow-drift 19s ease-in-out infinite alternate paused;
+  animation: glow-drift 19s ease-in-out 2 alternate both paused;
   animation-delay: calc(var(--t, 0) * -10ms);
 }
 @keyframes glow-drift {
@@ -445,6 +451,8 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   100% { transform: translate3d(-12px, 30px, 0) rotate(-10deg) scale(0.96); }
 }
 .day.has-mood[data-live]::before, .day[data-live] .note.has-mood::before { animation-play-state: running; }
+/* the lights drift out and back twice as a day comes into view, then rest (no loops at rest), and wait under a sheet or the wheel */
+:root:is([data-covered], .sheet-open) .day.has-mood::before, :root:is([data-covered], .sheet-open) .note.has-mood::before { animation-play-state: paused; }
 
 .entries:not(.compact) .checkin {
   background-image: linear-gradient(90deg, color-mix(in oklab, var(--c, transparent) calc(3% + var(--k, 3) * 2%), transparent), transparent 62%);
@@ -609,8 +617,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   padding: 13px 14px 11px; border-radius: var(--r-l); display: grid; gap: 9px;
   background:
     radial-gradient(90% 70% at 0% 0%, color-mix(in oklab, var(--c) 20%, transparent), transparent 75%),
-    color-mix(in oklab, var(--surface) 88%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    color-mix(in oklab, var(--surface) 94%, transparent); /* no backdrop blur: it sits over the moving check-in sky */
   border: 1px solid color-mix(in oklab, var(--c) 42%, var(--line));
   box-shadow: 0 22px 44px -16px color-mix(in oklab, var(--c) 60%, rgb(0 0 0 / 0.4)), 0 2px 8px -2px rgb(0 0 0 / 0.14), inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
   animation: tip-in var(--dur-3) var(--spring);
@@ -1219,7 +1226,7 @@ html[data-loading] { cursor: progress; }
 .person-float {
   position: absolute; display: flex; opacity: 0.6;
   filter: drop-shadow(0 0 6px color-mix(in oklab, var(--m1) 65%, transparent));
-  animation: person-float var(--d) ease-in-out infinite alternate paused;
+  animation: person-float var(--d) ease-in-out 4 alternate both paused;
   animation-delay: calc(var(--i) * -2.3s);
 }
 @keyframes person-float {
@@ -1283,7 +1290,7 @@ html[data-loading] { cursor: progress; }
 .wheel::before {
   content: ''; position: absolute; inset: 4%; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, color-mix(in oklab, var(--aura) 36%, transparent), color-mix(in oklab, var(--aura) 11%, transparent) 62%, transparent);
-  animation: fade-in 1.4s ease backwards, wheel-breathe 7s ease-in-out 1.4s infinite alternate;
+  animation: fade-in 1.4s ease backwards, wheel-breathe 7s ease-in-out 1.4s 4 alternate both;
 }
 /* the glow takes the colour of whoever you are looking at, and breathes slowly, on the compositor alone */
 @property --aura { syntax: '<color>'; inherits: true; initial-value: transparent; }
@@ -1295,16 +1302,17 @@ html[data-loading] { cursor: progress; }
 .wheel-sweep { fill: none; stroke: #fff; stroke-width: 70; stroke-dasharray: 1; animation: wheel-sweep var(--dur-5) var(--ease-emph) backwards; }
 @keyframes wheel-sweep { from { stroke-dashoffset: 1; } }
 /* every slice swells and settles from the wheel's centre, each out of step with the next; the one in focus also beats.
+   All of it plays a few times as the wheel appears, then rests.
    SVG shapes repaint on the main thread, so both move in small steps (under a pixel each) instead of every frame */
 .wheel-slice, .wheel-beat { transform-origin: 160px 160px; }
 .wheel-slice {
   fill: color-mix(in oklab, var(--c) 78%, var(--surface)); stroke: var(--gap, var(--bg)); stroke-width: 2.5; stroke-linejoin: round;
   cursor: pointer; outline: none; transition: translate var(--dur-3) var(--spring), opacity var(--dur-2) var(--ease), fill var(--dur-2);
-  animation: slice-breathe 5.5s steps(14) calc(var(--i, 0) * -1.9s) infinite alternate;
+  animation: slice-breathe 5.5s steps(14) calc(var(--i, 0) * -1.9s) 2 alternate both;
 }
 .wheel-slice.on { fill: var(--c); translate: var(--dx) var(--dy); }
 .wheel-slice:focus-visible { stroke: var(--ink); }
-.wheel-beat { animation: slice-beat 2.8s steps(5) infinite; }
+.wheel-beat { animation: slice-beat 2.8s steps(5) 3; }
 @keyframes slice-breathe { from { scale: 0.985; } to { scale: 1.025; } }
 @keyframes slice-beat { 0%, 50%, 100% { scale: 1; } 10% { scale: 1.04; } 22% { scale: 1; } 32% { scale: 1.028; } }
 /* a light that drifts round the ring, lit on one side and shaded on the other */
@@ -1313,7 +1321,7 @@ html[data-loading] { cursor: progress; }
   background: conic-gradient(rgb(255 255 255 / 0.3), transparent 22%, transparent 42%, rgb(0 0 0 / 0.15) 62%, transparent 80%, rgb(255 255 255 / 0.3));
   -webkit-mask: radial-gradient(closest-side, transparent 48.5%, #000 50%, #000 71.5%, transparent 73%);
   mask: radial-gradient(closest-side, transparent 48.5%, #000 50%, #000 71.5%, transparent 73%);
-  animation: fade-in 1.4s ease 0.9s backwards, wheel-orbit 28s linear infinite;
+  animation: fade-in 1.4s ease 0.9s backwards, wheel-orbit 28s linear 1;
 }
 @keyframes wheel-orbit { to { transform: rotate(360deg); } }
 .wheel[data-idle] :is(.wheel-slice, .wheel-beat, .wheel-shine), .wheel[data-idle]::before { animation-play-state: paused; }

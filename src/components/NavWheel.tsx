@@ -99,11 +99,12 @@ function Letters({ r, world, class: cls }: { r: number; world: string; class: st
   const n = Math.round((2 * Math.PI * r) / 13);
   const text = Array.from({ length: n }, (_, i) => ramp[(i * 5 + (i >> 2)) % ramp.length]).join('');
   const id = `nw-ring-${r}`;
+  // a picture of its own over the wheel's, so the turning is the compositor rotating it rather than the wheel repainted
   return (
-    <g class={cls} aria-hidden="true">
+    <svg class={cls} viewBox="0 0 400 400" aria-hidden="true">
       <path id={id} d={`M${C} ${C - r}a${r} ${r} 0 1 1 0 ${2 * r}a${r} ${r} 0 1 1 0 ${-2 * r}`} fill="none" />
       <text><textPath href={`#${id}`} textLength={2 * Math.PI * r - 8} lengthAdjust="spacing">{text}</textPath></text>
-    </g>
+    </svg>
   );
 }
 
@@ -498,9 +499,9 @@ export function NavWheel({ world, tree: own, look }: { world?: string | null; tr
       </header>
       <div class="nw-body">
         <div ref={stage} class={`nw nw-stage${opening ? ' opening' : ''}`}>
+          <Letters r={222} world={sky} class="nw-ring far" />
+          <Letters r={208} world={sky} class="nw-ring" />
           <svg class="nw-svg" viewBox="0 0 400 400" role="group" aria-label={focusSeg ? focusSeg.n.name : (look?.label ?? t('Everything'))}>
-            <Letters r={222} world={sky} class="nw-ring far" />
-            <Letters r={208} world={sky} class="nw-ring" />
             {hub > 0.5 && <circle cx={C} cy={C} r={hub} class="nw-hub" onClick={(ev) => { ev.stopPropagation(); close(); }} />}
             <g class="nw-spin" style={{ '--spin': `${spin.current.angle}deg` }}>
               <g class="nw-turn">

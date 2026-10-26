@@ -43,6 +43,8 @@ export function startReveal() {
   io = new IntersectionObserver(reveal, { rootMargin: '0px 0px -32px 0px' });
   new MutationObserver((records) => {
     for (const r of records) {
+      // typing in a note adds elements on every key, and nothing in there ever drifts in (SKIP): don't look at them
+      if ((r.target as Element).closest?.('.ProseMirror')) continue;
       for (const n of r.addedNodes) if (n instanceof Element) added.add(n);
       if (r.removedNodes.length) removed = true;
     }

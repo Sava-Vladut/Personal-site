@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.0',
+    date: '2026-10-26',
+    changes: [
+      'Skies are drawn in the background, off the page itself, so scrolling, taps and page changes never wait on a cloud',
+      'Every sky on screen moves from one shared timer, and skies fade in softly once drawn instead of popping in',
+      'Skies, Stats clouds, the map heat and the journal\'s little weather clouds hold still while a sheet or the wheel is open',
+      'The open wheel\'s ring of letters turns without redrawing the wheel, and its slices swing into place as it opens',
+      'The journal\'s drifting lights, the song card, People cards and the Mind wheel play a couple of times, then rest',
+      'Buttons and cards over a moving sky (page headers, the public status page, the sign-in page) no longer re-blur it every frame',
+      'The New button\'s sky in the sidebar only drifts while you point at it',
+      'Sunny days glow without repainting their text, and the Stats brain draws its letters much faster',
+    ],
+  },
+  {
     version: '1.137.4',
     date: '2026-10-26',
     changes: [
