@@ -200,97 +200,101 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
   const laws = SPRUNG_BY.get(x.id) ?? [];
   const kin = x.kin.map((k) => BY_ID.get(k)).filter((k): k is Trap => !!k);
   return (
-    <article class="lrn-detail" key={x.id}>
-      <DetailHead id={x.id} hue={hue} kicker={`${t(FAMILIES[x.family].name)} · ${t(FAMILIES[x.family].motto)}`} title={x.name} line={x.line} onShare={onShare}>
-        {x.aka && <p>{t('also called')} {x.aka}</p>}
-      </DetailHead>
+    <article class="lrn-detail tr-detail" key={x.id}>
+      <div class="lrn-d-rail">
+        <DetailHead id={x.id} hue={hue} kicker={`${t(FAMILIES[x.family].name)} · ${t(FAMILIES[x.family].motto)}`} title={x.name} line={x.line} onShare={onShare}>
+          {x.aka && <p>{t('also called')} {x.aka}</p>}
+        </DetailHead>
 
-      <div class="lrn-meters tr-power">
-        <Gauge value={power(x)} hue={hue} draw />
-        <div class="tr-power-meters">
-          {meters.map(([label, v, about]) => <Meter label={label} value={v} about={about} />)}
+        <div class="lrn-meters tr-power">
+          <Gauge value={power(x)} hue={hue} draw />
+          <div class="tr-power-meters">
+            {meters.map(([label, v, about]) => <Meter label={label} value={v} about={about} />)}
+          </div>
+          <p class="tr-ev">
+            <Ico name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} arrive />
+            <span><b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</span>
+          </p>
         </div>
-        <p class="tr-ev">
-          <Ico name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} arrive />
-          <span><b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</span>
-        </p>
+
+        <blockquote class="lrn-quote">
+          <small>{t('The thought that gives it away')}</small>
+          {x.tell}
+        </blockquote>
       </div>
 
-      <blockquote class="lrn-quote">
-        <small>{t('The thought that gives it away')}</small>
-        {x.tell}
-      </blockquote>
+      <div class="lrn-d-flow">
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('What it is')}</h3>
+          <p class="lrn-d-p">{x.what}</p>
+        </section>
 
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('What it is')}</h3>
-        <p class="lrn-d-p">{x.what}</p>
-      </section>
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Why your brain does it')}</h3>
+          <p class="lrn-d-p">{x.why}</p>
+          <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>
+            <p>{x.study.text}</p>
+          </Aside>
+        </section>
 
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('Why your brain does it')}</h3>
-        <p class="lrn-d-p">{x.why}</p>
-        <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>
-          <p>{x.study.text}</p>
+        {x.test && (
+          <section class="lrn-d-sec lrn-d-wide tr-d-test">
+            <h3 class="lrn-d-h">{t('Try it on yourself')}</h3>
+            <Quiz {...x.test} />
+          </section>
+        )}
+
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Where it gets you')}</h3>
+          <ul class="lrn-list">{x.life.map((l) => <li>{l}</li>)}</ul>
+        </section>
+
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('How to get out')}</h3>
+          <ol class="lrn-list is-steps">{x.escape.map((l) => <li>{l}</li>)}</ol>
+        </section>
+
+        {openPrinciple && disarms.length > 0 && (
+          <section class="lrn-d-sec">
+            <h3 class="lrn-d-h">{t('Principles that disarm it')}</h3>
+            <div class="lrn-links">
+              {disarms.map(({ p, how }) => (
+                <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {openLaw && laws.length > 0 && (
+          <section class="lrn-d-sec">
+            <h3 class="lrn-d-h">{t('Laws of power')}</h3>
+            <div class="lrn-links">
+              {laws.map(({ law, how }) => (
+                <LinkRow hue={REALMS[law.realm].hue} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <Aside icon="sparkles" label={t('Strange but true')}>
+          <p>{x.fact}</p>
         </Aside>
-      </section>
 
-      {x.test && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Try it on yourself')}</h3>
-          <Quiz {...x.test} />
-        </section>
-      )}
+        <div class="lrn-actions">
+          <Tally icon="eye" label={t('I caught myself in this one')} n={caught} onClick={() => { haptic(10); onCaught(); }} />
+        </div>
 
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('Where it gets you')}</h3>
-        <ul class="lrn-list">{x.life.map((l) => <li>{l}</li>)}</ul>
-      </section>
-
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('How to get out')}</h3>
-        <ol class="lrn-list is-steps">{x.escape.map((l) => <li>{l}</li>)}</ol>
-      </section>
-
-      {openPrinciple && disarms.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Principles that disarm it')}</h3>
-          <div class="lrn-links">
-            {disarms.map(({ p, how }) => (
-              <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {openLaw && laws.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Laws of power')}</h3>
-          <div class="lrn-links">
-            {laws.map(({ law, how }) => (
-              <LinkRow hue={REALMS[law.realm].hue} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <Aside icon="sparkles" label={t('Strange but true')}>
-        <p>{x.fact}</p>
-      </Aside>
-
-      <div class="lrn-actions">
-        <Tally icon="eye" label={t('I caught myself in this one')} n={caught} onClick={() => { haptic(10); onCaught(); }} />
+        {go && kin.length > 0 && (
+          <section class="lrn-d-sec lrn-d-wide">
+            <h3 class="lrn-d-h">{t('Related traps')}</h3>
+            <ol class="lrn-rows">
+              {kin.map((k) => (
+                <Row id={k.id} hue={hueOf(k)} title={k.name} sub={k.line} end={<PowerNum x={k} />} onClick={() => go(k.id)} />
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
-
-      {go && kin.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Related traps')}</h3>
-          <ol class="lrn-rows">
-            {kin.map((k) => (
-              <Row id={k.id} hue={hueOf(k)} title={k.name} sub={k.line} end={<PowerNum x={k} />} onClick={() => go(k.id)} />
-            ))}
-          </ol>
-        </section>
-      )}
     </article>
   );
 }
@@ -444,7 +448,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
         </div>
 
         <div class="lrn-main">
-          <div>
+          <div class="tr-list">
             <div class="lrn-head">
               <div class="chips scroll-x lrn-chips" role="toolbar" aria-label={t('Family')}>
                 <button class="chip" aria-pressed={!picked} onClick={() => setFamily('all')}>{t('All')}</button>
@@ -481,7 +485,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
             )}
           </div>
 
-          <section class="card lrn-card">
+          <section class="card lrn-card tr-method">
             <header class="lrn-card-head">
               <h2 class="lrn-card-title">{t('How power is scored')}</h2>
             </header>
@@ -498,7 +502,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
             </ul>
           </section>
 
-          <section class="card lrn-card">
+          <section class="card lrn-card tr-more">
             <p>{t('Knowing about a trap doesn’t free you from it, and neither does being clever: in study after study, people with higher cognitive ability fell for many biases about as often as everyone else, and were no better at seeing their own. Reading about them changes little. Practice with feedback does better: in 2015 a single training game cut several biases, and the effect was still there two months later. What helps most is slower thinking at the moments that matter, other people who will tell you when you’re wrong, and writing things down before you know how they turn out.')}</p>
             <div class="lrn-links">
               <LinkRow
@@ -514,7 +518,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
         </div>
       </div>
 
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('#{rank} of {n}', { rank: RANK.get(current.id)!, n: TRAPS.length }) : ''} label={current?.name} tall>
+      <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('#{rank} of {n}', { rank: RANK.get(current.id)!, n: TRAPS.length }) : ''} label={current?.name} tall class="lrn-sheet">
         <div ref={body}>
           {current && (
             <TrapDetail

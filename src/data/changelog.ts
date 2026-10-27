@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.143.0',
+    date: '2026-10-27',
+    changes: [
+      'Laws of power, Mind traps and Win friends use the whole width of a wide screen instead of a phone’s page in the middle: the page now runs from edge to edge',
+      'The list of laws, traps and principles is cards in as many columns as fit, each with room for three lines of its description',
+      'An opened law, trap or principle is a large reading panel: the title, the scores and the controls stay in a column at the left while the chapters read in two columns beside them, with a hairline between',
+      'The shadow side, the honest version, the question to sit with and the related entries run across the whole panel; a trap’s “Try it on yourself” quiz does too, so a verdict appearing can’t move the text beside it',
+      'Mind traps: the “How power is scored” and closing notes sit under the quiz in the side column, so the list isn’t followed by an empty stretch',
+      'Labels that were cut off on a desktop now wrap: the figures at the top, a row’s “Law 12 · Arena” line, and the game’s score line',
+      'Phones and narrow windows look as they did',
+    ],
+  },
+  {
     version: '1.142.1',
     date: '2026-10-27',
     changes: [

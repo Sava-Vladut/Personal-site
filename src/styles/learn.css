@@ -2,7 +2,8 @@
    The Learn pages: Mind traps, Laws of power, Win friends (views/Traps.tsx, Laws.tsx, Friends.tsx; the pieces are
    components/learn.tsx). One layout for all three, after Media and Stats: a sky with three figures and the search,
    then a feature column (today's entry, one map, one game) and the whole list in groups of compact rows. On a wide
-   screen the list is at the left and the feature column at the right.
+   screen the page runs the full width: the list is at the left in cards and the feature column at the right, and an
+   opened entry is a large panel with a rail and two columns of chapters (the last block of this file).
 
    Calm on purpose: nothing here animates in (the page transition and lib/reveal.ts do that), hovers only change
    colour, a press sinks to .98 and springs back, and every box whose content changes keeps its size.
@@ -175,6 +176,10 @@
 /* a shared entry on its own page (components/LearnShare.tsx SharedEntry): reading width, room at the bottom */
 .page.lrn-solo { max-width: 720px; padding-bottom: calc(var(--safe-b) + 40px); }
 
+/* a detail may split into a rail (the head, the scores, the controls) and a flow (the chapters): on a phone and on a
+   shared page they add no box, so everything stacks as it always did; on a wide screen the sheet lays them out below */
+.lrn-d-rail, .lrn-d-flow { display: contents; }
+
 /* a chapter: its heading, then what's in it, 12 apart */
 .lrn-d-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
 .lrn-d-h { display: flex; align-items: center; gap: 8px; margin: 0 0 -2px; font: var(--w-medium) var(--text-l)/1.3 var(--serif); letter-spacing: -0.005em; color: var(--ink); }
@@ -288,6 +293,58 @@
 }
 @media (min-width: 1280px) {
   .lrn { grid-template-columns: minmax(0, 1fr) 420px; }
+}
+
+/* ---------- a wide screen: the whole width, not a phone's page in the middle ---------- */
+
+@media (min-width: 1024px) {
+  /* the page runs to the screen's edges (desktop.css stops pages at 1320) */
+  .page.lrn-page:not(.lrn-solo) { max-width: min(1840px, 100%); }
+
+  /* the list: cards in as many columns as fit, a little taller, with room for three lines of the line under a title */
+  .lrn-main .lrn-rows { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; }
+  .lrn-main .lrn-row {
+    align-items: flex-start; gap: 14px; min-height: 0; padding: 14px 16px 14px 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
+  }
+  .lrn-main .lrn-row-sub { -webkit-line-clamp: 3; }
+  .lrn-main .lrn-row-end { align-self: center; }
+  @media (hover: hover) { .lrn-main .lrn-row:hover { background: var(--surface-2); border-color: var(--line-2); } }
+  .lrn-main .lrn-row:focus-visible { outline-offset: 2px; }
+  .lrn-group-head { padding-left: 2px; }
+  .lrn-groups { gap: 32px; }
+
+  /* an opened entry is a reading panel that fills the screen: the head and the controls in a rail at the left, the
+     chapters beside it (the page puts `lrn-sheet` on its Sheet, `lrn-d-rail` and `lrn-d-flow` in its detail) */
+  .sheet.tall.lrn-sheet { max-width: min(1600px, 100%); height: calc(100dvh - 48px); max-height: none; }
+  .lrn-sheet .sheet-head { padding: 16px 24px 12px 44px; border-bottom: 1px solid var(--line); }
+  .lrn-sheet .sheet-body { padding: 28px 44px 44px; }
+  .lrn-sheet .lrn-detail { grid-template-columns: 300px minmax(0, 1fr); column-gap: 48px; align-items: start; padding-bottom: 0; }
+  .lrn-sheet .lrn-d-rail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-content: start; min-width: 0; }
+  .lrn-sheet .lrn-d-flow { display: block; min-width: 0; }
+  .lrn-sheet .lrn-d-flow > * { margin: 0 0 30px; break-inside: avoid; }
+  .lrn-sheet .lrn-d-flow > :last-child { margin-bottom: 0; }
+  /* a chapter that runs across both columns (the shadow side and honest version, the related entries) */
+  .lrn-sheet .lrn-d-flow > .lrn-d-wide { column-span: all; }
+  @media (min-height: 760px) { .lrn-sheet .lrn-d-rail { position: sticky; top: 4px; } }
+
+  /* the head reads from the left, not centred under a phone's title */
+  .lrn-sheet .lrn-d-head { justify-items: start; text-align: left; padding-top: 0; }
+  .lrn-sheet .lrn-d-title { font-size: 30px; line-height: 1.12; }
+  .lrn-sheet .lrn-d-line { max-width: none; text-wrap: pretty; }
+  .lrn-sheet .lrn-d-rail .lrn-actions { grid-template-columns: minmax(0, 1fr); }
+  .lrn-sheet .lrn-d-rail .lrn-quote { font-size: var(--text-base); }
+  /* related entries sit in as many columns as fit */
+  .lrn-sheet .lrn-detail .lrn-rows { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+}
+@media (min-width: 1280px) {
+  .lrn-sheet .lrn-detail { grid-template-columns: 340px minmax(0, 1fr); column-gap: 64px; }
+  /* the chapters read in two columns with a hairline between them */
+  .lrn-sheet .lrn-d-flow { column-count: 2; column-gap: 64px; column-rule: 1px solid var(--line); }
+}
+@media (min-width: 1536px) {
+  .lrn { grid-template-columns: minmax(0, 1fr) 480px; column-gap: 36px; }
+  .lrn-main .lrn-rows { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

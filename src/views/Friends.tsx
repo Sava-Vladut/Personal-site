@@ -345,44 +345,49 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
 
   return (
     <article class="lrn-detail" key={x.n}>
-      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Principle {n}', { n: x.n })} · ${t(part.name)}`} title={x.title} line={x.line} onShare={onShare} />
+      {/* on a wide screen the rail (the head, the scores, the lens) stays at the left while the chapters flow beside it; elsewhere both add no box (styles/learn.css) */}
+      <div class="lrn-d-rail">
+        <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Principle {n}', { n: x.n })} · ${t(part.name)}`} title={x.title} line={x.line} onShare={onShare} />
 
-      <div class="lrn-meters">
-        <Meter label={t('How hard')} value={x.hard} about={t('How hard it is to actually do')} />
-        <Meter label={t('Everyday')} value={x.everyday} about={t('How often it comes up in ordinary life')} />
+        <div class="lrn-meters">
+          <Meter label={t('How hard')} value={x.hard} about={t('How hard it is to actually do')} />
+          <Meter label={t('Everyday')} value={x.everyday} about={t('How often it comes up in ordinary life')} />
+        </div>
+
+        {/* the lens: which half you read first (the other follows) */}
+        <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
+          <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Ico name="brain" size={16} /> {t('Why it works')}</button>
+          <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Ico name="list-check" size={16} /> {t('How to practise')}</button>
+        </div>
       </div>
 
-      {/* the lens: which half you read first (the other follows) */}
-      <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-        <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Ico name="brain" size={16} /> {t('Why it works')}</button>
-        <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Ico name="list-check" size={16} /> {t('How to practise')}</button>
+      <div class="lrn-d-flow">
+        {lens === 'why' ? <>{why}{how}</> : <>{how}{why}</>}
+
+        <div class="lrn-pair lrn-d-wide">
+          <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
+          <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
+        </div>
+
+        <blockquote class="lrn-quote lrn-d-wide">
+          <small>{t('A question to sit with')}</small>
+          {x.question}
+        </blockquote>
+
+        <div class="lrn-actions lrn-d-wide">
+          <Tally icon={practice.on ? 'check' : 'plus'} label={practice.on ? t('Practising') : t('Practise this')} pressed={!!practice.on} onClick={() => { haptic(practice.on ? 6 : 10); onToggle(); }} />
+          <Tally icon="sparkles" label={t('I tried it')} n={practice.tried ?? 0} onClick={() => { haptic(10); onTried(); }} />
+        </div>
+
+        {go && kin.length > 0 && (
+          <section class="lrn-d-sec lrn-d-wide">
+            <h3 class="lrn-d-h">{t('Related principles')}</h3>
+            <ol class="lrn-rows">
+              {kin.map((k) => <Row id={k.id} hue={hueOf(k)} top={t('Principle {n}', { n: k.n })} title={k.title} onClick={() => go(k.n)} />)}
+            </ol>
+          </section>
+        )}
       </div>
-
-      {lens === 'why' ? <>{why}{how}</> : <>{how}{why}</>}
-
-      <div class="lrn-pair">
-        <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
-        <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
-      </div>
-
-      <blockquote class="lrn-quote">
-        <small>{t('A question to sit with')}</small>
-        {x.question}
-      </blockquote>
-
-      <div class="lrn-actions">
-        <Tally icon={practice.on ? 'check' : 'plus'} label={practice.on ? t('Practising') : t('Practise this')} pressed={!!practice.on} onClick={() => { haptic(practice.on ? 6 : 10); onToggle(); }} />
-        <Tally icon="sparkles" label={t('I tried it')} n={practice.tried ?? 0} onClick={() => { haptic(10); onTried(); }} />
-      </div>
-
-      {go && kin.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Related principles')}</h3>
-          <ol class="lrn-rows">
-            {kin.map((k) => <Row id={k.id} hue={hueOf(k)} top={t('Principle {n}', { n: k.n })} title={k.title} onClick={() => go(k.n)} />)}
-          </ol>
-        </section>
-      )}
     </article>
   );
 }
@@ -587,7 +592,7 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
         </div>
       </div>
 
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Principle {n} of {total}', { n: current.n, total: PRINCIPLES.length }) : ''} label={current?.title} tall>
+      <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Principle {n} of {total}', { n: current.n, total: PRINCIPLES.length }) : ''} label={current?.title} tall class="lrn-sheet">
         <div ref={body}>
           {current && (
             <PrincipleDetail

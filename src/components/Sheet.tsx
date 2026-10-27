@@ -27,12 +27,14 @@ interface Props {
   footer?: ComponentChildren;
   tall?: boolean;
   label?: string;
+  /** Extra class on the sheet itself, so one screen can restyle its own sheet (the Learn pages' wide reading panel). */
+  class?: string;
 }
 
 let openSheets = 0;
 
 /** Bottom sheet on phones, centred dialog on wide screens. The back button closes it. */
-export function Sheet({ open, onClose, title, children, footer, tall, label }: Props) {
+export function Sheet({ open, onClose, title, children, footer, tall, label, class: extra }: Props) {
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const closeRef = useRef(onClose);
@@ -91,7 +93,7 @@ export function Sheet({ open, onClose, title, children, footer, tall, label }: P
       <div ref={backdrop} class="sheet-backdrop" onClick={onClose} />
       <div
         ref={panel}
-        class={`sheet glass${tall ? ' tall' : ''}`}
+        class={`sheet glass${tall ? ' tall' : ''}${extra ? ` ${extra}` : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={label ?? (typeof title === 'string' ? title : undefined)}

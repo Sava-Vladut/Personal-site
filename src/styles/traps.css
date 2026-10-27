@@ -1,8 +1,8 @@
 /* ============================================================
    Mind traps (views/Traps.tsx). The layout, the rows, the quiz and the opened trap are the Learn pages' own
-   (styles/learn.css); what's here is only this page's: the power gauge and the power map. Each trap's colour is
-   its family's world colour (--c). Nothing here moves on its own: the gauge in a sheet fills once after the sheet
-   has landed, and a star grows a little under the pointer.
+   (styles/learn.css); what's here is only this page's: the power gauge and the power map, and at the end of the file
+   what this page adds on a wide screen. Each trap's colour is its family's world colour (--c). Nothing here moves on
+   its own: the gauge in a sheet fills once after the sheet has landed, and a star grows a little under the pointer.
    ============================================================ */
 
 /* ---------- the power gauge: power out of 100 as a ring ---------- */
@@ -51,6 +51,58 @@
 .tr-star.is-kin .tr-star-dot { scale: 1.25; }
 .tr-map-hub circle { fill: var(--surface); stroke: var(--line-2); }
 .tr-map-hub text { font: var(--w-bold) 18px var(--sans); fill: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------- a wide screen: from 1024px (below it nothing here applies, so a phone is as it was) ---------- */
+
+@media (min-width: 1024px) {
+  /* the sky: the three figures get the wider half, so "Caught yourself" and "Biases named" aren't cut at the narrowest desktop */
+  .traps-page:not(.lrn-solo) .journal-top.lrn-top { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+
+  /* the method and closing cards join the feature column under the quiz, so the list isn't followed by a long empty
+     stretch at its side: .lrn-main adds no box here, the list spans three rows and the two cards take rows 2 and 3
+     (the last row takes whatever height the list needs, so the cards stay right under the quiz) */
+  .traps-page .lrn { grid-template-rows: auto auto 1fr; row-gap: 12px; }
+  .traps-page .lrn-main { display: contents; }
+  .traps-page .tr-list { grid-column: 1; grid-row: 1 / span 3; min-width: 0; }
+  .traps-page .tr-method { grid-column: 2; grid-row: 2; }
+  .traps-page .tr-more { grid-column: 2; grid-row: 3; }
+
+  /* a place in a ranked list sits level with the mark, not with the top of a tall card */
+  .traps-page .lrn-main .lrn-rank { line-height: 34px; }
+
+  /* an opened trap: the scores well in the rail is 272-312px inside. The ring and the evidence line share its first
+     row (the line is about as tall as the ring), the three meters take the full width under a hairline, so their
+     bars are 160px or more instead of 70 */
+  .lrn-sheet .lrn-meters.tr-power { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 14px; row-gap: 12px; padding: 14px; }
+  .lrn-sheet .tr-power > .tr-gauge { grid-column: 1; grid-row: 1; }
+  .lrn-sheet .tr-power > .tr-ev { grid-column: 2; grid-row: 1; padding-top: 0; border-top: 0; }
+  .lrn-sheet .tr-power > .tr-power-meters { grid-column: 1 / -1; grid-row: 2; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+  /* the rail (the head, the scores, the tell) is 600-780px tall: it only follows you down where the sheet is tall
+     enough to show all of it, otherwise it scrolls away with the chapters and nothing of it is cut off */
+  .lrn-sheet .tr-detail > .lrn-d-rail { position: static; }
+
+  /* the related traps: one to a line, like the sheet's other lists (three across below) */
+  .lrn-sheet .lrn-detail.tr-detail .lrn-rows { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 1024px) and (min-height: 900px) {
+  .lrn-sheet .tr-detail > .lrn-d-rail { position: sticky; top: 4px; }
+}
+@media (min-width: 1280px) {
+  /* "Try it on yourself" runs across both columns (a verdict that appears can't move the chapters beside it), the
+     question and the verdict at a reading width and the answers two to a row */
+  .lrn-sheet .tr-d-test .lrn-quiz { max-width: 860px; }
+  .lrn-sheet .tr-d-test :is(.lrn-q, .lrn-verdict) { max-width: 72ch; }
+  .lrn-sheet .tr-d-test .lrn-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1440px) {
+  .lrn-sheet .lrn-detail.tr-detail .lrn-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1536px) {
+  /* the list's columns keep the 340 minimum from 1024 on: the feature column grows to 480 here, and a 380 minimum
+     would drop the list from two columns back to one for the next ~60px */
+  .traps-page .lrn-main .lrn-rows { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tr-gauge.is-draw .tr-gauge-fill { animation: none; }

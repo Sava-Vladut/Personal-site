@@ -210,15 +210,16 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
   const answers = ANSWERS.get(x.n) ?? [];
   const kin = x.kin.map((k) => BY_N.get(k)).filter((k): k is Law => !!k);
 
+  // `lw-split`: on a wide screen the three long chapters run on from one column into the next (laws.css)
   const law = (
-    <section class="lrn-d-sec">
+    <section class="lrn-d-sec lw-split">
       <h3 class="lrn-d-h">{t('The law')}</h3>
       <p class="lrn-d-p">{x.gist}</p>
       <Aside icon="book" label={t('From history')} title={x.scene.who} who={x.scene.when}>{x.scene.text}</Aside>
     </section>
   );
   const why = (
-    <section class="lrn-d-sec">
+    <section class="lrn-d-sec lw-split">
       <h3 class="lrn-d-h">{t('Why it works')}</h3>
       <p class="lrn-d-p">{x.mind}</p>
       <div class="lw-sub">
@@ -239,7 +240,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
     </section>
   );
   const onYou = (
-    <section class="lrn-d-sec">
+    <section class="lrn-d-sec lw-split">
       <h3 class="lrn-d-h">{t('When it’s played on you')}</h3>
       <div class="lw-sub">
         <p class="kicker">{t('Where you’ll meet it today')}</p>
@@ -258,60 +259,66 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
 
   return (
     <article class="lrn-detail" key={x.n}>
-      <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Law {n}', { n: x.n })} · ${t(realm.name)}`} title={x.title} line={x.line} onShare={onShare} />
+      {/* on a wide screen the head and the controls are a rail at the left and the chapters flow beside it (learn.css); on a phone and on a shared page both add no box */}
+      <div class="lrn-d-rail">
+        <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Law {n}', { n: x.n })} · ${t(realm.name)}`} title={x.title} line={x.line} onShare={onShare} />
 
-      <div class="lrn-meters">
-        <Meter label={t('Darkness')} value={x.dark} about={t('How manipulative it is')} />
-        <Meter label={t('Everyday')} value={x.everyday} about={t('How often it plays out in ordinary life')} />
-      </div>
+        <div class="lrn-meters">
+          <Meter label={t('Darkness')} value={x.dark} about={t('How manipulative it is')} />
+          <Meter label={t('Everyday')} value={x.everyday} about={t('How often it plays out in ordinary life')} />
+        </div>
 
-      {/* the lens: read the law as the one playing it (the law first) or as its target (the defence first) */}
-      <div class="lrn-d-sec">
-        <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-          <button role="tab" aria-selected={lens === 'player'} onClick={() => onLens('player')}><Ico name="crown" size={16} /> {t('As the player')}</button>
-          <button role="tab" aria-selected={lens === 'target'} onClick={() => onLens('target')}><Ico name="eye" size={16} /> {t('As the target')}</button>
+        {/* the lens: read the law as the one playing it (the law first) or as its target (the defence first) */}
+        <div class="lrn-d-sec">
+          <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
+            <button role="tab" aria-selected={lens === 'player'} onClick={() => onLens('player')}><Ico name="crown" size={16} /> {t('As the player')}</button>
+            <button role="tab" aria-selected={lens === 'target'} onClick={() => onLens('target')}><Ico name="eye" size={16} /> {t('As the target')}</button>
+          </div>
         </div>
       </div>
 
-      {lens === 'player' ? <>{law}{why}{onYou}</> : <>{onYou}{law}{why}</>}
+      <div class="lrn-d-flow">
+        {lens === 'player' ? <>{law}{why}{onYou}</> : <>{onYou}{law}{why}</>}
 
-      <div class="lrn-pair">
-        <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
-        <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
-      </div>
+        {/* the rest run across both columns on a wide screen (`lrn-d-wide`) */}
+        <div class="lrn-pair lrn-d-wide">
+          <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
+          <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
+        </div>
 
-      {openPrinciple && answers.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('The answer in Win friends')}</h3>
-          <div class="lrn-links">
-            {answers.map(({ p, how }) => (
-              <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
-            ))}
+        {openPrinciple && answers.length > 0 && (
+          <section class="lrn-d-sec lrn-d-wide">
+            <h3 class="lrn-d-h">{t('The answer in Win friends')}</h3>
+            <div class="lrn-links">
+              {answers.map(({ p, how }) => (
+                <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section class="lrn-d-sec lrn-d-wide lw-ask">
+          <blockquote class="lrn-quote">
+            <small>{t('A question to sit with')}</small>
+            {x.question}
+          </blockquote>
+          <div class="lrn-actions">
+            <Tally icon="eye" label={t('Played on me')} n={seen.on ?? 0} onClick={() => { haptic(10); onSeen('on'); }} />
+            <Tally icon="crown" label={t('I played it')} n={seen.by ?? 0} onClick={() => { haptic(10); onSeen('by'); }} />
           </div>
         </section>
-      )}
 
-      <section class="lrn-d-sec">
-        <blockquote class="lrn-quote">
-          <small>{t('A question to sit with')}</small>
-          {x.question}
-        </blockquote>
-        <div class="lrn-actions">
-          <Tally icon="eye" label={t('Played on me')} n={seen.on ?? 0} onClick={() => { haptic(10); onSeen('on'); }} />
-          <Tally icon="crown" label={t('I played it')} n={seen.by ?? 0} onClick={() => { haptic(10); onSeen('by'); }} />
-        </div>
-      </section>
-
-      {go && kin.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Related laws')}</h3>
-          <ol class="lrn-rows">
-            {kin.map((k) => (
-              <Row id={k.id} hue={hueOf(k)} top={`${t('Law {n}', { n: k.n })} · ${t(REALMS[k.realm].name)}`} title={k.title} onClick={() => go(k.n)} />
-            ))}
-          </ol>
-        </section>
-      )}
+        {go && kin.length > 0 && (
+          <section class="lrn-d-sec lrn-d-wide">
+            <h3 class="lrn-d-h">{t('Related laws')}</h3>
+            <ol class="lrn-rows">
+              {kin.map((k) => (
+                <Row id={k.id} hue={hueOf(k)} top={`${t('Law {n}', { n: k.n })} · ${t(REALMS[k.realm].name)}`} title={k.title} onClick={() => go(k.n)} />
+              ))}
+            </ol>
+          </section>
+        )}
+      </div>
     </article>
   );
 }
@@ -527,7 +534,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
         </div>
       </div>
 
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Law {n} of 48', { n: current.n }) : ''} label={current?.title} tall>
+      <Sheet open={!!open} onClose={() => setOpen(null)} title={current ? t('Law {n} of 48', { n: current.n }) : ''} label={current?.title} tall class="lrn-sheet">
         <div ref={body}>
           {current && (
             <LawDetail
