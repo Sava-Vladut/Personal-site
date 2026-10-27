@@ -17,7 +17,9 @@
 .stars svg.on { color: var(--emo-joy); }
 .stars svg.on g { fill: currentColor; }
 .stars.is-input { gap: 2px; margin-top: 8px; margin-left: -4px; }
-.stars.is-input button { padding: 4px; border-radius: var(--r-s); transition: scale var(--dur-3) var(--spring-bouncy); }
+.stars.is-input button { position: relative; padding: 4px; border-radius: var(--r-s); transition: scale var(--dur-3) var(--spring-bouncy); }
+/* each star hits 34 × 44 and the row has no dead gaps between them; the stars themselves stay put */
+.stars.is-input button::before { content: ''; position: absolute; inset: -6px -1px; }
 .stars.is-input button:active { scale: 0.85; transition-duration: var(--dur-0); }
 
 .book-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
