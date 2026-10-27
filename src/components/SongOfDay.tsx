@@ -7,7 +7,7 @@ import { hashOf, useColor } from '../lib/colors';
 import { haptic } from '../lib/haptics';
 import { usePaged } from '../lib/inView';
 import { navigate, navigateAfterSheet } from '../lib/router';
-import { pickSongOfDay, songOfDay, toast, type Song } from '../lib/store';
+import { getSongs, pickSongOfDay, songOfDay, toast, type Song } from '../lib/store';
 import { CountUp } from './charts';
 import { Icon } from './icons';
 import { MusicEmbed, MusicThing, musicSub } from './music';
@@ -58,11 +58,14 @@ export function useDayPick(): DayPick {
   const pick = async (s: Song | null, day: string) => {
     if (busy) return;
     setBusy(true);
+    // what the day had, so clearing it can be undone
+    const was = songOfDay(getSongs(), day);
     try {
       await pickSongOfDay(s, day);
       haptic(14);
       setPicking(null);
       if (s) toast(day === todayKey() ? t('{title} is today’s song', { title: s.music.title }) : t('{title} is the song of {day}', { title: s.music.title, day: dayLabel(day) }));
+      else if (was) toast(day === todayKey() ? t('Today’s song cleared') : t('Song of {day} cleared', { day: dayLabel(day) }), { label: t('Undo'), run: () => pickSongOfDay(was, day) });
     } catch {
       toast(t('Couldn’t save this music. Try again.'));
     } finally {

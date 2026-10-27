@@ -1187,6 +1187,8 @@ export const RO: Record<string, string> = {
   'Updated to {v}': 'Actualizat la {v}',
   'Song of {day}': 'Melodia pentru {day}',
   'Clear this day': 'Golește ziua',
+  'Today’s song cleared': 'Melodia de azi a fost scoasă',
+  'Song of {day} cleared': 'Melodia pentru {day} a fost scoasă',
   'Most picked': 'Cele mai alese',
   'in a row now': 'la rând acum',
   'best streak': 'cea mai lungă serie',
