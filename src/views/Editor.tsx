@@ -877,6 +877,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const d = latest.current;
     if (!d || wordBusy) return;
     setWordBusy(true);
+    // its pictures come over the network, so it can take a while: say so if it isn't there at once
+    const slow = setTimeout(() => toast(t('Making the Word file…')), 400);
     try {
       const { downloadDocx } = await import('../lib/docx/download');
       await downloadDocx(d, textNow(), comments);
@@ -884,6 +886,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     } catch {
       toast(t('Couldn’t make the Word file'));
     } finally {
+      clearTimeout(slow);
       setWordBusy(false);
     }
   };
@@ -1372,7 +1375,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         open={open === 'word'}
         onClose={close}
         title={t('Download as Word')}
-        footer={<button class="btn btn-primary" onClick={() => void saveWord(wordComments)} disabled={wordBusy}><Icon name="download" size={18} /> {t('Download')}</button>}
+        footer={<button class="btn btn-primary" onClick={() => void saveWord(wordComments)} disabled={wordBusy}><Icon name="download" size={18} /> {wordBusy ? t('Making the file…') : t('Download')}</button>}
       >
         <div class="share-parts">
           <label class="share-part">

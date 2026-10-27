@@ -2120,6 +2120,8 @@ export const RO: Record<string, string> = {
   'As Word comments beside their words': 'Ca comentarii Word lângă cuvintele lor',
   'They’re private: only the words they’re on go in': 'Sunt private: intră doar cuvintele pe care sunt',
   'Couldn’t make the Word file': 'Nu s-a putut crea fișierul Word',
+  'Making the Word file…': 'Se face fișierul Word…',
+  'Making the file…': 'Se face fișierul…',
   'Me': 'Eu',
   '{n} of {total}': '{n} din {total}',
   'Try saving again': 'Încearcă din nou salvarea',

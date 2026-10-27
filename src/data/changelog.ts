@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.3',
+    date: '2026-10-27',
+    changes: [
+      'Download as Word says “Making the Word file…” when it takes a moment (a note with pictures), instead of seeming to do nothing',
+    ],
+  },
+  {
     version: '1.146.2',
     date: '2026-10-27',
     changes: [
