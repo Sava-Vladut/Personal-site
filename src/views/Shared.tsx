@@ -114,7 +114,7 @@ function Pic({ m, note, src }: { m: Media; note: Note; src: (it: Item, size: 'th
           <div class={`album n${tiles.length}`}>
             {tiles.map((it, k) => (
               <span key={itemKey(it)} class="album-tile">
-                <img src={src(it, 'thumb')} alt={web(it)?.title ?? ''} loading="lazy" referrerpolicy="no-referrer" />
+                <img src={src(it, 'thumb')} alt={m.alt || web(it)?.title || ''} loading="lazy" referrerpolicy="no-referrer" />
                 {k === tiles.length - 1 && items.length > tiles.length && <span class="album-more">+{items.length - tiles.length + 1}</span>}
               </span>
             ))}
@@ -122,14 +122,19 @@ function Pic({ m, note, src }: { m: Media; note: Note; src: (it: Item, size: 'th
         ) : (
           <img
             src={src(first, 'full')}
-            alt={credit?.title ?? ''}
+            alt={m.alt || credit?.title || ''}
             loading="lazy"
             referrerpolicy="no-referrer"
             style={photo ? { aspectRatio: `${photo.w} / ${photo.h}` } : credit?.w && credit.h ? { aspectRatio: `${credit.w} / ${credit.h}` } : undefined}
           />
         )}
       </a>
-      {credit?.credit && <figcaption class="shared-credit">{credit.credit}</figcaption>}
+      {(m.caption || credit?.credit) && (
+        <figcaption>
+          {m.caption && <span class="media-caption">{m.caption}</span>}
+          {credit?.credit && <span class="shared-credit">{credit.credit}</span>}
+        </figcaption>
+      )}
     </figure>
   );
 }

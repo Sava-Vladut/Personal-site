@@ -30,12 +30,15 @@ import { Sheet } from '../components/Sheet';
 import { LinkSheet } from '../components/LinkSheet';
 import { NoteBody, pastesPictures, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
-import { dropLayout, MediaBlock, MediaTools, sideAt, type Side } from '../components/NoteMedia';
+import { dropLayout, MediaBlock, MediaTools, PictureTextSheet, sideAt, type Side } from '../components/NoteMedia';
+import { FindBar } from '../components/FindBar';
+import { NavPane } from '../components/NavPane';
+import { useWide } from '../components/ribbon/Ribbon';
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
 import { SpotifySheet } from '../components/SpotifySheet';
 import { NoteStatus, type SaveState } from '../components/NoteStatus';
-import { applyDocView, useDocView } from '../lib/docView';
+import { applyDocView, setDocView, useDocView } from '../lib/docView';
 import '../styles/notes.css';
 import '../styles/ribbon.css';
 import '../styles/document.css';
@@ -208,6 +211,15 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const stash = useRef<{ photos: Entry['photos']; images: Entry['images'] }>({ photos: [], images: [] });
   const [slots, setSlots] = useState<MediaSlot[]>([]);
   const [linkTo, setLinkTo] = useState<{ text: string; href: string | null }>({ text: '', href: null });
+  // the find bar (Ctrl+F, Ctrl+H, Home › Editing): with its Replace row or not; `n` counts the times it was asked for
+  const [finding, setFinding] = useState<{ replace: boolean; n: number } | null>(null);
+  const findingNow = useRef(finding);
+  findingNow.current = finding;
+  // the Navigation pane on a phone (a sheet; on a computer it's a pane kept open or not in lib/docView.ts)
+  const [navSheet, setNavSheet] = useState(false);
+  const wide = useWide();
+  // the selected picture's Alt Text or Caption being written
+  const [picText, setPicText] = useState<{ key: string; kind: 'alt' | 'caption' } | null>(null);
 
   // Once a new note is saved, point the URL at it so a reload reopens it. Never rewrite a sheet's history entry.
   const syncUrl = () => {
@@ -467,6 +479,22 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     };
   }, [sel]);
 
+  // Ctrl+F finds in the note while it's being written in or the find bar is open (elsewhere it's the browser's own find);
+  // Ctrl+H is Replace anywhere on the note's page, as in Word. In the text itself, the editor takes them first.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.defaultPrevented || document.documentElement.classList.contains('sheet-open')) return;
+      const k = e.code === 'KeyF' || e.key.toLowerCase() === 'f' ? 'f' : e.code === 'KeyH' || e.key.toLowerCase() === 'h' ? 'h' : '';
+      if (!k) return;
+      const inNote = !!(document.activeElement as Element | null)?.closest?.('.note-editor, .find-bar');
+      if (k === 'f' && !inNote && !findingNow.current) return;
+      e.preventDefault();
+      openFind(k === 'f' ? 'find' : 'replace');
+    };
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, []);
+
   // the notes changed (a save from here, or sync): a newer copy of this one is taken up when nothing here waits
   useEffect(catchUp, [allEntries]);
 
@@ -648,7 +676,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (!bodyEl || !n || !m) return;
     const targets = n.media.dropTargets();
     if (!targets.length) return;
-    const r = el.getBoundingClientRect();
+    // (the picture's own box, not its caption under it)
+    const r = (el.querySelector('.media-pic') ?? el).getBoundingClientRect();
     const ratio = r.width / Math.max(1, r.height);
 
     // the copy under the finger, shrunk about the point that was grabbed
@@ -831,6 +860,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
   /** Reading view and writing, back and forth (the More menu, the status bar). */
   const toggleReading = () => (reading ? write() : setReading(true));
+  /** Find (Ctrl+F) or Replace (Ctrl+H): the find bar, its field focused; Replace's row stays once it's open. */
+  const openFind = (mode: 'find' | 'replace') =>
+    setFinding((f) => ({ replace: mode === 'replace' || !!f?.replace, n: (f?.n ?? 0) + 1 }));
   /** Print / Save as PDF: the browser's print dialog, which prints the note alone (document.css), once a sheet has gone. */
   const printNote = () => void setTimeout(() => print());
   /** A tap on the words of the reading view starts writing there; links, tags, ticks and selecting text don't. */
@@ -1023,8 +1055,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const visTop = vv?.offsetTop ?? 0, visH = vv?.height ?? innerHeight;
     const top = Math.max(visTop, wide ? wide.getBoundingClientRect().bottom : 0, shown(head) ? head!.getBoundingClientRect().bottom : 0);
     const bars = [...document.querySelectorAll('.ribbon-root .format-bar:not(.is-tucked):not(.is-wide), .note-status')].filter(shown);
+    // the find bar: docked at the foot on a phone, floating under the ribbon on a computer
+    const find = document.querySelector('.find-bar');
+    const fr = find?.getBoundingClientRect();
+    if (fr && fr.top > visTop + visH / 2) bars.push(find!);
+    const findBottom = fr && fr.top <= visTop + visH / 2 ? fr.bottom : 0;
     const barTop = Math.min(visTop + visH, ...bars.map((b) => b.getBoundingClientRect().top));
-    const m = { top: Math.max(0, top) + 24, bottom: Math.max(0, visH - barTop) + 24 };
+    const m = { top: Math.max(0, top, findBottom) + 24, bottom: Math.max(0, visH - barTop) + 24 };
     marginsAt.current = { at: now, m };
     return m;
   };
@@ -1099,6 +1136,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             suggestKey={mentionKey}
             onLink={openLink}
             onSave={saveNow}
+            onFind={openFind}
             onMedia={setSlots}
             knows={knows}
             margins={margins}
@@ -1201,6 +1239,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                 n?.media.writeAfter(selKey);
               }}
               onRemove={() => removePicture(selected)}
+              onText={(kind) => setPicText({ key: selKey, kind })}
               onUngroup={() => {
                 let first = '';
                 withBody(selKey, (b, i) => {
@@ -1234,11 +1273,33 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           mentionBook: () => setOpen('book'),
           insertRef: (kind) => setOpen(kind),
           print: printNote,
+          find: openFind,
+          navigation: () => setNavSheet(true),
         }}
+        find={finding && note && (
+          <FindBar
+            note={note}
+            replace={finding.replace}
+            reading={reading}
+            focus={finding.n}
+            onReplace={(on) => setFinding((f) => f && { ...f, replace: on })}
+            onClose={() => setFinding(null)}
+          />
+        )}
       />
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
       {!isCheckin && <ShareSheet open={open === 'share'} onClose={close} entry={draft} onChange={(share) => update({ share })} />}
+      <NavPane note={note} wide={wide} open={wide ? !!docView?.nav : navSheet} onClose={() => (wide ? setDocView({ nav: false }) : setNavSheet(false))} />
+      <PictureTextSheet
+        kind={picText?.kind ?? null}
+        m={picText ? slots.find((x) => mediaKey(x.media) === picText.key)?.media ?? null : null}
+        onClose={() => setPicText(null)}
+        onDone={(kind, text) => {
+          if (picText) noteRef.current?.media.meta(picText.key, { [kind]: text });
+          setPicText(null);
+        }}
+      />
       <Sheet open={open === 'more'} onClose={close} title={t('More')}>
         <div class="card list menu-list">
           <button class="list-row action" onClick={() => { close(); toggleReading(); }}>
@@ -1251,6 +1312,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           )}
           <button class="list-row action" onClick={() => setOpen('icon')}>
             <span class="row gap-s"><Icon name="mood-plus" size={18} /> {draft.icon ? t('Change icon') : t('Add icon')}</span>
+          </button>
+          <button class="list-row action" onClick={() => { close(); openFind('find'); }}>
+            <span class="row gap-s"><Icon name="search" size={18} /> {t('Find in the note')}</span>
+          </button>
+          <button class="list-row action" onClick={() => { close(); if (wide) setDocView({ nav: true }); else setNavSheet(true); }}>
+            <span class="row gap-s"><Icon name="layout-sidebar" size={18} /> {t('Navigation pane')}</span>
           </button>
           <button class="list-row action" onClick={() => { close(); printNote(); }}>
             <span class="row gap-s"><Icon name="printer" size={18} /> {t('Print / Save as PDF')}</span>

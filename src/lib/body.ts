@@ -1,6 +1,9 @@
 // A note's text can hold its pictures inline: a line of its own that reads [[photo:<id>]] or [[image:<url>]].
 // A picture made smaller carries its width (in % of the column) and side: [[photo:<id> 50 left]].
 // Pictures dropped on each other make an album, one line listing them: [[album:photo:<id> image:<url> 50 left]].
+// A caption and alt text go last, each after a | with its name, caption first: [[photo:<id> 50 left|caption=Our trip|alt=A
+// boat at dusk]]. Their words never hold [, ], | or a line break (written %5B, %5D, %7C; a % before one of those codes is
+// %25), nor start or end with a space; a line that doesn't keep to that isn't a picture (it stays words).
 // Split, the body is text, picture, text, picture, …, text — always one more text than pictures.
 import type { Entry, WebImage } from './store';
 
@@ -8,14 +11,38 @@ export interface Layout {
   size?: number;              // % of the column's width, 100 when missing
   align?: 'left' | 'right';   // centred when missing; only matters below 100%
 }
+/** What's said about a picture or album: words shown under it, and words for those who can't see it. */
+export interface Meta {
+  caption?: string;
+  alt?: string;
+}
 /** One picture: a photo from the device, or an image from the web. */
 export type Item = { kind: 'photo'; id: string } | { kind: 'image'; url: string };
-export type Media = (Item | { kind: 'album'; items: Item[] }) & Layout;
+export type Media = (Item | { kind: 'album'; items: Item[] }) & Layout & Meta;
 export interface Body { texts: string[]; media: Media[] }
 
 export const MIN_SIZE = 20;
-const MARKER = /^\[\[(photo|image):([^\]\s]+)((?: \w+)*)\]\]$/;
-const ALBUM = /^\[\[album:((?:photo|image):[^\]\s]+(?: (?:photo|image):[^\]\s]+)*)((?: \w+)*)\]\]$/;
+/** A caption's or alt text's words as written in the line: no [ ] | or line break, a % only escaping one of those. */
+const VALUE = String.raw`(?!\s)(?:[^\[\]|\n%]|%(?!25)|%25(?=25|5B|5D|7C))+(?<!\s)`;
+const META = String.raw`(?:\|caption=(${VALUE}))?(?:\|alt=(${VALUE}))?`;
+// (a picture's address stops before a |caption= or |alt=; any other | is part of it, as before)
+const TOKEN = String.raw`(?:(?!\|(?:caption|alt)=)[^\]\s])+`;
+const MARKER = new RegExp(String.raw`^\[\[(photo|image):(${TOKEN})((?: \w+)*)${META}\]\]$`);
+const ALBUM = new RegExp(String.raw`^\[\[album:((?:photo|image):${TOKEN}(?: (?:photo|image):${TOKEN})*)((?: \w+)*)${META}\]\]$`);
+
+const CODES: Record<string, string> = { '%25': '%', '%5B': '[', '%5D': ']', '%7C': '|' };
+/** A caption's words from the line. */
+const decode = (v: string) => v.replace(/%(?:25|5B|5D|7C)/g, (c) => CODES[c]);
+/** A caption's words for the line (lib/body.ts's rules above): read back, they're the same. */
+const encode = (v: string) => v.replace(/%(?=25|5B|5D|7C)|[[\]|]/g, (c) => (c === '%' ? '%25' : c === '[' ? '%5B' : c === ']' ? '%5D' : '%7C'));
+/** Words typed for a caption or alt text, as they'll be kept: on one line, without spaces around. */
+export const tidyMeta = (v: string) => v.replace(/\s+/g, ' ').trim();
+
+function metaOf(caption: string | undefined, alt: string | undefined): Meta {
+  return { ...(caption && { caption: decode(caption) }), ...(alt && { alt: decode(alt) }) };
+}
+/** The caption and alt text of a picture or album, without anything else. */
+export const metaPart = (m: Meta): Meta => ({ ...(m.caption && { caption: m.caption }), ...(m.alt && { alt: m.alt }) });
 
 function layoutOf(opts: string): Layout {
   const out: Layout = {};
@@ -28,7 +55,7 @@ function layoutOf(opts: string): Layout {
 }
 
 /** The layout part of a picture or album, without anything else. */
-const layoutPart = (m: Layout): Layout => ({ ...(m.size !== undefined && { size: m.size }), ...(m.align && { align: m.align }) });
+export const layoutPart = (m: Layout): Layout => ({ ...(m.size !== undefined && { size: m.size }), ...(m.align && { align: m.align }) });
 
 export const itemKey = (it: Item) => (it.kind === 'photo' ? 'photo:' + it.id : 'image:' + it.url);
 const itemFrom = (token: string): Item => (token.startsWith('photo:') ? { kind: 'photo', id: token.slice(6) } : { kind: 'image', url: token.slice(6) });
@@ -36,12 +63,17 @@ const itemFrom = (token: string): Item => (token.startsWith('photo:') ? { kind: 
 export const itemOf = (m: Item & Layout): Item => (m.kind === 'photo' ? { kind: 'photo', id: m.id } : { kind: 'image', url: m.url });
 /** The pictures a picture or album holds. */
 export const itemsOf = (m: Media): Item[] => (m.kind === 'album' ? m.items : [itemOf(m)]);
-/** An album of `items` with `layout` — or just the picture, when there's only one. */
-export const albumOf = (items: Item[], layout: Layout): Media => (items.length === 1 ? { ...items[0], ...layoutPart(layout) } : { kind: 'album', items, ...layoutPart(layout) });
+/** An album of `items` with `layout` (and its caption and alt text) — or just the picture, when there's only one. */
+export const albumOf = (items: Item[], layout: Layout & Meta): Media =>
+  items.length === 1 ? { ...items[0], ...layoutPart(layout), ...metaPart(layout) } : { kind: 'album', items, ...layoutPart(layout), ...metaPart(layout) };
 
 /** The line a picture or album is written as in the note's text. */
-export const mediaMarker = (m: Media) =>
-  `[[${m.kind === 'album' ? 'album:' + m.items.map(itemKey).join(' ') : itemKey(m)}${m.size && m.size < 100 ? ` ${m.size}${m.align ? ' ' + m.align : ''}` : ''}]]`;
+export const mediaMarker = (m: Media) => {
+  // (one line, no spaces around: what a line read gives already, so it's written back as it was)
+  const caption = m.caption?.replace(/\n/g, ' ').trim(), alt = m.alt?.replace(/\n/g, ' ').trim();
+  return `[[${m.kind === 'album' ? 'album:' + m.items.map(itemKey).join(' ') : itemKey(m)}${m.size && m.size < 100 ? ` ${m.size}${m.align ? ' ' + m.align : ''}` : ''}`
+    + `${caption ? '|caption=' + encode(caption) : ''}${alt ? '|alt=' + encode(alt) : ''}]]`;
+};
 /** Names a picture or album while it's in the note. An album goes by its first picture. */
 export const mediaKey = (m: Media) => (m.kind === 'album' ? 'album:' + itemKey(m.items[0]) : itemKey(m));
 export const sameMedia = (a: Media, b: Media) => mediaKey(a) === mediaKey(b);
@@ -59,8 +91,8 @@ export function parseBody(text: string): Body {
     }
     texts.push(cur.join('\n'));
     cur = [];
-    if (m) media.push({ ...itemFrom(m[1] + ':' + m[2]), ...layoutOf(m[3]) });
-    else media.push({ kind: 'album', items: a![1].split(' ').map(itemFrom), ...layoutOf(a![2]) });
+    if (m) media.push({ ...itemFrom(m[1] + ':' + m[2]), ...layoutOf(m[3]), ...metaOf(m[4], m[5]) });
+    else media.push({ kind: 'album', items: a![1].split(' ').map(itemFrom), ...layoutOf(a![2]), ...metaOf(a![3], a![4]) });
   }
   texts.push(cur.join('\n'));
   return { texts, media };
@@ -80,6 +112,11 @@ export function dropImageLinks(text: string, images: WebImage[]) {
 
 /** The words only, for excerpts, search and counts. */
 export const plainText = (text: string) => parseBody(text).texts.filter((t) => t.trim()).join('\n\n');
+
+/** The pictures' captions and alt texts, for search. */
+export const pictureWords = (text: string) => (text.includes('|caption=') || text.includes('|alt=')
+  ? parseBody(text).media.flatMap((m) => [m.caption, m.alt]).filter(Boolean).join(' ')
+  : '');
 
 /**
  * Drops markers whose picture is gone (an album keeps the pictures that are left), keeps each picture in one place
@@ -237,7 +274,7 @@ export function takeOut(b: Body, i: number, it: Item): Body {
   const m = b.media[i];
   if (m.kind !== 'album' || !m.items.some((x) => itemKey(x) === itemKey(it))) return b;
   const rest = m.items.filter((x) => itemKey(x) !== itemKey(it));
-  if (!rest.length) return { texts: b.texts, media: b.media.map((x, j) => j === i ? { ...it, ...layoutPart(m) } : x) };
+  if (!rest.length) return { texts: b.texts, media: b.media.map((x, j) => j === i ? { ...it, ...layoutPart(m), ...metaPart(m) } : x) };
   return {
     texts: [...b.texts.slice(0, i + 1), '', ...b.texts.slice(i + 1)],
     media: [...b.media.slice(0, i), albumOf(rest, m), it, ...b.media.slice(i + 1)],

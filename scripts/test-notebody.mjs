@@ -69,7 +69,7 @@ function page(phone) {
   return window;
 }
 
-const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal', e: 'KeyE', l: 'KeyL', r: 'KeyR', j: 'KeyJ', f: 'KeyF' };
+const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal', e: 'KeyE', l: 'KeyL', r: 'KeyR', j: 'KeyJ', f: 'KeyF', h: 'KeyH' };
 
 /** Mounts the editor on `text`; returns its handle and what it reported. */
 function mount(text, opts = {}) {
@@ -86,6 +86,7 @@ function mount(text, opts = {}) {
     suggestKey: opts.suggestKey ?? (() => false),
     onLink: () => (seen.link = true),
     onSave: () => (seen.saved = (seen.saved ?? 0) + 1),
+    onFind: (mode) => (seen.find ??= []).push(mode),
     onMedia: (s) => (seen.slots = s),
     knows: () => true,
     margins: () => ({ top: 0, bottom: 0 }),
@@ -782,4 +783,90 @@ test('Ctrl+Alt+F puts a footnote in; numbers by first reference; a click goes fr
   assert.equal(view.dom.querySelectorAll('.fn-ref').length, 1);
   assert.equal(n.text(), 'x see[^4]');
   assert.ok(view.dom.querySelector('.fn-ref').classList.contains('is-missing'), 'no text for it yet');
+});
+
+/** A value from the page's window, as one of this realm's (to compare with deepEqual). */
+const plain = (x) => JSON.parse(JSON.stringify(x));
+
+test('Ctrl+F and Ctrl+H open the find bar from the text; F3 goes from match to match; Esc puts the caret on the match', async () => {
+  const { n, view, press, seen, window } = mount('One cat, two cats\n- a cat\n**Cat** nap');
+  n.focus('start');
+  assert.equal(press('Mod-f'), true);
+  assert.equal(press('Mod-h'), true);
+  assert.deepEqual(plain(seen.find), ['find', 'replace']);
+  assert.equal(press('Mod-Shift-h'), true, 'Ctrl+Shift+H is still the highlight');
+  assert.deepEqual(plain(seen.find), ['find', 'replace']);
+  // the bar asks: every match lit, the current one apart
+  assert.deepEqual(plain(n.find.set({ text: 'cat' })), { count: 4, current: 0 });
+  const lit = () => [...view.dom.querySelectorAll('.find-match')].map((el) => el.textContent + (el.classList.contains('is-current') ? '*' : ''));
+  assert.deepEqual(plain(lit()), ['cat*', 'cat', 'cat', 'Cat']);
+  assert.deepEqual(plain(n.find.set({ text: 'cat', wholeWord: true, caseSensitive: true })), { count: 2, current: 0 });
+  // F3 in the text: the next match, selected
+  assert.equal(press('F3'), true);
+  assert.equal(press('F3'), true);
+  assert.equal(view.state.doc.textBetween(view.state.selection.from, view.state.selection.to), 'cat');
+  assert.deepEqual(plain(lit()), ['cat', 'cat*']);
+  press('Shift-F3');
+  assert.deepEqual(plain(lit()), ['cat*', 'cat']);
+  // what Find has found is told as the note changes
+  const told = [];
+  const stop = n.watchFind((f) => told.push(f));
+  n.setText('cat cat cat');
+  await new Promise((r) => window.requestAnimationFrame(r));
+  assert.deepEqual(told.at(-1).count, 3);
+  stop();
+  // Replace All: one undo
+  assert.equal(n.find.replaceAll('dog'), 3);
+  assert.equal(n.text(), 'dog dog dog');
+  press('Mod-z');
+  assert.equal(n.text(), 'cat cat cat');
+  // Replace: selects the match first, then replaces it and goes on
+  n.find.set({ text: 'cat' });
+  n.find.replace('cow');
+  assert.equal(n.text(), 'cat cat cat');
+  n.find.replace('cow');
+  assert.equal(n.text(), 'cow cat cat');
+  // Esc in the bar: nothing lit, the current match selected in the text
+  n.find.close();
+  assert.deepEqual(plain(lit()), []);
+  assert.equal(view.state.doc.textBetween(view.state.selection.from, view.state.selection.to), 'cat');
+  assert.equal(view.state.selection.from, 5);
+  assert.equal(press('F3'), false, 'closed: F3 is nobody\'s');
+  // reading: Find works, Replace doesn't
+  n.setEditable(false);
+  assert.deepEqual(plain(n.find.set({ text: 'cat' })), { count: 2, current: 0 });
+  assert.equal(n.find.replaceAll('x'), 0);
+  assert.equal(n.text(), 'cow cat cat');
+  // the words selected (on one line) are what the bar starts with
+  n.find.close();
+  n.setEditable(true);
+  const Sel = view.state.selection.constructor;
+  view.dispatch(view.state.tr.setSelection(Sel.create(view.state.doc, 1, 4)));
+  assert.equal(n.find.selected(), 'cow');
+});
+
+test('the Navigation pane’s outline: headings as they change, the one the caret is under; a click goes there', async () => {
+  const { n, view, window } = mount('intro\n# One\ntext\n## Two\nmore');
+  const frame = () => new Promise((r) => window.requestAnimationFrame(r));
+  const seen = [];
+  const stop = n.outline.watch((o) => seen.push(o));
+  assert.deepEqual(plain(seen[0].headings.map((h) => [h.level, h.text])), [[1, 'One'], [2, 'Two']]);
+  n.outline.go(seen[0].headings[1].pos);
+  await frame();
+  assert.equal(seen.at(-1).current, 1);
+  assert.equal(view.state.selection.$from.parent.textContent, 'Two');
+  assert.equal(view.state.selection.$from.parentOffset, 0, 'the caret at its start');
+  n.setText('intro\n# One\n### Three');
+  await frame();
+  assert.deepEqual(plain(seen.at(-1).headings.map((h) => h.text)), ['One', 'Three']);
+  stop();
+});
+
+test('a picture’s caption and alt text are kept in its line', () => {
+  const { n } = mount('a\n[[photo:p1 50 left]]\nb');
+  n.media.meta('photo:p1', { caption: 'Our trip', alt: 'A boat' });
+  assert.equal(n.text(), 'a\n[[photo:p1 50 left|caption=Our trip|alt=A boat]]\nb');
+  assert.deepEqual(plain(n.media.list()[0]), { kind: 'photo', id: 'p1', size: 50, align: 'left', caption: 'Our trip', alt: 'A boat' });
+  n.media.meta('photo:p1', { caption: '' });
+  assert.equal(n.text(), 'a\n[[photo:p1 50 left|alt=A boat]]\nb');
 });

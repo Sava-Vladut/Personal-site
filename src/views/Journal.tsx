@@ -7,7 +7,7 @@ import { keepOnLeave, kept, navigate } from '../lib/router';
 import { useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
 import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
-import { bodyOf, itemsOf, plainText } from '../lib/body';
+import { bodyOf, itemsOf, pictureWords, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Photo } from '../lib/photos';
 import { previewOf, stripMarkdown } from '../lib/markdown';
@@ -50,7 +50,7 @@ const searchText = new WeakMap<Entry, string>();
 function haystack(e: Entry) {
   let s = searchText.get(e);
   if (s === undefined) {
-    s = `${e.title} ${dropTags(plainText(e.text)).replace(TAG_ID, '$1')} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
+    s = `${e.title} ${dropTags(plainText(e.text)).replace(TAG_ID, '$1')} ${pictureWords(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
     searchText.set(e, s);
   }
   return s;

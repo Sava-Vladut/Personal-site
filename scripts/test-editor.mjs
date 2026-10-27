@@ -1027,3 +1027,68 @@ test('title: Return goes on to the words, but not the Return that ends an IME co
   key({});
   assert.equal(note.focusCalls, 1);
 });
+
+test('find: Ctrl+H opens Find and Replace anywhere on the note’s page; Ctrl+F only from the note (else it’s the browser’s)', () => {
+  const { h, note, props } = openNote();
+  h.document.documentElement = { classList: { contains: () => false } };
+  const key = (k, extra = {}) => {
+    const e = { key: k, code: 'Key' + k.toUpperCase(), ctrlKey: true, metaKey: false, altKey: false, shiftKey: false, defaultPrevented: false, ...extra };
+    e.preventDefault = () => void (e.defaultPrevented = true);
+    for (const f of h.documentListeners.get('keydown') ?? []) f(e);
+    return e;
+  };
+  const bar = () => find(h.render('Editor', props), (n) => n.type.name === 'FormatBar').props.find;
+  // from the title: Ctrl+F is left to the browser
+  h.document.activeElement = { closest: () => null };
+  assert.equal(key('f').defaultPrevented, false);
+  assert.ok(!bar());
+  // Ctrl+H: Replace, wherever the focus is on the page
+  assert.equal(key('h').defaultPrevented, true);
+  let fb = bar();
+  assert.equal(fb.type.name, 'FindBar');
+  assert.equal(fb.props.replace, true);
+  assert.equal(fb.props.note, note);
+  // while it's open, Ctrl+F is the note's from anywhere: its field again (the count tells it to take the focus)
+  const n = fb.props.focus;
+  assert.equal(key('f').defaultPrevented, true);
+  fb = bar();
+  assert.equal(fb.props.focus, n + 1);
+  assert.equal(fb.props.replace, true, 'the Replace row stays open');
+  // closed (Esc): gone, and Ctrl+F from outside the note is the browser's again
+  fb.props.onClose();
+  assert.ok(!bar());
+  assert.equal(key('f').defaultPrevented, false);
+  // from the note's text (the editor took it first), or Ctrl+Shift+F: the page leaves it
+  assert.equal(key('f', { defaultPrevented: true, preventDefault() {} }).defaultPrevented, true);
+  assert.equal(key('f', { shiftKey: true }).defaultPrevented, false);
+  // in the text, the editor's Ctrl+F opens Find (not Replace)
+  find(h.render('Editor', props), (n) => n.type.name === 'NoteBody').props.onFind('find');
+  assert.equal(bar().props.replace, false);
+  // the ribbon's Find and Replace
+  find(h.render('Editor', props), (n) => n.type.name === 'FormatBar').props.ribbon.find('replace');
+  assert.equal(bar().props.replace, true);
+});
+
+test('pictures: Alt Text and Caption from the Picture tab are written into the picture’s line', () => {
+  let h;
+  const note = mockNote('', () => h);
+  const marker = '\n[[photo:pphoto123]]\n';
+  h = harness(editorCode, { entry: { photos: [photo], text: marker }, modules: tagModules });
+  note.value = marker;
+  const props = { id: 'note-1', query: new URLSearchParams() };
+  withNote(h, note, props);
+  const metas = [];
+  note.media = { meta: (key, m) => metas.push([key, m]), list: () => [], layout() {} };
+  note.props.onMedia([{ dom: {}, pos: 1, media: { kind: 'photo', id: photo.id } }]);
+  let tree = h.render('Editor', props);
+  find(tree, (n) => n.type.name === 'MediaBlock').props.onSelect();
+  tree = h.render('Editor', props);
+  const tools = find(tree, (n) => n.type.name === 'FormatBar').props.context.content;
+  tools.props.onText('caption');
+  tree = h.render('Editor', props);
+  const sheet = find(tree, (n) => n.type.name === 'PictureTextSheet');
+  assert.equal(sheet.props.kind, 'caption');
+  sheet.props.onDone('caption', 'Our trip');
+  assert.equal(JSON.stringify(metas), JSON.stringify([['photo:pphoto123', { caption: 'Our trip' }]]));
+  assert.equal(find(h.render('Editor', props), (n) => n.type.name === 'PictureTextSheet').props.kind, null, 'the sheet closes');
+});

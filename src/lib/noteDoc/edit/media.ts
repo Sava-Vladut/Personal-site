@@ -11,8 +11,8 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { EditorState, Selection, type Command, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import {
-  albumOf, canStep as bodyCanStep, itemKey, itemsOf, mediaKey, parseBody, serializeBody, setLayout, stepMedia as bodyStep,
-  type Item, type Layout, type Media,
+  albumOf, canStep as bodyCanStep, itemKey, itemsOf, layoutPart, mediaKey, parseBody, serializeBody, setLayout, stepMedia as bodyStep,
+  tidyMeta, type Item, type Layout, type Media, type Meta,
 } from '../../body';
 import { replaceDoc } from '../diff';
 import { normalizeTr } from '../normalize';
@@ -170,6 +170,25 @@ export const setMediaLayout = (pos: number, layout: Layout): Command => (state, 
   return true;
 };
 
+/**
+ * The caption or alt text of the picture at `pos` (Picture › Caption, Alt text): the words given, tidied onto one line;
+ * empty words take it off.
+ */
+export const setMediaMeta = (pos: number, meta: Meta): Command => (state, dispatch) => {
+  const node = mediaAt(state.doc, pos);
+  if (!node) return false;
+  const media: Media = { ...node.attrs.media };
+  for (const k of ['caption', 'alt'] as const) {
+    if (!(k in meta)) continue;
+    const v = tidyMeta(meta[k] ?? '');
+    if (v) media[k] = v;
+    else delete media[k];
+  }
+  if (JSON.stringify(media) === JSON.stringify(node.attrs.media)) return false;
+  dispatch?.(state.tr.setNodeMarkup(pos, null, { media }));
+  return true;
+};
+
 /** Drops the picture (or album) at `from` onto the one at `onto`: one album, in `onto`'s place and layout. */
 export const mergeMedia = (from: number, onto: number): Command => (state, dispatch) => {
   const src = mediaAt(state.doc, from), dst = mediaAt(state.doc, onto);
@@ -189,7 +208,7 @@ export const ungroupMedia = (pos: number): Command => (state, dispatch) => {
   if (!node || m?.kind !== 'album') return false;
   if (dispatch) {
     const tr = state.tr;
-    tr.replaceWith(pos, pos + node.nodeSize, mediaNodes(tr, m.items.map((it) => albumOf([it], m))));
+    tr.replaceWith(pos, pos + node.nodeSize, mediaNodes(tr, m.items.map((it) => albumOf([it], layoutPart(m)))));
     dispatch(tidy(tr));
   }
   return true;

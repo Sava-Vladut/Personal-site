@@ -3,6 +3,7 @@ import { itemKey, itemsOf, mediaKey, MIN_SIZE, type Item, type Layout, type Medi
 import { imageSrc } from '../lib/images';
 import type { Entry } from '../lib/store';
 import { Icon } from './icons';
+import { Sheet } from './Sheet';
 import { PhotoImg } from './Photo';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
@@ -26,14 +27,14 @@ const TILES = 5;
 const ALBUM_RATIO = [0, 0, 3 / 2, 4 / 3, 1, 1];
 const ratioOf = (m: Media, draft: Entry) => (m.kind === 'album' ? ALBUM_RATIO[Math.min(TILES, m.items.length)] : itemRatio(m, draft));
 
-/** One picture, filling its box. */
-function Pic({ it, draft, tile }: { it: Item; draft: Entry; tile?: boolean }) {
+/** One picture, filling its box. Its alt text is the one written for it (`alt`), else what it is. */
+function Pic({ it, draft, tile, alt }: { it: Item; draft: Entry; tile?: boolean; alt?: string }) {
   const photo = it.kind === 'photo' ? draft.photos.find((p) => p.id === it.id) : undefined;
   const img = it.kind === 'image' ? draft.images.find((i) => i.url === it.url) : undefined;
-  if (photo) return <PhotoImg photo={photo} alt={t('Photo')} fit={!tile} draggable={false} />;
+  if (photo) return <PhotoImg photo={photo} alt={alt || t('Photo')} fit={!tile} draggable={false} />;
   if (!img) return null;
   return (
-    <img src={imageSrc(img, 'thumb')} alt={img.title || t('Image')} loading="lazy" draggable={false} referrerpolicy="no-referrer"
+    <img src={imageSrc(img, 'thumb')} alt={alt || img.title || t('Image')} loading="lazy" draggable={false} referrerpolicy="no-referrer"
       style={!tile && img.w && img.h ? { aspectRatio: `${img.w} / ${img.h}` } : undefined} />
   );
 }
@@ -187,7 +188,8 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
     e.stopPropagation();
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
-    const r = el.getBoundingClientRect();
+    // (the picture's own box: a caption under it isn't pulled)
+    const r = (el.querySelector('.media-pic') ?? el).getBoundingClientRect();
     const len = Math.hypot(r.width, r.height);
     const factor = align ? 1 : 2;
     const x0 = e.clientX, y0 = e.clientY;
@@ -223,39 +225,43 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
       style={{ width: `${size}%`, maxWidth: ratio ? `calc(70svh * ${ratio.toFixed(4)})` : undefined }}
       onContextMenu={(e) => editing && e.preventDefault()}
     >
-      <button
-        class="media-pic"
-        onPointerDown={down}
-        onClick={(e) => {
-          if (acted.current) return void (acted.current = false);
-          // in an album, the tile that was tapped opens
-          const tile = (e.target as Element).closest<HTMLElement>('.album-tile');
-          if (selected || !editing) onOpen(tile ?? e.currentTarget, tile ? +tile.dataset.i! : 0);
-          else onSelect();
-        }}
-        aria-label={selected || !editing ? t('View {what}', { what: label.toLowerCase() }) : t('Select {what}', { what: label.toLowerCase() })}
-        aria-pressed={editing ? selected : undefined}
-      >
-        {album ? (
-          <div class={`album n${Math.min(TILES, items.length)}`}>
-            {items.slice(0, TILES).map((it, k) => (
-              <span key={itemKey(it)} class="album-tile" data-i={k}>
-                <Pic it={it} draft={draft} tile />
-                {k === TILES - 1 && items.length > TILES && <span class="album-more">+{items.length - TILES + 1}</span>}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <Pic it={items[0]} draft={draft} />
-        )}
-      </button>
-      {merging && <span class="media-merge glass">{album ? t('Add to album') : t('Make an album')}</span>}
-      {selected && !dragging &&
-        corners
-          // a picture on a side is pulled from its free side, the one the text is on
-          .filter(([, sx]) => !align || (align === 'left' ? sx > 0 : sx < 0))
-          .map(([c, sx, sy]) => <span key={c} class={`media-corner ${c}`} onPointerDown={corner(sx, sy)} aria-hidden="true" />)}
-      {live !== null && <span class="media-badge glass">{live === 100 ? t('Full width') : live + '%'}</span>}
+      {/* the picture and its handles; its caption, when it has one, under it */}
+      <div class="media-frame">
+        <button
+          class="media-pic"
+          onPointerDown={down}
+          onClick={(e) => {
+            if (acted.current) return void (acted.current = false);
+            // in an album, the tile that was tapped opens
+            const tile = (e.target as Element).closest<HTMLElement>('.album-tile');
+            if (selected || !editing) onOpen(tile ?? e.currentTarget, tile ? +tile.dataset.i! : 0);
+            else onSelect();
+          }}
+          aria-label={selected || !editing ? t('View {what}', { what: (m.alt || label.toLowerCase()) }) : t('Select {what}', { what: (m.alt || label.toLowerCase()) })}
+          aria-pressed={editing ? selected : undefined}
+        >
+          {album ? (
+            <div class={`album n${Math.min(TILES, items.length)}`}>
+              {items.slice(0, TILES).map((it, k) => (
+                <span key={itemKey(it)} class="album-tile" data-i={k}>
+                  <Pic it={it} draft={draft} tile alt={m.alt} />
+                  {k === TILES - 1 && items.length > TILES && <span class="album-more">+{items.length - TILES + 1}</span>}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <Pic it={items[0]} draft={draft} alt={m.alt} />
+          )}
+        </button>
+        {merging && <span class="media-merge glass">{album ? t('Add to album') : t('Make an album')}</span>}
+        {selected && !dragging &&
+          corners
+            // a picture on a side is pulled from its free side, the one the text is on
+            .filter(([, sx]) => !align || (align === 'left' ? sx > 0 : sx < 0))
+            .map(([c, sx, sy]) => <span key={c} class={`media-corner ${c}`} onPointerDown={corner(sx, sy)} aria-hidden="true" />)}
+        {live !== null && <span class="media-badge glass">{live === 100 ? t('Full width') : live + '%'}</span>}
+      </div>
+      {m.caption && <p class="media-caption">{m.caption}</p>}
     </div>
   );
 }
@@ -265,8 +271,10 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
  * caption, shown under it on a computer as Word does: how the text wraps around it, its size, moving it, and the
  * picture itself (view it, ungroup an album, remove it).
  */
-export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup, onWrite }: {
+export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup, onWrite, onText }: {
   m: Media;
+  /** Alt Text or Caption: the sheet to write it in */
+  onText: (kind: 'alt' | 'caption') => void;
   canUp: boolean;
   canDown: boolean;
   onUngroup: () => void;
@@ -328,6 +336,14 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
         />
         <span class="media-size-value" aria-hidden="true">{shown === 100 ? t('Full') : shown + '%'}</span>
       </label>
+      <div class="format-group" role="group" aria-label={t('Describe')} data-caption={t('Describe')}>
+        <button class="format-btn" onClick={() => onText('alt')} aria-pressed={!!m.alt} aria-label={t('Alt text')} title={m.alt ? `${t('Alt text')}: ${m.alt}` : t('Alt text')}>
+          <Icon name="accessible" size={18} />
+        </button>
+        <button class="format-btn" onClick={() => onText('caption')} aria-pressed={!!m.caption} aria-label={t('Caption')} title={m.caption ? `${t('Caption')}: ${m.caption}` : t('Caption')}>
+          <Icon name="text-caption" size={18} />
+        </button>
+      </div>
       <div class="format-group" role="group" aria-label={t('Arrange')} data-caption={t('Arrange')}>
         <button class="format-btn" onClick={() => onStep(-1)} disabled={!canUp} aria-label={t('Move up')} title={t('Move up')}>
           <Icon name="arrow-up" size={18} />
@@ -350,6 +366,53 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
         </button>
       </div>
     </>
+  );
+}
+
+/**
+ * Word's Alt Text and Insert Caption for the selected picture: a sheet to write it in. The words are kept on one line;
+ * none (or Remove) takes it off.
+ */
+export function PictureTextSheet({ kind, m, onClose, onDone }: {
+  kind: 'alt' | 'caption' | null;
+  m: Media | null;
+  onClose: () => void;
+  onDone: (kind: 'alt' | 'caption', text: string) => void;
+}) {
+  const [text, setText] = useState('');
+  const was = (kind && m?.[kind]) || '';
+  useEffect(() => {
+    if (kind) setText(was);
+  }, [kind]);
+  const save = () => kind && onDone(kind, text);
+  return (
+    <Sheet
+      open={!!kind}
+      onClose={onClose}
+      title={kind === 'alt' ? t('Alt text') : t('Caption')}
+      footer={
+        <div class="row gap-s">
+          {was && <button class="btn btn-quiet" onClick={() => kind && onDone(kind, '')}><Icon name="trash" size={18} /> {t('Remove')}</button>}
+          <button class="btn btn-primary grow" onClick={save} disabled={!text.trim() && !was}>{t('Done')}</button>
+        </div>
+      }
+    >
+      <div class="link-form">
+        <label class="field-label" for="picture-text">{kind === 'alt' ? t('Describe the picture for someone who can’t see it') : t('Words shown under the picture')}</label>
+        <textarea
+          id="picture-text"
+          class="input"
+          rows={kind === 'alt' ? 3 : 2}
+          maxLength={500}
+          value={text}
+          placeholder={kind === 'alt' ? t('A boat on a calm lake at sunset') : t('Our first morning by the lake')}
+          onInput={(e) => setText(e.currentTarget.value)}
+          // Enter is Done: the words stay on one line
+          onKeyDown={(e) => e.key === 'Enter' && !e.isComposing && (e.preventDefault(), save())}
+          autoFocus
+        />
+      </div>
+    </Sheet>
   );
 }
 

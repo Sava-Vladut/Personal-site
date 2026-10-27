@@ -13,6 +13,7 @@
 //   Mod-s → the note saved now (KeyOptions.save) · Mod-p → the browser's print, the note alone (styles/document.css)
 //   Mod-l, Mod-e, Mod-r, Mod-j → noteCommands.align('left' | 'center' | 'right' | 'justify', true) · Mod-Shift-e → mark('code')
 //   Mod-Enter → noteCommands.insert('pagebreak') (in code, a new line) · Mod-Alt-f → noteCommands.footnote
+//   Mod-f / Mod-h → the find bar (KeyOptions.find 'find' | 'replace') · F3 / Shift-F3 while it's open → findStep(1 / -1)
 // Typing: BLOCK_RULES as input rules, then AUTOCORRECT (after the inline Markdown and autolink rules); handleTextInput →
 // tidyAfterTag(text); a mouse let go of in the text (or Shift let go of) while the Format Painter is on → paint; the suggest plugin reads typedAt(state) and picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
 // After each change (appendTransaction, beside normalizeTr): renumberChanged(trs, state) counts the lists it touched again.
@@ -39,9 +40,11 @@ export {
   toggleMarkSmart, setMarkSmart, colorAt, copyMarks, paintMarks, clearFormatting, linkAt, setLink, removeLink, normalizeHref, tidyAfterTag,
   CLEARED, type MarkName, type LinkTarget,
 } from './marks';
+export { findPlugin, findOf, findMatches, findPattern, setFind, clearFind, findStep, replaceCurrent, replaceAll, type FindQuery, type FindState, type Match } from './find';
+export { headingsOf, headingAt, type Heading } from './outline';
 export { painterKey, painterPlugin, painterOf, togglePainter, stopPainter, paint, type Painter } from './painter';
 export {
-  mediaList, findMedia, insertMediaAt, removeMedia, removeItem, setMediaLayout, mergeMedia, ungroupMedia, takeOutItem,
+  mediaList, findMedia, insertMediaAt, removeMedia, removeItem, setMediaLayout, setMediaMeta, mergeMedia, ungroupMedia, takeOutItem,
   dropPlaces, dropTargets, moveMedia, canStep, stepMedia, mediaPosAfter, type DropTarget,
 } from './media';
 export { typedAt, replaceTyped, insertAtom, insertTrigger, type Typed } from './mention';

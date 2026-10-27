@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.142.0',
+    date: '2026-10-27',
+    changes: [
+      'Find in a note, as in Word: Ctrl+F (or Home › Find) opens a small find bar; every match is highlighted, the current one stronger, with “3 of 12”',
+      'Enter or F3 goes to the next match, Shift+Enter or Shift+F3 to the previous; Match case and Whole words only; Esc closes it and leaves the match selected',
+      'Replace and Replace All: Ctrl+H (or Home › Replace); Replace All is one step to undo and says how many it replaced. Reading, you can find but not replace',
+      'Ctrl+F still opens the browser’s own find outside the note’s text',
+      'Navigation pane (View › Navigation pane): the note’s headings in a list at the left, indented by level, the one you’re in highlighted; click one to go there. On a phone it opens as a sheet',
+      'Pictures can have a caption, shown under them (in the note, the reading view, public notes and when printed), and alt text for screen readers: Picture › Alt text and Caption',
+      'Captions and alt text are searchable in the journal and included in exports; link previews leave them out',
+      'Notes keep them in the picture’s line, e.g. [[photo:… 50 left|caption=Our trip|alt=A boat at dusk]]; pictures from before are unchanged',
+    ],
+  },
+  {
     version: '1.141.0',
     date: '2026-10-27',
     changes: [

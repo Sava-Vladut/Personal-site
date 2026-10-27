@@ -359,3 +359,92 @@
 @media (prefers-reduced-motion: reduce) {
   .format-bar, .format-bar *, .focus-exit, .rb-menu { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Find and Replace (components/FindBar.tsx) ----------
+   On a computer a small card under the ribbon at the top right, as Word's; on a phone a bar docked above the keyboard
+   in the ribbon's place, flat as the ribbon's own. */
+
+.find-bar {
+  position: fixed; z-index: 34; display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  font: var(--w-regular) var(--text-m)/1.2 var(--sans); color: var(--ink); background: var(--surface);
+  animation: rise-in var(--dur-2) var(--ease-emph);
+}
+.find-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.find-input {
+  flex: 1; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-xs);
+  background: var(--bg); color: var(--ink); font: inherit; font-size: var(--text-base);
+}
+.find-input:focus { outline: none; border-color: var(--word); box-shadow: 0 0 0 2px var(--word-wash); }
+.find-input::-webkit-search-cancel-button { display: none; }
+.find-count { flex: none; min-width: 64px; padding: 0 6px; font-size: var(--text-s); font-variant-numeric: tabular-nums; color: var(--ink-3); text-align: center; white-space: nowrap; }
+.find-count.is-none { color: var(--danger); }
+.find-bar .format-btn { width: 32px; height: 32px; border-radius: var(--r-xs); }
+.find-bar .format-btn[aria-pressed='true'] { background: var(--word-wash); color: var(--word); }
+.find-bar .format-btn:disabled { opacity: 0.32; pointer-events: none; }
+.find-bar :is(button, input):focus-visible { outline: 2px solid var(--word); outline-offset: -2px; }
+.find-more svg { transition: rotate var(--dur-2) var(--ease-emph); }
+.find-more[aria-expanded='true'] svg { rotate: 90deg; }
+.find-btn {
+  flex: none; height: 32px; padding: 0 12px; border-radius: var(--r-xs); border: 1px solid var(--line-2);
+  font: var(--w-medium) var(--text-m)/1 var(--sans); color: var(--ink); background: var(--surface);
+  transition: background-color var(--dur-1), opacity var(--dur-1);
+}
+@media (hover: hover) { .find-btn:hover:not(:disabled) { background: var(--surface-2); } }
+.find-btn:disabled { opacity: 0.4; }
+/* Replace's row lines up under the find field */
+.find-bar.is-replacing .find-row + .find-row { padding-left: 34px; }
+
+@media (min-width: 1024px) {
+  .find-bar {
+    top: calc(var(--ribbon-h, 0px) + 10px); right: 20px; width: 440px;
+    border: 1px solid var(--line); border-radius: var(--r-s); box-shadow: var(--shadow);
+  }
+}
+@media (max-width: 1023.98px) {
+  .find-bar {
+    left: var(--toolbar-left, 50%); translate: -50% 0; bottom: var(--kb, 0px); width: var(--toolbar-width, 100%);
+    padding: 4px max(4px, env(safe-area-inset-right)) max(4px, calc(var(--safe-b) - var(--kb, 0px))) max(4px, env(safe-area-inset-left));
+    border-top: 1px solid var(--line); box-shadow: 0 -8px 24px -18px rgb(0 0 0 / 0.25);
+    animation: rb-up var(--dur-2) var(--ease-emph);
+  }
+  .find-bar .format-btn { width: 40px; height: 40px; }
+  .find-input, .find-btn { height: 40px; }
+  .find-count { min-width: 52px; padding: 0 2px; }
+  .find-bar.is-replacing .find-row + .find-row { padding-left: 0; }
+}
+
+/* ---------- the Navigation pane (components/NavPane.tsx): the note's headings at the left of the page ---------- */
+
+.nav-pane {
+  position: fixed; z-index: 33; top: var(--ribbon-h, 0px); bottom: var(--status-h, 0px); left: var(--side-w, 0px); width: var(--nav-w);
+  display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line);
+  font: var(--w-regular) var(--text-m)/1.3 var(--sans);
+  animation: fade-in var(--dur-2) var(--ease-emph);
+}
+.nav-head { flex: none; display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 6px 0 14px; font-weight: var(--w-bold); color: var(--ink-2); }
+.nav-head .format-btn { width: 28px; height: 28px; border-radius: var(--r-xs); }
+.nav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 12px; }
+.nav-list { list-style: none; margin: 0; padding: 0; }
+.nav-item {
+  display: block; width: 100%; padding: 7px 10px 7px calc(10px + var(--lvl, 0) * 14px); border-radius: var(--r-xs);
+  text-align: left; color: var(--ink); overflow-wrap: anywhere;
+  transition: background-color var(--dur-1), color var(--dur-1);
+}
+.nav-item.is-h1 { font-weight: var(--w-bold); }
+.nav-item:is(.is-h4, .is-h5, .is-h6) { color: var(--ink-2); font-size: var(--text-s); }
+@media (hover: hover) { .nav-item:hover { background: var(--surface-2); } }
+.nav-item[aria-current] { background: var(--word-wash); color: var(--word); box-shadow: inset 3px 0 var(--word); }
+.nav-item:focus-visible { outline: 2px solid var(--word); outline-offset: -2px; }
+.nav-empty { margin: 8px 14px; font-size: var(--text-m); line-height: 1.5; color: var(--ink-3); }
+/* on a phone, in a sheet: bigger rows to tap */
+.sheet .nav-item { padding-block: 11px; font-size: var(--text-base); }
+.sheet .nav-empty { margin: 4px 0 12px; }
+
+@media (min-width: 1024px) {
+  :root { --nav-w: 260px; }
+  /* the page makes room for it, as Word's does */
+  :root[data-nav-pane] .route-note .page.editor { padding-left: calc(var(--nav-w) + 28px); }
+  :root[data-note-focus] .nav-pane { display: none; }
+  :root[data-nav-pane][data-note-focus] .route-note .page.editor { padding-left: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .find-bar, .nav-pane { animation: none !important; } }

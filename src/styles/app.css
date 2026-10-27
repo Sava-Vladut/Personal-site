@@ -746,6 +746,13 @@ span.inline-media { aspect-ratio: 4 / 3; }
 /* a centred picture eases to its new size; one on a side snaps (easing it would reflow the words around it every frame) */
 .media:not(.is-resizing, .is-left, .is-right) { transition: width var(--dur-2) var(--ease-emph, ease-out); }
 @media (hover: hover) and (pointer: fine) { .note-body:not(.is-reading) .media-pic { cursor: grab; } .media.is-selected .media-pic, .is-reading .media-pic { cursor: zoom-in; } }
+/* the picture with its handles; a caption under it (in the note, its reading view, a public page and print) */
+.media-frame { position: relative; }
+.media-caption {
+  margin: 6px 2px 0; font: italic var(--w-regular) var(--text-m)/1.45 var(--sans); color: var(--ink-2); text-align: center;
+  overflow-wrap: anywhere; -webkit-user-select: text; user-select: text;
+}
+.media.is-left .media-caption, .media.is-right .media-caption { text-align: left; }
 .media-corner { position: absolute; z-index: 2; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; touch-action: none; }
 .media-corner::before {
   content: ''; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--ink);
@@ -810,7 +817,7 @@ span.inline-media { aspect-ratio: 4 / 3; }
   color: var(--on-color); font: var(--w-bold) var(--text-xl)/1 var(--sans); pointer-events: none;
 }
 /* over a picture: the glass pill style would otherwise put these back in the flow */
-.media > :is(.media-merge, .media-badge) { position: absolute; }
+.media-frame > :is(.media-merge, .media-badge) { position: absolute; }
 /* a picture dragged over this one will make an album with it */
 .media.is-merging .media-pic { outline: 3px solid var(--ink); outline-offset: 4px; transform: scale(0.97); }
 .media-merge {

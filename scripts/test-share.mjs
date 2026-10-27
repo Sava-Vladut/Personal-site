@@ -179,5 +179,9 @@ test('link previews show a few plain words', () => {
   assert.equal(excerpt({ text: '## Title\n[[image:https://x.example/a.jpg 50 left]]\n**bold** and [a link](https://x.example) here' }), 'Title bold and a link here');
   assert.ok(excerpt({ text: 'word '.repeat(100) }).length <= 160);
   assert.equal(excerpt({ text: '<u>Under</u> x<sup>2</sup> <span style="color:red">red</span> <mark style="background:pink">pink</mark>' }), 'Under x2 red pink');
+  // a picture's caption and alt text stay out of the preview
+  assert.equal(excerpt({ text: 'Before\n[[photo:p1 50 left|caption=Our trip %5B1%5D|alt=A boat]]\nafter' }), 'Before after');
+  // and the public copy keeps the line as written (the page shows the caption under the picture)
+  assert.equal(cleanNote({ title: '', text: 'a\n[[photo:p1|caption=C|alt=A]]\nb', date: '2026-10-27', photos: [], images: [] }).text, 'a\n[[photo:p1|caption=C|alt=A]]\nb');
   assert.equal(excerpt({ text: '# Title <!-- align:center -->\n<div style="page-break-after: always"></div>\nclaim[^1] here\n\n[^1]: source' }), 'Title claim here source');
 });

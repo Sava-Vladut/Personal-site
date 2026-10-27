@@ -423,3 +423,8 @@ canvas.sky:not([data-drawn]) { opacity: 0; }
 
 /* the small globe on a public note's card in the journal */
 .note-public { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font-size: var(--text-s); }
+
+/* ---------- Find (components/FindBar.tsx): every match lit, the current one stronger ---------- */
+.note-editor .find-match { background: color-mix(in oklab, var(--word) 18%, transparent); border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in oklab, var(--word) 22%, transparent); }
+.note-editor .find-match.is-current { background: color-mix(in oklab, var(--word) 42%, transparent); box-shadow: 0 0 0 2px var(--word); }
+@media print { .note-editor .find-match { background: none !important; box-shadow: none !important; } }

@@ -57,7 +57,9 @@ function picture(it: Item, e: Entry) {
   return img?.title ? t('Image: {title}', { title: img.title }) : t('Image');
 }
 const media = (m: Media, e: Entry) =>
-  m.kind === 'album' ? `[${t('Album: {items}', { items: m.items.map((it) => picture(it, e)).join(', ') })}]` : `[${picture(m, e)}]`;
+  (m.kind === 'album' ? `[${t('Album: {items}', { items: m.items.map((it) => picture(it, e)).join(', ') })}]` : `[${picture(m, e)}]`)
+  // what the picture's caption says (or, without one, its alt text)
+  + (m.caption ? ` ${m.caption}` : m.alt ? ` (${m.alt})` : '');
 
 /** The note's words with a short placeholder (and caption, when there is one) where each picture sat, if pictures are wanted. */
 function body(e: Entry, books: Book[], pictures: boolean) {

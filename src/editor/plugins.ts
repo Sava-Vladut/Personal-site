@@ -13,7 +13,7 @@ import { gapCursor } from '@tiptap/pm/gapcursor';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
-  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
+  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, findOf, findPlugin, findStep, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
   painterPlugin, renumberChanged, stopPainter, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
 } from '../lib/noteDoc/edit';
 
@@ -110,11 +110,15 @@ export interface KeyOptions {
   save: () => void;
   /** while an @'s suggestions are up, they have the arrows, Enter, Tab and Escape: true when they took the key */
   suggestKey: (e: KeyboardEvent) => boolean;
+  /** the find bar: Find (Ctrl+F) or Replace (Ctrl+H); without it, those keys are the browser's */
+  find?: (mode: 'find' | 'replace') => void;
 }
 
 /** Word's shortcuts. AltGr is Ctrl+Alt to the browser and types characters on many keyboards: never a style. */
 function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean {
   const mod = e.ctrlKey || e.metaKey;
+  // F3 and Shift+F3: the next and the previous match while the find bar is open, as in Word
+  if (e.key === 'F3' && !mod && !e.altKey && findOf(view.state)) return findStep(e.shiftKey ? -1 : 1)(view.state, view.dispatch);
   if (!mod) return false;
   const code = e.code;
   // by the letter's key where the layout's letter isn't Latin (Cyrillic, Greek…): Ctrl+B is bold there too
@@ -152,6 +156,11 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
     else if (k === 'j') cmd = noteCommands.align('justify', true);
     else if (k === 'z') cmd = undo;
     else if (k === 'y' && !e.metaKey) cmd = redo;
+    // Find (the browser's own find for the page, when the note has no find bar) and Replace, as in Word
+    else if ((k === 'f' || k === 'h') && opts.find) {
+      opts.find(k === 'f' ? 'find' : 'replace');
+      return true;
+    }
     else if (k === 'u') cmd = noteCommands.mark('underline');
     else if (k === 'k') {
       opts.link();
@@ -428,6 +437,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     new Plugin({ appendTransaction: (trs, _old, state) => renumberChanged(trs, state) }),
     tags,
     footnotes,
+    // what Find finds, lit (lib/noteDoc/edit/find.ts)
+    findPlugin(),
     chipsInRange,
     painterPlugin(),
     // the pointer shows a brush while the Format Painter is on

@@ -116,6 +116,17 @@ const CORPUS = {
     'a\n[[image:https://x.y/i.png 30]]\nb', 'a\n[[album:photo:p1 photo:p2 40 right]]\nb', 'a\n\n[[photo:p1]]\n\nb',
     'a\n[[photo:p1]]\n\n[[photo:p2]]\nb', '\n[[photo:p1]]\n\n[[photo:p2]]\n', '```\ncode\n[[photo:p1]]\nmore\n```',
     '> quote\n[[photo:p1]]\n> quote', '- item\n[[photo:p1]]\n1. item', '[[photo:p1]] not alone', '[[photo:p1 big]]x',
+    // a | in an address that isn't a caption's stays part of it, as it always was
+    'a\n[[image:https://x.y/a|b.png]]\nb', '\n[[photo:p1|x]]\n', 'a\n[[album:photo:p1 image:https://x.y/i|j 50]]\nb',
+  ],
+  captions: [
+    'a\n[[photo:p1|caption=Our trip]]\nb', 'a\n[[photo:p1 50 left|caption=Dusk|alt=A boat on a lake]]\nb', 'a\n[[photo:p1|alt=Only alt]]\nb',
+    'a\n[[album:photo:p1 photo:p2 40 right|caption=Two of us]]\nb', 'a\n[[image:https://x.y/i.png 30|alt=A chart]]\nb',
+    'a\n[[photo:p1|caption=50% off, %5Bsic%5D a%7Cb %255B]]\nb', 'a\n[[photo:p1|caption=**not bold** @[Ann] #tag]]\nb',
+    'a\n[[photo:p1|caption=a  b]]\nb', 'a\n[[photo:p1|caption=a=b|alt=c=d]]\nb',
+    // not the strict form: the text it is
+    'a\n[[photo:p1|alt=x|caption=y]]\nb', 'a\n[[photo:p1|caption=]]\nb', 'a\n[[photo:p1|caption= x]]\nb', 'a\n[[photo:p1|caption=x ]]\nb',
+    'a\n[[photo:p1|caption=a]b]]\nb', 'a\n[[photo:p1|caption=%2541]]\nb', 'a\n[[photo:p1|title=x]]\nb', 'a\n[[photo:p1|caption=a|caption=b]]\nb',
   ],
 };
 const corpus = Object.values(CORPUS).flat();
@@ -139,6 +150,36 @@ test('notes written before alignment, page breaks and footnotes read as they did
       assert.equal(n.attrs.align ?? null, null, `aligned: ${JSON.stringify(t)}`);
     });
   }
+});
+
+test('pictures: a caption and alt text read and write back strictly; lines from before read as they always did', () => {
+  const media = (t) => nd.parseBody(t).media;
+  // lines from before: exactly what they read as before captions came
+  assert.deepEqual(media('[[photo:p1]]\n[[photo:p1 50 left]]\n[[image:https://x.y/i.png 30]]\n[[album:photo:p1 image:https://x.y/i 40 right]]\n[[image:https://x.y/a|b.png]]'), [
+    { kind: 'photo', id: 'p1' }, { kind: 'photo', id: 'p1', size: 50, align: 'left' }, { kind: 'image', url: 'https://x.y/i.png', size: 30 },
+    { kind: 'album', items: [{ kind: 'photo', id: 'p1' }, { kind: 'image', url: 'https://x.y/i' }], size: 40, align: 'right' },
+    { kind: 'image', url: 'https://x.y/a|b.png' },
+  ]);
+  for (const t of OLD) for (const m of media(t)) assert.ok(!('caption' in m) && !('alt' in m), JSON.stringify(t));
+  // the new parts
+  assert.deepEqual(media('[[photo:p1 50 left|caption=Dusk|alt=A boat]]'), [{ kind: 'photo', id: 'p1', size: 50, align: 'left', caption: 'Dusk', alt: 'A boat' }]);
+  assert.deepEqual(media('[[album:photo:p1 photo:p2|alt=Us]]')[0], { kind: 'album', items: [{ kind: 'photo', id: 'p1' }, { kind: 'photo', id: 'p2' }], alt: 'Us' });
+  assert.equal(media('[[photo:p1|caption=50% off, %5Bsic%5D a%7Cb %255B]]')[0].caption, '50% off, [sic] a|b %5B');
+  for (const bad of ['[[photo:p1|alt=x|caption=y]]', '[[photo:p1|caption=]]', '[[photo:p1|caption= x]]', '[[photo:p1|caption=a]b]]', '[[photo:p1|caption=%2541]]'])
+    assert.deepEqual(media(bad), [], `${bad} stays words`);
+  // any words given are written so they read back the same
+  for (const words of ['plain', '50% off', '[a] | b ] c', '%5B and %25 and %7C', '%', 'x%', 'a %255B', 'ünï 😀 "q" \'s\'', '**b** @[A] [[W]]']) {
+    for (const key of ['caption', 'alt']) {
+      const m = { kind: 'photo', id: 'p1', [key]: words };
+      const line = nd.serializeBody({ texts: ['', ''], media: [m] }).trim();
+      assert.deepEqual(media(line), [m], `${key}: ${JSON.stringify(words)} → ${line}`);
+      assert.equal(roundTrip(`a\n${line}\nb`), `a\n${line}\nb`);
+    }
+  }
+  // a line break or spaces around never get into the line
+  assert.equal(nd.serializeBody({ texts: ['', ''], media: [{ kind: 'photo', id: 'p1', caption: ' two\nlines ' }] }).trim(), '[[photo:p1|caption=two lines]]');
+  // in the editor, a picture with them is a media node keeping them
+  assert.deepEqual(nd.parseNote('a\n[[photo:p1|caption=C|alt=A]]').child(1).attrs.media, { kind: 'photo', id: 'p1', caption: 'C', alt: 'A' });
 });
 
 test('alignment, page breaks and footnotes: what they read as', () => {

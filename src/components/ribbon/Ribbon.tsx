@@ -19,7 +19,7 @@ const tip = (label: string, k?: string) => (k ? `${label} (${keys(k)})` : label)
 
 const WIDE = '(min-width: 1024px)';
 /** Whether the screen is wide enough for the ribbon across the top (a computer, a big tablet on its side). */
-function useWide() {
+export function useWide() {
   const [wide, setWide] = useState(() => typeof matchMedia === 'function' && matchMedia(WIDE).matches);
   useEffect(() => {
     if (typeof matchMedia !== 'function') return;
@@ -132,6 +132,8 @@ export interface RibbonProps {
   context?: { label: string; content: ComponentChildren };
   /** what an @ suggests is showing, in a strip of its own (on a phone, in the bar's place) */
   swapped: boolean;
+  /** the find bar is open (on a phone, in the bar's place) */
+  finding?: boolean;
   /** the note editor's commands (null until it's there) */
   cmds: NoteCommands | null;
   /** how the text at the caret is styled, and what can be undone (null until the editor's there) */
@@ -551,7 +553,12 @@ export function Ribbon(p: RibbonProps) {
         ]}
     </Pop>
   );
-  const home = wide ? [undo, font, paragraph, styles] : [font, paragraph, styles, undo];
+  // Editing, at Home's end as in Word: Find, and Replace while writing (reading has nothing to replace in)
+  const editing = group('editing', t('Editing'), [
+    tool('search', t('Find'), () => a.find('find'), { k: 'Ctrl+F' }),
+    !reading && tool('replace', t('Replace'), () => a.find('replace'), { k: 'Ctrl+H' }),
+  ], 'rb-rows', 1);
+  const home = wide ? [undo, font, paragraph, styles, editing] : [font, paragraph, styles, editing, undo];
 
   const insert = [
     group('pictures', t('Illustrations'), [
@@ -587,6 +594,9 @@ export function Ribbon(p: RibbonProps) {
       big('pencil', t('Edit'), () => a.setReading(false), { on: !reading }),
       big('book', t('Read mode'), () => a.setReading(true), { on: reading }),
     ]),
+    group('show', t('Show'), big('layout-sidebar', t('Navigation pane'), () => (wide ? setDocView({ nav: !view.nav }) : a.navigation()), {
+      on: wide && view.nav, title: t('The note’s headings, to go to one'),
+    })),
     group('focus', t('Immersive'), big('focus-centered', t('Focus'), () => setDocView({ focus: !view.focus }), { on: view.focus, title: view.focus ? t('Exit Focus') : t('Focus') })),
     group('zoom', t('Zoom'), [
       tool('zoom-out', t('Zoom out'), () => stepZoom(-1), { off: view.zoom <= ZOOMS[0] }),
@@ -622,8 +632,8 @@ export function Ribbon(p: RibbonProps) {
   );
 
   if (!wide) {
-    // what an @ suggests takes the bar's place
-    if (p.swapped) return exit || null;
+    // what an @ suggests, or the find bar, takes the bar's place
+    if (p.swapped || p.finding) return exit || null;
     const picture = shown === 'context';
     const away = p.away && !picture;
     return (

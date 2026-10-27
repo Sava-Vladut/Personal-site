@@ -584,6 +584,8 @@ const NOTES = [
   `a\n\n\n${P('p1')}\n\n\nb\n${P('p2')}\nc`,
   `  \n${P('p1')}\n  x`,
   `\`\`\`\ncode\n\`\`\`\n${P('p1')}\n---\nz`,
+  // with a caption and alt text: they stay with the picture, and an album's go with the album (ungrouped, they go)
+  `a\n[[photo:p1 50 left|caption=Cap|alt=Alt]]\n\n[[album:photo:p2 photo:p3|caption=Two|alt=Both]]\nb`,
 ];
 
 const docOf = (t) => nd.parseNote(t);
@@ -1090,4 +1092,140 @@ test('[^1]: typed at the start of a line (after its reference) makes it a footno
   assert.equal(s.doc.firstChild.type.name, 'footnote');
   assert.equal(show(s), '[^3]: |');
   assert.equal(show(type(stateFrom('x[^3]|'), ': ')), 'x[^3]: |', 'not after other words');
+});
+
+/* ---------- Find and Replace, the Navigation pane, a picture's caption and alt text ---------- */
+
+/** A state with Find's plugin and the history, from a text with its caret. */
+const findState = (t, caret = '|') => stateFrom(t, { caret, plugins: [E.findPlugin(), history()] });
+const apply = (s, cmd) => {
+  let out = s;
+  cmd(s, (tr) => (out = out.apply(tr)));
+  return out;
+};
+/** What's found, as the words at each match (the current one in [brackets]). */
+const found = (s) => {
+  const f = E.findOf(s);
+  return f.matches.map((m, i) => (i === f.current ? `[${s.doc.textBetween(m.from, m.to)}]` : s.doc.textBetween(m.from, m.to)));
+};
+
+test('Find: every match, case and whole words as asked, never across lines or into a tag', () => {
+  let s = findState('¦The cat sat. CAT scatter cat\ncat-like @[person:p1|cat] **ca**t\nca\nt', '¦');
+  s = apply(s, E.setFind({ text: 'cat' }));
+  // "ca" + "t" over two styles is one match; "ca\nt" over two lines isn't; the tag's own name isn't searched
+  assert.deepEqual(found(s), ['[cat]', 'CAT', 'cat', 'cat', 'cat', 'cat']);
+  s = apply(s, E.setFind({ text: 'cat', caseSensitive: true }));
+  assert.deepEqual(found(s), ['[cat]', 'cat', 'cat', 'cat', 'cat']);
+  s = apply(s, E.setFind({ text: 'cat', wholeWord: true }));
+  assert.deepEqual(found(s), ['[cat]', 'CAT', 'cat', 'cat', 'cat'], 'scatter is out; cat-like is a whole word, as in Word');
+  s = apply(s, E.setFind({ text: 'Cat', caseSensitive: true, wholeWord: true }));
+  assert.deepEqual(found(s), []);
+  s = apply(s, E.setFind({ text: '' }));
+  assert.deepEqual(found(s), []);
+  // what looks like a pattern is looked for as it is
+  s = apply(findState('a.b axb (x) [y]|'), E.setFind({ text: 'a.b' }));
+  assert.deepEqual(found(s), ['[a.b]']);
+  assert.deepEqual(found(apply(s, E.setFind({ text: '(x)' }))), ['[(x)]']);
+  // the first after the caret is current; with none after, the first of all
+  s = apply(findState('one x two x thr|ee x'), E.setFind({ text: 'x' }));
+  assert.equal(E.findOf(s).current, 2);
+  s = apply(findState('x x|'), E.setFind({ text: 'x' }));
+  assert.equal(E.findOf(s).current, 0);
+});
+
+test('Find Next and Previous go round, selecting the match; F3 is the same step', () => {
+  let s = apply(findState('|a x b x c x'), E.setFind({ text: 'x' }));
+  assert.equal(E.findOf(s).current, 0);
+  s = apply(s, E.findStep(1));
+  assert.equal(show(s), 'a «x» b x c x', 'the first step selects the current one (just found)');
+  s = apply(s, E.findStep(1));
+  assert.equal(show(s), 'a x b «x» c x');
+  s = apply(s, E.findStep(1));
+  s = apply(s, E.findStep(1));
+  assert.equal(show(s), 'a «x» b x c x', 'round the end');
+  s = apply(s, E.findStep(-1));
+  assert.equal(show(s), 'a x b x c «x»', 'and back round the start');
+  assert.equal(E.findStep(1)(findState('nothing|'), () => {}), false, 'no search: nothing to do');
+});
+
+test('Replace: the current match (once selected), then the next; Replace All in one undo step', () => {
+  let s = apply(findState('|Cat, cat and CAT. Concat.'), E.setFind({ text: 'cat', wholeWord: true }));
+  assert.deepEqual(found(s), ['[Cat]', 'cat', 'CAT']);
+  s = apply(s, E.replaceCurrent('dog'));
+  assert.equal(show(s), '«Cat», cat and CAT. Concat.', 'the first press selects it, as in Word');
+  s = apply(s, E.replaceCurrent('dog'));
+  assert.equal(show(s), 'dog, «cat» and CAT. Concat.');
+  assert.deepEqual(found(s), ['[cat]', 'CAT']);
+  // a replacement that holds what's looked for isn't found again in a loop
+  s = apply(s, E.replaceCurrent('cats cat'));
+  assert.equal(show(s), 'dog, cats cat and «CAT». Concat.');
+  undo(s, (tr) => (s = s.apply(tr)));
+  assert.equal(nd.serializeNote(s.doc), 'dog, cat and CAT. Concat.', 'each Replace is its own undo');
+  // Replace All: one change, so one undo
+  s = apply(findState('a **cat** and a cat|\n- cat\n> cat'), E.setFind({ text: 'cat' }));
+  let n = 0;
+  let next = s;
+  n = E.replaceAll(s, (tr) => (next = next.apply(tr)), 'dog');
+  assert.equal(n, 4);
+  assert.equal(nd.serializeNote(next.doc), 'a **dog** and a dog\n- dog\n> dog', 'the styles stay on what replaces');
+  assert.deepEqual(found(next), [], 'nothing left to find');
+  undo(next, (tr) => (next = next.apply(tr)));
+  assert.equal(nd.serializeNote(next.doc), 'a **cat** and a cat\n- cat\n> cat');
+  assert.equal(E.replaceAll(next, undefined, 'x'), 4);
+  // replaced with nothing: the words go
+  next = apply(findState('a-b-c|'), E.setFind({ text: '-' }));
+  E.replaceAll(next, (tr) => (next = next.apply(tr)), '');
+  assert.equal(nd.serializeNote(next.doc), 'abc');
+  assert.equal(E.replaceAll(findState('x|'), () => {}, 'y'), 0, 'no search: nothing replaced');
+});
+
+test('Find keeps up with the note: the matches move with each change, and found again where it changed', () => {
+  let s = apply(findState('cat |dog cat'), E.setFind({ text: 'cat' }));
+  assert.deepEqual(found(s), ['cat', '[cat]']);
+  const cur = E.findOf(s).matches[1];
+  // typing before it: the current match moves along and stays current
+  s = s.apply(s.tr.insertText('big ', 1));
+  assert.deepEqual(found(s), ['cat', '[cat]']);
+  assert.equal(E.findOf(s).matches[1].from, cur.from + 4);
+  // a new match typed in is found, and one broken up isn't any more
+  s = s.apply(s.tr.insertText(' cat', s.doc.content.size - 1));
+  assert.deepEqual(found(s), ['cat', '[cat]', 'cat']);
+  s = s.apply(s.tr.insertText('X', 7));
+  assert.equal(nd.serializeNote(s.doc), 'big caXt dog cat cat');
+  assert.deepEqual(found(s), ['[cat]', 'cat']);
+  // the decorations are the matches, the current one apart
+  const deco = E.findOf(s) && s.plugins.find((p) => p.spec.key?.key?.startsWith('find')).props.decorations(s);
+  const drawn = deco.find().map((d) => [s.doc.textBetween(d.from, d.to), d.type.attrs.class]);
+  assert.deepEqual(drawn.map(([w]) => w), ['cat', 'cat']);
+  assert.equal(drawn.filter(([, c]) => c === 'find-match is-current').length, 1);
+  // closed: nothing lit
+  s = apply(s, E.clearFind);
+  assert.equal(E.findOf(s), null);
+});
+
+test('the Navigation pane: the headings by level, the one the caret is under', () => {
+  const s = stateFrom('intro\n# One **bold** @[person:p1|Ann]\ntext\n## Two¦\n#\n> ### In a quote\n###### Six', { caret: '¦' });
+  const hs = E.headingsOf(s.doc);
+  assert.deepEqual(hs.map((h) => [h.level, h.text]), [[1, 'One bold Ann'], [2, 'Two'], [3, 'In a quote'], [6, 'Six']], 'an empty heading is left out');
+  assert.equal(E.headingAt(hs, s.selection.from), 1);
+  assert.equal(E.headingAt(hs, 1), -1, 'above the first');
+  assert.equal(s.doc.nodeAt(hs[0].pos).type.name, 'heading');
+  assert.deepEqual(E.headingsOf(stateFrom('no headings|').doc), []);
+});
+
+test('a picture’s caption and alt text: put on, changed, taken off; each its own undo', () => {
+  const t = `a\n${P('p1', ' 50 left')}\nb`;
+  let s = stateFrom(t, { plugins: [history()] });
+  const pos = E.mediaList(s.doc)[0].pos;
+  s = apply(s, E.setMediaMeta(pos, { caption: '  Our  trip\n[1] ' }));
+  assert.equal(nd.serializeNote(s.doc), 'a\n[[photo:p1 50 left|caption=Our trip %5B1%5D]]\nb');
+  s = apply(s, E.setMediaMeta(pos, { alt: 'A boat | a lake' }));
+  assert.equal(nd.serializeNote(s.doc), 'a\n[[photo:p1 50 left|caption=Our trip %5B1%5D|alt=A boat %7C a lake]]\nb');
+  assert.equal(E.setMediaMeta(pos, { alt: 'A boat | a lake' })(s), false, 'the same words: nothing to do');
+  s = apply(s, E.setMediaMeta(pos, { caption: '   ' }));
+  assert.equal(nd.serializeNote(s.doc), 'a\n[[photo:p1 50 left|alt=A boat %7C a lake]]\nb');
+  // resizing keeps them
+  s = apply(s, E.setMediaLayout(pos, { size: 30 }));
+  assert.equal(nd.serializeNote(s.doc), 'a\n[[photo:p1 30|alt=A boat %7C a lake]]\nb');
+  assert.equal(E.setMediaMeta(1, { alt: 'x' })(s), false, 'not a picture there');
 });

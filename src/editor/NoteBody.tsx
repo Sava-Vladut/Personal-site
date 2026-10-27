@@ -8,18 +8,23 @@ import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice } from '../lib/noteDoc';
 import {
-  canStep, dropTargets, findMedia, goToFootnote, goToReference, insertAtom, insertMediaAt, insertTrigger, linkAt, litOf, mediaList, mergeMedia, moveMedia,
-  parseClipboardText, removeItem, removeMedia, replaceTyped, sameLit, setMediaLayout, stepMedia, takeOutItem, typedAt,
-  ungroupMedia, type DropTarget, type LinkTarget, type Lit, type Typed,
+  canStep, clearFind, dropTargets, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger,
+  linkAt, litOf, mediaList, mergeMedia, moveMedia, parseClipboardText, removeItem, removeMedia, replaceAll, replaceCurrent, replaceTyped, sameLit, setFind,
+  setMediaLayout, setMediaMeta, stepMedia, takeOutItem, typedAt, ungroupMedia, type DropTarget, type FindQuery, type Heading, type LinkTarget, type Lit, type Typed,
 } from '../lib/noteDoc/edit';
-import { itemKey, itemsOf, mediaKey, type Item, type Layout, type Media } from '../lib/body';
+import { itemKey, itemsOf, mediaKey, type Item, type Layout, type Media, type Meta } from '../lib/body';
 import { bindCommands, type NoteCommands } from './commands';
 import { MediaSlots, nodeViews, type MediaSlot } from './nodeViews';
 import { tidyPasted, tidyPastedHTML } from './paste';
 import { notePlugins } from './plugins';
 import { t } from '../lib/i18n';
 
-export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands };
+export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading };
+
+/** What Find has found: how many, and which is the current one (0-based; -1 when none is yet). */
+export interface FindInfo { count: number; current: number }
+/** The note's headings, and the one the caret is under (-1: above the first). */
+export interface Outline { headings: Heading[]; current: number }
 
 /** What the note editor can do with its words and pictures. Pictures go by their key (lib/body.ts mediaKey). */
 export interface NoteBodyHandle {
@@ -61,11 +66,38 @@ export interface NoteBodyHandle {
   /** tells `fn` the selected text (as the note writes it), null with nothing selected, whenever it changes */
   watchSelection(fn: (text: string | null) => void): () => void;
   cmds: NoteCommands;
+  /** Find and Replace (components/FindBar.tsx): what's found is lit in the text while the bar is open */
+  find: {
+    /** looks for `q` from the caret on */
+    set(q: FindQuery): FindInfo;
+    /** Find Next (1) or Previous (-1): the match selected and brought into view */
+    step(dir: 1 | -1): FindInfo;
+    /** Replace: the current match (once it's selected) becomes `text`, and the next one is selected */
+    replace(text: string): FindInfo;
+    /** Replace All, as one change to undo: how many were replaced */
+    replaceAll(text: string): number;
+    /** the bar closed: nothing lit, the current match selected and the focus back in the text */
+    close(): void;
+    /** the selected words when they're on one line (what the bar starts with, as in Word), else '' */
+    selected(): string;
+  };
+  /** tells `fn` what Find has found whenever it changes (the note changing included) */
+  watchFind(fn: (info: FindInfo) => void): () => void;
+  /** the Navigation pane's headings */
+  outline: {
+    get(): Outline;
+    /** the caret at the start of the heading at `pos`, brought into view */
+    go(pos: number): void;
+    /** tells `fn` the outline whenever it (or the heading the caret is under) changes */
+    watch(fn: (o: Outline) => void): () => void;
+  };
   media: {
     list(): Media[];
     /** at the caret, or at the end of the note (`atEnd`, or when it's never been written in) */
     insert(m: Media[], atEnd?: boolean): void;
     layout(key: string, l: Layout): void;
+    /** a caption or alt text (empty words take it off) */
+    meta(key: string, meta: Meta): void;
     remove(key: string): void;
     removeItem(item: Item): void;
     merge(from: string, onto: string): void;
@@ -91,6 +123,8 @@ interface Props {
   onLink: () => void;
   /** Ctrl+S: the note saved now */
   onSave: () => void;
+  /** Ctrl+F, Ctrl+H: the find bar, to find or to replace */
+  onFind?: (mode: 'find' | 'replace') => void;
   onMedia: (slots: MediaSlot[]) => void;
   /** whether a pasted picture is one the note holds (its photo or image is in the note's list) */
   knows: (m: Media) => boolean;
@@ -152,6 +186,19 @@ export function NoteBody(p: Props) {
     let settled = false; // the note has opened: tags drawn from now on don't play the opening sheen
     const settle = setTimeout(() => void (settled = true), 1500);
     const watchers = new Set<(l: Lit) => void>();
+    const findWatchers = new Set<(f: FindInfo) => void>();
+    const outlineWatchers = new Set<(o: Outline) => void>();
+    let found = '';
+    let outline: Outline | null = null;
+    let outlineAt = '';
+    const findInfo = (): FindInfo => {
+      const f = findOf(view.state);
+      return { count: f?.matches.length ?? 0, current: f?.current ?? -1 };
+    };
+    const outlineNow = (): Outline => {
+      const headings = headingsOf(view.state.doc);
+      return { headings, current: headingAt(headings, view.state.selection.from) };
+    };
     const selWatchers = new Set<(text: string | null) => void>();
     let selText: string | null = null;
     let selAt = '';
@@ -171,6 +218,24 @@ export function NoteBody(p: Props) {
           if (text !== selText) {
             selText = text;
             selWatchers.forEach((fn) => fn(text));
+          }
+        }
+        if (findWatchers.size) {
+          const f = findInfo();
+          const key = `${f.count}:${f.current}`;
+          if (key !== found) {
+            found = key;
+            findWatchers.forEach((fn) => fn(f));
+          }
+        }
+        // the outline read again only when the note or the caret moved
+        const oAt = `${version}:${view.state.selection.from}`;
+        if (outlineWatchers.size && oAt !== outlineAt) {
+          outlineAt = oAt;
+          const o = outlineNow();
+          if (!outline || JSON.stringify(o) !== JSON.stringify(outline)) {
+            outline = o;
+            outlineWatchers.forEach((fn) => fn(o));
           }
         }
         const next = litOf(view.state);
@@ -199,6 +264,7 @@ export function NoteBody(p: Props) {
             suggestKey: (e) => props.current.suggestKey(e),
             link: () => props.current.onLink(),
             save: () => props.current.onSave(),
+            find: (mode) => props.current.onFind?.(mode),
           }),
           placeholder(),
           new Plugin({ props: { handleDOMEvents: { focus: () => void (placed = true) } } }),
@@ -369,10 +435,68 @@ export function NoteBody(p: Props) {
         return () => selWatchers.delete(fn);
       },
       cmds: bindCommands(() => viewRef.current),
+      find: {
+        set(q) {
+          run(setFind(q));
+          return findInfo();
+        },
+        step(dir) {
+          run(findStep(dir));
+          return findInfo();
+        },
+        replace(text) {
+          if (view.editable) run(replaceCurrent(text));
+          return findInfo();
+        },
+        replaceAll: (text) => (view.editable ? replaceAll(view.state, view.dispatch, text) : 0),
+        close() {
+          const f = findOf(view.state);
+          const m = f && f.current >= 0 ? f.matches[f.current] : null;
+          const tr = view.state.tr;
+          if (m) tr.setSelection(TextSelection.create(tr.doc, m.from, m.to)).scrollIntoView();
+          view.dispatch(tr);
+          run(clearFind);
+          if (view.editable) {
+            placed = true;
+            view.focus();
+          }
+        },
+        selected() {
+          const { from, to, empty } = view.state.selection;
+          if (empty) return '';
+          const words = view.state.doc.textBetween(from, to, '\n', '');
+          return words.includes('\n') || words.length > 255 ? '' : words;
+        },
+      },
+      watchFind(fn) {
+        findWatchers.add(fn);
+        const f = findInfo();
+        found = `${f.count}:${f.current}`;
+        fn(f);
+        return () => findWatchers.delete(fn);
+      },
+      outline: {
+        get: () => outlineNow(),
+        go(pos) {
+          const node = view.state.doc.nodeAt(pos);
+          if (!node) return;
+          placed = true;
+          view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos + 1)).scrollIntoView());
+          if (view.editable) view.focus();
+        },
+        watch(fn) {
+          outlineWatchers.add(fn);
+          outline = outlineNow();
+          outlineAt = `${version}:${view.state.selection.from}`;
+          fn(outline);
+          return () => outlineWatchers.delete(fn);
+        },
+      },
       media: {
         list: () => mediaList(view.state.doc).map((m) => m.media),
         insert: (m, atEnd) => void run(insertMediaAt(m, atEnd || !placed ? view.state.doc.content.size : undefined)),
         layout: (key, l) => void run(setMediaLayout(at(key), l)),
+        meta: (key, meta) => void run(setMediaMeta(at(key), meta)),
         remove: (key) => void run(removeMedia(at(key))),
         removeItem: (item) => void run(removeItem(holding(item), item)),
         merge: (from, onto) => void run(mergeMedia(at(from), at(onto))),

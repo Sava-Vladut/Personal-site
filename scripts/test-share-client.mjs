@@ -47,6 +47,7 @@ const entry = (extra = {}) => ({
 
 test('tags in the text become the plain words they stand for, pictures stay', () => {
   assert.equal(plainTags('Hi @[person:p1|Ana] and @[Bo]'), 'Hi Ana and Bo');
+  assert.equal(plainTags('a\n[[photo:p1 50 left|caption=Our %5B%5Btrip%5D%5D|alt=A boat]]\n[[album:photo:p1 photo:p2|caption=C]]'), 'a\n[[photo:p1 50 left|caption=Our %5B%5Btrip%5D%5D|alt=A boat]]\n[[album:photo:p1 photo:p2|caption=C]]', 'a picture\'s line, caption and all, stays');
   assert.equal(plainTags('Read [[book:b1|Dune]] and [[Dune]], see [[note:n1|My day]]'), 'Read Dune and Dune, see My day');
   assert.equal(plainTags('Played ♪[song:s1|Blue] and ♪[Red]'), 'Played ♪ Blue and ♪ Red');
   assert.equal(plainTags('[[photo:pabc123456 50 left]]\n[[image:https://x.example/a.jpg]]\n[[album:photo:pabc123456 image:https://x.example/b.jpg]]'), '[[photo:pabc123456 50 left]]\n[[image:https://x.example/a.jpg]]\n[[album:photo:pabc123456 image:https://x.example/b.jpg]]');

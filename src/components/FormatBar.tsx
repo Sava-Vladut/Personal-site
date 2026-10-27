@@ -46,6 +46,10 @@ export interface RibbonActions {
   link: () => void;
   /** prints the note, or saves it as a PDF (the browser's print dialog) */
   print: () => void;
+  /** the find bar: Find, or Find with Replace */
+  find: (mode: 'find' | 'replace') => void;
+  /** the Navigation pane as a sheet (on a phone; a computer's pane is lib/docView.ts's) */
+  navigation: () => void;
 }
 
 /** Where the words are written: the note's text, its title, or a person's or a book's text box. */
@@ -61,8 +65,10 @@ const WRITING = '.note-editor, .body-input, .title-input';
  * reading down the note. What an @ suggests (`swap`) still shows as a strip of its own near the bottom. `note` is the
  * note's editor: its commands, and what's lit at the caret.
  */
-export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, note }: {
+export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, note, find }: {
   swap?: ComponentChildren;
+  /** the find bar, while it's open: under the ribbon on a computer, in the ribbon's place on a phone */
+  find?: ComponentChildren;
   swapLabel?: string;
   ribbon?: RibbonActions;
   /** a tab of its own for what's selected, as Word's Picture tab: its name and its tools */
@@ -217,13 +223,14 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     // a wrapper of no box of its own, carrying the keyboard's height to the ribbon and the strip
     return createPortal(
       <div ref={ref} class="ribbon-root">
-        <Ribbon actions={ribbon} context={context} swapped={!!swap} cmds={note?.cmds ?? null} lit={lit} away={away} done={done} toText={() => noteNow.current?.focus()} />
+        <Ribbon actions={ribbon} context={context} swapped={!!swap} finding={!!find} cmds={note?.cmds ?? null} lit={lit} away={away} done={done} toText={() => noteNow.current?.focus()} />
         {/* on a phone it docks above the keyboard as the ribbon's bar does; on a computer it floats near the bottom */}
         {swap && (
           <div class="format-bar is-swapped is-strip in-ribbon" role="toolbar" aria-label={swapLabel} {...keepFocus}>
             <div class="format-scroll">{swap}</div>
           </div>
         )}
+        {find}
       </div>,
       document.body,
     );

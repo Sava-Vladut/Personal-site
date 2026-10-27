@@ -58,6 +58,7 @@
 .shared-media { margin-block: 12px; }
 .shared-media .media-pic { cursor: zoom-in; }
 .shared-media .media-pic img { pointer-events: auto; }
+.shared-media figcaption > * { display: block; }
 .shared-credit { margin-top: 5px; font-size: var(--text-s); line-height: 1.4; color: var(--ink-3); }
 .shared-foot { margin-top: 44px; padding-top: 14px; border-top: 1px solid var(--line); font-size: var(--text-s); color: var(--ink-3); text-align: center; clear: both; }
 
