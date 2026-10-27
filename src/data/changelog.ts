@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.0',
+    date: '2026-10-27',
+    changes: [
+      'Download a note as a Word file (.docx): Download as Word in More, or Export › Word on the ribbon’s View tab; it’s named after the note',
+      'The file is made on your device, nothing is uploaded, and it opens in Word, LibreOffice and Google Docs',
+      'The title and date go at the top; headings, alignment, lists (bullets, 1. a. i. numbering, tasks as ☐ and ☑), quotes, callouts, code, dividers and page breaks come out as Word’s own',
+      'Bold, italic, underline, strikethrough, superscript, subscript, font colours, highlights and links keep their look; tags show as their names',
+      'Footnotes become Word footnotes, and tables Word tables with the header row repeated on each page and each column aligned as in the note',
+      'Pictures and albums go in at the size they have in the note, with their caption under them and their alt text; a picture that can’t be read leaves its words instead',
+      'Comments stay out unless you turn on Include comments when you download; then they go in as Word comments on their words',
+    ],
+  },
+  {
     version: '1.145.0',
     date: '2026-10-27',
     changes: [

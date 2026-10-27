@@ -681,6 +681,7 @@ export function Ribbon(p: RibbonProps) {
       tool('zoom-in', t('Zoom in'), () => stepZoom(1), { off: view.zoom >= ZOOMS[ZOOMS.length - 1] }),
     ], 'rb-zooms'),
     group('print', t('Print'), big('printer', t('Print'), a.print, { k: 'Ctrl+P', title: t('Print or save as PDF') })),
+    group('export', t('Export'), big('file-type-docx', t('Word'), a.word, { title: t('Download as Word (.docx)') })),
     group('note', t('Note'), [
       big('mood-plus', t('Icon'), a.icon, { title: t('Add or change the icon') }),
       big('info-circle', t('Details'), a.details, { title: t('Date, feelings, place and more') }),

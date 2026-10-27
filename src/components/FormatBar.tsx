@@ -46,6 +46,8 @@ export interface RibbonActions {
   link: () => void;
   /** prints the note, or saves it as a PDF (the browser's print dialog) */
   print: () => void;
+  /** downloads the note as a Word file (.docx) */
+  word: () => void;
   /** the find bar: Find, or Find with Replace */
   find: (mode: 'find' | 'replace') => void;
   /** the Navigation pane as a sheet (on a phone; a computer's pane is lib/docView.ts's) */

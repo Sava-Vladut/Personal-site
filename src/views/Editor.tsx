@@ -44,9 +44,10 @@ import '../styles/notes.css';
 import '../styles/ribbon.css';
 import '../styles/document.css';
 import { t } from '../lib/i18n';
+import { commentWords } from '../lib/comments';
 import { haptic } from '../lib/haptics';
 
-type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law' | 'principle';
+type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | 'music' | 'link' | 'trap' | 'law' | 'principle' | 'word';
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 const MAX_PHOTOS = 20;
@@ -218,6 +219,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   findingNow.current = finding;
   // the Navigation pane on a phone (a sheet; on a computer it's a pane kept open or not in lib/docView.ts)
   const [navSheet, setNavSheet] = useState(false);
+  /** Download as Word: whether the comments go in (asked each time, off at first), and the file being made */
+  const [wordComments, setWordComments] = useState(false);
+  const [wordBusy, setWordBusy] = useState(false);
   const wide = useWide();
   // on a phone, the comment whose sheet is open (where its words start)
   const [commentSheet, setCommentSheet] = useState<number | null>(null);
@@ -868,6 +872,31 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     setFinding((f) => ({ replace: mode === 'replace' || !!f?.replace, n: (f?.n ?? 0) + 1 }));
   /** Print / Save as PDF: the browser's print dialog, which prints the note alone (document.css), once a sheet has gone. */
   const printNote = () => void setTimeout(() => print());
+  /** Download as Word (.docx): made on this device by lib/docx, loaded only now (it isn't in the app's bundle). */
+  const saveWord = async (comments: boolean) => {
+    const d = latest.current;
+    if (!d || wordBusy) return;
+    setWordBusy(true);
+    try {
+      const { downloadDocx } = await import('../lib/docx/download');
+      await downloadDocx(d, textNow(), comments);
+      setOpen((o) => (o === 'word' ? null : o));
+    } catch {
+      toast(t('Couldn’t make the Word file'));
+    } finally {
+      setWordBusy(false);
+    }
+  };
+  /** A note with comments asks first whether they go in (they're private: off unless chosen); others download at once. */
+  const wordNote = () => {
+    if (commentWords(textNow()).length) {
+      setWordComments(false);
+      setOpen('word');
+    } else {
+      setOpen(null);
+      void saveWord(false);
+    }
+  };
   /** A tap on the words of the reading view starts writing there; links, tags, ticks and selecting text don't. */
   const tapToWrite = (e: MouseEvent) => {
     // a tap that only puts a selection away (a phone clears it before the click) doesn't start writing either
@@ -1280,6 +1309,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           mentionBook: () => setOpen('book'),
           insertRef: (kind) => setOpen(kind),
           print: printNote,
+          word: wordNote,
           find: openFind,
           navigation: () => setNavSheet(true),
         }}
@@ -1330,9 +1360,29 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <button class="list-row action" onClick={() => { close(); printNote(); }}>
             <span class="row gap-s"><Icon name="printer" size={18} /> {t('Print / Save as PDF')}</span>
           </button>
+          <button class="list-row action" onClick={wordNote} disabled={wordBusy}>
+            <span class="row gap-s"><Icon name="file-type-docx" size={18} /> {t('Download as Word (.docx)')}</span>
+          </button>
           <button class="list-row action danger" aria-label={isCheckin ? t('Delete check-in') : t('Delete note')} onClick={() => { close(); return remove(); }}>
             <span class="row gap-s"><Icon name="trash" size={18} /> {isCheckin ? t('Delete check-in') : t('Delete note')}</span>
           </button>
+        </div>
+      </Sheet>
+      <Sheet
+        open={open === 'word'}
+        onClose={close}
+        title={t('Download as Word')}
+        footer={<button class="btn btn-primary" onClick={() => void saveWord(wordComments)} disabled={wordBusy}><Icon name="download" size={18} /> {t('Download')}</button>}
+      >
+        <div class="share-parts">
+          <label class="share-part">
+            <Icon name="message" size={18} />
+            <span class="share-part-main">
+              <span class="share-part-name">{t('Include comments')}</span>
+              <span class="share-part-value">{wordComments ? t('As Word comments beside their words') : t('They’re private: only the words they’re on go in')}</span>
+            </span>
+            <button class="switch" role="switch" aria-checked={wordComments} aria-label={t('Include comments')} onClick={() => setWordComments(!wordComments)} />
+          </label>
         </div>
       </Sheet>
       <Sheet open={open === 'music'} onClose={close} title={t('Music in this note')}>
