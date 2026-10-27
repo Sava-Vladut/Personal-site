@@ -144,7 +144,7 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
             ) : (
               <p class="share-ok"><Icon name="check" size={16} /> {t('The public page shows this note as it is now.')}</p>
             )}
-            <button class="btn btn-quiet share-stop" onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
+            <button class="btn btn-quiet share-stop danger" onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
           </>
         )}
         {error && <p class="share-error" role="alert">{error}</p>}

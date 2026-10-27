@@ -581,7 +581,7 @@ function PublicNotes() {
               </div>
               <div class="public-actions">
                 <button class="btn btn-quiet btn-s" onClick={() => copyLink(n)}><Icon name="copy" size={16} /> {t('Copy link')}</button>
-                <button class="btn btn-quiet btn-s" onClick={() => stop(n)}>{t('Stop')}</button>
+                <button class="btn btn-quiet btn-s danger" onClick={() => stop(n)}>{t('Stop')}</button>
               </div>
             </div>
           ))

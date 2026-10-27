@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.13',
+    date: '2026-10-27',
+    changes: [
+      'Stop sharing is red wherever it appears (a note, your status, the shared list in Settings), so it no longer looks like Copy or Open',
+      'In Settings’ shared list, Stop sits a little further from Copy link',
+    ],
+  },
+  {
     version: '1.138.12',
     date: '2026-10-27',
     changes: [

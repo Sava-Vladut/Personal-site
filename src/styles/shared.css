@@ -66,7 +66,7 @@
 .public-row { align-items: flex-start; }
 .public-main { min-width: 0; flex: 1; }
 .public-title { font-weight: var(--w-medium); overflow-wrap: anywhere; }
-.public-actions { display: flex; gap: 6px; flex: none; }
+.public-actions { display: flex; gap: 8px; flex: none; }
 
 /* ---------- the public status: its sheet, and the page anyone with its link sees (lib/status.ts) ---------- */
 

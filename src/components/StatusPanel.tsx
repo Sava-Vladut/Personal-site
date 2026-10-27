@@ -226,7 +226,7 @@ export function StatusPanel() {
               {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={18} /></button>}
             </div>
             <a class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 1 }} href={url} target="_blank" rel="noopener"><Icon name="external-link" size={18} /> {t('Open the page')}</a>
-            <button class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 2 }} onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
+            <button class="btn btn-quiet share-stop danger fade-arrive" style={{ '--i': 2 }} onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
           </>
         ) : (
           <button class="btn btn-primary share-main" onClick={start} disabled={busy || (!status && !!loadError)}>
