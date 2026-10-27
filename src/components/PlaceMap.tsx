@@ -368,9 +368,9 @@ export function PlaceMap({ pins, focus, onOpen, onTap, still, remember, heat, ma
       )}
       {!still && (
         <div class="map-tools">
-          <button class="glass glass-btn round" onClick={() => zoomBy(1)} aria-label={t('Zoom in')}><Icon name="plus" size={18} /></button>
-          <button class="glass glass-btn round" onClick={() => zoomBy(-1)} aria-label={t('Zoom out')}><Icon name="minus" size={18} /></button>
-          {points.length > 0 && <button class="glass glass-btn round" onClick={fitAll} aria-label={t('Show every place')}><Icon name="map-pins" size={18} /></button>}
+          <button class="glass glass-btn round" onClick={() => zoomBy(1)} aria-label={t('Zoom in')} title={t('Zoom in')}><Icon name="plus" size={18} /></button>
+          <button class="glass glass-btn round" onClick={() => zoomBy(-1)} aria-label={t('Zoom out')} title={t('Zoom out')}><Icon name="minus" size={18} /></button>
+          {points.length > 0 && <button class="glass glass-btn round" onClick={fitAll} aria-label={t('Show every place')} title={t('Show every place')}><Icon name="map-pins" size={18} /></button>}
         </div>
       )}
       <div class="map-credit" onClick={(e) => e.stopPropagation()}>

@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.11',
+    date: '2026-10-27',
+    changes: [
+      'The map’s buttons say what they do when you point at them, including the one that shows every place',
+    ],
+  },
+  {
     version: '1.138.10',
     date: '2026-10-27',
     changes: [
