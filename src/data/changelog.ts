@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.6',
+    date: '2026-10-27',
+    changes: [
+      'In Mind traps, Laws of power and Win friends, a count you tapped by mistake can be taken back with Undo',
+    ],
+  },
+  {
     version: '1.138.5',
     date: '2026-10-27',
     changes: [

@@ -519,6 +519,7 @@ export const RO: Record<string, string> = {
   'Note deleted': 'Notiță ștearsă',
   'Check-in deleted': 'Check-in șters',
   'Undo': 'Anulează',
+  'Counted': 'Numărat',
   'Pinned to the top': 'Fixată sus',
   'Unpinned': 'Nu mai e fixată',
   'Untitled': 'Fără titlu',

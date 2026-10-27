@@ -383,19 +383,22 @@ export function Tally({ icon, label, n, pressed, onClick }: {
  * 'mm-traps-caught' keep their data), starting at `init` when there's nothing stored or it can't be read.
  * Unlike lib/prefs' usePref, it holds objects and numbers; use usePref for a sort or filter.
  */
-export function useLocal<T>(key: string, init: T): [T, (v: T) => void] {
-  const [value, set] = useState<T>(() => {
+export function useLocal<T>(key: string, init: T): [T, (v: T | ((now: T) => T)) => void] {
+  const read = (): T => {
     try {
       const raw = localStorage.getItem(key);
       return raw == null ? init : ((JSON.parse(raw) as T) ?? init);
     } catch {
       return init;
     }
-  });
-  const save = (v: T) => {
-    set(v);
+  };
+  const [value, set] = useState<T>(read);
+  // an update (a function) works from what's stored now, so an Undo a few seconds later can't undo other taps
+  const save = (v: T | ((now: T) => T)) => {
+    const next = typeof v === 'function' ? (v as (now: T) => T)(read()) : v;
+    set(next);
     try {
-      localStorage.setItem(key, JSON.stringify(v));
+      localStorage.setItem(key, JSON.stringify(next));
     } catch {}
   };
   return [value, save];

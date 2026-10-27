@@ -3,6 +3,7 @@ import { goBack, navigateAfterSheet } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
+import { toast } from '../lib/store';
 import { EVIDENCE, FAMILIES, POWER, REFLECT, TRAPS, power, type Family, type Trap } from '../data/traps';
 import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
 import { LAWS, REALMS, type Law } from '../data/laws';
@@ -310,6 +311,11 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
   const [query, setQuery] = useState('');
   // how often you've caught yourself in each trap, on this device
   const [caught, setCaught] = useLocal<Record<string, number>>('mm-traps-caught', {});
+  // counted at once, with Undo for a slip of the finger
+  const addCaught = (id: string) => {
+    setCaught({ ...caught, [id]: (caught[id] ?? 0) + 1 });
+    toast(t('Counted'), { label: t('Undo'), run: () => setCaught((c) => ({ ...c, [id]: Math.max(0, (c[id] ?? 0) - 1) })) });
+  };
   const [score, setScore] = useState<boolean[]>([]);
   const body = useRef<HTMLDivElement>(null);
 
@@ -367,7 +373,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
   if (solo && current) {
     return (
       <SharedEntry world={WORLD} page="traps-page" title={t('Mind traps')} rank={t('#{rank} of {n}', { rank: RANK.get(current.id)!, n: TRAPS.length })} onShare={() => setSharing({ path: `traps?open=${current.id}`, title: current.name })}>
-        <TrapDetail x={current} caught={caught[current.id] ?? 0} onCaught={() => setCaught({ ...caught, [current.id]: (caught[current.id] ?? 0) + 1 })} />
+        <TrapDetail x={current} caught={caught[current.id] ?? 0} onCaught={() => addCaught(current.id)} />
         <LearnShare target={sharing} onClose={() => setSharing(null)} />
       </SharedEntry>
     );
@@ -512,7 +518,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
               x={current}
               onShare={() => setSharing({ path: `traps?open=${current.id}`, title: current.name })}
               caught={caught[current.id] ?? 0}
-              onCaught={() => setCaught({ ...caught, [current.id]: (caught[current.id] ?? 0) + 1 })}
+              onCaught={() => addCaught(current.id)}
               go={go}
               openPrinciple={onSharedLink ? undefined : openPrinciple}
               openLaw={onSharedLink ? undefined : openLaw}

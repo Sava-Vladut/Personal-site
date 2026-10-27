@@ -3,6 +3,7 @@ import { goBack, navigateAfterSheet } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
+import { toast } from '../lib/store';
 import { PARTS, PRINCIPLES, type Part, type Principle } from '../data/principles';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { LAWS, REALMS, type Law } from '../data/laws';
@@ -54,7 +55,11 @@ type Practice = Record<number, { on?: boolean; tried?: number }>;
 function usePractice() {
   const [practice, save] = useLocal<Practice>('mm-friends-practice', {});
   const toggle = (n: number) => save({ ...practice, [n]: { ...practice[n], on: !practice[n]?.on } });
-  const tried = (n: number) => save({ ...practice, [n]: { ...practice[n], tried: (practice[n]?.tried ?? 0) + 1 } });
+  // counted at once, with Undo for a slip of the finger
+  const tried = (n: number) => {
+    save({ ...practice, [n]: { ...practice[n], tried: (practice[n]?.tried ?? 0) + 1 } });
+    toast(t('Counted'), { label: t('Undo'), run: () => save((p) => ({ ...p, [n]: { ...p[n], tried: Math.max(0, (p[n]?.tried ?? 0) - 1) } })) });
+  };
   return [practice, toggle, tried] as const;
 }
 

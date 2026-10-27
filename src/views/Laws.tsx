@@ -3,6 +3,7 @@ import { goBack, navigateAfterSheet } from '../lib/router';
 import { usePref } from '../lib/prefs';
 import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
+import { toast } from '../lib/store';
 import { LAWS, REALMS, type Law, type Realm } from '../data/laws';
 import { FAMILIES, TRAPS, type Trap } from '../data/traps';
 import { PARTS, PRINCIPLES, type Principle } from '../data/principles';
@@ -330,7 +331,11 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
   const [lens, setLens] = usePref<Lens>('laws-lens', 'player', LENSES);
   const [query, setQuery] = useState('');
   const [seen, setSeen] = useLocal<Seen>('mm-laws-seen', {});
-  const addSeen = (n: number, k: 'on' | 'by') => setSeen({ ...seen, [n]: { ...seen[n], [k]: (seen[n]?.[k] ?? 0) + 1 } });
+  // counted at once, with Undo for a slip of the finger
+  const addSeen = (n: number, k: 'on' | 'by') => {
+    setSeen({ ...seen, [n]: { ...seen[n], [k]: (seen[n]?.[k] ?? 0) + 1 } });
+    toast(t('Counted'), { label: t('Undo'), run: () => setSeen((s) => ({ ...s, [n]: { ...s[n], [k]: Math.max(0, (s[n]?.[k] ?? 0) - 1) } })) });
+  };
   const body = useRef<HTMLDivElement>(null);
 
   const today = LAWS[Math.floor((Date.now() - new Date().getTimezoneOffset() * 60_000) / 86_400_000) % LAWS.length];
