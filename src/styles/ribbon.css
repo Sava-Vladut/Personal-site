@@ -349,6 +349,11 @@
 .rb-menu .rb-grid button.is-on { background: var(--word-wash); border-color: var(--word); }
 @media (hover: hover) { .rb-menu .rb-grid button:hover:not(.is-on) { background: var(--word-wash); } }
 .rb-menu .rb-grid button:focus-visible { outline: 2px solid var(--word); outline-offset: 1px; }
+/* a finger's cells: 28px, 4px apart (8 across still fits a 360px phone) */
+@media (pointer: coarse) {
+  .rb-grid { grid-template-columns: repeat(var(--n, 8), 28px); gap: 4px; }
+  .rb-menu .rb-grid button { width: 28px; height: 28px; }
+}
 .rb-grid-size { padding: 8px 2px 4px; font: var(--w-medium) var(--text-s)/1.2 var(--sans); color: var(--ink-2); text-align: center; font-variant-numeric: tabular-nums; }
 .rb-swatch { flex: none; width: 18px; height: 18px; border-radius: var(--r-2xs); box-shadow: inset 0 0 0 1px var(--line-2); }
 .rb-swatch.is-none { background: linear-gradient(to top right, transparent calc(50% - 1px), var(--ink-3) 50%, transparent calc(50% + 1px)); }

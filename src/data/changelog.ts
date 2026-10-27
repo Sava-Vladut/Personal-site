@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.2',
+    date: '2026-10-27',
+    changes: [
+      'Insert › Table on a touch screen: the first tap on the grid shows the size, a second tap puts the table in, so a slip doesn’t add the wrong one',
+      'The table grid’s squares are bigger on touch screens',
+    ],
+  },
+  {
     version: '1.146.1',
     date: '2026-10-27',
     changes: [

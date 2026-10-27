@@ -45,10 +45,14 @@ const GRID = 8;
 function TableGrid({ onPick }: { onPick: (rows: number, cols: number) => void }) {
   const [at, setAt] = useState({ rows: 1, cols: 1 });
   const ref = useRef<HTMLDivElement>(null);
+  // a finger has no hover to show the size first: its first tap picks the size, a second tap on it puts the table in
+  const touch = useRef(false);
+  const [armed, setArmed] = useState<string | null>(null);
   const size = (rows: number, cols: number) => t('{cols} × {rows} table', { cols, rows });
   // the arrows go across and down the grid (Esc and the rest are the menu's)
   const keys = (e: KeyboardEvent) => {
     const d = ({ ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] } as Record<string, number[]>)[e.key];
+    touch.current = false;
     if (!d) return;
     e.preventDefault();
     e.stopPropagation();
@@ -68,14 +72,19 @@ function TableGrid({ onPick }: { onPick: (rows: number, cols: number) => void })
               data-at={`${rows}-${cols}`}
               class={rows <= at.rows && cols <= at.cols ? 'is-on' : undefined}
               aria-label={size(rows, cols)}
-              onPointerEnter={() => setAt({ rows, cols })}
+              onPointerEnter={(e) => e.pointerType !== 'touch' && setAt({ rows, cols })}
+              onPointerDown={(e) => (touch.current = e.pointerType === 'touch')}
               onFocus={() => setAt({ rows, cols })}
-              onClick={() => onPick(rows, cols)}
+              onClick={() => {
+                const key = `${rows}-${cols}`;
+                if (touch.current && armed !== key) return (setAt({ rows, cols }), setArmed(key));
+                onPick(rows, cols);
+              }}
             />
           );
         })}
       </div>
-      <div class="rb-grid-size" aria-hidden="true">{size(at.rows, at.cols)}</div>
+      <div class="rb-grid-size" aria-hidden="true">{armed ? t('{size} · tap again to put it in', { size: size(at.rows, at.cols) }) : size(at.rows, at.cols)}</div>
     </div>
   );
 }

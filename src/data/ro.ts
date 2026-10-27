@@ -2067,6 +2067,7 @@ export const RO: Record<string, string> = {
   'Insert table': 'Inserare tabel',
   'Insert a table': 'Inserează un tabel',
   '{cols} × {rows} table': 'Tabel {cols} × {rows}',
+  '{size} · tap again to put it in': '{size} · atinge din nou ca să-l adaugi',
   'Rows & Columns': 'Rânduri și coloane',
   'Insert above': 'Inserare deasupra',
   'Insert below': 'Inserare dedesubt',
