@@ -411,6 +411,15 @@
   .find-input, .find-btn { height: 40px; }
   .find-count { min-width: 52px; padding: 0 2px; }
   .find-bar.is-replacing .find-row + .find-row { padding-left: 0; }
+  /* 16px, so a phone doesn't zoom the page in when a field is tapped */
+  .find-input { font-size: 16px; }
+}
+/* a phone's width can't hold the field beside seven controls (it was left about 60px): the field takes the first line,
+   the count and the buttons the second, with Close at the far end */
+@media (max-width: 559.98px) {
+  .find-bar > .find-row:first-child { flex-wrap: wrap; row-gap: 4px; }
+  .find-bar > .find-row:first-child .find-input { flex-basis: calc(100% - 42px); }
+  .find-bar > .find-row:first-child .find-count { margin-right: auto; text-align: left; }
 }
 
 /* ---------- the Navigation pane (components/NavPane.tsx): the note's headings at the left of the page ---------- */

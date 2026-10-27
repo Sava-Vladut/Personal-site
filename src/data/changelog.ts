@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.142.1',
+    date: '2026-10-27',
+    changes: [
+      'On a phone, the find bar gives the search field its own line, so you can see what you type; the count and buttons sit under it, with Close at the end',
+      'Tapping a find or replace field on a phone no longer zooms the page in',
+    ],
+  },
+  {
     version: '1.142.0',
     date: '2026-10-27',
     changes: [
