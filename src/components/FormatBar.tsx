@@ -44,6 +44,8 @@ export interface RibbonActions {
   insertRef: (kind: 'trap' | 'law' | 'principle') => void;
   /** the Link sheet: a web link on the words at the caret */
   link: () => void;
+  /** prints the note, or saves it as a PDF (the browser's print dialog) */
+  print: () => void;
 }
 
 /** Where the words are written: the note's text, its title, or a person's or a book's text box. */
@@ -215,7 +217,7 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     // a wrapper of no box of its own, carrying the keyboard's height to the ribbon and the strip
     return createPortal(
       <div ref={ref} class="ribbon-root">
-        <Ribbon actions={ribbon} context={context} swapped={!!swap} cmds={note?.cmds ?? null} lit={lit} away={away} done={done} />
+        <Ribbon actions={ribbon} context={context} swapped={!!swap} cmds={note?.cmds ?? null} lit={lit} away={away} done={done} toText={() => noteNow.current?.focus()} />
         {/* on a phone it docks above the keyboard as the ribbon's bar does; on a computer it floats near the bottom */}
         {swap && (
           <div class="format-bar is-swapped is-strip in-ribbon" role="toolbar" aria-label={swapLabel} {...keepFocus}>

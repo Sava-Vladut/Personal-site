@@ -825,3 +825,76 @@ test('the ribbon lights a style exactly when its button would take it off', () =
   assert.equal(lit('x| **bold**').bold, false);
   assert.equal(lit('**bo|ld**').bold, true);
 });
+
+/* ---------- Word's AutoCorrect, moving lines, numbering ---------- */
+
+test('AutoCorrect: curly quotes, dashes, an ellipsis, symbols and arrows as they are typed', () => {
+  const typed = (text, chars) => show(type(stateFrom(text), chars));
+  assert.equal(typed('|', '"Hi," she said. \'Yes\''), '“Hi,” she said. ‘Yes’|');
+  assert.equal(typed('|', 'don\'t (or "won\'t")'), 'don’t (or “won’t”)|', 'an apostrophe in a word closes');
+  assert.equal(typed('|', 'wait -- what'), 'wait — what|');
+  assert.equal(typed('|', 'well--known'), 'well—known|', 'between words');
+  assert.equal(typed('|', 'a --'), 'a --|', 'not before it’s followed by something');
+  assert.equal(typed('|', 'and so...'), 'and so…|');
+  assert.equal(typed('|', '(c) (R) (tm)'), '© ® ™|');
+  assert.equal(typed('|', 'a -> b <- c'), 'a → b ← c|');
+  // the Markdown rules still work
+  assert.equal(typed('|', '---'), '---\n|', 'a divider');
+  assert.equal(typed('|', '- a'), '- a|', 'a bullet');
+  assert.equal(typed('|', '-- a'), '— a|');
+  // never in code, a code span being typed, or an address
+  assert.equal(typed('```\n|\n```', '"a" -- b...'), '```\n"a" -- b...|\n```');
+  assert.equal(typed('|', '`a -> "b"'), '`a -> "b"|');
+  assert.equal(typed('`co|de`', '"'), '`co"|de`');
+  assert.equal(type(stateFrom('|'), 'see https://x.com/a--b...').doc.textContent, 'see https://x.com/a--b...');
+});
+
+test('Alt+Shift+Up and Down move the line (or the selected lines) past the block beside it, the caret staying in it', () => {
+  assert.equal(after('a\nb|\nc', E.moveBlocks(-1)), 'b|\na\nc');
+  assert.equal(after('a\nb|\nc', E.moveBlocks(1)), 'a\nc\nb|');
+  assert.equal(after('«a\nb»\nc', E.moveBlocks(1)), 'c\n«a\nb»');
+  assert.equal(run('a|\nb', E.moveBlocks(-1))[1], false, 'nothing above the first line');
+  // numbered items count again where they land (the editor's renumberChanged, after each change)
+  const s0 = stateFrom('1. a\n2. b|');
+  let moved;
+  E.moveBlocks(-1)(s0, (t) => (moved = t));
+  const s1 = s0.apply(moved);
+  const fix = E.renumberChanged([moved], s1);
+  assert.equal(show(fix ? s1.apply(fix) : s1), '1. b|\n2. a');
+  // a line that's all of its quote takes the quote along; one of several moves inside it
+  assert.equal(after('a\n> q|', E.moveBlocks(-1)), '> q|\na');
+  assert.equal(after('> x\n> q|', E.moveBlocks(-1)), '> q|\n> x');
+  // moving is one step to undo
+  let s = stateFrom('a\nb|\nc', { plugins: [history()] });
+  s = s.apply(s.tr.insertText('!'));
+  E.moveBlocks(-1)(s, (tr) => (s = s.apply(tr)));
+  assert.equal(show(s), 'b!|\na\nc');
+  undo(s, (tr) => (s = s.apply(tr)));
+  assert.equal(show(s), 'a\nb!|\nc');
+});
+
+test('Restart and Continue numbering, kept apart in the text as CommonMark reads it', () => {
+  assert.equal(after('1. a\n2. b|\n3. c', E.restartNumbering), '1. a\n1) b|\n2) c');
+  assert.equal(run('1. a|\n2. b', E.restartNumbering)[1], false, 'the first item starts at 1 already');
+  assert.equal(after('1. a\n1) b|\n2) c', E.continueNumbering), '1. a\n2. b|\n3. c');
+  // across plain lines: the list after counts on from the one before
+  assert.equal(after('1. a\n2. b\n\nnote\n1. c|\n2. d', E.continueNumbering), '1. a\n2. b\n\nnote\n3. c|\n4. d');
+  assert.equal(after('1. a\n\n3. c|', E.restartNumbering), '1. a\n\n1. c|');
+  assert.equal(run('- a|', E.restartNumbering)[1], false, 'not on a bullet');
+  // a restarted list stays apart after more changes to its lines
+  let s = run('1. a\n2. b|\n3. c', E.restartNumbering)[2];
+  s = s.apply(E.typeText(s, 'x'));
+  assert.equal(after(s, E.enter), '1. a\n1) bx\n2) |\n3) c');
+  // the ribbon knows which applies
+  assert.deepEqual([E.litOf(stateFrom('1. a\n2. b|')).canRestart, E.litOf(stateFrom('1. a\n2. b|')).canContinue], [true, false]);
+});
+
+test('numbered items a level in show a., then i., then numbers again (the text keeps its digits)', () => {
+  const look = (indent, num) => nd.listItemLook({ kind: 'ol', indent, num })['data-marker'];
+  assert.deepEqual([look('', '3'), look('\t', '3'), look('\t\t', '4'), look('\t\t\t', '2'), look('\t', '28')], ['3.', 'c.', 'iv.', '2.', 'ab.']);
+});
+
+test('the style gallery lights Heading 4 to 6 as well', () => {
+  assert.equal(E.litOf(stateFrom('#### |h')).style, 'h4');
+  assert.equal(E.litOf(stateFrom('###### |h')).style, 'h6');
+});

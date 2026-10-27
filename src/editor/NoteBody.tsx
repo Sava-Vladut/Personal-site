@@ -29,8 +29,11 @@ export interface NoteBodyHandle {
   text(): string;
   /** counts the document's changes */
   version(): number;
-  /** puts a new text in, as one change to undo (only what differs is replaced) */
-  setText(text: string): void;
+  /**
+   * puts a new text in (only what differs is replaced): one change to undo, or with `undoable` false (a newer copy
+   * from sync) none, so undo never takes the words back to what this device had before
+   */
+  setText(text: string, undoable?: boolean): void;
   focused(): boolean;
   /** brings the caret back into view (after the keyboard or a bar came up over it) */
   reveal(): void;
@@ -55,6 +58,8 @@ export interface NoteBodyHandle {
   lit(): Lit;
   /** tells `fn` the ribbon's lit state whenever it changes (at most once a frame) */
   watch(fn: (lit: Lit) => void): () => void;
+  /** tells `fn` the selected text (as the note writes it), null with nothing selected, whenever it changes */
+  watchSelection(fn: (text: string | null) => void): () => void;
   cmds: NoteCommands;
   media: {
     list(): Media[];
@@ -84,6 +89,8 @@ interface Props {
   /** keys go to the suggestions first, while they're up: true when they took it */
   suggestKey: (e: KeyboardEvent) => boolean;
   onLink: () => void;
+  /** Ctrl+S: the note saved now */
+  onSave: () => void;
   onMedia: (slots: MediaSlot[]) => void;
   /** whether a pasted picture is one the note holds (its photo or image is in the note's list) */
   knows: (m: Media) => boolean;
@@ -145,10 +152,27 @@ export function NoteBody(p: Props) {
     let settled = false; // the note has opened: tags drawn from now on don't play the opening sheen
     const settle = setTimeout(() => void (settled = true), 1500);
     const watchers = new Set<(l: Lit) => void>();
+    const selWatchers = new Set<(text: string | null) => void>();
+    let selText: string | null = null;
+    let selAt = '';
+    const selectedText = () => {
+      const sel = view.state.selection;
+      return sel.empty ? null : serializeSlice(sel.content());
+    };
     const slots = new MediaSlots((s) => props.current.onMedia(s));
     const tellLit = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
+        // the selection's text only read again when the selection or the document moved
+        const at = view.state.selection.empty ? '' : `${view.state.selection.from}:${view.state.selection.to}:${version}`;
+        if (selWatchers.size && at !== selAt) {
+          selAt = at;
+          const text = selectedText();
+          if (text !== selText) {
+            selText = text;
+            selWatchers.forEach((fn) => fn(text));
+          }
+        }
         const next = litOf(view.state);
         if (lit && sameLit(lit, next)) return;
         lit = next;
@@ -174,6 +198,7 @@ export function NoteBody(p: Props) {
             onTyped: (typed) => props.current.onTyped(typed),
             suggestKey: (e) => props.current.suggestKey(e),
             link: () => props.current.onLink(),
+            save: () => props.current.onSave(),
           }),
           placeholder(),
           new Plugin({ props: { handleDOMEvents: { focus: () => void (placed = true) } } }),
@@ -187,6 +212,7 @@ export function NoteBody(p: Props) {
         'aria-multiline': 'true',
         'aria-label': t('Note'),
         spellcheck: 'true',
+        autocorrect: 'on',
         autocapitalize: 'sentences',
       },
       scrollMargin: margin,
@@ -270,9 +296,9 @@ export function NoteBody(p: Props) {
       view,
       text: () => serializeNote(view.state.doc),
       version: () => version,
-      setText(text) {
+      setText(text, undoable = true) {
         const next = normalizeDoc(parseNote(text, schema));
-        if (!next.eq(view.state.doc)) view.dispatch(replaceDoc(view.state.tr, next));
+        if (!next.eq(view.state.doc)) view.dispatch(replaceDoc(view.state.tr, next).setMeta('addToHistory', undoable));
       },
       focused: () => view.hasFocus(),
       reveal() {
@@ -325,6 +351,13 @@ export function NoteBody(p: Props) {
         watchers.add(fn);
         fn(handle.lit());
         return () => watchers.delete(fn);
+      },
+      watchSelection(fn) {
+        selWatchers.add(fn);
+        selText = selectedText();
+        selAt = view.state.selection.empty ? '' : `${view.state.selection.from}:${view.state.selection.to}:${version}`;
+        fn(selText);
+        return () => selWatchers.delete(fn);
       },
       cmds: bindCommands(() => viewRef.current),
       media: {

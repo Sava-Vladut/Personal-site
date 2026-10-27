@@ -13,7 +13,7 @@ import { gapCursor } from '@tiptap/pm/gapcursor';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
-  BLOCK_RULES, backspace, deleteForward, enter, exitCode, newLine, noteCommands, renumberChanged, tab, tidyAfterTag, typedAt, type Typed,
+  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, moveBlocks, newLine, noteCommands, renumberChanged, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
 } from '../lib/noteDoc/edit';
 
 /* ---------- typing Markdown ---------- */
@@ -90,16 +90,21 @@ const autolink = new InputRule(/(?<![\w/:\]()])(https?:\/\/[^\s<>]+)(\s)$/, (sta
   return tr.setStoredMarks($s.marks());
 });
 
-const blockRules = BLOCK_RULES.map((rule) => new InputRule(rule.find, (state, match, start, end) => {
+const asInputRule = (rule: BlockRule) => new InputRule(rule.find, (state, match, start, end) => {
   const tr = state.tr;
   return rule.apply(tr, match, start, end) ? tr : null;
-}));
+});
+const blockRules = BLOCK_RULES.map(asInputRule);
+/** Word's AutoCorrect (curly quotes, dashes, …, ©): after the Markdown rules, so a [link](c) stays a link. */
+const autocorrect = AUTOCORRECT.map(asInputRule);
 
 /* ---------- keys ---------- */
 
 export interface KeyOptions {
   /** the Link sheet (Ctrl+K) */
   link: () => void;
+  /** saves the note now and says so (Ctrl+S) */
+  save: () => void;
   /** while an @'s suggestions are up, they have the arrows, Enter, Tab and Escape: true when they took the key */
   suggestKey: (e: KeyboardEvent) => boolean;
 }
@@ -134,6 +139,14 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
     else if (k === 'u') return true; // no underline in a note's text: swallowed, not the browser's
     else if (k === 'k') {
       opts.link();
+      return true;
+    }
+    // saving and printing are the note's, never the browser's page saved or printed whole
+    else if (k === 's') {
+      opts.save();
+      return true;
+    } else if (k === 'p') {
+      print();
       return true;
     }
     // never the browser's Back and Forward (⌘[ and ⌘]) from the text, in a list or not
@@ -290,6 +303,9 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     Tab: tab(false),
     'Shift-Tab': tab(true),
     ArrowDown: exitCode,
+    // the line (or the selected lines) up or down past the block beside it, as in Word
+    'Alt-Shift-ArrowUp': moveBlocks(-1),
+    'Alt-Shift-ArrowDown': moveBlocks(1),
     'Mod-a': selectAll,
   });
   return [
@@ -320,7 +336,7 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
         },
       },
     }),
-    inputRules({ rules: [...blockRules, markdownRule, autolink] }),
+    inputRules({ rules: [...blockRules, markdownRule, autolink, ...autocorrect] }),
     keys,
     keymap(baseKeymap),
     history({ depth: 300, newGroupDelay: 1000 }),

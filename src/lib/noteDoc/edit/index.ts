@@ -5,24 +5,27 @@
 // Keys (keymap, priority 1000):
 //   Enter → enter · Shift-Enter → newLine · Backspace → backspace (after undoInputRule) · Delete → deleteForward
 //   Tab / Shift-Tab → tab(false) / tab(true) · Mod-[ / Mod-] → noteCommands.indent(true / false) (always swallowed)
-//   ArrowDown at the end of a code block → exitCode
+//   ArrowDown at the end of a code block → exitCode · Alt-Shift-ArrowUp / ArrowDown → moveBlocks(-1 / 1)
 //   Mod-b, Mod-i, Mod-Shift-x, Mod-Shift-h → noteCommands.mark('bold' | 'italic' | 'strike' | 'highlight')
 //   Mod-Shift-l, Mod-Shift-7, Mod-Shift-9 → noteCommands.list('ul' | 'ol' | 'task') · Mod-Shift-. → toggleQuote
-//   Mod-Alt-0…3, Mod-Shift-n → noteCommands.style('normal' | 'h1'…) · Mod-k → the link sheet (linkAt, setLink, removeLink)
-// Typing: BLOCK_RULES as input rules; handleTextInput → tidyAfterTag(text); the suggest plugin reads typedAt(state) and
-// picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
+//   Mod-Alt-0…6, Mod-Shift-n → noteCommands.style('normal' | 'h1'…) · Mod-k → the link sheet (linkAt, setLink, removeLink)
+//   Mod-s → the note saved now (KeyOptions.save) · Mod-p → the browser's print, the note alone (styles/document.css)
+// Typing: BLOCK_RULES as input rules, then AUTOCORRECT (after the inline Markdown and autolink rules); handleTextInput →
+// tidyAfterTag(text); the suggest plugin reads typedAt(state) and picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
 // After each change (appendTransaction, beside normalizeTr): renumberChanged(trs, state) counts the lists it touched again.
 import type { Command } from '@tiptap/pm/state';
 import type { ListKind } from '../syntax';
 import { insertBlock, setStyle, toggleQuote, type BlockKind, type Style } from './blocks';
-import { indentList, toggleList } from './lists';
+import { continueNumbering, indentList, restartNumbering, toggleList } from './lists';
 import { clearFormatting, removeLink, setLink, toggleMarkSmart, type MarkName } from './marks';
 
 export {
   enter, newLine, backspace, deleteForward, tab, codeEnter, exitCode, fenceEnter, headingEnter, titleEnter, quoteEnter,
-  setStyle, toggleQuote, insertBlock, type Style, type BlockKind,
+  setStyle, toggleQuote, insertBlock, moveBlocks, type Style, type BlockKind,
 } from './blocks';
-export { renumber, renumberChanged, countOnAfter, indentList, itemToParagraph, listEnter, toggleTask, toggleList } from './lists';
+export {
+  renumber, renumberChanged, countOnAfter, indentList, itemToParagraph, listEnter, toggleTask, toggleList, restartNumbering, continueNumbering,
+} from './lists';
 export {
   toggleMarkSmart, clearFormatting, linkAt, setLink, removeLink, normalizeHref, tidyAfterTag, CLEARED,
   type MarkName, type LinkTarget,
@@ -34,7 +37,8 @@ export {
 export { typedAt, replaceTyped, insertAtom, insertTrigger, type Typed } from './mention';
 export { litOf, sameLit, type Lit, type LineKind } from './lit';
 export { parseClipboardText, pasteText, type TextPasteOptions } from './clipboard';
-export { BLOCK_RULES, ruleFor, typeText, type BlockRule } from './rules';
+export { BLOCK_RULES, TYPING_RULES, ruleFor, typeText, type BlockRule } from './rules';
+export { AUTOCORRECT } from './autocorrect';
 export { isWordChar, wordAround, selectedBlocks, lineText, liftBlocks, unCallout, first, inTwoSteps, LEAF, type At } from './util';
 
 /**
@@ -57,6 +61,8 @@ export const noteCommands = {
   list: (kind: ListKind): Command => toggleList(kind),
   /** The Quote button and Mod-Shift-.: in or out of a quote. */
   quote: toggleQuote as Command,
+  /** Restart numbering (from 1) or Continue numbering (from the list before), on the numbered item at the caret. */
+  numbering: (restart: boolean): Command => (restart ? restartNumbering : continueNumbering),
   /** Increase / decrease indent: list items only (false elsewhere; the key is still swallowed). */
   indent: (out: boolean): Command => indentList(out),
   /** A divider, code block or callout at the caret. */

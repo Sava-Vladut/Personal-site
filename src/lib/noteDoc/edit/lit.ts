@@ -4,6 +4,7 @@ import type { MarkType } from '@tiptap/pm/model';
 import { redoDepth, undoDepth } from '@tiptap/pm/history';
 import type { EditorState } from '@tiptap/pm/state';
 import type { Style } from './blocks';
+import { continueNumbering, restartNumbering } from './lists';
 import { markLit } from './marks';
 
 /** The kind of line the caret is on: a plain line, a heading, a list item of a kind, or code. */
@@ -23,12 +24,15 @@ export interface Lit {
   callout: boolean;
   /** on a list item */
   inList: boolean;
-  /** the style the gallery shows picked: a heading 1–3, Quote, Normal, or none (a callout, a smaller heading, code) */
+  /** the style the gallery shows picked: a heading 1–6, Quote, Normal, or none (a callout, code) */
   style: Style | null;
   /** something is selected */
   ranged: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  /** on a numbered item that Restart numbering / Continue numbering would change */
+  canRestart: boolean;
+  canContinue: boolean;
 }
 
 /** Whether all the text and chips of the selection carry `type`. */
@@ -66,8 +70,8 @@ export function litOf(state: EditorState): Lit {
     if (n === 'blockquote') quote = true;
     if (n === 'callout') quote = callout = true;
   }
-  const style: Style | null = /^h[1-3]$/.test(block) ? (block as Style)
-    : callout || /^h[4-6]$/.test(block) || block === 'code' ? null
+  const style: Style | null = /^h[1-6]$/.test(block) ? (block as Style)
+    : callout || block === 'code' ? null
     : quote ? 'quote'
     : 'normal';
   return {
@@ -86,6 +90,8 @@ export function litOf(state: EditorState): Lit {
     ranged: !sel.empty,
     canUndo: undoDepth(state) > 0,
     canRedo: redoDepth(state) > 0,
+    canRestart: block === 'ol' && restartNumbering(state),
+    canContinue: block === 'ol' && continueNumbering(state),
   };
 }
 

@@ -917,6 +917,47 @@ test('sync: an older copy (or the one this page saved) changes nothing', () => {
   assert.equal(note.value, 'Existing words');
 });
 
+test('sync: a newer copy goes into the words as no step to undo', async () => {
+  const { h, note, props } = openNote();
+  const calls = [];
+  const set = note.setText.bind(note);
+  note.setText = (t, undoable) => (calls.push(undoable), set(t));
+  h.entries.set('note-1', { ...h.entries.get('note-1'), text: 'Written on the laptop', updated: 5 });
+  await settle();
+  h.render('Editor', props);
+  assert.deepEqual(calls, [false]);
+});
+
+test('saving: Ctrl+S saves at once; a failed save is tried again on a click on "Not saved" and when back online', async () => {
+  let fail = true;
+  let h;
+  ({ h } = openNote({ saveEntry: async (e) => { if (fail) throw new Error('Offline'); h.entries.set(e.id, e); return e; } }));
+  const props = { id: 'note-1', query: new URLSearchParams() };
+  let tree = h.render('Editor', props);
+  title(tree).props.onInput({ currentTarget: { value: 'Offline words' } });
+  tree = h.render('Editor', props);
+  find(tree, (n) => n.type.name === 'NoteBody').props.onSave();
+  await settle();
+  tree = h.render('Editor', props);
+  const status = () => find(tree, (n) => n.type.name === 'NoteStatus').props;
+  assert.equal(status().save, 'error');
+  status().onRetry();
+  await settle();
+  assert.equal(h.entries.get('note-1').title, 'Before', 'still offline');
+  fail = false;
+  for (const f of h.listeners.get('online')) f();
+  await settle();
+  assert.equal(h.entries.get('note-1').title, 'Offline words');
+  tree = h.render('Editor', props);
+  assert.equal(status().save, 'saved');
+  // saved by Ctrl+S, the status bar says so once more
+  const before = status().savedNow;
+  find(tree, (n) => n.type.name === 'NoteBody').props.onSave();
+  await settle();
+  tree = h.render('Editor', props);
+  assert.equal(status().savedNow, before + 1);
+});
+
 for (const reopened of [false, true]) {
   test(`leaving: a save that failed is tried again after the note has gone${reopened ? ', unless it was saved again since' : ''}`, async () => {
     let calls = 0;

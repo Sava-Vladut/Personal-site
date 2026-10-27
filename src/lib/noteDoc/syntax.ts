@@ -14,6 +14,28 @@ export const CALLOUT = /^\[!([\w-]+)\][+-]?[ \t]*(.*)$/;
 /** How far a list item is indented: two spaces or a tab a level, at most 6. */
 export const depthOf = (indent: string) => Math.min(6, [...indent].reduce((n, c) => n + (c === '\t' ? 2 : 1), 0) >> 1);
 
+/** n as a, b, … z, aa, ab… */
+const letters = (n: number): string => (n > 26 ? letters(Math.floor((n - 1) / 26)) : '') + String.fromCharCode(97 + ((n - 1) % 26));
+/** n in lower-case Roman numerals (as digits past 3999) */
+function roman(n: number): string {
+  if (n >= 4000) return String(n);
+  let out = '';
+  for (const [v, r] of [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']] as const) {
+    for (; n >= v; n -= v) out += r;
+  }
+  return out;
+}
+
+/**
+ * The marker a numbered item shows, as Word's multilevel list: 1. at the top, a. a level in, i. the next, then over
+ * again. Only shown: the text keeps its digits.
+ */
+export function olMarker(num: string, depth: number): string {
+  const n = Number(num) || 1;
+  const level = depth % 3;
+  return (level === 1 ? letters(n) : level === 2 ? roman(n) : num) + '.';
+}
+
 export type ListKind = 'ul' | 'ol' | 'task';
 
 /** The parts of a list item's line, as written: `indent + marker + sep + text`. */

@@ -102,6 +102,12 @@
   .note-save svg { color: var(--word-ink); }
   .note-save svg.is-hidden { visibility: hidden; }
   .note-save.is-error { color: var(--danger); }
+  /* "Not saved" tries again when clicked */
+  button.note-save { height: 22px; border-radius: var(--r-xs); font: inherit; }
+  @media (hover: hover) { button.note-save:hover { background: color-mix(in oklab, var(--danger) 10%, transparent); } }
+  /* saved by Ctrl+S: the tick pops once */
+  .note-save.is-now svg { animation: save-now var(--dur-3, 400ms) var(--ease-emph); }
+  @keyframes save-now { from { scale: 0.4; opacity: 0; } 60% { scale: 1.25; } }
   .note-views, .note-zoom { display: flex; align-items: center; gap: 1px; }
   .note-views { padding-right: 10px; margin-right: 6px; border-right: 1px solid var(--line); }
   .note-status-btn {
@@ -139,4 +145,34 @@
 /* Focus on a phone: the Exit Focus button takes the top bar's corner, so the bar steps aside until Focus ends */
 @media (max-width: 1023.98px) {
   :root[data-note-focus] .editor-bar { visibility: hidden; }
+}
+
+/* ---------- Print / Save as PDF: the note alone, on white paper ----------
+   Ctrl+P, the ribbon's Print or the More sheet's: only the title, the date line and the words with their pictures.
+   The app around the note (the side bar, the ribbon, the status bar, the phone's bars, sheets and toasts) goes. */
+
+@media print {
+  @page { margin: 2cm 1.8cm; }
+  body:has(.note-sheet) > :not(#app),
+  body:has(.note-sheet) #app > :not(main),
+  .page.editor > :not(.note-sheet),
+  .note-sheet :is(.backlinks, .read-tail, .read-empty, .drop-slot, .details-open, .details-music, .details-add, .media-corner),
+  .note-sheet .details-items > :not(.details-date) { display: none !important; }
+  :root:has(.note-sheet), body:has(.note-sheet), .app.route-note { background: #fff !important; }
+  body:has(.note-sheet) { --doc-zoom: 1; }
+  .app.route-note, .route-note .page.editor, .note-sheet {
+    width: auto !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+    background: none !important; box-shadow: none !important; border: 0 !important; transform: none !important; animation: none !important;
+  }
+  .note-sheet, .note-sheet * { color: #000 !important; }
+  .note-sheet .note-head::after { background: #999; }
+  .note-sheet .title-input { field-sizing: content; height: auto; overflow: visible; resize: none; }
+  .note-sheet .title-input::placeholder, .note-editor .is-empty::before { color: transparent !important; content: none; }
+  .note-sheet .details-summary { padding: 0; background: none; border: 0; }
+  .note-sheet .note-head.has-cover { margin: 0 !important; }
+  /* pictures fit the page across, and none is split between two pages */
+  .note-sheet :is(img, video, canvas) { max-width: 100% !important; height: auto; }
+  .note-sheet .media { break-inside: avoid; }
+  .note-sheet .media.is-selected { outline: none !important; box-shadow: none !important; }
+  .note-sheet :is(h1, h2, h3, h4, h5, h6, .md-h) { break-after: avoid; }
 }

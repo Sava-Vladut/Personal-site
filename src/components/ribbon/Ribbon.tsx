@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { createPortal } from 'preact/compat';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { docView, setDocView, stepZoom, useDocView, ZOOMS } from '../../lib/docView';
 import { t } from '../../lib/i18n';
@@ -30,7 +31,88 @@ function useWide() {
   return wide;
 }
 
-type Style = 'normal' | 'h1' | 'h2' | 'h3' | 'quote';
+type Style = 'normal' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote';
+
+/** What a toolbar's arrow keys go between: its buttons (and sliders) that can be used, not those of a menu in it. */
+const stops = (el: HTMLElement) =>
+  [...el.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')].filter((b) => !b.closest('[role="menu"]'));
+
+/**
+ * One Tab stop for a toolbar, as WAI-ARIA's roving tabindex: the arrow keys (and Home, End) go from command to
+ * command, Tab goes past them all, and coming back lands on the one used last.
+ */
+function useRoving() {
+  const ref = useRef<HTMLDivElement>(null);
+  const last = useRef<HTMLElement | null>(null);
+  const settle = (current?: HTMLElement | null) => {
+    const el = ref.current;
+    if (!el) return;
+    const all = stops(el);
+    const at = current && all.includes(current) ? current : last.current && all.includes(last.current) ? last.current : all[0];
+    for (const b of all) b.tabIndex = b === at ? 0 : -1;
+  };
+  // after every render: the commands change with the tab, the caret and the selection
+  useLayoutEffect(() => settle());
+  return {
+    ref,
+    onFocusIn(e: FocusEvent) {
+      const b = e.target as HTMLElement;
+      if (!ref.current || !stops(ref.current).includes(b)) return;
+      last.current = b;
+      settle(b);
+    },
+    onKeyDown(e: KeyboardEvent) {
+      const el = ref.current;
+      const k = e.key;
+      // a slider's arrows are its own
+      if (!el || !/^(ArrowLeft|ArrowRight|Home|End)$/.test(k) || (e.target as Element).closest('input, [role="menu"], [role="tablist"]')) return;
+      const all = stops(el);
+      const i = all.indexOf(e.target as HTMLElement);
+      if (i < 0) return;
+      e.preventDefault();
+      const n = k === 'Home' ? 0 : k === 'End' ? all.length - 1 : (i + (k === 'ArrowRight' ? 1 : -1) + all.length) % all.length;
+      all[n].focus();
+      all[n].scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    },
+  };
+}
+
+/**
+ * A small menu dropped from a ribbon button (more styles, numbering): on the page's body, as the ribbon's row scrolls
+ * and would clip it, above the button when it's low on the screen (the phone's bar). Opened from the keyboard, its
+ * first item takes the focus; the arrows go up and down it, Esc closes it.
+ */
+function Pop({ at, label, onClose, children }: { at: HTMLElement; label: string; onClose: () => void; children: ComponentChildren }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const r = at.getBoundingClientRect();
+  const up = r.top > innerHeight / 2;
+  const style = {
+    left: Math.round(Math.max(8, Math.min(r.left, innerWidth - 236))) + 'px',
+    ...(up ? { bottom: Math.round(innerHeight - r.top + 6) + 'px' } : { top: Math.round(r.bottom + 6) + 'px' }),
+  };
+  useEffect(() => {
+    if (document.activeElement === at) ref.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+  }, []);
+  const keys = (e: KeyboardEvent) => {
+    const items = [...(ref.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? [])];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (i >= 0) at.focus();
+      onClose();
+    } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && items.length) {
+      e.preventDefault();
+      items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+    }
+  };
+  return createPortal(
+    <div ref={ref} class={`rb-menu rb-pop${up ? ' is-up' : ''}`} role="menu" aria-label={label} style={style} onKeyDown={keys} {...keepFocus}>
+      {children}
+    </div>,
+    document.body,
+  );
+}
 
 /** What the bar knows about the text, and its commands for it (components/FormatBar.tsx). */
 export interface RibbonProps {
@@ -46,6 +128,8 @@ export interface RibbonProps {
   away: boolean;
   /** Hide keyboard, while writing on a touch screen */
   done: ComponentChildren;
+  /** the focus back in the note's text, the caret where it was (Esc in the ribbon, F6) */
+  toText: () => void;
 }
 
 /**
@@ -70,6 +154,8 @@ export function Ribbon(p: RibbonProps) {
   const [tab, setTab] = useState<Tab>('home');
   const [peek, setPeek] = useState(false); // the folded ribbon dropped down over the page
   const [menu, setMenu] = useState(false); // the phone's list of tabs
+  const [pop, setPop] = useState<{ id: 'styles' | 'numbering'; at: HTMLElement } | null>(null); // a button's menu
+  const roving = useRoving();
   const before = useRef<Tab>('home'); // the tab to go back to when the picture's goes
   const auto = useRef<Tab | null>(null); // the tab a selection switched away from, on a phone
   const scroller = useRef<HTMLDivElement>(null);
@@ -118,18 +204,20 @@ export function Ribbon(p: RibbonProps) {
     if (scroller.current) scroller.current.scrollLeft = 0;
   }, [shown]);
 
-  // The dropped-down ribbon goes up again on a click outside it, or Esc; so does the phone's list of tabs.
+  // The dropped-down ribbon goes up again on a click outside it, or Esc; so do the phone's list of tabs and a menu.
   useEffect(() => {
-    if (!peek && !menu) return;
+    if (!peek && !menu && !pop) return;
     const down = (e: PointerEvent) => {
       const at = e.target as Element | null;
-      if (peek && !at?.closest?.('.ribbon.is-wide')) setPeek(false);
+      if (peek && !at?.closest?.('.ribbon.is-wide, .rb-pop')) setPeek(false);
       if (menu && !at?.closest?.('.rb-pick')) setMenu(false);
+      if (pop && !at?.closest?.('.rb-pop') && !pop.at.contains(at)) setPop(null);
     };
     const esc = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       setPeek(false);
       setMenu(false);
+      setPop(null);
     };
     document.addEventListener('pointerdown', down, true);
     document.addEventListener('keydown', esc);
@@ -137,7 +225,9 @@ export function Ribbon(p: RibbonProps) {
       document.removeEventListener('pointerdown', down, true);
       document.removeEventListener('keydown', esc);
     };
-  }, [peek, menu]);
+  }, [peek, menu, pop]);
+  // a menu goes with the tab, or with the commands going (reading)
+  useEffect(() => setPop(null), [shown, reading]);
   useEffect(() => {
     if (!collapsed) setPeek(false);
   }, [collapsed]);
@@ -157,11 +247,27 @@ export function Ribbon(p: RibbonProps) {
   };
 
   // Esc leaves Focus, and Ctrl+F1 folds the ribbon (Word's shortcuts in the text are the editor's, src/editor/plugins.ts).
-  const live = useRef({ toggleRibbon, wide });
-  live.current = { toggleRibbon, wide };
+  const live = useRef({ toggleRibbon, wide, toText: p.toText });
+  live.current = { toggleRibbon, wide, toText: p.toText };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const c = live.current;
+      // F6 (Shift+F6 back) goes round the ribbon's tabs, the text and the status bar, as in Word
+      if (e.key === 'F6' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const a = document.activeElement;
+        const here = a?.closest('.ribbon') ? 0 : a?.closest('.note-status') ? 2 : 1;
+        const shown = (el: HTMLElement | null) => (el && el.getClientRects().length ? el : null);
+        for (let k = 1; k < 3; k++) {
+          const to = (here + (e.shiftKey ? -k : k) + 3) % 3;
+          if (to === 1) return void c.toText();
+          const el = shown(to === 0
+            ? document.querySelector<HTMLElement>('.ribbon .rb-tab[aria-selected="true"], .ribbon .rb-pick-btn')
+            : document.querySelector<HTMLElement>('.note-status button:not(:disabled)'));
+          if (el) return void el.focus();
+        }
+        return;
+      }
       const sheet = document.documentElement.classList.contains('sheet-open');
       if (e.key === 'Escape' && docView().focus && !e.defaultPrevented && !sheet) return void setDocView({ focus: false });
       if (e.key === 'F1' && (e.ctrlKey || e.metaKey) && c.wide) {
@@ -173,10 +279,19 @@ export function Ribbon(p: RibbonProps) {
     return () => document.removeEventListener('keydown', key);
   }, []);
 
+  /** Esc in the ribbon puts the focus back in the text (when nothing of the ribbon's is open for it to close). */
+  const escape = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || peek || menu || pop) return;
+    e.preventDefault();
+    p.toText();
+  };
+  /** Opens (or closes) a button's menu. */
+  const togglePop = (id: 'styles' | 'numbering', at: HTMLElement) => setPop(pop?.id === id ? null : { id, at });
+
   /* ---------- the pieces ---------- */
 
-  const tool = (icon: UiName, label: string, onClick: () => void, o: { on?: boolean; off?: boolean; k?: string } = {}) => (
-    <button type="button" class="format-btn" aria-label={label} title={tip(label, o.k)} aria-pressed={o.on} disabled={o.off} onClick={onClick}>
+  const tool = (icon: UiName, label: string, onClick: () => void, o: { on?: boolean; off?: boolean; k?: string; menu?: (e: MouseEvent) => void } = {}) => (
+    <button type="button" class="format-btn" aria-label={label} title={tip(label, o.k)} aria-pressed={o.on} disabled={o.off} onClick={onClick} onContextMenu={o.menu}>
       <Icon name={icon} size={18} />
     </button>
   );
@@ -210,14 +325,40 @@ export function Ribbon(p: RibbonProps) {
     tool('clear-formatting', t('Clear formatting'), () => cmds?.clearFormatting(), { off }),
   ], 'rb-rows', 3);
   const block = lit?.block;
+  // Numbered list with its menu beside it (Restart numbering, Continue numbering); a right-click on it opens it too
+  const numberingAt = useRef<HTMLButtonElement>(null);
+  const numbered = (
+    <span key="ol" class="rb-split">
+      {tool('list-numbers', t('Numbered list'), () => cmds?.list('ol'), {
+        on: block === 'ol', off, k: 'Ctrl+Shift+7',
+        menu: (e) => {
+          e.preventDefault();
+          if (!off && numberingAt.current) setPop({ id: 'numbering', at: numberingAt.current });
+        },
+      })}
+      <button
+        ref={numberingAt}
+        type="button"
+        class="format-btn rb-split-more"
+        aria-label={t('Numbering options')}
+        title={t('Numbering options')}
+        aria-haspopup="menu"
+        aria-expanded={pop?.id === 'numbering'}
+        disabled={off}
+        onClick={(e) => togglePop('numbering', e.currentTarget)}
+      >
+        <Icon name="chevron-down" size={12} />
+      </button>
+    </span>
+  );
   const paragraph = group('paragraph', t('Paragraph'), [
     tool('list', t('Bullet list'), () => cmds?.list('ul'), { on: block === 'ul', off, k: 'Ctrl+Shift+L' }),
-    tool('list-numbers', t('Numbered list'), () => cmds?.list('ol'), { on: block === 'ol', off, k: 'Ctrl+Shift+7' }),
+    numbered,
     tool('list-check', t('Checklist'), () => cmds?.list('task'), { on: block === 'task', off, k: 'Ctrl+Shift+9' }),
     tool('indent-decrease', t('Decrease indent'), () => cmds?.indent(true), { off: off || !inList, k: 'Ctrl+[' }),
     tool('indent-increase', t('Increase indent'), () => cmds?.indent(false), { off: off || !inList, k: 'Ctrl+]' }),
     tool('blockquote', t('Quote'), () => cmds?.quote(), { on: !!lit?.quote && !lit.callout, off, k: 'Ctrl+Shift+.' }),
-  ], 'rb-rows', 3);
+  ], 'rb-rows rb-para', 3);
   const STYLES: [Style, string, string?][] = [
     ['normal', t('Normal'), 'Ctrl+Alt+0'],
     ['h1', t('Heading 1'), 'Ctrl+Alt+1'],
@@ -225,16 +366,57 @@ export function Ribbon(p: RibbonProps) {
     ['h3', t('Heading 3'), 'Ctrl+Alt+3'],
     ['quote', t('Quote'), 'Ctrl+Shift+.'],
   ];
+  // the smaller headings: in the phone's row of chips, and in a menu at the end of the computer's gallery
+  const MORE: [Style, string, string][] = [
+    ['h4', t('Heading 4'), 'Ctrl+Alt+4'],
+    ['h5', t('Heading 5'), 'Ctrl+Alt+5'],
+    ['h6', t('Heading 6'), 'Ctrl+Alt+6'],
+  ];
+  const moreOn = MORE.some(([s]) => s === style);
   const styles = group('styles', t('Styles'), (
     <div class="rb-gallery">
-      {STYLES.map(([s, name, k]) => (
+      {(wide ? STYLES : [...STYLES, ...MORE]).map(([s, name, k]) => (
         <button key={s} type="button" class={`rb-style is-${s}`} aria-pressed={style === s} disabled={off} title={tip(name, k)} onClick={() => apply(s)}>
           <span class="rb-style-sample" aria-hidden="true">AaBbCc</span>
           <span class="rb-style-name">{name}</span>
         </button>
       ))}
+      {wide && (
+        <button
+          type="button"
+          class="rb-style-more"
+          aria-label={t('More styles')}
+          title={t('More styles')}
+          aria-haspopup="menu"
+          aria-expanded={pop?.id === 'styles'}
+          aria-pressed={moreOn}
+          disabled={off}
+          onClick={(e) => togglePop('styles', e.currentTarget)}
+        >
+          <Icon name="chevron-down" size={14} />
+        </button>
+      )}
     </div>
   ));
+  const popMenu = pop && !off && (
+    <Pop at={pop.at} label={pop.id === 'styles' ? t('More styles') : t('Numbering options')} onClose={() => setPop(null)}>
+      {pop.id === 'styles'
+        ? MORE.map(([s, name, k]) => (
+          <button key={s} type="button" role="menuitemradio" aria-checked={style === s} class={`rb-pop-style is-${s}`} title={tip(name, k)} onClick={() => (setPop(null), apply(s))}>
+            {name}
+            {style === s && <Icon name="check" size={16} />}
+          </button>
+        ))
+        : [
+          <button key="restart" type="button" role="menuitem" disabled={!lit?.canRestart} onClick={() => (setPop(null), cmds?.numbering(true))}>
+            {t('Restart numbering')}
+          </button>,
+          <button key="continue" type="button" role="menuitem" disabled={!lit?.canContinue} onClick={() => (setPop(null), cmds?.numbering(false))}>
+            {t('Continue numbering')}
+          </button>,
+        ]}
+    </Pop>
+  );
   const home = wide ? [undo, font, paragraph, styles] : [font, paragraph, styles, undo];
 
   const insert = [
@@ -277,6 +459,7 @@ export function Ribbon(p: RibbonProps) {
       </button>,
       tool('zoom-in', t('Zoom in'), () => stepZoom(1), { off: view.zoom >= ZOOMS[ZOOMS.length - 1] }),
     ], 'rb-zooms'),
+    group('print', t('Print'), big('printer', t('Print'), a.print, { k: 'Ctrl+P', title: t('Print or save as PDF') })),
     group('note', t('Note'), [
       big('mood-plus', t('Icon'), a.icon, { title: t('Add or change the icon') }),
       big('info-circle', t('Details'), a.details, { title: t('Date, feelings, place and more') }),
@@ -310,11 +493,14 @@ export function Ribbon(p: RibbonProps) {
     return (
       <>
         <div
+          ref={roving.ref}
           class={`format-bar ribbon is-phone${away ? ' is-tucked' : ''}${picture ? ' is-context' : ''}`}
           inert={away}
           role="toolbar"
           aria-label={name}
           {...hold}
+          onFocusIn={roving.onFocusIn}
+          onKeyDown={(e) => (roving.onKeyDown(e), escape(e))}
         >
           <div class="rb-pick">
             <button type="button" class="rb-pick-btn" aria-haspopup="menu" aria-expanded={menu} title={t('Tabs')} onClick={() => setMenu(!menu)}>
@@ -348,6 +534,7 @@ export function Ribbon(p: RibbonProps) {
           </div>
           {p.done}
         </div>
+        {popMenu}
         {exit}
       </>
     );
@@ -374,8 +561,18 @@ export function Ribbon(p: RibbonProps) {
       // a command from the dropped-down ribbon puts it up again, as in Word
       onClick={peek ? (e) => (e.target as Element).closest('button:not(.rb-fold)') && setPeek(false) : undefined}
     >
-      <div key={shown} class="rb-panel" role="tabpanel" id="rb-panel" aria-labelledby={'rb-tab-' + shown} ref={scroller}>
-        {panel}
+      <div class="rb-tabpanel" role="tabpanel" id="rb-panel" aria-labelledby={'rb-tab-' + shown}>
+        <div
+          key={shown}
+          class="rb-panel"
+          role="toolbar"
+          aria-label={name}
+          ref={(el) => void (scroller.current = roving.ref.current = el)}
+          onFocusIn={roving.onFocusIn}
+          onKeyDown={roving.onKeyDown}
+        >
+          {panel}
+        </div>
       </div>
       <button
         type="button"
@@ -390,7 +587,12 @@ export function Ribbon(p: RibbonProps) {
   );
   return (
     <>
-      <div class={`format-bar ribbon is-wide${collapsed ? ' is-collapsed' : ''}${peek ? ' is-peeking' : ''}${view.focus ? ' is-focus' : ''}`} role="region" aria-label={t('Ribbon')}>
+      <div
+        class={`format-bar ribbon is-wide${collapsed ? ' is-collapsed' : ''}${peek ? ' is-peeking' : ''}${view.focus ? ' is-focus' : ''}`}
+        role="region"
+        aria-label={t('Ribbon')}
+        onKeyDown={escape}
+      >
         <div class="rb-titlebar">
           <button type="button" class="format-btn" onClick={a.back} disabled={a.busy} aria-label={t('Back')} title={t('Back')}>
             <Icon name="arrow-left" size={18} />
@@ -446,6 +648,7 @@ export function Ribbon(p: RibbonProps) {
         </div>
         {body}
       </div>
+      {popMenu}
       {exit}
     </>
   );

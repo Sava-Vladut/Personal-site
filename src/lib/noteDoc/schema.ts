@@ -7,7 +7,7 @@
 // paste between notes), and the usual tags read from other apps' HTML (Word, Google Docs, web pages).
 import { Schema, type DOMOutputSpec, type MarkSpec, type Node as PMNode, type NodeSpec, type ParseRule, type TagParseRule } from '@tiptap/pm/model';
 import { parseBody, mediaMarker, type Media } from '../body';
-import { SAFE, calloutIcon, calloutTone, depthOf, type ListKind } from './syntax';
+import { SAFE, calloutIcon, calloutTone, depthOf, olMarker, type ListKind } from './syntax';
 
 /* ---------- attribute types, by node and mark ---------- */
 
@@ -155,7 +155,7 @@ const levelOf = (el: HTMLElement) => {
 /** A list item's class, and the bullet or number its margin shows (CSS draws data-marker; a task shows its box). */
 export function listItemLook(a: ListItemAttrs): { class: string; 'data-marker'?: string } {
   const look = { class: `md-li md-${a.kind}${a.kind === 'task' && a.checked ? ' is-done' : ''}` };
-  return a.kind === 'task' ? look : { ...look, 'data-marker': a.kind === 'ol' ? a.num + '.' : '•' };
+  return a.kind === 'task' ? look : { ...look, 'data-marker': a.kind === 'ol' ? olMarker(a.num, depthOf(a.indent)) : '•' };
 }
 
 /** The text a chip is written as: @[person:id|Name], ♪[song:id|Title], [[note:id|Title]]. */

@@ -314,6 +314,36 @@
 }
 @keyframes rb-drop { from { opacity: 0; translate: 0 -6px; } }
 
+/* a button's menu (more styles, numbering), on the page's body under or over its button */
+.rb-pop { position: fixed; bottom: auto; z-index: 40; min-width: 200px; transform-origin: top left; }
+.rb-pop.is-up { transform-origin: bottom left; }
+.rb-menu button:disabled { opacity: 0.4; }
+.rb-pop-style { font-family: var(--sans) !important; }
+.rb-pop-style.is-h4 { font-weight: var(--w-bold) !important; }
+.rb-pop-style.is-h5 { font-weight: var(--w-bold) !important; font-size: var(--text-m) !important; }
+.rb-pop-style.is-h6 { font-weight: var(--w-bold) !important; font-size: var(--text-s) !important; color: var(--ink-2) !important; }
+
+/* Numbered list with its menu's arrow beside it, as Word's split button */
+.rb-split { display: inline-flex; align-items: center; }
+.format-btn.rb-split-more { width: 14px; }
+.is-phone .format-btn.rb-split-more { width: 22px; }
+.format-btn.rb-split-more svg { width: 12px !important; height: 12px !important; }
+.ribbon .rb-panel > .rb-rows.rb-para { grid-template-columns: 32px 46px 32px; justify-items: center; }
+
+/* the ribbon's tab panel: the commands' toolbar in it */
+.rb-tabpanel { height: 100%; }
+
+/* the gallery's end: Heading 4 to 6 in a menu */
+.ribbon.is-wide .rb-style-more {
+  width: 20px; height: 58px; display: grid; place-items: center; border: 1px solid transparent; border-radius: var(--r-xs); color: var(--ink-3);
+}
+@media (hover: hover) { .ribbon.is-wide .rb-style-more:hover:not(:disabled) { background: var(--surface); border-color: var(--line-2); } }
+.ribbon.is-wide .rb-style-more[aria-pressed='true'] { border-color: var(--word); background: var(--word-wash); color: var(--word); }
+.ribbon.is-wide .rb-style-more:disabled { opacity: 0.4; }
+.is-phone .rb-style:is(.is-h4, .is-h5, .is-h6) .rb-style-name { font-family: var(--sans); font-weight: var(--w-bold); }
+.is-phone .rb-style.is-h5 .rb-style-name { font-size: var(--text-m); }
+.is-phone .rb-style.is-h6 .rb-style-name { font-size: var(--text-s); color: var(--ink-2); }
+
 @media (prefers-reduced-motion: reduce) {
   .format-bar, .format-bar *, .focus-exit, .rb-menu { animation: none !important; transition: none !important; }
 }

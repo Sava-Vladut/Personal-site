@@ -11,6 +11,23 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.139.0',
+    date: '2026-10-27',
+    changes: [
+      'Ctrl+S saves the note at once, and the status bar ticks to say so',
+      'Print a note, or save it as a PDF: Print on the ribbon’s View tab, Print / Save as PDF in More, or Ctrl+P — only the title, date and words go on the page',
+      'AutoCorrect as in Word: curly quotes and apostrophes, -- becomes —, ... becomes …, (c) ©, (r) ®, (tm) ™, -> → and <- ← (Backspace straight after puts it back)',
+      'With words selected, the status bar counts them: “12 of 340 words”',
+      'Heading 4, 5 and 6 are in the Styles gallery, and light up when the caret is in one',
+      'A newer copy of the note arriving from another device is no longer something Undo takes back',
+      '“Not saved” in the status bar is a button that tries again, and saving tries again by itself when you’re back online',
+      'The ribbon works from the keyboard: arrow keys move between its buttons, F6 goes round the ribbon, the text and the status bar, Esc goes back to the text',
+      'Alt+Shift+Up and Down move the line or list item (or the selected lines) up and down, as in Word',
+      'Restart numbering and Continue numbering, from the arrow beside Numbered list or a right-click on it',
+      'Numbered lists a level in count a., b., c., and the next level i., ii., iii.',
+    ],
+  },
+  {
     version: '1.138.19',
     date: '2026-10-27',
     changes: [

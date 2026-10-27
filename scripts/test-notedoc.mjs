@@ -268,7 +268,7 @@ function project(nodes, line = 0) {
       }
       case 'heading': out.push({ t: 'h', level: a.level, text: inlineKey(n.content) }); break;
       case 'listItem':
-        out.push({ t: 'li', kind: a.kind, depth: nd.depthOf(a.indent), marker: a.kind === 'ol' ? a.num + '.' : '', done: a.check === 'x' || a.check === 'X', text: inlineKey(n.content), line });
+        out.push({ t: 'li', kind: a.kind, depth: nd.depthOf(a.indent), marker: a.kind === 'ol' ? nd.olMarker(a.num, nd.depthOf(a.indent)) : '', done: a.check === 'x' || a.check === 'X', text: inlineKey(n.content), line });
         break;
       case 'codeBlock': out.push({ t: 'code', text: n.textContent }); break;
       case 'horizontalRule': out.push({ t: 'hr' }); break;

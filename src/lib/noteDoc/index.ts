@@ -16,7 +16,7 @@ export { serializeNote, serializeBlocks, serializeInline, serializeSlice, writte
 export { normalizeDoc, normalizeTr, inShape } from './normalize';
 export { replaceDoc } from './diff';
 export {
-  classifyLine, calloutOf, closesFence, fenceOf, depthOf, calloutTone, calloutIcon, calloutDefaultTitle,
+  classifyLine, calloutOf, closesFence, fenceOf, depthOf, olMarker, calloutTone, calloutIcon, calloutDefaultTitle,
   HR, FENCE, HEAD, ITEM, QUOTE, CALLOUT, SAFE, BARE, CALLOUT_ICON,
   type Line, type ItemParts, type ListKind,
 } from './syntax';

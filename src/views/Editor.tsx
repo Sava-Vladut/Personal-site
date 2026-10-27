@@ -165,6 +165,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const changedAt = useRef(0);
   // what the status bar says about saving: only shown, never consulted, so saving works exactly as without it
   const [saveState, setSaveState] = useState<SaveState>(id !== 'new' ? 'saved' : 'idle');
+  const [savedNow, setSavedNow] = useState(0); // saved by Ctrl+S: the status bar says so once more
   // the notes that link here, shown at the bottom. Saving while writing hands over a new list of entries, but unless
   // another note changed (or this one's title, which links can point at) what links here can't have, so the scan of
   // every note is skipped.
@@ -329,6 +330,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const d = latest.current;
     if (alive.current || (d && (getEntries().find((e) => e.id === d.id) ?? null) === base.current)) void flush(true);
   };
+  /** Ctrl+S, or a tap on "Not saved": saved now, and the status bar says so once it is. */
+  const saveNow = () => void flush().then((ok) => ok && alive.current && setSavedNow((n) => n + 1));
 
   /**
    * A newer copy of the note came in while it's open (sync, from another device). With nothing here waiting to be
@@ -343,7 +346,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     base.current = now;
     latest.current = now;
     setDraft(now);
-    noteRef.current?.setText(serializeBody(bodyOf(now)));
+    // not a step to undo: undo never takes the words back to this device's older copy
+    noteRef.current?.setText(serializeBody(bodyOf(now)), false);
   };
 
   /** Where you are and the weather, looked up once a new note is kept. Joins the draft if it's still open. */
@@ -393,7 +397,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   useEffect(() => {
     const hide = () => document.visibilityState === 'hidden' && flush();
     const leave = () => flush();
+    // back online: what failed to save goes at once, not at the next try
+    const online = () => dirty.current && retry();
     document.addEventListener('visibilitychange', hide);
+    addEventListener('online', online);
     // the tab closing or the page going away (Safari doesn't always say it's hidden first)
     addEventListener('pagehide', leave);
     addEventListener('popstate', syncUrl);
@@ -411,6 +418,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (pendingImports.current && !removing.current) toast(t('Photo import cancelled because you left the note'));
       document.removeEventListener('visibilitychange', hide);
       removeEventListener('pagehide', leave);
+      removeEventListener('online', online);
       removeEventListener('popstate', syncUrl);
       if (!dropBlank()) flush();
       // moved to another day, or written offline: that day's weather
@@ -823,6 +831,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
   /** Reading view and writing, back and forth (the More menu, the status bar). */
   const toggleReading = () => (reading ? write() : setReading(true));
+  /** Print / Save as PDF: the browser's print dialog, which prints the note alone (document.css), once a sheet has gone. */
+  const printNote = () => void setTimeout(() => print());
   /** A tap on the words of the reading view starts writing there; links, tags, ticks and selecting text don't. */
   const tapToWrite = (e: MouseEvent) => {
     // a tap that only puts a selection away (a phone clears it before the click) doesn't start writing either
@@ -1088,6 +1098,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             onTyped={setMention}
             suggestKey={mentionKey}
             onLink={openLink}
+            onSave={saveNow}
             onMedia={setSlots}
             knows={knows}
             margins={margins}
@@ -1150,7 +1161,16 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </section>
         )}
       </article>
-      <NoteStatus text={draft.text} save={saveState} reading={reading} onRead={() => setReading(true)} onWrite={() => write()} />
+      <NoteStatus
+        text={draft.text}
+        note={note}
+        save={saveState}
+        savedNow={savedNow}
+        onRetry={saveNow}
+        reading={reading}
+        onRead={() => setReading(true)}
+        onWrite={() => write()}
+      />
       <input
         ref={fileRef}
         type="file"
@@ -1213,6 +1233,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           linkNote: () => startMention('[['),
           mentionBook: () => setOpen('book'),
           insertRef: (kind) => setOpen(kind),
+          print: printNote,
         }}
       />
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
@@ -1230,6 +1251,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           )}
           <button class="list-row action" onClick={() => setOpen('icon')}>
             <span class="row gap-s"><Icon name="mood-plus" size={18} /> {draft.icon ? t('Change icon') : t('Add icon')}</span>
+          </button>
+          <button class="list-row action" onClick={() => { close(); printNote(); }}>
+            <span class="row gap-s"><Icon name="printer" size={18} /> {t('Print / Save as PDF')}</span>
           </button>
           <button class="list-row action danger" aria-label={isCheckin ? t('Delete check-in') : t('Delete note')} onClick={() => { close(); return remove(); }}>
             <span class="row gap-s"><Icon name="trash" size={18} /> {isCheckin ? t('Delete check-in') : t('Delete note')}</span>

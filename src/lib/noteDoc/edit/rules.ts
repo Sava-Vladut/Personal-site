@@ -11,6 +11,7 @@ import { NodeRange, type Node as PMNode } from '@tiptap/pm/model';
 import { TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import { findWrapping } from '@tiptap/pm/transform';
 import type { ListItemAttrs } from '../schema';
+import { AUTOCORRECT } from './autocorrect';
 import { LEAF, replaceSelectionText } from './util';
 
 export interface BlockRule {
@@ -139,11 +140,14 @@ export const BLOCK_RULES: BlockRule[] = [
   },
 ];
 
+/** The block rules, then AutoCorrect (autocorrect.ts): what the editor runs as input rules, in this order. */
+export const TYPING_RULES: BlockRule[] = [...BLOCK_RULES, ...AUTOCORRECT];
+
 /**
  * What typing `text` at the selection does with the rules (as ProseMirror's inputrules plugin runs them): the
  * transaction of the first rule that applies, or null when none does (the text is typed as it is).
  */
-export function ruleFor(state: EditorState, text: string, rules: BlockRule[] = BLOCK_RULES): Transaction | null {
+export function ruleFor(state: EditorState, text: string, rules: BlockRule[] = TYPING_RULES): Transaction | null {
   const { $from, from, to } = state.selection;
   if (!$from.parent.isTextblock || $from.parent.type.spec.code || $from.parent !== state.selection.$to.parent) return null;
   const before = $from.parent.textBetween(Math.max(0, $from.parentOffset - 500), $from.parentOffset, undefined, LEAF) + text;

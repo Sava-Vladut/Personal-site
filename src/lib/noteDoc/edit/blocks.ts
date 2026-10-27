@@ -7,6 +7,7 @@
 import { NodeRange, type Node as PMNode, type ResolvedPos } from '@tiptap/pm/model';
 import { EditorState, Selection, TextSelection, type Command, type Transaction } from '@tiptap/pm/state';
 import { findWrapping } from '@tiptap/pm/transform';
+import { closeHistory } from '@tiptap/pm/history';
 import { normalizeTr } from '../normalize';
 import { countOnAfter, indentList, itemToParagraph, listEnter } from './lists';
 import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, replaceSelectionText, selectedBlocks, unCallout } from './util';
@@ -469,5 +470,48 @@ export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
     tr.setSelection(TextSelection.create(tr.doc, at + node.nodeSize + 1));
   }
   dispatch(tr.scrollIntoView());
+  return true;
+};
+
+/* ---------- moving lines ---------- */
+
+/**
+ * Alt+Shift+Up / Down, as in Word: the line the caret is on (or the lines selected, a quote or list item with them)
+ * swaps places with the block before or after it, the caret staying in its words. A line that's all of its quote takes
+ * the quote with it; a callout's title moves the whole callout. One step to undo each. False at the top or bottom.
+ */
+export const moveBlocks = (dir: -1 | 1): Command => (state, dispatch) => {
+  const blocks = selectedBlocks(state);
+  if (!blocks.length) return false;
+  const last = blocks[blocks.length - 1];
+  let $a = state.doc.resolve(blocks[0].pos), $b = state.doc.resolve(last.pos + last.node.nodeSize);
+  // the children of one parent the lines are in (a selection running into a quote takes the whole quote)
+  const range = $a.blockRange($b);
+  if (!range) return false;
+  let { depth, startIndex: i, endIndex: j } = range;
+  let parent = range.parent;
+  // all of a quote, or a callout's title: the quote or callout moves
+  while (depth > 0 && ((i === 0 && j === parent.childCount) || (parent.type.name === 'callout' && i === 0))) {
+    $a = state.doc.resolve($a.before(depth));
+    depth--;
+    parent = $a.node(depth);
+    i = $a.index(depth);
+    j = i + 1;
+  }
+  const k = dir < 0 ? i - 1 : j;
+  if (k < 0 || k >= parent.childCount || (parent.type.name === 'callout' && k === 0)) return false;
+  if (!dispatch) return true;
+  const start = $a.posAtIndex(i, depth), end = $a.posAtIndex(j, depth);
+  const other = parent.child(k);
+  const tr = state.tr;
+  // the block beside them goes to their other side: the lines themselves never move in the document, so the caret
+  // and the selection map along unchanged
+  if (dir < 0) {
+    const at = start - other.nodeSize;
+    tr.delete(at, start).insert(end - other.nodeSize, other);
+  } else {
+    tr.delete(end, end + other.nodeSize).insert(start, other);
+  }
+  dispatch(closeHistory(tr).scrollIntoView());
   return true;
 };

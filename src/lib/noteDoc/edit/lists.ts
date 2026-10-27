@@ -41,23 +41,30 @@ export function renumber(tr: Transaction, pos: number, from?: number, indent?: s
   if (!isItem(parent.maybeChild(at))) return tr;
   let p = start;
   const next = new Map<number, number>(); // by indent: the number the next item there gets
+  const delims = new Map<number, string>(); // by indent: the `.` or `)` the numbers there are written with
   let prev = -1;
   for (let k = a; k <= b; k++) {
     const node = parent.child(k);
     const attrs = node.attrs as ListItemAttrs;
     const w = indentWidth(attrs.indent);
+    let forced = false;
     if (k === at && from !== undefined) {
       const level = indentWidth(indent ?? attrs.indent);
       for (const x of [...next.keys()]) if (x > level) next.delete(x);
       next.set(level, from);
+      forced = level === w;
     }
-    for (const x of [...next.keys()]) if (x > w) next.delete(x);
+    for (const x of [...next.keys()]) if (x > w) (next.delete(x), delims.delete(x));
     if (attrs.kind === 'ol') {
+      // a number written with the other delimiter (1. then 1)) starts a list of its own there, as in CommonMark:
+      // what Restart numbering leaves
+      if (!forced && delims.has(w) && delims.get(w) !== attrs.delim) next.delete(w);
       const n = next.get(w) ?? (k > a && prev < w ? 1 : Number(attrs.num) || 1);
       // (an attribute step: it moves no position, so the caret and selection stay put)
       if (Number(attrs.num) !== n) tr.setNodeAttribute(p, 'num', String(n));
       next.set(w, n + 1);
-    } else next.delete(w);
+      delims.set(w, attrs.delim);
+    } else (next.delete(w), delims.delete(w));
     prev = w;
     p += node.nodeSize;
   }
@@ -277,6 +284,9 @@ export const toggleList = (kind: ListKind): Command => (state, dispatch) => {
   const gone = used.filter((b) => isItem(b.node) && b.node.attrs.kind === 'ol' && (off || kind !== 'ol'));
   const tr = state.tr;
   const { paragraph, listItem } = state.schema.nodes;
+  // new numbers go on from a numbered item just above, written as it is (1) stays 1))
+  const above = state.doc.resolve(used[0].pos).nodeBefore;
+  const delim = isItem(above) && above!.attrs.kind === 'ol' ? above!.attrs.delim : '.';
   let n = used.length;
   for (const { node, pos } of [...used].reverse()) {
     if (off) {
@@ -293,12 +303,104 @@ export const toggleList = (kind: ListKind): Command => (state, dispatch) => {
       if (indent) tr.delete(pos + 1, pos + 1 + indent.length);
     }
     const keep = isItem(node) && node.attrs.kind === kind;
-    tr.setNodeMarkup(pos, listItem, keep ? node.attrs : markerOf(kind, indent, n));
+    tr.setNodeMarkup(pos, listItem, keep ? node.attrs : { ...markerOf(kind, indent, n), delim });
     n--;
   }
   if (!off && kind === 'ol') renumber(tr, tr.mapping.map(used[0].pos));
   // numbered items made plain lines, bullets or tasks: the numbers after them go on from theirs
   countOnAfter(tr, gone);
   dispatch(tr.scrollIntoView());
+  return true;
+};
+
+/* ---------- restarting and continuing numbers ---------- */
+
+/** The numbered item the caret is on: the node, the position before it, and how deep it is. */
+function olAt(state: EditorState) {
+  const $f = state.selection.$from;
+  const node = $f.parent;
+  if (!isItem(node) || node.attrs.kind !== 'ol') return null;
+  return { node, pos: $f.before(), w: indentWidth(node.attrs.indent), $f };
+}
+
+/**
+ * The numbered item the one at index `i` of `parent` counts on from, at its level (width `w`): back past deeper items,
+ * and past plain lines into the list before. Null at a shallower item or a bullet there. `inRun`: no line between.
+ */
+function countsFrom(parent: PMNode, i: number, w: number): { node: PMNode; inRun: boolean } | null {
+  let inRun = true;
+  for (let k = i - 1; k >= 0; k--) {
+    const n = parent.child(k);
+    if (!isItem(n)) {
+      inRun = false;
+      continue;
+    }
+    const x = indentWidth(n.attrs.indent);
+    if (x > w) continue;
+    return x === w && n.attrs.kind === 'ol' ? { node: n, inRun } : null;
+  }
+  return null;
+}
+
+/** The item at index `i` of `parent` and the numbered ones after it at its level written the same way: [pos, node]. */
+function sameRun(parent: PMNode, i: number, start: number): [number, PMNode][] {
+  const first = parent.child(i);
+  const w = indentWidth(first.attrs.indent);
+  const out: [number, PMNode][] = [];
+  let p = start;
+  for (let k = i; k < parent.childCount; k++) {
+    const n = parent.child(k);
+    if (k > i) {
+      if (!isItem(n)) break;
+      const x = indentWidth(n.attrs.indent);
+      if (x < w || (x === w && (n.attrs.kind !== 'ol' || n.attrs.delim !== first.attrs.delim))) break;
+      if (x === w) out.push([p, n]);
+    } else out.push([p, n]);
+    p += n.nodeSize;
+  }
+  return out;
+}
+
+/**
+ * Restart numbering, as Word's: the numbered item at the caret becomes 1 and those after it at its level count on
+ * from it. In the middle of a list, the item and the rest are written with the other delimiter (`1)` after `2.`), so
+ * the text keeps the new list apart as CommonMark reads it. False off a numbered item, or when it's 1 already and
+ * counts from nothing before.
+ */
+export const restartNumbering: Command = (state, dispatch) => {
+  const at = olAt(state);
+  if (!at) return false;
+  const { node, pos, w, $f } = at;
+  const from = countsFrom($f.node(-1), $f.index(-1), w);
+  const joined = !!from?.inRun && from.node.attrs.delim === node.attrs.delim;
+  if (!joined && node.attrs.num === '1') return false;
+  if (!dispatch) return true;
+  const tr = state.tr;
+  if (joined) {
+    const other = node.attrs.delim === '.' ? ')' : '.';
+    for (const [p] of sameRun($f.node(-1), $f.index(-1), pos)) tr.setNodeAttribute(p, 'delim', other);
+  }
+  tr.setNodeAttribute(pos, 'num', '1');
+  dispatch(renumber(tr, pos, 1));
+  return true;
+};
+
+/**
+ * Continue numbering, as Word's: the numbered item at the caret (and the ones after it at its level) counts on from
+ * the numbered list before it, across plain lines too. False when there's none, or it counts on already.
+ */
+export const continueNumbering: Command = (state, dispatch) => {
+  const at = olAt(state);
+  if (!at) return false;
+  const { node, pos, w, $f } = at;
+  const from = countsFrom($f.node(-1), $f.index(-1), w);
+  if (!from) return false;
+  const n = (Number(from.node.attrs.num) || 1) + 1;
+  if (from.inRun ? from.node.attrs.delim === node.attrs.delim : Number(node.attrs.num) === n) return false;
+  if (!dispatch) return true;
+  const tr = state.tr;
+  // in the same list, written as the numbers before; after plain lines, a list's first number is kept as written
+  if (from.inRun) for (const [p] of sameRun($f.node(-1), $f.index(-1), pos)) tr.setNodeAttribute(p, 'delim', from.node.attrs.delim);
+  dispatch(renumber(tr, pos, n));
   return true;
 };

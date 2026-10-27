@@ -3,7 +3,8 @@ import { createPortal } from 'preact/compat';
 import { plainText } from '../lib/body';
 import { stripMarkdown } from '../lib/markdown';
 import { setDocView, stepZoom, useDocView, ZOOMS } from '../lib/docView';
-import { count, t } from '../lib/i18n';
+import { count, noun, t } from '../lib/i18n';
+import type { NoteBodyHandle } from '../editor/NoteBody';
 import { Icon } from './icons';
 
 /** Where the note's last change is: not kept yet (a new, blank note), on its way, kept, or not kept after an error. */
@@ -23,18 +24,27 @@ function measure(text: string) {
 }
 
 /**
- * The strip along the bottom of a note on a computer, like Word's status bar: on the left how long the note is and
- * whether it's saved; on the right the views (Focus, Read mode, Edit) and the zoom slider. Hidden on phones.
+ * The strip along the bottom of a note on a computer, like Word's status bar: on the left how long the note is (with
+ * words selected, how many of them: "12 of 340 words") and whether it's saved — "Not saved" a button to try again;
+ * on the right the views (Focus, Read mode, Edit) and the zoom slider. Hidden on phones.
  */
-export function NoteStatus({ text, save, reading, onRead, onWrite }: {
+export function NoteStatus({ text, note, save, savedNow, onRetry, reading, onRead, onWrite }: {
   text: string;
+  /** the note's editor, for what's selected in it */
+  note: NoteBodyHandle | null;
   save: SaveState;
+  /** counts the saves asked for (Ctrl+S): each says "Saved" once more */
+  savedNow: number;
+  onRetry: () => void;
   reading: boolean;
   onRead: () => void;
   onWrite: () => void;
 }) {
   const view = useDocView();
   const { words, chars, minutes } = useMemo(() => measure(text), [text]);
+  const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => (note ? note.watchSelection(setSelected) : undefined), [note]);
+  const picked = useMemo(() => (selected === null ? null : measure(selected).words), [selected]);
   // "Saving…" only when saving takes a moment: a quick save between two words stays "Saved", not a flicker
   const [shown, setShown] = useState<SaveState>(save === 'saving' ? 'idle' : save);
   useEffect(() => {
@@ -47,14 +57,22 @@ export function NoteStatus({ text, save, reading, onRead, onWrite }: {
   if (typeof document === 'undefined') return null;
   return createPortal(
     <footer class="note-status" aria-label={t('Status bar')}>
-      <span class="note-status-item">{count(words, 'word', 'words')}</span>
+      <span class="note-status-item">
+        {picked === null ? count(words, 'word', 'words') : `${t('{n} of {total}', { n: picked, total: words })} ${noun(words, 'word', 'words')}`}
+      </span>
       <span class="note-status-item">{count(chars, 'character', 'characters')}</span>
       {minutes > 0 && <span class="note-status-item">{t('{n} min read', { n: minutes })}</span>}
-      {shown !== 'idle' && (
-        <span class={`note-status-item note-save is-${shown}`}>
+      {shown === 'error' ? (
+        <button class="note-status-item note-save is-error" onClick={onRetry} title={t('Try saving again')}>
+          <Icon name="alert-circle" size={13} />
+          {t('Not saved')}
+        </button>
+      ) : shown !== 'idle' && (
+        // (keyed by the saves asked for: each plays the tick again)
+        <span key={savedNow} class={`note-status-item note-save is-${shown}${savedNow && shown === 'saved' ? ' is-now' : ''}`}>
           {/* the tick's place is kept while saving, so the words beside it don't move */}
           <Icon name="check" size={13} class={shown === 'saved' ? undefined : 'is-hidden'} />
-          {shown === 'saving' ? t('Saving…') : shown === 'saved' ? t('Saved') : t('Not saved')}
+          {shown === 'saving' ? t('Saving…') : t('Saved')}
         </span>
       )}
       <span class="grow" />

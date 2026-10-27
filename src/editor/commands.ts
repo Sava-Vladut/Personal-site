@@ -13,6 +13,8 @@ export interface NoteCommands {
   list(kind: ListKind): boolean;
   quote(): boolean;
   indent(out: boolean): boolean;
+  /** Restart numbering (true) or Continue numbering (false) on the numbered item at the caret */
+  numbering(restart: boolean): boolean;
   insert(kind: BlockKind): boolean;
   link(to: { text?: string; href: string } | null): boolean;
   undo(): boolean;
@@ -40,6 +42,7 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     list: (kind) => run(noteCommands.list(kind)),
     quote: () => run(noteCommands.quote),
     indent: (out) => run(noteCommands.indent(out)),
+    numbering: (restart) => run(noteCommands.numbering(restart)),
     insert: (kind) => run(noteCommands.insert(kind)),
     link: (to) => run(noteCommands.link(to)),
     undo: () => run(undo, false),

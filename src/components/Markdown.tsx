@@ -3,6 +3,7 @@ import { useMemo } from 'preact/hooks';
 import { PersonMention, SongMention, WikiLink } from './mentions';
 import { inline as pieces } from '../lib/inline';
 import { t } from '../lib/i18n';
+import { olMarker } from '../lib/noteDoc/syntax';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
 // strings, so nothing written in a note can run as code.
@@ -41,7 +42,7 @@ function parse(text: string, offset = 0): Block[] {
     else if ((m = l.match(HEAD))) out.push({ t: 'h', level: m[1].length, text: m[2] });
     else if ((m = l.match(ITEM))) {
       const kind = m[3] !== undefined ? 'task' : m[4] ? 'ol' : 'ul';
-      out.push({ t: 'li', kind, depth: depthOf(m[1]), marker: m[4] ? m[4] + '.' : '', done: m[3] === 'x' || m[3] === 'X', text: m[5], line: offset + i });
+      out.push({ t: 'li', kind, depth: depthOf(m[1]), marker: m[4] ? olMarker(m[4], depthOf(m[1])) : '', done: m[3] === 'x' || m[3] === 'X', text: m[5], line: offset + i });
     } else if ((m = l.match(QUOTE))) {
       const start = i;
       const body = [m[1]];

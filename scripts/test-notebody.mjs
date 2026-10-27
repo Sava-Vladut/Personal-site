@@ -85,6 +85,7 @@ function mount(text, opts = {}) {
     onTyped: (t) => seen.typed.push(t),
     suggestKey: opts.suggestKey ?? (() => false),
     onLink: () => (seen.link = true),
+    onSave: () => (seen.saved = (seen.saved ?? 0) + 1),
     onMedia: (s) => (seen.slots = s),
     knows: () => true,
     margins: () => ({ top: 0, bottom: 0 }),
@@ -568,4 +569,67 @@ test('numbers count again whatever takes a numbered line out, and undo puts them
   assert.equal(n.text(), '1. a\n2. c\n3. d');
   n.cmds.undo();
   assert.equal(n.text(), '1. a\n2. b\n3. c\n4. d');
+});
+
+test('AutoCorrect as it is typed, Backspace straight after taking it back; the text says autocorrect is on', () => {
+  const { n, type, press, end, host } = mount('');
+  assert.equal(host.querySelector('.note-editor').getAttribute('autocorrect'), 'on');
+  end();
+  type('"Hi" -- it\'s (c) 2026...');
+  assert.equal(n.text(), '“Hi” — it’s © 2026…');
+  press('Backspace');
+  assert.equal(n.text(), '“Hi” — it’s © 2026...');
+  type(' x -- ');
+  press('Backspace');
+  assert.equal(n.text(), '“Hi” — it’s © 2026... x -- ');
+  // and the Markdown rules are still the line's at its start
+  press('Enter');
+  type('---');
+  assert.match(n.text(), /\n---\n$/);
+});
+
+test('Ctrl+S saves the note now and Ctrl+P prints it, never the browser’s page', () => {
+  const { press, seen, window } = mount('words');
+  let printed = 0;
+  window.print = () => printed++;
+  assert.equal(press('Mod-s'), true);
+  assert.equal(seen.saved, 1);
+  assert.equal(press('Mod-p'), true);
+  assert.equal(printed, 1);
+});
+
+test('a newer copy put in from sync is no step to undo; a change the page puts in is', () => {
+  const { n, press, end, type } = mount('mine');
+  end();
+  type(' and more');
+  n.setText('from the laptop', false);
+  assert.equal(n.text(), 'from the laptop');
+  press('Mod-z');
+  assert.equal(n.text(), 'from the laptop', 'undo never brings back the older copy');
+  n.setText('from the laptop, changed here');
+  press('Mod-z');
+  assert.equal(n.text(), 'from the laptop');
+});
+
+test('Alt+Shift+Up and Down move the caret’s line, as in Word', () => {
+  const { n, press, view } = mount('one\ntwo\nthree');
+  n.focus(6); // in "two"
+  assert.equal(press('Alt-Shift-ArrowUp'), true);
+  assert.equal(n.text(), 'two\none\nthree');
+  assert.equal(view.state.selection.$from.parent.textContent, 'two', 'the caret goes with it');
+  press('Alt-Shift-ArrowDown');
+  press('Alt-Shift-ArrowDown');
+  assert.equal(n.text(), 'one\nthree\ntwo');
+});
+
+test('the selected text is told to the status bar; deeper numbers show as letters, then Roman numerals', async () => {
+  const { n, view, host, window } = mount('1. a\n\t1. b\n\t\t1. c\nsome words here');
+  assert.deepEqual([...host.querySelectorAll('.md-ol')].map((li) => li.getAttribute('data-marker')), ['1.', 'a.', 'i.']);
+  const seen = [];
+  n.watchSelection((t) => seen.push(t));
+  const TextSelection = view.state.selection.constructor;
+  const at = view.state.doc.content.size - 1 - 'some words here'.length; // the last line's start
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at, at + 10)));
+  await new Promise((r) => window.requestAnimationFrame(r));
+  assert.deepEqual(seen, [null, 'some words']);
 });
