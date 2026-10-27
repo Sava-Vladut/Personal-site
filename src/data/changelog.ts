@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.1',
+    date: '2026-10-27',
+    changes: [
+      'Remove and Delete are red at the bottom of the countdown, date, link and comment sheets, so they don’t look like the Save or Done beside them',
+    ],
+  },
+  {
     version: '1.146.0',
     date: '2026-10-27',
     changes: [

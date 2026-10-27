@@ -36,7 +36,7 @@ export function LinkSheet({ open, onClose, text, href, onDone }: {
       title={href ? t('Edit link') : t('Insert link')}
       footer={
         <div class="row gap-s">
-          {href && <button class="btn btn-quiet" onClick={() => onDone(null)}><Icon name="trash" size={18} /> {t('Remove link')}</button>}
+          {href && <button class="btn btn-quiet danger" onClick={() => onDone(null)}><Icon name="trash" size={18} /> {t('Remove link')}</button>}
           <button class="btn btn-primary grow" onClick={save} disabled={!address.trim() && !href}>{t('Done')}</button>
         </div>
       }

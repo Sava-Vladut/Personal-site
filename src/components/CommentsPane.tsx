@@ -210,7 +210,7 @@ function CommentSheet({ note, c, at, reading, onClose }: { note: NoteBodyHandle;
       footer={!reading && (
         <div class="row gap-s">
           {found && (
-            <button class="btn btn-quiet" onClick={() => (at !== null && note.comments.remove(at), onClose())}>
+            <button class="btn btn-quiet danger" onClick={() => (at !== null && note.comments.remove(at), onClose())}>
               <Icon name="trash" size={18} /> {t('Delete')}
             </button>
           )}

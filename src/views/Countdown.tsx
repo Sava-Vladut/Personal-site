@@ -187,7 +187,7 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
       title={value ? t('Change the countdown') : t('New countdown')}
       footer={
         <div class="row gap-s">
-          {value && <button class="btn btn-quiet" onClick={remove} disabled={busy}><Icon name="trash" size={18} /> {t('Remove')}</button>}
+          {value && <button class="btn btn-quiet danger" onClick={remove} disabled={busy}><Icon name="trash" size={18} /> {t('Remove')}</button>}
           <button class="btn btn-primary grow" onClick={save} disabled={!ok || busy}>{value ? t('Save') : t('Start')}</button>
         </div>
       }
