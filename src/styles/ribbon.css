@@ -328,7 +328,8 @@
 .format-btn.rb-split-more { width: 14px; }
 .is-phone .format-btn.rb-split-more { width: 22px; }
 .format-btn.rb-split-more svg { width: 12px !important; height: 12px !important; }
-.ribbon .rb-panel > .rb-rows.rb-para { grid-template-columns: 32px 46px 32px; justify-items: center; }
+/* Paragraph: the lists and indents over the alignments and Quote, as Word's */
+.ribbon .rb-panel > .rb-rows.rb-para { grid-template-columns: 32px 46px 32px 32px 32px; justify-items: center; }
 /* Font: the styles in a row, then Highlight and Font colour (split buttons, two columns each), Clear formatting and
    the Format Painter */
 .ribbon .rb-panel > .rb-rows.rb-font > .rb-split { grid-column: span 2; }

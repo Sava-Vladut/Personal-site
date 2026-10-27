@@ -52,3 +52,13 @@ test('underline, superscript, subscript and colours: read in their strict form o
   assert.equal(md.dropTags('**<u>a</u>** <span style="color:red">b</span> <mark style="background:pink">c</mark> <sub>d</sub>'), '**a** b c d');
   assert.equal(md.previewOf('<span style="color:red">Heading</span>\nnext <u>line</u>', '').preview, 'next line');
 });
+
+test('alignment, page breaks and footnotes: left out of the plain words, the tags dropped from search and exports', () => {
+  const PB = '<div style="page-break-after: always"></div>';
+  assert.equal(md.stripMarkdown(`# Title <!-- align:center -->\nwords <!-- align:right -->\n${PB}\nmore[^1]\n\n[^1]: the source`), 'Title\nwords\nmore\n\nthe source');
+  assert.equal(md.stripMarkdown('a<!-- align:center -->'), 'a<!-- align:center -->', 'not the strict form: as it is');
+  assert.equal(md.plainInline('claim[^1] and **b[^x-2]** [^1](u)'), 'claim and b ^1');
+  assert.equal(md.inline('a[^1] [[^2]] \\[^3]').map((p) => p.t + ':' + p.s).join(' | '), 'text:a | fn:1 | text:  | wiki:^2 | text:  | esc:[ | text:^3]');
+  assert.equal(md.dropTags(`x <!-- align:center -->\n${PB}\ny[^1] <!-- align:right -->\n[^1]: z`), 'x\ny[^1]\n[^1]: z');
+  assert.deepEqual({ ...md.previewOf(`Centred <!-- align:center -->\n${PB}\nnext[^1]`, '') }, { heading: 'Centred', preview: 'next' });
+});

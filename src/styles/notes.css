@@ -184,6 +184,37 @@
 .md pre { margin: 0.3em 0; padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2); overflow-x: auto; }
 .md pre code { background: none; padding: 0; font-size: 0.8em; white-space: pre; }
 .md hr { border: 0; height: 1px; background: var(--line-2); margin: 0.9em 0; }
+/* a page break: a dashed line across (in the editor with "Page break" on it, as Word draws one); in print, a new page */
+.md .md-pagebreak { position: relative; height: 1px; margin: 1.1em 0; border-top: 1px dashed var(--line-2); }
+.md .md-pagebreak > span {
+  position: absolute; left: 50%; top: 0; translate: -50% -50%; padding: 0 8px; background: var(--surface);
+  font: var(--w-regular) var(--text-xs)/1.4 var(--sans); color: var(--ink-3); white-space: nowrap; pointer-events: none;
+}
+.note-editor .md-pagebreak.ProseMirror-selectednode { border-top-color: var(--word-ink); }
+/* footnotes: a reference is a small number (a link to its text); the texts sit together at the end, each with its
+   number in the margin (a link back). One nothing refers to is faded, its label shown; a reference whose text is
+   gone is struck through. */
+.md .fn-ref, .md .md-fn-ref { font-size: 0.72em; line-height: 0; vertical-align: super; font-family: var(--sans); font-variant-numeric: tabular-nums; }
+.md .fn-ref { cursor: pointer; color: var(--word-ink, var(--ink)); padding: 0 1px; }
+.md .fn-ref::after { content: var(--fn, '?'); }
+.md .md-fn-ref a { color: var(--word-ink, var(--ink)); text-decoration: none; padding: 0 1px; }
+.md :is(.fn-ref, .md-fn-ref).is-missing { color: var(--ink-3); text-decoration: line-through; }
+.md :is(.fn-ref, .md-fn-ref).is-missing a { color: inherit; }
+.md .md-fn { position: relative; padding-left: 2em; font-size: 0.86em; color: var(--ink-2); }
+.md .md-fn-num {
+  position: absolute; left: 0; top: 0; min-width: 1.6em; text-align: right; font-family: var(--sans); font-variant-numeric: tabular-nums;
+  color: var(--word-ink, var(--ink)); text-decoration: none; cursor: pointer; -webkit-user-select: none; user-select: none;
+}
+.note-editor .md-fn-num::before { content: var(--fn, '') '.'; }
+.md a.md-fn-num::after { content: '.'; }
+.md .md-fn-text { display: block; }
+.md .md-fn.is-orphan { opacity: 0.55; }
+.md .md-fn.is-orphan .md-fn-num { color: var(--ink-3); cursor: default; }
+/* the reading view's footnotes, under a short rule */
+.md .md-footnotes { margin-top: 1.4em; padding-top: 0.6em; }
+.md .md-footnotes::before { content: ''; display: block; width: min(100%, 10em); margin-bottom: 0.6em; border-top: 1px solid var(--line-2); }
+/* in the editor, the first of the texts together at the end gets the same rule */
+.note-editor > :not(.md-fn) + .md-fn, .note-editor > .md-fn:first-child { margin-top: 0.6em; }
 .md .md-tag { font-family: var(--sans); font-size: 0.8em; font-weight: var(--w-bold); color: var(--ink-2); background: var(--surface-2); padding: 1px 7px; border-radius: var(--r-pill); }
 .md .md-wiki { color: var(--ink); text-decoration: underline dotted var(--ink-3); text-underline-offset: 3px; }
 

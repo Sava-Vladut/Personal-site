@@ -1,6 +1,6 @@
 // How the note's blocks are drawn where ProseMirror's own drawing (the schema's renderHTML) isn't enough: a list item's
-// task box ticks without moving the caret, chips are the app's own tags (people, songs, note and book links), and a
-// picture is a slot the editor (views/Editor.tsx) fills with its MediaBlock through a portal.
+// task box ticks without moving the caret, chips are the app's own tags (people, songs, note and book links), a page
+// break says what it is (in the reader's language), and a picture is a slot the editor (views/Editor.tsx) fills with its MediaBlock through a portal.
 import { h, render } from 'preact';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { EditorView, NodeView, NodeViewConstructor } from '@tiptap/pm/view';
@@ -226,6 +226,17 @@ export class MediaView implements NodeView {
   destroy() { this.slots.remove(this); }
 }
 
+/** A page break: a dashed line across the page, "Page break" on it (as Word draws one); the page ends there in print. */
+const pageBreak: NodeViewConstructor = () => {
+  const dom = document.createElement('div');
+  dom.className = 'md-pagebreak';
+  dom.setAttribute('contenteditable', 'false');
+  const label = document.createElement('span');
+  label.textContent = t('Page break');
+  dom.append(label);
+  return { dom, ignoreMutation: () => true };
+};
+
 /** The node views, for EditorView's nodeViews prop. `settled`: the note has opened (its tags' sheen has played). */
 export function nodeViews(slots: MediaSlots, settled: () => boolean = () => false): Record<string, NodeViewConstructor> {
   const chip: NodeViewConstructor = (node, view) => new ChipView(node, settled(), view);
@@ -235,5 +246,6 @@ export function nodeViews(slots: MediaSlots, settled: () => boolean = () => fals
     song: chip,
     wiki: chip,
     media: (node, _view, getPos) => new MediaView(node, getPos, slots),
+    pageBreak,
   };
 }

@@ -422,7 +422,7 @@ export function Ribbon(p: RibbonProps) {
     markTool('strikethrough', t('Strikethrough'), 'strike', 'Ctrl+Shift+X'),
     markTool('superscript', t('Superscript'), 'sup', 'Ctrl+Shift+='),
     markTool('subscript', t('Subscript'), 'sub', 'Ctrl+='),
-    markTool('code', t('Code'), 'code', 'Ctrl+E'),
+    markTool('code', t('Code'), 'code', 'Ctrl+Shift+E'),
     highlight,
     fontColor,
     tool('clear-formatting', t('Clear formatting'), () => cmds?.clearFormatting(), { off }),
@@ -455,14 +455,21 @@ export function Ribbon(p: RibbonProps) {
       </button>
     </span>
   );
+  // the alignments, lit as the selected lines are (none when they differ); off on lines that can't be aligned (lists)
+  const align = (icon: UiName, label: string, to: 'left' | 'center' | 'right' | 'justify', k: string) =>
+    tool(icon, label, () => cmds?.align(to), { on: lit?.align === to, off: off || !lit?.canAlign, k });
   const paragraph = group('paragraph', t('Paragraph'), [
     tool('list', t('Bullet list'), () => cmds?.list('ul'), { on: block === 'ul', off, k: 'Ctrl+Shift+L' }),
     numbered,
     tool('list-check', t('Checklist'), () => cmds?.list('task'), { on: block === 'task', off, k: 'Ctrl+Shift+9' }),
     tool('indent-decrease', t('Decrease indent'), () => cmds?.indent(true), { off: off || !inList, k: 'Ctrl+[' }),
     tool('indent-increase', t('Increase indent'), () => cmds?.indent(false), { off: off || !inList, k: 'Ctrl+]' }),
+    align('align-left', t('Align left'), 'left', 'Ctrl+L'),
+    align('align-center', t('Center'), 'center', 'Ctrl+E'),
+    align('align-right', t('Align right'), 'right', 'Ctrl+R'),
+    align('align-justified', t('Justify'), 'justify', 'Ctrl+J'),
     tool('blockquote', t('Quote'), () => cmds?.quote(), { on: !!lit?.quote && !lit.callout, off, k: 'Ctrl+Shift+.' }),
-  ], 'rb-rows rb-para', 3);
+  ], 'rb-rows rb-para', 5);
   const STYLES: [Style, string, string?][] = [
     ['normal', t('Normal'), 'Ctrl+Alt+0'],
     ['h1', t('Heading 1'), 'Ctrl+Alt+1'],
@@ -565,11 +572,13 @@ export function Ribbon(p: RibbonProps) {
       big('crown', t('Law of power'), () => a.insertRef('law'), { off, title: t('Insert a law of power') }),
       big('heart-handshake', t('Win friends'), () => a.insertRef('principle'), { off, title: t('Insert a Win friends principle') }),
     ]),
+    group('pages', t('Pages'), big('page-break', t('Page break'), () => cmds?.insert('pagebreak'), { off, k: 'Ctrl+Enter', title: t('Start the next page here') })),
     group('blocks', t('Blocks'), [
       big('separator-horizontal', t('Divider'), () => cmds?.insert('hr'), { off }),
       big('info-circle', t('Callout'), () => cmds?.insert('callout'), { off }),
       big('code', t('Code block'), () => cmds?.insert('code'), { off }),
     ]),
+    group('footnotes', t('Footnotes'), big('superscript', t('Footnote'), () => cmds?.footnote(), { off, k: 'Ctrl+Alt+F', title: t('Insert a footnote') })),
   ];
 
   const zoom = Math.round(view.zoom * 100);

@@ -739,6 +739,7 @@ test('every command at every caret leaves a document that writes text reading ba
     `a\n${P('p1')}\n\n${P('p2')}\nb\n\`\`\`js\nx\n\n\`\`\`\n---\nend [link](https://x.y) ==hl==`,
     '',
     '#tag and [[note:n1|N]] and ♪[Song] \\* esc',
+    'centred **b** <!-- align:center -->\n## Head[^1] <!-- align:right -->\n<div style="page-break-after: always"></div>\nafter[^2]\n\n[^1]: one\n[^2]: two',
   ];
   const CMDS = {
     enter: E.enter, newLine: E.newLine, backspace: Backspace, delete: Delete, tab: E.tab(false), untab: E.tab(true),
@@ -747,6 +748,7 @@ test('every command at every caret leaves a document that writes text reading ba
     callout: E.insertBlock('callout'), bold: E.toggleMarkSmart('bold'), codeMark: E.toggleMarkSmart('code'),
     clear: E.clearFormatting, link: E.setLink({ href: 'https://a.b' }), unlink: E.removeLink, at: E.insertTrigger('@'),
     chip: E.insertAtom('@[Bo]'), pic: E.insertMediaAt([{ kind: 'photo', id: 'z' }]), paste: E.pasteText('x\n- y\n**z**'),
+    centre: E.setAlign('center'), justify: E.setAlign('justify', true), pagebreak: E.insertBlock('pagebreak'), footnote: E.insertFootnote,
   };
   const { TextSelection } = nd.pmState;
   let runs = 0;
@@ -1002,4 +1004,90 @@ test('AutoCorrect leaves a tag being typed alone', () => {
   assert.equal(typed('|', '<span style="color:red">'), '<span style="color:red">|');
   assert.equal(typed('|', '<a title="x">'), '<a title="x">|');
   assert.equal(typed('|', 'a "b"'), 'a “b”|', 'and goes on after it');
+});
+
+/* ---------- alignment, page breaks, footnotes ---------- */
+
+test('Align left, centre, right and justify, on paragraphs and headings; the keys toggle back to the left', () => {
+  assert.equal(after('wo|rd', E.setAlign('center')), 'wo|rd <!-- align:center -->');
+  assert.equal(after('wo|rd <!-- align:center -->', E.setAlign('right')), 'wo|rd <!-- align:right -->');
+  assert.equal(after('wo|rd <!-- align:center -->', E.setAlign('left')), 'wo|rd');
+  assert.equal(after('wo|rd <!-- align:center -->', E.setAlign('center', true)), 'wo|rd', 'Ctrl+E again: back to the left');
+  assert.equal(after('wo|rd <!-- align:center -->', E.setAlign('center')), 'wo|rd <!-- align:center -->', 'the button leaves it centred');
+  assert.equal(after('# He|ad', E.setAlign('justify')), '# He|ad <!-- align:justify -->');
+  assert.equal(after('«a\n- b\n# c»', E.setAlign('right')), '«a <!-- align:right -->\n- b\n# c» <!-- align:right -->', 'a list item stays as it is');
+  assert.equal(run('- it|em', E.setAlign('center'))[1], false, 'a list can\'t be aligned');
+  assert.equal(run('```\nco|de\n```', E.setAlign('center'))[1], false);
+  // what the ribbon lights
+  const lit = (text) => E.litOf(stateFrom(text));
+  assert.deepEqual([lit('a|').align, lit('a|').canAlign], ['left', true]);
+  assert.equal(lit('a| <!-- align:center -->').align, 'center');
+  assert.equal(lit('«a <!-- align:center -->\nb»').align, null, 'lines aligned differently: none lit');
+  assert.deepEqual([lit('- a|').align, lit('- a|').canAlign], [null, false]);
+});
+
+test('alignment goes on with Enter, and stays when a line becomes a heading or a heading a line', () => {
+  assert.equal(after('ab| <!-- align:center -->', E.enter), 'ab <!-- align:center -->\n| <!-- align:center -->');
+  assert.equal(after('a|b <!-- align:right -->', E.enter), 'a <!-- align:right -->\n|b <!-- align:right -->');
+  assert.equal(after('# H|ead <!-- align:center -->', E.enter), '# H <!-- align:center -->\n|ead <!-- align:center -->');
+  assert.equal(after('# |Head <!-- align:center -->', E.backspace), '|Head <!-- align:center -->');
+  assert.equal(after('Da|y <!-- align:center -->', E.setStyle('h2')), '## Da|y <!-- align:center -->');
+  assert.equal(after('## Da|y <!-- align:center -->', E.setStyle('normal')), 'Da|y <!-- align:center -->');
+  assert.equal(show(type(stateFrom('|x <!-- align:right -->'), '# ')), '# |x <!-- align:right -->', 'typing # at the start');
+  // an empty centred line is written without the space before its comment
+  const [, , s] = run('ab| <!-- align:center -->', E.enter);
+  assert.equal(nd.serializeNote(s.doc), 'ab <!-- align:center -->\n<!-- align:center -->');
+});
+
+test('a page break goes in at the caret (Ctrl+Enter), the caret on the line after it', () => {
+  const PB = '<div style="page-break-after: always"></div>';
+  assert.equal(after('|', E.insertBlock('pagebreak')), `${PB}\n|`);
+  assert.equal(after('a|', E.insertBlock('pagebreak')), `a\n${PB}\n|`);
+  assert.equal(after('a|b', E.insertBlock('pagebreak')), `a\n${PB}\n|b`);
+  assert.equal(after('|a', E.insertBlock('pagebreak')), `${PB}\n|a`);
+  assert.equal(after('a|b <!-- align:center -->', E.insertBlock('pagebreak')), `a <!-- align:center -->\n${PB}\n|b <!-- align:center -->`);
+  assert.equal(run('```\nx|\n```', E.insertBlock('pagebreak'))[1], false, 'not in code');
+  // Backspace on the line after it takes it out, as a divider
+  assert.equal(after(`a\n${PB}\n|b`, Backspace), 'a\n|b');
+});
+
+test('Insert › Footnote: a reference at the caret, its text at the end of the note with the caret in it', () => {
+  assert.equal(after('a claim| here', E.insertFootnote), 'a claim[^1] here\n\n[^1]: |');
+  assert.equal(after('one[^1]| two\n\n[^1]: first', E.insertFootnote), 'one[^1][^2] two\n\n[^1]: first\n[^2]: |');
+  assert.equal(after('x|\n', E.insertFootnote), 'x[^1]\n\n[^1]: |', 'an empty last line is the blank line before it');
+  assert.equal(after('x|\n\n', E.insertFootnote), 'x[^1]\n\n[^1]: |');
+  assert.equal(after('a «word» b', E.insertFootnote), 'a [^1] b\n\n[^1]: |', 'the selection is typed over');
+  assert.equal(after('**bo|ld**', E.insertFootnote), '**bo[^1]ld**\n\n[^1]: |', 'it takes the words\' styles');
+  assert.equal(after('a[^note] b[^7]|\n\n[^note]: n\n[^7]: s', E.insertFootnote), 'a[^note] b[^7][^8]\n\n[^note]: n\n[^7]: s\n[^8]: |', 'one past the highest number');
+  assert.equal(after('- item|', E.insertFootnote), '- item[^1]\n\n[^1]: |');
+  assert.equal(run('```\nx|\n```', E.insertFootnote)[1], false, 'not in code');
+  assert.equal(run('`co|de`', E.insertFootnote)[1], false, 'nor in a code span');
+  assert.equal(run('x[^1]\n\n[^1]: t|', E.insertFootnote)[1], false, 'nor in a footnote');
+  // one step to undo
+  let s = stateFrom('a|', { plugins: [history()] });
+  s = s.apply((() => { let t; E.insertFootnote(s, (x) => (t = x)); return t; })());
+  assert.equal(nd.serializeNote(s.doc), 'a[^1]\n\n[^1]: ');
+  undo(s, (tr) => (s = s.apply(tr)));
+  assert.equal(show(s), 'a|');
+});
+
+test('footnotes are numbered by where they\'re first referred to; a click goes from one to the other', () => {
+  const s = stateFrom('b[^b] a[^a] b again[^b] c[^c]|\n\n[^a]: A\n[^b]: B\n[^z]: nobody');
+  const f = E.footnotesOf(s.doc);
+  assert.deepEqual([...f.num], [['b', 1], ['a', 2], ['c', 3]]);
+  assert.deepEqual(f.defs.map((d) => d.label), ['a', 'b', 'z']);
+  assert.equal(E.nextLabel(s.doc), '1', 'no numbers used yet');
+  assert.equal(E.hasFootnotes(s.doc), true);
+  assert.equal(E.hasFootnotes(stateFrom('plain [^ x]').doc), false);
+  assert.equal(after(s, E.goToFootnote('b')), 'b[^b] a[^a] b again[^b] c[^c]\n\n[^a]: A\n[^b]: B|\n[^z]: nobody');
+  assert.equal(after(s, E.goToReference('a')), 'b[^b] a[^a]| b again[^b] c[^c]\n\n[^a]: A\n[^b]: B\n[^z]: nobody');
+  assert.equal(E.goToFootnote('c')(s), false, 'a reference without a text');
+  assert.equal(E.goToReference('z')(s), false, 'a text nothing refers to');
+});
+
+test('[^1]: typed at the start of a line (after its reference) makes it a footnote\'s text', () => {
+  const s = type(stateFrom('[^3]|'), ': ');
+  assert.equal(s.doc.firstChild.type.name, 'footnote');
+  assert.equal(show(s), '[^3]: |');
+  assert.equal(show(type(stateFrom('x[^3]|'), ': ')), 'x[^3]: |', 'not after other words');
 });

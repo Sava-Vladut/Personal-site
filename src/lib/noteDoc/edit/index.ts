@@ -11,20 +11,27 @@
 //   Mod-Shift-l, Mod-Shift-7, Mod-Shift-9 → noteCommands.list('ul' | 'ol' | 'task') · Mod-Shift-. → toggleQuote
 //   Mod-Alt-0…6, Mod-Shift-n → noteCommands.style('normal' | 'h1'…) · Mod-k → the link sheet (linkAt, setLink, removeLink)
 //   Mod-s → the note saved now (KeyOptions.save) · Mod-p → the browser's print, the note alone (styles/document.css)
+//   Mod-l, Mod-e, Mod-r, Mod-j → noteCommands.align('left' | 'center' | 'right' | 'justify', true) · Mod-Shift-e → mark('code')
+//   Mod-Enter → noteCommands.insert('pagebreak') (in code, a new line) · Mod-Alt-f → noteCommands.footnote
 // Typing: BLOCK_RULES as input rules, then AUTOCORRECT (after the inline Markdown and autolink rules); handleTextInput →
 // tidyAfterTag(text); a mouse let go of in the text (or Shift let go of) while the Format Painter is on → paint; the suggest plugin reads typedAt(state) and picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
 // After each change (appendTransaction, beside normalizeTr): renumberChanged(trs, state) counts the lists it touched again.
 import type { Command } from '@tiptap/pm/state';
 import type { ListKind } from '../syntax';
-import { insertBlock, setStyle, toggleQuote, type BlockKind, type Style } from './blocks';
+import { insertBlock, setAlign, setStyle, toggleQuote, type BlockKind, type Style } from './blocks';
+import { insertFootnote } from './footnotes';
+import type { Align } from '../syntax';
 import { continueNumbering, indentList, restartNumbering, toggleList } from './lists';
 import { clearFormatting, removeLink, setLink, setMarkSmart, toggleMarkSmart, type MarkName } from './marks';
 import { togglePainter } from './painter';
 
 export {
   enter, newLine, backspace, deleteForward, tab, codeEnter, exitCode, fenceEnter, headingEnter, titleEnter, quoteEnter,
-  setStyle, toggleQuote, insertBlock, moveBlocks, type Style, type BlockKind,
+  setStyle, toggleQuote, insertBlock, moveBlocks, setAlign, alignAt, type Style, type BlockKind,
 } from './blocks';
+export {
+  footnotesOf, hasFootnotes, nextLabel, insertFootnote, footnoteAt, footnoteRefAt, goToFootnote, goToReference, type Footnotes,
+} from './footnotes';
 export {
   renumber, renumberChanged, countOnAfter, indentList, itemToParagraph, listEnter, toggleTask, toggleList, restartNumbering, continueNumbering,
 } from './lists';
@@ -77,7 +84,11 @@ export const noteCommands = {
   numbering: (restart: boolean): Command => (restart ? restartNumbering : continueNumbering),
   /** Increase / decrease indent: list items only (false elsewhere; the key is still swallowed). */
   indent: (out: boolean): Command => indentList(out),
-  /** A divider, code block or callout at the caret. */
+  /** A divider, page break, code block or callout at the caret. */
   insert: (kind: BlockKind): Command => insertBlock(kind),
+  /** Align left, centre, right or justify on the selected paragraphs and headings; `toggle` (the keys) back to left. */
+  align: (align: Align | 'left', toggle = false): Command => setAlign(align, toggle),
+  /** Insert › Footnote: a reference at the caret, its text at the end of the note. */
+  footnote: insertFootnote as Command,
 };
 export type NoteCommandSet = typeof noteCommands;

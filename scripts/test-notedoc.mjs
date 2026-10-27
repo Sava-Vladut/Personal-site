@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadNoteDoc } from './notedoc-bundle.mjs';
+import { loadNoteDoc, root } from './notedoc-bundle.mjs';
 
 // The note as a document (src/lib/noteDoc): reading a note's text into it and writing it back. Texts read and
 // written come back exactly, apart from the few listed in the normalisation table; the blocks are the ones the
 // reading view (components/Markdown.tsx) shows; and random documents, put in shape, write text that reads back as
 // the same document. Node only: ProseMirror runs without a DOM here.
-const nd = await loadNoteDoc({ markdown: true });
+const nd = await loadNoteDoc({
+  markdown: true,
+  entries: [
+    `export { footnotesOf as readingFootnotes } from '${root}src/components/Markdown.tsx';`,
+    `export { footnotesOf as editorFootnotes } from '${root}src/lib/noteDoc/edit/footnotes.ts';`,
+  ],
+});
 const S = nd.noteSchema();
 const { EditorState, TextSelection } = nd.pmState;
 
@@ -84,6 +90,27 @@ const CORPUS = {
     '<span style="color:red;">x</span>', '<mark>x</mark>', '<mark style="background:yellow">x</mark>', '<b>x</b>', 'a < b > c', '<-',
     '\\<u>x\\</u>', '<u>a\\</u>b</u>', '`<u>x</u>`',
   ],
+  alignment: [
+    'centred <!-- align:center -->', 'right <!-- align:right -->\njustified <!-- align:justify -->', '<!-- align:center -->',
+    '# Title <!-- align:center -->', '## <!-- align:right -->', 'a <!-- align:center -->\nb <!-- align:center -->\nc',
+    '**b** [[W]] <!-- align:right -->', 'two  <!-- align:center -->', '> quoted <!-- align:center -->', '   <!-- align:justify -->',
+    'x <!-- align:right --> <!-- align:center -->', '--- <!-- align:center -->', '\\# not a heading <!-- align:center -->',
+    // not the strict form: the text it is
+    'a<!-- align:center -->', 'a <!-- align:left -->', 'a <!--align:center-->', 'a <!-- align:center --> ', '- item <!-- align:center -->',
+    '> [!note] title <!-- align:center -->', 'a \\<!-- align:center -->', '`a <!-- align:center -->`',
+  ],
+  pagebreaks: [
+    '<div style="page-break-after: always"></div>', 'a\n<div style="page-break-after: always"></div>\nb', '<div style="page-break-after:always;"></div>',
+    '> <div style="page-break-after: always"></div>', 'a\n---\n<div style="page-break-after: always"></div>\n---',
+    // not the strict form: the text it is
+    ' <div style="page-break-after: always"></div>', '<div style="page-break-after: always"></div> x', '<div style="page-break-before: always"></div>',
+  ],
+  footnotes: [
+    'a claim[^1]\n\n[^1]: the source', 'one[^1] two[^2] again[^1]\n\n[^1]: first\n[^2]: second', '[^note]: a named one\nsee[^note]',
+    '[^1]:  two spaces', '[^1]:\ttab', '[^1]: ', '[^1]: **bold** @[Ann] and [^2]', '> [^1]: in a quote', '- item[^1]', '# Head[^1]',
+    '**b[^1]**', '[^1](u) is a link', '[[^1]]', '@[^1]', '[^1]:no space', '[^ 1]', '[^]', '[^a b]', '\\[^1]', '[^1]\\: x', '`[^1]`',
+    'orphan only\n\n[^9]: nobody refers to me', 'missing[^7]',
+  ],
   pictures: [
     'a\n[[photo:p1]]\nb', '\n[[photo:p1]]\n', 'a\n[[album:photo:p1 image:https://x.y/i.png]]\nb', 'a\n[[photo:p1 50 left]]\nb',
     'a\n[[image:https://x.y/i.png 30]]\nb', 'a\n[[album:photo:p1 photo:p2 40 right]]\nb', 'a\n\n[[photo:p1]]\n\nb',
@@ -92,6 +119,8 @@ const CORPUS = {
   ],
 };
 const corpus = Object.values(CORPUS).flat();
+/** The texts from before alignment, page breaks and footnotes: they must read as they always did. */
+const OLD = ['lines', 'headings', 'lists', 'quotes', 'callouts', 'code', 'hr', 'inline', 'formatting', 'pictures'].flatMap((k) => CORPUS[k]);
 
 for (const [name, texts] of Object.entries(CORPUS)) {
   test(`${name} come back exactly`, () => {
@@ -103,6 +132,38 @@ for (const [name, texts] of Object.entries(CORPUS)) {
   });
 }
 
+test('notes written before alignment, page breaks and footnotes read as they did', () => {
+  for (const t of OLD) {
+    nd.parseNote(t).descendants((n) => {
+      assert.ok(!/^(pageBreak|footnote|footnoteRef)$/.test(n.type.name), `${n.type.name} in ${JSON.stringify(t)}`);
+      assert.equal(n.attrs.align ?? null, null, `aligned: ${JSON.stringify(t)}`);
+    });
+  }
+});
+
+test('alignment, page breaks and footnotes: what they read as', () => {
+  const first = (t) => nd.parseNote(t).firstChild;
+  assert.deepEqual({ ...first('a <!-- align:center -->').attrs }, { align: 'center' });
+  assert.equal(first('a <!-- align:center -->').textContent, 'a');
+  assert.deepEqual({ ...first('## H <!-- align:right -->').attrs }, { level: 2, sep: ' ', align: 'right' });
+  assert.equal(first('<!-- align:justify -->').attrs.align, 'justify');
+  assert.equal(first('<!-- align:justify -->').content.size, 0, 'an empty line, justified');
+  assert.equal(first('a <!-- align:left -->').attrs.align, null, 'left is never written');
+  assert.equal(first('x <!-- align:right --> <!-- align:center -->').textContent, 'x <!-- align:right -->', 'only the last one counts');
+  assert.equal(first('<div style="page-break-after: always"></div>').type.name, 'pageBreak');
+  assert.equal(first('- [^1]: x').type.name, 'listItem');
+  const fn = first('[^n-1]:  words');
+  assert.deepEqual([fn.type.name, { ...fn.attrs }, fn.textContent], ['footnote', { label: 'n-1', sep: '  ' }, 'words']);
+  const refs = (t) => {
+    const out = [];
+    nd.parseNote(t).descendants((n) => void (n.type.name === 'footnoteRef' && out.push(n.attrs.label)));
+    return out;
+  };
+  assert.deepEqual(refs('a[^1] b[^x_2] [^1]'), ['1', 'x_2', '1']);
+  assert.deepEqual(refs('[^1](u) [[^1]] @[^1] \\[^1] `[^1]` [^ 1] [^]'), [], 'a link, a wiki link, a tag, escaped, code, or not a label: no footnote');
+  assert.deepEqual(first('**b[^1]**').child(1).marks.map((m) => m.type.name), ['bold'], 'a reference takes the words\' styles');
+});
+
 test('what each kind of line reads as', () => {
   const kinds = (t) => nd.parseNote(t).content.content.map((n) => n.type.name).join(' ');
   assert.equal(kinds('# H\n- a\n1. b\n- [ ] c\n> q\n---\n```\nx\n```\nplain'), 'heading listItem listItem listItem blockquote horizontalRule codeBlock paragraph');
@@ -113,7 +174,7 @@ test('what each kind of line reads as', () => {
   const item = (t) => ({ ...nd.parseNote(t).firstChild.attrs });
   assert.deepEqual(item('\t01) x'), { kind: 'ol', indent: '\t', bullet: '-', num: '01', delim: ')', checked: false, check: ' ', gap: ' ', sep: ' ' });
   assert.deepEqual(item('*  [X]\tdone'), { kind: 'task', indent: '', bullet: '*', num: '1', delim: '.', checked: true, check: 'X', gap: '  ', sep: '\t' });
-  assert.deepEqual({ ...nd.parseNote('###\tx').firstChild.attrs }, { level: 3, sep: '\t' });
+  assert.deepEqual({ ...nd.parseNote('###\tx').firstChild.attrs }, { level: 3, sep: '\t', align: null });
   assert.deepEqual({ ...nd.parseNote('> [!Tip]-  t').firstChild.attrs }, { kind: 'Tip', fold: '-', sep: '  ' });
   assert.deepEqual({ ...nd.parseNote('~~~ py\nx').firstChild.attrs }, { open: '~~~ py', close: null });
   assert.equal(kinds(' * * '), 'listItem', 'two stars aren\'t a rule: a bullet holding a star');
@@ -235,6 +296,20 @@ const EDITED = [
   ['a picture first or last gets a line', doc(photo('p1')), '\n[[photo:p1]]\n'],
   ['two pictures get a line between', doc(p(txt('a')), photo('p1'), photo('p2'), p(txt('b'))), 'a\n[[photo:p1]]\n\n[[photo:p2]]\nb'],
   ['odd attributes give way to defaults', doc(node('heading', { level: 9, sep: '' }, txt('h')), node('listItem', { kind: 'zz', bullet: '>', indent: 'x', sep: '' }, txt('i')), node('horizontalRule', { raw: 'no' })), '###### h\n- i\n---'],
+  ['a plain alignment comment is escaped', doc(p(txt('a <!-- align:center -->'))), 'a \\<!-- align:center -->'],
+  ['… on a heading', doc(node('heading', { level: 1, sep: ' ' }, txt('<!-- align:right -->'))), '# \\<!-- align:right -->'],
+  ['an aligned line', doc(p(txt('a', 'bold')), node('paragraph', { align: 'right' }, txt('b'))), '**a**\nb <!-- align:right -->'],
+  ['an empty aligned line', doc(node('paragraph', { align: 'center' })), '<!-- align:center -->'],
+  ['an aligned line that looks like a heading', doc(node('paragraph', { align: 'center' }, txt('# x'))), '\\# x <!-- align:center -->'],
+  ['an alignment that isn\'t one is left', doc(node('paragraph', { align: 'middle' }, txt('x')), node('heading', { level: 2, sep: ' ', align: 'left' }, txt('h'))), 'x\n## h'],
+  ['plain page break text', doc(p(txt('<div style="page-break-after: always"></div>'))), '\\<div style="page-break-after: always"></div>'],
+  ['a page break', doc(p(txt('a')), node('pageBreak', { raw: 'nope' }), p(txt('b'))), 'a\n<div style="page-break-after: always"></div>\nb'],
+  ['plain footnote syntax', doc(p(txt('[^1]: x and [^2]'))), '\\[^1]: x and \\[^2]'],
+  ['a reference then ( isn\'t a link', doc(p(node('footnoteRef', { label: '1' }), txt('(u)'))), '[^1]\\(u)'],
+  ['a reference then : starting a line isn\'t a footnote', doc(p(node('footnoteRef', { label: '1' }), txt(': x'))), '[^1]\\: x'],
+  ['a [ before a reference isn\'t a wiki link', doc(p(txt('['), node('footnoteRef', { label: '1' }), txt(']'))), '\\[[^1]]'],
+  ['a footnote\'s leading spaces go to its marker', doc(node('footnote', { label: '1', sep: ' ' }, txt('  x'))), '[^1]:   x'],
+  ['a footnote\'s odd label gives way', doc(node('footnote', { label: 'a b', sep: '' }, txt('x'))), '[^1]: x'],
   ['a task\'s box follows whether it\'s done', doc(node('listItem', { kind: 'task', checked: true, check: ' ' }, txt('a')), node('listItem', { kind: 'task', checked: false, check: 'X' }, txt('b'))), '- [x] a\n- [ ] b'],
 ];
 
@@ -283,11 +358,13 @@ function project(nodes, line = 0) {
         const last = out[out.length - 1];
         if (!nd.serializeBlocks([n]).trim()) { // a blank line (a code span of spaces isn't one)
           if (out.length && last.t !== 'gap') out.push({ t: 'gap' });
-        } else if (last?.t === 'p') last.lines.push(inlineKey(n.content));
-        else out.push({ t: 'p', lines: [inlineKey(n.content)] });
+        } else if (last?.t === 'p' && last.align === a.align) last.lines.push(inlineKey(n.content)); // lines aligned alike run together
+        else out.push({ t: 'p', lines: [inlineKey(n.content)], align: a.align });
         break;
       }
-      case 'heading': out.push({ t: 'h', level: a.level, text: inlineKey(n.content) }); break;
+      case 'heading': out.push({ t: 'h', level: a.level, text: inlineKey(n.content), align: a.align }); break;
+      case 'pageBreak': out.push({ t: 'pagebreak' }); break;
+      case 'footnote': out.push({ t: 'fn', label: a.label, text: inlineKey(n.content) }); break;
       case 'listItem':
         out.push({ t: 'li', kind: a.kind, depth: nd.depthOf(a.indent), marker: a.kind === 'ol' ? nd.olMarker(a.num, nd.depthOf(a.indent)) : '', done: a.check === 'x' || a.check === 'X', text: inlineKey(n.content), line });
         break;
@@ -322,7 +399,7 @@ const reading = (text, offset = 0) =>
   nd.markdownParse(text, offset).map((b) =>
     b.t === 'quote' ? { ...b, title: b.callout ? readKey(b.title) : '', body: reading(b.body, b.line) }
     : b.t === 'p' ? { ...b, lines: b.lines.map(readKey) }
-    : b.t === 'h' || b.t === 'li' ? { ...b, text: readKey(b.text) }
+    : b.t === 'h' || b.t === 'li' || b.t === 'fn' ? { ...b, text: readKey(b.text) }
     : b);
 
 /** The note's stretches of text (between pictures), each as the editor's top-level blocks. */
@@ -357,8 +434,12 @@ test('the editor reads the same blocks as the reading view', () => {
 
 test('the line kinds agree with Markdown.tsx', () => {
   // syntax.ts's regexes are copies of Markdown.tsx's: each line reads as the same kind of block
-  const one = { blank: [], fence: 'code', hr: 'hr', heading: 'h', item: 'li', quote: 'quote', text: 'p' };
-  for (const l of ['', ' ', '```x', ' ~~~', '---', '* * *', '#x', '# x', '- x', '-x', '1) x', '1)x', '> x', '>x', ' >', 'x', '- [ ]', '+\t[x]\tt', '__ _']) {
+  const one = { blank: [], fence: 'code', hr: 'hr', heading: 'h', item: 'li', quote: 'quote', text: 'p', pagebreak: 'pagebreak', footnote: 'fn' };
+  for (const l of [
+    '', ' ', '```x', ' ~~~', '---', '* * *', '#x', '# x', '- x', '-x', '1) x', '1)x', '> x', '>x', ' >', 'x', '- [ ]', '+\t[x]\tt', '__ _',
+    '<div style="page-break-after: always"></div>', '<div style="page-break-after:always;"></div>', ' <div style="page-break-after: always"></div>',
+    '[^1]: x', '[^1]:', '[^1]:x', '[^a-b]:\t', ' [^1]: x', 'x <!-- align:center -->', '<!-- align:right -->', '# x <!-- align:justify -->',
+  ]) {
     const want = one[nd.classifyLine(l).t];
     const got = nd.markdownParse(l).map((b) => b.t);
     assert.deepEqual(got, Array.isArray(want) ? want : [want], JSON.stringify(l));
@@ -393,6 +474,7 @@ function generator(seed, { wild = false } = {}) {
   const SPECIAL = [
     ...'*~=`\\[]()#@!:/|♪\t.-_>+1{}<', '**', '~~', '==', '``', '[[', ']]', '@[', '♪[', '- ', '# ', '> ', '1. ', 'https://',
     '<u>', '</u>', '<sup>', '</sub>', '<span style="color:red">', '</span>', '<mark style="background:pink">', '</mark>',
+    '^', '[^', '[^1]', '[^1]:', ' <!-- align:center -->', '<!--', '-->', '<div style="page-break-after: always"></div>',
   ];
   const plainText = (max = 8) => str(chance(0.5) ? [...LETTERS, ...SPECIAL, ...(wild ? ['\n', ' *', '* '] : [])] : LETTERS, max);
   const label = () => pick(['Ann', 'Bo b', 'x.y', 'Café', '1', 'a-b', 'Ünï']);
@@ -416,6 +498,9 @@ function generator(seed, { wild = false } = {}) {
           const type = pick(['person', 'song', afterNote ? 'song' : 'wiki']);
           const target = chance(0.5) ? null : type === 'wiki' ? pick(['note:n1', 'book:b2', 'Page']) : 'id' + int(9);
           out.push(S.nodes[type].create({ target, label: label() }, null, ctx.filter((m) => m.type.name !== 'link')));
+        } else if (roll < 0.13 && !afterNote) {
+          // a footnote's reference (after a ♪ it would read as a song: like a [[link]], tested above)
+          out.push(S.nodes.footnoteRef.create({ label: pick(['1', '2', '10', 'note', 'a-b']) }, null, ctx.filter((m) => m.type.name !== 'link')));
         } else if (roll < 0.2) {
           const alphabet = wild ? [...LETTERS, ...'\\[]#@*~=`'] : [...LETTERS, ...'\\[]#@', ...(names.some((n) => n !== 'link') ? '' : '*~=')].filter((c) => !(inLink && c === ']'));
           out.push(S.text(str(alphabet, 5), [...ctx, code(pick(['`', '``']))]));
@@ -459,8 +544,9 @@ function generator(seed, { wild = false } = {}) {
 
   const block = (depth) => {
     const roll = r();
-    if (roll < 0.3) return p(chance(0.15) ? (chance(0.5) ? [] : [S.text(pick([' ', '  ', '\t']))]) : inlineContent());
-    if (roll < 0.4) return node('heading', { level: 1 + int(chance(0.05) ? 9 : 6), sep: pick([' ', ' ', '  ', '\t']) }, inlineContent());
+    const align = () => (chance(0.2) ? pick(['center', 'right', 'justify']) : null);
+    if (roll < 0.3) return node('paragraph', { align: align() }, chance(0.15) ? (chance(0.5) ? [] : [S.text(pick([' ', '  ', '\t']))]) : inlineContent());
+    if (roll < 0.4) return node('heading', { level: 1 + int(chance(0.05) ? 9 : 6), sep: pick([' ', ' ', '  ', '\t']), align: align() }, inlineContent());
     if (roll < 0.6) {
       const kind = pick(['ul', 'ol', 'task']);
       const checked = kind === 'task' && chance(0.5);
@@ -478,6 +564,8 @@ function generator(seed, { wild = false } = {}) {
       return node('codeBlock', { open, close: chance(0.2) ? null : pick([fence, fence, fence + 'x', ' ' + fence]) }, text ? [S.text(text)] : []);
     }
     if (roll < 0.73) return node('horizontalRule', { raw: pick(['---', '***', '___', '- - -', '-----', ' * * *', '***  ']) });
+    if (roll < 0.75) return node('pageBreak', { raw: pick(['<div style="page-break-after: always"></div>', '<div style="page-break-after:always;"></div>']) });
+    if (roll < 0.79) return node('footnote', { label: pick(['1', '2', 'note', 'a-b']), sep: pick([' ', ' ', '  ', '\t']) }, inlineContent());
     if (roll < 0.86 && depth < 2) return node('blockquote', null, Array.from({ length: 1 + int(3) }, () => block(depth + 1)));
     if (roll < 0.95 && depth < 2) {
       return node('callout', { kind: pick(['note', 'NOTE', 'Tip', 'my-kind', 'warning']), fold: pick(['', '', '+', '-']), sep: pick(['', ' ', ' ', '  ', '\t']) },
@@ -553,15 +641,17 @@ function textGenerator(seed) {
     '', '', '', '', '# ', '##\t', '###### ', '#', '- ', '* ', '+ ', '-\t', '- [ ] ', '* [x] ', '-  [X]\t', '1. ', '01) ', '2.', '  - ', '\t1. ',
     '      - ', '> ', '>', '> > ', '  > ', '> [!note] ', '> [!Tip]- ', '>[!x]', '> - ', '> # ', '```', '~~~ js', '> ```', '---', '* * *', '___',
     ' ', '\t', '[[photo:p1]]', '[[album:photo:p1 image:https://x.y/i.png 50 left]]', '[[image:https://x.y/i.png 5 right]]',
+    '[^1]: ', '[^a-b]:\t', '[^1]:', '<div style="page-break-after: always"></div>', '<!-- align:center -->',
   ];
   const BITS = [
     'a', 'b c', 'word', ' ', '  ', '\t', '😀', 'é', '**', '*', '~~', '==', '`', '``', '[', ']', '(', ')', '](u)', '](https://a.b)', '()',
     'https://x.y/z', 'https://a.b.', 'mailto:a@b.c', '@[', '@[Ann]', '@[person:p1|Ann]', '♪[', '♪[song:s|S]', '[[', ']]', '[[note:n|N]]', '[[W]]',
     '|', '\\', '\\*', '\\#', '#tag', ' #x/y', '!', ':', '-', '1.', '>', '[!note]', '****', '~~~~', '====', '***', '_', '{', '}',
     '<', '<u>', '</u>', '<sup>', '</sup>', '<sub>', '</sub>', '<span style="color:red">', '<span style="color:pink">', '</span>',
-    '<mark style="background:plum">', '<mark>', '</mark>',
+    '<mark style="background:plum">', '<mark>', '</mark>', '[^1]', '[^x_2]', '^', '[^', '<!--', ' -->',
   ];
-  const line = () => pick(STARTS) + Array.from({ length: int(7) }, () => pick(BITS)).join('');
+  const ENDS = ['', '', '', '', ' <!-- align:center -->', ' <!-- align:right -->', '<!-- align:justify -->', ' <!-- align:left -->'];
+  const line = () => pick(STARTS) + Array.from({ length: int(7) }, () => pick(BITS)).join('') + pick(ENDS);
   return () => Array.from({ length: 1 + int(7) }, line).join('\n');
 }
 
@@ -581,6 +671,22 @@ test('random texts: the reading view\'s blocks, and saved without losing or chan
     assert.equal(charsOf(back), charsOf(n), `no character lost: ${why} → ${JSON.stringify(out)}`);
     assert.ok(nd.sameDoc(back, n), `reads back the same: ${why} → ${JSON.stringify(out)}${firstDiff(n, back)}`);
     assert.equal(roundTrip(out), out, `then stays the same: ${why} → ${JSON.stringify(out)}`);
+  }
+});
+
+test('footnotes are numbered the same in the editor and the reading view', () => {
+  const same = (t, why) => {
+    const ed = nd.editorFootnotes(nd.parseNote(t));
+    const rd = nd.readingFootnotes(t);
+    assert.deepEqual([...rd.num], [...ed.num], why);
+    assert.deepEqual([...rd.defined].sort(), [...new Set(ed.defs.map((d) => d.label))].sort(), why);
+  };
+  same('b[^b] **a[^a]** > x\n> q[^q]\n```\n[^code]\n```\n# h[^b]\n- [^l]\n\n[^a]: A[^in]\n[^b]: B', 'by hand');
+  const seed = Number(process.env.SEED ?? 1);
+  const random = textGenerator(seed);
+  for (let i = 0; i < Number(process.env.COUNT ?? 1000); i++) {
+    const t = random();
+    same(t, JSON.stringify(t));
   }
 });
 

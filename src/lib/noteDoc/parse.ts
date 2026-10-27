@@ -5,7 +5,7 @@ import type { Mark, Node as PMNode, Schema } from '@tiptap/pm/model';
 import { parseBody } from '../body';
 import { inline } from '../inline';
 import { noteSchema } from './schema';
-import { QUOTE, calloutOf, classifyLine, closesFence } from './syntax';
+import { QUOTE, alignOf, calloutOf, classifyLine, closesFence } from './syntax';
 
 /** A note's whole text as a document: blocks, with a media node for each picture line. */
 export function parseNote(text: string, schema: Schema = noteSchema()): PMNode {
@@ -38,8 +38,16 @@ export function parseBlocks(text: string, schema: Schema = noteSchema()): PMNode
       case 'hr':
         out.push(n.horizontalRule.create({ raw: l }));
         break;
-      case 'heading':
-        out.push(n.heading.create({ level: c.level, sep: c.sep }, parseInline(l.slice(c.at), [], schema)));
+      case 'heading': {
+        const { text, align } = alignOf(l.slice(c.at));
+        out.push(n.heading.create({ level: c.level, sep: c.sep, align }, parseInline(text, [], schema)));
+        break;
+      }
+      case 'pagebreak':
+        out.push(n.pageBreak.create({ raw: l }));
+        break;
+      case 'footnote':
+        out.push(n.footnote.create({ label: c.label, sep: c.sep }, parseInline(l.slice(c.at), [], schema)));
         break;
       case 'item': {
         const { t: _, at, ...attrs } = c;
@@ -58,8 +66,14 @@ export function parseBlocks(text: string, schema: Schema = noteSchema()): PMNode
         } else out.push(n.blockquote.create(null, parseBlocks(body.join('\n'), schema)));
         break;
       }
-      default: // a line of text, or a blank one (kept with whatever spaces it holds)
+      case 'blank': // kept with whatever spaces it holds
         out.push(n.paragraph.create(null, parseInline(l, [], schema)));
+        break;
+      default: {
+        // a line of text, aligned when its end says so
+        const { text, align } = alignOf(l);
+        out.push(n.paragraph.create({ align }, parseInline(text, [], schema)));
+      }
     }
   }
   return out;
@@ -82,6 +96,11 @@ export function parseInline(text: string, marks: readonly Mark[] = [], schema: S
       case 'code':
         add(p.s, m.code.create({ tick: p.tick }).addToSet(marks));
         break;
+      case 'fn': {
+        const type = schema.nodes.footnoteRef;
+        out.push(type.create({ label: p.s }, null, marks.filter((x) => type.allowsMarkType(x.type))));
+        break;
+      }
       case 'wiki': case 'person': case 'song': {
         const type = schema.nodes[p.t];
         out.push(type.create({ target: p.target ?? null, label: p.s }, null, marks.filter((x) => type.allowsMarkType(x.type))));

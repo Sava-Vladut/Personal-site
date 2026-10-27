@@ -1,6 +1,7 @@
 // Note text is Markdown, written the way Obsidian writes it: **bold**, *italic*, ~~strike~~, ==highlight==, `code`,
-// # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers and #tags, and the
-// bits of HTML Obsidian shows for underline, superscript, subscript and colours (lib/inline.ts, lib/palette.ts).
+// # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers, #tags, [^1] footnotes,
+// and the bits of HTML Obsidian shows for underline, superscript, subscript, colours, a line's alignment and page breaks
+// (lib/inline.ts, lib/palette.ts, lib/noteDoc/syntax.ts).
 // This file has the plain words for excerpts on cards. Reading it formatted is components/Markdown.tsx; editing it is
 // the note editor's (src/editor, on the document of lib/noteDoc).
 import { plainInline } from './inline';
@@ -45,9 +46,11 @@ export function previewOf(text: string, title: string, max = 240) {
 export function stripMarkdown(text: string) {
   return text
     .split('\n')
-    .filter((l) => !/^\s*(```|~~~)/.test(l) && !/^\s*([-*_])([ \t]*\1){2,}\s*$/.test(l))
+    .filter((l) => !/^\s*(```|~~~)/.test(l) && !/^\s*([-*_])([ \t]*\1){2,}\s*$/.test(l) && !/^<div style="page-break-after: ?always;?"><\/div>$/.test(l))
     .map((l) =>
       l
+        .replace(/(?:^| )<!-- align:(?:center|right|justify) -->$/, '')
+        .replace(/^\[\^[\w-]+\]:[ \t]+/, '')
         .replace(/^\s*>\s?\[![\w-]+\][+-]?\s*/, '')
         .replace(/^\s*(>\s?)+/, '')
         .replace(/^\s*#{1,6}\s+/, '')

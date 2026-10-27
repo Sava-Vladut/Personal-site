@@ -8,7 +8,7 @@ import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice } from '../lib/noteDoc';
 import {
-  canStep, dropTargets, findMedia, insertAtom, insertMediaAt, insertTrigger, linkAt, litOf, mediaList, mergeMedia, moveMedia,
+  canStep, dropTargets, findMedia, goToFootnote, goToReference, insertAtom, insertMediaAt, insertTrigger, linkAt, litOf, mediaList, mergeMedia, moveMedia,
   parseClipboardText, removeItem, removeMedia, replaceTyped, sameLit, setMediaLayout, stepMedia, takeOutItem, typedAt,
   ungroupMedia, type DropTarget, type LinkTarget, type Lit, type Typed,
 } from '../lib/noteDoc/edit';
@@ -245,8 +245,17 @@ export function NoteBody(p: Props) {
         v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, before ? nodePos : nodePos + node.nodeSize)));
         return true;
       },
-      // Ctrl+click (⌘ on a Mac) opens a link while writing, as in Word
+      // Ctrl+click (⌘ on a Mac) opens a link while writing, as in Word. A footnote's reference goes to its text, and the
+      // text's number back to the reference (the caret goes there while writing; reading, the page scrolls there)
       handleClick(v, _pos, e) {
+        const fn = (e.target as Element | null)?.closest?.('.fn-ref, .md-fn-num');
+        const label = fn?.closest('[data-fn]')?.getAttribute('data-fn');
+        if (fn && label) {
+          const toText = fn.classList.contains('fn-ref');
+          if (v.editable) (toText ? goToFootnote(label) : goToReference(label))(v.state, v.dispatch);
+          else v.dom.querySelector(toText ? `.md-fn[data-fn="${label}"]` : `.fn-ref[data-fn="${label}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return true;
+        }
         const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
         if (!a || !v.editable || !(e.ctrlKey || e.metaKey)) return false;
         open(a.href, '_blank', 'noopener');

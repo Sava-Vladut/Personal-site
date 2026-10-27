@@ -11,9 +11,12 @@ import { closeHistory } from '@tiptap/pm/history';
 import { normalizeTr } from '../normalize';
 import { countOnAfter, indentList, itemToParagraph, listEnter } from './lists';
 import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, replaceSelectionText, selectedBlocks, unCallout } from './util';
+import type { Align } from '../syntax';
 
 const named = (n: PMNode | null | undefined, ...names: string[]) => !!n && names.includes(n.type.name);
 const isQuote = (n: PMNode | null | undefined) => named(n, 'blockquote', 'callout');
+/** A line's alignment, to carry on to the line Enter makes or the style it's given (as in Word); null for none. */
+const alignOf = (n: PMNode | null | undefined) => (n?.type.name === 'paragraph' || n?.type.name === 'heading' ? n.attrs.align ?? null : null);
 
 /** A code block's opening line typed on a line of its own: ``` or ~~~, maybe with what follows it (```js). */
 const FENCE_LINE = /^[ \t]*(```|~~~)[^`~\n]*$/;
@@ -106,8 +109,9 @@ function splitPlain(state: EditorState, dispatch?: (tr: Transaction) => void): b
   const tb = $c.parent;
   if (!tb.isTextblock) return false;
   const p = state.schema.nodes.paragraph;
-  if ($c.parentOffset === 0 && tb.content.size && tb.type !== p) tr.insert($c.before(), p.create());
-  else keepMarks(tr.split($c.pos, 1, [{ type: p }]), state);
+  const align = { align: alignOf(tb) };
+  if ($c.parentOffset === 0 && tb.content.size && tb.type !== p) tr.insert($c.before(), p.create(align));
+  else keepMarks(tr.split($c.pos, 1, [{ type: p, attrs: align }]), state);
   dispatch?.(tr.scrollIntoView());
   return true;
 }
@@ -152,7 +156,7 @@ export const enter: Command = first(codeEnter, fenceEnter, listEnter, headingEnt
   const tr = state.tr;
   if (!state.selection.empty) deleteSelectionSafe(tr);
   if (!tr.selection.$from.parent.isTextblock) return false;
-  keepMarks(tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph }]), state);
+  keepMarks(tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph, attrs: { align: alignOf(tr.selection.$from.parent) } }]), state);
   dispatch?.(tr.scrollIntoView());
   return true;
 });
@@ -210,7 +214,7 @@ export const backspace: Command = (state, dispatch) => {
     return true;
   }
   if (tb.type.name === 'heading') {
-    dispatch?.(tr.setNodeMarkup(pos, state.schema.nodes.paragraph, null));
+    dispatch?.(tr.setNodeMarkup(pos, state.schema.nodes.paragraph, { align: alignOf(tb) }));
     return true;
   }
   if (tb.type.name === 'calloutTitle') {
@@ -403,7 +407,7 @@ export const toggleQuote: Command = (state, dispatch) => {
 const setNormal: Command = (state, dispatch) => {
   const tr = state.tr;
   const blocks = selectedBlocks(state);
-  for (const { node, pos } of blocks) if (node.type.name === 'heading') tr.setNodeMarkup(pos, state.schema.nodes.paragraph, null);
+  for (const { node, pos } of blocks) if (node.type.name === 'heading') tr.setNodeMarkup(pos, state.schema.nodes.paragraph, { align: alignOf(node) });
   const quoted = blocks.filter((b) => isQuote(state.doc.resolve(b.pos).parent)).map((b) => b.pos);
   liftBlocks(tr, quoted);
   if (!tr.docChanged) return false;
@@ -424,21 +428,49 @@ export const setStyle = (style: Style): Command => (state, dispatch) => {
   if (!dispatch) return true;
   const tr = state.tr;
   const { heading } = state.schema.nodes;
-  for (const { node, pos } of [...blocks].reverse()) tr.setNodeMarkup(pos, heading, { level, sep: node.type === heading ? node.attrs.sep : ' ' });
+  for (const { node, pos } of [...blocks].reverse()) tr.setNodeMarkup(pos, heading, { level, sep: node.type === heading ? node.attrs.sep : ' ', align: alignOf(node) });
   // numbered items after them count again from their number, as when Backspace takes an item's marker off
   countOnAfter(tr, blocks.filter((b) => b.node.type.name === 'listItem' && b.node.attrs.kind === 'ol'));
   dispatch(tr.scrollIntoView());
   return true;
 };
 
-/* ---------- blocks ---------- */
+/* ---------- alignment ---------- */
 
-export type BlockKind = 'hr' | 'code' | 'callout';
+/** The selected lines that can be aligned: paragraphs and headings (a list's bullets stay in the margin, so lists can't). */
+const alignable = (state: EditorState) => selectedBlocks(state).filter((b) => /^(paragraph|heading)$/.test(b.node.type.name));
+
+/** The alignment of the selected lines (left for none), or null when they differ or none can be aligned. */
+export function alignAt(state: EditorState): Align | 'left' | null {
+  const blocks = alignable(state);
+  if (!blocks.length) return null;
+  const a = alignOf(blocks[0].node) ?? 'left';
+  return blocks.every((b) => (alignOf(b.node) ?? 'left') === a) ? a : null;
+}
 
 /**
- * Puts a divider, code block or callout in at the caret: in place of an empty line, or before or after the line at
- * its start or end, or splitting it (the words after go on a plain line below). A divider leaves the caret on the line
- * after it; a code block or callout takes the caret inside. Not in code.
+ * Align left, centre, right or justify (Ctrl+L, E, R, J) on the selected paragraphs and headings. With `toggle` (the
+ * keys, as in Word) lines aligned so already go back to the left. False when none of the lines can be aligned.
+ */
+export const setAlign = (align: Align | 'left', toggle = false): Command => (state, dispatch) => {
+  const blocks = alignable(state);
+  if (!blocks.length) return false;
+  const to = toggle && align !== 'left' && alignAt(state) === align ? null : align === 'left' ? null : align;
+  if (!dispatch) return true;
+  const tr = state.tr;
+  for (const { node, pos } of blocks) if (alignOf(node) !== to) tr.setNodeMarkup(pos, null, { ...node.attrs, align: to });
+  dispatch(tr.scrollIntoView());
+  return true;
+};
+
+/* ---------- blocks ---------- */
+
+export type BlockKind = 'hr' | 'code' | 'callout' | 'pagebreak';
+
+/**
+ * Puts a divider, page break, code block or callout in at the caret: in place of an empty line, or before or after the
+ * line at its start or end, or splitting it (the words after go on a plain line below). A divider or page break leaves
+ * the caret on the line after it; a code block or callout takes the caret inside. Not in code.
  */
 export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
   const tr = state.tr;
@@ -449,6 +481,7 @@ export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
   if (!dispatch) return true;
   const n = state.schema.nodes;
   const node = kind === 'hr' ? n.horizontalRule.create()
+    : kind === 'pagebreak' ? n.pageBreak.create()
     : kind === 'code' ? n.codeBlock.create({ open: '```', close: '```' })
     : n.callout.create({ kind: 'note', fold: '', sep: ' ' }, n.calloutTitle.create());
   let at: number;
@@ -458,12 +491,12 @@ export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
     else if ($c.parentOffset === 0) at = $c.before();
     else if ($c.parentOffset === tb.content.size) at = $c.after();
     else {
-      tr.split($c.pos, 1, [{ type: n.paragraph }]);
+      tr.split($c.pos, 1, [{ type: n.paragraph, attrs: { align: alignOf(tb) } }]);
       at = $c.pos + 1;
     }
     tr.insert(at, node);
   }
-  if (kind !== 'hr') tr.setSelection(TextSelection.create(tr.doc, at + (kind === 'callout' ? 2 : 1)));
+  if (kind === 'code' || kind === 'callout') tr.setSelection(TextSelection.create(tr.doc, at + (kind === 'callout' ? 2 : 1)));
   else {
     const next = tr.doc.resolve(at + node.nodeSize).nodeAfter;
     if (!next?.isTextblock) tr.insert(at + node.nodeSize, n.paragraph.create());

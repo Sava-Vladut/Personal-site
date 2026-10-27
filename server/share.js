@@ -142,8 +142,12 @@ export function excerpt(note) {
   const plain = note.text
     .replace(/^\s*\[\[(?:photo|image|album):[^\]]*\]\]\s*$/gm, ' ')
     .replace(/\[([^\]\n]+)\]\([^)\s]+\)/g, '$1')
-    // underline, superscript, subscript and colours (src/lib/inline.ts)
-    .replace(/<\/?(?:u|sup|sub|span|mark)(?:\s[^<>]*)?>/g, '')
+    // footnotes: a text's [^1]: marker, and the references (src/lib/inline.ts)
+    .replace(/^\[\^[\w-]+\]:[ \t]+/gm, '')
+    .replace(/\[\^[\w-]+\]/g, '')
+    // underline, superscript, subscript, colours, page breaks (src/lib/inline.ts) and a line's alignment (a comment)
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<\/?(?:u|sup|sub|span|mark|div)(?:\s[^<>]*)?>/g, '')
     .replace(/[#>*_~`=]/g, '')
     .replace(/\s+/g, ' ')
     .trim();

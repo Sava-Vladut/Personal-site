@@ -6,7 +6,7 @@
 //   • quotes next to each other become one (their lines would run together)
 //   • a callout next to a quote or callout gets an empty line between (else it would read as part of the other)
 //   • text holding a line break outside code is split into lines (the part after a break becomes a paragraph)
-//   • spaces at the start of a heading's, list item's or callout title's text go to its `sep` (where they'd be read),
+//   • spaces at the start of a heading's, list item's, footnote's or callout title's text go to its `sep` (where they'd be read),
 //     unless they're code, a link's text or in an HTML tag (written inside its backticks, brackets or tags)
 //   • a code block without a closing line that isn't the last in its stretch gets one (the text writes one anyway)
 // Pictures can't be inside a quote or callout: the schema keeps them at the top level.
@@ -67,7 +67,7 @@ const keepsSpaces = (m: Mark) =>
   /^(code|link|underline|sup|sub|color)$/.test(m.type.name) || (m.type.name === 'highlight' && !!m.attrs.color);
 const leadsWithSpace = (n: PMNode) => !!n.firstChild?.isText && LEAD.test(n.firstChild.text!) && !n.firstChild.marks.some(keepsSpaces);
 const absorbSpaces: Fix = (tr) => {
-  const found = textblocks(tr.doc, (n) => /^(heading|listItem|calloutTitle)$/.test(n.type.name) && leadsWithSpace(n));
+  const found = textblocks(tr.doc, (n) => /^(heading|listItem|calloutTitle|footnote)$/.test(n.type.name) && leadsWithSpace(n));
   for (const { node, pos } of found) {
     const lead = node.firstChild!.text!.match(LEAD)![0];
     tr.delete(pos + 1, pos + 1 + lead.length);
@@ -148,7 +148,7 @@ export function inShape(doc: PMNode): boolean {
       if (b.type.name === 'codeBlock' && b.attrs.close === null && i < parent.childCount - 1 && !media(parent.child(i + 1))) return false;
       if (b.isTextblock) {
         if (!b.type.spec.code && hasBreak(b)) return false;
-        if (/^(heading|listItem|calloutTitle)$/.test(b.type.name) && leadsWithSpace(b)) return false;
+        if (/^(heading|listItem|calloutTitle|footnote)$/.test(b.type.name) && leadsWithSpace(b)) return false;
       } else if (!b.isLeaf && !walk(b)) return false;
     }
     return true;

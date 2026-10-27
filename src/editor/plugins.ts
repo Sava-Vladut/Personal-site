@@ -13,15 +13,15 @@ import { gapCursor } from '@tiptap/pm/gapcursor';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
-  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, moveBlocks, newLine, noteCommands, paint, painterOf, painterPlugin, renumberChanged, stopPainter,
-  tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
+  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
+  painterPlugin, renumberChanged, stopPainter, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
 } from '../lib/noteDoc/edit';
 
 /* ---------- typing Markdown ---------- */
 
 /**
- * Inline Markdown closed as it's typed: **bold**, *italic*, ~~strike~~, ==highlight==, `code`, [words](address), and a
- * tag written out in full (@[Ann], ♪[Song], [[Note]]). What was typed is read with the note's own parser, so it
+ * Inline Markdown closed as it's typed: **bold**, *italic*, ~~strike~~, ==highlight==, `code`, [words](address), a
+ * tag written out in full (@[Ann], ♪[Song], [[Note]]) and a footnote's reference ([^1]). What was typed is read with the note's own parser, so it
  * becomes exactly what the text would read back as. Underscores are left alone (snake_case stays words).
  */
 const INLINE = new RegExp(
@@ -35,6 +35,8 @@ const INLINE = new RegExp(
     String.raw`@\[[^\]\n￼]+\]`,
     String.raw`♪\[[^\]\n￼]+\]`,
     String.raw`\[\[[^\]\n￼]+\]\]`,
+    // a footnote's reference, [^1] (not the start of a [[link]])
+    String.raw`(?<![\\[])\[\^[\w-]+\]`,
   ].join('|') + ')$',
   'u',
 );
@@ -126,8 +128,12 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
   else if (e.altKey && !e.shiftKey) {
     if (e.getModifierState?.('AltGraph')) return false;
     if (/^Digit[0-6]$/.test(code)) cmd = noteCommands.style(code === 'Digit0' ? 'normal' : (('h' + code.slice(5)) as 'h1'));
+    // Ctrl+Alt+F: a footnote (by the key: Alt changes the letter typed on a Mac)
+    else if (code === 'KeyF' || k === 'f') cmd = noteCommands.footnote;
   } else if (e.shiftKey && !e.altKey) {
     if (k === 'x') cmd = noteCommands.mark('strike');
+    // inline code moved here from Ctrl+E, which centres as in Word
+    else if (k === 'e') cmd = noteCommands.mark('code');
     else if (k === 'h') cmd = noteCommands.mark('highlight');
     else if (k === 'l') cmd = noteCommands.list('ul');
     else if (k === 'n') cmd = noteCommands.style('normal');
@@ -138,7 +144,12 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
   } else if (!e.altKey) {
     if (k === 'b') cmd = noteCommands.mark('bold');
     else if (k === 'i') cmd = noteCommands.mark('italic');
-    else if (k === 'e') cmd = noteCommands.mark('code');
+    // alignment, as in Word (Ctrl+E centres; again, back to the left). Ctrl+R never reloads the page from the text,
+    // nor Ctrl+L or Ctrl+J go to the address bar or the downloads, even on a line that can't be aligned (a list)
+    else if (k === 'l') cmd = noteCommands.align('left', true);
+    else if (k === 'e') cmd = noteCommands.align('center', true);
+    else if (k === 'r') cmd = noteCommands.align('right', true);
+    else if (k === 'j') cmd = noteCommands.align('justify', true);
     else if (k === 'z') cmd = undo;
     else if (k === 'y' && !e.metaKey) cmd = redo;
     else if (k === 'u') cmd = noteCommands.mark('underline');
@@ -226,6 +237,57 @@ const tags = new Plugin<DecorationSet>({
   props: { decorations: (state) => tagsKey.getState(state) },
 });
 
+/* ---------- footnotes ---------- */
+
+/**
+ * Each footnote's number, by where it's first referred to (lib/noteDoc/edit/footnotes.ts), put in --fn on its
+ * references and its text for CSS to show. A text nothing refers to shows its label, faded (.is-orphan); a reference
+ * whose text is gone is marked too (.is-missing).
+ */
+export function footnoteDecorations(doc: PMNode): DecorationSet {
+  if (!hasFootnotes(doc)) return DecorationSet.empty;
+  const { num, refs, defs } = footnotesOf(doc);
+  const defined = new Set(defs.map((d) => d.label));
+  const found: Decoration[] = [];
+  for (const r of refs) {
+    found.push(Decoration.node(r.pos, r.pos + 1, { style: `--fn: "${num.get(r.label)}"`, ...(!defined.has(r.label) && { class: 'is-missing' }) }));
+  }
+  for (const d of defs) {
+    const n = num.get(d.label);
+    found.push(Decoration.node(d.pos, d.pos + d.node.nodeSize, n ? { style: `--fn: "${n}"` } : { style: `--fn: "${d.label}"`, class: 'is-orphan' }));
+  }
+  return DecorationSet.create(doc, found);
+}
+
+/** Whether a change put a footnote or a reference in (looked for only where it changed the document). */
+function addsFootnotes(tr: Transaction): boolean {
+  let found = false;
+  const size = tr.doc.content.size;
+  tr.mapping.maps.forEach((map, i) => {
+    map.forEach((_a, _b, from, to) => {
+      const rest = tr.mapping.slice(i + 1);
+      const a = rest.map(from, -1), b = rest.map(to, 1);
+      if (found || b <= a) return;
+      tr.doc.nodesBetween(Math.max(0, a), Math.min(size, b), (n) => {
+        if (n.type.name === 'footnote' || n.type.name === 'footnoteRef') found = true;
+        return !found;
+      });
+    });
+  });
+  return found;
+}
+
+const footnotesKey = new PluginKey<DecorationSet>('footnotes');
+const footnotes = new Plugin<DecorationSet>({
+  key: footnotesKey,
+  state: {
+    init: (_, state) => footnoteDecorations(state.doc),
+    // a note without footnotes isn't read through again on every key, only what each change put in
+    apply: (tr, old) => (!tr.docChanged ? old : old === DecorationSet.empty && !addsFootnotes(tr) ? old : footnoteDecorations(tr.doc)),
+  },
+  props: { decorations: (state) => footnotesKey.getState(state) },
+});
+
 /* ---------- tags in a selection ---------- */
 
 const CHIP = /^(person|song|wiki)$/;
@@ -301,7 +363,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
   const keys = keymap({
     Enter: enter,
     'Shift-Enter': newLine,
-    'Mod-Enter': newLine,
+    // a page break, as in Word (in code, a new line)
+    'Mod-Enter': chainCommands(noteCommands.insert('pagebreak'), newLine),
     Backspace: chainCommands(undoInputRule, backspace),
     Delete: deleteForward,
     'Mod-Backspace': chainCommands(undoInputRule, backspace),
@@ -364,6 +427,7 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     // numbered lists count again wherever a change touched their lines (deleting a selection, joining, pasting, a drag)
     new Plugin({ appendTransaction: (trs, _old, state) => renumberChanged(trs, state) }),
     tags,
+    footnotes,
     chipsInRange,
     painterPlugin(),
     // the pointer shows a brush while the Format Painter is on

@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.141.0',
+    date: '2026-10-27',
+    changes: [
+      'Align text left, centre, right or justified: four buttons in the ribbon’s Paragraph group, or Ctrl+L, Ctrl+E, Ctrl+R and Ctrl+J as in Word (press it again to go back to the left), for lines and headings',
+      'Inline code moved to Ctrl+Shift+E, so Ctrl+E centres as in Word',
+      'Ctrl+R in a note no longer reloads the page, nor do Ctrl+L and Ctrl+J go to the address bar or downloads',
+      'Page breaks: Insert › Page break or Ctrl+Enter (Shift+Enter is still a new line); a dashed line in the note, a new page when printed or saved as a PDF',
+      'Footnotes: Insert › Footnote or Ctrl+Alt+F puts a small number at the caret and its text at the end of the note; numbers follow the order they appear in, and a click goes from the number to its footnote and back',
+      'A footnote nothing refers to any more shows faded, and a number whose footnote is gone is struck through',
+      'Public notes show alignment, page breaks and footnotes too (footnotes at the end); previews, search and word counts leave the markers out',
+      'Notes keep these as Obsidian does: a hidden <!-- align:center --> at the line’s end, <div style="page-break-after: always"></div> and [^1] footnotes',
+    ],
+  },
+  {
     version: '1.140.0',
     date: '2026-10-27',
     changes: [

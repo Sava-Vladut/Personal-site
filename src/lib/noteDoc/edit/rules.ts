@@ -1,6 +1,6 @@
 // Markdown typed at the start of a line becomes the block it writes, as in Obsidian and Notion: "# " a heading, "- "
 // a bullet, "1. " a numbered item, "[] " a task (also in a bullet), "> " a quote, "[!note] " on a quote's first line a
-// callout, "---" a divider, "```js " a code block. The rules are pure: each changes a transaction and says whether it
+// callout, "---" a divider, "```js " a code block, "[^1]: " a footnote's text. The rules are pure: each changes a transaction and says whether it
 // did, so the browser layer can wrap them in Tiptap's InputRule ({ find, handler: ({ state, range, match }) =>
 // rule.apply(state.tr, match, range.from, range.to) || null }) or ProseMirror's (new InputRule(find, (state, match,
 // start, end) => { const tr = state.tr; return rule.apply(tr, match, start, end) ? tr : null })).
@@ -50,7 +50,7 @@ export const BLOCK_RULES: BlockRule[] = [
     apply(tr, m, start, end) {
       const line = lineAt(tr, start, ['paragraph']);
       if (!line) return false;
-      tr.delete(start, end).setNodeMarkup(line.pos, tr.doc.type.schema.nodes.heading, { level: m[1].length, sep: m[0].endsWith('\t') ? '\t' : ' ' });
+      tr.delete(start, end).setNodeMarkup(line.pos, tr.doc.type.schema.nodes.heading, { level: m[1].length, sep: m[0].endsWith('\t') ? '\t' : ' ', align: line.node.attrs.align ?? null });
       return true;
     },
   },
@@ -90,6 +90,18 @@ export const BLOCK_RULES: BlockRule[] = [
       quote.forEach((c, _, i) => i && rest.push(c));
       tr.replaceWith(quotePos, quotePos + quote.nodeSize, callout.create({ kind: m[1], fold: m[2], sep: ' ' }, [calloutTitle.create(null, quote.firstChild!.content), ...rest]));
       tr.setSelection(TextSelection.create(tr.doc, quotePos + 2));
+      return true;
+    },
+  },
+  {
+    // a footnote's reference ([^1], read as one as it's typed) then ": " starting a line: that footnote's text
+    name: 'footnote',
+    find: new RegExp(`^${LEAF}:\\s$`),
+    apply(tr, _m, start, end) {
+      const line = lineAt(tr, start, ['paragraph']);
+      const ref = line?.node.firstChild;
+      if (!line || ref?.type.name !== 'footnoteRef') return false;
+      tr.delete(start, end).setNodeMarkup(line.pos, tr.doc.type.schema.nodes.footnote, { label: ref.attrs.label, sep: ' ' });
       return true;
     },
   },

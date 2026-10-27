@@ -3,7 +3,7 @@
 import type { MarkType } from '@tiptap/pm/model';
 import { redoDepth, undoDepth } from '@tiptap/pm/history';
 import type { EditorState } from '@tiptap/pm/state';
-import type { Style } from './blocks';
+import { alignAt, setAlign, type Style } from './blocks';
 import { continueNumbering, restartNumbering } from './lists';
 import { colorAt, markLit } from './marks';
 import { painterOf } from './painter';
@@ -36,6 +36,10 @@ export interface Lit {
   inList: boolean;
   /** the style the gallery shows picked: a heading 1–6, Quote, Normal, or none (a callout, code) */
   style: Style | null;
+  /** the selected lines' alignment ('left' for none), null when they differ or can't be aligned (lists, code) */
+  align: 'left' | 'center' | 'right' | 'justify' | null;
+  /** some of the selected lines can be aligned (paragraphs, headings) */
+  canAlign: boolean;
   /** something is selected */
   ranged: boolean;
   canUndo: boolean;
@@ -85,6 +89,7 @@ export function litOf(state: EditorState): Lit {
     : quote ? 'quote'
     : 'normal';
   const painter = painterOf(state);
+  const align = alignAt(state);
   return {
     // the styles lit exactly when their buttons would take them off
     bold: markLit(state, 'bold'),
@@ -104,6 +109,8 @@ export function litOf(state: EditorState): Lit {
     callout,
     inList: block === 'ul' || block === 'ol' || block === 'task',
     style,
+    align,
+    canAlign: align !== null || setAlign('left')(state),
     ranged: !sel.empty,
     canUndo: undoDepth(state) > 0,
     canRedo: redoDepth(state) > 0,

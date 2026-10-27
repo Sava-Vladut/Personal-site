@@ -179,4 +179,5 @@ test('link previews show a few plain words', () => {
   assert.equal(excerpt({ text: '## Title\n[[image:https://x.example/a.jpg 50 left]]\n**bold** and [a link](https://x.example) here' }), 'Title bold and a link here');
   assert.ok(excerpt({ text: 'word '.repeat(100) }).length <= 160);
   assert.equal(excerpt({ text: '<u>Under</u> x<sup>2</sup> <span style="color:red">red</span> <mark style="background:pink">pink</mark>' }), 'Under x2 red pink');
+  assert.equal(excerpt({ text: '# Title <!-- align:center -->\n<div style="page-break-after: always"></div>\nclaim[^1] here\n\n[^1]: source' }), 'Title claim here source');
 });

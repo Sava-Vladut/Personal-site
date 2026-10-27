@@ -3,7 +3,8 @@
 // Styles take the shortest run they can, so **a** and **b** are two bold words rather than one, and a backslash
 // keeps the character after it as it is (\* is a star, not italic). Underline, superscript, subscript and colours are
 // the bits of HTML Obsidian shows: <u>, <sup>, <sub>, <span style="color:red"> and <mark style="background:pink">,
-// each only in exactly that form and with a colour of lib/palette.ts (anything else is the text it is).
+// each only in exactly that form and with a colour of lib/palette.ts (anything else is the text it is). A footnote's
+// reference is [^label], Obsidian's.
 import { HIGHLIGHTS, TEXT_COLORS } from './palette';
 
 /** A piece of a line: plain text, or a styled run with the text inside its markers. */
@@ -15,6 +16,8 @@ export type Inline =
   /** [[a note or book]], @[someone] and ♪[a song], with what they're written as (`raw`) and where they point */
   | { t: 'wiki' | 'person' | 'song'; raw: string; target?: string; s: string }
   | { t: 'link'; s: string; url: string }
+  /** a footnote's reference, [^1]: its label (Obsidian's syntax; the number shown is by order of appearance) */
+  | { t: 'fn'; s: string }
   | { t: 'b' | 'i' | 's'; mark: string; s: string }
   /** ==a highlight==, or <mark style="background:…"> in another colour than yellow (`color`, else null) */
   | { t: 'hl'; mark: string; s: string; color: string | null }
@@ -39,6 +42,8 @@ const INLINE = new RegExp(
     /@\[(?:person:(?<pt>[^\]|\n]+)\|)?(?<person>[^\]\n]+)\]/.source,
     /♪\[(?:song:(?<st>[^\]|\n]+)\|)?(?<song>[^\]\n]+)\]/.source,
     /\[(?<text>[^\]\n]+)\]\((?<url>[^)\s]*)\)/.source,
+    // after a link: [^1](u) is a link, as in Obsidian
+    /\[\^(?<fn>[\w-]+)\]/.source,
     /(?<![*~=])(?<empty>\*\*\*\*|~~~~|====)(?![*~=])/.source,
     // a style starts at a letter (not a space), and ends at the first marker that closes it
     String.raw`\*\*(?<b>(?!\s)${C}+?)\*\*(?!\*)`,
@@ -78,6 +83,7 @@ export function inline(text: string): Inline[] {
     else if (g.person !== undefined) out.push({ t: 'person', raw: m[0], target: g.pt, s: g.person });
     else if (g.song !== undefined) out.push({ t: 'song', raw: m[0], target: g.st, s: g.song });
     else if (g.text !== undefined) out.push({ t: 'link', s: g.text, url: g.url });
+    else if (g.fn !== undefined) out.push({ t: 'fn', s: g.fn });
     else if (g.empty !== undefined) out.push({ t: 'empty', s: g.empty });
     else if (g.b !== undefined) out.push({ t: 'b', mark: '**', s: g.b });
     else if (g.s !== undefined) out.push({ t: 's', mark: '~~', s: g.s });
@@ -99,17 +105,22 @@ export function inline(text: string): Inline[] {
 const nests = (p: Inline): p is Extract<Inline, { t: 'b' | 'i' | 's' | 'hl' | 'u' | 'sup' | 'sub' | 'color' | 'link' }> =>
   /^(b|i|s|hl|u|sup|sub|color|link)$/.test(p.t);
 
-/** A line's words without their inline Markdown. */
+/** A line's words without their inline Markdown (a footnote's reference left out). */
 export function plainInline(text: string): string {
   return inline(text)
-    .map((p) => (nests(p) ? plainInline(p.s) : p.t === 'empty' ? '' : p.s))
+    .map((p) => (nests(p) ? plainInline(p.s) : p.t === 'empty' || p.t === 'fn' ? '' : p.s))
     .join('');
 }
 
 const TAGS = new RegExp(
-  String.raw`</?(?:u|sup|sub)>|</(?:span|mark)>|<span style="color:(?:${TEXT_COLORS.join('|')})">|<mark style="background:(?:${HIGHLIGHTS.join('|')})">`,
-  'g',
+  String.raw`</?(?:u|sup|sub)>|</(?:span|mark)>|<span style="color:(?:${TEXT_COLORS.join('|')})">|<mark style="background:(?:${HIGHLIGHTS.join('|')})">`
+    // a line's alignment, and a page break's line (lib/noteDoc/syntax.ts)
+    + String.raw`| ?<!-- align:(?:center|right|justify) -->$|^<div style="page-break-after: ?always;?"></div>$\n?`,
+  'gm',
 );
 
-/** Text without the tags of underline, superscript, subscript and colours, Markdown left as it is (search, exports). */
+/**
+ * Text without the tags of underline, superscript, subscript and colours, a line's alignment and page breaks,
+ * Markdown left as it is (search, exports).
+ */
 export const dropTags = (text: string) => text.replace(TAGS, '');

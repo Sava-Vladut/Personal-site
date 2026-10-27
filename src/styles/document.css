@@ -175,4 +175,10 @@
   .note-sheet .media { break-inside: avoid; }
   .note-sheet .media.is-selected { outline: none !important; box-shadow: none !important; }
   .note-sheet :is(h1, h2, h3, h4, h5, h6, .md-h) { break-after: avoid; }
+  /* a page break starts a new page, and shows nothing itself; aligned lines keep their alignment (inline text-align) */
+  .note-sheet .md-pagebreak { break-after: page; height: 0; margin: 0; border: 0; }
+  .note-sheet .md-pagebreak > span { display: none; }
+  /* footnotes print at the end, smaller, under a short rule, their numbers plain (no links to follow on paper) */
+  .note-sheet :is(.fn-ref, .md-fn-ref, .md-fn-ref a, .md-fn-num) { color: #000 !important; text-decoration: none; }
+  .note-sheet .md-fn { font-size: 9pt; break-inside: avoid; opacity: 1; }
 }

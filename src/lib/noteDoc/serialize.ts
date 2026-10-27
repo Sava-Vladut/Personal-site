@@ -5,9 +5,9 @@
 import type { Fragment, Mark, MarkType, Node as PMNode, Slice } from '@tiptap/pm/model';
 import { parseBody, mediaMarker } from '../body';
 import { parseInline } from './parse';
-import { STYLE_MARKS, atomToken, type AtomAttrs } from './schema';
+import { FOOTNOTE_LABEL, STYLE_MARKS, atomToken, type AtomAttrs } from './schema';
 import { isHighlight, isTextColor } from '../palette';
-import { BARE, calloutOf, classifyLine, closesFence, fenceOf } from './syntax';
+import { BARE, PAGEBREAK, alignOf, alignSuffix, calloutOf, classifyLine, closesFence, fenceOf, isAlign } from './syntax';
 
 /* ---------- inline: a textblock's content as units ---------- */
 
@@ -132,9 +132,11 @@ function plain(u: Unit[], i: number, ctx: Ctx): string {
   // ~ and = always: one next to a style's ~~ or == would read as part of it; < always, a tag's. The : of an address,
   // in a link's text too: read as an address there it's still plain text, but it would take the backslashes after it
   // as letters
+  // After a footnote's reference, ( and : too: [^1](u) would read as a link, and [^1]: starting a line as a footnote
+  const afterRef = u[i - 1]?.atom?.type.name === 'footnoteRef';
   const esc =
     s === '\\' || s === '*' || s === '`' || s === '[' || s === '@' || s === '=' || s === '~' || s === '<' ||
-    (s === ':' && u[i + 1]?.s === '/' && u[i + 2]?.s === '/');
+    (s === ':' && u[i + 1]?.s === '/' && u[i + 2]?.s === '/') || (afterRef && (s === '(' || s === ':'));
   return esc ? '\\' + s : s;
 }
 
@@ -273,14 +275,14 @@ function escapeFirst(s: string): string {
  * Writes a textblock's content after `prefix`, so it reads back the same. `check` reads the whole line back and
  * gives its inline part, or null when the line reads as another kind of block.
  */
-function writeLine(node: PMNode, prefix: string, check: (line: string) => string | null): string {
+function writeLine(node: PMNode, prefix: string, check: (line: string) => string | null, suffix = ''): string {
   const units = tidy(unitsOf(childrenOf(node)));
   const schema = node.type.schema;
   for (let all = false; ; ) {
     const inl = emit(units, 0, units.length, { open: [], raw: false, all });
-    let line = prefix + inl;
+    let line = prefix + inl + suffix;
     let body = check(line);
-    if (body === null) body = check((line = prefix + escapeFirst(inl)));
+    if (body === null) body = check((line = prefix + escapeFirst(inl) + suffix));
     if (body === null) {
       // still read as another kind of line: leave off a style near the start (a line's marker is there)
       if (all && !dropOne(units, [])) return line;
@@ -331,7 +333,13 @@ export function writtenAttrs(node: PMNode): Record<string, unknown> {
   const a = node.attrs;
   switch (node.type.name) {
     case 'heading':
-      return { level: Math.min(6, Math.max(1, Math.round(Number(a.level)) || 1)), sep: ws(a.sep, false) ?? ' ' };
+      return { level: Math.min(6, Math.max(1, Math.round(Number(a.level)) || 1)), sep: ws(a.sep, false) ?? ' ', align: isAlign(a.align) ? a.align : null };
+    case 'paragraph':
+      return { align: isAlign(a.align) ? a.align : null };
+    case 'footnote':
+      return { label: typeof a.label === 'string' && FOOTNOTE_LABEL.test(a.label) ? a.label : '1', sep: ws(a.sep, false) ?? ' ' };
+    case 'pageBreak':
+      return { raw: typeof a.raw === 'string' && PAGEBREAK.test(a.raw) ? a.raw : '<div style="page-break-after: always"></div>' };
     case 'listItem': {
       const p = itemPrefix(a);
       return { kind: a.kind === 'ol' || a.kind === 'task' ? a.kind : 'ul', indent: p.indent, sep: p.sep, ...p.parts };
@@ -399,16 +407,28 @@ function writeBlock(node: PMNode, where: Where, first: boolean, last: boolean): 
           if (c !== 'text' && c !== 'blank') return null;
           if (where.top && isMarker(l)) return null;
           if (where.quote && first && calloutOf(l)) return null;
-          return l;
-        }),
+          const { text, align } = alignOf(l);
+          return align === a.align ? text : null;
+        }, alignSuffix(a.align, !node.content.size)),
       ];
     case 'heading':
       return [
         writeLine(node, '#'.repeat(a.level) + a.sep, (l) => {
           const c = classifyLine(l);
-          return c.t === 'heading' && c.level === a.level && c.sep === a.sep ? l.slice(c.at) : null;
+          if (c.t !== 'heading' || c.level !== a.level || c.sep !== a.sep) return null;
+          const { text, align } = alignOf(l.slice(c.at));
+          return align === a.align ? text : null;
+        }, alignSuffix(a.align, !node.content.size)),
+      ];
+    case 'footnote':
+      return [
+        writeLine(node, `[^${a.label}]:${a.sep}`, (l) => {
+          const c = classifyLine(l);
+          return c.t === 'footnote' && c.label === a.label && c.sep === a.sep ? l.slice(c.at) : null;
         }),
       ];
+    case 'pageBreak':
+      return [a.raw];
     case 'listItem': {
       const p = itemPrefix(node.attrs);
       const marker = a.kind === 'ol' ? a.num + a.delim : a.kind === 'task' ? `${a.bullet}${a.gap}[${a.check}]` : a.bullet;

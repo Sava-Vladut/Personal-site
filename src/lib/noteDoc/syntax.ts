@@ -10,6 +10,27 @@ export const ITEM = /^([ \t]*)([-*+][ \t]+\[([ xX])\]|[-*+]|(\d{1,9})[.)])[ \t]+
 export const QUOTE = /^[ \t]*>[ \t]?(.*)$/;
 /** A quote's first line that makes it a callout: > [!note] Title (Obsidian's syntax). */
 export const CALLOUT = /^\[!([\w-]+)\][+-]?[ \t]*(.*)$/;
+/** A page break: the line Obsidian (and its PDF export) breaks the page at, as written (with or without the `;`). */
+export const PAGEBREAK = /^<div style="page-break-after: ?always;?"><\/div>$/;
+/** A footnote's text, `[^1]: words` (Obsidian's syntax): its label, then the words. */
+export const FOOTNOTE = /^\[\^([\w-]+)\]:[ \t]+(.*)$/;
+/**
+ * A paragraph's or heading's alignment, written at the end of its line: ` <!-- align:center -->` (no space before it
+ * on an empty line). An HTML comment, so Obsidian and other Markdown readers hide it and still read the line's
+ * Markdown (they don't inside an HTML tag such as <p align="center">). Left is the default, never written.
+ */
+export const ALIGN = /(?:^| )<!-- align:(center|right|justify) -->$/;
+export const ALIGNS = ['center', 'right', 'justify'] as const;
+export type Align = (typeof ALIGNS)[number];
+export const isAlign = (a: unknown): a is Align => (ALIGNS as readonly unknown[]).includes(a);
+
+/** A line's text (after its marker) without the alignment written at its end, and that alignment (null: left). */
+export function alignOf(s: string): { text: string; align: Align | null } {
+  const m = s.match(ALIGN);
+  return m ? { text: s.slice(0, m.index), align: m[1] as Align } : { text: s, align: null };
+}
+/** What's written at the end of a line to align it (an empty line's has no space before it). */
+export const alignSuffix = (a: Align | null, empty: boolean) => (a ? `${empty ? '' : ' '}<!-- align:${a} -->` : '');
 
 /** How far a list item is indented: two spaces or a tab a level, at most 6. */
 export const depthOf = (indent: string) => Math.min(6, [...indent].reduce((n, c) => n + (c === '\t' ? 2 : 1), 0) >> 1);
@@ -65,6 +86,8 @@ export type Line =
   | { t: 'heading'; level: number; sep: string; at: number }
   | ({ t: 'item'; at: number } & ItemParts)
   | { t: 'quote'; at: number }
+  | { t: 'pagebreak' }
+  | { t: 'footnote'; label: string; sep: string; at: number }
   | { t: 'text' };
 
 /** Reads one line the way Markdown.tsx does, trying the kinds in the same order. */
@@ -89,6 +112,8 @@ export function classifyLine(l: string): Line {
     };
   }
   if ((m = l.match(QUOTE))) return { t: 'quote', at: l.length - m[1].length };
+  if (PAGEBREAK.test(l)) return { t: 'pagebreak' };
+  if ((m = l.match(FOOTNOTE))) return { t: 'footnote', label: m[1], sep: l.slice(m[1].length + 4, l.length - m[2].length), at: l.length - m[2].length };
   return { t: 'text' };
 }
 

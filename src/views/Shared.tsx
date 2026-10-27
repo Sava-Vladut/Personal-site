@@ -6,7 +6,7 @@ import { readShared, type PublicDetails, type PublicNote } from '../lib/share';
 import type { Entry, Music, Person } from '../lib/store';
 import { EmotionChip, INTENSITY } from '../components/emotion';
 import { Icon } from '../components/icons';
-import { Markdown } from '../components/Markdown';
+import { Markdown, footnotesOf } from '../components/Markdown';
 import { MusicEmbed, MusicThing, isTape, musicSub } from '../components/music';
 import { Avatar } from '../components/people';
 import { WeatherMark } from '../components/weather';
@@ -43,6 +43,8 @@ export function Shared({ token }: { token: string }) {
 
   // the same arrangement the writer sees: text, picture, text, picture…
   const body = bodyOf({ text: note.text, photos: note.photos, images: note.images } as Entry);
+  // footnotes numbered over the whole note: its words between pictures are drawn each on their own
+  const footnotes = footnotesOf(note.text);
   const src = (it: Item, size: 'thumb' | 'full') => {
     if (it.kind === 'photo') return `/api/share/${token}/${it.id}`;
     const img = note.images.find((i) => i.url === it.url);
@@ -73,7 +75,7 @@ export function Shared({ token }: { token: string }) {
           {body.texts.map((text, i) => (
             <>
               {i > 0 && <Pic m={body.media[i - 1]} note={note} src={src} />}
-              {text.trim() && <Markdown text={text} />}
+              {text.trim() && <Markdown text={text} footnotes={footnotes} />}
             </>
           ))}
         </div>

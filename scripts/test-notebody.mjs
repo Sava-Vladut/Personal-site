@@ -69,7 +69,7 @@ function page(phone) {
   return window;
 }
 
-const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal' };
+const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal', e: 'KeyE', l: 'KeyL', r: 'KeyR', j: 'KeyJ', f: 'KeyF' };
 
 /** Mounts the editor on `text`; returns its handle and what it reported. */
 function mount(text, opts = {}) {
@@ -694,4 +694,92 @@ test('pasting underline, superscript, subscript and colours from another app: th
   view.pasteHTML(html);
   assert.equal(n.text(), '<u>u</u> <u>du</u> x<sup>2</sup> <sup>vs</sup> H<sub>2</sub>O <span style="color:red">red</span> black <span style="color:blue">navy</span>'
     + ' <mark style="background:lightgreen">green</mark> ==yellow== ==mark== [link](https://x.y)');
+});
+
+test('Ctrl+L, E, R and J align as in Word (Ctrl+Shift+E is code now), and the page doesn’t reload on Ctrl+R', async () => {
+  const { n, view, press, window } = mount('a line\n- a list item');
+  const lit = () => new Promise((r) => window.requestAnimationFrame(() => r(n.lit())));
+  n.focus(3);
+  assert.equal(press('Mod-e'), true);
+  assert.equal(n.text(), 'a line <!-- align:center -->\n- a list item');
+  assert.equal(view.dom.querySelector('p').style.textAlign, 'center');
+  assert.equal((await lit()).align, 'center');
+  assert.equal(press('Mod-r'), true);
+  assert.equal(n.text(), 'a line <!-- align:right -->\n- a list item');
+  assert.equal(press('Mod-j'), true);
+  assert.equal(press('Mod-j'), true);
+  assert.equal(n.text(), 'a line\n- a list item', 'again: back to the left');
+  press('Mod-e');
+  assert.equal(press('Mod-l'), true);
+  assert.equal(n.text(), 'a line\n- a list item');
+  // a word made code by Ctrl+Shift+E, not Ctrl+E
+  const Sel = view.state.selection.constructor;
+  view.dispatch(view.state.tr.setSelection(Sel.create(view.state.doc, 1, 2)));
+  assert.equal(press('Mod-Shift-E'), true);
+  assert.equal(n.text(), '`a` line\n- a list item');
+  // on a list, nothing to align, but Ctrl+R is still the note's: the browser never reloads the page from the text
+  n.focus('end');
+  const e = new window.KeyboardEvent('keydown', { key: 'r', code: 'KeyR', ctrlKey: true, bubbles: true, cancelable: true });
+  view.dom.dispatchEvent(e);
+  assert.equal(e.defaultPrevented, true);
+  assert.equal(n.text(), '`a` line\n- a list item');
+  // from the ribbon
+  n.focus(3);
+  n.cmds.align('justify');
+  assert.equal(n.text(), '`a` line <!-- align:justify -->\n- a list item');
+  // pasted from Word, a centred paragraph stays centred
+  n.setText('');
+  n.focus('end');
+  view.pasteHTML('<p>top</p><p style="text-align:center">middle</p><h2 align="right">side</h2><p style="text-align:left">left</p>');
+  assert.equal(n.text(), 'top\nmiddle <!-- align:center -->\n## side <!-- align:right -->\nleft');
+});
+
+test('Ctrl+Enter puts a page break in (Shift+Enter is still a new line), drawn as a dashed line saying so', () => {
+  const { n, press } = mount('beforeafter');
+  n.focus(7);
+  assert.equal(press('Mod-Enter'), true);
+  assert.equal(n.text(), 'before\n<div style="page-break-after: always"></div>\nafter');
+  const pb = n.view.dom.querySelector('.md-pagebreak');
+  assert.equal(pb.textContent, 'Page break');
+  assert.equal(pb.getAttribute('contenteditable'), 'false');
+  press('Shift-Enter');
+  assert.equal(n.text(), 'before\n<div style="page-break-after: always"></div>\n\nafter');
+  // in code, Ctrl+Enter is a new line of code
+  n.setText('```\ncode\n```');
+  n.focus(5);
+  press('Mod-Enter');
+  assert.equal(n.text(), '```\ncode\n\n```');
+});
+
+test('Ctrl+Alt+F puts a footnote in; numbers by first reference; a click goes from one to the other', async () => {
+  const { n, view, press, type, window } = mount('first claim and second');
+  n.focus(12);
+  assert.equal(press('Mod-Alt-f'), true);
+  type('a source');
+  assert.equal(n.text(), 'first claim[^1] and second\n\n[^1]: a source');
+  // a second one, before the first: it shows 1, the first now 2
+  n.focus(6);
+  n.cmds.footnote();
+  type('earlier');
+  assert.equal(n.text(), 'first[^2] claim[^1] and second\n\n[^1]: a source\n[^2]: earlier');
+  const refs = [...view.dom.querySelectorAll('.fn-ref')];
+  assert.deepEqual(refs.map((r) => r.style.getPropertyValue('--fn')), ['"1"', '"2"']);
+  const defs = [...view.dom.querySelectorAll('.md-fn')];
+  assert.deepEqual(defs.map((d) => [d.getAttribute('data-fn'), d.style.getPropertyValue('--fn')]), [['1', '"2"'], ['2', '"1"']]);
+  // a click on a reference: the caret goes to its text; on the text's number, back
+  refs[1].dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0 }));
+  view.someProp('handleClick', (f) => f(view, 0, { target: refs[1] }));
+  assert.equal(view.state.selection.$from.parent.attrs.label, '1');
+  view.someProp('handleClick', (f) => f(view, 0, { target: defs[1].querySelector('.md-fn-num') }));
+  assert.equal(view.state.selection.from, 7, 'just after the reference to [^2]');
+  // a reference deleted: its text is faded, not left behind unseen
+  n.setText('only text now\n\n[^1]: a source');
+  assert.ok(view.dom.querySelector('.md-fn').classList.contains('is-orphan'));
+  // typed out in full, [^4] becomes a reference
+  n.setText('x');
+  n.focus('end');
+  type(' see[^4]');
+  assert.equal(view.dom.querySelectorAll('.fn-ref').length, 1);
+  assert.equal(n.text(), 'x see[^4]');
+  assert.ok(view.dom.querySelector('.fn-ref').classList.contains('is-missing'), 'no text for it yet');
 });

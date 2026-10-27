@@ -29,7 +29,7 @@ function contentStart(line: string, quoteStart: boolean): number {
       if (co) return at + co.at;
       continue;
     }
-    return c.t === 'heading' || c.t === 'item' ? at + c.at : at;
+    return c.t === 'heading' || c.t === 'item' || c.t === 'footnote' ? at + c.at : at;
   }
 }
 

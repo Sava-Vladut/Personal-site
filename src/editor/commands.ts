@@ -23,6 +23,10 @@ export interface NoteCommands {
   /** Restart numbering (true) or Continue numbering (false) on the numbered item at the caret */
   numbering(restart: boolean): boolean;
   insert(kind: BlockKind): boolean;
+  /** Align left, centre, right or justify on the selected paragraphs and headings */
+  align(align: 'left' | 'center' | 'right' | 'justify'): boolean;
+  /** Insert › Footnote: a reference at the caret, its text at the end of the note */
+  footnote(): boolean;
   link(to: { text?: string; href: string } | null): boolean;
   undo(): boolean;
   redo(): boolean;
@@ -54,6 +58,8 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     indent: (out) => run(noteCommands.indent(out)),
     numbering: (restart) => run(noteCommands.numbering(restart)),
     insert: (kind) => run(noteCommands.insert(kind)),
+    align: (align) => run(noteCommands.align(align)),
+    footnote: () => run(noteCommands.footnote),
     link: (to) => run(noteCommands.link(to)),
     undo: () => run(undo, false),
     redo: () => run(redo, false),

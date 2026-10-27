@@ -8,7 +8,7 @@
 import { Schema, type DOMOutputSpec, type MarkSpec, type Node as PMNode, type NodeSpec, type ParseRule, type TagParseRule } from '@tiptap/pm/model';
 import { parseBody, mediaMarker, type Media } from '../body';
 import { highlightNear, hsl, isHighlight, isTextColor, textColorNear } from '../palette';
-import { SAFE, calloutIcon, calloutTone, depthOf, olMarker, type ListKind } from './syntax';
+import { SAFE, calloutIcon, calloutTone, depthOf, isAlign, olMarker, type Align, type ListKind } from './syntax';
 
 /* ---------- attribute types, by node and mark ---------- */
 
@@ -17,7 +17,17 @@ export interface HeadingAttrs {
   level: number;
   /** spaces and tabs after the #s, as written */
   sep: string;
+  /** centred, right or justified (null: left), written at the line's end */
+  align: Align | null;
 }
+export interface ParagraphAttrs { align: Align | null }
+/** A footnote's text, `[^label]: words` */
+export interface FootnoteAttrs {
+  label: string;
+  /** spaces and tabs after the colon, as written */
+  sep: string;
+}
+export interface PageBreakAttrs { raw: string }
 export interface ListItemAttrs {
   kind: ListKind;
   indent: string;
@@ -61,6 +71,9 @@ export interface LinkAttrs {
 
 /** The styling marks, from outermost to innermost as the serializer writes them. */
 export const STYLE_MARKS = ['link', 'color', 'strike', 'highlight', 'underline', 'bold', 'italic', 'sup', 'sub', 'code'] as const;
+/** A footnote's label as written in [^label]. */
+export const FOOTNOTE_LABEL = /^[\w-]+$/;
+
 /** The marks a chip can carry. */
 export const ATOM_MARKS = 'bold italic strike highlight underline color sup sub';
 
@@ -155,6 +168,23 @@ const levelOf = (el: HTMLElement) => {
   return d >= 1 && d <= 6 ? d : Number(el.tagName.slice(1)) || 1;
 };
 
+/** A footnote's label, kept as data-fn (as the reading view writes it, components/Markdown.tsx). */
+const labelAttr: Attr = {
+  default: '1',
+  parse: (el) => el.getAttribute('data-fn'),
+  render: (a) => ({ 'data-fn': String(a.label) }),
+};
+
+/** A paragraph's or heading's alignment, as text-align (read from other apps' HTML too: Word's, Google Docs'). */
+const alignAttr: Attr = {
+  default: null,
+  parse: (el) => {
+    const a = (el.style?.textAlign || el.getAttribute('align') || '').toLowerCase();
+    return a === 'centre' ? 'center' : isAlign(a) ? a : null;
+  },
+  render: (a) => (a.align ? { style: `text-align: ${a.align}` } : null),
+};
+
 /* ---------- nodes ---------- */
 
 /** A list item's class, and the bullet or number its margin shows (CSS draws data-marker; a task shows its box). */
@@ -163,8 +193,9 @@ export function listItemLook(a: ListItemAttrs): { class: string; 'data-marker'?:
   return a.kind === 'task' ? look : { ...look, 'data-marker': a.kind === 'ol' ? olMarker(a.num, depthOf(a.indent)) : '•' };
 }
 
-/** The text a chip is written as: @[person:id|Name], ♪[song:id|Title], [[note:id|Title]]. */
+/** The text a chip is written as: @[person:id|Name], ♪[song:id|Title], [[note:id|Title]] (a footnote's reference: [^1]). */
 export function atomToken(type: string, a: AtomAttrs): string {
+  if (type === 'footnoteRef') return `[^${a.label}]`;
   const t = a.target || null;
   if (type === 'person') return `@[${t ? 'person:' + t + '|' : ''}${a.label}]`;
   if (type === 'song') return `♪[${t ? 'song:' + t + '|' : ''}${a.label}]`;
@@ -193,6 +224,7 @@ const nodes: Record<string, NodeSpec> = {
   paragraph: node({
     group: 'flow',
     content: 'inline*',
+    attrs: { align: alignAttr },
     parse: [{ tag: 'p' }],
     render: (_, html) => ['p', html, 0],
   }),
@@ -205,6 +237,7 @@ const nodes: Record<string, NodeSpec> = {
     attrs: {
       level: { default: 1, parse: () => null, render: (a) => ({ 'data-level': String(a.level) }) },
       sep: data('sep', ' '),
+      align: alignAttr,
     },
     parse: [1, 2, 3, 4, 5, 6].map((n) => ({ tag: 'h' + n, getAttrs: (el: HTMLElement) => ({ level: levelOf(el) }) })),
     render: (n, html) => ['h' + Math.min(n.attrs.level + 1, 6), merge(html, { class: `md-h md-h${n.attrs.level}` }), 0],
@@ -333,6 +366,32 @@ const nodes: Record<string, NodeSpec> = {
     render: (_, html) => ['hr', html],
   }),
 
+  /** A page break: a line of its own, the page ends there when printed. Drawn as a dashed line (src/editor/nodeViews.ts). */
+  pageBreak: node({
+    group: 'flow',
+    atom: true,
+    attrs: { raw: data('raw', '<div style="page-break-after: always"></div>') },
+    parse: [{ tag: 'div.md-pagebreak' }, { tag: 'div', getAttrs: (el: HTMLElement) => /always|page/i.test(el.style.pageBreakAfter || el.style.breakAfter) && !el.textContent?.trim() && null }],
+    render: (_, html) => ['div', merge(html, { class: 'md-pagebreak' })],
+  }),
+
+  /**
+   * A footnote's text, `[^1]: words`: its number (by where its reference first is in the note) in the margin, then
+   * its words. Insert › Footnote puts them together at the end of the note.
+   */
+  footnote: node({
+    group: 'flow',
+    content: 'inline*',
+    defining: true,
+    attrs: { label: labelAttr, sep: data('sep', ' ') },
+    parse: [{
+      tag: 'div.md-fn',
+      contentElement: (el: HTMLElement) => el.querySelector<HTMLElement>(':scope > .md-fn-text') ?? el,
+      getAttrs: (el: HTMLElement) => FOOTNOTE_LABEL.test(el.getAttribute('data-fn') ?? '') && null,
+    }],
+    render: (_, html) => ['div', merge(html, { class: 'md-fn' }), ['span', { class: 'md-fn-num', contenteditable: 'false' }], ['div', { class: 'md-fn-text' }, 0]],
+  }),
+
   /** A picture or album (lib/body.ts): its own line at the top level, never inside a quote. */
   media: node({
     atom: true,
@@ -352,6 +411,20 @@ const nodes: Record<string, NodeSpec> = {
   person: chip('person'),
   song: chip('song'),
   wiki: chip('wiki'),
+
+  /** A footnote's reference, [^1]: its number (src/editor/plugins.ts puts it in --fn), one character to the caret. */
+  footnoteRef: node({
+    group: 'inline',
+    inline: true,
+    atom: true,
+    selectable: true,
+    draggable: false,
+    marks: ATOM_MARKS,
+    attrs: { label: labelAttr },
+    parse: [{ tag: 'sup[data-fn]', priority: 60, getAttrs: (el: HTMLElement) => FOOTNOTE_LABEL.test(el.getAttribute('data-fn') ?? '') && null }],
+    render: (_, html) => ['sup', merge(html, { class: 'fn-ref' })],
+    leafText: (n: PMNode) => `[^${n.attrs.label}]`,
+  }),
 
   text: { group: 'inline' },
 };
