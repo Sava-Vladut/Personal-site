@@ -2,7 +2,7 @@
 // brings them to mind, the rest of your records, or Spotify.
 import { useMemo, useState } from 'preact/hooks';
 import type { Music, Person } from '../lib/store';
-import { useSongs } from '../lib/store';
+import { toast, useSongs } from '../lib/store';
 import { Icon } from './icons';
 import { MusicDeck, MusicThing, musicSub } from './music';
 import { Sheet } from './Sheet';
@@ -22,7 +22,7 @@ export function ThemeSong({ p, onChange, onConnect }: { p: Person; onChange: (m:
       </div>
       {p.theme ? (
         <div class="theme-song">
-          <MusicDeck key={p.theme.kind + p.theme.id} m={p.theme} onRemove={() => onChange(null)} removeLabel={t('Remove {name}’s theme song', { name: first })} />
+          <MusicDeck key={p.theme.kind + p.theme.id} m={p.theme} onRemove={() => { const was = p.theme; onChange(null); toast(t('Theme song removed'), { label: t('Undo'), run: () => onChange(was) }); }} removeLabel={t('Remove {name}’s theme song', { name: first })} />
         </div>
       ) : (
         <div class="meta person-meta">

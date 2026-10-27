@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.15',
+    date: '2026-10-27',
+    changes: [
+      'Removing a birthday or another date from someone’s page offers Undo',
+      'Removing someone’s theme song offers Undo, so you don’t have to find it again',
+    ],
+  },
+  {
     version: '1.138.14',
     date: '2026-10-27',
     changes: [

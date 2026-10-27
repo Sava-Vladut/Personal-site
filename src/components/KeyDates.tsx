@@ -1,6 +1,6 @@
 // The days in someone's year, on their page: a chip for each, and the sheet that adds or changes one.
-import { useEffect, useState } from 'preact/hooks';
-import { MAX_KEY_DATES, uid, type KeyDate, type KeyDateKind, type Person } from '../lib/store';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { MAX_KEY_DATES, toast, uid, type KeyDate, type KeyDateKind, type Person } from '../lib/store';
 import { dateName, KEY_DATE_LABEL, nextOf, whatsComing, whenLabel } from '../lib/people';
 import { Icon, type UiName } from './icons';
 import { Sheet } from './Sheet';
@@ -19,14 +19,19 @@ export const dayOf = (d: KeyDate) => {
 
 export function KeyDates({ p, onChange }: { p: Person; onChange: (dates: KeyDate[]) => void }) {
   const [editing, setEditing] = useState<KeyDate | 'new' | null>(null);
+  // the person as they are now, for an Undo tapped after other changes
+  const now = useRef(p);
+  now.current = p;
   const save = (d: KeyDate) => {
     const has = p.dates.some((x) => x.id === d.id);
     onChange(has ? p.dates.map((x) => (x.id === d.id ? d : x)) : [...p.dates, d].slice(0, MAX_KEY_DATES));
     setEditing(null);
   };
   const remove = (id: string) => {
+    const gone = p.dates.find((x) => x.id === id);
     onChange(p.dates.filter((x) => x.id !== id));
     setEditing(null);
+    if (gone) toast(t('Date removed'), { label: t('Undo'), run: () => onChange([...now.current.dates.filter((x) => x.id !== id), gone].slice(0, MAX_KEY_DATES)) });
   };
   const sorted = [...p.dates].sort((a, b) => nextOf(p, a).days - nextOf(p, b).days);
   return (

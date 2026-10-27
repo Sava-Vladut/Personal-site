@@ -682,6 +682,8 @@ export const RO: Record<string, string> = {
   'Theme song': 'Melodie-temă',
   'Change': 'Schimbă',
   'Remove {name}’s theme song': 'Elimină melodia-temă pentru {name}',
+  'Theme song removed': 'Melodia-temă a fost eliminată',
+  'Date removed': 'Data a fost eliminată',
   'Add a theme song': 'Adaugă o melodie-temă',
   'Make it the theme song': 'Fă-o melodia-temă',
   '{name}’s theme song': 'Melodia-temă pentru {name}',
