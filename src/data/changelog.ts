@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.17',
+    date: '2026-10-27',
+    changes: [
+      'In the date picker, Today, Yesterday, This week and the other shortcuts turn the calendar to the month they pick, so you see what was chosen',
+    ],
+  },
+  {
     version: '1.138.16',
     date: '2026-10-27',
     changes: [

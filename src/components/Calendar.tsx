@@ -94,6 +94,8 @@ export function DateSheet({ open, onClose, start, end, onChange }: {
   const [a, setA] = useState(start);
   const [b, setB] = useState<string | null>(end);
   const [picking, setPicking] = useState<'start' | 'end'>('start');
+  // a preset redraws the calendar on its month, so "Today" shows today even after paging back through the months
+  const [jumps, setJumps] = useState(0);
   const { weekStart } = useSettings();
   const today = todayKey();
   useEffect(() => {
@@ -146,9 +148,10 @@ export function DateSheet({ open, onClose, start, end, onChange }: {
         ))}
       </div>
       <div class="chips">
-        {presets.map(([label, run]) => <button class="chip" onClick={run}>{label}</button>)}
+        {presets.map(([label, run]) => <button class="chip" onClick={() => { run(); setJumps((n) => n + 1); }}>{label}</button>)}
       </div>
       <Calendar
+        key={jumps}
         focus={a}
         isSelected={(k) => k === a || k === b}
         inRange={(k) => !!b && k > a && k < b}
