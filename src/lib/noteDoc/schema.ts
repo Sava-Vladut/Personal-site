@@ -7,6 +7,7 @@
 // paste between notes), and the usual tags read from other apps' HTML (Word, Google Docs, web pages).
 import { Schema, type DOMOutputSpec, type MarkSpec, type Node as PMNode, type NodeSpec, type ParseRule, type TagParseRule } from '@tiptap/pm/model';
 import { parseBody, mediaMarker, type Media } from '../body';
+import { highlightNear, hsl, isHighlight, isTextColor, textColorNear } from '../palette';
 import { SAFE, calloutIcon, calloutTone, depthOf, olMarker, type ListKind } from './syntax';
 
 /* ---------- attribute types, by node and mark ---------- */
@@ -48,6 +49,10 @@ export interface MediaAttrs { media: Media }
 /** person, song and wiki chips: what they point at (null when only a name is written) and what they show */
 export interface AtomAttrs { target: string | null; label: string }
 export interface CodeMarkAttrs { tick: string }
+/** A font colour (lib/palette.ts TEXT_COLORS) */
+export interface ColorAttrs { color: string }
+/** A highlight's colour (lib/palette.ts HIGHLIGHTS); null is the yellow of ==words== */
+export interface HighlightAttrs { color: string | null }
 export interface LinkAttrs {
   href: string;
   /** written as the address alone (https://…), not as [text](address) */
@@ -55,9 +60,9 @@ export interface LinkAttrs {
 }
 
 /** The styling marks, from outermost to innermost as the serializer writes them. */
-export const STYLE_MARKS = ['link', 'strike', 'highlight', 'bold', 'italic', 'code'] as const;
+export const STYLE_MARKS = ['link', 'color', 'strike', 'highlight', 'underline', 'bold', 'italic', 'sup', 'sub', 'code'] as const;
 /** The marks a chip can carry. */
-export const ATOM_MARKS = 'bold italic strike highlight';
+export const ATOM_MARKS = 'bold italic strike highlight underline color sup sub';
 
 /* ---------- attributes kept in data-* ---------- */
 
@@ -354,6 +359,22 @@ const nodes: Record<string, NodeSpec> = {
 /* ---------- marks ---------- */
 
 const notWhite = (v: string) => !/^(white|#fff(fff)?|transparent|none|inherit|initial|rgba?\(\s*255,\s*255,\s*255\s*(,\s*1\s*)?\)|rgba\(\s*0,\s*0,\s*0,\s*0\s*\))$/i.test(v.trim());
+/** A pasted font colour as the palette's nearest (false: none near, the automatic colour). */
+const colorOf = (v: string) => {
+  const c = textColorNear(v);
+  return c ? { color: c } : false;
+};
+/** A `background` value's colour: its first word that is one (`background: #ff0 none repeat`); null when none is. */
+const highlightOf = (v: string) => {
+  const w = v.trim().split(/\s+(?![^(]*\))/).find((w) => hsl(w) || /^transparent$/i.test(w));
+  return w ? highlightNear(w) : null;
+};
+/** A pasted background as a highlight: the palette's nearest colour, yellow (null) when none is near; none on white. */
+const background = (v: string) => {
+  if (!notWhite(v)) return false;
+  const c = highlightOf(v);
+  return c === false ? false : { color: c };
+};
 
 /** A mark: its spec, with attributes read from and written to HTML. */
 function mark(spec: Omit<MarkSpec, 'attrs' | 'parseDOM' | 'toDOM'> & {
@@ -381,6 +402,19 @@ const marks: Record<string, MarkSpec> = {
         : ['span', merge(html, { 'data-href': m.attrs.href }), 0],
   }),
 
+  /** <span style="color:red">: a font colour of the palette. Copied from other apps, their colour's nearest, if any. */
+  color: mark({
+    attrs: {
+      color: { default: 'red', parse: (el) => (isTextColor(el.getAttribute('data-color')) ? el.getAttribute('data-color') : null), render: (a) => ({ 'data-color': String(a.color) }) },
+    },
+    parse: [
+      { tag: 'span[data-color]', getAttrs: (el: HTMLElement) => isTextColor(el.getAttribute('data-color')) && null },
+      { tag: 'font[color]', getAttrs: (el: HTMLElement) => colorOf(el.getAttribute('color') ?? '') },
+      { style: 'color', getAttrs: (v: string) => colorOf(v) },
+    ],
+    render: (_, html) => ['span', html, 0],
+  }),
+
   strike: mark({
     parse: [
       { tag: 's' }, { tag: 'del' }, { tag: 'strike' },
@@ -390,14 +424,27 @@ const marks: Record<string, MarkSpec> = {
     render: () => ['s', 0],
   }),
 
+  /** ==words== (yellow), or <mark style="background:…"> in another colour of the palette. */
   highlight: mark({
+    attrs: {
+      color: { default: null, parse: (el) => (isHighlight(el.getAttribute('data-hl')) ? el.getAttribute('data-hl') : null), render: (a) => (a.color ? { 'data-hl': String(a.color) } : null) },
+    },
     parse: [
-      { tag: 'mark' },
-      { style: 'background-color', getAttrs: (v: string) => notWhite(v) && null },
-      { style: 'background', getAttrs: (v: string) => notWhite(v) && null },
-      { style: 'mso-highlight', getAttrs: (v: string) => notWhite(v) && null },
+      { tag: 'mark', getAttrs: (el: HTMLElement) => ({ color: highlightOf(el.style.backgroundColor) || null }) },
+      { style: 'background-color', getAttrs: (v: string) => background(v) },
+      { style: 'background', getAttrs: (v: string) => background(v) },
+      { style: 'mso-highlight', getAttrs: (v: string) => background(v) },
     ],
-    render: () => ['mark', 0],
+    render: (_, html) => ['mark', html, 0],
+  }),
+
+  underline: mark({
+    parse: [
+      { tag: 'u' },
+      { style: 'text-decoration', getAttrs: (v: string) => v.includes('underline') && null },
+      { style: 'text-decoration-line', getAttrs: (v: string) => v.includes('underline') && null },
+    ],
+    render: () => ['u', 0],
   }),
 
   bold: mark({
@@ -417,6 +464,20 @@ const marks: Record<string, MarkSpec> = {
       { style: 'font-style=italic' },
     ],
     render: () => ['em', 0],
+  }),
+
+  /** <sup>: superscript. Never with subscript. */
+  sup: mark({
+    excludes: 'sup sub',
+    parse: [{ tag: 'sup' }, { style: 'vertical-align', getAttrs: (v: string) => v.trim() === 'super' && null }],
+    render: () => ['sup', 0],
+  }),
+
+  /** <sub>: subscript. Never with superscript. */
+  sub: mark({
+    excludes: 'sup sub',
+    parse: [{ tag: 'sub' }, { style: 'vertical-align', getAttrs: (v: string) => v.trim() === 'sub' && null }],
+    render: () => ['sub', 0],
   }),
 
   /** `code`, with the backticks it's written with. Keeps out escapes (its text is as written). */

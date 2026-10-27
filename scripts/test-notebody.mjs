@@ -69,7 +69,7 @@ function page(phone) {
   return window;
 }
 
-const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY' };
+const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal' };
 
 /** Mounts the editor on `text`; returns its handle and what it reported. */
 function mount(text, opts = {}) {
@@ -632,4 +632,66 @@ test('the selected text is told to the status bar; deeper numbers show as letter
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at, at + 10)));
   await new Promise((r) => window.requestAnimationFrame(r));
   assert.deepEqual(seen, [null, 'some words']);
+});
+
+test('Ctrl+U underlines, Ctrl++ and Ctrl+= raise and lower, and the colours and Format Painter work from the ribbon', async () => {
+  const { n, view, press, window } = mount('make this loud and that');
+  const TextSelection = view.state.selection.constructor;
+  // what's lit is read again a frame after each change
+  const lit = () => new Promise((r) => window.requestAnimationFrame(() => r(n.lit())));
+  const select = (word) => {
+    const at = view.state.doc.textContent.indexOf(word) + 1;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at, at + word.length)));
+  };
+  select('loud');
+  assert.equal(press('Mod-u'), true);
+  assert.equal(n.text(), 'make this <u>loud</u> and that');
+  assert.equal((await lit()).underline, true);
+  assert.equal(press('Mod-Shift-+'), true);
+  assert.equal(n.text(), 'make this <u><sup>loud</sup></u> and that');
+  assert.equal(press('Mod-='), true);
+  assert.equal(n.text(), 'make this <u><sub>loud</sub></u> and that', 'subscript takes superscript’s place');
+  press('Mod-=');
+  press('Mod-u');
+  assert.equal(n.text(), 'make this loud and that');
+  n.cmds.color('blue');
+  n.cmds.highlight('lightgreen');
+  assert.equal(n.text(), 'make this <span style="color:blue"><mark style="background:lightgreen">loud</mark></span> and that');
+  assert.equal((await lit()).color, 'blue');
+  // the Format Painter: copied from "loud", painted on "that" when the mouse lets go
+  n.cmds.painter(false);
+  assert.equal((await lit()).painter, 'once');
+  assert.ok(view.dom.classList.contains('is-painting'), 'the pointer shows it');
+  select('that');
+  view.dom.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(n.text(), 'make this <span style="color:blue"><mark style="background:lightgreen">loud</mark></span> and <span style="color:blue"><mark style="background:lightgreen">that</mark></span>');
+  assert.equal((await lit()).painter, null);
+  assert.ok(!view.dom.classList.contains('is-painting'));
+  // double-clicked it stays on, and Esc puts it away
+  n.cmds.painter(true);
+  assert.equal((await lit()).painter, 'sticky');
+  assert.equal(press('Escape'), true);
+  assert.equal((await lit()).painter, null);
+  assert.equal(press('Escape'), false, 'then Esc is the page’s again');
+});
+
+test('pasting underline, superscript, subscript and colours from another app: the palette’s nearest, or none', () => {
+  const { n, view, end } = mount('');
+  end();
+  view.pasteHTML('<p><u>u</u> <span style="text-decoration: underline">du</span> x<sup>2</sup> <span style="vertical-align: super">vs</span> H<sub>2</sub>O'
+    + ' <span style="color:#c00000">red</span> <span style="color:#000000">black</span> <font color="#1f4e79">navy</font>'
+    + ' <span style="background-color:#00ff00">green</span> <span style="background-color:yellow">yellow</span> <mark>mark</mark>'
+    + ' <a href="https://x.y" style="color:#1155cc;text-decoration:underline"><span style="color:#1155cc">link</span></a></p>');
+  assert.equal(n.text(), '<u>u</u> <u>du</u> x<sup>2</sup> <sup>vs</sup> H<sub>2</sub>O <span style="color:red">red</span> black <span style="color:blue">navy</span>'
+    + ' <mark style="background:lightgreen">green</mark> ==yellow== ==mark== [link](https://x.y)');
+  // copied from a note and pasted back: the same
+  const Sel = view.state.selection.constructor;
+  view.dispatch(view.state.tr.setSelection(Sel.create(view.state.doc, 1, view.state.doc.content.size - 1)));
+  const html = [...view.dom.querySelectorAll('p')].map((p) => p.outerHTML).join('');
+  n.setText('');
+  end();
+  view.pasteHTML(html);
+  assert.equal(n.text(), '<u>u</u> <u>du</u> x<sup>2</sup> <sup>vs</sup> H<sub>2</sub>O <span style="color:red">red</span> black <span style="color:blue">navy</span>'
+    + ' <mark style="background:lightgreen">green</mark> ==yellow== ==mark== [link](https://x.y)');
 });

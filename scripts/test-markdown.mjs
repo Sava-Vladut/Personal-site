@@ -13,7 +13,7 @@ const bundle = await rolldown({
     resolveId: (id) => (id === 'review:markdown' ? '\0' + id : null),
     load: (id) => id === '\0review:markdown' ? `
       export * from '${src('markdown.ts')}';
-      export { inline, plainInline } from '${src('inline.ts')}';
+      export { inline, plainInline, dropTags } from '${src('inline.ts')}';
     ` : null,
   }],
 });
@@ -40,4 +40,15 @@ test('excerpts drop fences, dividers, quote and heading markers, and show tasks 
 test('a card borrows the first line as its heading when there is no title', () => {
   assert.deepEqual({ ...md.previewOf('# First line\nsecond **line**', '') }, { heading: 'First line', preview: 'second line' });
   assert.deepEqual({ ...md.previewOf('words', 'Title') }, { heading: 'Title', preview: 'words' });
+});
+
+test('underline, superscript, subscript and colours: read in their strict form only, and dropped from the plain words', () => {
+  const kinds = (t) => md.inline(t).map((p) => p.t + (p.color ? '(' + p.color + ')' : '') + ':' + p.s).join(' | ');
+  assert.equal(kinds('<u>a</u> x<sup>2</sup><sub>i</sub>'), 'u:a | text: x | sup:2 | sub:i');
+  assert.equal(kinds('<span style="color:red">**r**</span> <mark style="background:pink">p</mark> ==y=='), 'color(red):**r** | text:  | hl(pink):p | text:  | hl:y');
+  assert.equal(kinds('<span style="color:pink">x</span> <u></u> <mark>m</mark> \\<u>e</u>'), 'text:<span style="color:pink">x</span> <u></u> <mark>m</mark>  | esc:< | text:u>e</u>');
+  assert.equal(md.plainInline('<u>a</u> <span style="color:blue">*b*</span> <mark style="background:plum">c</mark> x<sup>2</sup>'), 'a b c x2');
+  assert.equal(md.stripMarkdown('# <u>Title</u>\n- [ ] <span style="color:green">go</span>'), 'Title\n☐ go');
+  assert.equal(md.dropTags('**<u>a</u>** <span style="color:red">b</span> <mark style="background:pink">c</mark> <sub>d</sub>'), '**a** b c d');
+  assert.equal(md.previewOf('<span style="color:red">Heading</span>\nnext <u>line</u>', '').preview, 'next line');
 });

@@ -82,7 +82,11 @@ function inline(text: string): ComponentChildren[] {
       case 'link': return SAFE.test(p.url) ? <a href={p.url} target="_blank" rel="noopener noreferrer">{inline(p.s)}</a> : <span>{inline(p.s)}</span>;
       case 'b': return <strong>{inline(p.s)}</strong>;
       case 's': return <s>{inline(p.s)}</s>;
-      case 'hl': return <mark>{inline(p.s)}</mark>;
+      case 'hl': return <mark data-hl={p.color ?? undefined}>{inline(p.s)}</mark>;
+      case 'u': return <u>{inline(p.s)}</u>;
+      case 'sup': return <sup>{inline(p.s)}</sup>;
+      case 'sub': return <sub>{inline(p.s)}</sub>;
+      case 'color': return <span data-color={p.color}>{inline(p.s)}</span>;
       case 'i': return <em>{inline(p.s)}</em>;
       case 'empty': return p.s;
       case 'bare': return <a href={p.s} target="_blank" rel="noopener noreferrer">{p.s}</a>;

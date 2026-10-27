@@ -1,7 +1,8 @@
 // Pasting from other apps. Their HTML is tidied into what the note's schema reads (lib/noteDoc/schema.ts parse rules)
 // before ProseMirror parses it: Word's list paragraphs and the web's nested lists become flat list items (a note's
 // lists are one line each, their depth in the indent), tables become lines, line breaks become new lines, and pictures
-// are left out (pictures are added as files). Plain text is read as the note's own Markdown (lib/noteDoc/edit/clipboard.ts).
+// are left out (pictures are added as files). Underline, superscript, subscript and colours come in as the schema reads
+// them, colours as the palette's nearest (lib/palette.ts). Plain text is read as the note's own Markdown (lib/noteDoc/edit/clipboard.ts).
 import { Fragment, Slice, type Node as PMNode } from '@tiptap/pm/model';
 
 /** A line break inside a paragraph, carried through the parse (the parser collapses \n to a space) to be split later. */
@@ -123,6 +124,19 @@ function lineBreaks(doc: Document) {
   }
 }
 
+/**
+ * A link's own look isn't the words' style: pages and Google Docs colour and underline their links, which would come in
+ * as a blue, underlined word on top of the link.
+ */
+function linkLooks(doc: Document) {
+  for (const el of doc.querySelectorAll<HTMLElement>('a[href][style], a[href] [style]')) {
+    el.style.removeProperty('color');
+    el.style.removeProperty('text-decoration');
+    el.style.removeProperty('text-decoration-line');
+  }
+  for (const u of doc.querySelectorAll('a[href] u')) u.replaceWith(...u.childNodes);
+}
+
 /** Other apps' HTML, tidied for the note's schema (ProseMirror's transformPastedHTML). */
 export function tidyPastedHTML(html: string): string {
   const clean = html
@@ -130,6 +144,7 @@ export function tidyPastedHTML(html: string): string {
     .replace(/<\/?o:p>/gi, '');
   const doc = new DOMParser().parseFromString(clean, 'text/html');
   for (const el of doc.querySelectorAll('img, picture, video, audio, svg, style, script, meta, link, title')) el.remove();
+  linkLooks(doc);
   wordLists(doc);
   webLists(doc);
   tables(doc);

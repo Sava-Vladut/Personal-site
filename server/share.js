@@ -142,6 +142,8 @@ export function excerpt(note) {
   const plain = note.text
     .replace(/^\s*\[\[(?:photo|image|album):[^\]]*\]\]\s*$/gm, ' ')
     .replace(/\[([^\]\n]+)\]\([^)\s]+\)/g, '$1')
+    // underline, superscript, subscript and colours (src/lib/inline.ts)
+    .replace(/<\/?(?:u|sup|sub|span|mark)(?:\s[^<>]*)?>/g, '')
     .replace(/[#>*_~`=]/g, '')
     .replace(/\s+/g, ' ')
     .trim();

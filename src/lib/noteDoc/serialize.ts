@@ -6,6 +6,7 @@ import type { Fragment, Mark, MarkType, Node as PMNode, Slice } from '@tiptap/pm
 import { parseBody, mediaMarker } from '../body';
 import { parseInline } from './parse';
 import { STYLE_MARKS, atomToken, type AtomAttrs } from './schema';
+import { isHighlight, isTextColor } from '../palette';
 import { BARE, calloutOf, classifyLine, closesFence, fenceOf } from './syntax';
 
 /* ---------- inline: a textblock's content as units ---------- */
@@ -32,14 +33,21 @@ const childrenOf = (n: PMNode | Fragment): PMNode[] => {
 };
 
 /** A mark, for comparing: a link by its address (bare or as [text](address), `)` or `%29`, it reads the same). */
-const markKey = (m: Mark): string => (m.type.name === 'link' ? 'link' + JSON.stringify(encodeHref(m.attrs.href)) : m.type.name === 'code' ? 'code' + JSON.stringify(m.attrs) : m.type.name);
+const markKey = (m: Mark): string =>
+  m.type.name === 'link' ? 'link' + JSON.stringify(encodeHref(m.attrs.href))
+  : m.type.name === 'code' || m.type.name === 'color' || m.type.name === 'highlight' ? m.type.name + JSON.stringify(m.attrs)
+  : m.type.name;
 /** What a unit is, for comparing: escapes don't count (they only say how a character is written), nor a link's form. */
 const unitKey = (u: Unit) =>
   (u.atom ? u.atom.type.name + JSON.stringify(u.atom.attrs) : 'T' + u.s) + '\0' + u.marks.filter((m) => m.type.name !== 'escaped').map(markKey).sort().join(',');
 
 /** A space a style can't start with (a code span's starts with its backtick, so it can). */
 const isSpace = (u: Unit) => !u.atom && /^\s$/.test(u.s) && !u.marks.some((m) => m.type.name === 'code');
-const styled = (name: string) => name === 'bold' || name === 'italic' || name === 'strike' || name === 'highlight';
+/** A style written with markers that can't start with a space (**, *, ~~, ==); not the HTML ones (<u>, <mark …>). */
+const styled = (m: Mark) => {
+  const name = m.type.name;
+  return name === 'bold' || name === 'italic' || name === 'strike' || (name === 'highlight' && !m.attrs.color);
+};
 const ESCAPABLE = /^[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]$/;
 
 /** The units from `i` on (up to `to`) that carry mark `m`. */
@@ -63,12 +71,17 @@ function fullLink(u: Unit[], i: number, j: number, link: Mark) {
 }
 
 /**
- * Takes off what can't be written at all: code can't hold a backtick, a link's text can't hold `]`. An address
+ * Takes off what can't be written at all: code can't hold a backtick, a link's text can't hold `]`, a colour that
+ * isn't the palette's isn't one (a highlight's is yellow then). An address
  * written as it is stays so only when it reads as the very same address on its own; else it's written as
  * [text](address), with its spaces and `)` encoded.
  */
 function tidy(u: Unit[]): Unit[] {
   for (const x of u) {
+    const c = x.marks.find((m) => m.type.name === 'color');
+    if (c && !isTextColor(c.attrs.color)) without(x, c.type);
+    const h = x.marks.find((m) => m.type.name === 'highlight');
+    if (h && h.attrs.color !== null && !isHighlight(h.attrs.color)) x.marks = h.type.create({ color: null }).addToSet(x.marks);
     const m = x.marks.find((m) => m.type.name === 'code');
     if (m && (x.s === '`' || !/^`+$/.test(m.attrs.tick))) {
       without(x, m.type);
@@ -88,8 +101,18 @@ function tidy(u: Unit[]): Unit[] {
 
 /* ---------- inline: writing ---------- */
 
-const OUTER = ['link', 'strike', 'highlight', 'bold'];
+const OUTER = ['link', 'color', 'strike', 'highlight', 'underline', 'sup', 'sub', 'bold'];
 const MARKER: Record<string, string> = { strike: '~~', highlight: '==', bold: '**', italic: '*' };
+const TAG: Record<string, string> = { underline: 'u', sup: 'sup', sub: 'sub' };
+
+/** What opens and closes a style: its markers, or its HTML tags. */
+function wrapOf(m: Mark): [string, string] {
+  const name = m.type.name;
+  if (name === 'color') return [`<span style="color:${m.attrs.color}">`, '</span>'];
+  if (name === 'highlight' && m.attrs.color) return [`<mark style="background:${m.attrs.color}">`, '</mark>'];
+  if (TAG[name]) return [`<${TAG[name]}>`, `</${TAG[name]}>`];
+  return [MARKER[name], MARKER[name]];
+}
 
 interface Ctx {
   open: MarkType[];
@@ -106,18 +129,20 @@ function plain(u: Unit[], i: number, ctx: Ctx): string {
   if (ctx.raw || marks.some((m) => m.type.name === 'code')) return s;
   if (marks.some((m) => m.type.name === 'escaped') && ESCAPABLE.test(s)) return '\\' + s;
   if (!ctx.all) return s;
-  // ~ and = always: one next to a style's ~~ or == would read as part of it. The : of an address, in a link's text
-  // too: read as an address there it's still plain text, but it would take the backslashes after it as letters
+  // ~ and = always: one next to a style's ~~ or == would read as part of it; < always, a tag's. The : of an address,
+  // in a link's text too: read as an address there it's still plain text, but it would take the backslashes after it
+  // as letters
   const esc =
-    s === '\\' || s === '*' || s === '`' || s === '[' || s === '@' || s === '=' || s === '~' ||
+    s === '\\' || s === '*' || s === '`' || s === '[' || s === '@' || s === '=' || s === '~' || s === '<' ||
     (s === ':' && u[i + 1]?.s === '/' && u[i + 2]?.s === '/');
   return esc ? '\\' + s : s;
 }
 
 /**
  * Writes units `from`–`to`, opening the marks they carry that aren't open yet. The one running longest opens first
- * (ties in the order link, strike, highlight, bold, italic), so the markers never cross. Where the syntax needs it
- * the nesting is fixed: code is always innermost, and italic never holds bold (it can't hold a `*`).
+ * (ties in the order link, colour, strike, highlight, underline, sup, sub, bold, italic), so the markers never
+ * cross. Where the syntax needs it the nesting is fixed: code is always innermost, and italic never holds bold (it
+ * can't hold a `*`).
  */
 function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
   let out = '';
@@ -144,7 +169,7 @@ function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
       // a style starting inside this one and running on past it is split at its end, and can't go on with a space
       // (*a ==b* c==): split this one where that one starts instead (*a*==*b* c==)
       const type = pick.type;
-      const cross = (j: number) => u[j].marks.some((m) => styled(m.type.name) && m.type !== type && !ctx.open.includes(m.type) && !m.isInSet(u[j - 1].marks) && spanOf(u, j, to, m) > end);
+      const cross = (j: number) => u[j].marks.some((m) => styled(m) && m.type !== type && !ctx.open.includes(m.type) && !m.isInSet(u[j - 1].marks) && spanOf(u, j, to, m) > end);
       for (let j = i + 1; j < end; j++) {
         if (cross(j)) {
           if (!isSpace(u[j])) end = j;
@@ -153,7 +178,7 @@ function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
       }
     }
     const name = pick.type.name;
-    if (styled(name) && isSpace(u[i])) {
+    if (styled(pick) && isSpace(u[i])) {
       // a style starts at a letter: its leading spaces go outside it
       for (let k = i; k < end && isSpace(u[k]); k++) without(u[k], pick.type);
       continue;
@@ -163,13 +188,16 @@ function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
       if (pick.attrs.bare) out += emit(u, i, end, { ...inner, raw: true });
       else out += '[' + emit(u, i, end, inner) + '](' + pick.attrs.href + ')';
     } else if (name === 'code') out += pick.attrs.tick + emit(u, i, end, { ...inner, raw: true }) + pick.attrs.tick;
-    else out += MARKER[name] + emit(u, i, end, inner) + MARKER[name];
+    else {
+      const [open, close] = wrapOf(pick);
+      out += open + emit(u, i, end, inner) + close;
+    }
     i = end;
   }
   return out;
 }
 
-const DROP_ORDER = ['code', 'italic', 'bold', 'highlight', 'strike', 'link'];
+const DROP_ORDER = ['code', 'italic', 'bold', 'sup', 'sub', 'underline', 'highlight', 'strike', 'color', 'link'];
 
 /** Where `got` first differs from `want`. */
 const firstDiff = (want: Unit[], got: Unit[]) => {
@@ -181,7 +209,8 @@ const firstDiff = (want: Unit[], got: Unit[]) => {
 /**
  * Leaves off one style near where `got` first differs from `want`; false when there's none left to leave off.
  * Code is left off only where the other styles stay the same (code next to it in another style is written apart).
- * Code and links stay on the spaces a line starts with: plain there, they'd be read as part of its marker.
+ * Code, links and the HTML tags stay on the spaces a line starts with: plain there, they'd be read as part of its
+ * marker.
  */
 function dropOne(want: Unit[], got: Unit[]): boolean {
   const k = firstDiff(want, got);
@@ -193,8 +222,8 @@ function dropOne(want: Unit[], got: Unit[]): boolean {
       if (!x) continue;
       for (const name of DROP_ORDER) {
         const m = x.marks.find((y) => y.type.name === name);
-        // code and a link's brackets keep the spaces a line starts with
-        const keeps = name === 'code' || name === 'link';
+        // code, a link's brackets and the HTML tags (all but the **, *, ~~ and == markers) keep the spaces a line starts with
+        const keeps = !!m && !styled(m);
         if (!m || (keeps && at < lead)) continue;
         const along = (u: Unit) => m.isInSet(u.marks) && (name !== 'code' || u.marks.length === x.marks.length && u.marks.every((y) => y.isInSet(x.marks)));
         let a = at;

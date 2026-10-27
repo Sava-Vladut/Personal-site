@@ -15,6 +15,22 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) { --word: #7ea6e0; --on-word: #0e1a2c; --word-wash: color-mix(in oklab, var(--word) 16%, transparent); --doc-hl: rgb(255 214 0 / 0.32); }
 }
+/* A note's font colours and highlights (lib/palette.ts), named as CSS names them in the note's text, drawn from the
+   feelings' colours so they hold up in both themes. --tc is a font colour, --hl a highlight (ribbon.css's swatches too). */
+[data-color='red'] { --tc: var(--emo-anger); }
+[data-color='orange'] { --tc: var(--emo-hope-interest); }
+[data-color='green'] { --tc: var(--emo-shame-aversion); }
+[data-color='blue'] { --tc: var(--emo-sadness); }
+[data-color='purple'] { --tc: var(--emo-fear); }
+[data-color='gray'] { --tc: var(--ink-3); }
+[data-hl] { --hl: color-mix(in oklab, var(--hc, var(--emo-joy)) 34%, transparent); }
+[data-hl='yellow'] { --hl: var(--doc-hl); }
+[data-hl='lightgreen'] { --hc: var(--emo-calm-safety); }
+[data-hl='lightblue'] { --hc: var(--emo-sadness); }
+[data-hl='pink'] { --hc: var(--emo-love-connection); }
+[data-hl='plum'] { --hc: var(--emo-fear); }
+[data-hl='lightsalmon'] { --hc: var(--emo-hope-interest); }
+[data-hl='lightgray'] { --hc: var(--ink-3); }
 /* the paper takes taps (to write, to place the caret): no grey flash over it on iOS */
 .note-sheet, .note-body, .note-editor { -webkit-tap-highlight-color: transparent; }
 
@@ -227,6 +243,13 @@
 .note-body .md:first-child > .md-h:first-child { margin-top: 0.1em; }
 /* the marker reaches a hair past the letters without pushing them: highlighting moves nothing on the line */
 .note-body .md mark { background: var(--doc-hl); border-radius: var(--r-2xs); padding: 0 1px; margin: 0 -1px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.md mark[data-hl], .note-body .md mark[data-hl] { background: var(--hl); }
+.md [data-color] { color: color-mix(in oklab, var(--tc) 82%, var(--ink)); }
+.md u { text-underline-offset: 0.16em; }
+/* superscript and subscript leave the line's height as it is */
+.md :is(sup, sub) { font-size: 0.72em; line-height: 0; }
+/* the Format Painter is on: the next words selected take its styles */
+.note-editor.is-painting { cursor: copy; }
 .note-body .md a[href] { color: var(--word-ink); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--word-ink) 50%, transparent); text-underline-offset: 3px; }
 .note-body .md blockquote { padding-left: 16px; border-left-color: color-mix(in oklab, var(--word-ink) 60%, transparent); color: var(--ink-2); font-style: italic; }
 .note-body .md .md-li::before { color: var(--ink-2); }

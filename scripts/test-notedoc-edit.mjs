@@ -898,3 +898,108 @@ test('the style gallery lights Heading 4 to 6 as well', () => {
   assert.equal(E.litOf(stateFrom('#### |h')).style, 'h4');
   assert.equal(E.litOf(stateFrom('###### |h')).style, 'h6');
 });
+
+/* ---------- Word wave 2: underline, superscript, subscript, colours, the Format Painter ---------- */
+
+test('Underline, Superscript and Subscript go on and off like the other styles; superscript and subscript never together', () => {
+  assert.equal(styled('a «b c» d', 'underline')[0], 'a <u>b c</u> d');
+  assert.equal(styled('<u>wo|rd</u>', 'underline')[0], 'word', 'off the word at the caret');
+  assert.equal(styled('x«2»', 'sup')[0], 'x<sup>2</sup>');
+  assert.equal(styled('H«2»O', 'sub')[0], 'H<sub>2</sub>O');
+  assert.equal(styled('x<sub>«2»</sub>', 'sup')[0], 'x<sup>2</sup>', 'superscript takes subscript’s place');
+  assert.equal(styled('x<sup>«2»</sup>', 'sub')[0], 'x<sub>2</sub>');
+  assert.equal(styled('«a **b» c**', 'underline')[0], '<u>a </u>**<u>b</u> c**');
+  assert.equal(styled('```\n|\n```', 'underline')[1], false, 'never in code');
+  const lit = (text) => E.litOf(stateFrom(text));
+  assert.deepEqual([lit('<u>wo|rd</u>').underline, lit('<sup>«x»</sup>').sup, lit('<sup>«x»</sup>').sub, lit('<sub>wo|rd</sub>').sub], [true, true, false, true]);
+});
+
+test('Font colour and highlight colours: put on, changed, taken off; Highlight’s own button toggles its colour', () => {
+  const color = (text, c) => nd.serializeNote(run(text, E.noteCommands.color(c))[2].doc);
+  const hl = (text, c) => nd.serializeNote(run(text, E.noteCommands.highlight(c))[2].doc);
+  assert.equal(color('a «b c» d', 'red'), 'a <span style="color:red">b c</span> d');
+  assert.equal(color('<span style="color:red">«b»</span>', 'blue'), '<span style="color:blue">b</span>', 'another colour takes its place');
+  assert.equal(color('<span style="color:red">wo|rd</span>', null), 'word', 'Automatic takes it off');
+  assert.equal(color('«**a** b»', 'green'), '<span style="color:green">**a** b</span>');
+  assert.equal(hl('«a»', 'pink'), '<mark style="background:pink">a</mark>');
+  assert.equal(hl('«a»', null), '==a==', 'null: the yellow one');
+  assert.equal(hl('<mark style="background:pink">«a»</mark>', null), '==a==');
+  assert.equal(hl('==«a»==', false), 'a', 'No colour');
+  // the split button's own half: on in its colour, off on words with that colour, another colour replaced
+  const toggle = (text, c) => nd.serializeNote(run(text, E.noteCommands.mark('highlight', c))[2].doc);
+  assert.equal(toggle('«a»', 'plum'), '<mark style="background:plum">a</mark>');
+  assert.equal(toggle('<mark style="background:plum">«a»</mark>', 'plum'), 'a');
+  assert.equal(toggle('==«a»==', 'plum'), '<mark style="background:plum">a</mark>');
+  assert.equal(toggle('==«a»==', null), 'a');
+  // with nothing selected away from a word: what's typed next
+  let s = run('a |', E.noteCommands.color('purple'))[2];
+  s = type(s, 'xy');
+  assert.equal(nd.serializeNote(s.doc), 'a <span style="color:purple">xy</span>');
+  // what the ribbon shows
+  const lit = (text) => E.litOf(stateFrom(text));
+  assert.equal(lit('<span style="color:red">wo|rd</span>').color, 'red');
+  assert.equal(lit('«<span style="color:red">a</span> b»').color, null, 'a mix shows none');
+  assert.equal(lit('==wo|rd==').highlightColor, 'yellow');
+  assert.equal(lit('<mark style="background:lightblue">«w»</mark>').highlightColor, 'lightblue');
+  assert.equal(lit('<mark style="background:lightblue">«w»</mark>').highlight, true);
+});
+
+test('Clear formatting takes underline, superscript, subscript and colours off too', () => {
+  assert.equal(after('«<u>a</u> <sup>b</sup> <sub>c</sub> <span style="color:red">d</span> <mark style="background:pink">e</mark>»', E.clearFormatting), '«a b c d e»');
+  assert.equal(after('[<u>si|te</u>](https://x.y)', E.clearFormatting), '[si|te](https://x.y)', 'a link stays');
+});
+
+test('the Format Painter copies the styles at the caret and paints the next selection with exactly those', () => {
+  const { painterPlugin, togglePainter, stopPainter, paint, painterOf } = E;
+  const withPainter = (text) => stateFrom(text, { plugins: [painterPlugin()] });
+  const apply = (s, cmd) => {
+    let out = s;
+    const ok = cmd(s, (tr) => (out = s.apply(tr)));
+    return [out, ok];
+  };
+  const select = (s, from, to) => s.apply(s.tr.setSelection(nd.pmState.TextSelection.create(s.doc, from, to)));
+  // copied from a bold, red word; painted on words that were italic and highlighted: they're bold and red only
+  let [s] = apply(withPainter('<span style="color:red">**so|urce**</span> *one* ==two== three'), togglePainter(false));
+  assert.equal(painterOf(s).sticky, false);
+  assert.equal(E.litOf(s).painter, 'once');
+  const text = s.doc.textContent;
+  s = select(s, 1 + text.indexOf('one'), 1 + text.indexOf('two') + 3);
+  [s] = apply(s, paint);
+  assert.equal(nd.serializeNote(s.doc), '<span style="color:red">**source**</span> <span style="color:red">**one two**</span> three');
+  assert.equal(painterOf(s), null, 'once: it’s off after painting');
+  assert.equal(apply(s, paint)[1], false);
+  // double-clicked it stays on until Esc; plain words copied take the styles off
+  [s] = apply(withPainter('pl|ain **a** *b*'), togglePainter(true));
+  const t2 = s.doc.textContent;
+  s = select(s, 2 + t2.indexOf(' a'), 3 + t2.indexOf(' a'));
+  [s] = apply(s, paint);
+  s = select(s, 1 + t2.indexOf('b'), 2 + t2.indexOf('b'));
+  [s] = apply(s, paint);
+  assert.equal(nd.serializeNote(s.doc), 'plain a b');
+  assert.equal(painterOf(s).sticky, true);
+  [s] = apply(s, stopPainter);
+  assert.equal(painterOf(s), null);
+  assert.equal(apply(s, stopPainter)[1], false, 'Esc does nothing more when it’s off');
+  // a second click on the button puts it away; a link is kept, and a word at the caret is painted whole
+  [s] = apply(withPainter('<u>x|y</u> [link](https://a.b) word'), togglePainter(false));
+  assert.equal(painterOf(apply(s, togglePainter(false))[0]), null);
+  const t3 = s.doc.textContent;
+  s = select(s, 1 + t3.indexOf('link'), 1 + t3.indexOf('link') + 4);
+  [s] = apply(s, paint);
+  assert.equal(nd.serializeNote(s.doc), '<u>xy</u> [<u>link</u>](https://a.b) word');
+  [s] = apply(s, togglePainter(false));
+  s = select(s, 3 + t3.indexOf('word'), 3 + t3.indexOf('word'));
+  [s] = apply(s, paint);
+  assert.equal(nd.serializeNote(s.doc), '<u>xy</u> [<u>link</u>](https://a.b) <u>word</u>');
+  // copying from a selection takes its first letter's styles
+  assert.deepEqual(E.copyMarks(stateFrom('« *a* b»')).map((m) => m.type.name), ['italic']);
+  // without the plugin (in a test state) the button does nothing
+  assert.equal(togglePainter(false)(stateFrom('a|'), () => {}), false);
+});
+
+test('AutoCorrect leaves a tag being typed alone', () => {
+  const typed = (text, chars) => show(type(stateFrom(text), chars));
+  assert.equal(typed('|', '<span style="color:red">'), '<span style="color:red">|');
+  assert.equal(typed('|', '<a title="x">'), '<a title="x">|');
+  assert.equal(typed('|', 'a "b"'), 'a “b”|', 'and goes on after it');
+});

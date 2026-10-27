@@ -7,6 +7,7 @@ import { Icon, type UiName } from '../icons';
 import type { RibbonActions } from '../FormatBar';
 import type { Lit, NoteCommands } from '../../editor/NoteBody';
 import { keepFocus } from './keepFocus';
+import { HIGHLIGHTS, TEXT_COLORS } from '../../lib/palette';
 
 type Tab = 'home' | 'insert' | 'view' | 'context';
 
@@ -32,6 +33,17 @@ function useWide() {
 }
 
 type Style = 'normal' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote';
+type PopId = 'styles' | 'numbering' | 'color' | 'highlight';
+
+/** The palette's names, as the colour menus say them (lib/palette.ts). */
+const colorName = (c: string): string =>
+  ({
+    red: t('Red'), orange: t('Orange'), green: t('Green'), blue: t('Blue'), purple: t('Purple'), gray: t('Gray'), yellow: t('Yellow'),
+    lightgreen: t('Green'), lightblue: t('Blue'), pink: t('Pink'), plum: t('Purple'), lightsalmon: t('Orange'), lightgray: t('Gray'),
+  })[c] ?? c;
+
+/** The colours Font colour and Highlight put on with one click: the ones picked last, for as long as the page is open. */
+const last = { color: 'red' as string, highlight: 'yellow' as string };
 
 /** What a toolbar's arrow keys go between: its buttons (and sliders) that can be used, not those of a menu in it. */
 const stops = (el: HTMLElement) =>
@@ -154,7 +166,8 @@ export function Ribbon(p: RibbonProps) {
   const [tab, setTab] = useState<Tab>('home');
   const [peek, setPeek] = useState(false); // the folded ribbon dropped down over the page
   const [menu, setMenu] = useState(false); // the phone's list of tabs
-  const [pop, setPop] = useState<{ id: 'styles' | 'numbering'; at: HTMLElement } | null>(null); // a button's menu
+  const [pop, setPop] = useState<{ id: PopId; at: HTMLElement } | null>(null); // a button's menu
+  const [, setPicked] = useState(0); // a colour picked: the split buttons show it
   const roving = useRoving();
   const before = useRef<Tab>('home'); // the tab to go back to when the picture's goes
   const auto = useRef<Tab | null>(null); // the tab a selection switched away from, on a phone
@@ -286,7 +299,7 @@ export function Ribbon(p: RibbonProps) {
     p.toText();
   };
   /** Opens (or closes) a button's menu. */
-  const togglePop = (id: 'styles' | 'numbering', at: HTMLElement) => setPop(pop?.id === id ? null : { id, at });
+  const togglePop = (id: PopId, at: HTMLElement) => setPop(pop?.id === id ? null : { id, at });
 
   /* ---------- the pieces ---------- */
 
@@ -310,8 +323,94 @@ export function Ribbon(p: RibbonProps) {
   );
 
   const off = reading || !cmds;
-  const markTool = (icon: UiName, label: string, mark: 'bold' | 'italic' | 'strike' | 'highlight' | 'code', k?: string) =>
+  const markTool = (icon: UiName, label: string, mark: 'bold' | 'italic' | 'underline' | 'strike' | 'sup' | 'sub' | 'code', k?: string) =>
     tool(icon, label, () => cmds?.mark(mark), { on: !!lit?.[mark], off, k });
+  /** A split button, as Word's: the command, and an arrow beside it for its menu (a right-click on it opens that too). */
+  const split = (id: PopId, main: ComponentChildren, label: string, ref: { current: HTMLButtonElement | null }) => (
+    <span key={id} class="rb-split">
+      {main}
+      <button
+        ref={ref}
+        type="button"
+        class="format-btn rb-split-more"
+        aria-label={label}
+        title={label}
+        aria-haspopup="menu"
+        aria-expanded={pop?.id === id}
+        disabled={off}
+        onClick={(e) => togglePop(id, e.currentTarget)}
+      >
+        <Icon name="chevron-down" size={12} />
+      </button>
+    </span>
+  );
+  const menuFrom = (id: PopId, ref: { current: HTMLButtonElement | null }) => (e: MouseEvent) => {
+    e.preventDefault();
+    if (!off && ref.current) setPop({ id, at: ref.current });
+  };
+  // Text highlight colour: the last colour picked (yellow at first), off again on words that have it already
+  const highlightAt = useRef<HTMLButtonElement>(null);
+  const hl = last.highlight;
+  const highlight = split('highlight', (
+    <button
+      type="button"
+      class="format-btn rb-swatched"
+      data-hl={hl}
+      aria-label={`${t('Text highlight colour')}: ${colorName(hl)}`}
+      title={tip(`${t('Text highlight colour')}: ${colorName(hl)}`, hl === 'yellow' ? 'Ctrl+Shift+H' : undefined)}
+      aria-pressed={!!lit?.highlight && lit.highlightColor === hl}
+      disabled={off}
+      onClick={() => cmds?.mark('highlight', hl === 'yellow' ? null : hl)}
+      onContextMenu={menuFrom('highlight', highlightAt)}
+    >
+      <Icon name="highlight" size={18} />
+    </button>
+  ), t('Highlight colours'), highlightAt);
+  // Font colour: the last colour picked (red at first)
+  const colorAt = useRef<HTMLButtonElement>(null);
+  const fc = last.color;
+  const fontColor = split('color', (
+    <button
+      type="button"
+      class="format-btn rb-swatched"
+      data-color={fc}
+      aria-label={`${t('Font colour')}: ${colorName(fc)}`}
+      title={`${t('Font colour')}: ${colorName(fc)}`}
+      disabled={off}
+      onClick={() => cmds?.color(fc)}
+      onContextMenu={menuFrom('color', colorAt)}
+    >
+      <Icon name="text-color" size={18} />
+    </button>
+  ), t('Font colours'), colorAt);
+  // Format Painter: a click paints the next words selected once, a double click until Esc (or a click on it again)
+  const painter = (
+    <button
+      key="painter"
+      type="button"
+      class="format-btn"
+      aria-label={t('Format Painter')}
+      title={t('Format Painter: copy the style here onto the next words you select. Double-click to keep it on, Esc to stop')}
+      aria-pressed={!!lit?.painter}
+      disabled={off}
+      onClick={(e) => (e.detail < 2 ? cmds?.painter(false) : undefined)}
+      onDblClick={() => cmds?.painter(true)}
+    >
+      <Icon name="brush" size={18} />
+    </button>
+  );
+  /** A colour picked from a menu: put on, and the one its button puts on from now on. */
+  const pickColor = (id: 'color' | 'highlight', c: string | null) => {
+    setPop(null);
+    if (id === 'color') {
+      if (c) last.color = c;
+      cmds?.color(c);
+    } else {
+      if (c) last.highlight = c;
+      cmds?.highlight(c === null ? false : c === 'yellow' ? null : c);
+    }
+    setPicked((n) => n + 1);
+  };
   const undo = group('undo', t('Undo'), [
     tool('arrow-back-up', t('Undo'), () => cmds?.undo(), { off: off || !lit?.canUndo, k: 'Ctrl+Z' }),
     tool('arrow-forward-up', t('Redo'), () => cmds?.redo(), { off: off || !lit?.canRedo, k: MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y' }),
@@ -319,11 +418,16 @@ export function Ribbon(p: RibbonProps) {
   const font = group('font', t('Font'), [
     markTool('bold', t('Bold'), 'bold', 'Ctrl+B'),
     markTool('italic', t('Italic'), 'italic', 'Ctrl+I'),
+    markTool('underline', t('Underline'), 'underline', 'Ctrl+U'),
     markTool('strikethrough', t('Strikethrough'), 'strike', 'Ctrl+Shift+X'),
-    markTool('highlight', t('Highlight'), 'highlight', 'Ctrl+Shift+H'),
+    markTool('superscript', t('Superscript'), 'sup', 'Ctrl+Shift+='),
+    markTool('subscript', t('Subscript'), 'sub', 'Ctrl+='),
     markTool('code', t('Code'), 'code', 'Ctrl+E'),
+    highlight,
+    fontColor,
     tool('clear-formatting', t('Clear formatting'), () => cmds?.clearFormatting(), { off }),
-  ], 'rb-rows', 3);
+    painter,
+  ], 'rb-rows rb-font', 7);
   const block = lit?.block;
   // Numbered list with its menu beside it (Restart numbering, Continue numbering); a right-click on it opens it too
   const numberingAt = useRef<HTMLButtonElement>(null);
@@ -398,9 +502,32 @@ export function Ribbon(p: RibbonProps) {
       )}
     </div>
   ));
+  const swatches = (id: 'color' | 'highlight') => {
+    const now = id === 'color' ? lit?.color ?? null : lit?.highlightColor ?? null;
+    const colors: string[] = id === 'color' ? [...TEXT_COLORS] : ['yellow', ...HIGHLIGHTS];
+    return [
+      <button key="none" type="button" role="menuitemradio" aria-checked={!now} onClick={() => pickColor(id, null)}>
+        <span class="rb-swatch-name">
+          <span class="rb-swatch is-none" aria-hidden="true" />
+          {id === 'color' ? t('Automatic') : t('No colour')}
+        </span>
+        {!now && <Icon name="check" size={16} />}
+      </button>,
+      ...colors.map((c) => (
+        <button key={c} type="button" role="menuitemradio" aria-checked={now === c} onClick={() => pickColor(id, c)}>
+          <span class="rb-swatch-name">
+            <span class="rb-swatch" {...(id === 'color' ? { 'data-color': c } : { 'data-hl': c })} aria-hidden="true" />
+            {colorName(c)}
+          </span>
+          {now === c && <Icon name="check" size={16} />}
+        </button>
+      )),
+    ];
+  };
+  const popLabel = { styles: t('More styles'), numbering: t('Numbering options'), color: t('Font colours'), highlight: t('Highlight colours') };
   const popMenu = pop && !off && (
-    <Pop at={pop.at} label={pop.id === 'styles' ? t('More styles') : t('Numbering options')} onClose={() => setPop(null)}>
-      {pop.id === 'styles'
+    <Pop at={pop.at} label={popLabel[pop.id]} onClose={() => setPop(null)}>
+      {pop.id === 'color' || pop.id === 'highlight' ? swatches(pop.id) : pop.id === 'styles'
         ? MORE.map(([s, name, k]) => (
           <button key={s} type="button" role="menuitemradio" aria-checked={style === s} class={`rb-pop-style is-${s}`} title={tip(name, k)} onClick={() => (setPop(null), apply(s))}>
             {name}

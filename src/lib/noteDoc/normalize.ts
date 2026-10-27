@@ -7,10 +7,10 @@
 //   • a callout next to a quote or callout gets an empty line between (else it would read as part of the other)
 //   • text holding a line break outside code is split into lines (the part after a break becomes a paragraph)
 //   • spaces at the start of a heading's, list item's or callout title's text go to its `sep` (where they'd be read),
-//     unless they're code or a link's text (written inside its backticks or brackets)
+//     unless they're code, a link's text or in an HTML tag (written inside its backticks, brackets or tags)
 //   • a code block without a closing line that isn't the last in its stretch gets one (the text writes one anyway)
 // Pictures can't be inside a quote or callout: the schema keeps them at the top level.
-import type { Node as PMNode } from '@tiptap/pm/model';
+import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { EditorState, type Transaction } from '@tiptap/pm/state';
 import { fenceOf } from './syntax';
 
@@ -59,9 +59,13 @@ const splitLines: Fix = (tr) => {
 };
 
 const LEAD = /^[ \t]+/;
-/** Spaces a line's text starts with that are written before it (in code or a link's [text] they're kept inside). */
-const leadsWithSpace = (n: PMNode) =>
-  !!n.firstChild?.isText && LEAD.test(n.firstChild.text!) && !n.firstChild.marks.some((m) => m.type.name === 'code' || m.type.name === 'link');
+/**
+ * Spaces a line's text starts with that are written before it (in code, a link's [text] or an HTML tag, <u> and the
+ * like, they're kept inside).
+ */
+const keepsSpaces = (m: Mark) =>
+  /^(code|link|underline|sup|sub|color)$/.test(m.type.name) || (m.type.name === 'highlight' && !!m.attrs.color);
+const leadsWithSpace = (n: PMNode) => !!n.firstChild?.isText && LEAD.test(n.firstChild.text!) && !n.firstChild.marks.some(keepsSpaces);
 const absorbSpaces: Fix = (tr) => {
   const found = textblocks(tr.doc, (n) => /^(heading|listItem|calloutTitle)$/.test(n.type.name) && leadsWithSpace(n));
   for (const { node, pos } of found) {

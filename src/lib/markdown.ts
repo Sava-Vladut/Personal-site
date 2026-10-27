@@ -1,5 +1,6 @@
 // Note text is Markdown, written the way Obsidian writes it: **bold**, *italic*, ~~strike~~, ==highlight==, `code`,
-// # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers and #tags.
+// # headings, - lists, 1. numbered lists, - [ ] tasks, > quotes, > [!note] callouts, --- dividers and #tags, and the
+// bits of HTML Obsidian shows for underline, superscript, subscript and colours (lib/inline.ts, lib/palette.ts).
 // This file has the plain words for excerpts on cards. Reading it formatted is components/Markdown.tsx; editing it is
 // the note editor's (src/editor, on the document of lib/noteDoc).
 import { plainInline } from './inline';

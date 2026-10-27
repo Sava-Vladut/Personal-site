@@ -13,7 +13,8 @@ import { gapCursor } from '@tiptap/pm/gapcursor';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
-  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, moveBlocks, newLine, noteCommands, renumberChanged, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
+  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, moveBlocks, newLine, noteCommands, paint, painterOf, painterPlugin, renumberChanged, stopPainter,
+  tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
 } from '../lib/noteDoc/edit';
 
 /* ---------- typing Markdown ---------- */
@@ -118,7 +119,11 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
   const typed = e.key.toLowerCase();
   const k = /^[a-z]$/.test(typed) || !/^Key[A-Z]$/.test(code) ? typed : code.slice(3).toLowerCase();
   let cmd: Command | null = null;
-  if (e.altKey && !e.shiftKey) {
+  // Ctrl++ superscript, Ctrl+= subscript, as in Word: by the character where the layout has it, else by the key
+  const sup = typed === '+' || (typed !== '=' && code === 'Equal' && e.shiftKey);
+  const sub = !sup && (typed === '=' || code === 'Equal');
+  if (!e.altKey && (sup || sub)) cmd = noteCommands.mark(sup ? 'sup' : 'sub');
+  else if (e.altKey && !e.shiftKey) {
     if (e.getModifierState?.('AltGraph')) return false;
     if (/^Digit[0-6]$/.test(code)) cmd = noteCommands.style(code === 'Digit0' ? 'normal' : (('h' + code.slice(5)) as 'h1'));
   } else if (e.shiftKey && !e.altKey) {
@@ -136,7 +141,7 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
     else if (k === 'e') cmd = noteCommands.mark('code');
     else if (k === 'z') cmd = undo;
     else if (k === 'y' && !e.metaKey) cmd = redo;
-    else if (k === 'u') return true; // no underline in a note's text: swallowed, not the browser's
+    else if (k === 'u') cmd = noteCommands.mark('underline');
     else if (k === 'k') {
       opts.link();
       return true;
@@ -315,6 +320,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
         handleKeyDown(view, e) {
           if (view.composing || e.isComposing || e.keyCode === 229) return false;
           if (opts.suggestKey(e)) return true;
+          // Esc puts the Format Painter away
+          if (e.key === 'Escape' && stopPainter(view.state, view.dispatch)) return true;
           return shortcut(view, e, opts);
         },
         // A full stop, comma… typed just after a tag takes the place of the space the tag came with: only when it's
@@ -325,6 +332,16 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
           return from === to && sel.empty && sel.from === from && tidyAfterTag(text)(view.state, view.dispatch);
         },
         handleDOMEvents: {
+          // the Format Painter paints what's selected when the mouse lets go (once ProseMirror has the selection),
+          // or when Shift does after selecting with the keys
+          mouseup(view) {
+            if (painterOf(view.state)) setTimeout(() => painterOf(view.state) && paint(view.state, view.dispatch));
+            return false;
+          },
+          keyup(view, e) {
+            if (e.key === 'Shift' && painterOf(view.state) && !view.state.selection.empty) paint(view.state, view.dispatch);
+            return false;
+          },
           // undo and redo from a shake, or the keyboard's own buttons, are the note's
           beforeinput(view, e) {
             const type = (e as InputEvent).inputType;
@@ -348,6 +365,9 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     new Plugin({ appendTransaction: (trs, _old, state) => renumberChanged(trs, state) }),
     tags,
     chipsInRange,
+    painterPlugin(),
+    // the pointer shows a brush while the Format Painter is on
+    new Plugin({ props: { attributes: (state): Record<string, string> => (painterOf(state) ? { class: 'is-painting' } : {}) } }),
     suggest(opts.onTyped),
     gapCursor(),
     dropCursor({ color: 'var(--word-ink)', width: 2 }),

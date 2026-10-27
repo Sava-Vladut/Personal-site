@@ -4,6 +4,7 @@ import { EMOTION, coreOf, valence, type EmotionDef } from '../data/emotions';
 import { weatherName } from '../data/weather';
 import { STATUS_LABEL, MENTION, resolveMention } from './books';
 import { bodyOf, dropImageLinks, type Item, type Media } from './body';
+import { dropTags } from './inline';
 import { KIND_LABEL } from './spotify';
 import { noteLabel, resolveNote } from './links';
 import { refTarget } from './refs';
@@ -63,7 +64,8 @@ function body(e: Entry, books: Book[], pictures: boolean) {
   const b = bodyOf({ ...e, text: dropImageLinks(e.text, e.images) });
   const parts: string[] = [];
   b.texts.forEach((text, i) => {
-    if (text.trim()) parts.push(mentions(text.trim(), books));
+    // the Markdown stays (an AI chat reads it), the tags of underline and colours go
+    if (text.trim()) parts.push(mentions(dropTags(text.trim()), books));
     if (pictures && b.media[i]) parts.push(media(b.media[i], e));
   });
   return parts.join('\n\n');

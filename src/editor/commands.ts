@@ -7,7 +7,14 @@ import { noteCommands, type BlockKind, type MarkName, type Style } from '../lib/
 import type { ListKind } from '../lib/noteDoc';
 
 export interface NoteCommands {
-  mark(name: MarkName): boolean;
+  /** a style on or off; a highlight in `color` (a colour of lib/palette.ts, null for yellow) */
+  mark(name: MarkName, color?: string | null): boolean;
+  /** Font colour (null: Automatic) */
+  color(color: string | null): boolean;
+  /** Text highlight colour (null: yellow, false: No colour) */
+  highlight(color: string | null | false): boolean;
+  /** the Format Painter: on for once, or until Esc (`sticky`); a click while it's on puts it away */
+  painter(sticky: boolean): boolean;
   clearFormatting(): boolean;
   style(s: Style): boolean;
   list(kind: ListKind): boolean;
@@ -36,7 +43,10 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     return done;
   };
   return {
-    mark: (name) => run(noteCommands.mark(name)),
+    mark: (name, color) => run(noteCommands.mark(name, color)),
+    color: (color) => run(noteCommands.color(color)),
+    highlight: (color) => run(noteCommands.highlight(color)),
+    painter: (sticky) => run(noteCommands.painter(sticky)),
     clearFormatting: () => run(noteCommands.clearFormatting),
     style: (s) => run(noteCommands.style(s)),
     list: (kind) => run(noteCommands.list(kind)),

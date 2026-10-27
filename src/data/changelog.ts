@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.140.0',
+    date: '2026-10-27',
+    changes: [
+      'Underline in notes: Ctrl+U or the ribbon’s Underline button',
+      'Superscript (Ctrl++) and Subscript (Ctrl+=) on the ribbon, for x² and H₂O',
+      'Font colour: red, orange, green, blue, purple or grey, from the ribbon’s Font colour button (its arrow picks the colour, or Automatic)',
+      'Highlight in green, blue, pink, purple, orange or grey too: the arrow beside Highlight picks the colour, or No colour',
+      'Format Painter on the ribbon: copy the style of some words onto the next ones you select (double-click it to keep painting, Esc to stop)',
+      'Clear formatting also takes off underline, superscript, subscript and colours',
+      'Pasting from Word, Google Docs or a web page keeps underline, superscript, subscript and colours (as the nearest of the note’s colours)',
+      'Notes keep these as Obsidian does (<u>, <sup>, <sub>, coloured <span> and <mark>), so they show in the reading view, on public pages and in Obsidian, and leave previews, search and word counts alone',
+    ],
+  },
+  {
     version: '1.139.0',
     date: '2026-10-27',
     changes: [

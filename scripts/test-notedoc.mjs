@@ -73,6 +73,17 @@ const CORPUS = {
     '**a** **b**', '*a* *b*', '**a*', '*a**', '**', '*', '~~', '\\', 'a\\b', '\\a', '\\ ', 'x: y', 'mailto:a@b.c',
     'snake_case and __dunder__', '[[x]](u)', '@[a]@[b]', '!@#$%^&*()_+-=[]{}|;\':",./<>?', 'tab\there', '**a\\**', '*a\\*b*',
   ],
+  formatting: [
+    '<u>under</u>', '<u> spaced </u>', 'x<sup>2</sup> H<sub>2</sub>O', '<sup>**b**</sup>', '**<sub>a</sub> b**',
+    '<span style="color:red">red</span> <span style="color:gray">gray *it*</span>', '<span style="color:blue">@[Ann]</span>',
+    '<mark style="background:lightgreen">green</mark> ==yellow== <mark style="background:pink"> lead</mark>',
+    '<span style="color:purple"><u>both</u></span>', '<span style="color:orange"><u>a</u> b</span>', '~~<u>s</u>~~', '[<u>l</u>](u)',
+    '<u>`code`</u>', '- [ ] <u>task</u>', '# <sup>h</sup>', '> [!note] <span style="color:green">t</span>', '<u>#tag</u>',
+    // not the strict form: the text it is
+    '<u></u>', '<U>x</U>', '<u>a', 'a</u>', '<span style="color:pink">x</span>', '<span style="color: red">x</span>',
+    '<span style="color:red;">x</span>', '<mark>x</mark>', '<mark style="background:yellow">x</mark>', '<b>x</b>', 'a < b > c', '<-',
+    '\\<u>x\\</u>', '<u>a\\</u>b</u>', '`<u>x</u>`',
+  ],
   pictures: [
     'a\n[[photo:p1]]\nb', '\n[[photo:p1]]\n', 'a\n[[album:photo:p1 image:https://x.y/i.png]]\nb', 'a\n[[photo:p1 50 left]]\nb',
     'a\n[[image:https://x.y/i.png 30]]\nb', 'a\n[[album:photo:p1 photo:p2 40 right]]\nb', 'a\n\n[[photo:p1]]\n\nb',
@@ -152,6 +163,11 @@ const READ_NORMALISED = [
   ['==~~x~~==', '~~==x==~~'],
   ['**[b](u)**', '[**b**](u)'],
   ['*~~x~~* and *==y==*', '~~*x*~~ and ==*y*=='],
+  ['<u>~~x~~</u>', '~~<u>x</u>~~'],
+  ['<u><span style="color:red">x</span></u>', '<span style="color:red"><u>x</u></span>'],
+  // superscript and subscript never go together: the inner one wins
+  ['<sup>a<sub>b</sub></sup>', '<sup>a</sup><sub>b</sub>'],
+  ['==a <mark style="background:pink">b</mark>==', '==a ==<mark style="background:pink">b</mark>'],
 ];
 
 test('the few texts that are written differently, read and put in shape', () => {
@@ -186,6 +202,11 @@ const EDITED = [
   ['a plain backslash before punctuation', doc(p(txt('\\*'))), '\\\\\\*'],
   ['plain chip syntax', doc(p(txt('@[Ann] [[W]] ♪[S]'))), '\\@\\[Ann] \\[\\[W]] ♪\\[S]'],
   ['plain link syntax', doc(p(txt('[a](u)'))), '\\[a](u)'],
+  ['plain tags', doc(p(txt('<u>x</u> <sup>2</sup>'))), '\\<u>x\\</u> \\<sup>2\\</sup>'],
+  ['a colour that isn\'t the palette\'s is left off', doc(p(txt('a', S.marks.color.create({ color: 'teal' })))), 'a'],
+  ['… a highlight\'s is yellow', doc(p(txt('a', S.marks.highlight.create({ color: '#123' })))), '==a=='],
+  ['an underline keeps its spaces', doc(p(txt('a'), txt(' b ', 'underline'), txt('c'))), 'a<u> b </u>c'],
+  ['a coloured highlight too, the yellow one not', doc(p(txt(' b', S.marks.highlight.create({ color: 'plum' })), txt(' c', 'highlight'))), '<mark style="background:plum"> b</mark> ==c=='],
   ['plain code', doc(p(txt('`x`'))), '\\`x\\`'],
   ['a plain address', doc(p(txt('see https://a.b'))), 'see https\\://a.b'],
   ['a paragraph that looks like a heading', doc(p(txt('# not heading'))), '\\# not heading'],
@@ -369,7 +390,10 @@ function generator(seed, { wild = false } = {}) {
   const str = (alphabet, max) => Array.from({ length: 1 + int(max) }, () => pick(alphabet)).join('');
 
   const LETTERS = [...'abcxyz  ', 'Ab', 'é', '😀'];
-  const SPECIAL = [...'*~=`\\[]()#@!:/|♪\t.-_>+1{}<', '**', '~~', '==', '``', '[[', ']]', '@[', '♪[', '- ', '# ', '> ', '1. ', 'https://'];
+  const SPECIAL = [
+    ...'*~=`\\[]()#@!:/|♪\t.-_>+1{}<', '**', '~~', '==', '``', '[[', ']]', '@[', '♪[', '- ', '# ', '> ', '1. ', 'https://',
+    '<u>', '</u>', '<sup>', '</sub>', '<span style="color:red">', '</span>', '<mark style="background:pink">', '</mark>',
+  ];
   const plainText = (max = 8) => str(chance(0.5) ? [...LETTERS, ...SPECIAL, ...(wild ? ['\n', ' *', '* '] : [])] : LETTERS, max);
   const label = () => pick(['Ann', 'Bo b', 'x.y', 'Café', '1', 'a-b', 'Ünï']);
   const HREFS = ['https://ex.am/p', 'u', 'mailto:a@b.c', '', '#x', 'https://x.y/a_b'];
@@ -400,11 +424,17 @@ function generator(seed, { wild = false } = {}) {
           const url = 'https://' + pick(['a.b', 'ex.am/p_q', 'x.y/a?b=c']);
           out.push(S.text(url, [...ctx, link(url, true)]), S.text(' ', ctx));
         } else if (roll < 0.5 && depth < 3) {
-          const name = pick(['bold', 'italic', 'strike', 'highlight', 'link'].filter((n) => !names.includes(n) && (wild || !(n === 'bold' && names.includes('italic'))) && !(n === 'link' && afterNote)));
+          const name = pick(['bold', 'italic', 'strike', 'highlight', 'link', 'underline', 'sup', 'sub', 'color'].filter((n) =>
+            !names.includes(n) && (wild || !(n === 'bold' && names.includes('italic'))) && !(n === 'link' && afterNote)
+            && !((n === 'sup' || n === 'sub') && (names.includes('sup') || names.includes('sub')))));
           const afterStar = !wild && prev && (prev.marks.some((m) => m.type.name === 'bold' && !names.includes('bold')) || (prev.isText && prev.text.endsWith('*')));
           if (!name || (name === 'italic' && afterStar)) continue;
           const from = out.length;
-          fill([...ctx, name === 'link' ? link(pick(HREFS)) : S.marks[name].create()], depth + 1);
+          const made = name === 'link' ? link(pick(HREFS))
+            : name === 'color' ? S.marks.color.create({ color: pick(['red', 'orange', 'green', 'blue', 'purple', 'gray']) })
+            : name === 'highlight' ? S.marks.highlight.create({ color: chance(0.5) ? null : pick(['lightgreen', 'lightblue', 'pink', 'plum', 'lightsalmon', 'lightgray']) })
+            : S.marks[name].create();
+          fill([...ctx, made], depth + 1);
           const first = out[from];
           if (!wild && first?.isText && !first.marks.some((m) => m.type.name === 'code') && /^\s/.test(first.text)) {
             out[from] = S.text(first.text.replace(/^\s+/, '') || 'w', first.marks);
@@ -528,6 +558,8 @@ function textGenerator(seed) {
     'a', 'b c', 'word', ' ', '  ', '\t', '😀', 'é', '**', '*', '~~', '==', '`', '``', '[', ']', '(', ')', '](u)', '](https://a.b)', '()',
     'https://x.y/z', 'https://a.b.', 'mailto:a@b.c', '@[', '@[Ann]', '@[person:p1|Ann]', '♪[', '♪[song:s|S]', '[[', ']]', '[[note:n|N]]', '[[W]]',
     '|', '\\', '\\*', '\\#', '#tag', ' #x/y', '!', ':', '-', '1.', '>', '[!note]', '****', '~~~~', '====', '***', '_', '{', '}',
+    '<', '<u>', '</u>', '<sup>', '</sup>', '<sub>', '</sub>', '<span style="color:red">', '<span style="color:pink">', '</span>',
+    '<mark style="background:plum">', '<mark>', '</mark>',
   ];
   const line = () => pick(STARTS) + Array.from({ length: int(7) }, () => pick(BITS)).join('');
   return () => Array.from({ length: 1 + int(7) }, line).join('\n');

@@ -5,7 +5,8 @@ import { redoDepth, undoDepth } from '@tiptap/pm/history';
 import type { EditorState } from '@tiptap/pm/state';
 import type { Style } from './blocks';
 import { continueNumbering, restartNumbering } from './lists';
-import { markLit } from './marks';
+import { colorAt, markLit } from './marks';
+import { painterOf } from './painter';
 
 /** The kind of line the caret is on: a plain line, a heading, a list item of a kind, or code. */
 export type LineKind = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol' | 'task' | 'code';
@@ -13,9 +14,18 @@ export type LineKind = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'o
 export interface Lit {
   bold: boolean;
   italic: boolean;
+  underline: boolean;
   strike: boolean;
+  sup: boolean;
+  sub: boolean;
   highlight: boolean;
   code: boolean;
+  /** the font colour at the caret (or of all the selection), null for Automatic or a mix */
+  color: string | null;
+  /** the highlight's colour there ('yellow' for ==words==), null for none or a mix */
+  highlightColor: string | null;
+  /** the Format Painter is on: 'once', or 'sticky' (double-clicked) */
+  painter: 'once' | 'sticky' | null;
   link: boolean;
   block: LineKind;
   /** in a quote (a callout counts as one too) */
@@ -74,13 +84,20 @@ export function litOf(state: EditorState): Lit {
     : callout || block === 'code' ? null
     : quote ? 'quote'
     : 'normal';
+  const painter = painterOf(state);
   return {
     // the styles lit exactly when their buttons would take them off
     bold: markLit(state, 'bold'),
     italic: markLit(state, 'italic'),
+    underline: markLit(state, 'underline'),
     strike: markLit(state, 'strike'),
+    sup: markLit(state, 'sup'),
+    sub: markLit(state, 'sub'),
     highlight: markLit(state, 'highlight'),
     code: markLit(state, 'code'),
+    color: colorAt(state, 'color'),
+    highlightColor: colorAt(state, 'highlight'),
+    painter: painter ? (painter.sticky ? 'sticky' : 'once') : null,
     link: has('link'),
     block,
     quote,

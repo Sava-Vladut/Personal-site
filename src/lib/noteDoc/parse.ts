@@ -94,8 +94,14 @@ export function parseInline(text: string, marks: readonly Mark[] = [], schema: S
         // an address inside [text](…) is that link's text, not a link of its own
         add(p.s, inLink ? marks : m.link.create({ href: p.s, bare: true }).addToSet(marks));
         break;
+      case 'hl':
+        out.push(...parseInline(p.s, m.highlight.create({ color: p.color }).addToSet(marks), schema));
+        break;
+      case 'color':
+        out.push(...parseInline(p.s, m.color.create({ color: p.color }).addToSet(marks), schema));
+        break;
       default: {
-        const type = p.t === 'b' ? m.bold : p.t === 'i' ? m.italic : p.t === 's' ? m.strike : m.highlight;
+        const type = p.t === 'b' ? m.bold : p.t === 'i' ? m.italic : p.t === 's' ? m.strike : p.t === 'u' ? m.underline : p.t === 'sup' ? m.sup : m.sub;
         out.push(...parseInline(p.s, type.create().addToSet(marks), schema));
       }
     }

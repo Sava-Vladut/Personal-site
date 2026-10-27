@@ -1,7 +1,10 @@
 // The inline Markdown of a line, read the same way everywhere: the note editor's document (lib/noteDoc/parse.ts),
 // the reading view (components/Markdown.tsx) and the plain words of excerpts (stripMarkdown in lib/markdown.ts).
 // Styles take the shortest run they can, so **a** and **b** are two bold words rather than one, and a backslash
-// keeps the character after it as it is (\* is a star, not italic).
+// keeps the character after it as it is (\* is a star, not italic). Underline, superscript, subscript and colours are
+// the bits of HTML Obsidian shows: <u>, <sup>, <sub>, <span style="color:red"> and <mark style="background:pink">,
+// each only in exactly that form and with a colour of lib/palette.ts (anything else is the text it is).
+import { HIGHLIGHTS, TEXT_COLORS } from './palette';
 
 /** A piece of a line: plain text, or a styled run with the text inside its markers. */
 export type Inline =
@@ -12,7 +15,13 @@ export type Inline =
   /** [[a note or book]], @[someone] and ♪[a song], with what they're written as (`raw`) and where they point */
   | { t: 'wiki' | 'person' | 'song'; raw: string; target?: string; s: string }
   | { t: 'link'; s: string; url: string }
-  | { t: 'b' | 'i' | 's' | 'hl'; mark: string; s: string }
+  | { t: 'b' | 'i' | 's'; mark: string; s: string }
+  /** ==a highlight==, or <mark style="background:…"> in another colour than yellow (`color`, else null) */
+  | { t: 'hl'; mark: string; s: string; color: string | null }
+  /** <u>, <sup>, <sub> */
+  | { t: 'u' | 'sup' | 'sub'; s: string }
+  /** <span style="color:…">, a font colour */
+  | { t: 'color'; color: string; s: string }
   /** an empty pair of markers, ** ** with nothing in it yet */
   | { t: 'empty'; s: string }
   | { t: 'bare'; s: string }
@@ -35,6 +44,12 @@ const INLINE = new RegExp(
     String.raw`\*\*(?<b>(?!\s)${C}+?)\*\*(?!\*)`,
     String.raw`~~(?<s>(?!\s)${C}+?)~~`,
     String.raw`==(?<hl>(?!\s)${C}+?)==`,
+    // (never empty: <u></u> is the text it is, not the start of a run up to the next </u>)
+    String.raw`<u>(?!</u>)(?<u>${C}+?)</u>`,
+    String.raw`<sup>(?!</sup>)(?<sup>${C}+?)</sup>`,
+    String.raw`<sub>(?!</sub>)(?<sub>${C}+?)</sub>`,
+    String.raw`<span style="color:(?<fc>${TEXT_COLORS.join('|')})">(?!</span>)(?<fg>${C}+?)</span>`,
+    String.raw`<mark style="background:(?<hc>${HIGHLIGHTS.join('|')})">(?!</mark>)(?<mk>${C}+?)</mark>`,
     String.raw`(?<!\*)\*(?<i>(?![\s*])(?:\\[^\n]|[^\\*\n])+?)\*`,
     /(?<bare>https?:\/\/[^\s<>]*[^\s<>.,:;"'!?)\]])/.source,
     /(?<![^\s(])(?<tag>#[\p{L}_][\p{L}\p{N}_/-]*)/u.source,
@@ -66,7 +81,12 @@ export function inline(text: string): Inline[] {
     else if (g.empty !== undefined) out.push({ t: 'empty', s: g.empty });
     else if (g.b !== undefined) out.push({ t: 'b', mark: '**', s: g.b });
     else if (g.s !== undefined) out.push({ t: 's', mark: '~~', s: g.s });
-    else if (g.hl !== undefined) out.push({ t: 'hl', mark: '==', s: g.hl });
+    else if (g.hl !== undefined) out.push({ t: 'hl', mark: '==', s: g.hl, color: null });
+    else if (g.u !== undefined) out.push({ t: 'u', s: g.u });
+    else if (g.sup !== undefined) out.push({ t: 'sup', s: g.sup });
+    else if (g.sub !== undefined) out.push({ t: 'sub', s: g.sub });
+    else if (g.fg !== undefined) out.push({ t: 'color', color: g.fc, s: g.fg });
+    else if (g.mk !== undefined) out.push({ t: 'hl', mark: '<mark>', s: g.mk, color: g.hc });
     else if (g.i !== undefined) out.push({ t: 'i', mark: '*', s: g.i });
     else if (g.bare !== undefined) out.push({ t: 'bare', s: g.bare });
     else if (g.tag !== undefined) out.push({ t: 'tag', s: g.tag });
@@ -75,9 +95,21 @@ export function inline(text: string): Inline[] {
   return out;
 }
 
+/** Whether a piece holds styled text, to read again with `inline`. */
+const nests = (p: Inline): p is Extract<Inline, { t: 'b' | 'i' | 's' | 'hl' | 'u' | 'sup' | 'sub' | 'color' | 'link' }> =>
+  /^(b|i|s|hl|u|sup|sub|color|link)$/.test(p.t);
+
 /** A line's words without their inline Markdown. */
 export function plainInline(text: string): string {
   return inline(text)
-    .map((p) => (p.t === 'b' || p.t === 'i' || p.t === 's' || p.t === 'hl' || p.t === 'link' ? plainInline(p.s) : p.t === 'empty' ? '' : p.s))
+    .map((p) => (nests(p) ? plainInline(p.s) : p.t === 'empty' ? '' : p.s))
     .join('');
 }
+
+const TAGS = new RegExp(
+  String.raw`</?(?:u|sup|sub)>|</(?:span|mark)>|<span style="color:(?:${TEXT_COLORS.join('|')})">|<mark style="background:(?:${HIGHLIGHTS.join('|')})">`,
+  'g',
+);
+
+/** Text without the tags of underline, superscript, subscript and colours, Markdown left as it is (search, exports). */
+export const dropTags = (text: string) => text.replace(TAGS, '');

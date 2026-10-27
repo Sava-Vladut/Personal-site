@@ -6,18 +6,20 @@
 //   Enter → enter · Shift-Enter → newLine · Backspace → backspace (after undoInputRule) · Delete → deleteForward
 //   Tab / Shift-Tab → tab(false) / tab(true) · Mod-[ / Mod-] → noteCommands.indent(true / false) (always swallowed)
 //   ArrowDown at the end of a code block → exitCode · Alt-Shift-ArrowUp / ArrowDown → moveBlocks(-1 / 1)
-//   Mod-b, Mod-i, Mod-Shift-x, Mod-Shift-h → noteCommands.mark('bold' | 'italic' | 'strike' | 'highlight')
+//   Mod-b, Mod-i, Mod-u, Mod-Shift-x, Mod-Shift-h → noteCommands.mark('bold' | 'italic' | 'underline' | 'strike' | 'highlight')
+//   Mod-Shift-= (Mod-+) / Mod-= → noteCommands.mark('sup' / 'sub') · Esc while the Format Painter is on → stopPainter
 //   Mod-Shift-l, Mod-Shift-7, Mod-Shift-9 → noteCommands.list('ul' | 'ol' | 'task') · Mod-Shift-. → toggleQuote
 //   Mod-Alt-0…6, Mod-Shift-n → noteCommands.style('normal' | 'h1'…) · Mod-k → the link sheet (linkAt, setLink, removeLink)
 //   Mod-s → the note saved now (KeyOptions.save) · Mod-p → the browser's print, the note alone (styles/document.css)
 // Typing: BLOCK_RULES as input rules, then AUTOCORRECT (after the inline Markdown and autolink rules); handleTextInput →
-// tidyAfterTag(text); the suggest plugin reads typedAt(state) and picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
+// tidyAfterTag(text); a mouse let go of in the text (or Shift let go of) while the Format Painter is on → paint; the suggest plugin reads typedAt(state) and picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
 // After each change (appendTransaction, beside normalizeTr): renumberChanged(trs, state) counts the lists it touched again.
 import type { Command } from '@tiptap/pm/state';
 import type { ListKind } from '../syntax';
 import { insertBlock, setStyle, toggleQuote, type BlockKind, type Style } from './blocks';
 import { continueNumbering, indentList, restartNumbering, toggleList } from './lists';
-import { clearFormatting, removeLink, setLink, toggleMarkSmart, type MarkName } from './marks';
+import { clearFormatting, removeLink, setLink, setMarkSmart, toggleMarkSmart, type MarkName } from './marks';
+import { togglePainter } from './painter';
 
 export {
   enter, newLine, backspace, deleteForward, tab, codeEnter, exitCode, fenceEnter, headingEnter, titleEnter, quoteEnter,
@@ -27,9 +29,10 @@ export {
   renumber, renumberChanged, countOnAfter, indentList, itemToParagraph, listEnter, toggleTask, toggleList, restartNumbering, continueNumbering,
 } from './lists';
 export {
-  toggleMarkSmart, clearFormatting, linkAt, setLink, removeLink, normalizeHref, tidyAfterTag, CLEARED,
-  type MarkName, type LinkTarget,
+  toggleMarkSmart, setMarkSmart, colorAt, copyMarks, paintMarks, clearFormatting, linkAt, setLink, removeLink, normalizeHref, tidyAfterTag,
+  CLEARED, type MarkName, type LinkTarget,
 } from './marks';
+export { painterKey, painterPlugin, painterOf, togglePainter, stopPainter, paint, type Painter } from './painter';
 export {
   mediaList, findMedia, insertMediaAt, removeMedia, removeItem, setMediaLayout, mergeMedia, ungroupMedia, takeOutItem,
   dropPlaces, dropTargets, moveMedia, canStep, stepMedia, mediaPosAfter, type DropTarget,
@@ -50,8 +53,17 @@ export { isWordChar, wordAround, selectedBlocks, lineText, liftBlocks, unCallout
  * two steps to undo (Enter carrying a list on) close the history group themselves (closeHistory).
  */
 export const noteCommands = {
-  /** Bold, italic, strike, highlight, code: on the selection, the word at the caret, or what's typed next. */
-  mark: (name: MarkName): Command => toggleMarkSmart(name),
+  /**
+   * Bold, italic, underline, strike, superscript, subscript, highlight, code: on the selection, the word at the caret,
+   * or what's typed next. A highlight in a colour of lib/palette.ts with `color` (its button applies the last one).
+   */
+  mark: (name: MarkName, color?: string | null): Command => toggleMarkSmart(name, color === undefined ? undefined : { color }),
+  /** Font colour: one of lib/palette.ts TEXT_COLORS, or null for Automatic. */
+  color: (color: string | null): Command => setMarkSmart('color', color ? { color } : null),
+  /** Text highlight colour: one of HIGHLIGHTS, null for yellow, false for No colour. */
+  highlight: (color: string | null | false): Command => setMarkSmart('highlight', color === false ? null : { color }),
+  /** The Format Painter's button: once, or `sticky` (a double click) until Esc. */
+  painter: (sticky: boolean): Command => togglePainter(sticky),
   /** The link sheet's Done (`{ text, href }`) or Remove (null). */
   link: (to: { text?: string; href: string } | null): Command => (to ? setLink(to) : removeLink),
   clearFormatting: clearFormatting as Command,

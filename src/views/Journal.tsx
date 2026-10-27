@@ -11,6 +11,7 @@ import { bodyOf, itemsOf, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Photo } from '../lib/photos';
 import { previewOf, stripMarkdown } from '../lib/markdown';
+import { dropTags } from '../lib/inline';
 import { dayMood } from '../lib/mood';
 import { watchView } from '../lib/inView';
 import { BookChip, BookCover } from '../components/books';
@@ -49,7 +50,7 @@ const searchText = new WeakMap<Entry, string>();
 function haystack(e: Entry) {
   let s = searchText.get(e);
   if (s === undefined) {
-    s = `${e.title} ${plainText(e.text).replace(TAG_ID, '$1')} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
+    s = `${e.title} ${dropTags(plainText(e.text)).replace(TAG_ID, '$1')} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
     searchText.set(e, s);
   }
   return s;
