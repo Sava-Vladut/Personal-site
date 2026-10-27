@@ -112,7 +112,7 @@ export function Media({ query }: { query: URLSearchParams }) {
         </div>
       </div>
 
-      {isBooks ? <BooksTab q={q} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onAdd={() => setAdding('music')} picker={picker} />}
+      {isBooks ? <BooksTab q={q} onClearSearch={() => setQ('')} onAdd={() => setAdding('books')} /> : <MusicTab q={q} onClearSearch={() => setQ('')} onAdd={() => setAdding('music')} picker={picker} />}
 
       <DayPicker songs={songs} picker={picker} />
       <BookSheet open={adding === 'books'} onClose={() => setAdding(null)} onPick={(b) => { setAdding(null); navigateAfterSheet('book/' + b.id); }} />

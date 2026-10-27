@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.8',
+    date: '2026-10-27',
+    changes: [
+      'When your shelf or records find nothing for a search or a filter, a Clear filters button shows everything again',
+    ],
+  },
+  {
     version: '1.138.7',
     date: '2026-10-27',
     changes: [

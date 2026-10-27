@@ -22,7 +22,7 @@ const byRecent = (a: Book, b: Book) => lastDay(b).localeCompare(lastDay(a)) || b
  * on one shelf you swipe along (in a column at the right on a wide screen). Then every book as a list, in runs by
  * where it is (reading, to read, read), its letter or its stars.
  */
-export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
+export function BooksTab({ q, onClearSearch, onAdd }: { q: string; onClearSearch: () => void; onAdd: () => void }) {
   const books = useBooks();
   const entries = useEntries();
   const ready = useReady();
@@ -149,7 +149,12 @@ export function BooksTab({ q, onAdd }: { q: string; onAdd: () => void }) {
             <button class="btn btn-primary" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add a book')}</button>
           </div>
         )}
-        {!!books.length && !shown.length && <p class="empty-note center">{t('No books match.')}</p>}
+        {!!books.length && !shown.length && (
+          <div class="empty-note center">
+            <p>{t('No books match.')}</p>
+            <button class="btn btn-quiet" onClick={() => { onClearSearch(); setShelf('all'); }}>{t('Clear filters')}</button>
+          </div>
+        )}
 
         {shown.length > 0 && <Runs runs={runs} row={(b: Book) => <BookLine key={b.id} b={b} status={!byStatus} />} />}
       </section>

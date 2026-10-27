@@ -40,7 +40,7 @@ const labelFor = (sort: Sort) => (s: Song) => {
  * your notes, each a row you swipe through (in a column at the right on a wide screen). Then the whole collection as a
  * list, in runs by the month it joined, its letter or its stars.
  */
-export function MusicTab({ q, onAdd, picker }: { q: string; onAdd: () => void; picker: DayPick }) {
+export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onClearSearch: () => void; onAdd: () => void; picker: DayPick }) {
   const songs = useSongs();
   const entries = useEntries();
   const ready = useReady();
@@ -182,7 +182,12 @@ export function MusicTab({ q, onAdd, picker }: { q: string; onAdd: () => void; p
             <button class="btn btn-primary" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add music')}</button>
           </div>
         )}
-        {!!songs.length && !shown.length && <p class="empty-note center">{t('No music matches.')}</p>}
+        {!!songs.length && !shown.length && (
+          <div class="empty-note center">
+            <p>{t('No music matches.')}</p>
+            <button class="btn btn-quiet" onClick={() => { onClearSearch(); setKind('all'); }}>{t('Clear filters')}</button>
+          </div>
+        )}
 
         {shown.length > 0 && <Runs runs={runs} row={(s: Song) => <SongLine key={s.id} s={s} />} />}
         {paged.more && <div ref={paged.ref} class="feed-more" aria-hidden="true" />}
