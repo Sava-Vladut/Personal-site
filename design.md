@@ -404,6 +404,8 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 - Every first-run empty state (nothing made yet): a short `.title-s` or a mark, one sentence in `--ink-3`,
   and one action that makes the first thing: `.btn-primary`, or `.btn-quiet` when the screen already
   shows a primary add button.
+- Every search or filter that finds nothing: one line saying so, and a full-size quiet button that
+  clears it ("Clear search", "Clear filters"); never a dead end that relies on the field's own ✕.
 - Every error state (something failed to load): a `.title-s` that says what failed, one sentence on what
   to do, and a `.btn-quiet` "Try again" with the 18px `refresh` icon. Never a bare `.btn`.
 - Every destructive action: `.btn-danger` or `.danger` text, behind `Confirm`.

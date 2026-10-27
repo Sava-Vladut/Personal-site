@@ -905,6 +905,7 @@ export const RO: Record<string, string> = {
   'Write a note': 'Scrie o notiță',
   'Nothing matches these filters.': 'Nimic nu se potrivește acestor filtre.',
   'Clear filters': 'Șterge filtrele',
+  'Clear search': 'Șterge căutarea',
   'Show all days': 'Toate zilele',
   'Pinned': 'Fixate',
   'How are you feeling?': 'Cum te simți?',

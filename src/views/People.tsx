@@ -111,7 +111,12 @@ export function People() {
           <button class="btn btn-primary" onClick={() => navigate('person/new')}><Icon name="user-plus" size={18} /> {t('Add a person')}</button>
         </div>
       )}
-      {!!people.length && !shown.length && <p class="empty-note center">{t('No one matches “{q}”.', { q: q.trim() })}</p>}
+      {!!people.length && !shown.length && (
+        <div class="empty-note center">
+          <p>{t('No one matches “{q}”.', { q: q.trim() })}</p>
+          <button class="btn btn-quiet" onClick={() => setQ('')}>{t('Clear search')}</button>
+        </div>
+      )}
 
       <div class="entries people-list">
         {shown.map((p) => {
