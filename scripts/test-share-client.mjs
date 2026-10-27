@@ -166,3 +166,18 @@ test('deleting a public note takes its public copy down, and says so if it canâ€
   assert.equal(toasts.length, 1);
   assert.match(toasts[0], /public link is still up/);
 });
+
+test('comments are private: the public copy holds their words, never what they say, and editing one alone changes nothing public', async () => {
+  const SECRET = '<!-- comment: my SECRET %2D- doubt %7C x -->';
+  const e = entry({ text: `Walked with <span class="comment">@[Ana] by the sea</span>${SECRET}\n| <span class="comment">a</span>${SECRET} |\n| --- |\n\`<!-- comment: SECRET in code -->\`` });
+  const pub = publicNote(e);
+  assert.equal(pub.text, 'Walked with Ana by the sea\n| a |\n| --- |\n``');
+  assert.ok(!/SECRET|comment:/.test(JSON.stringify(pub)));
+  // what's sent to the server: the same
+  calls.length = 0;
+  reply = (url, method) => (method === 'POST' ? { status: 200, body: { token: TOKEN, missing: [] } } : { status: 204 });
+  const share = await publish(e);
+  assert.ok(!/SECRET|comment:/.test(calls.map((c) => String(c.body)).join('\n')), 'never in what goes over the wire');
+  // a comment changed (or taken off) leaves the public copy as it was
+  assert.equal(changedSince({ ...e, share, text: e.text.replaceAll('SECRET', 'other') }), false);
+});

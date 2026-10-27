@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.145.0',
+    date: '2026-10-27',
+    changes: [
+      'Comments in notes, as in Word: a new Review tab with New comment (Ctrl+Alt+M), Delete, Previous, Next and Show comments',
+      'A comment goes on the selected words, or the word at the caret; its box opens beside them for you to write in, and a comment left empty goes',
+      'On a computer your comments sit in the margin right of the page, each level with its words; click one to go to its words, edit it in place, Esc or Enter saves it',
+      'On a phone the commented words are lit softly: tap them to read, edit or delete the comment',
+      'Comments work on any words: in lists, quotes, tables and over several lines, and with bold, colours, links and tags',
+      'Comments are private: a public note, its link preview, your status page, card previews, word counts, exports and printing leave them out (the words they’re on stay)',
+      'Searching the journal finds what your comments say too',
+      'Notes keep a comment as an HTML comment beside its words, which Obsidian and GitHub hide, so the note reads the same there',
+    ],
+  },
+  {
     version: '1.144.0',
     date: '2026-10-27',
     changes: [

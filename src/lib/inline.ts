@@ -4,9 +4,11 @@
 // keeps the character after it as it is (\* is a star, not italic). Underline, superscript, subscript and colours are
 // the bits of HTML Obsidian shows: <u>, <sup>, <sub>, <span style="color:red"> and <mark style="background:pink">,
 // each only in exactly that form and with a colour of lib/palette.ts (anything else is the text it is). A footnote's
-// reference is [^label], Obsidian's.
+// reference is [^label], Obsidian's. A comment (lib/comments.ts) is its passage in <span class="comment">, then the
+// comment hidden in an HTML comment: read as the passage, the comment beside it (only the editor shows it).
 import { HIGHLIGHTS, TEXT_COLORS } from './palette';
 import { mapTables } from './noteDoc/syntax';
+import { COMMENT_SOURCE, decodeComment, dropComments } from './comments';
 
 /** A piece of a line: plain text, or a styled run with the text inside its markers. */
 export type Inline =
@@ -26,6 +28,8 @@ export type Inline =
   | { t: 'u' | 'sup' | 'sub'; s: string }
   /** <span style="color:…">, a font colour */
   | { t: 'color'; color: string; s: string }
+  /** a comment: the passage it's on (`s`, styled text) and what it says (`note`, private: lib/comments.ts) */
+  | { t: 'comment'; s: string; note: string }
   /** an empty pair of markers, ** ** with nothing in it yet */
   | { t: 'empty'; s: string }
   | { t: 'bare'; s: string }
@@ -45,6 +49,7 @@ const INLINE = new RegExp(
     /\[(?<text>[^\]\n]+)\]\((?<url>[^)\s]*)\)/.source,
     // after a link: [^1](u) is a link, as in Obsidian
     /\[\^(?<fn>[\w-]+)\]/.source,
+    COMMENT_SOURCE,
     /(?<![*~=])(?<empty>\*\*\*\*|~~~~|====)(?![*~=])/.source,
     // a style starts at a letter (not a space), and ends at the first marker that closes it
     String.raw`\*\*(?<b>(?!\s)${C}+?)\*\*(?!\*)`,
@@ -85,6 +90,7 @@ export function inline(text: string): Inline[] {
     else if (g.song !== undefined) out.push({ t: 'song', raw: m[0], target: g.st, s: g.song });
     else if (g.text !== undefined) out.push({ t: 'link', s: g.text, url: g.url });
     else if (g.fn !== undefined) out.push({ t: 'fn', s: g.fn });
+    else if (g.ca !== undefined) out.push({ t: 'comment', s: g.ca, note: decodeComment(g.ct) });
     else if (g.empty !== undefined) out.push({ t: 'empty', s: g.empty });
     else if (g.b !== undefined) out.push({ t: 'b', mark: '**', s: g.b });
     else if (g.s !== undefined) out.push({ t: 's', mark: '~~', s: g.s });
@@ -103,10 +109,10 @@ export function inline(text: string): Inline[] {
 }
 
 /** Whether a piece holds styled text, to read again with `inline`. */
-const nests = (p: Inline): p is Extract<Inline, { t: 'b' | 'i' | 's' | 'hl' | 'u' | 'sup' | 'sub' | 'color' | 'link' }> =>
-  /^(b|i|s|hl|u|sup|sub|color|link)$/.test(p.t);
+export const nests = (p: Inline): p is Extract<Inline, { t: 'b' | 'i' | 's' | 'hl' | 'u' | 'sup' | 'sub' | 'color' | 'link' | 'comment' }> =>
+  /^(b|i|s|hl|u|sup|sub|color|link|comment)$/.test(p.t);
 
-/** A line's words without their inline Markdown (a footnote's reference left out). */
+/** A line's words without their inline Markdown (a footnote's reference and a comment's words left out). */
 export function plainInline(text: string): string {
   return inline(text)
     .map((p) => (nests(p) ? plainInline(p.s) : p.t === 'empty' || p.t === 'fn' ? '' : p.s))
@@ -121,7 +127,8 @@ const TAGS = new RegExp(
 );
 
 /**
- * Text without the tags of underline, superscript, subscript and colours, a line's alignment and page breaks, and
- * without a table's delimiter row (its rows stay as written); Markdown left as it is (search, exports).
+ * Text without the tags of underline, superscript, subscript and colours, a line's alignment and page breaks, without
+ * a table's delimiter row (its rows stay as written) and without comments (their passages stay); Markdown left as it
+ * is (search, exports).
  */
-export const dropTags = (text: string) => mapTables(text, (_, line) => line).replace(TAGS, '');
+export const dropTags = (text: string) => mapTables(dropComments(text), (_, line) => line).replace(TAGS, '');

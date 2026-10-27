@@ -9,7 +9,7 @@
 export {
   noteSchema, atomToken, listItemLook, STYLE_MARKS, ATOM_MARKS, FOOTNOTE_LABEL,
   type HeadingAttrs, type ParagraphAttrs, type FootnoteAttrs, type PageBreakAttrs, type ListItemAttrs, type CodeBlockAttrs, type CalloutAttrs, type HorizontalRuleAttrs,
-  type MediaAttrs, type AtomAttrs, type CodeMarkAttrs, type LinkAttrs, type ColorAttrs, type HighlightAttrs, type CellAttrs,
+  type MediaAttrs, type AtomAttrs, type CodeMarkAttrs, type LinkAttrs, type ColorAttrs, type HighlightAttrs, type CellAttrs, type CommentAttrs,
 } from './schema';
 export { parseNote, parseBlocks, parseInline } from './parse';
 export { serializeNote, serializeBlocks, serializeInline, serializeSlice, writtenAttrs, docKey, sameDoc } from './serialize';

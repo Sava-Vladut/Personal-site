@@ -9,7 +9,7 @@ import type { Lit, NoteCommands } from '../../editor/NoteBody';
 import { keepFocus } from './keepFocus';
 import { HIGHLIGHTS, TEXT_COLORS } from '../../lib/palette';
 
-type Tab = 'home' | 'insert' | 'view' | 'context';
+type Tab = 'home' | 'insert' | 'review' | 'view' | 'context';
 
 /** Apple keyboards say ⌘, ⌥ and ⇧ where the others say Ctrl, Alt and Shift. */
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform ?? '');
@@ -194,7 +194,7 @@ export interface RibbonProps {
 /**
  * The note editor's ribbon, as Word has it. Home holds Undo, the font styles, the paragraph's (lists, indents, quote)
  * and a gallery of styles, the one at the caret lit; Insert adds pictures, music, a book, a tag, links, a mind trap,
- * a law of power or a Win friends principle, and blocks;
+ * a law of power or a Win friends principle, and blocks; Review has the comments (new, delete, previous, next, shown or not);
  * View switches between writing and reading, Focus, the zoom, the note's icon and details. While a picture is
  * selected a Picture tab comes up, in the accent colour, and opens by itself; it goes again with the picture.
  *
@@ -692,6 +692,19 @@ export function Ribbon(p: RibbonProps) {
     )),
   ];
 
+  // Review, as Word's: the comments. Previous and Next go round them; Show comments puts them (and their marks) away
+  const review = [
+    group('comments', t('Comments'), [
+      big('message-plus', t('New comment'), () => cmds?.comment(), { off: off || !lit?.canComment, k: 'Ctrl+Alt+M', title: t('Comment on the selected words') }),
+      big('message-x', t('Delete'), () => cmds?.deleteComment(), { off: off || !lit?.comment, title: t('Delete comment') }),
+      big('message-up', t('Previous'), () => cmds?.stepComment(-1), { off: off || !lit?.comments, title: t('Previous comment') }),
+      big('message-down', t('Next'), () => cmds?.stepComment(1), { off: off || !lit?.comments, title: t('Next comment') }),
+    ]),
+    group('markup', t('Markup'), big(view.comments ? 'messages' : 'messages-off', t('Show comments'), () => setDocView({ comments: !view.comments }), {
+      on: view.comments, title: t('Show your comments and the words they’re on'),
+    })),
+  ];
+
   // the table's tab, as Word's Table Layout: rows and columns in and out, the table out, a column's alignment
   const cell = (icon: UiName, label: string, action: Parameters<NoteCommands['table']>[0], title: string) =>
     big(icon, label, () => cmds?.table(action), { off, title });
@@ -716,10 +729,10 @@ export function Ribbon(p: RibbonProps) {
     ], 'rb-rows', 3),
   ];
 
-  const TABS: [Tab, string][] = [['home', t('Home')], ['insert', t('Insert')], ['view', t('View')]];
+  const TABS: [Tab, string][] = [['home', t('Home')], ['insert', t('Insert')], ['review', t('Review')], ['view', t('View')]];
   if (ctx) TABS.push(['context', ctx.label]);
   const name = TABS.find(([id]) => id === shown)?.[1] ?? t('Home');
-  const panel = shown === 'context' ? (context ? context.content : tableTab) : shown === 'insert' ? insert : shown === 'view' ? viewTab : home;
+  const panel = shown === 'context' ? (context ? context.content : tableTab) : shown === 'insert' ? insert : shown === 'review' ? review : shown === 'view' ? viewTab : home;
   // the picture's tools take the pointer as they are: the size slider must be draggable
   const hold = shown === 'context' && context ? {} : keepFocus;
 

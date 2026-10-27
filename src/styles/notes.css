@@ -444,3 +444,44 @@ canvas.sky:not([data-drawn]) { opacity: 0; }
 .note-editor .find-match { background: color-mix(in oklab, var(--word) 18%, transparent); border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in oklab, var(--word) 22%, transparent); }
 .note-editor .find-match.is-current { background: color-mix(in oklab, var(--word) 42%, transparent); box-shadow: 0 0 0 2px var(--word); }
 @media print { .note-editor .find-match { background: none !important; box-shadow: none !important; } }
+
+/* ---------- Comments (lib/noteDoc/edit/comments.ts, components/CommentsPane.tsx): the words a comment is on, lit
+   softly; the one being written or looked at stronger. What they say shows in the margin (a sheet on a phone). Hidden
+   with Review › Show comments off, and never printed. ---------- */
+:root { --cm-ink: var(--emo-hope-interest, #eb6834); --cm-w: 248px; }
+.note-editor .cm { background: color-mix(in oklab, var(--cm-ink) 13%, transparent); border-bottom: 1.5px solid color-mix(in oklab, var(--cm-ink) 45%, transparent); }
+.note-editor :is(.cm-active .cm, .cm .cm-active, .cm-draft) { background: color-mix(in oklab, var(--cm-ink) 28%, transparent); border-bottom-color: var(--cm-ink); }
+.note-editor .cm-draft { border-bottom: 1.5px dashed var(--cm-ink); }
+:root[data-comments-off] .note-editor :is(.cm, .cm-active) { background: none; border-bottom: 0; }
+
+.cm-pane { position: absolute; top: 0; left: calc(100% + 20px); width: var(--cm-w); height: 100%; pointer-events: none; }
+.cm-card {
+  position: absolute; left: 0; right: 0; display: flex; align-items: flex-start; gap: 2px; padding: 8px 4px 8px 10px;
+  border: 1px solid var(--line); border-left: 3px solid color-mix(in oklab, var(--cm-ink) 55%, transparent); border-radius: var(--r-xs);
+  background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); pointer-events: auto; cursor: pointer;
+  transition: top var(--dur-2) var(--ease-emph), border-color var(--dur-1), box-shadow var(--dur-1);
+  animation: fade-in var(--dur-2) ease-out;
+}
+.cm-card.is-current { border-left-color: var(--cm-ink); }
+.cm-card:is(.is-active, .is-draft, :focus-within) { border-color: color-mix(in oklab, var(--cm-ink) 60%, transparent); border-left-color: var(--cm-ink); box-shadow: 0 4px 14px -6px rgb(0 0 0 / 0.25); z-index: 1; }
+.cm-text {
+  flex: 1; min-width: 0; min-height: 20px; padding: 1px 0; border: 0; resize: none; overflow: hidden; background: none; color: var(--ink);
+  font: var(--w-regular) var(--text-m)/1.4 var(--sans); cursor: text;
+}
+.cm-text:focus { outline: none; }
+.cm-text::placeholder { color: var(--ink-3); }
+.cm-del { flex: none; width: 24px; height: 24px; border-radius: var(--r-xs); color: var(--ink-3); opacity: 0; transition: opacity var(--dur-1); }
+.cm-card:is(:hover, :focus-within, .is-active) .cm-del, .cm-del:focus-visible { opacity: 1; }
+@media (hover: none) { .cm-del { opacity: 1; } }
+.cm-quote { margin: 0 0 10px; padding: 2px 0 2px 10px; border-left: 3px solid var(--cm-ink); color: var(--ink-2); font: var(--w-regular) var(--text-base)/1.45 var(--serif); overflow-wrap: anywhere; }
+@media (min-width: 1024px) {
+  /* the page makes room for the comments at its right, as Word's does */
+  .route-note .page.editor:has(.cm-pane) { padding-right: calc(var(--cm-w) + 48px); }
+  :root[data-note-focus] .cm-pane { display: none; }
+  :root[data-note-focus] .route-note .page.editor:has(.cm-pane) { padding-right: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-card { transition: none; animation: none; } }
+@media print {
+  .cm-pane { display: none !important; }
+  .note-editor :is(.cm, .cm-draft, .cm-active) { background: none !important; border-bottom: 0 !important; }
+}

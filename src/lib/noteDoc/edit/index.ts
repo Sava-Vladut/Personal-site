@@ -17,6 +17,7 @@
 //   Mod-l, Mod-e, Mod-r, Mod-j → noteCommands.align('left' | 'center' | 'right' | 'justify', true) · Mod-Shift-e → mark('code')
 //   Mod-Enter → noteCommands.insert('pagebreak') (in code, a new line) · Mod-Alt-f → noteCommands.footnote
 //   Mod-f / Mod-h → the find bar (KeyOptions.find 'find' | 'replace') · F3 / Shift-F3 while it's open → findStep(1 / -1)
+//   Mod-Alt-m → noteCommands.comment (a draft, its box focused by the page: KeyOptions.comment)
 // Typing: BLOCK_RULES as input rules, then AUTOCORRECT (after the inline Markdown and autolink rules); handleTextInput →
 // tidyAfterTag(text); a mouse let go of in the text (or Shift let go of) while the Format Painter is on → paint; the suggest plugin reads typedAt(state) and picks with replaceTyped(typed, token). Paste: clipboardTextParser → parseClipboardText. Task boxes → toggleTask(pos).
 // After each change (appendTransaction, beside normalizeTr): renumberChanged(trs, state) counts the lists it touched again.
@@ -29,6 +30,7 @@ import { continueNumbering, indentList, restartNumbering, toggleList } from './l
 import { clearFormatting, removeLink, setLink, setMarkSmart, toggleMarkSmart, type MarkName } from './marks';
 import { togglePainter } from './painter';
 import { insertTable, tableCommand, type TableAction } from './tables';
+import { deleteComment, newComment, stepComment } from './comments';
 
 export {
   enter, newLine, backspace, deleteForward, tab, codeEnter, exitCode, fenceEnter, headingEnter, titleEnter, quoteEnter,
@@ -46,6 +48,10 @@ export {
 } from './marks';
 export { findPlugin, findOf, findMatches, findPattern, setFind, clearFind, findStep, replaceCurrent, replaceAll, type FindQuery, type FindState, type Match } from './find';
 export { headingsOf, headingAt, type Heading } from './outline';
+export {
+  commentsOf, commentAt, commentsPlugin, commentsKey, commentsState, commentRange, newComment, addComment, saveComment, deleteComment,
+  selectComment, focusComment, stepComment, hasComments, type Comment, type CommentsState,
+} from './comments';
 export { painterKey, painterPlugin, painterOf, togglePainter, stopPainter, paint, type Painter } from './painter';
 export {
   mediaList, findMedia, insertMediaAt, removeMedia, removeItem, setMediaLayout, setMediaMeta, mergeMedia, ungroupMedia, takeOutItem,
@@ -104,5 +110,11 @@ export const noteCommands = {
   insertTable: (rows: number, cols: number): Command => insertTable(rows, cols),
   /** The Table tab: rows and columns in and out, the table taken out, a column aligned. */
   table: (action: TableAction): Command => tableCommand(action),
+  /** Review › New comment: a draft on the selection or the word at the caret (the one at the caret, if it has one). */
+  comment: newComment,
+  /** Review › Delete comment: the one at the caret (or in the selection); its words stay. */
+  deleteComment: deleteComment() as Command,
+  /** Review › Previous (-1) and Next (1) comment: its words selected. */
+  stepComment: (dir: 1 | -1): Command => stepComment(dir),
 };
 export type NoteCommandSet = typeof noteCommands;

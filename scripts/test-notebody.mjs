@@ -15,10 +15,10 @@ const bundle = await rolldown({
   transform: { jsx: { runtime: 'automatic', importSource: 'preact' } },
   plugins: [{
     name: 'notebody-entry',
-    resolveId(id) {
+    resolveId(id, importer) {
       if (id === 'review:notebody') return '\0' + id;
       // the app's chips read the store; here they're just their names
-      if (id.endsWith('/components/mentions')) return '\0mentions';
+      if (id.endsWith('/components/mentions') || (id === './mentions' && importer?.endsWith('/components/Markdown.tsx'))) return '\0mentions';
       // the traps, laws and principles aren't read here (their Romanian text arrives by top-level await, which this IIFE bundle can't hold)
       if (/\/data\/(traps|laws|principles)$/.test(id)) return '\0learn-data';
     },
@@ -30,6 +30,9 @@ const bundle = await rolldown({
         export { tidyPastedHTML } from '${root}src/editor/paste.ts';
         export { tagDecorations } from '${root}src/editor/plugins.ts';
         export { Ribbon } from '${root}src/components/ribbon/Ribbon.tsx';
+        export { CommentsPane } from '${root}src/components/CommentsPane.tsx';
+        export { Markdown } from '${root}src/components/Markdown.tsx';
+        export { docView, setDocView } from '${root}src/lib/docView.ts';
         export { h, render } from 'preact';
         export { act } from 'preact/test-utils';
       `;
@@ -66,11 +69,13 @@ function page(phone) {
   window.document.elementFromPoint = () => null;
   window.ClipboardEvent = class extends window.Event { constructor(type, o) { super(type, o); this.clipboardData = null; } };
   window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+  // (the comments' sheet, components/Sheet.tsx, asks at load whether the browser has linear() easing)
+  window.CSS ??= { supports: () => false, escape: (s) => s };
   window.eval(code);
   return window;
 }
 
-const KEYS = { b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal', e: 'KeyE', l: 'KeyL', r: 'KeyR', j: 'KeyJ', f: 'KeyF', h: 'KeyH' };
+const KEYS = { m: 'KeyM', b: 'KeyB', i: 'KeyI', z: 'KeyZ', y: 'KeyY', u: 'KeyU', '=': 'Equal', '+': 'Equal', e: 'KeyE', l: 'KeyL', r: 'KeyR', j: 'KeyJ', f: 'KeyF', h: 'KeyH' };
 
 /** Mounts the editor on `text`; returns its handle and what it reported. */
 function mount(text, opts = {}) {
@@ -1040,4 +1045,121 @@ test('the ribbon: Insert › Table\'s grid puts a table in, the Table tab comes 
   const row = bar.querySelector('.format-scroll');
   assert.ok([...row.querySelectorAll('.rb-big')].some((b) => b.textContent === 'Insert above'));
   assert.ok(bar.querySelector('.format-bar').classList.contains('is-context'));
+});
+
+/* ---------- comments ---------- */
+
+test('comments: Ctrl+Alt+M makes a draft, its box in the margin is written in and saved, edited, deleted; a click selects its words', async () => {
+  const { n, view, press, window, host } = mount('I said yes and left.\nnext <span class="comment">line</span><!-- comment: old one -->');
+  const { CommentsPane, h, render: draw, act, setDocView } = window.NB;
+  const frame = () => new Promise((r) => window.requestAnimationFrame(r));
+  const pane = window.document.createElement('div');
+  window.document.body.append(pane);
+  const show = (o = {}) => act(() => draw(h(CommentsPane, { note: n, wide: true, reading: false, open: null, onOpen() {}, ...o }), pane));
+  show();
+  const cards = () => [...pane.querySelectorAll('.cm-card')];
+  assert.deepEqual(cards().map((c) => c.querySelector('textarea').value), ['old one'], 'what a comment says, beside it');
+  assert.ok(host.querySelector('.note-editor .cm'), 'its words marked in the text');
+  // the word at the caret, Ctrl+Alt+M: a draft, its words lit, nothing in the text yet
+  n.focus(9);
+  assert.ok(press('Mod-Alt-m'));
+  await frame();
+  show();
+  assert.deepEqual({ ...n.comments.get().draft }, { from: 8, to: 11 });
+  assert.ok(host.querySelector('.note-editor .cm-draft'));
+  assert.equal(n.text(), 'I said yes and left.\nnext <span class="comment">line</span><!-- comment: old one -->', 'nothing in the text yet');
+  const draft = pane.querySelector('.cm-card.is-draft textarea');
+  assert.equal(window.document.activeElement, draft, 'its box takes the focus');
+  // written in, then Enter: saved, the focus back in the text
+  act(() => {
+    draft.value = 'did I --mean it? [x]';
+    draft.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  act(() => void draft.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
+  await frame();
+  show();
+  assert.equal(n.text(), 'I said <span class="comment">yes</span><!-- comment: did I %2D-mean it? %5Bx%5D --> and left.\nnext <span class="comment">line</span><!-- comment: old one -->');
+  assert.deepEqual(cards().map((c) => c.querySelector('textarea').value), ['did I --mean it? [x]', 'old one']);
+  // a click on a box selects its words
+  act(() => void cards()[1].dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+  assert.equal(view.state.doc.textBetween(view.state.selection.from, view.state.selection.to), 'line');
+  // emptied, it goes; the ✕ deletes one (its words stay)
+  const second = cards()[1].querySelector('textarea');
+  act(() => second.focus());
+  act(() => {
+    second.value = '  ';
+    second.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  act(() => second.blur());
+  assert.equal(n.text(), 'I said <span class="comment">yes</span><!-- comment: did I %2D-mean it? %5Bx%5D --> and left.\nnext line');
+  await frame();
+  show();
+  act(() => void cards()[0].querySelector('.cm-del').dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+  assert.equal(n.text(), 'I said yes and left.\nnext line');
+  await frame();
+  show();
+  assert.equal(cards().length, 0);
+  assert.equal(pane.querySelector('.cm-pane'), null, 'no comments: no column');
+  // Show comments off: the column goes (the words stay unmarked by CSS)
+  n.setText('a <span class="comment">b</span><!-- comment: c -->');
+  await frame();
+  act(() => setDocView({ comments: false }));
+  show();
+  assert.equal(pane.querySelector('.cm-pane'), null);
+  act(() => setDocView({ comments: true }));
+  show();
+  assert.equal(cards().length, 1);
+});
+
+test('comments are private: copied as plain text they\'re left out (copied as the note\'s own HTML they come along), and the reading view never shows them', () => {
+  const { n, view, window } = mount('a <span class="comment">**b**</span><!-- comment: my SECRET --> c');
+  const slice = view.state.doc.slice(0, view.state.doc.content.size);
+  assert.equal(view.someProp('clipboardTextSerializer', (f) => f(slice, view)), 'a **b** c');
+  // between notes (ProseMirror's own HTML), the comment comes along
+  const other = mount('');
+  other.n.focus('end');
+  const html = window.document.createElement('div');
+  html.append(...[...view.dom.childNodes].map((c) => c.cloneNode(true)));
+  other.view.pasteHTML(html.innerHTML);
+  assert.equal(other.n.text(), 'a <span class="comment">**b**</span><!-- comment: my SECRET --> c');
+  // the reading view (and a public note's page): the words, never what the comment says
+  const { Markdown, h, render: draw, act } = window.NB;
+  const box = window.document.createElement('div');
+  act(() => draw(h(Markdown, { text: n.text() }), box));
+  assert.equal(box.textContent, 'a b c');
+  assert.ok(!/SECRET|comment/.test(box.innerHTML));
+  assert.ok(box.querySelector('strong'));
+});
+
+test('the ribbon\'s Review tab: New comment, Delete, Previous, Next, Show comments', () => {
+  const window = page();
+  window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
+  const { Ribbon, h, render: draw, act, docView } = window.NB;
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  const calls = [];
+  const cmds = new Proxy({}, { get: (_, k) => (...args) => (calls.push([k, ...args]), true) });
+  const actions = new Proxy({ reading: false, title: 'T', busy: false, canAddPhotos: true, shared: false }, { get: (o, k) => (k in o ? o[k] : () => {}) });
+  const show = (lit) => act(() => draw(h(Ribbon, { actions, cmds, lit, swapped: false, away: false, done: null, toText() {} }), host));
+  const click = (el) => act(() => void el.dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+  const big = (name) => [...host.querySelectorAll('.rb-big')].find((b) => b.textContent === name);
+  show({ canComment: true, comment: false, comments: false });
+  click(host.querySelector('#rb-tab-review'));
+  assert.equal(host.querySelector('#rb-tab-review').getAttribute('aria-selected'), 'true');
+  assert.match(big('New comment').title, /Ctrl\+Alt\+M/);
+  click(big('New comment'));
+  assert.deepEqual(calls.pop(), ['comment']);
+  assert.equal(big('Delete').disabled, true, 'no comment at the caret');
+  assert.equal(big('Next').disabled, true, 'none in the note');
+  show({ canComment: true, comment: true, comments: true });
+  click(big('Delete'));
+  click(big('Previous'));
+  click(big('Next'));
+  assert.deepEqual(calls.splice(0), [['deleteComment'], ['stepComment', -1], ['stepComment', 1]]);
+  const toggle = big('Show comments');
+  assert.equal(toggle.getAttribute('aria-pressed'), 'true');
+  click(toggle);
+  assert.equal(docView().comments, false);
+  click(big('Show comments'));
+  assert.equal(docView().comments, true);
 });

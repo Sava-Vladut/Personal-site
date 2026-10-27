@@ -12,6 +12,7 @@ import { imageSrc } from '../lib/images';
 import type { Photo } from '../lib/photos';
 import { previewOf, stripMarkdown } from '../lib/markdown';
 import { dropTags } from '../lib/inline';
+import { commentWords } from '../lib/comments';
 import { dayMood } from '../lib/mood';
 import { watchView } from '../lib/inView';
 import { BookChip, BookCover } from '../components/books';
@@ -44,13 +45,13 @@ const DAYS_PAGE = 20;
 /** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
 const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song|trap|law):[^\]|\n]+\|/g;
 
-/** What search looks through in a note, worked out once per version of it (a saved note is a new object), so typing a
- * search doesn't re-read every note's text on every key. */
+/** What search looks through in a note (what your comments on it say too: your own words), worked out once per version
+ * of it (a saved note is a new object), so typing a search doesn't re-read every note's text on every key. */
 const searchText = new WeakMap<Entry, string>();
 function haystack(e: Entry) {
   let s = searchText.get(e);
   if (s === undefined) {
-    s = `${e.title} ${dropTags(plainText(e.text)).replace(TAG_ID, '$1')} ${pictureWords(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
+    s = `${e.title} ${dropTags(plainText(e.text)).replace(TAG_ID, '$1')} ${commentWords(e.text).join(' ')} ${pictureWords(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
     searchText.set(e, s);
   }
   return s;

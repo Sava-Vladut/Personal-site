@@ -743,6 +743,7 @@ test('every command at every caret leaves a document that writes text reading ba
     '#tag and [[note:n1|N]] and ♪[Song] \\* esc',
     'centred **b** <!-- align:center -->\n## Head[^1] <!-- align:right -->\n<div style="page-break-after: always"></div>\nafter[^2]\n\n[^1]: one\n[^2]: two',
     'x | y\n| a | **b** |\n| --- | :---: |\n| c |  |\ny',
+    'I said <span class="comment">**yes** and @[Ann]</span><!-- comment: did I %2D- mean it? --> then\n- <span class="comment">item</span><!-- comment: x %7C y -->\n| <span class="comment">a</span><!-- comment: c --> |\n| --- |',
   ];
   const CMDS = {
     enter: E.enter, newLine: E.newLine, backspace: Backspace, delete: Delete, tab: E.tab(false), untab: E.tab(true),
@@ -752,6 +753,7 @@ test('every command at every caret leaves a document that writes text reading ba
     clear: E.clearFormatting, link: E.setLink({ href: 'https://a.b' }), unlink: E.removeLink, at: E.insertTrigger('@'),
     chip: E.insertAtom('@[Bo]'), pic: E.insertMediaAt([{ kind: 'photo', id: 'z' }]), paste: E.pasteText('x\n- y\n**z**'),
     centre: E.setAlign('center'), justify: E.setAlign('justify', true), pagebreak: E.insertBlock('pagebreak'), footnote: E.insertFootnote,
+    comment: E.addComment('why -- [x] | *y* ~~z~~ 100%'), uncomment: E.deleteComment(), nextComment: E.stepComment(1),
   };
   const { TextSelection } = nd.pmState;
   let runs = 0;
@@ -1420,4 +1422,77 @@ test('every table command at every caret leaves a document that writes text read
     }
   }
   assert.ok(runs > 1000);
+});
+
+/* ---------- comments ---------- */
+
+test('comments: New comment is a draft until it says something; saved, edited, emptied, deleted, gone to', () => {
+  const { history, undo } = nd.pmHistory;
+  const plugins = [E.commentsPlugin(), history()];
+  let s = stateFrom('one «two three» four\n```\ncode\n```\nlast', { plugins });
+  const go = (cmd) => cmd(s, (tr) => (s = s.apply(tr)));
+  // a draft: nothing in the text yet, the words lit
+  assert.ok(go(E.newComment));
+  const { draft } = E.commentsState(s);
+  assert.deepEqual(draft, { from: 5, to: 14 });
+  assert.equal(nd.serializeNote(s.doc), 'one two three four\n```\ncode\n```\nlast');
+  assert.equal(E.litOf(s).comment, true, 'Delete comment takes a draft away too');
+  // its box done with: saying something, it's a comment (one line, written strictly)
+  assert.ok(go(E.saveComment(draft.from, ' did I\nmean -- it? [x] ')));
+  assert.equal(nd.serializeNote(s.doc), 'one <span class="comment">two three</span><!-- comment: did I mean %2D- it? %5Bx%5D --> four\n```\ncode\n```\nlast');
+  assert.equal(E.commentsState(s).draft, null);
+  assert.deepEqual(E.commentsOf(s.doc).map((c) => [c.from, c.to, c.text]), [[5, 14, 'did I mean -- it? [x]']]);
+  // the caret in it: New comment writes in that one (no new one)
+  s = s.apply(s.tr.setSelection(nd.pmState.TextSelection.create(s.doc, 7)));
+  assert.ok(go(E.newComment));
+  assert.deepEqual(E.commentsState(s), { draft: null, focus: 5 });
+  assert.deepEqual(E.commentAt(s), E.commentsOf(s.doc)[0]);
+  assert.ok(E.litOf(s).comment && E.litOf(s).comments);
+  // edited, then emptied: it goes, its words stay
+  assert.ok(go(E.saveComment(5, 'later')));
+  assert.match(nd.serializeNote(s.doc), /<!-- comment: later -->/);
+  assert.equal(go(E.saveComment(5, 'later')), false, 'nothing changed');
+  assert.ok(go(E.saveComment(5, '  ')));
+  assert.equal(nd.serializeNote(s.doc), 'one two three four\n```\ncode\n```\nlast');
+  // undo brings it back, as it was
+  s = s.apply(s.tr.setMeta('addToHistory', true));
+  undo(s, (tr) => (s = s.apply(tr)));
+  assert.match(nd.serializeNote(s.doc), /<!-- comment: later -->/);
+  // a draft saying nothing goes without a trace
+  s = s.apply(s.tr.setSelection(nd.pmState.TextSelection.create(s.doc, 1)));
+  assert.ok(go(E.newComment));
+  const before = s.doc;
+  assert.ok(go(E.saveComment(E.commentsState(s).draft.from, '')));
+  assert.ok(s.doc.eq(before));
+  assert.equal(E.commentsState(s).draft, null);
+  // none in code, nor where there's no word
+  s = s.apply(s.tr.setSelection(nd.pmState.TextSelection.create(s.doc, 22)));
+  assert.equal(E.litOf(s).block, 'code');
+  assert.equal(go(E.newComment), false);
+  assert.equal(E.litOf(s).canComment, false);
+});
+
+test('comments: Delete, Previous and Next, over lines, in a table, beside other styles', () => {
+  const run2 = (t, cmd) => run(t, cmd)[0];
+  // the word at the caret, without spaces; over two lines it's one comment (a mark on each)
+  assert.equal(run2('a wo|rd here', E.addComment('c')), 'a <span class="comment">wo|rd</span><!-- comment: c --> here');
+  const [two, , st] = run('ab «cd\nef» gh', E.addComment('both'));
+  assert.equal(two, 'ab «<span class="comment">cd</span><!-- comment: both -->\n<span class="comment">ef</span><!-- comment: both -->» gh');
+  assert.deepEqual(E.commentsOf(st.doc).map((c) => [c.text, c.ranges.length]), [['both', 2]]);
+  assert.equal(run2('ab <span class="comment">c|d</span><!-- comment: both -->\n<span class="comment">ef</span><!-- comment: both --> gh', E.deleteComment()), 'ab c|d\nef gh', 'deleted whole');
+  // with other styles on the same words: they stay
+  assert.equal(run2('**a «b» c**', E.addComment('x')), '**a «<span class="comment">b</span><!-- comment: x -->» c**');
+  assert.equal(run2('<span style="color:red">a «b»</span>', E.addComment('x')), '<span style="color:red">a «</span><span class="comment"><span style="color:red">b</span></span><!-- comment: x --><span style="color:red">»</span>');
+  // in a table's cell
+  const caret = { caret: '‸' };
+  assert.equal(run('| a | b‸c |\n| --- | --- |', E.addComment('in | cell'), caret)[0], '| a | <span class="comment">b‸c</span><!-- comment: in %7C cell --> |\n| --- | --- |');
+  // Delete with nothing there: false
+  assert.equal(run('a |b', E.deleteComment())[1], false);
+  // Previous and Next: round the comments, the words selected
+  const t = 'x <span class="comment">a</span><!-- comment: 1 --> |y <span class="comment">b</span><!-- comment: 2 --> z <span class="comment">c</span><!-- comment: 3 -->';
+  const sel = (r) => r[2].doc.textBetween(r[2].selection.from, r[2].selection.to);
+  assert.equal(sel(run(t, E.stepComment(1))), 'b');
+  assert.equal(sel(run(t, E.stepComment(-1))), 'a');
+  assert.equal(sel(run(t.replace('|', '').replace(/c<\/span>/, 'c</span>') + '|', E.stepComment(1))), 'a', 'past the last: round to the first');
+  assert.equal(run('no comments |here', E.stepComment(1))[1], false);
 });

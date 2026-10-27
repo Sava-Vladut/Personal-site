@@ -7,7 +7,7 @@
 //   • a callout next to a quote or callout gets an empty line between (else it would read as part of the other)
 //   • text holding a line break outside code is split into lines (the part after a break becomes a paragraph)
 //   • spaces at the start of a heading's, list item's, footnote's or callout title's text go to its `sep` (where they'd be read),
-//     unless they're code, a link's text or in an HTML tag (written inside its backticks, brackets or tags)
+//     unless they're code, a link's text, in an HTML tag or a comment (written inside its backticks, brackets or tags)
 //   • a code block without a closing line that isn't the last in its stretch gets one (the text writes one anyway)
 //   • a table is a grid its text can say: every row as long as the longest, the first row's cells headers and the rest
 //     plain ones, each cell aligned as its column's header is (a delimiter row aligns whole columns), no spans; a
@@ -17,6 +17,7 @@
 import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { EditorState, type Transaction } from '@tiptap/pm/state';
 import { fenceOf, isCellAlign } from './syntax';
+import { cleanComment } from '../comments';
 
 type Fix = (tr: Transaction) => boolean;
 
@@ -75,7 +76,9 @@ const LEAD = /^[ \t]+/;
  * like, they're kept inside).
  */
 const keepsSpaces = (m: Mark) =>
-  /^(code|link|underline|sup|sub|color)$/.test(m.type.name) || (m.type.name === 'highlight' && !!m.attrs.color);
+  /^(code|link|underline|sup|sub|color)$/.test(m.type.name) || (m.type.name === 'highlight' && !!m.attrs.color)
+  // (a comment saying nothing isn't written: its spaces would be the line's)
+  || (m.type.name === 'comment' && !!cleanComment(String(m.attrs.text ?? '')));
 const leadsWithSpace = (n: PMNode) => !!n.firstChild?.isText && LEAD.test(n.firstChild.text!) && !n.firstChild.marks.some(keepsSpaces);
 const absorbSpaces: Fix = (tr) => {
   const found = textblocks(tr.doc, (n) => /^(heading|listItem|calloutTitle|footnote)$/.test(n.type.name) && leadsWithSpace(n));

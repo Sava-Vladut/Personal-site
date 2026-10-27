@@ -110,7 +110,7 @@ export function footnotesOf(text: string): Footnotes {
     for (const p of pieces(s)) {
       if (p.t === 'fn') {
         if (!num.has(p.s)) num.set(p.s, num.size + 1);
-      } else if (/^(b|i|s|hl|u|sup|sub|color|link)$/.test(p.t)) walk((p as { s: string }).s);
+      } else if (/^(b|i|s|hl|u|sup|sub|color|link|comment)$/.test(p.t)) walk((p as { s: string }).s);
     }
   };
   const blocks = (bs: Block[]) => {
@@ -155,6 +155,8 @@ function inline(text: string, fn?: Footnotes): ComponentChildren[] {
       case 'sup': return <sup>{inline(p.s, fn)}</sup>;
       case 'sub': return <sub>{inline(p.s, fn)}</sub>;
       case 'color': return <span data-color={p.color}>{inline(p.s, fn)}</span>;
+      // a comment is private (lib/comments.ts): its words only, never what it says (public pages read the note here)
+      case 'comment': return inline(p.s, fn);
       case 'i': return <em>{inline(p.s, fn)}</em>;
       case 'empty': return p.s;
       case 'bare': return <a href={p.s} target="_blank" rel="noopener noreferrer">{p.s}</a>;

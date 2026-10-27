@@ -68,19 +68,21 @@ export interface CodeMarkAttrs { tick: string }
 export interface ColorAttrs { color: string }
 /** A highlight's colour (lib/palette.ts HIGHLIGHTS); null is the yellow of ==words== */
 export interface HighlightAttrs { color: string | null }
+/** A comment (lib/comments.ts): what it says, one line. Private: only the editor shows it. */
+export interface CommentAttrs { text: string }
 export interface LinkAttrs {
   href: string;
   /** written as the address alone (https://…), not as [text](address) */
   bare: boolean;
 }
 
-/** The styling marks, from outermost to innermost as the serializer writes them. */
-export const STYLE_MARKS = ['link', 'color', 'strike', 'highlight', 'underline', 'bold', 'italic', 'sup', 'sub', 'code'] as const;
+/** The styling marks, from outermost to innermost as the serializer writes them (a comment around them all). */
+export const STYLE_MARKS = ['comment', 'link', 'color', 'strike', 'highlight', 'underline', 'bold', 'italic', 'sup', 'sub', 'code'] as const;
 /** A footnote's label as written in [^label]. */
 export const FOOTNOTE_LABEL = /^[\w-]+$/;
 
 /** The marks a chip can carry. */
-export const ATOM_MARKS = 'bold italic strike highlight underline color sup sub';
+export const ATOM_MARKS = 'comment bold italic strike highlight underline color sup sub';
 
 /* ---------- attributes kept in data-* ---------- */
 
@@ -511,8 +513,22 @@ function mark(spec: Omit<MarkSpec, 'attrs' | 'parseDOM' | 'toDOM'> & {
   return { ...rest, attrs: specs(attrs), parseDOM: rules(attrs, parse), toDOM: (m) => render(m, rendered(attrs, m.attrs)) };
 }
 
-// in this order: the outermost first (a link holds the styles, code is innermost), as the serializer writes them
+// in this order: the outermost first (a comment holds everything, a link the styles, code is innermost), as the
+// serializer writes them
 const marks: Record<string, MarkSpec> = {
+  /**
+   * A comment on the words it's on (lib/comments.ts): Review › New comment. Its words in data-comment, so it's kept
+   * when copied from one note to another; typing at its end doesn't carry it on.
+   */
+  comment: mark({
+    inclusive: false,
+    attrs: {
+      text: { default: '', parse: (el) => el.getAttribute('data-comment'), render: (a) => ({ 'data-comment': String(a.text ?? '') }) },
+    },
+    parse: [{ tag: 'span[data-comment]' }],
+    render: (_, html) => ['span', merge(html, { class: 'cm' }), 0],
+  }),
+
   /** [text](address), or an address written as it is (`bare`). Opens only web and e-mail addresses. */
   link: mark({
     inclusive: false,

@@ -8,10 +8,12 @@ import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice } from '../lib/noteDoc';
 import {
-  canStep, clearFind, dropTargets, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger, isCell,
+  canStep, clearFind, commentAt, commentsOf, commentsState, deleteComment, dropTargets, focusComment, saveComment, selectComment, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger, isCell,
   linkAt, litOf, mediaList, mergeMedia, moveMedia, parseClipboardText, removeItem, removeMedia, replaceAll, replaceCurrent, replaceTyped, sameLit, setFind,
-  setMediaLayout, setMediaMeta, stepMedia, takeOutItem, typedAt, ungroupMedia, type DropTarget, type FindQuery, type Heading, type LinkTarget, type Lit, type TableAction, type Typed,
+  setMediaLayout, setMediaMeta, stepMedia, takeOutItem, typedAt, ungroupMedia, type Comment, type DropTarget, type FindQuery, type Heading, type LinkTarget, type Lit,
+  type TableAction, type Typed,
 } from '../lib/noteDoc/edit';
+import { dropComments } from '../lib/comments';
 import { itemKey, itemsOf, mediaKey, type Item, type Layout, type Media, type Meta } from '../lib/body';
 import { bindCommands, type NoteCommands } from './commands';
 import { MediaSlots, nodeViews, type MediaSlot } from './nodeViews';
@@ -19,12 +21,17 @@ import { tidyPasted, tidyPastedHTML } from './paste';
 import { notePlugins } from './plugins';
 import { t } from '../lib/i18n';
 
-export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading, TableAction };
+export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading, TableAction, Comment };
 
 /** What Find has found: how many, and which is the current one (0-based; -1 when none is yet). */
 export interface FindInfo { count: number; current: number }
 /** The note's headings, and the one the caret is under (-1: above the first). */
 export interface Outline { headings: Heading[]; current: number }
+/**
+ * The note's comments (each known by where its words start), a new one's words while it's being written, the comment
+ * whose box has the focus, and the one at the caret.
+ */
+export interface Comments { list: Comment[]; draft: { from: number; to: number } | null; focus: number | null; current: number | null }
 
 /** What the note editor can do with its words and pictures. Pictures go by their key (lib/body.ts mediaKey). */
 export interface NoteBodyHandle {
@@ -91,6 +98,23 @@ export interface NoteBodyHandle {
     /** tells `fn` the outline whenever it (or the heading the caret is under) changes */
     watch(fn: (o: Outline) => void): () => void;
   };
+  /** Review's comments (components/CommentsPane.tsx) */
+  comments: {
+    get(): Comments;
+    /** tells `fn` the comments whenever they (or the one at the caret) change */
+    watch(fn: (c: Comments) => void): () => void;
+    /** the comment (or the draft) starting at `at` says `text` now; saying nothing, it goes */
+    save(at: number, text: string): void;
+    remove(at: number): void;
+    /** its words selected and brought into view */
+    select(at: number): void;
+    /** its box has the focus (null: none has), its words lit */
+    focus(at: number | null): void;
+    /** where a position is on the screen (its line's top and bottom), for the boxes beside the text */
+    coords(pos: number): { top: number; bottom: number } | null;
+    /** the words between two positions, as plain text (a comment's words, quoted in its sheet) */
+    words(from: number, to: number): string;
+  };
   media: {
     list(): Media[];
     /** at the caret, or at the end of the note (`atEnd`, or when it's never been written in) */
@@ -131,6 +155,8 @@ interface Props {
   onReady: (h: NoteBodyHandle | null) => void;
   /** the screen's margins the caret is kept out of (the ribbon, the bar above the keyboard) */
   margins: () => { top: number; bottom: number };
+  /** a tap on a comment's words (where it starts): on a phone, its sheet opens */
+  onCommentTap?: (at: number) => void;
 }
 
 /**
@@ -188,6 +214,8 @@ export function NoteBody(p: Props) {
     const watchers = new Set<(l: Lit) => void>();
     const findWatchers = new Set<(f: FindInfo) => void>();
     const outlineWatchers = new Set<(o: Outline) => void>();
+    const commentWatchers = new Set<(c: Comments) => void>();
+    let comments: string | null = null;
     let found = '';
     let outline: Outline | null = null;
     let outlineAt = '';
@@ -198,6 +226,10 @@ export function NoteBody(p: Props) {
     const outlineNow = (): Outline => {
       const headings = headingsOf(view.state.doc);
       return { headings, current: headingAt(headings, view.state.selection.from) };
+    };
+    const commentsNow = (): Comments => {
+      const st = commentsState(view.state);
+      return { list: commentsOf(view.state.doc), draft: st.draft, focus: st.focus, current: commentAt(view.state)?.from ?? null };
     };
     const selWatchers = new Set<(text: string | null) => void>();
     let selText: string | null = null;
@@ -236,6 +268,14 @@ export function NoteBody(p: Props) {
           if (!outline || JSON.stringify(o) !== JSON.stringify(outline)) {
             outline = o;
             outlineWatchers.forEach((fn) => fn(o));
+          }
+        }
+        if (commentWatchers.size) {
+          const c = commentsNow();
+          const key = JSON.stringify(c);
+          if (key !== comments) {
+            comments = key;
+            commentWatchers.forEach((fn) => fn(c));
           }
         }
         const next = litOf(view.state);
@@ -283,7 +323,9 @@ export function NoteBody(p: Props) {
       },
       scrollMargin: margin,
       scrollThreshold: margin,
-      clipboardTextSerializer: (slice) => serializeSlice(slice),
+      // as plain text (for other apps) comments are left out: they're private. Copied from one note to another they
+      // come along, in the HTML (the comment mark's data-comment)
+      clipboardTextSerializer: (slice) => dropComments(serializeSlice(slice)),
       clipboardTextParser: (text, $context, plain) =>
         parseClipboardText(text, $context, plain, { media: (m) => (props.current.knows(m) && findMedia(view.state.doc, mediaKey(m)) < 0 ? m : null) }),
       transformPastedHTML: tidyPastedHTML,
@@ -313,7 +355,13 @@ export function NoteBody(p: Props) {
       },
       // Ctrl+click (⌘ on a Mac) opens a link while writing, as in Word. A footnote's reference goes to its text, and the
       // text's number back to the reference (the caret goes there while writing; reading, the page scrolls there)
-      handleClick(v, _pos, e) {
+      handleClick(v, pos, e) {
+        // a tap on a comment's words: its sheet, on a phone (the caret goes there all the same)
+        const onComment = props.current.onCommentTap;
+        if (onComment && (e.target as Element | null)?.closest?.('.cm')) {
+          const c = commentAt(v.state, pos);
+          if (c) onComment(c.from);
+        }
         const fn = (e.target as Element | null)?.closest?.('.fn-ref, .md-fn-num');
         const label = fn?.closest('[data-fn]')?.getAttribute('data-fn');
         if (fn && label) {
@@ -490,6 +538,32 @@ export function NoteBody(p: Props) {
           outlineAt = `${version}:${view.state.selection.from}`;
           fn(outline);
           return () => outlineWatchers.delete(fn);
+        },
+      },
+      comments: {
+        get: () => commentsNow(),
+        watch(fn) {
+          commentWatchers.add(fn);
+          const c = commentsNow();
+          comments = JSON.stringify(c);
+          fn(c);
+          return () => commentWatchers.delete(fn);
+        },
+        save: (at, text) => void run(saveComment(at, text)),
+        remove: (at) => void run(deleteComment(at)),
+        select: (at) => void run(selectComment(at)),
+        focus: (at) => void run(focusComment(at)),
+        coords(pos) {
+          try {
+            const r = view.coordsAtPos(Math.max(0, Math.min(pos, view.state.doc.content.size)), 1);
+            return { top: r.top, bottom: r.bottom };
+          } catch {
+            return null;
+          }
+        },
+        words(from, to) {
+          const size = view.state.doc.content.size;
+          return view.state.doc.textBetween(Math.max(0, from), Math.min(size, to), ' ', (n) => n.attrs.label ?? '');
         },
       },
       media: {

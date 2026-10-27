@@ -2,12 +2,13 @@ import { useEffect, useState } from 'preact/hooks';
 
 /**
  * How a note is shown while writing, the way Word's View tab and status bar set it: how big the page is (zoom),
- * Focus (nothing but the page), whether the ribbon is folded down to its tabs and whether the Navigation pane is open
- * (on a computer). Kept per device, and shared by
+ * Focus (nothing but the page), whether the ribbon is folded down to its tabs, whether the Navigation pane is open
+ * (on a computer) and whether comments show (Review › Show comments). Kept per device, and shared by
  * everything that shows or changes it (the ribbon, the status bar), so they always agree.
  *
  * While a note is open (applyDocView) the root element carries it for the stylesheets: `--doc-zoom` (1 = 100%),
- * `data-note-focus` while in Focus, `data-ribbon="open" | "collapsed"` and `data-nav-pane` while the pane is open.
+ * `data-note-focus` while in Focus, `data-ribbon="open" | "collapsed"`, `data-nav-pane` while the pane is open and
+ * `data-comments-off` while comments are hidden.
  */
 export interface DocView {
   /** 0.8 to 1.5 */
@@ -16,11 +17,13 @@ export interface DocView {
   ribbon: 'open' | 'collapsed';
   /** the Navigation pane, on a computer */
   nav: boolean;
+  /** comments shown: their words lit, and what they say beside them */
+  comments: boolean;
 }
 
 const KEY = 'mm-doc-view';
 export const ZOOMS = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
-const DEFAULT: DocView = { zoom: 1, focus: false, ribbon: 'open', nav: false };
+const DEFAULT: DocView = { zoom: 1, focus: false, ribbon: 'open', nav: false, comments: true };
 
 function read(): DocView {
   try {
@@ -32,6 +35,7 @@ function read(): DocView {
       focus: false,
       ribbon: raw.ribbon === 'collapsed' ? 'collapsed' : 'open',
       nav: raw.nav === true,
+      comments: raw.comments !== false,
     };
   } catch {
     return DEFAULT;
@@ -55,12 +59,14 @@ function paint() {
     root.removeAttribute('data-note-focus');
     root.removeAttribute('data-ribbon');
     root.removeAttribute('data-nav-pane');
+    root.removeAttribute('data-comments-off');
     return;
   }
   root.style.setProperty('--doc-zoom', String(v.zoom));
   root.toggleAttribute('data-note-focus', v.focus);
   root.setAttribute('data-ribbon', v.ribbon);
   root.toggleAttribute('data-nav-pane', v.nav);
+  root.toggleAttribute('data-comments-off', !v.comments);
 }
 
 export function setDocView(patch: Partial<DocView>) {

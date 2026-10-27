@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { HttpError } from '../server/http-error.js';
 import { json } from '../server/http-response.js';
-import { createShareHandler, cleanNote, excerpt } from '../server/share.js';
+import { createShareHandler, cleanNote, dropComments, excerpt } from '../server/share.js';
 
 // The real share handler behind a throwaway server; the admin is whoever sends "x-admin: yes".
 const scratch = mkdtempSync(join(tmpdir(), 'mymind-share-'));
@@ -186,4 +186,20 @@ test('link previews show a few plain words', () => {
   assert.equal(excerpt({ text: '# Title <!-- align:center -->\n<div style="page-break-after: always"></div>\nclaim[^1] here\n\n[^1]: source' }), 'Title claim here source');
   // a table: its cells' words, the delimiter row left out
   assert.equal(excerpt({ text: 'Intro\n| Name | Age |\n| :--- | :---: |\n| **Ann** | 3 \\| 4 |\n> | q |\n> |-|\nend' }), 'Intro Name Age Ann 3 | 4 q end');
+});
+
+test('comments are private: the server takes them out of what it keeps, shows and previews, whatever it is sent', async () => {
+  const text = '# Plan <span class="comment">**big** idea</span><!-- comment: my SECRET %2D- doubt -->\n| <span class="comment">a</span><!-- comment: SECRET %7C x --> |\n| --- |\nloose <!-- comment: SECRET--> and <!--comment:SECRET-->end';
+  const kept = cleanNote(note({ text })).text;
+  assert.equal(kept, '# Plan **big** idea\n| a |\n| --- |\nloose  and end');
+  assert.equal(dropComments('a <!-- align:center -->'), 'a <!-- align:center -->', 'other HTML comments stay');
+  assert.ok(!/SECRET/.test(excerpt({ text })));
+  const { token } = await (await send('POST', '/api/share', { headers: admin, body: note({ text }) })).json();
+  const pub = await (await send('GET', '/api/share/' + token)).json();
+  assert.ok(!/SECRET|comment:/.test(JSON.stringify(pub)), 'not in the public copy');
+  const html = await (await send('GET', '/s/' + token)).text();
+  assert.ok(!/SECRET/.test(html), 'nor in the page\'s link preview');
+  assert.match(html, /og:description" content="Plan big idea a loose and end"/);
+  assert.ok(!/SECRET/.test(JSON.stringify(await (await send('GET', '/api/share', { headers: admin })).json())), 'nor in the list\'s excerpts');
+  await send('DELETE', '/api/share/' + token, { headers: admin });
 });

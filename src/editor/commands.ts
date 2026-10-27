@@ -32,6 +32,12 @@ export interface NoteCommands {
   /** the Table tab: rows and columns in and out, the table taken out, a column aligned */
   table(action: TableAction): boolean;
   link(to: { text?: string; href: string } | null): boolean;
+  /** Review › New comment: a draft on the selection or the word at the caret, for its box to be written in */
+  comment(): boolean;
+  /** Review › Delete comment: the one at the caret */
+  deleteComment(): boolean;
+  /** Review › Previous (-1) and Next (1) comment */
+  stepComment(dir: 1 | -1): boolean;
   undo(): boolean;
   redo(): boolean;
 }
@@ -67,6 +73,10 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     insertTable: (rows, cols) => run(noteCommands.insertTable(rows, cols)),
     table: (action) => run(noteCommands.table(action)),
     link: (to) => run(noteCommands.link(to)),
+    // (the comment's box takes the focus from the text next: components/CommentsPane.tsx)
+    comment: () => run(noteCommands.comment),
+    deleteComment: () => run(noteCommands.deleteComment),
+    stepComment: (dir) => run(noteCommands.stepComment(dir)),
     undo: () => run(undo, false),
     redo: () => run(redo, false),
   };

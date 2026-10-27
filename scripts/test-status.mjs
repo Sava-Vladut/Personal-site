@@ -83,6 +83,11 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   assert.equal(full.owner, 'Sava V');
   assert.deepEqual(Object.keys(full.countdowns[0]).sort(), ['end', 'name', 'start']); // the one from before it could be changed, until one is saved; no id
   assert.equal(full.checkin.text, 'A good @[Ana] day');
+  // a comment in the note is private: the server leaves it out, whatever it's sent (the app does too, lib/share.ts plainTags)
+  await send('PUT', '/api/status', { headers: admin, body: { show: ALL, owner: 'Sava V', checkin: checkin({ text: 'A <span class="comment">good</span><!-- comment: SECRET --> day <!-- comment: SECRET-->' }) } });
+  assert.equal((await (await send('GET', '/api/status/' + token)).json()).checkin.text, 'A good day');
+  assert.doesNotMatch(await (await send('GET', '/status/' + token)).text(), /SECRET/);
+  await send('PUT', '/api/status', { headers: admin, body: { show: ALL, owner: 'Sava V', checkin: checkin() } });
   assert.deepEqual(full.checkin.details, { people: [{ name: 'Ana', icon: null }], place: { name: 'Home' }, weather: { code: 2, temp: 21.4, daylight: 11, dark: false } });
 
   // just the people: the rest stays private

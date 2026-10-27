@@ -8,6 +8,7 @@ import { continueNumbering, restartNumbering } from './lists';
 import { colorAt, markLit } from './marks';
 import { painterOf } from './painter';
 import { cellAlignAt, inTable } from './tables';
+import { commentAt, commentRange, commentsState, hasComments } from './comments';
 
 /** The kind of line the caret is on: a plain line, a heading, a list item of a kind, or code. */
 export type LineKind = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol' | 'task' | 'code';
@@ -45,6 +46,12 @@ export interface Lit {
   table: boolean;
   /** the alignment of the selected columns of a table ('left' for none), null when they differ or out of a table */
   cellAlign: 'left' | 'center' | 'right' | null;
+  /** the caret (or the selection) is on a comment's words: Delete comment deletes it */
+  comment: boolean;
+  /** New comment would put one here (or the caret is in one, to write in) */
+  canComment: boolean;
+  /** the note holds a comment: Previous and Next go to one */
+  comments: boolean;
   /** something is selected */
   ranged: boolean;
   canUndo: boolean;
@@ -95,6 +102,8 @@ export function litOf(state: EditorState): Lit {
     : 'normal';
   const painter = painterOf(state);
   const align = alignAt(state);
+  const anyComment = hasComments(state.doc);
+  const onComment = anyComment && !!commentAt(state);
   return {
     // the styles lit exactly when their buttons would take them off
     bold: markLit(state, 'bold'),
@@ -118,6 +127,9 @@ export function litOf(state: EditorState): Lit {
     canAlign: align !== null || setAlign('left')(state),
     table: inTable(state),
     cellAlign: cellAlignAt(state),
+    comment: onComment || !!commentsState(state).draft,
+    canComment: onComment || !!commentRange(state),
+    comments: anyComment,
     ranged: !sel.empty,
     canUndo: undoDepth(state) > 0,
     canRedo: redoDepth(state) > 0,

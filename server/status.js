@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
 import { json } from './http-response.js';
-import { EMOTION_ID, cleanDetails, escapeHtml } from './share.js';
+import { EMOTION_ID, cleanDetails, dropComments, escapeHtml } from './share.js';
 
 const TOKEN = /^[A-Za-z0-9_-]{32}$/;
 const ENTRY_ID = /^[A-Za-z0-9_-]{1,40}$/;
@@ -67,7 +67,8 @@ export function cleanCheckin(raw, show) {
     intensity: Number.isInteger(intensity) && intensity >= 1 && intensity <= 5 ? intensity : 3,
     time: Math.round(time),
   };
-  const text = show.note && typeof raw.text === 'string' ? raw.text.trim().slice(0, MAX_NOTE) : '';
+  // (a comment in the note is private: the app leaves it out, and so does the server, whatever it's sent)
+  const text = show.note && typeof raw.text === 'string' ? dropComments(raw.text).trim().slice(0, MAX_NOTE) : '';
   if (text) out.text = text;
   const all = cleanDetails(raw.details) || {};
   const details = {};

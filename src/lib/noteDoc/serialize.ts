@@ -7,6 +7,7 @@ import { parseBody, mediaMarker } from '../body';
 import { parseInline } from './parse';
 import { FOOTNOTE_LABEL, STYLE_MARKS, atomToken, type AtomAttrs } from './schema';
 import { isHighlight, isTextColor } from '../palette';
+import { cleanComment, encodeComment } from '../comments';
 import { BARE, PAGEBREAK, alignOf, alignSuffix, calloutOf, classifyLine, closesFence, delimCell, delimRow, fenceOf, headerCells, isAlign, isCellAlign, splitRow } from './syntax';
 
 /* ---------- inline: a textblock's content as units ---------- */
@@ -35,7 +36,7 @@ const childrenOf = (n: PMNode | Fragment): PMNode[] => {
 /** A mark, for comparing: a link by its address (bare or as [text](address), `)` or `%29`, `|` or `%7C`, it reads the same). */
 const markKey = (m: Mark): string =>
   m.type.name === 'link' ? 'link' + JSON.stringify(encodeHref(m.attrs.href, true))
-  : m.type.name === 'code' || m.type.name === 'color' || m.type.name === 'highlight' ? m.type.name + JSON.stringify(m.attrs)
+  : m.type.name === 'code' || m.type.name === 'color' || m.type.name === 'highlight' || m.type.name === 'comment' ? m.type.name + JSON.stringify(m.attrs)
   : m.type.name;
 /** What a unit is, for comparing: escapes don't count (they only say how a character is written), nor a link's form. */
 const unitKey = (u: Unit) =>
@@ -73,13 +74,20 @@ function fullLink(u: Unit[], i: number, j: number, link: Mark, pipes = false) {
 
 /**
  * Takes off what can't be written at all: code can't hold a backtick, a link's text can't hold `]`, a colour that
- * isn't the palette's isn't one (a highlight's is yellow then). An address
+ * isn't the palette's isn't one (a highlight's is yellow then), a comment saying nothing isn't one (one saying more
+ * than a line is one line). An address
  * written as it is stays so only when it reads as the very same address on its own; else it's written as
  * [text](address), with its spaces and `)` encoded. With `pipes` (a table's cell, or a line just after a table), an
  * address's `|` is encoded too.
  */
 function tidy(u: Unit[], pipes = false): Unit[] {
   for (const x of u) {
+    const cm = x.marks.find((m) => m.type.name === 'comment');
+    if (cm) {
+      const text = cleanComment(String(cm.attrs.text ?? ''));
+      if (!text) without(x, cm.type);
+      else if (text !== cm.attrs.text) x.marks = cm.type.create({ text }).addToSet(x.marks);
+    }
     const c = x.marks.find((m) => m.type.name === 'color');
     if (c && !isTextColor(c.attrs.color)) without(x, c.type);
     const h = x.marks.find((m) => m.type.name === 'highlight');
@@ -106,13 +114,14 @@ function tidy(u: Unit[], pipes = false): Unit[] {
 
 /* ---------- inline: writing ---------- */
 
-const OUTER = ['link', 'color', 'strike', 'highlight', 'underline', 'sup', 'sub', 'bold'];
+const OUTER = ['comment', 'link', 'color', 'strike', 'highlight', 'underline', 'sup', 'sub', 'bold'];
 const MARKER: Record<string, string> = { strike: '~~', highlight: '==', bold: '**', italic: '*' };
 const TAG: Record<string, string> = { underline: 'u', sup: 'sup', sub: 'sub' };
 
 /** What opens and closes a style: its markers, or its HTML tags. */
 function wrapOf(m: Mark): [string, string] {
   const name = m.type.name;
+  if (name === 'comment') return ['<span class="comment">', `</span><!-- comment: ${encodeComment(m.attrs.text)} -->`];
   if (name === 'color') return [`<span style="color:${m.attrs.color}">`, '</span>'];
   if (name === 'highlight' && m.attrs.color) return [`<mark style="background:${m.attrs.color}">`, '</mark>'];
   if (TAG[name]) return [`<${TAG[name]}>`, `</${TAG[name]}>`];
@@ -168,8 +177,11 @@ function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
     for (const name of [...OUTER, 'italic']) {
       const m = fresh.find((x) => x.type.name === name);
       if (!m) continue;
-      // italic ends before bold: *a **b** c* can't be written, so there bold goes outside and italic is split
-      const j = name === 'italic' ? spanOf(u, i, to, m, (x) => !isFresh(x, ['bold'])) : spanOf(u, i, to, m);
+      // italic ends before bold: *a **b** c* can't be written, so there bold goes outside and italic is split; a colour
+      // ends before a comment (the comment's </span> would end it)
+      const j = name === 'italic' ? spanOf(u, i, to, m, (x) => !isFresh(x, ['bold']))
+        : name === 'color' ? spanOf(u, i, to, m, (x) => !isFresh(x, ['comment']))
+        : spanOf(u, i, to, m);
       if (j > end) (pick = m), (end = j);
     }
     if (!pick) {
@@ -207,7 +219,8 @@ function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
   return out;
 }
 
-const DROP_ORDER = ['code', 'italic', 'bold', 'sup', 'sub', 'underline', 'highlight', 'strike', 'color', 'link'];
+// (a comment last: what it says would be lost)
+const DROP_ORDER = ['code', 'italic', 'bold', 'sup', 'sub', 'underline', 'highlight', 'strike', 'color', 'link', 'comment'];
 
 /** Where `got` first differs from `want`. */
 const firstDiff = (want: Unit[], got: Unit[]) => {

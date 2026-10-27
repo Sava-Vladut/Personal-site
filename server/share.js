@@ -34,6 +34,16 @@ function sniff(b) {
 }
 
 const text = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+
+// A comment in a note (src/lib/comments.ts, a copy of its COMMENT_SOURCE): the words it's on, then what it says hidden
+// in an HTML comment. Comments are private: the app takes them out before a note goes public, and so does the server,
+// whatever it's sent. Anything that looks like a comment's hidden part goes too, written strictly or not.
+const COMMENT = new RegExp(
+  String.raw`<span class="comment">(?!</span>)((?:(?!<span class="comment">|</span><!-- comment: )(?:\\[^\n]|[^\\\n]))+?)</span><!-- comment: (?!\s)(?:[^\s%[\]|<>\x60*~=-]|[^\S\n\r  ]|%(?:25|5B|5D|7C|3C|3E|60|2A|7E|3D)|%2D(?=-|%2D)|-(?!-|%2D))+(?<!\s) -->`,
+  'g',
+);
+/** A note's text without its comments: their words stay, what they say goes. */
+export const dropComments = (s) => s.replace(COMMENT, '$1').replace(/<!--\s*comment:[\s\S]*?-->/gi, '');
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 && v < 100_000 ? Math.round(v) : undefined);
 const https = (v) => (typeof v === 'string' && v.length <= 2000 && /^https:\/\/[^\s\]]+$/.test(v) ? v : undefined);
 
@@ -127,7 +137,7 @@ export function cleanNote(raw) {
   const details = cleanDetails(raw.details);
   return {
     title: text(raw.title, 300),
-    text: text(raw.text, MAX_TEXT),
+    text: dropComments(text(raw.text, MAX_TEXT)),
     date: raw.date,
     dateEnd: typeof raw.dateEnd === 'string' && DAY.test(raw.dateEnd) && raw.dateEnd > raw.date ? raw.dateEnd : null,
     images,
@@ -139,7 +149,7 @@ export function cleanNote(raw) {
 
 /** A few words for a link preview: the note's first lines without its markup. */
 export function excerpt(note) {
-  const plain = note.text
+  const plain = dropComments(note.text)
     .replace(/^\s*\[\[(?:photo|image|album):[^\]]*\]\]\s*$/gm, ' ')
     .replace(/\[([^\]\n]+)\]\([^)\s]+\)/g, '$1')
     // footnotes: a text's [^1]: marker, and the references (src/lib/inline.ts)

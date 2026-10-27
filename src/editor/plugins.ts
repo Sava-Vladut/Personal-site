@@ -14,7 +14,7 @@ import { tableEditing } from '@tiptap/pm/tables';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
-  AUTOCORRECT, BLOCK_RULES, backspace, deleteForward, enter, exitCode, findOf, findPlugin, findStep, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
+  AUTOCORRECT, BLOCK_RULES, backspace, commentsPlugin, deleteForward, enter, exitCode, findOf, findPlugin, findStep, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
   painterPlugin, renumberChanged, stopPainter, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
 } from '../lib/noteDoc/edit';
 
@@ -135,6 +135,8 @@ function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean
     if (/^Digit[0-6]$/.test(code)) cmd = noteCommands.style(code === 'Digit0' ? 'normal' : (('h' + code.slice(5)) as 'h1'));
     // Ctrl+Alt+F: a footnote (by the key: Alt changes the letter typed on a Mac)
     else if (code === 'KeyF' || k === 'f') cmd = noteCommands.footnote;
+    // Ctrl+Alt+M: a comment, as in Word (its box beside the text takes the focus: components/CommentsPane.tsx)
+    else if (code === 'KeyM' || k === 'm') cmd = noteCommands.comment;
   } else if (e.shiftKey && !e.altKey) {
     if (k === 'x') cmd = noteCommands.mark('strike');
     // inline code moved here from Ctrl+E, which centres as in Word
@@ -443,6 +445,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     footnotes,
     // what Find finds, lit (lib/noteDoc/edit/find.ts)
     findPlugin(),
+    // a comment being written, and the one being looked at, lit (lib/noteDoc/edit/comments.ts)
+    commentsPlugin(),
     chipsInRange,
     painterPlugin(),
     // the pointer shows a brush while the Format Painter is on

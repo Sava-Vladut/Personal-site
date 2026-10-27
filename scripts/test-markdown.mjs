@@ -14,6 +14,7 @@ const bundle = await rolldown({
     load: (id) => id === '\0review:markdown' ? `
       export * from '${src('markdown.ts')}';
       export { inline, plainInline, dropTags } from '${src('inline.ts')}';
+      export { dropComments, commentWords, encodeComment, decodeComment } from '${src('comments.ts')}';
     ` : null,
   }],
 });
@@ -74,4 +75,29 @@ test('tables: their cells\' plain words a row a line, the delimiter row dropped 
   assert.equal(md.dropTags(`${T}\n<u>u</u>`), '| Name | **Age** |\n| [[note:1|Ann]] | 3 \\| 4 |\n|  | x |\nu');
   assert.equal(md.dropTags('a | b\n--- | ---'), 'a | b');
   assert.equal(md.dropTags('| a | b |'), '| a | b |', 'no delimiter row: nothing dropped');
+});
+
+test('comments are private: previews, word counts, link contexts, search text and exports never hold what they say', () => {
+  const C = (words, says) => `<span class="comment">${words}</span><!-- comment: ${md.encodeComment(says)} -->`;
+  const SECRET = 'my SECRET -- [doubt] | *x* 100%';
+  const T = `# Plan ${C('**big** idea', SECRET)}\n- ${C('task', SECRET)} done\n| ${C('cell', SECRET)} | b |\n| --- | --- |\nend`;
+  const leaks = (s) => /SECRET|doubt|comment:|<!--/.test(s);
+  assert.equal(JSON.stringify(md.inline(C('a **b**', 'why?')).map((p) => [p.t, p.s, p.note])), '[["comment","a **b**","why?"]]');
+  assert.equal(md.plainInline(`x ${C('a **b**', SECRET)} y`), 'x a b y', 'its words stay, plain');
+  assert.equal(md.stripMarkdown(T), 'Plan big idea\n• task done\ncell · b\nend');
+  assert.ok(!leaks(md.stripMarkdown(T)));
+  const { heading, preview } = md.previewOf(T, '');
+  assert.ok(!leaks(heading + preview));
+  // search and exports: the Markdown as written, the comment out (the journal's search adds what they say on its own)
+  assert.equal(md.dropTags(T), '# Plan **big** idea\n- task done\n| cell | b |\nend');
+  assert.equal(md.dropComments(T), `# Plan **big** idea\n- task done\n| cell | b |\n| --- | --- |\nend`);
+  assert.equal(JSON.stringify(md.commentWords(T)), JSON.stringify([SECRET, SECRET, SECRET]));
+  // whatever looks like one goes from what's made public, strict or not
+  assert.equal(md.dropComments('a <!-- comment: loose--> b <!--comment:x-->c `<!-- comment: in code -->`'), 'a  b c ``');
+  assert.equal(md.dropComments('a <!-- align:center -->'), 'a <!-- align:center -->', 'other HTML comments stay');
+  // what a comment says, written and read back, for any words
+  for (const w of ['', 'a--b', '---', '%2D', '%%25', '-->', '<!--', '[[x]]', '@[A]', 'a | b', '`c`', '**', '~~', '==', '- ', ' -', 'é 😀']) {
+    assert.equal(md.decodeComment(md.encodeComment(w)), w, JSON.stringify(w));
+    assert.ok(!/--|[[\]|<>`*~=]/.test(md.encodeComment(w)), `${JSON.stringify(w)} → ${md.encodeComment(w)}`);
+  }
 });

@@ -26,6 +26,9 @@ const node = (type, attrs, ...content) => S.nodes[type].create(attrs, content.fl
 const p = (...c) => node('paragraph', null, ...c);
 const doc = (...blocks) => S.nodes.doc.create(null, blocks);
 const photo = (id, layout = {}) => node('media', { media: { kind: 'photo', id, ...layout } });
+/** A comment saying `text`, and a font colour. */
+const cm = (text) => S.marks.comment.create({ text });
+const color = (c) => S.marks.color.create({ color: c });
 /** A table cell of `type` with an alignment, holding text (or the nodes given). */
 const cell = (type, align, c) => node(type, { align }, typeof c === 'string' ? (c ? txt(c) : []) : c);
 /** A table from rows of cells' texts (or nodes), the first row its header (unless every row is of `type`). */
@@ -145,12 +148,34 @@ const CORPUS = {
     '| a | b |', '| a | b |\n| --- |', '- | a |\n| --- |', '```\n| a |\n| --- |\n```', '# | a |\n| --- |', '| a |\n|---|x', '> | a |\n| --- |',
     '| a |\n- | - |', 'a \\| b\n--- \\| ---',
   ],
+  comments: [
+    'I said <span class="comment">yes</span><!-- comment: did I mean it? --> and left.',
+    '<span class="comment">**b** and [[note:n1|N]] @[Ann]</span><!-- comment: a%2D-b %25 %5Bx%5D %7C %2A %7E %3D %3C %3E %60 -->',
+    '# <span class="comment">Head</span><!-- comment: h --> <!-- align:center -->', '- [ ] <span class="comment">task</span><!-- comment: t -->',
+    '> <span class="comment">q</span><!-- comment: in a quote -->', '> [!note] <span class="comment">title</span><!-- comment: c -->',
+    '| <span class="comment">a</span><!-- comment: x %7C y --> | b |\n| --- | --- |', '<span class="comment">a <span style="color:red">b</span></span><!-- comment: c -->',
+    '*a <span class="comment">b</span><!-- comment: c%2A --> d*',
+    '<span class="comment">one</span><!-- comment: x --><span class="comment">two</span><!-- comment: y -->',
+    '<span class="comment"> spaced </span><!-- comment: tab\there  twice -->', '<span class="comment">`code`</span><!-- comment: c -->',
+    'x<span class="comment">[^1]</span><!-- comment: n -->\n\n[^1]: f', '[a <span class="comment">link</span><!-- comment: l -->](https://a.b)',
+    'ab <span class="comment">cd</span><!-- comment: multi -->\n<span class="comment">ef</span><!-- comment: multi --> gh',
+    '<span class="comment">a</span><!-- comment: ünï 😀 "q" #tag https://a.b @x a-b-c - -->', '<span class="comment">a</span><!-- comment: a%2D%2D- -->',
+    // not the strict form: the text it is
+    '<span class="comment"></span><!-- comment: x -->', '<span class="comment">a</span><!-- comment:  x -->', '<span class="comment">a</span><!-- comment: x  -->',
+    '<span class="comment">a</span><!-- comment: -->', '<span class="comment">a</span><!-- comment: a--b -->', '<span class="comment">a</span><!-- comment: a%2Db -->',
+    '<span class="comment">a</span><!-- comment: 100% -->', '<span class="comment">a</span><!-- comment: [x] -->', '<span class="comment">a</span><!-- comment: a%2d- -->',
+    '<span class="comment">a</span> <!-- comment: x -->', '<span class="comment">a</span>', '<!-- comment: x -->', '<span class="Comment">a</span><!-- comment: x -->',
+    '<span class="comment">a <span class="comment">b</span><!-- comment: x -->', '`<span class="comment">a</span><!-- comment: x -->`',
+    '\\<span class="comment">a</span><!-- comment: x -->', '<span class="comment">a\n</span><!-- comment: x -->',
+  ],
 };
 const corpus = Object.values(CORPUS).flat();
 /** The texts from before alignment, page breaks and footnotes: they must read as they always did. */
 const OLD = ['lines', 'headings', 'lists', 'quotes', 'callouts', 'code', 'hr', 'inline', 'formatting', 'pictures'].flatMap((k) => CORPUS[k]);
 /** The texts from before tables: none of them reads as one. */
-const BEFORE_TABLES = Object.entries(CORPUS).filter(([k]) => k !== 'tables').flatMap(([, v]) => v);
+const BEFORE_TABLES = Object.entries(CORPUS).filter(([k]) => k !== 'tables' && k !== 'comments').flatMap(([, v]) => v);
+/** The texts from before comments: none of them holds one. */
+const BEFORE_COMMENTS = Object.entries(CORPUS).filter(([k]) => k !== 'comments').flatMap(([, v]) => v);
 
 for (const [name, texts] of Object.entries(CORPUS)) {
   test(`${name} come back exactly`, () => {
@@ -173,6 +198,43 @@ test('notes written before alignment, page breaks and footnotes read as they did
 
 test('notes written before tables read as they did: no table in them', () => {
   for (const t of BEFORE_TABLES) nd.parseNote(t).descendants((n) => void assert.notEqual(n.type.name, 'table', JSON.stringify(t)));
+});
+
+test('notes written before comments read as they did: no comment in them', () => {
+  for (const t of BEFORE_COMMENTS) {
+    nd.parseNote(t).descendants((n) => void assert.ok(!n.marks.some((m) => m.type.name === 'comment'), JSON.stringify(t)));
+  }
+});
+
+test('comments: what they read as, and what they say written one way only', () => {
+  const comments = (t) => {
+    const out = [];
+    nd.parseNote(t).descendants((n) => {
+      const m = n.marks.find((x) => x.type.name === 'comment');
+      if (m) out.push([n.isText ? n.text : n.type.name, m.attrs.text]);
+    });
+    return out;
+  };
+  assert.deepEqual(comments('I said <span class="comment">yes</span><!-- comment: did I mean it? --> and left.'), [['yes', 'did I mean it?']]);
+  assert.deepEqual(comments('<span class="comment">a</span><!-- comment: a%2D-b %25 %5Bx%5D %7C %2A %7E %3D %3C %3E %60 -->'), [['a', 'a--b % [x] | * ~ = < > `']]);
+  assert.deepEqual(comments('<span class="comment">**b** @[Ann]</span><!-- comment: c -->'), [['b', 'c'], [' ', 'c'], ['person', 'c']]);
+  assert.deepEqual(comments('| <span class="comment">a</span><!-- comment: x %7C y --> | b |\n| --- | --- |'), [['a', 'x | y']], 'in a table\'s cell, its | never splits it');
+  // not strictly written: no comment (it's the text it is, the note shows it as written)
+  for (const t of CORPUS.comments.slice(CORPUS.comments.indexOf('<span class="comment"></span><!-- comment: x -->'))) {
+    assert.ok(comments(t).every(([, c]) => c === 'x' && t.includes('<span class="comment">b</span>')), JSON.stringify(t));
+  }
+  // any words are written so they read back the same, and in the one way the strict form allows
+  const r = rng(5);
+  const ALPHA = [...'ab -%[]|<>`*~=\\#@!:/♪é😀\t', '--', '%2D', '%25', '%5B', '-->', '<!--', '%2', ' -', '- '];
+  for (let i = 0; i < 2000; i++) {
+    const words = Array.from({ length: 1 + Math.floor(r() * 9) }, () => ALPHA[Math.floor(r() * ALPHA.length)]).join('');
+    const text = nd.serializeNote(doc(p(txt('w', S.marks.comment.create({ text: words })))));
+    const clean = words.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+    assert.deepEqual(comments(text), clean ? [['w', clean]] : [], `${JSON.stringify(words)} → ${JSON.stringify(text)}`);
+    assert.equal(roundTrip(text), text);
+    assert.ok(!/<!--[\s\S]*--[\s\S]*-->/.test(text.replace(/<!-- comment: /, '').replace(/ -->$/, '').replace(/^.*?-->/, '')) || !clean, `no -- inside: ${text}`);
+    if (clean) assert.ok(!/--/.test(text.slice(text.indexOf('<!-- comment: ') + 14, -4)), `an HTML comment never holds --: ${text}`);
+  }
 });
 
 test('tables: what they read as', () => {
@@ -337,6 +399,9 @@ const READ_NORMALISED = [
   ['| [[a|b]] | @[Ann|x] |\n|:-:|--:|\n|`a|b`|\\||', '| [[a|b]] | @[Ann|x] |\n| :---: | ---: |\n| `a|b` | \\| |'],
   ['> |a|\n>|-|', '> | a |\n> | --- |'],
   ['|a\\|\n|-|', '| a\\| |\n| --- |'],
+  // a comment goes around the styles on the same words
+  ['**<span class="comment">b</span><!-- comment: in bold -->**', '<span class="comment">**b**</span><!-- comment: in bold -->'],
+  ['[<span class="comment">link</span><!-- comment: l -->](https://a.b)', '<span class="comment">[link](https://a.b)</span><!-- comment: l -->'],
 ];
 
 test('the few texts that are written differently, read and put in shape', () => {
@@ -434,6 +499,14 @@ const EDITED = [
   ['a cell like a delimiter cell is fine on its own', doc(table([['---']])), '| --- |\n| --- |'],
   ['a cell ending in a backslash', doc(table([['a\\', 'b']])), '| a\\ | b |\n| --- | --- |'],
   ['code running from one cell into the next isn\'t read so', doc(table([['`a', 'b`']])), '| \\`a | b\\` |\n| --- | --- |'],
+  ['a comment saying nothing is left off', doc(p(txt('a', cm('')), txt('b', cm(' \n ')))), 'ab'],
+  ['a comment over lines is one line, no spaces at its ends', doc(p(txt('a', cm(' x\n\ny ')))), '<span class="comment">a</span><!-- comment: x y -->'],
+  ['a comment opens before a colour (its </span> would end the colour)', doc(p(txt('a', color('red')), txt('b', color('red'), cm('c')))),
+    '<span style="color:red">a</span><span class="comment"><span style="color:red">b</span></span><!-- comment: c -->'],
+  ['a style running past a comment holds it', doc(p(txt('a', cm('c'), 'bold'), txt(' b', 'bold'))), '**<span class="comment">a</span><!-- comment: c --> b**'],
+  ['a comment keeps the spaces a heading starts with', doc(node('heading', { level: 1, sep: ' ' }, txt('  x', cm('c')))), '# <span class="comment">  x</span><!-- comment: c -->'],
+  ['plain comment syntax is escaped', doc(p(txt('<span class="comment">a</span><!-- comment: x -->'))), '\\<span class\\="comment">a\\</span>\\<!-- comment: x -->'],
+  ['a comment in a cell, what it says holding |', doc(table([[[txt('a', cm('x | y'))]]])), '| <span class="comment">a</span><!-- comment: x %7C y --> |\n| --- |'],
 ];
 
 test('edited content is written so it reads back the same, keeping every character', () => {
@@ -645,7 +718,7 @@ function generator(seed, { wild = false } = {}) {
           const url = 'https://' + pick(['a.b', 'ex.am/p_q', 'x.y/a?b=c']);
           out.push(S.text(url, [...ctx, link(url, true)]), S.text(' ', ctx));
         } else if (roll < 0.5 && depth < 3) {
-          const name = pick(['bold', 'italic', 'strike', 'highlight', 'link', 'underline', 'sup', 'sub', 'color'].filter((n) =>
+          const name = pick(['bold', 'italic', 'strike', 'highlight', 'link', 'underline', 'sup', 'sub', 'color', 'comment'].filter((n) =>
             !names.includes(n) && (wild || !(n === 'bold' && names.includes('italic'))) && !(n === 'link' && afterNote)
             && !((n === 'sup' || n === 'sub') && (names.includes('sup') || names.includes('sub')))));
           const afterStar = !wild && prev && (prev.marks.some((m) => m.type.name === 'bold' && !names.includes('bold')) || (prev.isText && prev.text.endsWith('*')));
@@ -653,6 +726,8 @@ function generator(seed, { wild = false } = {}) {
           const from = out.length;
           const made = name === 'link' ? link(pick(HREFS))
             : name === 'color' ? S.marks.color.create({ color: pick(['red', 'orange', 'green', 'blue', 'purple', 'gray']) })
+            // what a comment says (wild: on two lines, spaces at its ends, or nothing)
+            : name === 'comment' ? S.marks.comment.create({ text: pick(['why?', 'a -- b', '[x] | *y* ~~z~~ ==w==', '100% sure', 'ünï 😀 <u>', 'x-->y', ...(wild ? ['', ' ', ' two\nlines '] : [])]) })
             : name === 'highlight' ? S.marks.highlight.create({ color: chance(0.5) ? null : pick(['lightgreen', 'lightblue', 'pink', 'plum', 'lightsalmon', 'lightgray']) })
             : S.marks[name].create();
           fill([...ctx, made], depth + 1);
@@ -811,6 +886,7 @@ function textGenerator(seed) {
     '|', '\\', '\\*', '\\#', '#tag', ' #x/y', '!', ':', '-', '1.', '>', '[!note]', '****', '~~~~', '====', '***', '_', '{', '}',
     '<', '<u>', '</u>', '<sup>', '</sup>', '<sub>', '</sub>', '<span style="color:red">', '<span style="color:pink">', '</span>',
     '<mark style="background:plum">', '<mark>', '</mark>', '[^1]', '[^x_2]', '^', '[^', '<!--', ' -->',
+    '<span class="comment">', '</span><!-- comment: why? -->', '</span><!-- comment: a%2D-b %7C -->', '</span><!-- comment: bad--x -->', '<!-- comment: x -->',
   ];
   const ENDS = ['', '', '', '', ' <!-- align:center -->', ' <!-- align:right -->', '<!-- align:justify -->', ' <!-- align:left -->'];
   // a table's rows and delimiter rows, so that tables (and lines that nearly are one) come up

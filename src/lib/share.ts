@@ -6,6 +6,7 @@
 import { photoBlob } from './photos';
 import { getPeople, toast, type Entry, type Music, type Share, type SharePart, type WebImage } from './store';
 import { t } from './i18n';
+import { dropComments } from './comments';
 
 /** The private details a note's page shows when chosen: people by name only, a place by name only (never where on the map). */
 export interface PublicDetails {
@@ -58,9 +59,12 @@ export function detailsOf(e: Entry, parts: SharePart[]): PublicDetails | undefin
   return Object.keys(out).length ? out : undefined;
 }
 
-/** Tags written in the text, as the plain words they stand for: @[Ana] → Ana, [[note:id|Title]] → Title, ♪[Song] → ♪ Song. */
+/**
+ * The text as it goes public: tags as the plain words they stand for (@[Ana] → Ana, [[note:id|Title]] → Title, ♪[Song] →
+ * ♪ Song), and comments taken out, their words kept (lib/comments.ts: they're private; the server takes them out too).
+ */
 export function plainTags(text: string) {
-  return text
+  return dropComments(text)
     .replace(/@\[(?:person:[^\]|\n]+\|)?([^\]\n]+)\]/g, '$1')
     .replace(/♪\[(?:song:[^\]|\n]+\|)?([^\]\n]+)\]/g, '♪ $1')
     .replace(/\[\[(?!(?:photo|image|album):)(?:[^\]|\n]+\|)?([^\]\n]+)\]\]/g, '$1');

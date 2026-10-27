@@ -33,6 +33,7 @@ import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails
 import { dropLayout, MediaBlock, MediaTools, PictureTextSheet, sideAt, type Side } from '../components/NoteMedia';
 import { FindBar } from '../components/FindBar';
 import { NavPane } from '../components/NavPane';
+import { CommentsPane } from '../components/CommentsPane';
 import { useWide } from '../components/ribbon/Ribbon';
 import { MusicDeck } from '../components/music';
 import { burst, MentionStrip } from '../components/mentions';
@@ -218,6 +219,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // the Navigation pane on a phone (a sheet; on a computer it's a pane kept open or not in lib/docView.ts)
   const [navSheet, setNavSheet] = useState(false);
   const wide = useWide();
+  // on a phone, the comment whose sheet is open (where its words start)
+  const [commentSheet, setCommentSheet] = useState<number | null>(null);
   // the selected picture's Alt Text or Caption being written
   const [picText, setPicText] = useState<{ key: string; kind: 'alt' | 'caption' } | null>(null);
 
@@ -1140,6 +1143,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             onMedia={setSlots}
             knows={knows}
             margins={margins}
+            onCommentTap={(at) => !wide && setCommentSheet(at)}
             onReady={(h) => {
               if (!h) return;
               noteRef.current = h;
@@ -1182,6 +1186,9 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               at the end, the keyboard staying up when it's up already */}
           <div class="read-tail" aria-hidden="true" onPointerDown={(e) => !reading && e.preventDefault()} onClick={() => write('end')} />
         </div>
+
+        {/* on a computer, the comments in the margin right of the page */}
+        {wide && <CommentsPane note={note} wide reading={reading} open={null} onOpen={setCommentSheet} />}
 
         {backlinks.length > 0 && (
           <section class="backlinks" aria-label={t('Linked from')}>
@@ -1290,6 +1297,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       {dropping && <div class="drop-overlay" aria-hidden="true"><span class="glass"><Icon name="photo-plus" size={20} /> {t('Drop to add photos')}</span></div>}
 
       {!isCheckin && <ShareSheet open={open === 'share'} onClose={close} entry={draft} onChange={(share) => update({ share })} />}
+      {!wide && <CommentsPane note={note} wide={false} reading={reading} open={commentSheet} onOpen={setCommentSheet} />}
       <NavPane note={note} wide={wide} open={wide ? !!docView?.nav : navSheet} onClose={() => (wide ? setDocView({ nav: false }) : setNavSheet(false))} />
       <PictureTextSheet
         kind={picText?.kind ?? null}

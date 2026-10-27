@@ -133,6 +133,9 @@ export function parseInline(text: string, marks: readonly Mark[] = [], schema: S
       case 'color':
         out.push(...parseInline(p.s, m.color.create({ color: p.color }).addToSet(marks), schema));
         break;
+      case 'comment':
+        out.push(...parseInline(p.s, m.comment.create({ text: p.note }).addToSet(marks), schema));
+        break;
       default: {
         const type = p.t === 'b' ? m.bold : p.t === 'i' ? m.italic : p.t === 's' ? m.strike : p.t === 'u' ? m.underline : p.t === 'sup' ? m.sup : m.sub;
         out.push(...parseInline(p.s, type.create().addToSet(marks), schema));
