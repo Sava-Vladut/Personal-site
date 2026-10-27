@@ -212,7 +212,12 @@ export function Repos() {
         {ready && connected && items && !rows.length && (
           <div class="empty"><h2 class="title-s">{t('No repos yet')}</h2><p>{t('Repos you own on GitHub show up here.')}</p></div>
         )}
-        {rows.length > 0 && !shown.length && <p class="empty-note center">{filter === 'journaled' && !q.trim() ? t('Nothing journaled yet. Open a repo to rate it or say how it feels.') : t('No repos match.')}</p>}
+        {rows.length > 0 && !shown.length && (
+          <div class="empty-note center">
+            <p>{filter === 'journaled' && !q.trim() ? t('Nothing journaled yet. Open a repo to rate it or say how it feels.') : t('No repos match.')}</p>
+            <button class="btn btn-quiet" onClick={() => { setQ(''); setFilter('all'); }}>{t('Clear filters')}</button>
+          </div>
+        )}
 
         {shown.length > 0 && (
           <ol class="repo-tree" key={filter + q}>

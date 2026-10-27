@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.10',
+    date: '2026-10-27',
+    changes: [
+      'When a repo search or filter finds nothing, a Clear filters button shows them all again',
+    ],
+  },
+  {
     version: '1.138.9',
     date: '2026-10-27',
     changes: [
