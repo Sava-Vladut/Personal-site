@@ -19,7 +19,6 @@
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 //  • streamer stats: what a Twitch channel plays and for how long (server/streamers.js), from Twitch's public API,
 //    with the miner's channels (and any looked up lately) recorded every few minutes into STREAMERS_DIR.
-//  • Global Ops port: how the browser port in GLOPS_DIR is going, read live from its folder (server/glops.js). Admin only.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
@@ -32,7 +31,6 @@ import { readJson } from './http-request.js';
 import { json } from './http-response.js';
 import { createShareHandler } from './share.js';
 import { createStatusHandler } from './status.js';
-import { createGlopsHandler } from './glops.js';
 import { createLearnHandler } from './learn.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
@@ -56,8 +54,6 @@ const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
 // what the streamer stats recorder has seen, one file per channel
 const STREAMERS_DIR = process.env.STREAMERS_DIR || join(ROOT, 'data', 'streamers');
-// the Global Ops port's folder (holding port/, dist/, shots/ and activity.jsonl), read-only
-const GLOPS_DIR = process.env.GLOPS_DIR || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 // where repos are cloned on the server, and the numeric GitHub user id of the only account allowed to clone
 const CLONE_DIR = process.env.CLONE_DIR || '';
@@ -897,7 +893,6 @@ const learnPage = createLearnHandler({ indexFile: join(DIST, 'index.html') });
 const status = createStatusHandler({ directory: STATUS_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
 const streamers = createStreamerHandler({ directory: STREAMERS_DIR, channelsFile: TWITCH_CHANNELS });
-const glops = createGlopsHandler({ directory: GLOPS_DIR, isAdmin });
 // the recorder runs where the miner does; elsewhere (tests, a laptop) channels are only looked up when asked
 if (TWITCH_CHANNELS) streamers.start();
 
@@ -917,7 +912,6 @@ async function api(req, res, url) {
     if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
     if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p);
-    if (p === '/api/glops' || p.startsWith('/api/glops/')) return await glops(req, res, p);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.
