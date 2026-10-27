@@ -8,10 +8,27 @@ const IMG = 'mm-img-v1';
 // caches of the removed voice typing, cleared from devices that still have them
 const RETIRED = ['mm-voice-v1', 'transformers-cache'];
 
+const FINGERPRINTED = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/;
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(APP).then((c) => c.addAll(PRECACHE.length ? PRECACHE : ['/', '/theme.js', '/manifest.webmanifest', '/icon.svg'])));
+  e.waitUntil(precache());
   self.skipWaiting();
 });
+
+// An update downloads only what changed: hashed files the running build already cached are copied across.
+async function precache() {
+  const cache = await caches.open(APP);
+  if (!PRECACHE.length) return cache.addAll(['/', '/theme.js', '/manifest.webmanifest', '/icon.svg']);
+  const previous = (await caches.keys()).filter((k) => k.startsWith('mm-app-') && k !== APP).at(-1);
+  const old = previous && (await caches.open(previous));
+  const fresh = [];
+  await Promise.all(PRECACHE.map(async (url) => {
+    const hit = old && FINGERPRINTED.test(url) && (await old.match(url));
+    if (hit) await cache.put(url, hit);
+    else fresh.push(url);
+  }));
+  await cache.addAll(fresh);
+}
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -20,7 +37,11 @@ self.addEventListener('activate', (e) => {
       // Keep that build's immutable assets until the next update, with a bounded two-build cache.
       const previous = keys.filter((k) => k.startsWith('mm-app-') && k !== APP).at(-1);
       return Promise.all(keys.filter((k) => RETIRED.includes(k) || ((k.startsWith('mm-app-') || k.startsWith('mm-img-')) && k !== APP && k !== previous && k !== IMG)).map((k) => caches.delete(k)));
-    }).then(() => self.clients.claim()),
+    }).then(() => Promise.all([
+      self.clients.claim(),
+      // the page request starts while the worker is still waking, instead of after
+      self.registration?.navigationPreload?.enable().catch(() => {}),
+    ])),
   );
 });
 
@@ -50,9 +71,9 @@ async function cacheFirst(req, name, previousBuild = false) {
   return res;
 }
 
-async function networkFirst(req, fallback) {
+async function networkFirst(req, fallback, preload) {
   try {
-    const res = await fetch(req);
+    const res = (await preload) || (await fetch(req));
     // A navigation to an image or download must not replace the offline app shell.
     if (res.ok && (!fallback || /^text\/html(?:;|$)/i.test(res.headers.get('Content-Type') || ''))) await remember(fallback ?? req, res, APP);
     else if (res.status >= 500) return (await cached(fallback ?? req, APP)) || res;
@@ -71,11 +92,10 @@ self.addEventListener('fetch', (e) => {
     // /game is a separate site served by Caddy: never cache it, and never let its page replace the app shell.
     if (url.pathname === '/game' || url.pathname.startsWith('/game/')) return;
     // A public note's, status's or shared Learn page carries its title in its head: never keep it as the app's own offline page.
-    if (req.mode === 'navigate' && (url.pathname.startsWith('/s/') || url.pathname.startsWith('/status/') || /^\/learn(?:\/|$)/.test(url.pathname))) return e.respondWith(fetch(req).catch(async () => (await cached('/', APP)) || Response.error()));
-    if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/'));
+    if (req.mode === 'navigate' && (url.pathname.startsWith('/s/') || url.pathname.startsWith('/status/') || /^\/learn(?:\/|$)/.test(url.pathname))) return e.respondWith(Promise.resolve(e.preloadResponse).then((res) => res || fetch(req)).catch(async () => (await cached('/', APP)) || Response.error()));
+    if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/', e.preloadResponse));
     if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) {
-      const fingerprinted = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/.test(url.pathname);
-      return e.respondWith(cacheFirst(req, APP, fingerprinted));
+      return e.respondWith(cacheFirst(req, APP, FINGERPRINTED.test(url.pathname)));
     }
     return e.respondWith(networkFirst(req));
   }

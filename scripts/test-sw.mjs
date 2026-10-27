@@ -7,7 +7,7 @@ const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8
 const origin = 'https://example.test';
 const key = (request) => new URL(typeof request === 'string' ? request : request.url, origin).href;
 
-function worker({ fetch = async () => new Response('network'), entries = {}, failRead = false, failWrite = false } = {}) {
+function worker({ fetch = async () => new Response('network'), entries = {}, failRead = false, failWrite = false, precache = [] } = {}) {
   const listeners = {};
   const stores = new Map(Object.entries(entries).map(([name, responses]) => [name, new Map(Object.entries(responses).map(([path, body]) => [key(path), new Response(body)]))]));
   let claimed = false;
@@ -24,6 +24,7 @@ function worker({ fetch = async () => new Response('network'), entries = {}, fai
           if (failWrite) throw new Error('Quota exceeded');
           store.set(key(request), response);
         },
+        addAll: async (urls) => { for (const url of urls) store.set(key(url), await fetch({ url: key(url) })); },
       };
     },
     // Matching across caches reproduces the browser's oldest-cache-first behavior.
@@ -31,17 +32,22 @@ function worker({ fetch = async () => new Response('network'), entries = {}, fai
       for (const store of stores.values()) if (store.has(key(request))) return store.get(key(request)).clone();
     },
   };
-  runInNewContext(source, {
-    self: { addEventListener: (type, handler) => { listeners[type] = handler; }, clients: { claim: async () => { claimed = true; } } },
+  runInNewContext(source.replace('const PRECACHE = [];', `const PRECACHE = ${JSON.stringify(precache)};`), {
+    self: { addEventListener: (type, handler) => { listeners[type] = handler; }, skipWaiting() {}, clients: { claim: async () => { claimed = true; } } },
     caches, fetch, URL, Response, location: { origin },
   });
   return {
     stores,
     claimed: () => claimed,
-    request: async (path, mode = 'cors', method = 'GET') => {
+    request: async (path, mode = 'cors', method = 'GET', preloadResponse) => {
       let response;
-      listeners.fetch({ request: { url: key(path), method, mode }, respondWith: (promise) => { response = promise; } });
+      listeners.fetch({ request: { url: key(path), method, mode }, preloadResponse, respondWith: (promise) => { response = promise; } });
       return await response;
+    },
+    install: async () => {
+      let completion;
+      listeners.install({ waitUntil: (promise) => { completion = promise; } });
+      await completion;
     },
     activate: async () => {
       let completion;
@@ -149,4 +155,25 @@ test('a public note page never replaces the offline app shell', async () => {
   assert.equal(await app.stores.get('mm-app-dev').get(new URL('/', origin).href).text(), 'app shell');
   const offline = worker({ entries: { 'mm-app-dev': { '/': 'app shell' } }, fetch: async () => { throw new Error('Offline'); } });
   assert.equal(await (await offline.request(`/s/${token}`, 'navigate')).text(), 'app shell');
+});
+
+test('an update copies unchanged hashed files from the running build and downloads the rest', async () => {
+  const fetched = [];
+  const app = worker({
+    precache: ['/', '/theme.js', '/assets/Editor-12345678.js', '/assets/Journal-abcdefgh.js'],
+    entries: { 'mm-app-old': { '/assets/Editor-12345678.js': 'kept screen', '/theme.js': 'old theme' } },
+    fetch: async (req) => { fetched.push(new URL(req.url).pathname); return new Response('downloaded'); },
+  });
+  await app.install();
+  assert.deepEqual(fetched.sort(), ['/', '/assets/Journal-abcdefgh.js', '/theme.js']);
+  assert.equal(await app.stores.get('mm-app-dev').get(key('/assets/Editor-12345678.js')).text(), 'kept screen');
+});
+
+test('navigations use the preloaded response instead of fetching again', async () => {
+  let calls = 0;
+  const html = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
+  const app = worker({ fetch: async () => { calls++; return new Response('fetched', html); } });
+  assert.equal(await (await app.request('/journal', 'navigate', 'GET', Promise.resolve(new Response('preloaded', html)))).text(), 'preloaded');
+  assert.equal(await (await app.request('/journal', 'navigate', 'GET', Promise.resolve(undefined))).text(), 'fetched');
+  assert.equal(calls, 1);
 });

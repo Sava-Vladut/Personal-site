@@ -214,9 +214,11 @@ export async function addPhotos(files: Iterable<File>) {
 
 /** Deletes photos no note refers to. Recent ones are kept: they may belong to a note still being written in another tab. */
 export async function prunePhotos(keep: Set<string>) {
-  const all = await db.photos<PhotoRecord>();
+  // Runs on every start: read keys only, and whole records (with their blobs) just for the few no entry uses.
+  const orphans = (await db.photoIds()).filter((id) => !keep.has(id));
   const cutoff = Date.now() - 86_400_000;
-  const stale = all.filter((p) => !keep.has(p.id) && p.created < cutoff).map((p) => p.id);
+  const stale: string[] = [];
+  for (const id of orphans) if (((await db.photo<PhotoRecord>(id))?.created ?? 0) < cutoff) stale.push(id);
   if (stale.length) await db.delPhotos(stale);
 }
 

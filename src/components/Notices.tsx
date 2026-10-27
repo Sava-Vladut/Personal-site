@@ -3,7 +3,7 @@
 // away (until tomorrow, or a while longer for the ones that would only come back the same). Only a few show at once.
 import type { ComponentChildren, FunctionComponent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import type { Release } from '../data/changelog';
+import { LATEST } from '../data/latest';
 import { coreOf, EMOTION, shortName } from '../data/emotions';
 import { useCountdowns, useNow } from '../lib/countdown';
 import { addDays, DAY, diffDays, keyOf, shortDate, todayKey } from '../lib/dates';
@@ -45,31 +45,26 @@ function warmth(list: Entry[]) {
 export type News = ReturnType<typeof useNews>;
 
 /**
- * The newest release, and its sheet once asked for: both load after the journal, so its first paint stays light. The
+ * The newest release (written in by the build), and its sheet once asked for, which loads then. The
  * sheet is drawn outside the day's panel (by Journal, like the song picker), where the panel can't clip it.
  */
 export function useNews() {
-  const [latest, setLatest] = useState<Release | null>(null);
   const [seen, setSeen] = useState(() => {
     try { return localStorage.getItem(SEEN); } catch { return null; }
   });
   const [Sheet, setSheet] = useState<FunctionComponent<{ open: boolean; onClose: () => void }> | null>(null);
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    import('../data/changelog').then((m) => setLatest(m.CHANGELOG[0]), () => {});
-  }, []);
   const show = () => {
-    if (!latest) return;
-    try { localStorage.setItem(SEEN, latest.version); } catch {}
+    try { localStorage.setItem(SEEN, LATEST.version); } catch {}
     import('./Changelog').then((m) => {
       setSheet(() => m.ChangelogSheet);
       setOpen(true);
     }, () => {});
   };
   // the line stays while the sheet is open, so it doesn't jump away under your finger
-  const fresh = !!latest && (latest.version !== seen || open);
-  const sheet = Sheet && <Sheet open={open} onClose={() => { setOpen(false); setSeen(latest?.version ?? null); }} />;
-  return { latest: fresh ? latest : null, show, sheet };
+  const fresh = LATEST.version !== seen || open;
+  const sheet = Sheet && <Sheet open={open} onClose={() => { setOpen(false); setSeen(LATEST.version); }} />;
+  return { latest: fresh ? LATEST : null, show, sheet };
 }
 
 interface Row {

@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.18',
+    date: '2026-10-27',
+    changes: [
+      'Opening the app starts loading the page while the offline helper is still waking, instead of after it',
+      'Updates download only the files that changed, instead of the whole app again',
+      'Starting up no longer reads every stored photo just to tidy away unused ones',
+      'The journal and Settings no longer load the full list of changes just to show the newest version',
+    ],
+  },
+  {
     version: '1.138.17',
     date: '2026-10-27',
     changes: [

@@ -14,13 +14,12 @@ import { Sheet } from '../components/Sheet';
 import { WheelEditor } from '../components/WheelEditor';
 import { WidgetEditor } from '../components/WidgetEditor';
 import { HomeSheet, placeLabel } from '../components/weather';
-import { VERSION } from '../data/changelog';
+import { LATEST } from '../data/latest';
 import { formatCode, joinSync, removeServerCopy, startSync, stopSync, useSync } from '../lib/sync';
 import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18n';
 import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
-import { ChangelogSheet } from '../components/Changelog';
 import '../styles/shared.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
@@ -60,6 +59,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const [gh, setGh] = useState<GithubStatus | null>(null);
   const [setup, setSetup] = useState(false);
   const [changelog, setChangelog] = useState(false);
+  // the full changelog (100+ KB) loads only when asked for
+  const [Changelog, setChangelogSheet] = useState<typeof import('../components/Changelog').ChangelogSheet | null>(null);
   const [exporting, setExporting] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
@@ -463,7 +464,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
         </section>
       )}
 
-      <button class="version" onClick={() => setChangelog(true)}>{t('Version {v}', { v: VERSION })}</button>
+      <button class="version" onClick={() => import('../components/Changelog').then((m) => { setChangelogSheet(() => m.ChangelogSheet); setChangelog(true); }, () => {})}>{t('Version {v}', { v: LATEST.version })}</button>
 
       <p class="credit">
         {t('Emotion wheel from Mindful · Emotion Quest. Music, artwork and player from Spotify. Images from Openverse, each under its own open license.')}{' '}
@@ -473,7 +474,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
       <ConnectSetup redirect={sp?.redirect} open={setup} onClose={() => setSetup(false)} />
       <HomeSheet open={homeOpen} current={settings.home} onClose={() => setHomeOpen(false)} onPick={setHome} />
       <JoinSheet open={joining} onClose={() => setJoining(false)} />
-      <ChangelogSheet open={changelog} onClose={() => setChangelog(false)} />
+      {Changelog && <Changelog open={changelog} onClose={() => setChangelog(false)} />}
       <ExportSheet open={exporting} onClose={() => setExporting(false)} />
     </div>
   );

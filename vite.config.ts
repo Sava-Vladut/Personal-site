@@ -3,6 +3,7 @@ import preact from '@preact/preset-vite';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { CHANGELOG } from './src/data/changelog';
 
 // Writes every built file into dist/sw.js, so the service worker caches the whole app on install
 // and one online visit is enough to work offline (Safari / iOS Home Screen included).
@@ -66,5 +67,7 @@ export default defineConfig({
     // The Node server (npm start / scripts/dev.mjs) handles /api
     proxy: { '/api': `http://localhost:${process.env.PORT || 8085}` },
   },
+  // data/latest.ts: the newest release without shipping the whole changelog to every start
+  define: { __LATEST_RELEASE__: JSON.stringify(CHANGELOG[0]) },
   build: { target: 'es2022', cssMinify: true },
 });
