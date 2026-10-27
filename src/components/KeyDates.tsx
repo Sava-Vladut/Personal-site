@@ -5,6 +5,7 @@ import { dateName, KEY_DATE_LABEL, nextOf, whatsComing, whenLabel } from '../lib
 import { Icon, type UiName } from './icons';
 import { Sheet } from './Sheet';
 import { LOCALE, t } from '../lib/i18n';
+import '../styles/shared.css'; // .share-error
 
 const ICON: Record<KeyDateKind, UiName> = { birthday: 'cake', anniversary: 'heart', other: 'calendar-event' };
 const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(LOCALE, { month: 'long' }));
@@ -137,9 +138,9 @@ function KeyDateSheet({ open, value, first, hasBirthday, onClose, onSave, onRemo
             aria-invalid={!yearOk}
           />
         </div>
-        <p class="muted small">
-          {kind === 'birthday' ? t('Add the year they were born to see how old they’re turning.') : kind === 'anniversary' ? t('Add the year to count the years.') : t('The year is optional.')}
-          {' '}{t('It shows on your journal in the two weeks before.')}
+        <p class={yearOk ? 'muted small' : 'share-error'} role={yearOk ? undefined : 'alert'}>
+          {!yearOk ? t('The year has to be a whole number from 1800 to {year}.', { year: new Date().getFullYear() }) : kind === 'birthday' ? t('Add the year they were born to see how old they’re turning.') : kind === 'anniversary' ? t('Add the year to count the years.') : t('The year is optional.')}
+          {yearOk && <> {t('It shows on your journal in the two weeks before.')}</>}
         </p>
       </div>
     </Sheet>

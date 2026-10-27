@@ -520,6 +520,7 @@ export const RO: Record<string, string> = {
   'Check-in deleted': 'Check-in șters',
   'Undo': 'Anulează',
   'Counted': 'Numărat',
+  'The year has to be a whole number from 1800 to {year}.': 'Anul trebuie să fie un număr întreg între 1800 și {year}.',
   'Pinned to the top': 'Fixată sus',
   'Unpinned': 'Nu mai e fixată',
   'Untitled': 'Fără titlu',

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.12',
+    date: '2026-10-27',
+    changes: [
+      'A key date with a year that can’t be right now says why Add is greyed out, and the year field turns red',
+      'Any field that stops you saving turns red, such as a countdown that ends before it starts',
+    ],
+  },
+  {
     version: '1.138.11',
     date: '2026-10-27',
     changes: [

@@ -273,6 +273,8 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 }
 textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ink) 10%, transparent); }
+/* a field that blocks saving says so in red, next to the sentence that says why */
+.input[aria-invalid='true'] { border-color: var(--danger); }
 .input-s { width: auto; min-height: 38px; font-size: var(--text-base); }
 .search {
   display: flex; align-items: center; gap: 8px; height: var(--h-m); padding: 0 14px;
