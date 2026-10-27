@@ -474,7 +474,10 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
                 ))}
               </div>
             ) : (
-              <p class="empty-note">{t('No trap matches that. Which is, of course, exactly what a trap would want you to think.')}</p>
+              <div class="empty-note">
+                <p>{t('No trap matches that. Which is, of course, exactly what a trap would want you to think.')}</p>
+                <button class="btn btn-quiet" onClick={() => { setQuery(''); setFamily('all'); }}>{t('Clear filters')}</button>
+              </div>
             )}
           </div>
 

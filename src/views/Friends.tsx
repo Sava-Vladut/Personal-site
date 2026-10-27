@@ -569,11 +569,14 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
               </div>
             )}
             {!shown.length && (
-              <p class="empty-note">
-                {filter === 'practising' && !query.trim()
-                  ? t('Nothing in practice yet. Open a principle and tap “Practise this”.')
-                  : t('No principle matches that. Try talking in terms of what it wants.')}
-              </p>
+              <div class="empty-note">
+                <p>
+                  {filter === 'practising' && !query.trim()
+                    ? t('Nothing in practice yet. Open a principle and tap “Practise this”.')
+                    : t('No principle matches that. Try talking in terms of what it wants.')}
+                </p>
+                <button class="btn btn-quiet" onClick={() => { setQuery(''); setFilter('all'); }}>{t('Clear filters')}</button>
+              </div>
             )}
           </div>
 

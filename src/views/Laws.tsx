@@ -517,7 +517,12 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
                 );
               })}
             </div>
-            {!shown.length && <p class="empty-note">{t('No law matches that. Saying less than necessary, perhaps.')}</p>}
+            {!shown.length && (
+              <div class="empty-note">
+                <p>{t('No law matches that. Saying less than necessary, perhaps.')}</p>
+                <button class="btn btn-quiet" onClick={() => { setQuery(''); setRealm('all'); }}>{t('Clear filters')}</button>
+              </div>
+            )}
           </section>
         </div>
       </div>

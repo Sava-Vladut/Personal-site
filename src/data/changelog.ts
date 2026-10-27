@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.138.9',
+    date: '2026-10-27',
+    changes: [
+      'In Mind traps, Laws of power and Win friends, a search or filter that finds nothing offers Clear filters',
+    ],
+  },
+  {
     version: '1.138.8',
     date: '2026-10-27',
     changes: [
