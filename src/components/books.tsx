@@ -186,7 +186,7 @@ export function BookSheet({ open, onClose, onPick, title = t('Add a book'), stat
     <Sheet open={open} onClose={close} title={title} tall>
       <label class="search">
         <Icon name="search" size={18} />
-        <input type="search" placeholder={t('Title, author or ISBN')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Find a book')} />
+        <input type="search" autoFocus placeholder={t('Title, author or ISBN')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Find a book')} />
       </label>
       {mine.length > 0 && (
         <>

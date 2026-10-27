@@ -171,7 +171,7 @@ function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
     <div class="stack">
       <label class="search">
         <Icon name="search" size={18} />
-        <input type="search" placeholder={t('Songs, artists, or paste a link')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search Spotify')} />
+        <input type="search" autoFocus placeholder={t('Songs, artists, or paste a link')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search Spotify')} />
       </label>
       <div class="tracks fade-rows">{res.items.map(row)}</div>
       {res.busy && <p class="hint center">{t('Searching…')}</p>}
