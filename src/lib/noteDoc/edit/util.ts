@@ -194,3 +194,33 @@ export function replaceSelectionText(tr: Transaction, text: string): Transaction
   deleteSelectionSafe(tr);
   return text ? tr.insertText(text) : tr;
 }
+
+/**
+ * Puts a block in at the selection (deleted first, safely): in place of an empty line, or before or after the line at
+ * its start or end, or splitting it (the words after go on a plain line below, aligned as it was); in a callout's
+ * title, as the first block of its body. The position just before it, or null where a block can't go (code, a table's
+ * cell), `tr` then left as it was.
+ */
+export function placeBlock(tr: Transaction, node: PMNode): number | null {
+  const $s = tr.selection.$from;
+  if (!$s.parent.isTextblock || $s.parent.type.spec.code || $s.parent.type.spec.tableRole || !tr.selection.$to.parent.isTextblock) return null;
+  if (!tr.selection.empty) deleteSelectionSafe(tr);
+  const $c = tr.selection.$from;
+  const tb = $c.parent;
+  if (!tb.isTextblock || tb.type.spec.code || tb.type.spec.tableRole) return null;
+  const p = tr.doc.type.schema.nodes.paragraph;
+  let at: number;
+  if (!tb.content.size && tb.type.name !== 'calloutTitle') tr.replaceWith((at = $c.before()), $c.after(), node);
+  else {
+    if (tb.type.name === 'calloutTitle') at = $c.after(); // the first thing in the callout's body
+    else if ($c.parentOffset === 0) at = $c.before();
+    else if ($c.parentOffset === tb.content.size) at = $c.after();
+    else {
+      const align = tb.type.name === 'paragraph' || tb.type.name === 'heading' ? tb.attrs.align ?? null : null;
+      tr.split($c.pos, 1, [{ type: p, attrs: { align } }]);
+      at = $c.pos + 1;
+    }
+    tr.insert(at, node);
+  }
+  return at;
+}

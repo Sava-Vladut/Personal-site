@@ -29,6 +29,7 @@ const bundle = await rolldown({
         export { NoteBody } from '${root}src/editor/NoteBody.tsx';
         export { tidyPastedHTML } from '${root}src/editor/paste.ts';
         export { tagDecorations } from '${root}src/editor/plugins.ts';
+        export { Ribbon } from '${root}src/components/ribbon/Ribbon.tsx';
         export { h, render } from 'preact';
         export { act } from 'preact/test-utils';
       `;
@@ -869,4 +870,174 @@ test('a picture’s caption and alt text are kept in its line', () => {
   assert.deepEqual(plain(n.media.list()[0]), { kind: 'photo', id: 'p1', size: 50, align: 'left', caption: 'Our trip', alt: 'A boat' });
   n.media.meta('photo:p1', { caption: '' });
   assert.equal(n.text(), 'a\n[[photo:p1 50 left|alt=A boat]]\nb');
+});
+
+/* ---------- tables ---------- */
+
+test('a table opens drawn as a table (scrolling across in its box), and writes back exactly', () => {
+  const text = 'Intro\n| Name | **Age** |\n| :--- | :---: |\n| @[person:p1|Ann] | 3 \\| 4 |\n|  | x |\nafter';
+  const { n, host } = mount(text);
+  assert.equal(n.text(), text);
+  const box = host.querySelector('.note-editor > .md-table');
+  assert.ok(box, 'a box around it');
+  const rows = [...box.querySelectorAll('table > tbody > tr')];
+  assert.equal(rows.length, 3);
+  assert.deepEqual([...rows[0].children].map((c) => [c.tagName, c.textContent, c.style.textAlign]), [['TH', 'Name', 'left'], ['TH', 'Age', 'center']]);
+  assert.deepEqual([...rows[1].children].map((c) => [c.tagName, c.style.textAlign]), [['TD', 'left'], ['TD', 'center']]);
+  assert.equal(rows[1].querySelector('.mention').textContent, 'Ann');
+  assert.equal(rows[0].querySelector('strong').textContent, 'Age');
+  // reading: the same view, not editable
+  const r = mount(text, { editable: false });
+  assert.equal(r.host.querySelectorAll('.md-table td').length, 4);
+});
+
+test('Insert › Table from the ribbon, then Tab, Enter and the Table tab\'s commands in it', async () => {
+  const { n, view, press, type, window } = mount('');
+  const lit = () => new Promise((r) => window.requestAnimationFrame(() => r(n.lit())));
+  n.focus('end');
+  assert.equal((await lit()).table, false);
+  assert.ok(n.cmds.insertTable(2, 2));
+  assert.equal((await lit()).table, true);
+  type('a');
+  press('Tab');
+  type('b');
+  press('Tab');
+  type('c');
+  press('Enter'); // the cell below: a row added
+  type('d');
+  assert.equal(n.text(), '| a | b |\n| --- | --- |\n| c |  |\n| d |  |\n');
+  press('Shift-Tab'); // back a cell: its words selected
+  assert.equal(view.state.selection.empty, true, 'an empty cell');
+  assert.ok(n.cmds.table('center'));
+  assert.ok(n.cmds.table('rowAbove'));
+  assert.equal((await lit()).cellAlign, 'center');
+  assert.equal(n.text(), '| a | b |\n| --- | :---: |\n|  |  |\n| c |  |\n| d |  |\n');
+  assert.ok(n.cmds.table('deleteColumn'));
+  assert.equal(n.text(), '| a |\n| --- |\n|  |\n| c |\n| d |\n');
+  assert.ok(n.cmds.table('deleteTable'));
+  assert.equal(n.text(), '');
+  // the commands that can't go in a cell don't
+  n.cmds.insertTable(1, 1);
+  assert.equal(n.cmds.list('ul'), false);
+  assert.equal(n.cmds.style('h1'), false);
+  assert.equal(n.cmds.quote(), false);
+  assert.equal(n.cmds.insert('pagebreak'), false);
+  assert.equal(n.cmds.insertTable(2, 2), false, 'no table in a table');
+  assert.equal(press('Mod-Enter'), true);
+  assert.equal(n.text(), '|  |\n| --- |\n|  |\n', 'Ctrl+Enter in a cell goes to the cell below');
+});
+
+test('pasting a table from Word, Google Docs or a web page keeps it a table', () => {
+  const cases = [
+    // Word: cells holding paragraphs (aligned there), widths and borders, an empty paragraph after it
+    ['<table class=MsoTableGrid border=1 cellspacing=0 cellpadding=0 style="border-collapse:collapse"><tr><td width=200 valign=top style="width:150pt;border:solid windowtext 1.0pt"><p class=MsoNormal align=center style="text-align:center"><b>Name</b><o:p></o:p></p></td><td width=200 valign=top><p class=MsoNormal>Age<o:p></o:p></p></td></tr><tr><td valign=top><p class=MsoNormal>Ann</p><p class=MsoNormal>Smith</p></td><td valign=top><p class=MsoNormal>3 | 4</p></td></tr></table>',
+      '| **Name** | Age |\n| :---: | --- |\n| Ann Smith | 3 \\| 4 |'],
+    // Google Docs: wrapped in its <b>, a table in a div, a shaded header (not a highlight), a line break in a cell
+    ['<b style="font-weight:normal;" id="docs-internal-guid-1"><div dir="ltr" style="margin-left:0pt;" align="left"><table style="border:none;border-collapse:collapse;"><colgroup><col width="100"><col width="100"></colgroup><tbody><tr style="height:0pt"><td style="border-left:solid #000000 1pt;background-color:#cccccc;vertical-align:top;padding:5pt"><p dir="ltr" style="line-height:1.2;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:Arial;color:#000000;background-color:transparent;font-weight:700;">Day</span></p></td><td style="background-color:#cccccc"><p dir="ltr"><span style="font-weight:400;">Mood</span></p></td></tr><tr><td><p dir="ltr"><span style="font-style:italic;">Mon</span></p></td><td><p dir="ltr"><span>ok<br>good</span></p></td></tr></tbody></table></div></b>',
+      '| **Day** | Mood |\n| --- | --- |\n| *Mon* | ok good |'],
+    // a web page: a caption, a header in <thead>, a cell across two columns and one down two rows (the others left empty), a list in a cell
+    ['<table><caption>Scores</caption><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody><tr><td colspan="2">wide</td><td rowspan="2">tall</td></tr><tr><td><ul><li>x</li><li>y</li></ul></td><td><a href="https://ex.am">link</a></td></tr></tbody></table>',
+      'Scores\n| A | B | C |\n| --- | --- | --- |\n| wide |  | tall |\n| x y | [link](https://ex.am) |  |'],
+    // a page laid out in a table of one cell: just its words
+    ['<table><tr><td><p>just</p><p>words</p></td></tr></table>', 'just\nwords'],
+  ];
+  for (const [html, want] of cases) {
+    const { n, view, end } = mount('');
+    end();
+    view.pasteHTML(html);
+    assert.equal(n.text(), want, html);
+  }
+});
+
+test('pasting into a cell: a table goes in cell by cell, anything else as one line; pipe text pastes as a table', () => {
+  const { n, view, end, window } = mount('');
+  /** A paste from the clipboard, as the browser hands it over (plain text, and HTML when given). */
+  const paste = (text, html = '') => {
+    const e = new window.ClipboardEvent('paste', { bubbles: true, cancelable: true });
+    e.clipboardData = { getData: (type) => (type === 'text/plain' ? text : type === 'text/html' ? html : ''), types: html ? ['text/plain', 'text/html'] : ['text/plain'], files: [] };
+    view.dom.dispatchEvent(e);
+  };
+  end();
+  paste('| a | b |\n| --- | :-: |\n| 1 | 2 |');
+  assert.equal(n.text(), '| a | b |\n| --- | :---: |\n| 1 | 2 |');
+  // the caret into the first body cell: lines pasted there run together
+  const cellPos = (row, col) => {
+    let found = -1, r = -1;
+    view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'tableRow') (r++, (node.forEach((c, off, k) => { if (r === row && k === col) found = pos + 1 + off + 1; })));
+      return found < 0;
+    });
+    return found;
+  };
+  const Sel = view.state.selection.constructor;
+  view.dispatch(view.state.tr.setSelection(Sel.create(view.state.doc, cellPos(1, 0) + 1)));
+  paste('one two three', '<p>one</p><ul><li>two</li></ul><p><b>three</b></p>');
+  assert.equal(n.text(), '| a | b |\n| --- | :---: |\n| 1one two **three** | 2 |');
+  view.pasteText('x\ny'); // Shift+paste
+  assert.equal(n.text(), '| a | b |\n| --- | :---: |\n| 1one two **threex y** | 2 |', 'what\'s pasted takes the style at the caret');
+  // a table pasted into a cell fills the cells from there, the table growing as it needs
+  view.dispatch(view.state.tr.setSelection(Sel.create(view.state.doc, cellPos(1, 1))));
+  paste('| p | q |\n| --- | --- |\n| r | s |');
+  assert.equal(n.text(), '| a | b |  |\n| --- | :---: | --- |\n| 1one two **threex y** | p | q |\n|  | r | s |');
+});
+
+test('the ribbon: Insert › Table\'s grid puts a table in, the Table tab comes up with it and goes with the caret leaving it', async () => {
+  const window = page();
+  // a computer's screen: the ribbon across the top, its tabs and their commands
+  window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
+  const { Ribbon, h, render: draw, act } = window.NB;
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  const calls = [];
+  const cmds = new Proxy({}, { get: (_, k) => (...args) => (calls.push([k, ...args]), true) });
+  const actions = new Proxy({ reading: false, title: 'T', busy: false, canAddPhotos: true, shared: false }, { get: (o, k) => (k in o ? o[k] : () => {}) });
+  const show = (lit) => act(() => draw(h(Ribbon, { actions, cmds, lit, swapped: false, away: false, done: null, toText() {} }), host));
+  const click = (el) => act(() => void el.dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+  const tab = (id) => host.querySelector('#rb-tab-' + id);
+  const big = (name) => [...window.document.querySelectorAll('.rb-big')].find((b) => b.textContent === name);
+  show({ table: false, cellAlign: null });
+  assert.equal(tab('context'), null, 'no Table tab out of a table');
+  click(tab('insert'));
+  click(big('Table'));
+  const grid = window.document.querySelector('.rb-pop .rb-grid');
+  assert.equal(grid.querySelectorAll('button').length, 64, 'up to 8 × 8');
+  act(() => void grid.querySelector('[data-at="3-2"]').dispatchEvent(new window.Event('pointerenter')));
+  assert.equal(window.document.querySelector('.rb-grid-size').textContent, '2 × 3 table');
+  assert.equal(grid.querySelectorAll('.is-on').length, 6);
+  click(grid.querySelector('[data-at="3-2"]'));
+  assert.deepEqual(calls.pop(), ['insertTable', 3, 2], 'three rows (the header row among them), two columns');
+  assert.equal(window.document.querySelector('.rb-pop'), null, 'the grid goes');
+  // the caret in the new table: its tab comes up by itself
+  show({ table: true, cellAlign: 'left' });
+  assert.equal(tab('context').textContent, 'Table');
+  assert.equal(tab('context').getAttribute('aria-selected'), 'true');
+  click(big('Insert below'));
+  assert.deepEqual(calls.pop(), ['table', 'rowBelow']);
+  click(big('Delete column'));
+  assert.deepEqual(calls.pop(), ['table', 'deleteColumn']);
+  const centre = host.querySelector('[aria-label="Centre column"]');
+  assert.equal(host.querySelector('[aria-label="Align column left"]').getAttribute('aria-pressed'), 'true');
+  click(centre);
+  assert.deepEqual(calls.pop(), ['table', 'center']);
+  // out of the table: the tab goes, the one before comes back; back in, it's there but doesn't open by itself
+  show({ table: false, cellAlign: null });
+  assert.equal(tab('context'), null);
+  assert.equal(tab('insert').getAttribute('aria-selected'), 'true');
+  show({ table: true, cellAlign: null });
+  assert.equal(tab('context').getAttribute('aria-selected'), 'false');
+  assert.equal(big('Table').disabled, true, 'no table in a table');
+
+  // a phone's bar: the Table tab in its list of tabs, its commands in the row
+  const phone = page();
+  const P = phone.NB;
+  const bar = phone.document.createElement('div');
+  phone.document.body.append(bar);
+  P.act(() => P.render(P.h(P.Ribbon, { actions, cmds, lit: { table: true, cellAlign: null }, swapped: false, away: false, done: null, toText() {} }), bar));
+  P.act(() => void bar.querySelector('.rb-pick-btn').dispatchEvent(new phone.MouseEvent('click', { bubbles: true })));
+  const item = [...bar.querySelectorAll('.rb-menu button')].find((b) => b.textContent === 'Table');
+  assert.ok(item?.classList.contains('is-context'));
+  P.act(() => void item.dispatchEvent(new phone.MouseEvent('click', { bubbles: true })));
+  const row = bar.querySelector('.format-scroll');
+  assert.ok([...row.querySelectorAll('.rb-big')].some((b) => b.textContent === 'Insert above'));
+  assert.ok(bar.querySelector('.format-bar').classList.contains('is-context'));
 });

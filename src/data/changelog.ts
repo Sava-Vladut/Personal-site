@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.144.0',
+    date: '2026-10-27',
+    changes: [
+      'Tables in notes, as in Word: Insert › Table and pick a size on the grid (up to 8 × 8); the first row is the header',
+      'Tab and Shift+Tab go from cell to cell (Tab in the last cell adds a row), Enter goes to the cell below, and the arrows move between cells',
+      'A Table tab comes up while you’re in a table (in the phone’s bar too): insert rows above or below and columns left or right, delete a row, a column or the table, and align a column left, centre or right',
+      'Bold, colours, tags, links, Find & Replace, AutoCorrect and the Format Painter all work in cells; lists, headings, quotes and page breaks stay out of them',
+      'Tables pasted from Word, Google Docs or a web page stay tables (merged cells come in split, the extra cells empty); pasting into a cell puts the words in that cell, and a table pasted there fills the cells from it',
+      'Typing a table’s Markdown (| a | b | then | --- | --- | and Enter) makes it a table',
+      'Notes keep tables as Markdown pipe tables, which Obsidian and GitHub show too; tables already written that way in your notes now show as tables',
+      'Tables show in the reading view and on public notes, scroll sideways when they’re wider than a phone, and print with ruled cells, no row split between pages',
+      'Card previews, search, exports and link previews read a table’s cells as plain words',
+    ],
+  },
+  {
     version: '1.143.0',
     date: '2026-10-27',
     changes: [

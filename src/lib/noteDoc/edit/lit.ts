@@ -7,6 +7,7 @@ import { alignAt, setAlign, type Style } from './blocks';
 import { continueNumbering, restartNumbering } from './lists';
 import { colorAt, markLit } from './marks';
 import { painterOf } from './painter';
+import { cellAlignAt, inTable } from './tables';
 
 /** The kind of line the caret is on: a plain line, a heading, a list item of a kind, or code. */
 export type LineKind = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol' | 'task' | 'code';
@@ -40,6 +41,10 @@ export interface Lit {
   align: 'left' | 'center' | 'right' | 'justify' | null;
   /** some of the selected lines can be aligned (paragraphs, headings) */
   canAlign: boolean;
+  /** in a table (its Table tab comes up) */
+  table: boolean;
+  /** the alignment of the selected columns of a table ('left' for none), null when they differ or out of a table */
+  cellAlign: 'left' | 'center' | 'right' | null;
   /** something is selected */
   ranged: boolean;
   canUndo: boolean;
@@ -111,6 +116,8 @@ export function litOf(state: EditorState): Lit {
     style,
     align,
     canAlign: align !== null || setAlign('left')(state),
+    table: inTable(state),
+    cellAlign: cellAlignAt(state),
     ranged: !sel.empty,
     canUndo: undoDepth(state) > 0,
     canRedo: redoDepth(state) > 0,

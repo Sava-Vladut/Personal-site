@@ -9,10 +9,14 @@
 //   • spaces at the start of a heading's, list item's, footnote's or callout title's text go to its `sep` (where they'd be read),
 //     unless they're code, a link's text or in an HTML tag (written inside its backticks, brackets or tags)
 //   • a code block without a closing line that isn't the last in its stretch gets one (the text writes one anyway)
+//   • a table is a grid its text can say: every row as long as the longest, the first row's cells headers and the rest
+//     plain ones, each cell aligned as its column's header is (a delimiter row aligns whole columns), no spans; a
+//     line break in a cell becomes a space (a cell is one line); two tables next to each other get an empty line
+//     between (else they'd read as one)
 // Pictures can't be inside a quote or callout: the schema keeps them at the top level.
 import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { EditorState, type Transaction } from '@tiptap/pm/state';
-import { fenceOf } from './syntax';
+import { fenceOf, isCellAlign } from './syntax';
 
 type Fix = (tr: Transaction) => boolean;
 
@@ -44,16 +48,23 @@ function neighbours(doc: PMNode): { pos: number; a: PMNode; b: PMNode; parent: P
   return out.sort((x, y) => y.pos - x.pos);
 }
 
+/** A table's cell (a header's or a plain one). */
+const isCell = (n: PMNode) => n.type.spec.tableRole === 'cell' || n.type.spec.tableRole === 'header_cell';
+
 const splitLines: Fix = (tr) => {
   const found = textblocks(tr.doc, (n) => !n.type.spec.code && n.textContent.includes('\n'));
-  const p = tr.doc.type.schema.nodes.paragraph;
+  const schema = tr.doc.type.schema;
   for (const { node, pos } of found) {
-    const breaks: number[] = [];
+    const breaks: { at: number; marks: readonly Mark[] }[] = [];
     node.forEach((child, offset) => {
       if (!child.isText) return;
-      for (let k = child.text!.indexOf('\n'); k >= 0; k = child.text!.indexOf('\n', k + 1)) breaks.push(pos + 1 + offset + k);
+      for (let k = child.text!.indexOf('\n'); k >= 0; k = child.text!.indexOf('\n', k + 1)) breaks.push({ at: pos + 1 + offset + k, marks: child.marks });
     });
-    for (const at of breaks.reverse()) tr.delete(at, at + 1).split(at, 1, [{ type: p }]);
+    for (const { at, marks } of breaks.reverse()) {
+      // a cell is one line: its line breaks are spaces
+      if (isCell(node)) tr.replaceWith(at, at + 1, schema.text(' ', marks));
+      else tr.delete(at, at + 1).split(at, 1, [{ type: schema.nodes.paragraph }]);
+    }
   }
   return found.length > 0;
 };
@@ -94,6 +105,71 @@ const parkCallouts: Fix = (tr) => {
   return found.length > 0;
 };
 
+const isTable = (n: PMNode) => n.type.name === 'table';
+
+const parkTables: Fix = (tr) => {
+  const found = neighbours(tr.doc).filter(({ a, b }) => isTable(a) && isTable(b));
+  for (const { pos } of found) tr.insert(pos, tr.doc.type.schema.nodes.paragraph.create());
+  return found.length > 0;
+};
+
+/** A column's alignment, as its header cell has it (null when it has none it can write). */
+const alignOfHeader = (header: PMNode, k: number) => {
+  const a = header.maybeChild(k)?.attrs.align;
+  return isCellAlign(a) ? a : null;
+};
+
+/** Whether a table is a grid its text can say (see the top of this file). */
+function tableInShape(table: PMNode): boolean {
+  const header = table.firstChild!;
+  const width = header.childCount;
+  for (let r = 0; r < table.childCount; r++) {
+    const row = table.child(r);
+    if (row.childCount !== width) return false;
+    for (let k = 0; k < width; k++) {
+      const c = row.child(k);
+      if (c.type.spec.tableRole !== (r ? 'cell' : 'header_cell') || c.attrs.align !== alignOfHeader(header, k)) return false;
+      if (c.attrs.colspan !== 1 || c.attrs.rowspan !== 1 || c.attrs.colwidth !== null) return false;
+    }
+  }
+  return true;
+}
+
+const shapeTables: Fix = (tr) => {
+  const found: { node: PMNode; pos: number }[] = [];
+  tr.doc.descendants((node, pos) => {
+    if (isTable(node)) {
+      if (!tableInShape(node)) found.push({ node, pos });
+      return false;
+    }
+    return !node.isTextblock;
+  });
+  const { tableHeader, tableCell } = tr.doc.type.schema.nodes;
+  // last first, so each change leaves the positions before it; a cell's type and attributes change in place (the
+  // caret in it stays), missing cells go at the end of their row
+  for (const { node: table, pos } of found.reverse()) {
+    const header = table.firstChild!;
+    let width = 0;
+    table.forEach((row) => (width = Math.max(width, row.childCount)));
+    const rowsAt: number[] = [];
+    table.forEach((_, offset) => void rowsAt.push(pos + 1 + offset));
+    for (let r = table.childCount - 1; r >= 0; r--) {
+      const row = table.child(r);
+      const type = r ? tableCell : tableHeader;
+      const missing = Array.from({ length: width - row.childCount }, (_, i) => type.create({ align: alignOfHeader(header, row.childCount + i) }));
+      if (missing.length) tr.insert(rowsAt[r] + row.nodeSize - 1, missing);
+      const cells: number[] = [];
+      row.forEach((_, offset) => void cells.push(rowsAt[r] + 1 + offset));
+      for (let k = row.childCount - 1; k >= 0; k--) {
+        const c = row.child(k);
+        const attrs = { align: alignOfHeader(header, k), colspan: 1, rowspan: 1, colwidth: null };
+        if (c.type !== type || Object.entries(attrs).some(([a, v]) => c.attrs[a] !== v)) tr.setNodeMarkup(cells[k], type, attrs);
+      }
+    }
+  }
+  return found.length > 0;
+};
+
 const frameMedia: Fix = (tr) => {
   const doc = tr.doc;
   const p = doc.type.schema.nodes.paragraph;
@@ -118,7 +194,7 @@ const closeCode: Fix = (tr) => {
   return found.length > 0;
 };
 
-const FIXES: Fix[] = [splitLines, absorbSpaces, joinQuotes, parkCallouts, frameMedia, closeCode];
+const FIXES: Fix[] = [splitLines, absorbSpaces, joinQuotes, parkCallouts, parkTables, shapeTables, frameMedia, closeCode];
 
 /** Whether a textblock's text holds a line break (as its textContent would, without building it). */
 function hasBreak(n: PMNode): boolean {
@@ -143,9 +219,11 @@ export function inShape(doc: PMNode): boolean {
         const a = parent.child(i - 1);
         if (isQuote(a) && isQuote(b)) return false;
         if ((isCallout(a) && (isQuote(b) || isCallout(b))) || (isQuote(a) && isCallout(b))) return false;
+        if (isTable(a) && isTable(b)) return false;
         if (parent === doc && media(a) && media(b)) return false;
       }
       if (b.type.name === 'codeBlock' && b.attrs.close === null && i < parent.childCount - 1 && !media(parent.child(i + 1))) return false;
+      if (isTable(b) && !tableInShape(b)) return false;
       if (b.isTextblock) {
         if (!b.type.spec.code && hasBreak(b)) return false;
         if (/^(heading|listItem|calloutTitle|footnote)$/.test(b.type.name) && leadsWithSpace(b)) return false;

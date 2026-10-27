@@ -33,7 +33,52 @@ export function useWide() {
 }
 
 type Style = 'normal' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote';
-type PopId = 'styles' | 'numbering' | 'color' | 'highlight';
+type PopId = 'styles' | 'numbering' | 'color' | 'highlight' | 'table';
+
+/** Insert › Table's grid: the most columns and rows it offers (lib/noteDoc/edit/tables.ts TABLE_MAX). */
+const GRID = 8;
+
+/**
+ * Insert › Table's grid, as Word's: the pointer (or a finger, or the arrow keys) over it picks how many columns and rows
+ * (the header row among them), a click puts the table in. Its size is said under it.
+ */
+function TableGrid({ onPick }: { onPick: (rows: number, cols: number) => void }) {
+  const [at, setAt] = useState({ rows: 1, cols: 1 });
+  const ref = useRef<HTMLDivElement>(null);
+  const size = (rows: number, cols: number) => t('{cols} × {rows} table', { cols, rows });
+  // the arrows go across and down the grid (Esc and the rest are the menu's)
+  const keys = (e: KeyboardEvent) => {
+    const d = ({ ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] } as Record<string, number[]>)[e.key];
+    if (!d) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rows = Math.max(1, Math.min(GRID, at.rows + d[0])), cols = Math.max(1, Math.min(GRID, at.cols + d[1]));
+    ref.current?.querySelector<HTMLElement>(`[data-at="${rows}-${cols}"]`)?.focus();
+  };
+  return (
+    <div class="rb-grid-pick">
+      <div ref={ref} class="rb-grid" style={{ '--n': GRID }} onKeyDown={keys}>
+        {Array.from({ length: GRID * GRID }, (_, i) => {
+          const rows = Math.floor(i / GRID) + 1, cols = (i % GRID) + 1;
+          return (
+            <button
+              key={i}
+              type="button"
+              role="menuitem"
+              data-at={`${rows}-${cols}`}
+              class={rows <= at.rows && cols <= at.cols ? 'is-on' : undefined}
+              aria-label={size(rows, cols)}
+              onPointerEnter={() => setAt({ rows, cols })}
+              onFocus={() => setAt({ rows, cols })}
+              onClick={() => onPick(rows, cols)}
+            />
+          );
+        })}
+      </div>
+      <div class="rb-grid-size" aria-hidden="true">{size(at.rows, at.cols)}</div>
+    </div>
+  );
+}
 
 /** The palette's names, as the colour menus say them (lib/palette.ts). */
 const colorName = (c: string): string =>
@@ -171,26 +216,34 @@ export function Ribbon(p: RibbonProps) {
   const [pop, setPop] = useState<{ id: PopId; at: HTMLElement } | null>(null); // a button's menu
   const [, setPicked] = useState(0); // a colour picked: the split buttons show it
   const roving = useRoving();
-  const before = useRef<Tab>('home'); // the tab to go back to when the picture's goes
+  const before = useRef<Tab>('home'); // the tab to go back to when the picture's (or the table's) goes
+  const toTable = useRef(false); // a table just put in from the ribbon: its tab comes up once it's there
   const auto = useRef<Tab | null>(null); // the tab a selection switched away from, on a phone
   const scroller = useRef<HTMLDivElement>(null);
 
   const collapsed = wide && view.ribbon === 'collapsed';
-  // the picture's tab, for the moment between the picture going and the tab following it
-  const shown: Tab = tab === 'context' && !context ? before.current : tab;
   const reading = a.reading;
+  // the contextual tab: the selected picture's, else the table's while the caret is in one (writing)
+  const inTable = !!lit?.table && !reading && !!cmds;
+  const ctx = context ?? (inTable ? { label: t('Table'), content: null as ComponentChildren } : undefined);
+  const ctxKind = context ? 'picture' : inTable ? 'table' : null;
+  // the contextual tab, for the moment between what it's for going and the tab following it
+  const shown: Tab = tab === 'context' && !ctx ? before.current : tab;
 
   const now = useRef(tab); // the tab, for the effects below
   now.current = tab;
 
   // (layout effects, these: the right tab is there in the first frame, never the old one for a frame)
-  // the picture's tab opens when a picture is selected, and the tab before comes back after
+  // The picture's tab opens when a picture is selected, and the tab before comes back after. The table's tab is there
+  // while the caret is in a table, opening by itself only for a table just put in (as Word's Table Design); it goes
+  // with the caret leaving the table, the tab before coming back.
   useLayoutEffect(() => {
-    if (context) {
+    if (ctxKind === 'picture' || (ctxKind === 'table' && toTable.current)) {
       if (now.current !== 'context') before.current = now.current;
       setTab('context');
     } else if (now.current === 'context') setTab(before.current);
-  }, [!!context]);
+    toTable.current = false;
+  }, [ctxKind]);
 
   // reading: only View has anything to do; writing again starts at Home
   useLayoutEffect(() => {
@@ -533,10 +586,16 @@ export function Ribbon(p: RibbonProps) {
       )),
     ];
   };
-  const popLabel = { styles: t('More styles'), numbering: t('Numbering options'), color: t('Font colours'), highlight: t('Highlight colours') };
+  const popLabel = { styles: t('More styles'), numbering: t('Numbering options'), color: t('Font colours'), highlight: t('Highlight colours'), table: t('Insert table') };
+  /** Insert › Table: the table put in, and its tab brought up for it. */
+  const putTable = (rows: number, cols: number) => {
+    setPop(null);
+    toTable.current = true;
+    if (!cmds?.insertTable(rows, cols)) toTable.current = false;
+  };
   const popMenu = pop && !off && (
     <Pop at={pop.at} label={popLabel[pop.id]} onClose={() => setPop(null)}>
-      {pop.id === 'color' || pop.id === 'highlight' ? swatches(pop.id) : pop.id === 'styles'
+      {pop.id === 'table' ? <TableGrid onPick={putTable} /> : pop.id === 'color' || pop.id === 'highlight' ? swatches(pop.id) : pop.id === 'styles'
         ? MORE.map(([s, name, k]) => (
           <button key={s} type="button" role="menuitemradio" aria-checked={style === s} class={`rb-pop-style is-${s}`} title={tip(name, k)} onClick={() => (setPop(null), apply(s))}>
             {name}
@@ -579,6 +638,22 @@ export function Ribbon(p: RibbonProps) {
       big('crown', t('Law of power'), () => a.insertRef('law'), { off, title: t('Insert a law of power') }),
       big('heart-handshake', t('Win friends'), () => a.insertRef('principle'), { off, title: t('Insert a Win friends principle') }),
     ]),
+    group('tables', t('Tables'), (
+      <button
+        key="table"
+        type="button"
+        class="rb-big"
+        title={t('Insert a table')}
+        aria-haspopup="menu"
+        aria-expanded={pop?.id === 'table'}
+        // (a table can't go in a table's cell, nor in code)
+        disabled={off || inTable || block === 'code'}
+        onClick={(e) => togglePop('table', e.currentTarget)}
+      >
+        <Icon name="table" size={24} />
+        <span>{t('Table')}</span>
+      </button>
+    )),
     group('pages', t('Pages'), big('page-break', t('Page break'), () => cmds?.insert('pagebreak'), { off, k: 'Ctrl+Enter', title: t('Start the next page here') })),
     group('blocks', t('Blocks'), [
       big('separator-horizontal', t('Divider'), () => cmds?.insert('hr'), { off }),
@@ -617,12 +692,36 @@ export function Ribbon(p: RibbonProps) {
     )),
   ];
 
+  // the table's tab, as Word's Table Layout: rows and columns in and out, the table out, a column's alignment
+  const cell = (icon: UiName, label: string, action: Parameters<NoteCommands['table']>[0], title: string) =>
+    big(icon, label, () => cmds?.table(action), { off, title });
+  const colAlign = (icon: UiName, label: string, to: 'left' | 'center' | 'right') =>
+    tool(icon, label, () => cmds?.table(to), { on: lit?.cellAlign === to, off });
+  const tableTab = [
+    group('rows', t('Rows & Columns'), [
+      cell('row-insert-top', t('Insert above'), 'rowAbove', t('Insert a row above')),
+      cell('row-insert-bottom', t('Insert below'), 'rowBelow', t('Insert a row below')),
+      cell('column-insert-left', t('Insert left'), 'colLeft', t('Insert a column to the left')),
+      cell('column-insert-right', t('Insert right'), 'colRight', t('Insert a column to the right')),
+    ]),
+    group('delete', t('Delete'), [
+      cell('row-remove', t('Delete row'), 'deleteRow', t('Delete the row')),
+      cell('column-remove', t('Delete column'), 'deleteColumn', t('Delete the column')),
+      cell('table-minus', t('Delete table'), 'deleteTable', t('Delete the table')),
+    ]),
+    group('align', t('Alignment'), [
+      colAlign('align-left', t('Align column left'), 'left'),
+      colAlign('align-center', t('Centre column'), 'center'),
+      colAlign('align-right', t('Align column right'), 'right'),
+    ], 'rb-rows', 3),
+  ];
+
   const TABS: [Tab, string][] = [['home', t('Home')], ['insert', t('Insert')], ['view', t('View')]];
-  if (context) TABS.push(['context', context.label]);
+  if (ctx) TABS.push(['context', ctx.label]);
   const name = TABS.find(([id]) => id === shown)?.[1] ?? t('Home');
-  const panel = shown === 'context' ? context?.content : shown === 'insert' ? insert : shown === 'view' ? viewTab : home;
+  const panel = shown === 'context' ? (context ? context.content : tableTab) : shown === 'insert' ? insert : shown === 'view' ? viewTab : home;
   // the picture's tools take the pointer as they are: the size slider must be draggable
-  const hold = shown === 'context' ? {} : keepFocus;
+  const hold = shown === 'context' && context ? {} : keepFocus;
 
   const exit = view.focus && (
     <button type="button" class="focus-exit" title={tip(t('Exit Focus'), 'Esc')} onClick={() => setDocView({ focus: false })}>

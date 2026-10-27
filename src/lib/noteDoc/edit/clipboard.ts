@@ -7,6 +7,7 @@ import type { Command } from '@tiptap/pm/state';
 import { parseBody, serializeBody, type Body, type Media } from '../../body';
 import { parseNote } from '../parse';
 import { noteSchema } from '../schema';
+import { isCellsSlice, isCell, oneLine } from './tables';
 import { deleteSelectionSafe } from './util';
 
 export interface TextPasteOptions {
@@ -18,9 +19,13 @@ export interface TextPasteOptions {
  * Plain text from the clipboard as a slice to paste at `$at` (ProseMirror's clipboardTextParser). A single line goes
  * into the line at the caret; of several, a first or last plain line joins the text before or after the caret, and
  * lines of other kinds (an item, a heading) stay what they are. In code, or for `plain` (Shift+paste), the text goes in
- * as it is.
+ * as it is. In a table's cell, a table pastes cell by cell (prosemirror-tables) and anything else as one line.
  */
 export function parseClipboardText(text: string, $at?: ResolvedPos | null, plain = false, opts: TextPasteOptions = {}, schema: Schema = $at?.doc.type.schema ?? noteSchema()): Slice {
+  if ($at && isCell($at.parent)) {
+    const slice = parseClipboardText(text, null, plain, opts, schema);
+    return isCellsSlice(slice) ? slice : oneLine(slice, schema);
+  }
   const t = text.replace(/\r\n?/g, '\n');
   if ($at?.parent.type.spec.code || plain) {
     if (!t) return Slice.empty;

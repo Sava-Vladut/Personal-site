@@ -9,7 +9,7 @@
 export {
   noteSchema, atomToken, listItemLook, STYLE_MARKS, ATOM_MARKS, FOOTNOTE_LABEL,
   type HeadingAttrs, type ParagraphAttrs, type FootnoteAttrs, type PageBreakAttrs, type ListItemAttrs, type CodeBlockAttrs, type CalloutAttrs, type HorizontalRuleAttrs,
-  type MediaAttrs, type AtomAttrs, type CodeMarkAttrs, type LinkAttrs, type ColorAttrs, type HighlightAttrs,
+  type MediaAttrs, type AtomAttrs, type CodeMarkAttrs, type LinkAttrs, type ColorAttrs, type HighlightAttrs, type CellAttrs,
 } from './schema';
 export { parseNote, parseBlocks, parseInline } from './parse';
 export { serializeNote, serializeBlocks, serializeInline, serializeSlice, writtenAttrs, docKey, sameDoc } from './serialize';
@@ -18,5 +18,6 @@ export { replaceDoc } from './diff';
 export {
   classifyLine, calloutOf, closesFence, fenceOf, depthOf, olMarker, calloutTone, calloutIcon, calloutDefaultTitle,
   HR, FENCE, HEAD, ITEM, QUOTE, CALLOUT, PAGEBREAK, FOOTNOTE, ALIGN, ALIGNS, SAFE, BARE, CALLOUT_ICON, alignOf, alignSuffix, isAlign,
-  type Line, type ItemParts, type ListKind, type Align,
+  splitRow, delimRow, tableAt, mapTables, isCellAlign,
+  type Line, type ItemParts, type ListKind, type Align, type CellAlign, type TableLines,
 } from './syntax';

@@ -6,6 +6,7 @@
 // each only in exactly that form and with a colour of lib/palette.ts (anything else is the text it is). A footnote's
 // reference is [^label], Obsidian's.
 import { HIGHLIGHTS, TEXT_COLORS } from './palette';
+import { mapTables } from './noteDoc/syntax';
 
 /** A piece of a line: plain text, or a styled run with the text inside its markers. */
 export type Inline =
@@ -120,7 +121,7 @@ const TAGS = new RegExp(
 );
 
 /**
- * Text without the tags of underline, superscript, subscript and colours, a line's alignment and page breaks,
- * Markdown left as it is (search, exports).
+ * Text without the tags of underline, superscript, subscript and colours, a line's alignment and page breaks, and
+ * without a table's delimiter row (its rows stay as written); Markdown left as it is (search, exports).
  */
-export const dropTags = (text: string) => text.replace(TAGS, '');
+export const dropTags = (text: string) => mapTables(text, (_, line) => line).replace(TAGS, '');

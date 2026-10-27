@@ -5,7 +5,7 @@ import type { Mark, Node as PMNode, Schema } from '@tiptap/pm/model';
 import { parseBody } from '../body';
 import { inline } from '../inline';
 import { noteSchema } from './schema';
-import { QUOTE, alignOf, calloutOf, classifyLine, closesFence } from './syntax';
+import { QUOTE, alignOf, calloutOf, classifyLine, closesFence, tableAt, type TableLines } from './syntax';
 
 /** A note's whole text as a document: blocks, with a media node for each picture line. */
 export function parseNote(text: string, schema: Schema = noteSchema()): PMNode {
@@ -70,6 +70,13 @@ export function parseBlocks(text: string, schema: Schema = noteSchema()): PMNode
         out.push(n.paragraph.create(null, parseInline(l, [], schema)));
         break;
       default: {
+        // a table's header row, with its delimiter row under it: the table, to its last row
+        const table = tableAt(lines, i);
+        if (table) {
+          out.push(tableNode(table, schema));
+          i = table.end - 1;
+          break;
+        }
         // a line of text, aligned when its end says so
         const { text, align } = alignOf(l);
         out.push(n.paragraph.create({ align }, parseInline(text, [], schema)));
@@ -77,6 +84,13 @@ export function parseBlocks(text: string, schema: Schema = noteSchema()): PMNode
     }
   }
   return out;
+}
+
+/** A table's node from its lines: each cell's inline Markdown, each with its column's alignment. */
+function tableNode({ rows, aligns }: TableLines, schema: Schema): PMNode {
+  const n = schema.nodes;
+  return n.table.create(null, rows.map((cells, r) =>
+    n.tableRow.create(null, cells.map((c, k) => (r ? n.tableCell : n.tableHeader).create({ align: aligns[k] }, parseInline(c, [], schema))))));
 }
 
 /** A line's inline Markdown as text and chips, each carrying `marks` and the styles it's written in. */

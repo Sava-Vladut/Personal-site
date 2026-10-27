@@ -1,9 +1,10 @@
 // Pasting from other apps. Their HTML is tidied into what the note's schema reads (lib/noteDoc/schema.ts parse rules)
 // before ProseMirror parses it: Word's list paragraphs and the web's nested lists become flat list items (a note's
-// lists are one line each, their depth in the indent), tables become lines, line breaks become new lines, and pictures
-// are left out (pictures are added as files). Underline, superscript, subscript and colours come in as the schema reads
+// lists are one line each, their depth in the indent), tables stay tables (a grid of one-line cells, the first row its
+// header), line breaks become new lines, and pictures are left out (pictures are added as files). Underline, superscript, subscript and colours come in as the schema reads
 // them, colours as the palette's nearest (lib/palette.ts). Plain text is read as the note's own Markdown (lib/noteDoc/edit/clipboard.ts).
 import { Fragment, Slice, type Node as PMNode } from '@tiptap/pm/model';
+import { isCellsSlice, oneLine } from '../lib/noteDoc/edit';
 
 /** A line break inside a paragraph, carried through the parse (the parser collapses \n to a space) to be split later. */
 const BREAK = ' ';
@@ -75,18 +76,77 @@ function webLists(doc: Document) {
   }
 }
 
-/** A table as lines: each row a line, its cells apart. */
+/** What can't be inside a table's cell, which is one line of words: its blocks' words run on, a space between. */
+const BLOCKS = 'p, div, h1, h2, h3, h4, h5, h6, li, ul, ol, dl, dt, dd, blockquote, pre, table, caption, thead, tbody, tfoot, tr, td, th, section, article, header, footer, figure, figcaption, hr';
+
+/** A cell's alignment: its own, or (Word, Google Docs) its first paragraph's. */
+function cellAlign(cell: HTMLElement): string | null {
+  const own = (el: Element | null) => {
+    if (!(el instanceof HTMLElement)) return '';
+    return (el.style.textAlign || el.getAttribute('align') || '').toLowerCase().replace('centre', 'center');
+  };
+  const a = own(cell) || own(cell.querySelector('p, div, h1, h2, h3, h4, h5, h6'));
+  return a === 'left' || a === 'center' || a === 'right' ? a : null;
+}
+
+/** A cell's content as one line of words: line breaks and blocks become spaces, styles and links stay. */
+function cellWords(cell: Element): Node[] {
+  for (const br of cell.querySelectorAll('br')) br.replaceWith(' ');
+  for (const b of [...cell.querySelectorAll(BLOCKS)].reverse()) b.replaceWith(' ', ...b.childNodes, ' ');
+  return [...cell.childNodes];
+}
+
+/**
+ * Tables as tables the note can write (a GFM pipe table): a grid of one-line cells, the first row its header; a cell
+ * merged across columns or rows keeps its words in its first place, the others it covered left empty. A table of one
+ * cell (a page laid out in a table) is just its content. A caption goes on a line before the table.
+ */
 function tables(doc: Document) {
+  // copied from a note: its tables are such already (and ProseMirror reads the copy by its structure, data-pm-slice)
+  if (doc.querySelector('[data-pm-slice]')) return;
   for (const table of doc.querySelectorAll('table')) {
-    const rows = [...table.querySelectorAll('tr')].map((tr) => {
-      const p = doc.createElement('p');
-      [...tr.children].forEach((cell, i) => {
-        if (i) p.append('  ');
-        p.append(...cell.childNodes);
-      });
-      return p;
+    if (!table.isConnected) continue; // inside a cell of a table flattened already
+    const rows = [...table.rows];
+    if (rows.length === 1 && rows[0].cells.length === 1) {
+      table.replaceWith(...rows[0].cells[0].childNodes);
+      continue;
+    }
+    const grid: { words: Node[]; align: string | null; head: boolean }[][] = rows.map(() => []);
+    rows.forEach((tr, r) => {
+      let c = 0;
+      for (const cell of [...tr.cells]) {
+        while (grid[r][c]) c++;
+        const across = Math.max(1, Math.min(64, Number(cell.getAttribute('colspan')) || 1));
+        const down = Math.max(1, Math.min(rows.length - r, Number(cell.getAttribute('rowspan')) || 1));
+        const align = cellAlign(cell);
+        grid[r][c] = { words: cellWords(cell), align, head: cell.tagName === 'TH' };
+        for (let y = 0; y < down; y++) for (let x = 0; x < across; x++) if (x || y) grid[r + y][c + x] = { words: [], align, head: false };
+        c += across;
+      }
     });
-    table.replaceWith(...rows);
+    const width = Math.max(0, ...grid.map((r) => r.length));
+    const out = doc.createElement('table');
+    grid.forEach((cells, r) => {
+      if (!width) return;
+      const tr = doc.createElement('tr');
+      for (let k = 0; k < width; k++) {
+        const cell = doc.createElement(r ? 'td' : 'th');
+        const at = cells[k];
+        if (at?.align) cell.style.textAlign = at.align;
+        if (at) cell.append(...at.words);
+        tr.append(cell);
+      }
+      out.append(tr);
+    });
+    const caption = table.querySelector(':scope > caption');
+    const before: Node[] = [];
+    if (caption?.textContent?.trim()) {
+      const p = doc.createElement('p');
+      p.append(...cellWords(caption));
+      before.push(p);
+    }
+    if (width) table.replaceWith(...before, out);
+    else table.replaceWith(...before);
   }
 }
 
@@ -164,9 +224,14 @@ function breaks(f: Fragment): Fragment {
 
 /**
  * The pasted slice, ready to go in (ProseMirror's transformPasted): line breaks back, and pictures the note doesn't
- * hold (or already shows elsewhere) left out.
+ * hold (or already shows elsewhere) left out. Into a table's cell (`inCell`), what isn't cells of a table comes in as
+ * one line of words (a cell is one line); cells go in cell by cell (prosemirror-tables).
  */
-export function tidyPasted(slice: Slice, keepMedia: (node: PMNode) => boolean): Slice {
+export function tidyPasted(slice: Slice, keepMedia: (node: PMNode) => boolean, inCell = false): Slice {
+  if (inCell && slice.size && !isCellsSlice(slice)) {
+    const first = slice.content.firstChild;
+    return first ? oneLine(new Slice(breaks(slice.content), slice.openStart, slice.openEnd), first.type.schema) : slice;
+  }
   const content = breaks(slice.content);
   const kept: PMNode[] = [];
   content.forEach((n) => (n.type.name !== 'media' || keepMedia(n)) && kept.push(n));

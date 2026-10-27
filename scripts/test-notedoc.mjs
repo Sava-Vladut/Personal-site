@@ -26,6 +26,10 @@ const node = (type, attrs, ...content) => S.nodes[type].create(attrs, content.fl
 const p = (...c) => node('paragraph', null, ...c);
 const doc = (...blocks) => S.nodes.doc.create(null, blocks);
 const photo = (id, layout = {}) => node('media', { media: { kind: 'photo', id, ...layout } });
+/** A table cell of `type` with an alignment, holding text (or the nodes given). */
+const cell = (type, align, c) => node(type, { align }, typeof c === 'string' ? (c ? txt(c) : []) : c);
+/** A table from rows of cells' texts (or nodes), the first row its header (unless every row is of `type`). */
+const table = (rows, type) => node('table', null, rows.map((r, i) => node('tableRow', null, r.map((c) => cell(type ?? (i ? 'tableCell' : 'tableHeader'), null, c)))));
 
 /** a === b for documents and transactions (assert.equal would print the whole schema when they differ). */
 const same = (a, b, msg) => assert.ok(a === b, msg);
@@ -128,10 +132,25 @@ const CORPUS = {
     'a\n[[photo:p1|alt=x|caption=y]]\nb', 'a\n[[photo:p1|caption=]]\nb', 'a\n[[photo:p1|caption= x]]\nb', 'a\n[[photo:p1|caption=x ]]\nb',
     'a\n[[photo:p1|caption=a]b]]\nb', 'a\n[[photo:p1|caption=%2541]]\nb', 'a\n[[photo:p1|title=x]]\nb', 'a\n[[photo:p1|caption=a|caption=b]]\nb',
   ],
+  tables: [
+    '| a | b |\n| --- | --- |\n| 1 | 2 |', '| a |\n| --- |', '| L | C | R |\n| :--- | :---: | ---: |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |',
+    '| **b** | *i* | `c` |\n| --- | --- | --- |\n| @[person:p1|Ann] | [[note:n1|N]] | ♪[song:s|S] |', '| [[a|b|c]] | @[Ann|x] |\n| --- | --- |',
+    '| a \\| b | c\\\\ |\n| --- | --- |', '| `a|b` | ``x|`y`` |\n| --- | --- |', '|  |  |\n| --- | --- |\n|  | x |', '|  two | tab\t |\n| --- | --- |',
+    '| [t](https://x.y/a%7Cb) | https://a.b/c |\n| --- | --- |', '| <u>u</u> | <span style="color:red">r</span> ==h== ~~s~~ |\n| --- | --- |',
+    'x[^1]\n\n| a[^1] |\n| --- |\n\n[^1]: n', 'before\n| a |\n| --- |\nafter', '| a |\n| --- |\ncentred <!-- align:center -->',
+    '| a |\n| --- |\nnot \\| a row', '| a |\n| --- |\n\n| b |\n| --- |', 'one | two\n| a |\n| --- |', '| --- |\n| --- |', '| \\--- |\n| --- |',
+    '> | a | b |\n> | --- | --- |\n> | 1 | 2 |', '> [!note] T\n> | a |\n> | --- |\n> after', '- item\n| a |\n| --- |\n# head', 'a\n[[photo:p1]]\n| t |\n| --- |\n| 1 |',
+    '| #tag | https://a.b |\n| --- | --- |', '| a |\n| --- |\n| <!-- align:center --> |', '| 😀 é |\n| :---: |',
+    // not tables: the text they are
+    '| a | b |', '| a | b |\n| --- |', '- | a |\n| --- |', '```\n| a |\n| --- |\n```', '# | a |\n| --- |', '| a |\n|---|x', '> | a |\n| --- |',
+    '| a |\n- | - |', 'a \\| b\n--- \\| ---',
+  ],
 };
 const corpus = Object.values(CORPUS).flat();
 /** The texts from before alignment, page breaks and footnotes: they must read as they always did. */
 const OLD = ['lines', 'headings', 'lists', 'quotes', 'callouts', 'code', 'hr', 'inline', 'formatting', 'pictures'].flatMap((k) => CORPUS[k]);
+/** The texts from before tables: none of them reads as one. */
+const BEFORE_TABLES = Object.entries(CORPUS).filter(([k]) => k !== 'tables').flatMap(([, v]) => v);
 
 for (const [name, texts] of Object.entries(CORPUS)) {
   test(`${name} come back exactly`, () => {
@@ -150,6 +169,44 @@ test('notes written before alignment, page breaks and footnotes read as they did
       assert.equal(n.attrs.align ?? null, null, `aligned: ${JSON.stringify(t)}`);
     });
   }
+});
+
+test('notes written before tables read as they did: no table in them', () => {
+  for (const t of BEFORE_TABLES) nd.parseNote(t).descendants((n) => void assert.notEqual(n.type.name, 'table', JSON.stringify(t)));
+});
+
+test('tables: what they read as', () => {
+  const table = (t) => {
+    let found = null;
+    nd.parseNote(t).descendants((n) => {
+      if (!found && n.type.name === 'table') found = n;
+      return !found;
+    });
+    if (!found) return null;
+    const rows = [];
+    found.forEach((row) => {
+      const cells = [];
+      row.forEach((c) => cells.push([c.type.name === 'tableHeader' ? 'th' : 'td', c.textContent, c.attrs.align]));
+      rows.push(cells);
+    });
+    return rows;
+  };
+  assert.deepEqual(table('| a | b |\n| :--- | ---: |\n| 1 | 2 |'), [[['th', 'a', 'left'], ['th', 'b', 'right']], [['td', '1', 'left'], ['td', '2', 'right']]]);
+  // a | in a code span, a chip, a wiki link (a picture's [[…|…]] too) or escaped never splits a cell
+  assert.deepEqual(table('| `a|b` | [[n:1|N]] | @[person:p|A] | ♪[song:s|S] | x\\|y |\n|-|-|-|-|-|')[0].map((c) => c[1]),
+    ['a|b', '[[n:1|N]]', '@[person:p|A]', '♪[song:s|S]', 'x|y']);
+  // the pipes at the ends are optional, as in GFM; one space each side of a cell is the row's, the rest the cell's
+  assert.deepEqual(table('a|  b \n-|-')[0].map((c) => c[1]), ['a', ' b']);
+  // ragged rows: short ones get empty cells; a long one widens the table (nothing is dropped)
+  assert.deepEqual(table('| a | b |\n| - | - |\n| 1 |\n| 1 | 2 | 3 |').map((r) => r.map((c) => c[1])), [['a', 'b', ''], ['1', '', ''], ['1', '2', '3']]);
+  // it ends at a line that isn't a row
+  assert.deepEqual(table('| a |\n| - |\n| 1 |\nplain\n| 2 |').map((r) => r.map((c) => c[1])), [['a'], ['1']]);
+  // not a table: no delimiter row, a delimiter row of another width, a header that's another kind of line, code
+  for (const t of ['| a |', '| a | b |\n| - |', '- | a |\n| - |', '# | a |\n| - |', '```\n| a |\n| - |', '| a |\n|-|x']) assert.equal(table(t), null, t);
+  // a table in a quote and in a callout
+  assert.ok(table('> | a |\n> | - |'));
+  assert.ok(table('> [!note] T\n> | a |\n> | - |'));
+  assert.equal(table('> [!note] a | b\n> | - | - |'), null, 'a callout\'s title is never a header row');
 });
 
 test('pictures: a caption and alt text read and write back strictly; lines from before read as they always did', () => {
@@ -270,6 +327,16 @@ const READ_NORMALISED = [
   // superscript and subscript never go together: the inner one wins
   ['<sup>a<sub>b</sub></sup>', '<sup>a</sup><sub>b</sub>'],
   ['==a <mark style="background:pink">b</mark>==', '==a ==<mark style="background:pink">b</mark>'],
+  // tables written by hand: every row between pipes, one space each side of a cell, the delimiter as ---
+  ['|a|b|\n|-|:-:|\n|1|2|', '| a | b |\n| --- | :---: |\n| 1 | 2 |'],
+  ['a | b\n--- | ---\n1 | 2', '| a | b |\n| --- | --- |\n| 1 | 2 |'],
+  [' | a |\n | :- |', '| a |\n| :--- |'],
+  ['| a |\n| --- |\n| x |  ', '| a |\n| --- |\n| x |'],
+  ['| a | b |\n| --- | --- |\n| 1 |\n| 1 | 2 | 3 |', '| a | b |  |\n| --- | --- | --- |\n| 1 |  |  |\n| 1 | 2 | 3 |'],
+  ['||\n|-|', '|  |\n| --- |'],
+  ['| [[a|b]] | @[Ann|x] |\n|:-:|--:|\n|`a|b`|\\||', '| [[a|b]] | @[Ann|x] |\n| :---: | ---: |\n| `a|b` | \\| |'],
+  ['> |a|\n>|-|', '> | a |\n> | --- |'],
+  ['|a\\|\n|-|', '| a\\| |\n| --- |'],
 ];
 
 test('the few texts that are written differently, read and put in shape', () => {
@@ -352,6 +419,21 @@ const EDITED = [
   ['a footnote\'s leading spaces go to its marker', doc(node('footnote', { label: '1', sep: ' ' }, txt('  x'))), '[^1]:   x'],
   ['a footnote\'s odd label gives way', doc(node('footnote', { label: 'a b', sep: '' }, txt('x'))), '[^1]: x'],
   ['a task\'s box follows whether it\'s done', doc(node('listItem', { kind: 'task', checked: true, check: ' ' }, txt('a')), node('listItem', { kind: 'task', checked: false, check: 'X' }, txt('b'))), '- [x] a\n- [ ] b'],
+  ['a | in a cell is escaped', doc(table([['a|b', 'c']])), '| a\\|b | c |\n| --- | --- |'],
+  ['a table\'s rows are made as long as the longest, the first row its header', doc(table([['a'], ['1', '2']], 'tableCell')), '| a |  |\n| --- | --- |\n| 1 | 2 |'],
+  ['each column aligned as its header', doc(node('table', null, node('tableRow', null, cell('tableHeader', 'center', 'a')), node('tableRow', null, cell('tableCell', 'right', 'b')))), '| a |\n| :---: |\n| b |'],
+  ['a line break in a cell is a space', doc(table([['a\nb']])), '| a b |\n| --- |'],
+  ['an address holding | in a cell is written in full, encoded', doc(table([[[txt('https://a.b/x|y', link('https://a.b/x|y', true))]]])), '| [https\\://a.b/x\\|y](https://a.b/x%7Cy) |\n| --- |'],
+  ['… its link too', doc(table([[[txt('t', link('u|v'))]]])), '| [t](u%7Cv) |\n| --- |'],
+  ['two tables next to each other get a line between', doc(table([['a']]), table([['b']])), '| a |\n| --- |\n\n| b |\n| --- |'],
+  ['a line after a table with | in it is escaped', doc(table([['a']]), p(txt('b | c'))), '| a |\n| --- |\nb \\| c'],
+  ['… even in an address', doc(table([['a']]), p(txt('t', link('u|v')))), '| a |\n| --- |\n[t](u%7Cv)'],
+  ['… but not in code (a code span never splits a row)', doc(table([['a']]), p(txt('x|y', code()))), '| a |\n| --- |\n`x|y`'],
+  ['a table\'s header that would be a delimiter row under the line before', doc(p(txt('x | y')), table([['---', ':-:']])), 'x | y\n| \\--- | :-: |\n| --- | --- |'],
+  ['a line that would be a delimiter row under a line like a header row', doc(p(txt('x | y')), p(txt('--- | ---'))), 'x | y\n\\--- | ---'],
+  ['a cell like a delimiter cell is fine on its own', doc(table([['---']])), '| --- |\n| --- |'],
+  ['a cell ending in a backslash', doc(table([['a\\', 'b']])), '| a\\ | b |\n| --- | --- |'],
+  ['code running from one cell into the next isn\'t read so', doc(table([['`a', 'b`']])), '| \\`a | b\\` |\n| --- | --- |'],
 ];
 
 test('edited content is written so it reads back the same, keeping every character', () => {
@@ -410,6 +492,18 @@ function project(nodes, line = 0) {
         out.push({ t: 'li', kind: a.kind, depth: nd.depthOf(a.indent), marker: a.kind === 'ol' ? nd.olMarker(a.num, nd.depthOf(a.indent)) : '', done: a.check === 'x' || a.check === 'X', text: inlineKey(n.content), line });
         break;
       case 'codeBlock': out.push({ t: 'code', text: n.textContent }); break;
+      case 'table': {
+        const rows = [];
+        n.forEach((row) => {
+          const cells = [];
+          row.forEach((c) => cells.push(inlineKey(c.content)));
+          rows.push(cells);
+        });
+        const aligns = [];
+        n.firstChild.forEach((c) => aligns.push(nd.writtenAttrs(c).align));
+        out.push({ t: 'table', rows, aligns });
+        break;
+      }
       case 'horizontalRule': out.push({ t: 'hr' }); break;
       case 'blockquote': {
         const kids = [];
@@ -441,6 +535,7 @@ const reading = (text, offset = 0) =>
     b.t === 'quote' ? { ...b, title: b.callout ? readKey(b.title) : '', body: reading(b.body, b.line) }
     : b.t === 'p' ? { ...b, lines: b.lines.map(readKey) }
     : b.t === 'h' || b.t === 'li' || b.t === 'fn' ? { ...b, text: readKey(b.text) }
+    : b.t === 'table' ? { ...b, rows: b.rows.map((r) => r.map(readKey)) }
     : b);
 
 /** The note's stretches of text (between pictures), each as the editor's top-level blocks. */
@@ -608,9 +703,20 @@ function generator(seed, { wild = false } = {}) {
     if (roll < 0.75) return node('pageBreak', { raw: pick(['<div style="page-break-after: always"></div>', '<div style="page-break-after:always;"></div>']) });
     if (roll < 0.79) return node('footnote', { label: pick(['1', '2', 'note', 'a-b']), sep: pick([' ', ' ', '  ', '\t']) }, inlineContent());
     if (roll < 0.86 && depth < 2) return node('blockquote', null, Array.from({ length: 1 + int(3) }, () => block(depth + 1)));
-    if (roll < 0.95 && depth < 2) {
+    if (roll < 0.93 && depth < 2) {
       return node('callout', { kind: pick(['note', 'NOTE', 'Tip', 'my-kind', 'warning']), fold: pick(['', '', '+', '-']), sep: pick(['', ' ', ' ', '  ', '\t']) },
         node('calloutTitle', null, inlineContent()), Array.from({ length: int(3) }, () => block(depth + 1)));
+    }
+    if (roll < 0.98) {
+      // a table: a grid with a header row, columns aligned (wild: ragged rows, cells of the wrong kind or alignment)
+      const width = 1 + int(4);
+      const aligns = Array.from({ length: width }, () => pick([null, null, 'left', 'center', 'right']));
+      return node('table', null, Array.from({ length: 1 + int(4) }, (_, r) => node('tableRow', null,
+        Array.from({ length: wild && chance(0.3) ? 1 + int(5) : width }, (_, k) => node(
+          (wild && chance(0.2) ? !r : r) ? 'tableCell' : 'tableHeader',
+          { align: wild && chance(0.2) ? pick(['center', 'right', 'justify', 'middle']) : aligns[k] ?? null },
+          chance(0.2) ? [] : inlineContent(),
+        )))));
     }
     return p(inlineContent());
   };
@@ -624,6 +730,15 @@ function generator(seed, { wild = false } = {}) {
 
   return () => doc(...Array.from({ length: 1 + int(8) }, () => (chance(0.08) ? media() : block(0))));
 }
+
+/** Whether a document holds a table (the generators are checked to make them often enough). */
+const hasTable = (d) => {
+  let found = false;
+  d.descendants((n) => !(found ||= n.type.name === 'table'));
+  return found;
+};
+/** Asserts that at least one in 20 of `count` random documents held a table (only checked over 100 of them). */
+const madeTables = (tables, count) => assert.ok(count < 100 || tables * 20 > count, `only ${tables} of ${count} held a table`);
 
 /** The first block (going into quotes) where two documents differ, both ways, and its text. */
 function firstDiff(want, got) {
@@ -640,6 +755,7 @@ test('random documents, put in shape, read back as themselves', () => {
   const seed = Number(process.env.SEED ?? 1);
   const random = generator(seed);
   const COUNT = Number(process.env.COUNT ?? 1000);
+  let tables = 0;
   for (let i = 0; i < COUNT; i++) {
     const d = random();
     const n = nd.normalizeDoc(d);
@@ -650,13 +766,16 @@ test('random documents, put in shape, read back as themselves', () => {
     assert.equal(charsOf(back), charsOf(n), `no character lost: ${JSON.stringify(text)}\n${why()}`);
     assert.ok(nd.sameDoc(back, n), `reads back differently: ${firstDiff(n, back)}\n${why()}`);
     assert.equal(nd.serializeNote(back), text, `written again the same: ${JSON.stringify(text)}`);
+    if (hasTable(n)) tables++;
   }
+  madeTables(tables, COUNT);
 });
 
 test('random documents with what can\'t be written: no character lost, and what\'s written is stable', () => {
   const seed = Number(process.env.SEED ?? 1);
   const random = generator(seed, { wild: true });
   const COUNT = Number(process.env.COUNT ?? 1000);
+  let tables = 0;
   for (let i = 0; i < COUNT; i++) {
     const n = nd.normalizeDoc(random());
     const why = () => `document ${i} (SEED=${seed}, wild):\n${n}`;
@@ -670,7 +789,9 @@ test('random documents with what can\'t be written: no character lost, and what\
     const again = nd.serializeNote(back);
     assert.ok(nd.sameDoc(nd.parseNote(again), back), `written again, reads the same: ${JSON.stringify(text)} → ${JSON.stringify(again)}`);
     assert.equal(roundTrip(again), again, `then stays the same: ${JSON.stringify(again)}`);
+    if (hasTable(n)) tables++;
   }
+  madeTables(tables, COUNT);
 });
 
 /** Random note texts: lines of block markers and inline syntax mixed with words, the way notes are written and mistyped. */
@@ -692,7 +813,12 @@ function textGenerator(seed) {
     '<mark style="background:plum">', '<mark>', '</mark>', '[^1]', '[^x_2]', '^', '[^', '<!--', ' -->',
   ];
   const ENDS = ['', '', '', '', ' <!-- align:center -->', ' <!-- align:right -->', '<!-- align:justify -->', ' <!-- align:left -->'];
-  const line = () => pick(STARTS) + Array.from({ length: int(7) }, () => pick(BITS)).join('') + pick(ENDS);
+  // a table's rows and delimiter rows, so that tables (and lines that nearly are one) come up
+  const ROWS = ['| ', '|', '', '> | '];
+  const DELIMS = ['| --- | --- |', '|-|:-:|', '| :--- |', '--- | ---', '|---|', '> | --- | --- |', '| --- | --- | --- |', '-|-'];
+  const line = () => (r() < 0.2 ? pick(DELIMS)
+    : r() < 0.5 ? pick(ROWS) + Array.from({ length: 1 + int(3) }, () => Array.from({ length: int(3) }, () => pick(BITS)).join('')).join(pick([' | ', '|', ' \\| '])) + pick(['', ' |', '|'])
+    : pick(STARTS) + Array.from({ length: int(7) }, () => pick(BITS)).join('') + pick(ENDS));
   return () => Array.from({ length: 1 + int(7) }, line).join('\n');
 }
 
@@ -700,6 +826,7 @@ test('random texts: the reading view\'s blocks, and saved without losing or chan
   const seed = Number(process.env.SEED ?? 1);
   const random = textGenerator(seed);
   const COUNT = Number(process.env.COUNT ?? 1000);
+  let tables = 0;
   for (let i = 0; i < COUNT; i++) {
     const t = random();
     const why = `${JSON.stringify(t)} (text ${i}, SEED=${seed})`;
@@ -712,7 +839,9 @@ test('random texts: the reading view\'s blocks, and saved without losing or chan
     assert.equal(charsOf(back), charsOf(n), `no character lost: ${why} → ${JSON.stringify(out)}`);
     assert.ok(nd.sameDoc(back, n), `reads back the same: ${why} → ${JSON.stringify(out)}${firstDiff(n, back)}`);
     assert.equal(roundTrip(out), out, `then stays the same: ${why} → ${JSON.stringify(out)}`);
+    if (hasTable(n)) tables++;
   }
+  madeTables(tables, COUNT);
 });
 
 test('footnotes are numbered the same in the editor and the reading view', () => {
@@ -877,6 +1006,12 @@ test('serializeSlice: words alone from one line, Markdown lines from more', () =
   assert.equal(nd.serializeSlice(nd.parseNote('a *b* c').slice(1, 6)), 'a *b* c');
   assert.equal(nd.serializeSlice(nd.parseNote('\\*x').slice(1, 3)), '\\*x', 'escapes stay');
   assert.equal(nd.serializeSlice(nd.parseNote('*a*').slice(1, 2)), '*a*', 'a word cut from a style keeps it');
+  // a table's cells copied (a cell selection's rows): a table of their own, the first row its header
+  const { Slice, Fragment } = nd.pmModel;
+  const table = nd.parseNote('| a | b |\n| --- | :-: |\n| c \\| d | e |').firstChild;
+  assert.equal(nd.serializeSlice(new Slice(table.content, 1, 1)), '| a | b |\n| --- | :---: |\n| c \\| d | e |');
+  assert.equal(nd.serializeSlice(new Slice(Fragment.from(table.child(1)), 1, 1)), '| c \\| d | e |\n| --- | :---: |');
+  assert.equal(nd.serializeSlice(nd.parseNote('| a | **bc** |\n| --- | --- |').slice(6, 8)), '**bc**', 'words in one cell: the words alone');
 });
 
 /* ---------- the test helpers ---------- */

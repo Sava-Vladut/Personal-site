@@ -8,7 +8,7 @@
 import { Schema, type DOMOutputSpec, type MarkSpec, type Node as PMNode, type NodeSpec, type ParseRule, type TagParseRule } from '@tiptap/pm/model';
 import { parseBody, mediaMarker, type Media } from '../body';
 import { highlightNear, hsl, isHighlight, isTextColor, textColorNear } from '../palette';
-import { SAFE, calloutIcon, calloutTone, depthOf, isAlign, olMarker, type Align, type ListKind } from './syntax';
+import { SAFE, calloutIcon, calloutTone, depthOf, isAlign, isCellAlign, olMarker, type Align, type CellAlign, type ListKind } from './syntax';
 
 /* ---------- attribute types, by node and mark ---------- */
 
@@ -55,6 +55,11 @@ export interface CalloutAttrs {
   sep: string;
 }
 export interface HorizontalRuleAttrs { raw: string }
+/**
+ * A table's cell: its column's alignment (every cell of a column has its header's, lib/noteDoc/normalize.ts). The
+ * spans and width prosemirror-tables asks every cell for are always 1, 1 and null: Markdown can't say others.
+ */
+export interface CellAttrs { align: CellAlign; colspan: number; rowspan: number; colwidth: number[] | null }
 export interface MediaAttrs { media: Media }
 /** person, song and wiki chips: what they point at (null when only a name is written) and what they show */
 export interface AtomAttrs { target: string | null; label: string }
@@ -184,6 +189,32 @@ const alignAttr: Attr = {
   },
   render: (a) => (a.align ? { style: `text-align: ${a.align}` } : null),
 };
+
+/** A table cell's alignment, as text-align (read from other apps' HTML too). */
+const cellAlignAttr: Attr = {
+  default: null,
+  parse: (el) => {
+    const a = (el.style?.textAlign || el.getAttribute('align') || '').toLowerCase();
+    return a === 'centre' ? 'center' : isCellAlign(a) ? a : null;
+  },
+  render: (a) => (a.align ? { style: `text-align: ${a.align}` } : null),
+};
+/** An attribute that's never read from HTML nor written to it. */
+const fixed = (def: unknown): Attr => ({ default: def, parse: () => null, render: () => null });
+
+/**
+ * A table's cell: a header (the first row's) or a plain one. One line of words each, never blocks (a GFM cell is
+ * inline Markdown), isolating: Backspace and Delete never run two cells together.
+ */
+const cell = (tag: 'th' | 'td', role: 'header_cell' | 'cell') =>
+  node({
+    content: 'inline*',
+    tableRole: role,
+    isolating: true,
+    attrs: { align: cellAlignAttr, colspan: fixed(1), rowspan: fixed(1), colwidth: fixed(null) },
+    parse: [{ tag }],
+    render: (_, html) => [tag, html, 0],
+  });
 
 /* ---------- nodes ---------- */
 
@@ -391,6 +422,27 @@ const nodes: Record<string, NodeSpec> = {
     }],
     render: (_, html) => ['div', merge(html, { class: 'md-fn' }), ['span', { class: 'md-fn-num', contenteditable: 'false' }], ['div', { class: 'md-fn-text' }, 0]],
   }),
+
+  /**
+   * A table (GFM's pipe table): its rows, the first the header. prosemirror-tables edits it (@tiptap/pm/tables, by the
+   * tableRole of each node). Drawn in a box that scrolls across when it's wider than the page.
+   */
+  table: node({
+    group: 'flow',
+    content: 'tableRow+',
+    tableRole: 'table',
+    isolating: true,
+    parse: [{ tag: 'table' }],
+    render: (_, html) => ['div', merge(html, { class: 'md-table' }), ['table', ['tbody', 0]]],
+  }),
+  tableRow: node({
+    content: '(tableHeader | tableCell)+',
+    tableRole: 'row',
+    parse: [{ tag: 'tr' }],
+    render: (_, html) => ['tr', html, 0],
+  }),
+  tableHeader: cell('th', 'header_cell'),
+  tableCell: cell('td', 'cell'),
 
   /** A picture or album (lib/body.ts): its own line at the top level, never inside a quote. */
   media: node({

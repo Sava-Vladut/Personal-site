@@ -8,9 +8,9 @@ import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice } from '../lib/noteDoc';
 import {
-  canStep, clearFind, dropTargets, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger,
+  canStep, clearFind, dropTargets, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger, isCell,
   linkAt, litOf, mediaList, mergeMedia, moveMedia, parseClipboardText, removeItem, removeMedia, replaceAll, replaceCurrent, replaceTyped, sameLit, setFind,
-  setMediaLayout, setMediaMeta, stepMedia, takeOutItem, typedAt, ungroupMedia, type DropTarget, type FindQuery, type Heading, type LinkTarget, type Lit, type Typed,
+  setMediaLayout, setMediaMeta, stepMedia, takeOutItem, typedAt, ungroupMedia, type DropTarget, type FindQuery, type Heading, type LinkTarget, type Lit, type TableAction, type Typed,
 } from '../lib/noteDoc/edit';
 import { itemKey, itemsOf, mediaKey, type Item, type Layout, type Media, type Meta } from '../lib/body';
 import { bindCommands, type NoteCommands } from './commands';
@@ -19,7 +19,7 @@ import { tidyPasted, tidyPastedHTML } from './paste';
 import { notePlugins } from './plugins';
 import { t } from '../lib/i18n';
 
-export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading };
+export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading, TableAction };
 
 /** What Find has found: how many, and which is the current one (0-based; -1 when none is yet). */
 export interface FindInfo { count: number; current: number }
@@ -287,7 +287,7 @@ export function NoteBody(p: Props) {
       clipboardTextParser: (text, $context, plain) =>
         parseClipboardText(text, $context, plain, { media: (m) => (props.current.knows(m) && findMedia(view.state.doc, mediaKey(m)) < 0 ? m : null) }),
       transformPastedHTML: tidyPastedHTML,
-      transformPasted: (slice) => tidyPasted(slice, known),
+      transformPasted: (slice, v) => tidyPasted(slice, known, isCell(v.state.selection.$from.parent)),
       // pictures pasted or dropped as files are the page's to add (views/Editor.tsx), where the caret is
       // — unless there are words too: Word and Excel put a picture of what was copied beside its text, and the text wins
       handlePaste: (_v, e) => pastesPictures(e.clipboardData),

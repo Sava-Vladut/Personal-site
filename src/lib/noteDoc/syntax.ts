@@ -1,7 +1,8 @@
 // What kind of line a line of a note is, read exactly as the reading view reads it (components/Markdown.tsx `parse`).
 // The regexes are copies of Markdown.tsx's, so both agree on every line; scripts/test-notedoc.mjs checks they do.
 // The editor's parser (parse.ts) reads lines with these, and the serializer (serialize.ts) checks with them that each
-// line it writes reads back as the block it was written for.
+// line it writes reads back as the block it was written for. Tables (GFM's pipe tables, at the end) are read by the
+// code here in both: Markdown.tsx imports tableAt, so the two can't disagree.
 
 export const HR = /^\s*([-*_])([ \t]*\1){2,}\s*$/;
 export const FENCE = /^\s*(```|~~~)/;
@@ -152,3 +153,158 @@ export const calloutDefaultTitle = (kind: string) => kind[0].toUpperCase() + kin
 export const SAFE = /^(https?:\/\/|mailto:)\S/;
 /** A web address written as it is, the same as lib/inline.ts reads one. */
 export const BARE = /^https?:\/\/[^\s<>]*[^\s<>.,:;"'!?)\]]$/;
+
+/* ---------- tables (GFM) ---------- */
+
+/**
+ * A table column's alignment, from its delimiter cell: `:---` left, `:---:` centre, `---:` right, `---` none (null,
+ * shown as left).
+ */
+export type CellAlign = 'left' | 'center' | 'right' | null;
+export const isCellAlign = (a: unknown): a is Exclude<CellAlign, null> => a === 'left' || a === 'center' || a === 'right';
+
+// what a row's | can't split, as lib/inline.ts reads it: `code`, [[a|b]], @[person:id|Name] and ♪[song:id|Title]
+const CODE_AT = /(`+)[^`\n]+?\1/y;
+const WIKI_AT = /\[\[(?:[^\]|\n]+\|)?[^\]\n]+\]\]/y;
+const PERSON_AT = /@\[(?:person:[^\]|\n]+\|)?[^\]\n]+\]/y;
+const SONG_AT = /♪\[(?:song:[^\]|\n]+\|)?[^\]\n]+\]/y;
+const DELIM_CELL = /^[ \t]*(:?)-+(:?)[ \t]*$/;
+
+/**
+ * A table row's cells as written (null when the line holds no `|` to split at). As GFM: the pipes at either end are
+ * optional, `\|` is a pipe in a cell; past GFM, a | inside a code span or a tag's token ([[a|b]], @[person:id|Name])
+ * doesn't split either. Each cell loses the one space written on each side of it (`| a |` is `a`), so any other spaces
+ * (`|  a |`) stay its own.
+ */
+export function splitRow(line: string): string[] | null {
+  let s = line.replace(/^[ \t]+/, '');
+  let piped = s.startsWith('|');
+  if (piped) s = s.slice(1);
+  const cells: string[] = [];
+  let cur = 0;
+  for (let i = 0; i < s.length; ) {
+    const c = s[i];
+    if (c === '\\') {
+      i += 2;
+      continue;
+    }
+    if (c === '|') {
+      cells.push(s.slice(cur, i));
+      cur = ++i;
+      piped = true;
+      continue;
+    }
+    const token = c === '`' ? CODE_AT : c === '[' ? WIKI_AT : c === '@' ? PERSON_AT : c === '♪' ? SONG_AT : null;
+    if (token) {
+      token.lastIndex = i;
+      if (token.test(s)) {
+        i = token.lastIndex;
+        continue;
+      }
+    }
+    i++;
+  }
+  if (!piped) return null;
+  const last = s.slice(cur);
+  // after the closing pipe, spaces only: not a cell
+  if (!cells.length || /\S/.test(last)) cells.push(last);
+  return cells.map((x) => x.replace(/^ /, '').replace(/ $/, ''));
+}
+
+/** A delimiter row's alignments, one per column (`| --- | :---: |`), or null when the line isn't one. */
+export function delimRow(line: string): CellAlign[] | null {
+  const cells = splitRow(line);
+  if (!cells) return null;
+  const out: CellAlign[] = [];
+  for (const c of cells) {
+    const m = c.match(DELIM_CELL);
+    if (!m) return null;
+    out.push(m[1] && m[2] ? 'center' : m[2] ? 'right' : m[1] ? 'left' : null);
+  }
+  return out;
+}
+
+/** A delimiter row's cell for a column's alignment. */
+export const delimCell = (a: CellAlign) => (a === 'left' ? ':---' : a === 'center' ? ':---:' : a === 'right' ? '---:' : '---');
+
+/** How many cells the line has as a table's header row would (0 when it can't be one: not a plain line, no `|`). */
+export function headerCells(line: string): number {
+  if (classifyLine(line).t !== 'text') return 0;
+  return splitRow(line)?.length ?? 0;
+}
+
+/** A table read from lines `i` on: its rows' cells (the header first), each column's alignment, the line after it. */
+export interface TableLines {
+  rows: string[][];
+  aligns: CellAlign[];
+  end: number;
+}
+
+/**
+ * The table starting at line `i`, or null. As GFM: a header row, then a delimiter row with as many cells, then body
+ * rows; all plain lines holding a `|` (a heading, item or quote line never is one). The table ends at the first line
+ * that isn't a row (a blank line, a line without `|`, another kind of line). Short rows get empty cells; a row longer
+ * than the header widens the table (GFM drops what's past the header's last cell: here nothing is dropped).
+ */
+export function tableAt(lines: readonly string[], i: number): TableLines | null {
+  if (i + 1 >= lines.length) return null;
+  const n = headerCells(lines[i]);
+  if (!n || classifyLine(lines[i + 1]).t !== 'text') return null;
+  const aligns = delimRow(lines[i + 1]);
+  if (!aligns || aligns.length !== n) return null;
+  const rows = [splitRow(lines[i])!];
+  let j = i + 2;
+  for (let r: string[] | null; j < lines.length && classifyLine(lines[j]).t === 'text' && (r = splitRow(lines[j])); j++) rows.push(r);
+  const width = Math.max(...rows.map((r) => r.length));
+  return {
+    rows: rows.map((r) => [...r, ...Array<string>(width - r.length).fill('')]),
+    aligns: [...aligns, ...Array<CellAlign>(width - aligns.length).fill(null)],
+    end: j,
+  };
+}
+
+/** What each line is to a table: a row's cells, a delimiter row (false), or none (null). */
+type RowOf = string[] | false | null;
+
+/** Each of `lines` as a table reads it, the way the parsers do: quotes' tables too, nothing in code or a callout's title. */
+function rowsOf(lines: readonly string[]): RowOf[] {
+  const out: RowOf[] = lines.map(() => null);
+  for (let i = 0; i < lines.length; i++) {
+    const c = classifyLine(lines[i]);
+    if (c.t === 'fence') {
+      while (i + 1 < lines.length && !closesFence(lines[i + 1], c.fence)) i++;
+      i++;
+    } else if (c.t === 'quote') {
+      const body: string[] = [];
+      const start = i;
+      let m: RegExpMatchArray | null;
+      while (i < lines.length && (m = lines[i].match(QUOTE))) (body.push(m[1]), i++);
+      const skip = calloutOf(body[0]) ? 1 : 0;
+      rowsOf(body.slice(skip)).forEach((r, k) => (out[start + skip + k] = r));
+      i--;
+    } else if (c.t === 'text') {
+      const t = tableAt(lines, i);
+      if (!t) continue;
+      t.rows.forEach((cells, r) => (out[i + (r ? r + 1 : 0)] = cells));
+      out[i + 1] = false;
+      i = t.end - 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * Text with each table's rows as `row` gives them (from the row's cells, or its line as written), its delimiter row
+ * left out: for plain words (excerpts, search). Tables in quotes too; code stays as it is.
+ */
+export function mapTables(text: string, row: (cells: string[], line: string) => string): string {
+  if (!text.includes('|')) return text;
+  const lines = text.split('\n');
+  const rows = rowsOf(lines);
+  const out: string[] = [];
+  lines.forEach((l, i) => {
+    const r = rows[i];
+    if (r !== false) out.push(r ? row(r, l) : l);
+  });
+  return out.join('\n');
+}

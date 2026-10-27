@@ -148,6 +148,9 @@ export function excerpt(note) {
     // underline, superscript, subscript, colours, page breaks (src/lib/inline.ts) and a line's alignment (a comment)
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<\/?(?:u|sup|sub|span|mark|div)(?:\s[^<>]*)?>/g, '')
+    // a table: its delimiter row goes (| --- | :---: |), and the pipes between its cells are spaces (\| is a |)
+    .replace(/^[ \t>]*(?=[^\n]*\|)\|?(?:[ \t]*:?-+:?[ \t]*(?:\||$))+[ \t]*$/gm, ' ')
+    .replace(/^[ \t>]*\|.*$/gm, (row) => row.replace(/(?<!\\)\|/g, ' ').replace(/\\\|/g, '|'))
     .replace(/[#>*_~`=]/g, '')
     .replace(/\s+/g, ' ')
     .trim();

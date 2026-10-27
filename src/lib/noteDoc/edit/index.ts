@@ -6,6 +6,9 @@
 //   Enter → enter · Shift-Enter → newLine · Backspace → backspace (after undoInputRule) · Delete → deleteForward
 //   Tab / Shift-Tab → tab(false) / tab(true) · Mod-[ / Mod-] → noteCommands.indent(true / false) (always swallowed)
 //   ArrowDown at the end of a code block → exitCode · Alt-Shift-ArrowUp / ArrowDown → moveBlocks(-1 / 1)
+//   In a table: Tab / Shift-Tab → cellTab (the next / previous cell; Tab in the last adds a row), Enter and Shift-Enter →
+//   cellEnter (the cell below, a row added at the bottom); the arrows, cell selection and pasting cells are
+//   prosemirror-tables' (tableEditing, before the keymap)
 //   Mod-b, Mod-i, Mod-u, Mod-Shift-x, Mod-Shift-h → noteCommands.mark('bold' | 'italic' | 'underline' | 'strike' | 'highlight')
 //   Mod-Shift-= (Mod-+) / Mod-= → noteCommands.mark('sup' / 'sub') · Esc while the Format Painter is on → stopPainter
 //   Mod-Shift-l, Mod-Shift-7, Mod-Shift-9 → noteCommands.list('ul' | 'ol' | 'task') · Mod-Shift-. → toggleQuote
@@ -25,6 +28,7 @@ import type { Align } from '../syntax';
 import { continueNumbering, indentList, restartNumbering, toggleList } from './lists';
 import { clearFormatting, removeLink, setLink, setMarkSmart, toggleMarkSmart, type MarkName } from './marks';
 import { togglePainter } from './painter';
+import { insertTable, tableCommand, type TableAction } from './tables';
 
 export {
   enter, newLine, backspace, deleteForward, tab, codeEnter, exitCode, fenceEnter, headingEnter, titleEnter, quoteEnter,
@@ -48,11 +52,14 @@ export {
   dropPlaces, dropTargets, moveMedia, canStep, stepMedia, mediaPosAfter, type DropTarget,
 } from './media';
 export { typedAt, replaceTyped, insertAtom, insertTrigger, type Typed } from './mention';
+export {
+  insertTable, tableCommand, cellTab, cellEnter, tableEnter, deleteTable, cellAlignAt, inTable, isCell, emptyTable, isCellsSlice, oneLine, TABLE_MAX, type TableAction,
+} from './tables';
 export { litOf, sameLit, type Lit, type LineKind } from './lit';
 export { parseClipboardText, pasteText, type TextPasteOptions } from './clipboard';
 export { BLOCK_RULES, TYPING_RULES, ruleFor, typeText, type BlockRule } from './rules';
 export { AUTOCORRECT } from './autocorrect';
-export { isWordChar, wordAround, selectedBlocks, lineText, liftBlocks, unCallout, first, inTwoSteps, LEAF, type At } from './util';
+export { isWordChar, wordAround, selectedBlocks, lineText, liftBlocks, unCallout, first, inTwoSteps, placeBlock, LEAF, type At } from './util';
 
 /**
  * The ribbon's and shortcuts' commands, by what they do (src/editor/commands.ts binds them to a view as NoteCommands).
@@ -93,5 +100,9 @@ export const noteCommands = {
   align: (align: Align | 'left', toggle = false): Command => setAlign(align, toggle),
   /** Insert › Footnote: a reference at the caret, its text at the end of the note. */
   footnote: insertFootnote as Command,
+  /** Insert › Table: an empty table, `rows` (its header row among them) by `cols`, the caret in its first cell. */
+  insertTable: (rows: number, cols: number): Command => insertTable(rows, cols),
+  /** The Table tab: rows and columns in and out, the table taken out, a column aligned. */
+  table: (action: TableAction): Command => tableCommand(action),
 };
 export type NoteCommandSet = typeof noteCommands;

@@ -10,7 +10,8 @@ import { findWrapping } from '@tiptap/pm/transform';
 import { closeHistory } from '@tiptap/pm/history';
 import { normalizeTr } from '../normalize';
 import { countOnAfter, indentList, itemToParagraph, listEnter } from './lists';
-import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, replaceSelectionText, selectedBlocks, unCallout } from './util';
+import { cellEnter, cellTab, inTable, isCell, tableEnter } from './tables';
+import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, placeBlock, replaceSelectionText, selectedBlocks, unCallout } from './util';
 import type { Align } from '../syntax';
 
 const named = (n: PMNode | null | undefined, ...names: string[]) => !!n && names.includes(n.type.name);
@@ -108,6 +109,8 @@ function splitPlain(state: EditorState, dispatch?: (tr: Transaction) => void): b
   const $c = tr.selection.$from;
   const tb = $c.parent;
   if (!tb.isTextblock) return false;
+  // a selection from a cell out of its table: it's deleted, and the cell isn't split
+  if (isCell(tb)) return (dispatch?.(tr.scrollIntoView()), true);
   const p = state.schema.nodes.paragraph;
   const align = { align: alignOf(tb) };
   if ($c.parentOffset === 0 && tb.content.size && tb.type !== p) tr.insert($c.before(), p.create(align));
@@ -149,13 +152,17 @@ export const quoteEnter: Command = (state, dispatch) => {
   return true;
 };
 
-/** Enter: code, a fence line, list items, headings, callout titles and empty quote lines have their own; else a split. */
-export const enter: Command = first(codeEnter, fenceEnter, listEnter, headingEnter, titleEnter, quoteEnter, (state, dispatch) => {
+/**
+ * Enter: a table's cell (the cell below), code, a fence line, a table's delimiter row typed under its header, list
+ * items, headings, callout titles and empty quote lines have their own; else a split.
+ */
+export const enter: Command = first(cellEnter, codeEnter, fenceEnter, tableEnter, listEnter, headingEnter, titleEnter, quoteEnter, (state, dispatch) => {
   const { $from, $to } = state.selection;
   if (!$from.parent.isTextblock || !$to.parent.isTextblock) return false;
   const tr = state.tr;
   if (!state.selection.empty) deleteSelectionSafe(tr);
   if (!tr.selection.$from.parent.isTextblock) return false;
+  if (isCell(tr.selection.$from.parent)) return (dispatch?.(tr.scrollIntoView()), true);
   keepMarks(tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph, attrs: { align: alignOf(tr.selection.$from.parent) } }]), state);
   dispatch?.(tr.scrollIntoView());
   return true;
@@ -163,9 +170,10 @@ export const enter: Command = first(codeEnter, fenceEnter, listEnter, headingEnt
 
 /**
  * Shift+Enter: a plain new line in the same place (a heading's, item's or title's words after the caret go on a plain
- * line, never a new heading or item); in code, a new line of code.
+ * line, never a new heading or item); in code, a new line of code; in a table, the cell below (a cell is one line).
  */
-export const newLine: Command = (state, dispatch) => {
+export const newLine: Command = (state, dispatch, view) => {
+  if (cellEnter(state, dispatch, view)) return true;
   const { $from } = state.selection;
   if ($from.parent.type.spec.code) {
     dispatch?.(replaceSelectionText(state.tr, '\n').scrollIntoView());
@@ -208,6 +216,8 @@ export const backspace: Command = (state, dispatch) => {
   const tb = $c.parent;
   const pos = $c.before();
   const tr = state.tr;
+  // at a cell's start, nothing: cells never run together (as in Word)
+  if (isCell(tb)) return true;
   if (tb.type.name === 'listItem') {
     if (tb.attrs.indent) indentList(true)(state, dispatch);
     else dispatch?.(itemToParagraph(tr, pos));
@@ -237,6 +247,12 @@ export const backspace: Command = (state, dispatch) => {
   if (prev?.type.spec.code && tb.type.name === 'paragraph') {
     if (!tb.content.size) tr.delete(pos, pos + tb.nodeSize);
     caret(pos - 1);
+    return true;
+  }
+  // nor into a table's last cell: the caret goes to its end (an empty line goes)
+  if (prev?.type.name === 'table' && tb.type.name === 'paragraph') {
+    if (!tb.content.size) tr.delete(pos, pos + tb.nodeSize);
+    caret(pos - 3);
     return true;
   }
   // a line just after a quote or callout joins its last line (it went out of it with one Backspace; a second one
@@ -274,7 +290,17 @@ export const deleteForward: Command = (state, dispatch) => {
   if (!(sel instanceof TextSelection) || sel.$from.parentOffset < sel.$from.parent.content.size) return false;
   const $c = sel.$from;
   const tb = $c.parent;
+  if (isCell(tb)) return true;
   const next = $c.node(-1).maybeChild($c.index(-1) + 1);
+  // a line just before a table: an empty one goes (the caret into the table's first cell), else nothing
+  if (next?.type.name === 'table' && tb.type.name === 'paragraph') {
+    if (!tb.content.size && dispatch) {
+      const pos = $c.before();
+      const tr = state.tr.delete(pos, $c.after());
+      dispatch(tr.setSelection(TextSelection.create(tr.doc, pos + 3)).scrollIntoView());
+    }
+    return true;
+  }
   if (next && (tb.type.spec.code ? next.isTextblock : next.type.spec.code)) {
     const pos = $c.before(), after = $c.after();
     if (tb.type.spec.code && !next.content.size) dispatch?.(state.tr.delete(after, after + next.nodeSize));
@@ -305,8 +331,8 @@ const OUTDENT = /^(\t| {1,4})/;
  * Tab and Shift+Tab: list items move a level in or out; elsewhere Tab puts in a tab (at the start of each selected
  * line, for several) and Shift+Tab takes one off. Always handled, so the key never takes the caret out of the note.
  */
-export const tab = (out: boolean): Command => (state, dispatch) => {
-  if (indentList(out)(state, dispatch)) return true;
+export const tab = (out: boolean): Command => (state, dispatch, view) => {
+  if (cellTab(out)(state, dispatch, view) || indentList(out)(state, dispatch)) return true;
   const { $from, $to, from, to, empty } = state.selection;
   const tr = state.tr;
   if ($from.parent.type.spec.code) {
@@ -392,8 +418,9 @@ function wrapQuote(state: EditorState, tr: Transaction): boolean {
   return done;
 }
 
-/** Quote: puts the selected lines in a quote, or takes them out of theirs when they're all in one already. */
+/** Quote: puts the selected lines in a quote, or takes them out of theirs when they're all in one already. Not in a table. */
 export const toggleQuote: Command = (state, dispatch) => {
+  if (inTable(state)) return false;
   const tr = state.tr;
   const done = allQuoted(state) ? liftBlocks(tr, selectedBlocks(state).map((b) => b.pos)) : wrapQuote(state, tr);
   if (done) dispatch?.(tr.scrollIntoView());
@@ -420,6 +447,7 @@ const setNormal: Command = (state, dispatch) => {
  * heading of another level), or Quote. Applying the style the lines have already leaves them be (returns false).
  */
 export const setStyle = (style: Style): Command => (state, dispatch) => {
+  if (inTable(state)) return false;
   if (style === 'normal') return setNormal(state, dispatch);
   if (style === 'quote') return allQuoted(state) ? false : toggleQuote(state, dispatch);
   const level = Number(style[1]);
@@ -470,32 +498,18 @@ export type BlockKind = 'hr' | 'code' | 'callout' | 'pagebreak';
 /**
  * Puts a divider, page break, code block or callout in at the caret: in place of an empty line, or before or after the
  * line at its start or end, or splitting it (the words after go on a plain line below). A divider or page break leaves
- * the caret on the line after it; a code block or callout takes the caret inside. Not in code.
+ * the caret on the line after it; a code block or callout takes the caret inside. Not in code, nor in a table's cell.
  */
 export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
-  const tr = state.tr;
-  if (!state.selection.empty) deleteSelectionSafe(tr);
-  const $c = tr.selection.$from;
-  const tb = $c.parent;
-  if (!tb.isTextblock || tb.type.spec.code) return false;
-  if (!dispatch) return true;
   const n = state.schema.nodes;
   const node = kind === 'hr' ? n.horizontalRule.create()
     : kind === 'pagebreak' ? n.pageBreak.create()
     : kind === 'code' ? n.codeBlock.create({ open: '```', close: '```' })
     : n.callout.create({ kind: 'note', fold: '', sep: ' ' }, n.calloutTitle.create());
-  let at: number;
-  if (!tb.content.size && tb.type.name !== 'calloutTitle') tr.replaceWith((at = $c.before()), $c.after(), node);
-  else {
-    if (tb.type.name === 'calloutTitle') at = $c.after(); // the first thing in the callout's body
-    else if ($c.parentOffset === 0) at = $c.before();
-    else if ($c.parentOffset === tb.content.size) at = $c.after();
-    else {
-      tr.split($c.pos, 1, [{ type: n.paragraph, attrs: { align: alignOf(tb) } }]);
-      at = $c.pos + 1;
-    }
-    tr.insert(at, node);
-  }
+  const tr = state.tr;
+  const at = placeBlock(tr, node);
+  if (at === null) return false;
+  if (!dispatch) return true;
   if (kind === 'code' || kind === 'callout') tr.setSelection(TextSelection.create(tr.doc, at + (kind === 'callout' ? 2 : 1)));
   else {
     const next = tr.doc.resolve(at + node.nodeSize).nodeAfter;
@@ -514,6 +528,8 @@ export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
  * the quote with it; a callout's title moves the whole callout. One step to undo each. False at the top or bottom.
  */
 export const moveBlocks = (dir: -1 | 1): Command => (state, dispatch) => {
+  // in a table, nothing: its rows and cells stay where they are (a line beside it moves past it whole)
+  if (inTable(state)) return false;
   const blocks = selectedBlocks(state);
   if (!blocks.length) return false;
   const last = blocks[blocks.length - 1];

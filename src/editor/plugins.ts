@@ -10,6 +10,7 @@ import { keymap } from '@tiptap/pm/keymap';
 import { baseKeymap, chainCommands, selectAll } from '@tiptap/pm/commands';
 import { history, redo, undo } from '@tiptap/pm/history';
 import { gapCursor } from '@tiptap/pm/gapcursor';
+import { tableEditing } from '@tiptap/pm/tables';
 import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
@@ -426,6 +427,9 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
       },
     }),
     inputRules({ rules: [...blockRules, markdownRule, autolink, ...autocorrect] }),
+    // tables: the arrows from cell to cell, cells selected by dragging (and deleted, pasted into) — before the keys,
+    // which have Tab and Enter in a cell (lib/noteDoc/edit/tables.ts)
+    tableEditing(),
     keys,
     keymap(baseKeymap),
     history({ depth: 300, newGroupDelay: 1000 }),

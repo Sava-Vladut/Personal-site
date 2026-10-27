@@ -3,7 +3,7 @@ import { useMemo } from 'preact/hooks';
 import { PersonMention, SongMention, WikiLink } from './mentions';
 import { inline as pieces } from '../lib/inline';
 import { t } from '../lib/i18n';
-import { olMarker } from '../lib/noteDoc/syntax';
+import { olMarker, tableAt, type CellAlign } from '../lib/noteDoc/syntax';
 
 // Shows a note's Markdown formatted (see lib/markdown.ts for the syntax). Built from elements, never from HTML
 // strings, so nothing written in a note can run as code.
@@ -18,6 +18,8 @@ type Block =
   | { t: 'hr' }
   | { t: 'pagebreak' }
   | { t: 'fn'; label: string; text: string }
+  /** a table: its rows' cells (the header row first), each column's alignment */
+  | { t: 'table'; rows: string[][]; aligns: CellAlign[] }
   | { t: 'gap' };
 
 const HR = /^\s*([-*_])([ \t]*\1){2,}\s*$/;
@@ -43,6 +45,7 @@ function parse(text: string, offset = 0): Block[] {
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     let m: RegExpMatchArray | null;
+    let table: ReturnType<typeof tableAt>;
     if (!l.trim()) {
       if (out.length && out[out.length - 1].t !== 'gap') out.push({ t: 'gap' });
     } else if (FENCE.test(l)) {
@@ -72,7 +75,11 @@ function parse(text: string, offset = 0): Block[] {
       });
     } else if (PAGEBREAK.test(l)) out.push({ t: 'pagebreak' });
     else if ((m = l.match(FOOTNOTE))) out.push({ t: 'fn', label: m[1], text: m[2] });
-    else {
+    else if ((table = tableAt(lines, i))) {
+      // a header row with a delimiter row under it: a table, to its last row (lib/noteDoc/syntax.ts, as the editor reads it)
+      out.push({ t: 'table', rows: table.rows, aligns: table.aligns });
+      i = table.end - 1;
+    } else {
       // lines run together into a paragraph, while they're aligned alike
       const [text, align] = aligned(l);
       const last = out[out.length - 1];
@@ -110,6 +117,7 @@ export function footnotesOf(text: string): Footnotes {
     for (const b of bs) {
       if (b.t === 'p') b.lines.forEach(walk);
       else if (b.t === 'h' || b.t === 'li') walk(b.text);
+      else if (b.t === 'table') b.rows.forEach((r) => r.forEach(walk));
       else if (b.t === 'fn') (defined.add(b.label), walk(b.text));
       else if (b.t === 'quote') {
         if (b.callout) walk(b.title);
@@ -202,6 +210,18 @@ function Blocks({ blocks, onTask, fn }: { blocks: Block[]; onTask?: (line: numbe
             return <Footnote b={b} fn={fn} />;
           case 'code':
             return <pre><code>{b.text}</code></pre>;
+          case 'table': {
+            const align = (k: number) => (b.aligns[k] ? { textAlign: b.aligns[k]! } : undefined);
+            // in a box that scrolls across when the table is wider than the page
+            return (
+              <div class="md-table">
+                <table>
+                  <thead><tr>{b.rows[0].map((c, k) => <th style={align(k)}>{inline(c, fn)}</th>)}</tr></thead>
+                  {b.rows.length > 1 && <tbody>{b.rows.slice(1).map((r) => <tr>{r.map((c, k) => <td style={align(k)}>{inline(c, fn)}</td>)}</tr>)}</tbody>}
+                </table>
+              </div>
+            );
+          }
           case 'h': {
             const H = `h${Math.min(b.level + 1, 6)}` as 'h2';
             return <H class={`md-h md-h${b.level}`} style={b.align ? { textAlign: b.align } : undefined}>{inline(b.text, fn)}</H>;

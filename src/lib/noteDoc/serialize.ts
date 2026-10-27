@@ -7,7 +7,7 @@ import { parseBody, mediaMarker } from '../body';
 import { parseInline } from './parse';
 import { FOOTNOTE_LABEL, STYLE_MARKS, atomToken, type AtomAttrs } from './schema';
 import { isHighlight, isTextColor } from '../palette';
-import { BARE, PAGEBREAK, alignOf, alignSuffix, calloutOf, classifyLine, closesFence, fenceOf, isAlign } from './syntax';
+import { BARE, PAGEBREAK, alignOf, alignSuffix, calloutOf, classifyLine, closesFence, delimCell, delimRow, fenceOf, headerCells, isAlign, isCellAlign, splitRow } from './syntax';
 
 /* ---------- inline: a textblock's content as units ---------- */
 
@@ -32,9 +32,9 @@ const childrenOf = (n: PMNode | Fragment): PMNode[] => {
   return out;
 };
 
-/** A mark, for comparing: a link by its address (bare or as [text](address), `)` or `%29`, it reads the same). */
+/** A mark, for comparing: a link by its address (bare or as [text](address), `)` or `%29`, `|` or `%7C`, it reads the same). */
 const markKey = (m: Mark): string =>
-  m.type.name === 'link' ? 'link' + JSON.stringify(encodeHref(m.attrs.href))
+  m.type.name === 'link' ? 'link' + JSON.stringify(encodeHref(m.attrs.href, true))
   : m.type.name === 'code' || m.type.name === 'color' || m.type.name === 'highlight' ? m.type.name + JSON.stringify(m.attrs)
   : m.type.name;
 /** What a unit is, for comparing: escapes don't count (they only say how a character is written), nor a link's form. */
@@ -58,15 +58,16 @@ const spanOf = (u: Unit[], i: number, to: number, m: Mark, also: (x: Unit) => bo
 };
 const without = (u: Unit, type: MarkType) => (u.marks = type.removeFromSet(u.marks));
 
-/** An address as [text](address) writes it: spaces and `)` encoded (they'd end it). */
-const encodeHref = (href: unknown) => String(href ?? '').replace(/[\s)]/g, (c) => encodeURIComponent(c).replace(')', '%29'));
+/** An address as [text](address) writes it: spaces and `)` encoded (they'd end it), and in a table `|` (it'd end the cell). */
+const encodeHref = (href: unknown, pipes = false) =>
+  String(href ?? '').replace(pipes ? /[\s)|]/g : /[\s)]/g, (c) => encodeURIComponent(c).replace(')', '%29'));
 
 /**
  * Units `i`–`j` (a link's text) as [text](address): the address encoded, and `]` left out of the link (its text
  * can't hold one).
  */
-function fullLink(u: Unit[], i: number, j: number, link: Mark) {
-  const full = link.type.create({ ...link.attrs, href: encodeHref(link.attrs.href), bare: false });
+function fullLink(u: Unit[], i: number, j: number, link: Mark, pipes = false) {
+  const full = link.type.create({ ...link.attrs, href: encodeHref(link.attrs.href, pipes), bare: false });
   for (let k = i; k < j; k++) u[k].marks = u[k].s === ']' ? link.type.removeFromSet(u[k].marks) : full.addToSet(link.type.removeFromSet(u[k].marks));
 }
 
@@ -74,9 +75,10 @@ function fullLink(u: Unit[], i: number, j: number, link: Mark) {
  * Takes off what can't be written at all: code can't hold a backtick, a link's text can't hold `]`, a colour that
  * isn't the palette's isn't one (a highlight's is yellow then). An address
  * written as it is stays so only when it reads as the very same address on its own; else it's written as
- * [text](address), with its spaces and `)` encoded.
+ * [text](address), with its spaces and `)` encoded. With `pipes` (a table's cell, or a line just after a table), an
+ * address's `|` is encoded too.
  */
-function tidy(u: Unit[]): Unit[] {
+function tidy(u: Unit[], pipes = false): Unit[] {
   for (const x of u) {
     const c = x.marks.find((m) => m.type.name === 'color');
     if (c && !isTextColor(c.attrs.color)) without(x, c.type);
@@ -93,7 +95,10 @@ function tidy(u: Unit[]): Unit[] {
     if (!link) { i++; continue; }
     const j = spanOf(u, i, u.length, link);
     const text = u.slice(i, j).map((x) => x.s).join('');
-    if (!link.attrs.bare || text !== link.attrs.href || !BARE.test(text) || u.slice(i, j).some((x) => x.atom)) fullLink(u, i, j, link);
+    // (where a | would end a table's cell, an address holding one is written in full, its | encoded)
+    if (!link.attrs.bare || text !== link.attrs.href || !BARE.test(text) || u.slice(i, j).some((x) => x.atom) || (pipes && text.includes('|'))) {
+      fullLink(u, i, j, link, pipes);
+    }
     i = j;
   }
   return u;
@@ -120,6 +125,8 @@ interface Ctx {
   raw: boolean;
   /** escape every character that could be read as Markdown */
   all: boolean;
+  /** escape every | (a table's cell, or a line just after a table that would read as its row) */
+  pipes: boolean;
 }
 
 /** One unit as written: a chip's token, an escaped character with its backslash. */
@@ -128,6 +135,7 @@ function plain(u: Unit[], i: number, ctx: Ctx): string {
   if (atom) return s;
   if (ctx.raw || marks.some((m) => m.type.name === 'code')) return s;
   if (marks.some((m) => m.type.name === 'escaped') && ESCAPABLE.test(s)) return '\\' + s;
+  if (s === '|' && ctx.pipes) return '\\|';
   if (!ctx.all) return s;
   // ~ and = always: one next to a style's ~~ or == would read as part of it; < always, a tag's. The : of an address,
   // in a link's text too: read as an address there it's still plain text, but it would take the backslashes after it
@@ -275,11 +283,12 @@ function escapeFirst(s: string): string {
  * Writes a textblock's content after `prefix`, so it reads back the same. `check` reads the whole line back and
  * gives its inline part, or null when the line reads as another kind of block.
  */
-function writeLine(node: PMNode, prefix: string, check: (line: string) => string | null, suffix = ''): string {
-  const units = tidy(unitsOf(childrenOf(node)));
+function writeLine(node: PMNode, prefix: string, check: (line: string) => string | null, suffix = '', opts: { pipes?: boolean; all?: boolean } = {}): string {
+  const pipes = !!opts.pipes;
+  const units = tidy(unitsOf(childrenOf(node)), pipes);
   const schema = node.type.schema;
-  for (let all = false; ; ) {
-    const inl = emit(units, 0, units.length, { open: [], raw: false, all });
+  for (let all = !!opts.all; ; ) {
+    const inl = emit(units, 0, units.length, { open: [], raw: false, all, pipes });
     let line = prefix + inl + suffix;
     let body = check(line);
     if (body === null) body = check((line = prefix + escapeFirst(inl) + suffix));
@@ -352,6 +361,9 @@ export function writtenAttrs(node: PMNode): Record<string, unknown> {
       return codeFences(node, a.close === null);
     case 'media':
       return { marker: a.media ? mediaMarker(a.media) : null };
+    case 'tableHeader':
+    case 'tableCell':
+      return { align: isCellAlign(a.align) ? a.align : null };
     default:
       return a;
   }
@@ -386,18 +398,27 @@ function codeFences(node: PMNode, last: boolean): { open: string; close: string 
  */
 const linesCache = new WeakMap<PMNode, Map<number, string[]>>();
 
-function blockLines(node: PMNode, where: Where, first: boolean, last: boolean): string[] {
-  const key = (where.top ? 1 : 0) | (where.quote ? 2 : 0) | (first ? 4 : 0) | (last ? 8 : 0);
+/**
+ * What's just before a block that can change how it's written: a table (a plain line after one would read as its row),
+ * or a line that would be a table's header row with `head` cells (a line after it reading as its delimiter row).
+ */
+interface Before {
+  table: boolean;
+  head: number;
+}
+
+function blockLines(node: PMNode, where: Where, first: boolean, last: boolean, before: Before = { table: false, head: 0 }): string[] {
+  const key = (where.top ? 1 : 0) | (where.quote ? 2 : 0) | (first ? 4 : 0) | (last ? 8 : 0) | (before.table ? 16 : 0) | (before.head << 5);
   let byPlace = linesCache.get(node);
   const hit = byPlace?.get(key);
   if (hit) return hit;
-  const lines = writeBlock(node, where, first, last);
+  const lines = writeBlock(node, where, first, last, before);
   if (!byPlace) linesCache.set(node, (byPlace = new Map()));
   byPlace.set(key, lines);
   return lines;
 }
 
-function writeBlock(node: PMNode, where: Where, first: boolean, last: boolean): string[] {
+function writeBlock(node: PMNode, where: Where, first: boolean, last: boolean, before: Before): string[] {
   const a = writtenAttrs(node) as Record<string, any>;
   switch (node.type.name) {
     case 'paragraph':
@@ -407,10 +428,14 @@ function writeBlock(node: PMNode, where: Where, first: boolean, last: boolean): 
           if (c !== 'text' && c !== 'blank') return null;
           if (where.top && isMarker(l)) return null;
           if (where.quote && first && calloutOf(l)) return null;
+          if (before.head && delimRow(l)?.length === before.head) return null;
+          if (before.table && splitRow(l)) return null;
           const { text, align } = alignOf(l);
           return align === a.align ? text : null;
-        }, alignSuffix(a.align, !node.content.size)),
+        }, alignSuffix(a.align, !node.content.size), { pipes: before.table }),
       ];
+    case 'table':
+      return writeTable(node, before.head);
     case 'heading':
       return [
         writeLine(node, '#'.repeat(a.level) + a.sep, (l) => {
@@ -464,10 +489,55 @@ function writeBlock(node: PMNode, where: Where, first: boolean, last: boolean): 
   }
 }
 
+/* ---------- tables ---------- */
+
+/** A cell's words as written between its row's pipes (every | escaped), checked to read back as the one cell. */
+const writeCell = (cell: PMNode, all: boolean) =>
+  writeLine(cell, '', (l) => {
+    const cells = splitRow(`| ${l} |`);
+    return cells?.length === 1 ? cells[0] : null;
+  }, '', { pipes: true, all });
+
+/** A row's line. Its cells each read back as themselves; written together too, else written escaping all they can. */
+function writeRow(cells: PMNode[]): string {
+  const line = (all: boolean) => {
+    const written = cells.map((c) => writeCell(c, all));
+    return { written, text: '| ' + written.join(' | ') + ' |' };
+  };
+  const first = line(false);
+  const back = splitRow(first.text);
+  return back && back.length === cells.length && back.every((c, k) => c === first.written[k]) ? first.text : line(true).text;
+}
+
+/**
+ * A table's lines: the header row, the delimiter row (each column's alignment, as its header cell has it), the body
+ * rows, every row with as many cells. After a line that would read as its header (`head` cells), a header row that
+ * looks like a delimiter row gets a backslash before its first cell's dash.
+ */
+function writeTable(node: PMNode, head: number): string[] {
+  const rows = childrenOf(node).map(childrenOf);
+  const width = Math.max(...rows.map((r) => r.length));
+  const header = rows[0];
+  const aligns = Array.from({ length: width }, (_, k) => (header[k] ? (writtenAttrs(header[k]).align as Parameters<typeof delimCell>[0]) : null));
+  const lines = rows.map((cells) => writeRow(cells));
+  if (head === width && delimRow(lines[0])) {
+    const [c0, ...rest] = splitRow(lines[0])!;
+    lines[0] = '| ' + [escapeFirst(c0), ...rest].join(' | ') + ' |';
+  }
+  return [lines[0], '| ' + aligns.map(delimCell).join(' | ') + ' |', ...lines.slice(1)];
+}
+
 /** Blocks as lines of text, one stretch (no pictures in between). */
 export function serializeBlocks(nodes: readonly PMNode[] | Fragment, where: Where = { top: false, quote: false }): string {
   const list = Array.isArray(nodes) ? nodes : childrenOf(nodes as Fragment);
-  return list.flatMap((n, i) => blockLines(n, where, i === 0, i === list.length - 1)).join('\n');
+  const out: string[] = [];
+  list.forEach((n, i) => {
+    const table = i > 0 && list[i - 1].type.name === 'table';
+    // only a plain line or a table can read as a table's delimiter row
+    const head = !table && out.length && /^(paragraph|table)$/.test(n.type.name) ? headerCells(out[out.length - 1]) : 0;
+    for (const l of blockLines(n, where, i === 0, i === list.length - 1, { table, head })) out.push(l);
+  });
+  return out.join('\n');
 }
 
 /** Top-level blocks and pictures as a note's text: stretches of text joined by picture lines (as lib/body.ts does). */
@@ -496,6 +566,8 @@ export function serializeSlice(slice: Slice): string {
   if (!content.childCount) return '';
   const first = content.firstChild!;
   if (first.isInline) return serializeInline(first.type.schema.nodes.paragraph.create(null, content));
+  // cells copied from a table (a CellSelection's rows): a table of their own
+  if (first.type.name === 'tableRow') return serializeBlocks([first.type.schema.nodes.table.create(null, content)]);
   if (content.childCount === 1 && openStart === openEnd && openStart > 0) {
     let n = first;
     let d = 1;

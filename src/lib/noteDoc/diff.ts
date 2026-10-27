@@ -19,5 +19,19 @@ export function replaceDoc(tr: Transaction, next: PMNode): Transaction {
     endA += overlap;
     endB += overlap;
   }
-  return tr.setMeta(REPLACED, true).replace(start, endA, next.slice(start, endB));
+  tr.setMeta(REPLACED, true).replace(start, endA, next.slice(start, endB));
+  // fitting the slice in doesn't always give `next` exactly (a change running from one table's cells into another's):
+  // the top-level blocks that still differ are then put in whole
+  if (!tr.doc.eq(next)) replaceBlocks(tr, next);
+  return tr;
+}
+
+/** Replaces the top-level blocks of `tr`'s document that differ from `next`'s. */
+function replaceBlocks(tr: Transaction, next: PMNode): Transaction {
+  const cur = tr.doc;
+  let i = 0, from = 0;
+  while (i < cur.childCount && i < next.childCount && cur.child(i).eq(next.child(i))) from += cur.child(i++).nodeSize;
+  let a = cur.childCount, b = next.childCount, toA = cur.content.size, toB = next.content.size;
+  while (a > i && b > i && cur.child(a - 1).eq(next.child(b - 1))) (toA -= cur.child(--a).nodeSize), (toB -= next.child(--b).nodeSize);
+  return tr.replaceWith(from, toA, next.content.cut(from, toB));
 }

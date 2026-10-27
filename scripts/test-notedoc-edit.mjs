@@ -742,6 +742,7 @@ test('every command at every caret leaves a document that writes text reading ba
     '',
     '#tag and [[note:n1|N]] and ♪[Song] \\* esc',
     'centred **b** <!-- align:center -->\n## Head[^1] <!-- align:right -->\n<div style="page-break-after: always"></div>\nafter[^2]\n\n[^1]: one\n[^2]: two',
+    'x | y\n| a | **b** |\n| --- | :---: |\n| c |  |\ny',
   ];
   const CMDS = {
     enter: E.enter, newLine: E.newLine, backspace: Backspace, delete: Delete, tab: E.tab(false), untab: E.tab(true),
@@ -1228,4 +1229,195 @@ test('a picture’s caption and alt text: put on, changed, taken off; each its o
   s = apply(s, E.setMediaLayout(pos, { size: 30 }));
   assert.equal(nd.serializeNote(s.doc), 'a\n[[photo:p1 30|alt=A boat %7C a lake]]\nb');
   assert.equal(E.setMediaMeta(1, { alt: 'x' })(s), false, 'not a picture there');
+});
+
+/* ---------- tables ---------- */
+
+// (a table's text holds | of its own: the caret is ‸ here)
+const C = { caret: '‸' };
+const T = (text) => stateFrom(text, C);
+const tAfter = (text, cmd) => after(text, cmd, C);
+const tRun = (text, cmd) => run(text, cmd, C);
+
+test('Insert › Table: an empty table with a header row, the caret in its first cell, a line after it to go on', () => {
+  assert.equal(tAfter('‸', E.insertTable(3, 2)), '| ‸ |  |\n| --- | --- |\n|  |  |\n|  |  |\n');
+  assert.equal(tAfter('a\n‸\nb', E.insertTable(1, 1)), 'a\n| ‸ |\n| --- |\nb', 'in place of an empty line');
+  assert.equal(tAfter('ab‸', E.insertTable(2, 1)), 'ab\n| ‸ |\n| --- |\n|  |\n', 'after the line at its end');
+  assert.equal(tAfter('‸ab', E.insertTable(1, 1)), '| ‸ |\n| --- |\nab', 'before the line at its start');
+  assert.equal(tAfter('a‸b', E.insertTable(1, 2)), 'a\n| ‸ |  |\n| --- | --- |\nb', 'splitting it');
+  assert.equal(tAfter('> q‸', E.insertTable(1, 1)), '> q\n> | ‸ |\n> | --- |\n> ', 'in a quote');
+  assert.equal(tAfter('‸', E.insertTable(20, 0)).split('\n').length, 1 + 8 + 1, 'at most 8 rows (and at least a column)');
+  for (const t of ['| a‸ |\n| --- |', '```\nx‸\n```']) assert.equal(tRun(t, E.insertTable(2, 2))[1], false, `not in ${t}`);
+  // one step to undo
+  let s = stateFrom('a|', { plugins: [history()] });
+  E.insertTable(2, 2)(s, (tr) => (s = s.apply(tr)));
+  undo(s, (tr) => (s = s.apply(tr)));
+  assert.equal(show(s), 'a|');
+});
+
+const GRID = '| a | b |\n| --- | --- |\n| c | d |';
+const at = (word) => GRID.replace(word, word + '‸');
+
+test('a table typed as Markdown: Enter after its delimiter row makes it a table', () => {
+  const enter = (s) => (E.enter(s, (tr) => (s = s.apply(tr))), s);
+  let s = type(T('x\n‸'), '| Name | Age |');
+  s = type(enter(s), '| :--- | ---: |');
+  assert.equal(nd.serializeNote(s.doc), 'x\n| Name | Age |\n\\| :--- | ---: |', 'typed, the two lines are words (the second escaped, not to read as a table)');
+  s = type(enter(s), 'Ann');
+  assert.equal(show(s, C), 'x\n| Name | Age |\n| :--- | ---: |\n| Ann‸ |  |');
+  // a header holding styles keeps them
+  const b = E.toggleMarkSmart('bold');
+  let h = T('| a | «bold» |');
+  b(h, (tr) => (h = h.apply(tr)));
+  h = h.apply(h.tr.setSelection(nd.pmState.TextSelection.atEnd(h.doc)));
+  h = type(enter(h), '|-|-|');
+  assert.equal(show(enter(h), C), '| a | **bold** |\n| --- | --- |\n| ‸ |  |');
+  // not when the widths differ, nor from the middle of the line
+  assert.equal(tAfter('| a | b |\n| --- |‸', E.enter), '| a | b |\n| --- |\n‸');
+  assert.equal(tRun('| a |\n\\| -‸-- |', E.tableEnter)[1], false);
+});
+
+test('Tab and Shift+Tab go from cell to cell, the words selected; Tab in the last cell adds a row', () => {
+  assert.equal(tAfter(at('a'), E.tab(false)), '| a | «b» |\n| --- | --- |\n| c | d |');
+  assert.equal(tAfter(at('b'), E.tab(false)), '| a | b |\n| --- | --- |\n| «c» | d |', 'on to the next row');
+  assert.equal(tAfter(at('c'), E.tab(true)), '| a | «b» |\n| --- | --- |\n| c | d |');
+  assert.equal(tAfter(at('d'), E.tab(false)), '| a | b |\n| --- | --- |\n| c | d |\n| ‸ |  |', 'a new row, the caret in its first cell');
+  const [text, ok] = tRun(at('a'), E.tab(true));
+  assert.deepEqual([text, ok], [at('a'), true], 'Shift+Tab in the first cell stays (and never leaves the note)');
+  // the tab key in a cell never types a tab
+  assert.ok(!tAfter(at('c'), E.tab(false)).includes('\t'));
+});
+
+test('Enter in a cell goes to the cell below (a row added at the bottom), never splitting the cell', () => {
+  assert.equal(tAfter(at('a'), E.enter), '| a | b |\n| --- | --- |\n| c‸ | d |');
+  assert.equal(tAfter('| a | b |\n| --- | --- |\n| c | d‸ |', E.enter), '| a | b |\n| --- | --- |\n| c | d |\n|  | ‸ |');
+  assert.equal(tAfter('| a‸b |\n| --- |', E.enter), '| ab |\n| --- |\n| ‸ |', 'from the middle of the words, nothing split');
+  assert.equal(tAfter(at('a'), E.newLine), '| a | b |\n| --- | --- |\n| c‸ | d |', 'Shift+Enter too');
+  assert.equal(tAfter('| «a» | b |\n| --- | --- |', E.enter), '| a | b |\n| --- | --- |\n| ‸ |  |', 'a selection in a cell stays');
+});
+
+test('the Table tab: rows and columns in and out, the table out, a column aligned', () => {
+  const cmd = (a) => E.tableCommand(a);
+  assert.equal(tAfter(at('c'), cmd('rowAbove')), '| a | b |\n| --- | --- |\n|  |  |\n| c‸ | d |');
+  assert.equal(tAfter(at('a'), cmd('rowBelow')), '| a‸ | b |\n| --- | --- |\n|  |  |\n| c | d |');
+  assert.equal(tAfter(at('a'), cmd('rowAbove')), '|  |  |\n| --- | --- |\n| a‸ | b |\n| c | d |', 'above the header row: the new row is the header');
+  assert.equal(tAfter(at('b'), cmd('colLeft')), '| a |  | b‸ |\n| --- | --- | --- |\n| c |  | d |');
+  assert.equal(tAfter(at('b'), cmd('colRight')), '| a | b‸ |  |\n| --- | --- | --- |\n| c | d |  |');
+  assert.equal(tAfter(at('c'), cmd('deleteRow')), '| a | b‸ |\n| --- | --- |');
+  assert.equal(nd.serializeNote(nd.normalizeDoc(run(at('a'), cmd('deleteRow'), C)[2].doc)), '| c | d |\n| --- | --- |', 'the header gone: the row under it is the header');
+  assert.equal(tAfter('x\n| a‸ |\n| --- |\ny', cmd('deleteRow')), 'x\n‸y', 'its only row: the table goes');
+  assert.equal(tAfter(at('a'), cmd('deleteColumn')), '| ‸b |\n| --- |\n| d |');
+  assert.equal(tAfter('x\n| a‸ |\n| --- |\n| b |', cmd('deleteColumn')), 'x‸', 'its only column: the table goes (nothing after it: the caret at the end of the line before)');
+  assert.equal(tAfter('x\n' + at('d') + '\ny', cmd('deleteTable')), 'x\n‸y');
+  assert.equal(tAfter(at('d'), cmd('deleteTable')), '‸', 'a note that was only a table is left an empty line');
+  assert.equal(tAfter('> q\n> ' + at('d').replace(/\n/g, '\n> '), cmd('deleteTable')), '> q‸', 'in a quote');
+  // a column's alignment, in its delimiter cell: left is none written
+  assert.equal(tAfter(at('a'), cmd('center')), '| a‸ | b |\n| :---: | --- |\n| c | d |');
+  assert.equal(tAfter(at('d'), cmd('right')), '| a | b |\n| --- | ---: |\n| c | d‸ |');
+  assert.equal(tAfter('| a‸ |\n| :---: |', cmd('left')), '| a‸ |\n| --- |');
+  assert.equal(E.cellAlignAt(T('| a | b‸ |\n| :---: | ---: |')), 'right');
+  assert.equal(E.cellAlignAt(T('| a‸ |\n| :--- |')), 'left');
+  assert.equal(E.cellAlignAt(T('a‸')), null);
+  // out of a table, none of them applies
+  for (const a of ['rowAbove', 'rowBelow', 'colLeft', 'colRight', 'deleteRow', 'deleteColumn', 'deleteTable', 'left', 'center', 'right']) {
+    assert.equal(tRun('a‸\n| b |\n| --- |', cmd(a))[1], false, a);
+  }
+});
+
+test('in a cell: styles, AutoCorrect, Find and pasting work; lists, headings, quotes, alignment and blocks don\'t', () => {
+  // styles and AutoCorrect
+  assert.equal(tAfter('| wo‸rd |\n| --- |', E.toggleMarkSmart('bold')), '| **wo‸rd** |\n| --- |');
+  assert.equal(show(type(T('| ‸ |\n| --- |'), '"a" (c) -- b...'), C), '| “a” © — b…‸ |\n| --- |');
+  // Markdown typed at a cell's start stays words
+  for (const typed of ['# ', '- ', '1. ', '> ', '[] ', '---', '```js ']) {
+    const s = type(T('| ‸ |\n| --- |'), typed);
+    assert.equal(s.doc.firstChild.type.name, 'table', typed);
+    assert.equal(s.doc.firstChild.firstChild.firstChild.textContent, typed, typed);
+  }
+  // none of the line's commands applies
+  for (const [name, cmd] of Object.entries({
+    ul: E.toggleList('ul'), ol: E.toggleList('ol'), task: E.toggleList('task'), h1: E.setStyle('h1'), normal: E.setStyle('normal'), quote: E.toggleQuote,
+    centre: E.setAlign('center'), hr: E.insertBlock('hr'), code: E.insertBlock('code'), callout: E.insertBlock('callout'), pagebreak: E.insertBlock('pagebreak'),
+    indent: E.indentList(false), up: E.moveBlocks(-1), down: E.moveBlocks(1),
+  })) {
+    const [text, ok] = tRun('x\n| a‸ |\n| --- |\n| b |\ny', cmd);
+    assert.deepEqual([text, ok], ['x\n| a‸ |\n| --- |\n| b |\ny', false], name);
+  }
+  // a footnote's reference can go in a cell; its text goes to the end of the note
+  assert.equal(nd.serializeNote(run('| a‸ |\n| --- |', E.insertFootnote, C)[2].doc), '| a[^1] |\n| --- |\n\n[^1]: ');
+  // Find finds in cells
+  const s = T('| cat | dog |\n| --- | --- |\n| a cat‸ |  |');
+  assert.equal(E.findMatches(s.doc, { text: 'cat' }).length, 2);
+  // pasting: several lines in a cell come in as one; a table outside a table is a table
+  assert.equal(tAfter('| a‸ |\n| --- |', E.pasteText('x\n- y\n**z**')), '| ax y **z‸** |\n| --- |');
+  assert.equal(tAfter('| a‸ |\n| --- |', E.pasteText('x\ny', true)), '| ax y‸ |\n| --- |', 'Shift+paste too');
+  assert.equal(nd.serializeNote(run('a\n‸', E.pasteText('| x | y |\n| --- | :-: |\n| 1 | 2 |'), C)[2].doc), 'a\n| x | y |\n| --- | :---: |\n| 1 | 2 |');
+});
+
+test('Backspace and Delete next to a table: cells never run together, nor a line into the table', () => {
+  assert.deepEqual(tRun('| a | ‸b |\n| --- | --- |', Backspace).slice(0, 2), ['| a | ‸b |\n| --- | --- |', true], 'at a cell\'s start, nothing');
+  assert.deepEqual(tRun('| a‸ | b |\n| --- | --- |', Delete).slice(0, 2), ['| a‸ | b |\n| --- | --- |', true], 'at a cell\'s end, nothing');
+  assert.equal(tAfter('| a |\n| --- |\n‸b', Backspace), '| a‸ |\n| --- |\nb', 'a line after it: the caret into the last cell');
+  assert.equal(tAfter('| a |\n| --- |\n‸\nb', Backspace), '| a‸ |\n| --- |\nb', 'an empty one goes');
+  assert.equal(tAfter('b‸\n| a |\n| --- |', Delete), 'b‸\n| a |\n| --- |', 'a line before it: nothing');
+  assert.equal(tAfter('x\n‸\n| a |\n| --- |', Delete), 'x\n| ‸a |\n| --- |', 'an empty one goes, the caret into the first cell');
+});
+
+test('Alt+Shift+Up and Down move a line past a table whole, and nothing inside one', () => {
+  assert.equal(tAfter('x\n| a |\n| --- |\n| b |\ny‸', E.moveBlocks(-1)), 'x\ny‸\n| a |\n| --- |\n| b |');
+  assert.equal(tAfter('x‸\n| a |\n| --- |', E.moveBlocks(1)), '| a |\n| --- |\nx‸');
+  assert.equal(tRun('x\n| a |\n| --- |\n| b‸ |', E.moveBlocks(-1))[1], false);
+});
+
+test('the ribbon lights the table and its column\'s alignment', () => {
+  const l = E.litOf(T('| a | b‸ |\n| --- | :---: |'));
+  assert.deepEqual([l.table, l.cellAlign, l.block, l.canAlign, l.style], [true, 'center', 'p', false, 'normal']);
+  assert.deepEqual([E.litOf(T('a‸')).table, E.litOf(T('a‸')).cellAlign], [false, null]);
+});
+
+test('every table command at every caret leaves a document that writes text reading back as itself', () => {
+  const NOTES3 = [
+    'before | x\n| **a** | b `c|d` |\n| :--- | ---: |\n| @[Ann] | [[note:n1|N]] |\nafter',
+    '> q\n> | a |\n> | --- |\n\n| x | y | z |\n| --- | :---: | --- |\n|  | 1 |  |',
+    '| a |\n| --- |\n\n| b |\n| --- |\n[[photo:p1]]\n| c |\n| --- |',
+  ];
+  const CMDS = {
+    enter: E.enter, newLine: E.newLine, backspace: Backspace, delete: Delete, tab: E.tab(false), untab: E.tab(true), table: E.insertTable(2, 2),
+    ...Object.fromEntries(['rowAbove', 'rowBelow', 'colLeft', 'colRight', 'deleteRow', 'deleteColumn', 'deleteTable', 'center', 'right', 'left'].map((a) => [a, E.tableCommand(a)])),
+    bold: E.toggleMarkSmart('bold'), paste: E.pasteText('x | y\n- z'), pasteTable: E.pasteText('| p | q |\n| --- | --- |'), up: E.moveBlocks(-1), down: E.moveBlocks(1),
+    quote: E.toggleQuote, ul: E.toggleList('ul'), h1: E.setStyle('h1'), hr: E.insertBlock('hr'), footnote: E.insertFootnote, pic: E.insertMediaAt([{ kind: 'photo', id: 'z' }]),
+  };
+  const { TextSelection } = nd.pmState;
+  let runs = 0;
+  for (const t of NOTES3) {
+    const start = nd.pmState.EditorState.create({ doc: nd.parseNote(t) });
+    assert.equal(nd.serializeNote(start.doc), t);
+    const places = [];
+    start.doc.descendants((node, pos) => {
+      if (node.isTextblock) for (let k = 0; k <= node.content.size; k++) places.push(pos + 1 + k);
+      return !node.isTextblock;
+    });
+    const sels = [...places.map((p) => [p, p]), ...places.filter((_, i) => i % 5 === 0).map((p, i, a) => [p, a[Math.min(a.length - 1, i + 2)]])];
+    for (const [a, h] of sels) {
+      const s = start.apply(start.tr.setSelection(TextSelection.create(start.doc, a, h)));
+      for (const [name, cmd] of Object.entries(CMDS)) {
+        let next = s;
+        const where = `${name} on ${JSON.stringify(t)} at ${a}-${h}`;
+        try {
+          cmd(s, (tr) => (next = next.apply(tr)));
+          next.doc.check();
+        } catch (e) {
+          assert.fail(`${where}: ${e.message}`);
+        }
+        const norm = nd.normalizeDoc(next.doc);
+        const text = nd.serializeNote(norm);
+        const back = nd.parseNote(text);
+        assert.equal(back.textContent, norm.textContent, `${where}: characters → ${JSON.stringify(text)}`);
+        assert.ok(nd.sameDoc(back, norm), `${where}: reads back the same → ${JSON.stringify(text)}`);
+        assert.equal(nd.serializeNote(back), text, `${where}: written again → ${JSON.stringify(text)}`);
+        runs++;
+      }
+    }
+  }
+  assert.ok(runs > 1000);
 });

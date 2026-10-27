@@ -3,7 +3,7 @@
 import { Selection, type Command } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { redo, undo } from '@tiptap/pm/history';
-import { noteCommands, type BlockKind, type MarkName, type Style } from '../lib/noteDoc/edit';
+import { noteCommands, type BlockKind, type MarkName, type Style, type TableAction } from '../lib/noteDoc/edit';
 import type { ListKind } from '../lib/noteDoc';
 
 export interface NoteCommands {
@@ -27,6 +27,10 @@ export interface NoteCommands {
   align(align: 'left' | 'center' | 'right' | 'justify'): boolean;
   /** Insert › Footnote: a reference at the caret, its text at the end of the note */
   footnote(): boolean;
+  /** Insert › Table: an empty table, `rows` (the header row among them) by `cols` */
+  insertTable(rows: number, cols: number): boolean;
+  /** the Table tab: rows and columns in and out, the table taken out, a column aligned */
+  table(action: TableAction): boolean;
   link(to: { text?: string; href: string } | null): boolean;
   undo(): boolean;
   redo(): boolean;
@@ -60,6 +64,8 @@ export function bindCommands(view: () => EditorView | null): NoteCommands {
     insert: (kind) => run(noteCommands.insert(kind)),
     align: (align) => run(noteCommands.align(align)),
     footnote: () => run(noteCommands.footnote),
+    insertTable: (rows, cols) => run(noteCommands.insertTable(rows, cols)),
+    table: (action) => run(noteCommands.table(action)),
     link: (to) => run(noteCommands.link(to)),
     undo: () => run(undo, false),
     redo: () => run(redo, false),

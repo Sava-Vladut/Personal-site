@@ -133,7 +133,8 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   arrow-back-up arrow-forward-up clear-formatting pilcrow text-size ruler-2 file-description writing align-left chevron-down chevron-up layout-navbar-collapse layout-navbar-expand point focus-centered
   device-gamepad-2 heart-handshake terminal-2 circle-check circle-dashed printer underline superscript subscript text-color brush
   align-center align-right align-justified page-break
-  replace abc accessible text-caption layout-sidebar`.split(/\s+/);
+  replace abc accessible text-caption layout-sidebar
+  row-insert-top row-insert-bottom column-insert-left column-insert-right row-remove column-remove table-minus`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

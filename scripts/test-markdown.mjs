@@ -62,3 +62,16 @@ test('alignment, page breaks and footnotes: left out of the plain words, the tag
   assert.equal(md.dropTags(`x <!-- align:center -->\n${PB}\ny[^1] <!-- align:right -->\n[^1]: z`), 'x\ny[^1]\n[^1]: z');
   assert.deepEqual({ ...md.previewOf(`Centred <!-- align:center -->\n${PB}\nnext[^1]`, '') }, { heading: 'Centred', preview: 'next' });
 });
+
+test('tables: their cells\' plain words a row a line, the delimiter row dropped from excerpts, search and exports', () => {
+  const T = '| Name | **Age** |\n| :--- | ---: |\n| [[note:1|Ann]] | 3 \\| 4 |\n|  | x |';
+  assert.equal(md.stripMarkdown(`Intro\n${T}\nafter`), 'Intro\nName · Age\nAnn · 3 | 4\nx\nafter');
+  assert.equal(md.stripMarkdown('> | q | r |\n> | --- | --- |\n> | 1 | 2 |'), 'q · r\n1 · 2', 'in a quote');
+  assert.equal(md.stripMarkdown('```\n| a |\n| --- |\n```'), '| a |\n| --- |', 'code stays as it is');
+  assert.equal(md.stripMarkdown('| not | a table |\n| --- |'), '| not | a table |\n| --- |', 'a delimiter row of another width: no table');
+  assert.deepEqual({ ...md.previewOf(T, '') }, { heading: 'Name · Age', preview: 'Ann · 3 | 4\nx' });
+  // search and exports keep a table's rows as written (an AI reads them), without the delimiter row
+  assert.equal(md.dropTags(`${T}\n<u>u</u>`), '| Name | **Age** |\n| [[note:1|Ann]] | 3 \\| 4 |\n|  | x |\nu');
+  assert.equal(md.dropTags('a | b\n--- | ---'), 'a | b');
+  assert.equal(md.dropTags('| a | b |'), '| a | b |', 'no delimiter row: nothing dropped');
+});

@@ -181,4 +181,11 @@
   /* footnotes print at the end, smaller, under a short rule, their numbers plain (no links to follow on paper) */
   .note-sheet :is(.fn-ref, .md-fn-ref, .md-fn-ref a, .md-fn-num) { color: #000 !important; text-decoration: none; }
   .note-sheet .md-fn { font-size: 9pt; break-inside: avoid; opacity: 1; }
+  /* tables print whole across the page, with plain rules, the header row grey, and no row split between two pages */
+  .note-sheet .md-table { overflow: visible !important; }
+  .note-sheet .md-table table { width: 100%; }
+  .note-sheet .md-table :is(th, td) { border: 0.75pt solid #888 !important; background: none !important; }
+  .note-sheet .md-table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .note-sheet .md-table tr { break-inside: avoid; }
+  .note-sheet .md-table .selectedCell { background: none !important; }
 }

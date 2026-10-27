@@ -256,6 +256,22 @@
 .md .md-callout-title + * { margin-top: 4px; }
 .md .md-callout > :not(.md-callout-title) { font-size: 0.95em; }
 
+/* a table: as wide as the page, in a box that scrolls across when its columns can't fit (a phone); thin rules between
+   cells, the header row bold on a light ground; each column aligned as its header (inline text-align). Cells keep
+   their words whole (never broken a letter at a time), and are never narrower than a few letters. */
+.md .md-table { max-width: 100%; margin: 0.4em 0; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.md .md-table table { width: 100%; border-collapse: collapse; font-size: 0.95em; line-height: 1.5; }
+.md .md-table :is(th, td) {
+  min-width: 4.5em; padding: 6px 10px; border: 1px solid var(--line-2); vertical-align: top; text-align: left;
+  overflow-wrap: break-word; word-break: normal;
+}
+.md .md-table th { font-weight: var(--w-bold); background: var(--surface-2); }
+.md .md-table td:empty::after, .md .md-table th:empty::after { content: '\200b'; }
+/* cells selected together (a drag across them, Shift+arrows): washed in the accent colour, the words' own selection hidden */
+.note-editor .md-table .selectedCell { background: var(--word-wash); }
+.note-editor.ProseMirror-hideselection:has(.selectedCell) *::selection { background: transparent; }
+.note-editor.ProseMirror-hideselection:has(.selectedCell) { caret-color: transparent; }
+
 /* ---------- a note's words in Word's styles ----------
    The same while reading (here: the reading view, and a public note's page) and while writing (.note-editor, below).
    Normal is the body serif with an easy line height; Heading 1 and 2 are light sans in Word's blue and Heading 3 is

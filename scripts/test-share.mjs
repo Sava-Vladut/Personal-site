@@ -184,4 +184,6 @@ test('link previews show a few plain words', () => {
   // and the public copy keeps the line as written (the page shows the caption under the picture)
   assert.equal(cleanNote({ title: '', text: 'a\n[[photo:p1|caption=C|alt=A]]\nb', date: '2026-10-27', photos: [], images: [] }).text, 'a\n[[photo:p1|caption=C|alt=A]]\nb');
   assert.equal(excerpt({ text: '# Title <!-- align:center -->\n<div style="page-break-after: always"></div>\nclaim[^1] here\n\n[^1]: source' }), 'Title claim here source');
+  // a table: its cells' words, the delimiter row left out
+  assert.equal(excerpt({ text: 'Intro\n| Name | Age |\n| :--- | :---: |\n| **Ann** | 3 \\| 4 |\n> | q |\n> |-|\nend' }), 'Intro Name Age Ann 3 | 4 q end');
 });
