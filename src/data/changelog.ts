@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.150.0',
+    date: '2026-10-28',
+    changes: [
+      'Global Ops dev page redesigned: no more cards, one flat page with the four numbers that matter on top',
+      'New Activity tab: who is working, then one timeline of what agents did with commits and deploys among it',
+      'Code, Deploys and Notes tabs are shorter and plainer, with far less explanatory text',
+    ],
+  },
+  {
     version: '1.149.0',
     date: '2026-10-28',
     changes: [
