@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.5',
+    date: '2026-10-28',
+    changes: [
+      'Load with a code opens with the code field ready to type in',
+    ],
+  },
+  {
     version: '1.146.4',
     date: '2026-10-28',
     changes: [

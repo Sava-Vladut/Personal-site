@@ -524,6 +524,7 @@ function JoinSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           onInput={(e) => setCode(e.currentTarget.value)}
           placeholder="ABCD-EFGH-JKLM"
           aria-label={t('Sync code')}
+          autoFocus
           autocomplete="off"
           autocapitalize="characters"
           spellcheck={false}
