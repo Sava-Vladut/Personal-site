@@ -113,6 +113,10 @@ channels it mines from the page, point `TWITCH_CHANNELS_FILE` at a writable `cha
 that the miner reads on start, restart the miner when that file changes (for example with a systemd `.path` unit), and
 set `ADMIN_PASSWORD`: only browsers signed in with it can save the list.
 
+The Global Ops page (Extras) shows who plays the browser port of Global Operations at `/glops/`: players online now,
+all-time highs, servers, play time and busy hours. The page fetches `/glops/net/analytics` straight from the game's
+multiplayer relay (public, no sign-in, nothing to configure here) every 30 seconds while it's open.
+
 See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
 and remaining browser-side and infrastructure scaling limits.
 

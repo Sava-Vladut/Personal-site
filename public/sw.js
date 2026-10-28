@@ -89,8 +89,9 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (url.pathname.startsWith('/api/')) return;
-    // /game is a separate site served by Caddy: never cache it, and never let its page replace the app shell.
-    if (url.pathname === '/game' || url.pathname.startsWith('/game/')) return;
+    // /game and /glops (the Global Ops port and its stats) are separate sites served by Caddy: never cache them, and
+    // never let their pages replace the app shell.
+    if (/^\/(?:game|glops)(?:\/|$)/.test(url.pathname)) return;
     // A public note's, status's or shared Learn page carries its title in its head: never keep it as the app's own offline page.
     if (req.mode === 'navigate' && (url.pathname.startsWith('/s/') || url.pathname.startsWith('/status/') || /^\/learn(?:\/|$)/.test(url.pathname))) return e.respondWith(Promise.resolve(e.preloadResponse).then((res) => res || fetch(req)).catch(async () => (await cached('/', APP)) || Response.error()));
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/', e.preloadResponse));

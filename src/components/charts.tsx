@@ -233,7 +233,7 @@ export function useWidth() {
 export const bucketLabel = (b: Bucket, step: number) => (step === 1 ? shortDate(b.key) : t('Week of {date}', { date: shortDate(b.key) }));
 
 /** Path for a vertical bar with a 4px rounded data-end and a square base. */
-function barPath(x: number, w: number, base: number, tip: number) {
+export function barPath(x: number, w: number, base: number, tip: number) {
   const h = Math.abs(tip - base);
   if (h < 0.5) return '';
   const r = Math.min(4, w / 2, h);

@@ -124,6 +124,8 @@ test('activation keeps the preceding build for open tabs, removes older builds a
 test('API and non-GET requests remain outside the service worker', async () => {
   const app = worker();
   assert.equal(await app.request('/api/health'), undefined);
+  assert.equal(await app.request('/glops/', 'navigate'), undefined, 'the game’s page is its own site');
+  assert.equal(await app.request('/glops/net/analytics'), undefined, 'live player stats are never cached');
   assert.equal(await app.request('/journal', 'cors', 'POST'), undefined);
 });
 

@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.147.0',
+    date: '2026-10-28',
+    changes: [
+      'New Global Ops page under Extras: who plays the game in the browser, with players online now and the all-time highs',
+      'It also shows each server’s players, hours played, players per day, the busy hours and how long people stay, refreshed every 30 seconds',
+      'Opening the game from the app no longer goes through the app’s offline cache',
+    ],
+  },
+  {
     version: '1.146.7',
     date: '2026-10-28',
     changes: [
