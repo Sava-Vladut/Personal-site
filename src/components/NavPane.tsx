@@ -19,7 +19,7 @@ export function NavPane({ note, open, wide, onClose }: { note: NoteBodyHandle | 
         <li key={h.pos + ':' + i}>
           <button
             type="button"
-            class={`nav-item is-h${h.level}`}
+            class={`navp-item is-h${h.level}`}
             style={{ '--lvl': h.level - 1 }}
             aria-current={i === o.current ? 'location' : undefined}
             onClick={() => {

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.149.0',
+    date: '2026-10-28',
+    changes: [
+      'Desktop sidebar redesigned in a macOS style: wider, translucent, with roomier rows and quieter section headers',
+      'Sidebar icons no longer run into their labels after opening a note',
+    ],
+  },
+  {
     version: '1.148.2',
     date: '2026-10-28',
     changes: [
