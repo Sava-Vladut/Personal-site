@@ -1,11 +1,11 @@
 /* ---------- Global Ops dev: the stats page's cards and the channel points lists (twitch.css), in green (--accent) ---------- */
 
 .ops-tabs { margin-top: 12px; }
-.ops-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; position: relative; }
+.ops-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; position: relative; }
 .ops-tabs button span:not(.ops-badge) { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 420px) { .ops-tabs button svg { display: none; } }
 .ops-badge {
-  min-width: 17px; height: 17px; padding: 0 5px; border-radius: var(--r-pill); font-size: 11px; font-weight: var(--w-bold); line-height: 17px;
+  min-width: 17px; height: 17px; padding: 0 6px; border-radius: var(--r-pill); font-size: var(--text-xs); font-weight: var(--w-bold); line-height: 17px;
   background: var(--accent); color: var(--bg);
 }
 .ops-empty-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
@@ -45,7 +45,7 @@
 .ops-agent-top b { font-weight: var(--w-bold); }
 .ops-agent-top small { margin-left: auto; font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; }
 .ops-pill {
-  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: var(--r-pill); font-size: var(--text-s); font-weight: var(--w-bold);
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: var(--r-pill); font-size: var(--text-s); font-weight: var(--w-bold);
   background: var(--surface-2); color: var(--ink-2); white-space: nowrap; vertical-align: 1px;
 }
 .ops-agent-top .ops-pill { margin-left: 0; }
@@ -100,7 +100,7 @@
 .ops-diff { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: var(--text-s); }
 .ops-state {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: var(--text-s); font-weight: var(--w-bold); padding: 1px 7px; border-radius: var(--r-pill);
+  font-size: var(--text-s); font-weight: var(--w-bold); padding: 2px 8px; border-radius: var(--r-pill);
   background: var(--surface-2); color: var(--ink-2); white-space: nowrap;
 }
 .ops-state.is-new, .ops-state.is-added { background: color-mix(in oklab, var(--emo-calm-safety) 16%, var(--surface-2)); color: color-mix(in oklab, var(--emo-calm-safety) 80%, var(--ink)); }
@@ -113,7 +113,7 @@
   animation: grow-x var(--dur-4) var(--ease-emph) calc(0.1s + var(--k, 0) * 30ms) backwards; transform-origin: left;
 }
 .ops-meter i.on { background: var(--accent); }
-.ops-checks li { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; }
+.ops-checks li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; }
 .ops-checks svg { flex: none; margin-top: 1px; color: var(--ink-3); }
 .ops-checks li.is-done svg { color: var(--accent); }
 .ops-checks li:not(.is-done) .ops-md { color: var(--ink); }
@@ -134,7 +134,7 @@
 .ops-backup { display: block; margin-top: 4px; font-size: var(--text-s); color: var(--ink-3); overflow-wrap: anywhere; }
 
 /* commits, opened for their message and files */
-.ops-commit details > summary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 9px 0; cursor: pointer; list-style: none; }
+.ops-commit details > summary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 10px 0; cursor: pointer; list-style: none; }
 .ops-commit summary::-webkit-details-marker { display: none; }
 .ops-commit summary code { font-size: var(--text-s); color: color-mix(in oklab, var(--accent) 72%, var(--ink)); padding-top: 2px; }
 .ops-subject { font-weight: var(--w-medium); overflow-wrap: anywhere; }

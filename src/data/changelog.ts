@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.148.1',
+    date: '2026-10-28',
+    changes: [
+      'Global Ops dev page: its badges, pills and rows use the app’s own text sizes and spacing',
+    ],
+  },
+  {
     version: '1.148.0',
     date: '2026-10-28',
     changes: [
