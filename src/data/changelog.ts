@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.4',
+    date: '2026-10-28',
+    changes: [
+      'Insights: a time range with nothing in it offers Show all time, instead of only saying to try a longer one',
+    ],
+  },
+  {
     version: '1.146.3',
     date: '2026-10-27',
     changes: [

@@ -449,6 +449,7 @@ export const RO: Record<string, string> = {
   'Check in or write a note with a feeling attached, and your patterns will start to show here.': 'Fă un check-in sau scrie o notiță cu un sentiment, iar tiparele tale vor începe să apară aici.',
   'Check in now': 'Fă check-in acum',
   'Nothing logged in this range. Try a longer one.': 'Nimic notat în intervalul ăsta. Încearcă unul mai lung.',
+  'Show all time': 'Arată tot',
 
   // ── Charts (components/charts.tsx) ──
   'Show chart': 'Arată graficul',

@@ -111,7 +111,10 @@ export function Stats({ query }: { query: URLSearchParams }) {
         ) : tab === 'dex' ? (
           <Dex />
         ) : !s.k.entries ? (
-          <p class="empty-note center">{t('Nothing logged in this range. Try a longer one.')}</p>
+          <div class="empty-note center">
+            <p>{t('Nothing logged in this range. Try a longer one.')}</p>
+            {range !== 'all' && <button class="btn btn-quiet" onClick={() => setRange('all')}>{t('Show all time')}</button>}
+          </div>
         ) : tab === 'overview' ? (
           <Overview s={s} range={range} />
         ) : tab === 'emotions' ? (
