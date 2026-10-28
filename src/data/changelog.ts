@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.6',
+    date: '2026-10-28',
+    changes: [
+      'Twitch’s channel list: the move up, move down and remove buttons are bigger and further apart, so it’s harder to tap the wrong one',
+    ],
+  },
+  {
     version: '1.146.5',
     date: '2026-10-28',
     changes: [

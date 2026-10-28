@@ -84,7 +84,9 @@
 
 /* editing which channels the miner watches */
 .tw-edit { list-style: none; margin: 0 0 12px; padding: 0; }
-.tw-edit li { display: flex; align-items: center; gap: 4px; padding: 6px 0; }
+.tw-edit li { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+/* up, down and remove sit side by side: each a fingertip, 8px apart */
+.tw-edit .icon-btn.small { width: 40px; height: 40px; }
 .tw-edit li + li { border-top: 1px solid var(--line); }
 .tw-edit-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tw-edit b { font-weight: var(--w-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
