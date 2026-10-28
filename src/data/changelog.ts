@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.148.2',
+    date: '2026-10-28',
+    changes: [
+      'The wheel menu no longer moves up and down while you hover its segments on desktop',
+    ],
+  },
+  {
     version: '1.148.1',
     date: '2026-10-28',
     changes: [

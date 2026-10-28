@@ -235,7 +235,8 @@
 @keyframes nw-seg-in { from { scale: 0.5; rotate: -40deg; opacity: 0; } }
 
 .nw-caption {
-  width: 100%; max-width: 420px; min-height: 66px; margin: 0 auto; text-align: center;
+  /* a fixed height, so hovering a segment (name, line, points) never resizes the body and nudges the wheel up or down */
+  width: 100%; max-width: 420px; height: 108px; flex: none; margin: 0 auto; text-align: center;
   animation: nw-rise var(--dur-3) var(--spring) 0.15s backwards;
 }
 .nw-cap-name { font: var(--w-medium) var(--text-l)/1.25 var(--serif); }
