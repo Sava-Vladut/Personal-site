@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.146.7',
+    date: '2026-10-28',
+    changes: [
+      'The small Check in and Write buttons on the People and Reading cards are easier to hit and further apart',
+    ],
+  },
+  {
     version: '1.146.6',
     date: '2026-10-28',
     changes: [

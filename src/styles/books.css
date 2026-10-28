@@ -35,7 +35,10 @@
 
 .reading-strip { display: flex; gap: 8px; overflow-x: auto; margin: 10px calc(-1 * var(--gutter)) 0; padding: 2px var(--gutter); scrollbar-width: none; }
 .reading-strip::-webkit-scrollbar { display: none; }
-.reading-chip { flex: none; display: flex; align-items: center; gap: 4px; max-width: 280px; padding: 6px 6px 6px 8px; }
+.reading-chip { flex: none; display: flex; align-items: center; gap: 8px; max-width: 280px; padding: 6px 6px 6px 8px; }
+/* its small buttons (check in, write) hit the card's full height, 34 × 44, and sit 8px apart */
+.reading-chip > .icon-btn.small { position: relative; }
+.reading-chip > .icon-btn.small::before { content: ''; position: absolute; inset: -5px 0; }
 .reading-chip-main { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: left; }
 .reading-chip:only-child { flex: 1; max-width: none; }
 
