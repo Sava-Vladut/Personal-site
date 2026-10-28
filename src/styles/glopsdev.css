@@ -1,50 +1,49 @@
-/* ---------- Global Ops dev: one flat page, hairlines instead of cards, green (--accent) for what's live ---------- */
+/* ---------- Global Ops dev: the shared card, chips and buttons; this file only lays them out (design.md) ---------- */
 
-.gd-page { --gd-ink: color-mix(in oklab, var(--accent) 72%, var(--ink)); }
+.gd-page { --gd-ink: color-mix(in oklab, var(--accent) 55%, var(--ink)); }
 .gd-empty-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.gd-page code { font-size: 0.92em; }
+.gd-page code { font-size: var(--text-m); }
 .gd-page small { font-size: var(--text-s); color: var(--ink-3); font-weight: var(--w-regular); }
 .gd-page time { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .gd-add, .gd-del { font-style: normal; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
-.gd-add { color: color-mix(in oklab, var(--emo-calm-safety) 80%, var(--ink)); }
+.gd-add { color: color-mix(in oklab, var(--emo-calm-safety) 55%, var(--ink)); }
 .gd-del { color: var(--danger); }
-.gd-none { margin: 0; padding: 4px 0; font-size: var(--text-m); color: var(--ink-3); }
-.gd-link, .gd-more {
-  border: 0; background: none; padding: 0; font: inherit; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--gd-ink); cursor: pointer;
-}
-.gd-more { display: block; margin: 10px auto 0; padding: 8px 12px; }
+.gd-none { margin: 0; font-size: var(--text-m); color: var(--ink-3); }
+.gd-more { display: flex; margin: 12px auto 0; }
+.gd-card .chips { margin: 0 0 8px; }
 
-/* the live dot */
+/* the live dot: a state, so it may breathe (transform and opacity only) */
 .gd-live, .gd-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
-.gd-live { position: relative; isolation: isolate; margin-right: 8px; background: var(--accent); }
+.gd-live { position: relative; isolation: isolate; background: var(--accent); }
 .gd-live::before { content: ''; position: absolute; inset: -3px; z-index: -1; border-radius: 50%; background: color-mix(in oklab, var(--accent) 25%, transparent); animation: gd-pulse 1.8s ease-in-out infinite; }
 @keyframes gd-pulse { 50% { transform: scale(1.3); opacity: 0.3; } }
 .gd-dot { background: var(--hue, var(--accent)); }
+.page-head .subtitle .gd-live { margin-right: 8px; }
 
-/* where things stand: four numbers in a row */
-.gd-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 18px; padding: 12px 0; border-block: 1px solid var(--line); }
-.gd-fact { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 2px; min-width: 0; padding: 0 4px; border: 0; background: none; font: inherit; color: inherit; text-align: left; }
-button.gd-fact { cursor: pointer; }
-.gd-fact + .gd-fact { padding-left: 12px; border-left: 1px solid var(--line); }
-.gd-fact dd { margin: 0; font: var(--w-medium) var(--text-xl)/1.1 var(--serif); font-variant-numeric: tabular-nums; color: var(--ink-3); }
+/* where things stand: four numbers on one card */
+.gd-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 18px; padding: 14px 0; }
+.gd-fact { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 4px; min-width: 0; padding: 0 16px; border: 0; background: none; font: inherit; color: inherit; text-align: left; }
+.gd-fact + .gd-fact { border-left: 1px solid var(--line); }
+.gd-fact dd { margin: 0; font-size: var(--text-2xl); font-weight: var(--w-bold); letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink-3); }
 .gd-fact dd.on { color: var(--ink); }
-.gd-fact dt { font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gd-fact dt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
+button.gd-fact { cursor: pointer; }
+@media (hover: hover) { button.gd-fact:hover dt { color: var(--ink); } }
 
-.gd-tabs { margin-bottom: 8px; }
-.gd-body { animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
+/* a block: its title, then rows that follow one another down a card */
+.gd-card { padding: 14px 16px; }
+.gd-card > ul, .gd-card > ol { list-style: none; margin: 0; padding: 0; }
+.gd-card details > summary { list-style: none; cursor: pointer; }
+.gd-card details > summary::-webkit-details-marker { display: none; }
+.section-title small { margin-left: auto; }
 
-/* sections: a small heading, then rows */
-.gd-sec { margin-top: 22px; }
-.gd-h { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: var(--text-base); font-weight: var(--w-bold); }
-.gd-h small { margin-left: auto; }
-
-/* agents: a coloured dot, the name, its state and what it's on */
-.gd-agents { list-style: none; margin: 0; padding: 0; }
-.gd-agent + .gd-agent { border-top: 1px solid var(--line); }
-.gd-agent summary, .gd-commits summary { list-style: none; cursor: pointer; }
-.gd-agent summary::-webkit-details-marker, .gd-commits summary::-webkit-details-marker { display: none; }
-.gd-agent summary { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 2px 8px; padding: 10px 0; }
-.gd-agent summary b { font-weight: var(--w-bold); font-family: var(--mono); font-size: var(--text-m); }
+/* agents: a coloured dot, the id, its state, and what it's on */
+.gd-agent { padding: 12px 0; }
+.gd-agent:first-child { padding-top: 0; }
+.gd-agent:last-child { padding-bottom: 0; }
+.gd-agent + .gd-agent, .gd-commits li + li, .gd-files li + li { border-top: 1px solid var(--line); }
+.gd-agent summary { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 4px 8px; min-height: var(--h-m); }
+.gd-agent summary b { font-weight: var(--w-bold); font-size: var(--text-base); }
 .gd-state { font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); white-space: nowrap; }
 .gd-agent.is-working .gd-state, .gd-state.is-working { color: var(--gd-ink); }
 .gd-agent.is-waiting .gd-state { color: color-mix(in oklab, var(--emo-joy) 55%, var(--ink)); }
@@ -53,110 +52,108 @@ button.gd-fact { cursor: pointer; }
   grid-column: 2 / -1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   font-size: var(--text-m); line-height: 1.45; color: var(--ink-2); overflow-wrap: anywhere;
 }
-.gd-line svg { vertical-align: -2px; margin-right: 4px; color: var(--ink-3); }
+.gd-line svg { vertical-align: -2px; margin-right: 6px; color: var(--ink-3); }
 .gd-agent.is-working .gd-line { color: var(--ink); }
 
 /* what opens under an agent or a commit */
-.gd-detail { padding: 0 0 12px 16px; }
-.gd-agent .gd-detail { padding-left: 16px; }
-.gd-d + .gd-d { margin-top: 10px; }
+.gd-detail { display: grid; gap: 10px; padding: 8px 0 0 16px; }
 .gd-d h3 { margin: 0 0 2px; font-size: var(--text-s); font-weight: var(--w-bold); color: var(--ink-3); }
 .gd-d > div { font-size: var(--text-m); line-height: 1.45; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow-y: auto; }
 .gd-d ul { list-style: none; margin: 0; padding: 0; white-space: normal; }
-.gd-meta { margin: 10px 0 0; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-
-.gd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-.gd-chips button {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill);
-  font: inherit; font-size: var(--text-s); font-weight: var(--w-medium); font-variant-numeric: tabular-nums;
-  background: var(--surface-2); color: var(--ink-2); cursor: pointer;
-}
-.gd-chips button.on { background: color-mix(in oklab, var(--hue, var(--accent)) 22%, var(--surface-2)); color: var(--ink); }
+.gd-meta { margin: 0; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 /* the timeline: time, icon, what */
-.gd-feed { list-style: none; margin: 0; padding: 0; }
-.gd-row { display: grid; grid-template-columns: 3.4rem 16px minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 7px 0; font-size: var(--text-m); }
+.gd-row { display: grid; grid-template-columns: var(--gd-t, 40px) 16px minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 6px 0; font-size: var(--text-m); }
 .gd-row > svg, .gd-ico svg { align-self: center; color: var(--ink-3); }
 .gd-ico { display: inline-flex; align-self: center; }
 .gd-ico svg { color: var(--hue, var(--accent)); }
 .gd-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
 .gd-what b { font-weight: var(--w-bold); color: var(--ink); }
-.gd-what code { margin-left: 4px; color: var(--gd-ink); }
+.gd-what code { margin-left: 6px; color: var(--gd-ink); }
 .gd-row.is-tool .gd-what b { margin-right: 4px; }
-.gd-row.is-prompt .gd-what { white-space: normal; overflow-wrap: anywhere; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.gd-row.is-prompt .gd-what { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere; color: var(--ink); }
 .gd-row.is-stop > * { opacity: 0.7; }
-.gd-row.is-commit, .gd-row.is-deploy { margin: 3px 0; padding: 9px 0; border-block: 1px solid var(--line); }
 .gd-row.is-commit > svg, .gd-row.is-deploy > svg { color: var(--accent); }
-.gd-row.is-commit + .gd-row.is-commit, .gd-row.is-commit + .gd-row.is-deploy, .gd-row.is-deploy + .gd-row.is-commit, .gd-row.is-deploy + .gd-row.is-deploy { margin-top: 0; border-top: 0; }
 
 /* code */
-.gd-repo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; font-size: var(--text-m); color: var(--ink-3); }
-.gd-repo svg { color: var(--ink-3); }
+.gd-repo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 18px 0 0; font-size: var(--text-m); color: var(--ink-3); }
 .gd-repo b { color: var(--ink); font-weight: var(--w-bold); }
-.gd-repo .gd-link { margin-left: auto; }
-.gd-files, .gd-paths, .gd-commits { list-style: none; margin: 0; padding: 0; }
-.gd-files li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 7px 0; font-size: var(--text-m); }
-.gd-files li + li, .gd-commits li + li { border-top: 1px solid var(--line); }
+.gd-repo .btn { margin-left: auto; }
+.gd-files li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 8px 0; font-size: var(--text-m); }
+.gd-files li:first-child, .gd-commits li:first-child { padding-top: 0; }
 .gd-files code, .gd-paths code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gd-num { font-size: var(--text-s); white-space: nowrap; }
-.gd-tag { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); font-weight: var(--w-bold); white-space: nowrap; }
-.gd-tag.is-new, .gd-tag.is-added { background: color-mix(in oklab, var(--emo-calm-safety) 16%, var(--surface-2)); color: color-mix(in oklab, var(--emo-calm-safety) 80%, var(--ink)); }
-.gd-tag.is-deleted { background: color-mix(in oklab, var(--danger) 12%, var(--surface-2)); color: var(--danger); }
-.gd-commits summary { display: block; padding: 10px 0; }
-.gd-subject { display: block; font-weight: var(--w-medium); overflow-wrap: anywhere; }
-.gd-subject .gd-state { margin-left: 8px; padding: 1px 8px; border-radius: var(--r-pill); background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); }
+.gd-tag { display: inline-block; padding: 2px 6px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); font-weight: var(--w-medium); white-space: nowrap; }
+.gd-tag.is-new, .gd-tag.is-added { background: color-mix(in oklab, var(--emo-calm-safety) 22%, var(--surface)); color: color-mix(in oklab, var(--emo-calm-safety) 55%, var(--ink)); }
+.gd-tag.is-deleted { background: color-mix(in oklab, var(--danger) 14%, var(--surface)); color: var(--danger); }
+.gd-commits li { padding: 12px 0; }
+.gd-commits li:last-child { padding-bottom: 0; }
+.gd-commits summary { display: block; }
+.gd-subject { display: block; font-size: var(--text-base); font-weight: var(--w-medium); line-height: 1.45; overflow-wrap: anywhere; }
+.gd-subject .gd-state { margin-left: 8px; padding: 2px 6px; border-radius: var(--r-xs); background: color-mix(in oklab, var(--accent) 22%, var(--surface)); }
 .gd-commits summary small { display: block; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .gd-commits .gd-detail { padding-left: 0; }
-.gd-body { margin: 0 0 8px; font-size: var(--text-m); white-space: pre-wrap; color: var(--ink-2); overflow-wrap: anywhere; }
-.gd-paths li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: var(--text-s); }
+.gd-body-text { margin: 0; font-size: var(--text-m); line-height: 1.45; white-space: pre-wrap; color: var(--ink-2); overflow-wrap: anywhere; }
+.gd-paths li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: var(--text-s); }
 
 /* deploys and the progress log: a line down the left, newest first */
-.gd-live-list { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 4px 0 0; padding: 0; font-size: var(--text-m); color: var(--ink-3); }
+.gd-live-list { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 18px 0 0; padding: 0; font-size: var(--text-m); color: var(--ink-3); }
 .gd-live-list b { margin-left: 6px; font-weight: var(--w-bold); color: var(--ink); }
-.gd-timeline { list-style: none; margin: 8px 0 0; padding: 0 0 0 16px; border-left: 2px solid var(--line); }
+.gd-card > ol.gd-timeline { padding-left: 16px; border-left: 2px solid var(--line); }
 .gd-timeline li { position: relative; padding: 0 0 14px; }
-.gd-timeline li::before { content: ''; position: absolute; left: -22px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--line-2); }
+.gd-timeline li:last-child { padding-bottom: 0; }
+.gd-timeline li::before { content: ''; position: absolute; left: -23px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-2); box-sizing: content-box; }
 .gd-timeline li:first-child::before { background: var(--accent); border-color: var(--accent); }
 .gd-timeline time { display: block; margin-bottom: 2px; }
-.gd-deploy { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.gd-deploy { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--text-base); }
 .gd-deploy b { font-weight: var(--w-bold); overflow-wrap: anywhere; }
 .gd-more-note { margin-top: 4px; }
-.gd-more-note summary { cursor: pointer; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--gd-ink); }
+.gd-more-note summary { font-size: var(--text-m); font-weight: var(--w-medium); color: var(--gd-ink); }
 .gd-more-note .gd-md { margin-top: 6px; }
 
 /* note text from the log */
 .gd-md { font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); overflow-wrap: anywhere; }
 .gd-md p { margin: 0; }
 .gd-md p + p, .gd-md .md-li { margin-top: 4px; }
-.gd-md code { padding: 0 3px; border-radius: var(--r-xs); background: var(--surface-2); word-break: break-word; }
+.gd-md code { padding: 0 4px; border-radius: var(--r-xs); background: var(--surface-2); word-break: break-word; }
 .gd-md pre { margin: 6px 0; padding: 8px 10px; border-radius: var(--r-m); background: var(--surface-2); overflow-x: auto; font-size: var(--text-s); }
 .gd-md pre code { padding: 0; background: none; }
 
-/* milestones */
-.gd-meter { display: flex; gap: 3px; margin: 4px 0 8px; }
-.gd-meter i { flex: 1; height: 6px; border-radius: var(--r-pill); background: var(--surface-2); }
-.gd-meter i.on { background: var(--accent); }
-.gd-checks { list-style: none; margin: 0; padding: 0; }
-.gd-checks li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
-.gd-checks svg { flex: none; margin-top: 1px; color: var(--ink-3); }
+/* milestones: the shared meter, then the list */
+.gd-meter { margin-bottom: 8px; }
+.gd-meter i { background: var(--accent); }
+.gd-checks li { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; }
+.gd-checks li:first-child { padding-top: 0; }
+.gd-checks li:last-child { padding-bottom: 0; }
+.gd-checks svg { flex: none; margin-top: 2px; color: var(--ink-3); }
 .gd-checks li.is-done svg { color: var(--accent); }
 .gd-checks li:not(.is-done) .gd-md { color: var(--ink); }
 
 /* folded notes and logs */
-.gd-fold { border-top: 1px solid var(--line); }
-.gd-fold > summary { display: flex; align-items: baseline; gap: 8px; padding: 10px 0; cursor: pointer; font-weight: var(--w-medium); }
+.gd-fold + .gd-fold { border-top: 1px solid var(--line); }
+.gd-fold > summary { display: flex; align-items: baseline; gap: 8px; min-height: var(--h-m); align-items: center; font-weight: var(--w-medium); }
 .gd-fold > summary small { margin-left: auto; white-space: nowrap; }
 .gd-fold > summary code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gd-fold > .gd-md { padding-bottom: 12px; }
-.gd-log pre { margin: 0 0 12px; padding: 10px 12px; max-height: 320px; overflow: auto; border-radius: var(--r-m); background: #15171a; color: #d7dade; font: var(--text-s)/1.45 var(--mono); white-space: pre; }
+.gd-log pre { margin: 0 0 12px; padding: 10px 12px; max-height: 320px; overflow: auto; border-radius: var(--r-m); background: var(--surface-2); color: var(--ink-2); font: var(--text-s)/1.45 var(--mono); white-space: pre; }
 
 .gd-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .gd-shots a { display: grid; gap: 4px; min-width: 0; }
 .gd-shots img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--surface-2); }
 .gd-shots small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.gd-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; margin: 28px 0 0; font-size: var(--text-s); color: var(--ink-3); text-align: center; }
+.gd-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 28px 0 0; font-size: var(--text-s); color: var(--ink-3); text-align: center; }
 
+@media (hover: hover) {
+  .gd-agent summary:hover .gd-line, .gd-commits summary:hover .gd-subject { color: var(--ink); }
+}
+@media (max-width: 380px) {
+  .gd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+  .gd-fact:nth-child(3) { border-left: 0; }
+}
+
+/* on a desktop the blocks sit two across (agents beside the timeline) */
 @media (min-width: 1024px) {
-  .gd-page { max-width: 760px; }
+  .gd-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; align-items: start; }
+  .gd-body > .gd-wide { grid-column: 1 / -1; }
 }

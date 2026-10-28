@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.150.1',
+    date: '2026-10-28',
+    changes: [
+      'Global Ops dev page now follows the app’s design: shared cards, chips, buttons and meter, tokens for every size and colour',
+      'Log tails no longer use a fixed dark colour, so they follow dark mode',
+      'On a desktop the agents sit beside the timeline',
+    ],
+  },
+  {
     version: '1.150.0',
     date: '2026-10-28',
     changes: [

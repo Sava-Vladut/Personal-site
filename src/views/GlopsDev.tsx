@@ -115,7 +115,7 @@ export function GlopsDev() {
               <button role="tab" aria-selected={tab === k} onClick={() => setTab(k)} key={k}>{label}</button>
             ))}
           </div>
-          <div class="gd-body" key={tab}>
+          <div class="gd-body fade-arrive-soft" key={tab}>
             {tab === 'activity' && <ActivityTab data={data} now={now} />}
             {tab === 'code' && <CodeTab data={data} now={now} />}
             {tab === 'deploys' && <DeploysTab data={data} now={now} />}
@@ -124,7 +124,7 @@ export function GlopsDev() {
           <p class="gd-foot">
             {error ? <><Icon name="alert-circle" size={14} /> {error} · </> : null}
             {t('Refreshes every {n} seconds', { n: (data.live ? LIVE_EVERY : IDLE_EVERY) / 1000 })}
-            <button class="gd-link" onClick={refresh}>{t('Refresh')}</button>
+            <button class="btn btn-quiet btn-s" onClick={refresh}><Icon name="refresh" size={16} /> {t('Refresh')}</button>
           </p>
         </>
       )}
@@ -144,7 +144,7 @@ function Facts({ data }: { data: DevState }) {
     { value: game ? game.online : null, label: t('Online now'), onClick: () => navigate('glops') },
   ];
   return (
-    <dl class="gd-facts">
+    <dl class="card gd-facts">
       {facts.map((f) => {
         const body = <><dd class={f.value ? 'on' : ''}>{f.value ?? '—'}</dd><dt>{f.label}</dt></>;
         return f.onClick ? <button class="gd-fact" onClick={f.onClick} key={f.label}>{body}</button> : <div class="gd-fact" key={f.label}>{body}</div>;
@@ -191,32 +191,30 @@ function ActivityTab({ data, now }: { data: DevState; now: number }) {
 
   return (
     <>
-      <section class="gd-sec">
-        <h2 class="gd-h">{t('Agents')}</h2>
+      <Block title={<>{t('Agents')}</>}>
         {agents.length ? (
           <ul class="gd-agents">{agents.map((s) => <Agent s={s} now={now} key={s.id} />)}</ul>
         ) : <p class="gd-none">{t('No agent is working on the game.')}</p>}
-      </section>
+      </Block>
 
-      <section class="gd-sec">
-        <h2 class="gd-h">{data.live && <span class="gd-live" aria-hidden="true" />}{t('Timeline')}</h2>
+      <Block title={<>{data.live && <span class="gd-live" aria-hidden="true" />}{t('Timeline')}</>}>
         {ids.length > 1 && (
-          <div class="gd-chips" role="group" aria-label={t('Show one agent')}>
-            <button class={!only ? 'on' : ''} aria-pressed={!only} onClick={() => setOnly(null)}>{t('All')}</button>
+          <div class="chips" role="group" aria-label={t('Show one agent')}>
+            <button class="chip" aria-pressed={!only} onClick={() => setOnly(null)}>{t('All')}</button>
             {ids.map((id) => (
-              <button class={only === id ? 'on' : ''} aria-pressed={only === id} style={{ '--hue': hueOf(id) }} onClick={() => setOnly(only === id ? null : id)} key={id}>
+              <button class="chip" aria-pressed={only === id} style={{ '--hue': hueOf(id) }} onClick={() => setOnly(only === id ? null : id)} key={id}>
                 <span class="gd-dot" aria-hidden="true" />{id.slice(0, 4)}
               </button>
             ))}
           </div>
         )}
         {shown.length ? (
-          <ol class="gd-feed" aria-live="polite">
+          <ol class="gd-feed" aria-live="polite" style={{ '--gd-t': shown.some((r) => keyOf(new Date(r.t)) !== keyOf(new Date(now))) ? '96px' : '40px' }}>
             {shown.map((r) => <FeedRow r={r} now={now} key={`${r.t}-${r.k}-${'s' in r ? r.s : ''}-${r.k === 'tool' ? r.tool : ''}`} />)}
           </ol>
         ) : <p class="gd-none">{t('Nothing lately.')}</p>}
-        {rows.length > SHOWN && <button class="gd-more" onClick={() => setAll(!all)}>{all ? t('Fewer') : t('All {n}', { n: rows.length })}</button>}
-      </section>
+        {rows.length > SHOWN && <More all={all} total={rows.length} onClick={() => setAll(!all)} />}
+      </Block>
     </>
   );
 }
@@ -255,6 +253,20 @@ function Agent({ s, now }: { s: Session; now: number }) {
       </details>
     </li>
   );
+}
+
+/** A titled block of the page: the title, then its rows on one card. */
+function Block({ title, children }: { title: ComponentChildren; children: ComponentChildren }) {
+  return (
+    <section class="section">
+      <h2 class="section-title">{title}</h2>
+      <div class="card gd-card">{children}</div>
+    </section>
+  );
+}
+
+function More({ all, total, onClick }: { all: boolean; total: number; onClick: () => void }) {
+  return <button class="btn btn-quiet btn-s gd-more" onClick={onClick}>{all ? t('Fewer') : t('All {n}', { n: total })}</button>;
 }
 
 function Detail({ label, children }: { label: string; children: ComponentChildren }) {
@@ -301,18 +313,17 @@ function CodeTab({ data, now }: { data: DevState; now: number }) {
   return (
     <>
       {r && (
-        <p class="gd-repo">
+        <p class="gd-repo gd-wide">
           <Icon name="git-branch" size={16} stroke={2} />
           <b>{r.branch}</b>
           <span>{!r.upstream ? t('not pushed anywhere') : r.ahead || r.behind
             ? [r.ahead && t('{n} to push', { n: r.ahead }), r.behind && t('{n} behind', { n: r.behind })].filter(Boolean).join(' · ')
             : t('Pushed')}</span>
-          {r.github && <a class="gd-link" href={`https://github.com/${r.github}`} target="_blank" rel="noopener noreferrer">GitHub</a>}
+          {r.github && <a class="btn btn-quiet btn-s" href={`https://github.com/${r.github}`} target="_blank" rel="noopener noreferrer"><Icon name="brand-github" size={16} /> GitHub</a>}
         </p>
       )}
 
-      <section class="gd-sec">
-        <h2 class="gd-h">{t('Uncommitted')}{data.changes.length > 0 && <small><i class="gd-add">+{added}</i> <i class="gd-del">−{removed}</i></small>}</h2>
+      <Block title={<>{t('Uncommitted')}{data.changes.length > 0 && <small><i class="gd-add">+{added}</i> <i class="gd-del">−{removed}</i></small>}</>}>
         {data.changes.length ? (
           <ul class="gd-files">
             {data.changes.map((c) => (
@@ -324,10 +335,9 @@ function CodeTab({ data, now }: { data: DevState; now: number }) {
             ))}
           </ul>
         ) : <p class="gd-none">{t('Everything is committed.')}</p>}
-      </section>
+      </Block>
 
-      <section class="gd-sec">
-        <h2 class="gd-h">{t('Commits')}</h2>
+      <Block title={<>{t('Commits')}</>}>
         {data.commits.length ? (
           <ul class="gd-commits">
             {data.commits.map((c) => {
@@ -340,7 +350,7 @@ function CodeTab({ data, now }: { data: DevState; now: number }) {
                       <small><code>{c.hash}</code> · {ago(c.at, now)} · {count(c.files, 'file', 'files')} · <i class="gd-add">+{c.added}</i> <i class="gd-del">−{c.removed}</i></small>
                     </summary>
                     <div class="gd-detail">
-                      {body && <p class="gd-body">{body}</p>}
+                      {body && <p class="gd-body-text">{body}</p>}
                       {c.paths.length > 0 && (
                         <ul class="gd-paths">
                           {c.paths.map((f) => <li key={f.path}><code>{f.path}</code><span class="gd-num"><i class="gd-add">+{f.added}</i> <i class="gd-del">−{f.removed}</i></span></li>)}
@@ -354,7 +364,7 @@ function CodeTab({ data, now }: { data: DevState; now: number }) {
             })}
           </ul>
         ) : <p class="gd-none">{t('none yet')}</p>}
-      </section>
+      </Block>
     </>
   );
 }
@@ -367,12 +377,11 @@ function DeploysTab({ data, now }: { data: DevState; now: number }) {
   return (
     <>
       {live.length > 0 && (
-        <ul class="gd-live-list">
+        <ul class="gd-live-list gd-wide">
           {live.map((b) => <li key={b.name}><span>{LIVE[b.name] ?? b.name}</span><b>{ago(b.at!, now)}</b></li>)}
         </ul>
       )}
-      <section class="gd-sec">
-        <h2 class="gd-h">{t('Deploys')}</h2>
+      <Block title={<>{t('Deploys')}</>}>
         {data.deploys.length ? (
           <ol class="gd-timeline">
             {data.deploys.map((d) => (
@@ -392,7 +401,7 @@ function DeploysTab({ data, now }: { data: DevState; now: number }) {
             ))}
           </ol>
         ) : <p class="gd-none">{t('Nothing deployed yet.')}</p>}
-      </section>
+      </Block>
     </>
   );
 }
@@ -413,10 +422,9 @@ function NotesTab({ data, now }: { data: DevState; now: number }) {
       {empty && <p class="gd-none">{t('Nothing here yet.')}</p>}
 
       {milestones.length > 0 && (
-        <section class="gd-sec">
-          <h2 class="gd-h">{t('Milestones')}<small>{t('{n} of {m} done', { n: done, m: milestones.length })}</small></h2>
-          <div class="gd-meter" role="meter" aria-valuemin={0} aria-valuemax={milestones.length} aria-valuenow={done} aria-label={t('Milestones')}>
-            {milestones.map((m) => <i class={m.done ? 'on' : ''} title={m.text} />)}
+        <Block title={<>{t('Milestones')}<small>{t('{n} of {m} done', { n: done, m: milestones.length })}</small></>}>
+          <div class="meter gd-meter" role="meter" aria-valuemin={0} aria-valuemax={milestones.length} aria-valuenow={done} aria-label={t('Milestones')}>
+            <i style={{ width: `${(done / milestones.length) * 100}%` }} />
           </div>
           <ul class="gd-checks">
             {milestones.map((m) => (
@@ -426,23 +434,21 @@ function NotesTab({ data, now }: { data: DevState; now: number }) {
               </li>
             ))}
           </ul>
-        </section>
+        </Block>
       )}
 
       {next.length > 0 && (
-        <section class="gd-sec">
-          <h2 class="gd-h">{t('Next up')}</h2>
+        <Block title={<>{t('Next up')}</>}>
           <ul class="gd-checks">
             {next.map((n) => (
               <li><Icon name="point" size={18} stroke={2} /><Markdown text={n.text} class="gd-md" /></li>
             ))}
           </ul>
-        </section>
+        </Block>
       )}
 
       {status.length > 0 && (
-        <section class="gd-sec">
-          <h2 class="gd-h">{t('Progress log')}{data.log.at && <small>{ago(data.log.at, now)}</small>}</h2>
+        <Block title={<>{t('Progress log')}{data.log.at && <small>{ago(data.log.at, now)}</small>}</>}>
           <ol class="gd-timeline">
             {(all ? status : status.slice(0, 6)).map((it) => (
               <li>
@@ -451,20 +457,18 @@ function NotesTab({ data, now }: { data: DevState; now: number }) {
               </li>
             ))}
           </ol>
-          {status.length > 6 && <button class="gd-more" onClick={() => setAll(!all)}>{all ? t('Fewer') : t('All {n}', { n: status.length })}</button>}
-        </section>
+          {status.length > 6 && <More all={all} total={status.length} onClick={() => setAll(!all)} />}
+        </Block>
       )}
 
       {data.logs.length > 0 && (
-        <section class="gd-sec">
-          <h2 class="gd-h">{t('Logs')}</h2>
+        <Block title={<>{t('Logs')}</>}>
           {data.logs.map((l, i) => <LogTail key={l.path} log={l} open={i === 0} now={now} />)}
-        </section>
+        </Block>
       )}
 
       {data.shots.length > 0 && (
-        <section class="gd-sec">
-          <h2 class="gd-h">{t('Screenshots')}</h2>
+        <Block title={<>{t('Screenshots')}</>}>
           <div class="gd-shots">
             {data.shots.map((s) => (
               <a href={`/api/glops-dev/shots/${encodeURIComponent(s.name)}?v=${s.at}`} target="_blank" rel="noopener noreferrer" key={s.name + s.at}>
@@ -473,19 +477,18 @@ function NotesTab({ data, now }: { data: DevState; now: number }) {
               </a>
             ))}
           </div>
-        </section>
+        </Block>
       )}
 
       {notes.length > 0 && (
-        <section class="gd-sec">
-          <h2 class="gd-h">{t('Porting notes')}</h2>
+        <Block title={<>{t('Porting notes')}</>}>
           {notes.map((s) => (
             <details class="gd-fold" key={s.title}>
               <summary>{s.title}</summary>
               <Markdown text={s.body} class="gd-md" />
             </details>
           ))}
-        </section>
+        </Block>
       )}
     </>
   );
