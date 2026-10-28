@@ -84,16 +84,26 @@ export function normalize(raw: Partial<WheelLayout> | null | undefined): WheelLa
   return l;
 }
 
-/** Saves from before 1.106 split Insights: what still sat where it came moves to its new group (what you moved yourself stays). */
-const VERSION = 2;
-const MOVED: Record<string, string | null> = { traps: 'insights', laws: 'insights', twitch: 'insights', status: 'insights', countdown: 'insights', repos: null };
+/**
+ * Places that moved to a new group: a save from before the move lets go of what still sat where it came, so it lands
+ * in its new group (what you moved yourself stays). Version 2: 1.106 split Insights. Version 3: Global Ops' player
+ * stats moved from Extras to Insights (1.148).
+ */
+const VERSION = 3;
+const MOVED: Record<number, Record<string, string | null>> = {
+  2: { traps: 'insights', laws: 'insights', twitch: 'insights', status: 'insights', countdown: 'insights', repos: null },
+  3: { glops: 'extras' },
+};
 function migrate(raw: (Partial<WheelLayout> & { v?: number }) | null): Partial<WheelLayout> | null {
   if (!raw || (raw.v ?? 1) >= VERSION) return raw;
   const top = strings(raw.top);
   const kids = Object.fromEntries(Object.entries(raw.kids ?? {}).map(([g, ids]) => [g, strings(ids)]));
-  for (const [id, was] of Object.entries(MOVED)) {
-    if (was == null) { if (top.includes(id)) top.splice(top.indexOf(id), 1); }
-    else if (kids[was]?.includes(id)) kids[was] = kids[was].filter((k) => k !== id);
+  for (const [v, moved] of Object.entries(MOVED)) {
+    if ((raw.v ?? 1) >= Number(v)) continue;
+    for (const [id, was] of Object.entries(moved)) {
+      if (was == null) { if (top.includes(id)) top.splice(top.indexOf(id), 1); }
+      else if (kids[was]?.includes(id)) kids[was] = kids[was].filter((k) => k !== id);
+    }
   }
   return { ...raw, top, kids };
 }

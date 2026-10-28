@@ -1,0 +1,173 @@
+/* ---------- Global Ops dev: the stats page's cards and the channel points lists (twitch.css), in green (--accent) ---------- */
+
+.ops-tabs { margin-top: 12px; }
+.ops-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; position: relative; }
+.ops-tabs button span:not(.ops-badge) { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 420px) { .ops-tabs button svg { display: none; } }
+.ops-badge {
+  min-width: 17px; height: 17px; padding: 0 5px; border-radius: var(--r-pill); font-size: 11px; font-weight: var(--w-bold); line-height: 17px;
+  background: var(--accent); color: var(--bg);
+}
+.ops-empty-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+.ops-date {
+  display: inline-block; margin-bottom: 4px; font-size: var(--text-s); font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+  color: color-mix(in oklab, var(--accent) 72%, var(--ink));
+}
+
+/* note text from the log: no gaps around it, code wraps instead of running off */
+.ops-md { font-size: var(--text-m); line-height: 1.5; color: var(--ink-2); overflow-wrap: anywhere; }
+.ops-md p { margin: 0; }
+.ops-md p + p, .ops-md .md-li { margin-top: 4px; }
+.ops-md code { font-size: 0.92em; padding: 0 3px; border-radius: var(--r-xs); background: var(--surface-2); word-break: break-word; }
+.ops-md pre { margin: 6px 0; padding: 8px 10px; border-radius: var(--r-m); background: var(--surface-2); overflow-x: auto; font-size: var(--text-s); }
+.ops-md pre code { padding: 0; background: none; }
+
+/* tiles: three across on a wide screen; the ones you can tap open their tab */
+.ops-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 560px) { .ops-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ops-tile { text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.ops-tile .tile-value code { font-size: 0.85em; color: color-mix(in oklab, var(--accent) 72%, var(--ink)); }
+.ops-clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ops-list .chart-title, .ops-now .chart-title { display: flex; align-items: center; }
+.ops-now { padding: 16px 16px 12px; }
+.ops-list .chart-sub .up, .ops-diff .up, .ops-commit .up, .tile-sub .up { color: color-mix(in oklab, var(--emo-calm-safety) 80%, var(--ink)); font-weight: var(--w-bold); }
+.ops-list .chart-sub .down, .ops-diff .down, .ops-commit .down, .tile-sub .down { color: var(--danger); font-weight: var(--w-bold); }
+
+/* ---------- agents: one per session, in its own colour (--hue) ---------- */
+.ops-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--hue, var(--accent)); }
+.ops-agents { list-style: none; margin: 10px 0 0; padding: 0; }
+.ops-agent { padding: 10px 0 10px 12px; border-left: 3px solid color-mix(in oklab, var(--hue, var(--accent)) 70%, transparent); animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
+.ops-agent + .ops-agent { margin-top: 8px; }
+.ops-agent.is-idle { border-left-color: var(--line-2); }
+.ops-agent-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ops-agent-top b { font-weight: var(--w-bold); }
+.ops-agent-top small { margin-left: auto; font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; }
+.ops-pill {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: var(--r-pill); font-size: var(--text-s); font-weight: var(--w-bold);
+  background: var(--surface-2); color: var(--ink-2); white-space: nowrap; vertical-align: 1px;
+}
+.ops-agent-top .ops-pill { margin-left: 0; }
+.ops-pill.is-working { background: color-mix(in oklab, var(--accent) 18%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.ops-pill.is-waiting { background: color-mix(in oklab, var(--emo-joy) 22%, var(--surface-2)); color: color-mix(in oklab, var(--emo-joy) 55%, var(--ink)); }
+.ops-ask, .ops-doing, .ops-reply, .ops-meta { margin: 6px 0 0; font-size: var(--text-m); line-height: 1.45; overflow-wrap: anywhere; }
+.ops-ask { color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ops-ask svg, .ops-doing svg { vertical-align: -2px; color: var(--ink-3); }
+.ops-doing { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-medium); }
+.ops-reply { color: var(--ink-2); white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ops-reply.is-open { display: block; padding: 8px 10px; border-radius: var(--r-m); background: var(--surface-2); max-height: 280px; overflow-y: auto; }
+.ops-meta { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.ops-session details > summary { list-style: none; cursor: pointer; }
+.ops-session summary::-webkit-details-marker { display: none; }
+.ops-session-body { padding-top: 4px; }
+.ops-session-body h4 { margin: 14px 0 0; font-size: var(--text-s); font-weight: var(--w-bold); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.ops-session-body h4 small { font-weight: var(--w-regular); text-transform: none; letter-spacing: 0; }
+.ops-asks { list-style: none; margin: 6px 0 0; padding: 0; font-size: var(--text-m); }
+.ops-asks li { padding: 4px 0; overflow-wrap: anywhere; color: var(--ink-2); }
+.ops-asks time, .ops-asks small { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; margin-right: 6px; }
+
+.ops-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ops-chips button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill);
+  font: inherit; font-size: var(--text-s); font-weight: var(--w-medium); font-variant-numeric: tabular-nums;
+  background: var(--surface-2); color: var(--ink-2); cursor: pointer;
+}
+.ops-chips button.on { background: color-mix(in oklab, var(--hue, var(--accent)) 22%, var(--surface-2)); color: var(--ink); box-shadow: 0 0 0 1px color-mix(in oklab, var(--hue, var(--accent)) 50%, transparent); }
+
+/* the live feed: one line per thing done, time first */
+.ops-feed { list-style: none; margin: 10px 0 0; padding: 0; max-height: 520px; overflow-y: auto; font-size: var(--text-m); }
+.ops-feed li {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: baseline; gap: 10px; padding: 6px 0;
+  animation: rise-in var(--dur-3) var(--ease-emph) backwards;
+}
+.ops-feed li + li { border-top: 1px solid var(--line); }
+.ops-feed time { font-variant-numeric: tabular-nums; font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; }
+.ops-tool { display: inline-flex; align-items: center; gap: 4px; font-weight: var(--w-bold); color: color-mix(in oklab, var(--accent) 72%, var(--ink)); white-space: nowrap; }
+.ops-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.ops-feed li.is-stop .ops-tool, .ops-feed li.is-stop .ops-what { color: var(--ink-3); font-weight: var(--w-medium); }
+.ops-feed li.is-prompt .ops-what { color: var(--ink); white-space: normal; overflow-wrap: anywhere; }
+.ops-feed li.is-prompt .ops-tool { color: color-mix(in oklab, var(--emo-joy) 55%, var(--ink)); }
+
+/* files: changed since the last commit, branches, builds */
+.ops-file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 4px 10px; padding: 8px 0; font-size: var(--text-m); }
+.ops-touched { grid-template-columns: minmax(0, 1fr) auto; }
+.ops-touched small { grid-column: auto !important; }
+.ops-list li + li.ops-file, .ops-list li + li.ops-commit { border-top: 1px solid var(--line); }
+.ops-file small { grid-column: 2 / -1; color: var(--ink-3); font-size: var(--text-s); }
+.ops-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92em; }
+.ops-diff { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: var(--text-s); }
+.ops-state {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--text-s); font-weight: var(--w-bold); padding: 1px 7px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink-2); white-space: nowrap;
+}
+.ops-state.is-new, .ops-state.is-added { background: color-mix(in oklab, var(--emo-calm-safety) 16%, var(--surface-2)); color: color-mix(in oklab, var(--emo-calm-safety) 80%, var(--ink)); }
+.ops-state.is-deleted { background: color-mix(in oklab, var(--danger) 12%, var(--surface-2)); color: var(--danger); }
+
+/* milestones and what's next */
+.ops-meter { display: flex; gap: 3px; margin-top: 10px; }
+.ops-meter i {
+  flex: 1; height: 8px; border-radius: var(--r-pill); background: var(--surface-2);
+  animation: grow-x var(--dur-4) var(--ease-emph) calc(0.1s + var(--k, 0) * 30ms) backwards; transform-origin: left;
+}
+.ops-meter i.on { background: var(--accent); }
+.ops-checks li { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; }
+.ops-checks svg { flex: none; margin-top: 1px; color: var(--ink-3); }
+.ops-checks li.is-done svg { color: var(--accent); }
+.ops-checks li:not(.is-done) .ops-md { color: var(--ink); }
+
+/* the status log and the deploys, newest first, on a line */
+.ops-timeline { list-style: none; margin: 12px 0 0; padding: 0 0 0 16px; border-left: 2px solid color-mix(in oklab, var(--accent) 30%, var(--line)); }
+.ops-timeline li { position: relative; padding: 0 0 14px; }
+.ops-timeline li::before {
+  content: ''; position: absolute; left: -22px; top: 5px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent);
+}
+.ops-timeline li:first-child::before { background: var(--accent); }
+.ops-deploy-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ops-deploy-head b { font-weight: var(--w-bold); overflow-wrap: anywhere; }
+.ops-more { margin-top: 6px; }
+.ops-more > summary { cursor: pointer; font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--accent) 72%, var(--ink)); }
+.ops-more > .ops-md { margin-top: 6px; }
+.ops-backup { display: block; margin-top: 4px; font-size: var(--text-s); color: var(--ink-3); overflow-wrap: anywhere; }
+
+/* commits, opened for their message and files */
+.ops-commit details > summary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 9px 0; cursor: pointer; list-style: none; }
+.ops-commit summary::-webkit-details-marker { display: none; }
+.ops-commit summary code { font-size: var(--text-s); color: color-mix(in oklab, var(--accent) 72%, var(--ink)); padding-top: 2px; }
+.ops-subject { font-weight: var(--w-medium); overflow-wrap: anywhere; }
+.ops-commit summary small { grid-column: 2; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.ops-body { margin: 0 0 8px; padding: 8px 10px; border-radius: var(--r-m); background: var(--surface-2); font-size: var(--text-m); white-space: pre-wrap; color: var(--ink-2); overflow-wrap: anywhere; }
+.ops-paths { list-style: none; margin: 0 0 10px; padding: 0; font-size: var(--text-s); }
+.ops-paths li { display: flex; gap: 8px; justify-content: space-between; padding: 3px 0; animation: none; }
+.ops-paths code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ops-paths .muted { color: var(--ink-3); }
+
+/* folded notes and logs */
+.ops-note { border-top: 1px solid var(--line); }
+.ops-note:first-of-type { margin-top: 8px; }
+.ops-note > summary { display: flex; align-items: baseline; gap: 8px; padding: 10px 0; cursor: pointer; font-weight: var(--w-medium); }
+.ops-note > summary small { margin-left: auto; font-weight: var(--w-regular); font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; }
+.ops-note > summary code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92em; }
+.ops-note > .ops-md { padding-bottom: 12px; }
+.ops-log pre {
+  margin: 0 0 12px; padding: 10px 12px; max-height: 320px; overflow: auto; border-radius: var(--r-m);
+  background: #15171a; color: #d7dade; font: var(--text-s)/1.45 var(--mono); white-space: pre;
+}
+
+/* the newest screenshots */
+.ops-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 6px; }
+.ops-shots a { display: grid; gap: 4px; min-width: 0; }
+.ops-shots img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--surface-2); }
+.ops-shots small { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ops-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; justify-content: center; font-size: var(--text-s); color: var(--ink-3); text-align: center; }
+.ops-foot .btn { display: inline-flex; align-items: center; gap: 4px; }
+
+@media (min-width: 1024px) {
+  .ops-page .reveal.stack-l { display: block; column-count: 2; column-gap: 12px; }
+  .ops-page .reveal.stack-l > * { break-inside: avoid; margin: 0 0 12px; }
+  .ops-page .reveal.stack-l > :is(.ops-now, .tiles, .ops-foot) { column-span: all; }
+}

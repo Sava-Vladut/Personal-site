@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.148.0',
+    date: '2026-10-28',
+    changes: [
+      'New Global Ops dev page under Extras for following the game’s development as agents work on it',
+      'Now shows which agents are working, what each was asked and is doing, the latest commit, the last deploy, what isn’t committed or deployed yet and what’s next',
+      'Agents lists every session from the last 3 days with its prompts, last reply, the files it edited and each step it took, plus a live feed you can filter by agent',
+      'Code shows the branch and whether it’s pushed, changes not committed yet, and the latest commits with their messages and files',
+      'Deploys lists every deploy of the page, game and servers with what went live, and every build',
+      'Log shows the milestones, the progress log, the newest logs and screenshots, and the porting notes',
+      'The Global Ops player stats page moved from Extras to Insights',
+    ],
+  },
+  {
     version: '1.147.0',
     date: '2026-10-28',
     changes: [

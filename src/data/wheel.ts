@@ -23,10 +23,11 @@ export const WHEEL: WheelNode[] = [
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
   // everything that's numbers about you, in one place
   {
-    id: 'insights', name: t('Insights'), sub: t('Your patterns and your places'), icon: 'chart-dots', hue: 'hope-interest',
+    id: 'insights', name: t('Insights'), sub: t('Your patterns, your places and who plays Global Ops'), icon: 'chart-dots', hue: 'hope-interest',
     kids: [
       { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to'), icon: 'chart-bar', to: 'stats' },
       { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', hue: 'calm-safety', to: 'map' },
+      { id: 'glops', name: t('Global Ops'), sub: t('Who plays the game in the browser: online now and all-time highs'), icon: 'device-gamepad-2', to: 'glops' },
     ],
   },
   // things to read: how minds, power and people work
@@ -40,14 +41,14 @@ export const WHEEL: WheelNode[] = [
   },
   // what's linked to the outside, and small tools
   {
-    id: 'extras', name: t('Extras'), sub: t('GitHub, Twitch, your public link, countdowns and Global Ops'), icon: 'layout-grid', hue: 'fear',
+    id: 'extras', name: t('Extras'), sub: t('GitHub, Twitch, your public link, countdowns and the game’s development'), icon: 'layout-grid', hue: 'fear',
     kids: [
       { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
       { id: 'streamer', name: t('Streamer stats'), sub: t('What a Twitch channel plays, when and for how long'), icon: 'device-gamepad-2', hue: 'fear', to: 'streamer' },
       { id: 'status', name: t('Public status'), sub: t('One link that always shows your latest check-in'), icon: 'world', hue: 'joy', to: 'status' },
       { id: 'countdown', name: t('Countdowns'), sub: t('Count the days to something, and change when'), icon: 'hourglass', hue: 'calm-safety', to: 'countdown' },
-      { id: 'glops', name: t('Global Ops'), sub: t('Who plays the game in the browser: online now and all-time highs'), icon: 'device-gamepad-2', hue: 'hope-interest', to: 'glops' },
+      { id: 'glopsdev', name: t('Global Ops dev'), sub: t('The game’s development: agents at work, commits and deploys'), icon: 'terminal-2', hue: 'hope-interest', to: 'glopsdev' },
     ],
   },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },
