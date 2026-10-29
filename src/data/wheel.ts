@@ -39,16 +39,22 @@ export const WHEEL: WheelNode[] = [
       { id: 'friends', name: t('Win friends'), sub: t('The 30 principles: why they work and how to practise them'), icon: 'heart-handshake', hue: 'joy', to: 'friends' },
     ],
   },
-  // what's linked to the outside, and small tools
+  // what you build: your GitHub work and the game's development
   {
-    id: 'extras', name: t('Extras'), sub: t('GitHub, Twitch, your public link, countdowns and the game’s development'), icon: 'layout-grid', hue: 'fear',
+    id: 'code', name: t('Code'), sub: t('Your GitHub work and the game’s development'), icon: 'code', hue: 'calm-safety',
     kids: [
       { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
+      { id: 'glopsdev', name: t('Global Ops dev'), sub: t('The game’s development: agents at work, commits and deploys'), icon: 'terminal-2', hue: 'hope-interest', to: 'glopsdev' },
+    ],
+  },
+  // Twitch, and small tools
+  {
+    id: 'extras', name: t('Extras'), sub: t('Twitch, your public link and countdowns'), icon: 'layout-grid', hue: 'fear',
+    kids: [
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
       { id: 'streamer', name: t('Streamer stats'), sub: t('What a Twitch channel plays, when and for how long'), icon: 'device-gamepad-2', hue: 'fear', to: 'streamer' },
       { id: 'status', name: t('Public status'), sub: t('One link that always shows your latest check-in'), icon: 'world', hue: 'joy', to: 'status' },
       { id: 'countdown', name: t('Countdowns'), sub: t('Count the days to something, and change when'), icon: 'hourglass', hue: 'calm-safety', to: 'countdown' },
-      { id: 'glopsdev', name: t('Global Ops dev'), sub: t('The game’s development: agents at work, commits and deploys'), icon: 'terminal-2', hue: 'hope-interest', to: 'glopsdev' },
     ],
   },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },

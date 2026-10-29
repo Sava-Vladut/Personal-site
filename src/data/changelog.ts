@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.151.0',
+    date: '2026-10-29',
+    changes: [
+      'New Code category on the wheel: Repos and Global Ops dev moved there from Extras',
+      'Extras is shorter: just Channel points, Streamer stats, Public status and Countdowns',
+    ],
+  },
+  {
     version: '1.150.1',
     date: '2026-10-28',
     changes: [
