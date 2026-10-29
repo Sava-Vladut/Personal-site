@@ -4,7 +4,7 @@
 // ending soonest sits next to the wheel (components/PageHead.tsx) while any is still running.
 import { useEffect, useState } from 'preact/hooks';
 import { observable } from './store';
-import { t } from './i18n';
+import { noun, t } from './i18n';
 
 export interface Countdown { id: string; name: string; start: number; end: number }
 /** One to save: a new one has no id yet, and the server gives it one. */
@@ -82,6 +82,23 @@ export function parts(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   return { d: Math.floor(s / 86400), h: Math.floor(s / 3600) % 24, m: Math.floor(s / 60) % 60, s: s % 60 };
 }
+
+export type Unit = 'd' | 'h' | 'm' | 's';
+/** The biggest whole unit of a span that isn't zero: days, else hours, else minutes, else seconds (never "0 days"). */
+export function biggest(ms: number): { n: number; unit: Unit } {
+  const x = parts(ms);
+  return x.d ? { n: x.d, unit: 'd' } : x.h ? { n: x.h, unit: 'h' } : x.m ? { n: x.m, unit: 'm' } : { n: x.s, unit: 's' };
+}
+
+/** The word for a unit, matching the number before it: "5 hours", "1 day". */
+export const unitWord = (n: number, unit: Unit) =>
+  unit === 'd' ? noun(n, 'day', 'days') : unit === 'h' ? noun(n, 'hour', 'hours') : unit === 'm' ? noun(n, 'minute', 'minutes') : noun(n, 'second', 'seconds');
+
+/** A span as its biggest unit, counted: "13 days", "5 hours", "1 minute". */
+export const biggestText = (ms: number) => {
+  const { n, unit } = biggest(ms);
+  return `${n} ${unitWord(n, unit)}`;
+};
 
 /** The time now, refreshed every `every` ms while the tab is visible (and at once when it comes back). */
 export function useNow(every = 1000) {

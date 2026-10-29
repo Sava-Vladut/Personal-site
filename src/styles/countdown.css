@@ -1,7 +1,11 @@
 /* ---------- countdowns: the stats page's cards, in its own colour (--accent), one card for each still going ---------- */
 
-/* its sheet: a label over each field */
-.cd-field { display: grid; gap: 6px; }
+/* its sheet: a label over each field. A date field never grows past the sheet: iOS gives datetime-local a wide
+   width of its own, and a grid item won't shrink below it unless told to */
+.cd-form > * { min-width: 0; }
+.cd-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.cd-field .input[type='datetime-local'] { display: block; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; }
+.cd-field .input::-webkit-date-and-time-value { text-align: left; }
 .cd-hero > .btn { margin-top: 14px; }
 
 .cd-hero { display: grid; justify-items: center; text-align: center; padding: 14px 14px 16px 18px; }
@@ -20,30 +24,91 @@
   .cd-page .reveal.stack-l > :is(.tiles, .cd-over) { grid-column: 1 / -1; }
 }
 
-.cd-ring { position: relative; width: min(220px, 62vw); aspect-ratio: 1; margin: 8px 0 4px; animation: pop-in var(--dur-4) var(--spring-bouncy) 0.05s backwards; }
-.cd-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.cd-ring circle { fill: none; stroke-width: 9; }
+/* its last hour turns warm, its last minute red; ended, it's back in its own green to celebrate */
+.cd-hero.is-near { --accent: var(--emo-hope-interest); }
+.cd-hero.is-last { --accent: var(--emo-anger); }
+
+/* ---------- the dial (Dial in views/Countdown.tsx): 200 units across; ticks at 89–97, the ring at 80, the pie inside ---------- */
+.cd-ring { position: relative; width: min(260px, 72vw); aspect-ratio: 1; margin: 10px 0 6px; animation: pop-in var(--dur-4) var(--spring-bouncy) 0.05s backwards; }
+.cd-ring > * { position: absolute; inset: 0; }
+.cd-glow { inset: -12%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 30%, transparent), transparent); opacity: 0.55; pointer-events: none; }
+.cd-hero.is-final .cd-glow { opacity: 1; }
+/* the time gone by, as a slice that grows round the middle */
+.cd-pie {
+  inset: 17%; border-radius: 50%;
+  background:
+    radial-gradient(closest-side, transparent 55%, color-mix(in oklab, var(--accent) 10%, transparent)),
+    conic-gradient(color-mix(in oklab, var(--accent) 38%, transparent) calc(var(--p) * 1turn), color-mix(in oklab, var(--accent) 7%, var(--surface-2)) 0);
+}
+.cd-dial { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.cd-dial circle { fill: none; stroke-width: 14; }
+.cd-tickmark { stroke: color-mix(in oklab, var(--accent) 22%, var(--surface-3)); stroke-width: 1.4; stroke-linecap: round; }
+.cd-tickmark.long { stroke-width: 2.4; }
+.cd-tickmark.on { stroke: var(--accent); }
 .cd-track { stroke: color-mix(in oklab, var(--accent) 14%, var(--surface-3)); }
 .cd-fill { stroke: var(--accent); stroke-linecap: round; animation: cd-draw var(--dur-5) var(--ease-emph) 0.1s backwards; }
-@keyframes cd-draw { from { stroke-dashoffset: 327; } } /* the ring's length: it fills up to where it is */
-.cd-ring-text { position: absolute; inset: 0; display: grid; place-content: center; gap: 2px; }
-.cd-ring-text b { font: var(--w-bold) clamp(48px, 16vw, 66px)/1 var(--sans); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-.cd-ring-text span { font-size: var(--text-m); color: var(--ink-3); }
-.cd-hero.done .cd-ring-text b { color: var(--accent); }
+.cd-stop-a { stop-color: color-mix(in oklab, var(--accent) 55%, var(--surface)); }
+.cd-stop-b { stop-color: var(--accent); }
+@keyframes cd-draw { from { stroke-dashoffset: var(--len); } } /* fills up to where it is */
 
-.cd-clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 360px; margin-top: 12px; }
+/* the hand at the edge of the slice, with a bright head on the ring */
+.cd-hand::before { content: ''; position: absolute; left: calc(50% - 1px); top: 17%; height: 33%; width: 2px; border-radius: var(--r-pill); background: color-mix(in oklab, var(--accent) 60%, transparent); }
+.cd-hand i { position: absolute; left: calc(50% - 9px); top: calc(10% - 9px); width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 4px solid var(--accent); box-shadow: var(--shadow-2); }
+/* in the last hour the head beats, a ring growing and fading off it each second */
+.cd-hand i::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid var(--accent); opacity: 0; }
+.cd-hero.is-near .cd-hand i::after { animation: cd-pulse 1s var(--ease) infinite; }
+@keyframes cd-pulse { from { opacity: 0.7; transform: scale(0.6); } to { opacity: 0; transform: scale(1.5); } }
+
+/* the seconds, a dot gliding round the ticks */
+.cd-sweep { transition: transform 1s linear; }
+.cd-sweep.jump { transition: none; }
+.cd-sweep i { position: absolute; left: calc(50% - 4px); top: calc(3.5% - 4px); width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent); }
+
+/* the last ten seconds: a shock wave each one */
+.cd-wave { inset: 6%; border-radius: 50%; border: 3px solid var(--accent); pointer-events: none; animation: cd-wave var(--dur-5) var(--ease) forwards; }
+@keyframes cd-wave { from { opacity: 0.85; transform: scale(0.82); } to { opacity: 0; transform: scale(1.3); } }
+
+/* ended: rays burst out from behind the dial, once */
+.cd-burst { pointer-events: none; }
+.cd-burst span { position: absolute; inset: 0; transform: rotate(calc(var(--k) * 22.5deg)); }
+.cd-burst i {
+  position: absolute; left: calc(50% - 3px); top: -10%; width: 6px; height: 16%; border-radius: var(--r-pill); background: var(--accent);
+  opacity: 0; animation: cd-ray var(--dur-5) var(--ease-emph) calc(0.05s + var(--k) * 12ms) both;
+}
+.cd-burst span:nth-child(even) i { height: 10%; background: color-mix(in oklab, var(--accent) 50%, var(--emo-joy)); }
+@keyframes cd-ray { 0% { opacity: 1; transform: translateY(70%) scaleY(0.2); } 60% { opacity: 1; } 100% { opacity: 0; transform: translateY(-40%) scaleY(1); } }
+
+/* the middle: what's left, in its biggest unit */
+.cd-hub {
+  inset: 26%; border-radius: 50%; display: grid; place-content: center; gap: 2px; text-align: center;
+  background: var(--surface); box-shadow: var(--shadow-3), inset 0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.cd-hub b { font: var(--w-bold) clamp(40px, 13vw, 58px)/1 var(--sans); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; animation: cd-pop var(--dur-4) var(--spring-bouncy); }
+.cd-hub span { font-size: var(--text-s); color: var(--ink-3); }
+.cd-hero.is-last .cd-hub b { color: var(--accent); animation: cd-beat var(--dur-4) var(--spring-bouncy); }
+.cd-hero.is-final .cd-hub b { animation-name: cd-slam; }
+.cd-hero.done .cd-hub b { color: var(--accent); animation: cd-slam var(--dur-4) var(--spring-bouncy) 0.1s backwards; }
+@keyframes cd-pop { from { opacity: 0; transform: translateY(-10px) scale(0.9); } }
+@keyframes cd-beat { from { transform: scale(1.3); } }
+@keyframes cd-slam { from { opacity: 0; transform: scale(1.9); } }
+
+.cd-clock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; width: 100%; max-width: 360px; margin-top: 12px; }
 .cd-unit {
   display: grid; gap: 1px; padding: 9px 4px 8px; border-radius: var(--r-m); overflow: hidden;
   background: color-mix(in oklab, var(--accent) 8%, var(--surface-2));
 }
 .cd-unit b { font: var(--w-bold) var(--text-2xl)/1.15 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; animation: cd-tick var(--dur-2) var(--ease-emph); }
 .cd-unit span { font-size: var(--text-xs); color: var(--ink-3); }
-@keyframes cd-tick { from { opacity: 0.35; transform: translateY(-6px); } }
+@keyframes cd-tick { from { opacity: 0; transform: translateY(-45%) scale(0.92); } }
+.cd-unit.hot b { color: var(--accent); }
+.cd-hero.is-last .cd-unit.hot { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); }
 
 .cd-bar { width: 100%; height: 8px; margin-top: 16px; border-radius: var(--r-pill); overflow: hidden; background: var(--surface-3); }
 .cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform-origin: left; transition: transform 1s linear; }
 .cd-hero .split-labels { width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cd-unit b, .cd-fill, .cd-ring { animation: none; }
+  .cd-unit b, .cd-fill, .cd-ring, .cd-hub b, .cd-hand i::after { animation: none; }
+  .cd-sweep { transition: none; }
+  .cd-wave, .cd-burst { display: none; }
 }

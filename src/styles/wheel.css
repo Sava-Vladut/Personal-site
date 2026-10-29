@@ -293,6 +293,9 @@
 /* ---------- the countdown's button next to the wheel (lib/countdown.ts): a little ring that fills as the days go ---------- */
 
 .icon-btn.cd-trigger { position: relative; color: var(--emo-calm-safety); }
+/* its last hour, warm: the badge shows the minutes then */
+.icon-btn.cd-trigger.is-near { color: var(--emo-hope-interest); }
+.cd-trigger.is-near .cd-days { background: var(--emo-hope-interest); }
 .cd-trigger svg.cd-mini { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); transform: rotate(-90deg); pointer-events: none; }
 .cd-mini circle { fill: none; stroke-width: 2.6; }
 .cd-mini .cd-track { stroke: color-mix(in oklab, currentColor 20%, transparent); }

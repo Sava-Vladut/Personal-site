@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.152.0',
+    date: '2026-10-29',
+    changes: [
+      'Countdowns under a day show hours left, then minutes and seconds, instead of “0 days”, on the dial and on the button next to the wheel',
+      'New countdown dial: a pie of the time gone by, a thick glowing ring, ticks for the seconds and a dot sweeping round them',
+      'The last hour turns orange and the ring’s head beats; the last minute turns red, the seconds slam in and the last ten send out shock waves',
+      'When a countdown ends it bursts and stays up top for 15 minutes before joining the ones over (and buzzes on phones that can)',
+      'The date fields in the countdown sheet no longer run off the edge of the screen',
+      'Quick lengths in the sheet (1 hour, 1 day, 7 days, 30 days) and how long it lasts under the fields',
+    ],
+  },
+  {
     version: '1.151.0',
     date: '2026-10-29',
     changes: [
