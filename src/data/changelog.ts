@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.155.0',
+    date: '2026-10-30',
+    changes: [
+      'An opened law, principle or mind trap reads as one calm column, with its title and scores beside it on a wide screen: no more paragraphs that break off into a second column',
+      '“As the player / As the target” works again: it sits right above the chapters it reorders, its highlight slides properly, and a line under it says what comes first (Win friends’ “Why it works / How to practise” too)',
+      'Each chapter holds one idea, with more room between chapters and larger text on a wide screen',
+      'Links to other pages (mind traps, laws, principles, related entries) are gathered at the end under Connections, so nothing pulls you away mid-read',
+      'A closing “Your turn” puts the question to sit with beside the buttons that keep count',
+      'Mind traps: the self-test comes first, before the page gives the answer away, and the thought that gives the trap away now closes the page',
+    ],
+  },
+  {
     version: '1.154.0',
     date: '2026-10-30',
     changes: [

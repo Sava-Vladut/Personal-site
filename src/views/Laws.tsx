@@ -12,7 +12,7 @@ import { PageHead } from '../components/PageHead';
 import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LensSwitch, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/laws.css';
 
@@ -192,6 +192,13 @@ type Seen = Record<number, { on?: number; by?: number }>;
 
 type Lens = 'player' | 'target';
 const LENSES: Lens[] = ['player', 'target'];
+/** The six chapters, in the order each lens reads them: the player meets the move and why it works first, the target
+ *  how to spot it and defend themselves. Where you'll meet it today is the hinge between the two halves either way. */
+type Chapter = 'law' | 'why' | 'test' | 'today' | 'signs' | 'defence';
+const READING: Record<Lens, Chapter[]> = {
+  player: ['law', 'why', 'test', 'today', 'signs', 'defence'],
+  target: ['signs', 'defence', 'today', 'law', 'why', 'test'],
+};
 
 function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple, onShare }: {
   x: Law;
@@ -209,57 +216,59 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
   const answers = ANSWERS.get(x.n) ?? [];
   const kin = x.kin.map((k) => BY_N.get(k)).filter((k): k is Law => !!k);
+  // on a shared link there's nowhere to go (no handlers), so those links hide, and with them the whole section
+  const linked = (openTrap && traps.length > 0) || (openPrinciple && answers.length > 0) || (go && kin.length > 0);
 
-  // `lw-split`: on a wide screen the three long chapters run on from one column into the next (laws.css)
-  const law = (
-    <section class="lrn-d-sec lw-split">
-      <h3 class="lrn-d-h">{t('The law')}</h3>
-      <p class="lrn-d-p">{x.gist}</p>
-      <Aside icon="book" label={t('From history')} title={x.scene.who} who={x.scene.when}>{x.scene.text}</Aside>
-    </section>
-  );
-  const why = (
-    <section class="lrn-d-sec lw-split">
-      <h3 class="lrn-d-h">{t('Why it works')}</h3>
-      <p class="lrn-d-p">{x.mind}</p>
-      <div class="lw-sub">
-        <p class="kicker">{t('The levers it pulls')}</p>
-        <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}</b>. {l.text}</li>)}</ul>
-      </div>
-      <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
-      {openTrap && traps.length > 0 && (
-        <div class="lw-sub">
-          <p class="kicker">{t('The mind traps it springs')}</p>
-          <div class="lrn-links">
-            {traps.map(({ trap, how }) => (
-              <LinkRow hue={FAMILIES[trap.family].hue} id={trap.id} kicker={t('Mind trap')} title={trap.name} how={how} onClick={() => openTrap(trap.id)} />
-            ))}
-          </div>
+  // one idea to a chapter: a heading and one paragraph, and at most one list or story under it, so each reads as one
+  // chunk with a rest after it. Keyed, so switching the lens moves them rather than rewriting them in place.
+  const chapters = {
+    law: (
+      <section class="lrn-d-sec" key="law">
+        <h3 class="lrn-d-h">{t('The law')}</h3>
+        <p class="lrn-d-p is-lead">{x.gist}</p>
+        {/* the story right after the idea, so the idea sticks */}
+        <Aside icon="book" label={t('From history')} title={x.scene.who} who={x.scene.when}>{x.scene.text}</Aside>
+      </section>
+    ),
+    why: (
+      <section class="lrn-d-sec" key="why">
+        <h3 class="lrn-d-h">{t('Why it works')}</h3>
+        <p class="lrn-d-p">{x.mind}</p>
+        <div class="lrn-d-group">
+          <p class="kicker">{t('The levers it pulls')}</p>
+          <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}</b>. {l.text}</li>)}</ul>
         </div>
-      )}
-    </section>
-  );
-  const onYou = (
-    <section class="lrn-d-sec lw-split">
-      <h3 class="lrn-d-h">{t('When it’s played on you')}</h3>
-      <div class="lw-sub">
-        <p class="kicker">{t('Where you’ll meet it today')}</p>
+      </section>
+    ),
+    test: (
+      <section class="lrn-d-sec" key="test">
+        <h3 class="lrn-d-h">{t('Put to the test')}</h3>
+        <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
+      </section>
+    ),
+    today: (
+      <section class="lrn-d-sec" key="today">
+        <h3 class="lrn-d-h">{t('Where you’ll meet it today')}</h3>
         <ul class="lrn-list">{x.today.map((l) => <li>{l}</li>)}</ul>
-      </div>
-      <div class="lw-sub">
-        <p class="kicker">{t('The signs')}</p>
+      </section>
+    ),
+    signs: (
+      <section class="lrn-d-sec" key="signs">
+        <h3 class="lrn-d-h">{t('How to spot it')}</h3>
         <ul class="lrn-list">{x.signs.map((l) => <li>{l}</li>)}</ul>
-      </div>
-      <div class="lw-sub">
-        <p class="kicker">{t('Your defence')}</p>
+      </section>
+    ),
+    defence: (
+      <section class="lrn-d-sec" key="defence">
+        <h3 class="lrn-d-h">{t('How to defend yourself')}</h3>
         <ol class="lrn-list is-steps">{x.defense.map((l) => <li>{l}</li>)}</ol>
-      </div>
-    </section>
-  );
+      </section>
+    ),
+  };
 
   return (
     <article class="lrn-detail" key={x.n}>
-      {/* on a wide screen the head and the controls are a rail at the left and the chapters flow beside it (learn.css); on a phone and on a shared page both add no box */}
+      {/* on a wide screen the head and the scores are a rail at the left and the chapters one reading column beside it (learn.css); on a phone and on a shared page both add no box */}
       <div class="lrn-d-rail">
         <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Law {n}', { n: x.n })} · ${t(realm.name)}`} title={x.title} line={x.line} onShare={onShare} />
 
@@ -267,37 +276,30 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
           <Meter label={t('Darkness')} value={x.dark} about={t('How manipulative it is')} />
           <Meter label={t('Everyday')} value={x.everyday} about={t('How often it plays out in ordinary life')} />
         </div>
-
-        {/* the lens: read the law as the one playing it (the law first) or as its target (the defence first) */}
-        <div class="lrn-d-sec">
-          <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-            <button role="tab" aria-selected={lens === 'player'} onClick={() => onLens('player')}><Ico name="crown" size={16} /> {t('As the player')}</button>
-            <button role="tab" aria-selected={lens === 'target'} onClick={() => onLens('target')}><Ico name="eye" size={16} /> {t('As the target')}</button>
-          </div>
-        </div>
       </div>
 
       <div class="lrn-d-flow">
-        {lens === 'player' ? <>{law}{why}{onYou}</> : <>{onYou}{law}{why}</>}
+        {/* the lens, right over the chapters it reorders: the player reads the move first, the target the defence */}
+        <LensSwitch
+          label={t('Read as')}
+          value={lens}
+          onChange={onLens}
+          options={[
+            { id: 'player', icon: 'crown', label: t('As the player'), hint: t('Starts with the law and why it works, then how to spot it') },
+            { id: 'target', icon: 'eye', label: t('As the target'), hint: t('Starts with how to spot it and defend yourself, then the law') },
+          ]}
+        />
+        {READING[lens].map((c) => chapters[c])}
 
-        {/* the rest run across both columns on a wide screen (`lrn-d-wide`) */}
-        <div class="lrn-pair lrn-d-wide">
+        {/* the balance, after the core: where it backfires, and the version worth keeping */}
+        <div class="lrn-pair">
           <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
           <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
         </div>
 
-        {openPrinciple && answers.length > 0 && (
-          <section class="lrn-d-sec lrn-d-wide">
-            <h3 class="lrn-d-h">{t('The answer in Win friends')}</h3>
-            <div class="lrn-links">
-              {answers.map(({ p, how }) => (
-                <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section class="lrn-d-sec lrn-d-wide lw-ask">
+        {/* reflection and action together: the question, then the two counts it might prompt */}
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Your turn')}</h3>
           <blockquote class="lrn-quote">
             <small>{t('A question to sit with')}</small>
             {x.question}
@@ -308,14 +310,40 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
           </div>
         </section>
 
-        {go && kin.length > 0 && (
-          <section class="lrn-d-sec lrn-d-wide">
-            <h3 class="lrn-d-h">{t('Related laws')}</h3>
-            <ol class="lrn-rows">
-              {kin.map((k) => (
-                <Row id={k.id} hue={hueOf(k)} top={`${t('Law {n}', { n: k.n })} · ${t(REALMS[k.realm].name)}`} title={k.title} onClick={() => go(k.n)} />
-              ))}
-            </ol>
+        {/* every link out, at the end, so none breaks the reading: each kind under its own label */}
+        {linked && (
+          <section class="lrn-d-sec">
+            <h3 class="lrn-d-h">{t('Connections')}</h3>
+            {openTrap && traps.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('The mind traps it springs')}</p>
+                <div class="lrn-links">
+                  {traps.map(({ trap, how }) => (
+                    <LinkRow hue={FAMILIES[trap.family].hue} id={trap.id} title={trap.name} how={how} onClick={() => openTrap(trap.id)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {openPrinciple && answers.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('The answer in Win friends')}</p>
+                <div class="lrn-links">
+                  {answers.map(({ p, how }) => (
+                    <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {go && kin.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('Related laws')}</p>
+                <ol class="lrn-rows">
+                  {kin.map((k) => (
+                    <Row id={k.id} hue={hueOf(k)} top={`${t('Law {n}', { n: k.n })} · ${t(REALMS[k.realm].name)}`} title={k.title} onClick={() => go(k.n)} />
+                  ))}
+                </ol>
+              </div>
+            )}
           </section>
         )}
       </div>

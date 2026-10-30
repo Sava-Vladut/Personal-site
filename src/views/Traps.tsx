@@ -179,6 +179,14 @@ function PowerMap({ open }: { open: (x: Trap) => void }) {
 
 /* ---------- one trap, opened ---------- */
 
+/**
+ * One trap, opened. The rail holds only who it is (the head) and how strong (the ring and the three scores it's made
+ * of). The flow tries it on you first, while it can still catch you: the definition and the experiment give most
+ * answers away, and falling for it yourself is what stops it reading as something other people do. Then what it is
+ * (with the experiment as its story, and how well that has held up), why the brain does it, where it gets you and the
+ * way out, each one idea. Then the strange fact, Your turn (the thought to listen for, and the count of times you
+ * caught it), and last, so nothing sends you off the page mid-read, every link out in one Connections section.
+ */
 function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }: {
   x: Trap;
   caught: number;
@@ -199,8 +207,11 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
   const disarms = DISARMS.get(x.id) ?? [];
   const laws = SPRUNG_BY.get(x.id) ?? [];
   const kin = x.kin.map((k) => BY_ID.get(k)).filter((k): k is Trap => !!k);
+  // a kind of link shows only with somewhere to go (none on a shared link) and something in it; the section only with one
+  const linked = (!!openPrinciple && disarms.length > 0) || (!!openLaw && laws.length > 0) || (!!go && kin.length > 0);
   return (
     <article class="lrn-detail tr-detail" key={x.id}>
+      {/* on a wide screen the rail (who it is, how strong) stays at the left while the chapters flow beside it; elsewhere both add no box (styles/learn.css) */}
       <div class="lrn-d-rail">
         <DetailHead id={x.id} hue={hue} kicker={`${t(FAMILIES[x.family].name)} · ${t(FAMILIES[x.family].motto)}`} title={x.name} line={x.line} onShare={onShare}>
           {x.aka && <p>{t('also called')} {x.aka}</p>}
@@ -208,41 +219,42 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
 
         <div class="lrn-meters tr-power">
           <Gauge value={power(x)} hue={hue} draw />
+          <p class="tr-power-name"><b>{t('Power')}</b><small>{t('out of 100')}</small></p>
           <div class="tr-power-meters">
             {meters.map(([label, v, about]) => <Meter label={label} value={v} about={about} />)}
           </div>
-          <p class="tr-ev">
-            <Ico name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} arrive />
-            <span><b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</span>
-          </p>
         </div>
-
-        <blockquote class="lrn-quote">
-          <small>{t('The thought that gives it away')}</small>
-          {x.tell}
-        </blockquote>
       </div>
 
       <div class="lrn-d-flow">
+        {/* the self-test comes before anything that explains it, so the answer is your instinct's, not the page's */}
+        {x.test && (
+          <section class="lrn-d-sec">
+            <header class="tr-d-ask">
+              <h3 class="lrn-d-h">{t('Try it on yourself')}</h3>
+              <p class="tr-d-note">{t('Answer with your first instinct, before you read on: the rest of the page gives it away.')}</p>
+            </header>
+            <Quiz {...x.test} />
+          </section>
+        )}
+
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('What it is')}</h3>
-          <p class="lrn-d-p">{x.what}</p>
+          <p class="lrn-d-p is-lead">{x.what}</p>
+          {/* the experiment is the story right after the idea, and how well it has held up sits at its foot */}
+          <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>
+            <p>{x.study.text}</p>
+            <p class="tr-ev">
+              <Ico name={x.evidence === 'debated' ? 'alert-circle' : 'check'} size={14} arrive />
+              <span><b>{t('Evidence: {level}', { level: t(ev) })}</b> {t(evAbout)}</span>
+            </p>
+          </Aside>
         </section>
 
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Why your brain does it')}</h3>
           <p class="lrn-d-p">{x.why}</p>
-          <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>
-            <p>{x.study.text}</p>
-          </Aside>
         </section>
-
-        {x.test && (
-          <section class="lrn-d-sec lrn-d-wide tr-d-test">
-            <h3 class="lrn-d-h">{t('Try it on yourself')}</h3>
-            <Quiz {...x.test} />
-          </section>
-        )}
 
         <section class="lrn-d-sec">
           <h3 class="lrn-d-h">{t('Where it gets you')}</h3>
@@ -254,44 +266,57 @@ function TrapDetail({ x, caught, onCaught, go, openPrinciple, openLaw, onShare }
           <ol class="lrn-list is-steps">{x.escape.map((l) => <li>{l}</li>)}</ol>
         </section>
 
-        {openPrinciple && disarms.length > 0 && (
-          <section class="lrn-d-sec">
-            <h3 class="lrn-d-h">{t('Principles that disarm it')}</h3>
-            <div class="lrn-links">
-              {disarms.map(({ p, how }) => (
-                <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {openLaw && laws.length > 0 && (
-          <section class="lrn-d-sec">
-            <h3 class="lrn-d-h">{t('Laws of power')}</h3>
-            <div class="lrn-links">
-              {laws.map(({ law, how }) => (
-                <LinkRow hue={REALMS[law.realm].hue} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />
-              ))}
-            </div>
-          </section>
-        )}
-
+        {/* the light note, once the lesson is in */}
         <Aside icon="sparkles" label={t('Strange but true')}>
           <p>{x.fact}</p>
         </Aside>
 
-        <div class="lrn-actions">
-          <Tally icon="eye" label={t('I caught myself in this one')} n={caught} onClick={() => { haptic(10); onCaught(); }} />
-        </div>
+        {/* the last thing read is the one to keep: the thought that means you're in it, and the count of times you caught it */}
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Your turn')}</h3>
+          <blockquote class="lrn-quote">
+            <small>{t('The thought that gives it away')}</small>
+            {x.tell}
+          </blockquote>
+          <div class="lrn-actions">
+            <Tally icon="eye" label={t('I caught myself in this one')} n={caught} onClick={() => { haptic(10); onCaught(); }} />
+          </div>
+        </section>
 
-        {go && kin.length > 0 && (
-          <section class="lrn-d-sec lrn-d-wide">
-            <h3 class="lrn-d-h">{t('Related traps')}</h3>
-            <ol class="lrn-rows">
-              {kin.map((k) => (
-                <Row id={k.id} hue={hueOf(k)} title={k.name} sub={k.line} end={<PowerNum x={k} />} onClick={() => go(k.id)} />
-              ))}
-            </ol>
+        {/* every link out of the trap, gathered at the end, each kind under its own small label */}
+        {linked && (
+          <section class="lrn-d-sec">
+            <h3 class="lrn-d-h">{t('Connections')}</h3>
+            {openPrinciple && disarms.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('Principles that disarm it')}</p>
+                <div class="lrn-links">
+                  {disarms.map(({ p, how }) => (
+                    <LinkRow hue={PARTS[p.part].hue} id={p.id} kicker={t('Principle {n}', { n: p.n })} title={p.title} how={how} onClick={() => openPrinciple(p.n)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {openLaw && laws.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('Laws of power that spring it')}</p>
+                <div class="lrn-links">
+                  {laws.map(({ law, how }) => (
+                    <LinkRow hue={REALMS[law.realm].hue} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {go && kin.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('Related traps')}</p>
+                <ol class="lrn-rows">
+                  {kin.map((k) => (
+                    <Row id={k.id} hue={hueOf(k)} title={k.name} sub={k.line} end={<PowerNum x={k} />} onClick={() => go(k.id)} />
+                  ))}
+                </ol>
+              </div>
+            )}
           </section>
         )}
       </div>

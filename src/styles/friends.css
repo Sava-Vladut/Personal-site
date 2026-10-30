@@ -67,14 +67,12 @@
 
 /* how often you've tried it, on a row's top line */
 .wf-tried { display: inline-flex; align-items: center; gap: 3px; }
-/* the line under "Compared with the laws of power" in an opened principle */
-.lrn-d-p.wf-d-note { margin-top: -4px; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
 
 .wf-about { display: grid; justify-items: start; gap: 12px; }
 .wf-about p { margin: 0; max-width: 62ch; font-size: var(--text-base); line-height: 1.55; color: var(--ink-2); }
 
 /* ---------- a wide screen (from 1024px; nothing below reaches a phone) ----------
-   The frame is learn.css's: the list as cards, the feature column, the reading panel with its rail and its two columns of
+   The frame is learn.css's: the list as cards, the feature column, the reading panel with its rail and its one column of
    chapters. These are this page's own adjustments to it; they start at `.friends-page` so the other Learn pages' sheets
    (which share `lrn-sheet`) are left alone. */
 
@@ -94,24 +92,12 @@
   .friends-page .wf-about { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 40px; margin-top: 6px; padding-top: 24px; border-top: 1px solid var(--line); }
   .friends-page .wf-about p { flex: 1 1 360px; }
   .friends-page .wf-about .btn { flex: none; }
-
-  /* an opened principle: the lens is two stacked choices in the rail (side by side, "De ce funcționează" overflows 300px) */
-  .friends-page .lrn-sheet .lrn-d-rail .seg.tabs { flex-direction: column; max-width: none; margin: 0; }
-  .friends-page .lrn-sheet .lrn-d-rail .seg.tabs button { flex: none; justify-content: flex-start; padding-inline: 12px; }
-
-  /* what comes after the chapters runs across the panel: a hairline above the shadow side, the two buttons kept to a button's width */
-  .friends-page .lrn-sheet .lrn-d-flow > .lrn-pair { padding-top: 30px; border-top: 1px solid var(--line); }
-  .friends-page .lrn-sheet .lrn-d-flow > .lrn-actions { max-width: 480px; }
 }
 /* 1024-1279: the list column is ~330px; the order chip takes its own line rather than leaving the part chips a ~210px strip */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .friends-page .lrn-head { flex-wrap: wrap; row-gap: 8px; }
   .friends-page .lrn-head > .chips { flex: 1 1 100%; }
   .friends-page .lrn-head > .sort-chip { margin-left: auto; }
-}
-@media (min-width: 1280px) {
-  /* the question to sit with, set larger across the foot of the panel */
-  .friends-page .lrn-sheet .lrn-d-flow > .lrn-quote { max-width: 60ch; font-size: var(--text-xl); line-height: 1.4; }
 }
 @media (min-width: 1536px) {
   /* the list column is ~710px here: two cards across rather than one stretched card (learn.css's 380px minimum gives one) */

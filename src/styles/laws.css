@@ -49,15 +49,9 @@
 
 .lw-about .btn { margin-top: 12px; }
 
-/* ---------- in the sheet: a small label and what it heads, closer to each other than to the rest ---------- */
-
-.lw-sub { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
-.lw-sub > .kicker { margin: 0; }
-
 /* ---------- a wide screen (from 1024px; nothing below reaches a phone) ----------
-   The frame is learn.css's: the list as cards, the feature column, the reading panel with its rail and its two columns of
-   chapters. These are this page's own adjustments to it, started at `.laws-page` or `.lrn-sheet` so the other Learn
-   pages are left alone. */
+   The frame is learn.css's: the list as cards, the feature column, the reading panel with its rail and its one reading
+   column. These are this page's own adjustments to it, started at `.laws-page` so the other Learn pages are left alone. */
 
 @media (min-width: 1024px) {
   /* the sky: a figure's label wraps instead of being cut off ("Levers from psychology" in a third of half the page) */
@@ -75,32 +69,12 @@
   .laws-page .lw-about { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
   .laws-page .lw-about p { flex: 1 1 240px; margin: 0; }
   .laws-page .lw-about .btn { flex: none; margin-top: 0; }
-
-  /* an opened law: the lens is two stacked choices in the rail (side by side, "As the target" crowds a 300px rail) */
-  .laws-page .lrn-sheet .lrn-d-rail .seg.tabs { flex-direction: column; max-width: none; margin: 0; }
-  .laws-page .lrn-sheet .lrn-d-rail .seg.tabs button { flex: none; justify-content: flex-start; padding-inline: 12px; }
-
-  /* the three long chapters run on from one column into the next, so a short neighbour doesn't leave a gap under it;
-     a box inside them (the story, a labelled list) and a step of a list are never cut in two */
-  .laws-page .lrn-sheet .lrn-d-flow > .lw-split { break-inside: auto; }
-  .laws-page .lrn-sheet .lw-split :is(.lrn-aside, .lw-sub, .lrn-list > li) { break-inside: avoid; }
-  .laws-page .lrn-sheet .lw-split > .lrn-d-h { break-after: avoid; }
-
-  /* what comes after the chapters runs across the panel: a hairline above the shadow side, the question and its two
-     counters kept to a reading width and a button's width */
-  .laws-page .lrn-sheet .lrn-d-flow > .lrn-pair { padding-top: 30px; border-top: 1px solid var(--line); }
-  .laws-page .lrn-sheet .lw-ask .lrn-quote { max-width: 60ch; }
-  .laws-page .lrn-sheet .lw-ask .lrn-actions { max-width: 480px; }
 }
 /* 1024-1279: the list column is ~330px; the order chip takes its own line rather than leaving the arena chips a ~210px strip */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .laws-page .lrn-head { flex-wrap: wrap; row-gap: 8px; }
   .laws-page .lrn-head > .chips { flex: 1 1 100%; }
   .laws-page .lrn-head > .sort-chip { margin-left: auto; }
-}
-@media (min-width: 1280px) {
-  /* the question to sit with, set larger across the foot of the panel */
-  .laws-page .lrn-sheet .lw-ask .lrn-quote { font-size: var(--text-xl); line-height: 1.4; }
 }
 @media (min-width: 1536px) {
   /* the list column is ~710px here: two cards across rather than one stretched card (learn.css's 380px minimum gives one) */

@@ -302,7 +302,7 @@ export function DetailHead({ id, hue, kicker, title, line, children, onShare }: 
 /**
  * A boxed aside in an opened entry (the experiment, from history, the story, the shadow side, strange but true):
  * an `icon` and an uppercase `label`, then an optional serif `title` and `who` (a quiet byline), then `children`
- * (text, or paragraphs). Put two side by side in a `.lrn-pair`.
+ * (text, or paragraphs). Put two that belong together in a `.lrn-pair` (side by side when there's room).
  */
 export function Aside({ icon, label, title, who, children }: {
   icon: UiName;
@@ -375,6 +375,36 @@ export function Tally({ icon, label, n, pressed, onClick }: {
       <span class="lrn-tally-label">{label}</span>
       {n !== undefined && <b class="lrn-tally-n">{n > 0 ? `×${n}` : ''}</b>}
     </button>
+  );
+}
+
+/**
+ * Which way round to read an opened entry (a law as its player or its target, a principle for why it works or how to
+ * practise it): a segmented control whose pill slides between the `options`, and under it the `hint` of the one
+ * chosen, saying what it puts first, so a switch never looks like it did nothing. The hints share one slot sized to
+ * the longest, so nothing under it moves when you switch. Put it at the top of the detail's flow, over what it reorders.
+ */
+export function LensSwitch<T extends string>({ label, value, options, onChange }: {
+  /** The tablist's name for a screen reader ("Read as"). */
+  label: string;
+  value: T;
+  options: { id: T; icon: UiName; label: string; hint: string }[];
+  onChange: (v: T) => void;
+}) {
+  const at = Math.max(0, options.findIndex((o) => o.id === value));
+  return (
+    <div class="lrn-lens">
+      <div class="seg tabs" role="tablist" aria-label={label} style={{ '--at': at, '--tabs': options.length }}>
+        {options.map((o) => (
+          <button role="tab" aria-selected={o.id === value} onClick={() => o.id !== value && onChange(o.id)}>
+            <Ico name={o.icon} size={16} /> {o.label}
+          </button>
+        ))}
+      </div>
+      <p class="lrn-lens-hint" aria-live="polite">
+        {options.map((o) => <span class={o.id === value ? 'is-on' : undefined} aria-hidden={o.id !== value}>{o.hint}</span>)}
+      </p>
+    </div>
   );
 }
 

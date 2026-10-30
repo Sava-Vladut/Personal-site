@@ -1,8 +1,9 @@
 /* ============================================================
    Mind traps (views/Traps.tsx). The layout, the rows, the quiz and the opened trap are the Learn pages' own
-   (styles/learn.css); what's here is only this page's: the power gauge and the power map, and at the end of the file
-   what this page adds on a wide screen. Each trap's colour is its family's world colour (--c). Nothing here moves on
-   its own: the gauge in a sheet fills once after the sheet has landed, and a star grows a little under the pointer.
+   (styles/learn.css); what's here is only this page's: the power gauge, the few pieces an opened trap adds (its
+   scores, the self-test's note, the evidence line), the power map, and at the end of the file what
+   this page adds on a wide screen. Each trap's colour is its family's world colour (--c). Nothing here moves on its
+   own: the gauge in a sheet fills once after the sheet has landed, and a star grows a little under the pointer.
    ============================================================ */
 
 /* ---------- the power gauge: power out of 100 as a ring ---------- */
@@ -15,15 +16,26 @@
 @keyframes tr-gauge { from { stroke-dasharray: 0 999; } }
 .tr-gauge-num { font: var(--w-bold) 20px var(--sans); fill: var(--ink); font-variant-numeric: tabular-nums; }
 
-/* the scores well in an opened trap: the gauge, the three meters beside it, the evidence under both */
-.lrn-meters.tr-power { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 14px; row-gap: 12px; }
-.tr-power-meters { display: grid; gap: 10px; min-width: 0; }
-.tr-ev {
-  grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line);
-  font-size: var(--text-m); line-height: 1.45; color: var(--ink-2);
-}
-.tr-ev > svg { flex: none; margin-top: 2px; color: var(--ink-3); }
-.tr-ev b { font-weight: var(--w-bold); color: var(--ink); }
+/* ---------- an opened trap (in a sheet, or alone on a shared page) ---------- */
+
+/* its scores, at a glance and the same on a phone and in the rail: the ring with its name beside it, and the three
+   scores it's made of across the full width under both, so their bars stay long. No hairlines: the gap groups them.
+   With only the head above, the rail is about 540-630px tall, so on a wide screen it follows you down from the
+   sheet's own 760px-tall rule (learn.css) with nothing cut off */
+.lrn-meters.tr-power { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 14px; row-gap: 14px; }
+.tr-power-name { display: grid; gap: 2px; min-width: 0; margin: 0; }
+.tr-power-name > b { font-size: var(--text-base); font-weight: var(--w-bold); line-height: 1.25; color: var(--ink); }
+.tr-power-name > small { font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.tr-power-meters { grid-column: 1 / -1; display: grid; gap: 10px; min-width: 0; }
+
+/* "Try it on yourself": the line saying to answer first sits under the heading like a subtitle (6), not as a chapter's paragraph */
+.tr-d-ask { display: grid; gap: 6px; min-width: 0; }
+.tr-d-note { margin: 0; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+
+/* how well the experiment has held up, at the foot of its aside: a quiet footnote under the story */
+.tr-ev { display: flex; align-items: flex-start; gap: 6px; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.tr-ev > svg { flex: none; margin-top: 2px; }
+.tr-ev b { font-weight: var(--w-bold); color: var(--ink-2); }
 
 /* how often you've caught yourself in a trap, on its row's top line */
 .tr-caught { display: inline-flex; align-items: center; gap: 3px; }
@@ -70,33 +82,15 @@
   /* a place in a ranked list sits level with the mark, not with the top of a tall card */
   .traps-page .lrn-main .lrn-rank { line-height: 34px; }
 
-  /* an opened trap: the scores well in the rail is 272-312px inside. The ring and the evidence line share its first
-     row (the line is about as tall as the ring), the three meters take the full width under a hairline, so their
-     bars are 160px or more instead of 70 */
-  .lrn-sheet .lrn-meters.tr-power { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 14px; row-gap: 12px; padding: 14px; }
-  .lrn-sheet .tr-power > .tr-gauge { grid-column: 1; grid-row: 1; }
-  .lrn-sheet .tr-power > .tr-ev { grid-column: 2; grid-row: 1; padding-top: 0; border-top: 0; }
-  .lrn-sheet .tr-power > .tr-power-meters { grid-column: 1 / -1; grid-row: 2; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  /* the self-test is read in the column: the question and what the answer means at its running size, the answers
+     one to a line (an option can be a 20-letter coin sequence) */
+  .lrn-sheet .tr-detail :is(.lrn-q, .lrn-verdict) { font-size: var(--text-l); }
 
-  /* the rail (the head, the scores, the tell) is 600-780px tall: it only follows you down where the sheet is tall
-     enough to show all of it, otherwise it scrolls away with the chapters and nothing of it is cut off */
-  .lrn-sheet .tr-detail > .lrn-d-rail { position: static; }
+  /* the one tally takes half the column, as the two on the other sheets do, not a 640px bar */
+  .lrn-sheet .tr-detail .lrn-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  /* the related traps: one to a line, like the sheet's other lists (three across below) */
+  /* the related traps: one to a line, like the link lists above them in Connections (learn.css fits two across) */
   .lrn-sheet .lrn-detail.tr-detail .lrn-rows { grid-template-columns: minmax(0, 1fr); }
-}
-@media (min-width: 1024px) and (min-height: 900px) {
-  .lrn-sheet .tr-detail > .lrn-d-rail { position: sticky; top: 4px; }
-}
-@media (min-width: 1280px) {
-  /* "Try it on yourself" runs across both columns (a verdict that appears can't move the chapters beside it), the
-     question and the verdict at a reading width and the answers two to a row */
-  .lrn-sheet .tr-d-test .lrn-quiz { max-width: 860px; }
-  .lrn-sheet .tr-d-test :is(.lrn-q, .lrn-verdict) { max-width: 72ch; }
-  .lrn-sheet .tr-d-test .lrn-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (min-width: 1440px) {
-  .lrn-sheet .lrn-detail.tr-detail .lrn-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (min-width: 1536px) {
   /* the list's columns keep the 340 minimum from 1024 on: the feature column grows to 480 here, and a 380 minimum

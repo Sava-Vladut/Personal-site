@@ -13,7 +13,7 @@ import { PageHead } from '../components/PageHead';
 import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLive, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LensSwitch, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLive, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/friends.css';
 
@@ -273,6 +273,14 @@ function Connections({ open, openLaw, openTrap }: { open: (x: Principle) => void
 type Lens = 'why' | 'how';
 const LENSES: Lens[] = ['why', 'how'];
 
+/**
+ * One principle, opened. The rail holds only who it is (the head) and the two scores. The flow starts with the lens
+ * and then six chapters, each one idea: a heading, a paragraph and at most one list or aside. 'why' reads the way a
+ * teacher would explain it (what it is and its story, why it works on people, the levers, where you'll meet it, then
+ * what to try and where it slips); 'how' puts the doing first (what to try, where it slips, where you'll meet it) and
+ * the understanding after. Then the balance, Your turn, and last, so nothing sends you off the page mid-read, every
+ * link out in one Connections section.
+ */
 function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, openTrap, openLaw, onShare }: {
   x: Principle;
   lens: Lens;
@@ -290,62 +298,54 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
   const traps = x.traps.map((s) => ({ ...s, trap: TRAP_BY_ID.get(s.id) })).filter((s): s is typeof s & { trap: Trap } => !!s.trap);
   const laws = x.laws.map((s) => ({ ...s, law: LAW_BY_N.get(s.n) })).filter((s): s is typeof s & { law: Law } => !!s.law);
   const kin = x.kin.map((k) => BY_N.get(k)).filter((k): k is Principle => !!k);
+  // a kind of link shows only with somewhere to go (none on a shared link) and something in it; the section only with one
+  const linked = (!!openTrap && traps.length > 0) || (!!openLaw && laws.length > 0) || (!!go && kin.length > 0);
 
-  const why = (
-    <>
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('The principle')}</h3>
-        <p class="lrn-d-p">{x.gist}</p>
-        <Aside icon="book" label={t('The story')} title={x.story.who} who={x.story.when}>{x.story.text}</Aside>
-      </section>
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('Why it works on people')}</h3>
-        <p class="lrn-d-p">{x.mind}</p>
-        <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
-      </section>
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('The levers it pulls')}</h3>
-        <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}.</b> {l.text}</li>)}</ul>
-      </section>
-      {openTrap && traps.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('The mind traps it disarms')}</h3>
-          <div class="lrn-links">
-            {traps.map(({ trap, how }) => <LinkRow hue={trapHue(trap)} id={trap.id} title={trap.name} how={how} onClick={() => openTrap(trap.id)} />)}
-          </div>
-        </section>
-      )}
-      {openLaw && laws.length > 0 && (
-        <section class="lrn-d-sec">
-          <h3 class="lrn-d-h">{t('Compared with the laws of power')}</h3>
-          <p class="lrn-d-p wf-d-note">{t('The laws of power it answers, and how.')}</p>
-          <div class="lrn-links">
-            {laws.map(({ law, how }) => <LinkRow hue={lawHue(law)} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />)}
-          </div>
-        </section>
-      )}
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('Where you’ll meet it today')}</h3>
-        <ul class="lrn-list">{x.today.map((l) => <li>{l}</li>)}</ul>
-      </section>
-    </>
+  // keyed, so switching the lens moves the chapters rather than rebuilding them
+  const idea = (
+    <section class="lrn-d-sec" key="idea">
+      <h3 class="lrn-d-h">{t('The principle')}</h3>
+      <p class="lrn-d-p is-lead">{x.gist}</p>
+      <Aside icon="book" label={t('The story')} title={x.story.who} who={x.story.when}>{x.story.text}</Aside>
+    </section>
   );
-  const how = (
-    <>
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('Try this week')}</h3>
-        <ol class="lrn-list is-steps">{x.practice.map((l) => <li>{l}</li>)}</ol>
-      </section>
-      <section class="lrn-d-sec">
-        <h3 class="lrn-d-h">{t('Where it goes wrong')}</h3>
-        <ul class="lrn-list">{x.slips.map((l) => <li>{l}</li>)}</ul>
-      </section>
-    </>
+  const mind = (
+    <section class="lrn-d-sec" key="mind">
+      <h3 class="lrn-d-h">{t('Why it works on people')}</h3>
+      <p class="lrn-d-p">{x.mind}</p>
+      <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
+    </section>
   );
+  const levers = (
+    <section class="lrn-d-sec" key="levers">
+      <h3 class="lrn-d-h">{t('The levers it pulls')}</h3>
+      <ul class="lrn-list">{x.levers.map((l) => <li><b>{l.name}.</b> {l.text}</li>)}</ul>
+    </section>
+  );
+  const meet = (
+    <section class="lrn-d-sec" key="meet">
+      <h3 class="lrn-d-h">{t('Where you’ll meet it today')}</h3>
+      <ul class="lrn-list">{x.today.map((l) => <li>{l}</li>)}</ul>
+    </section>
+  );
+  const tryIt = (
+    <section class="lrn-d-sec" key="try">
+      <h3 class="lrn-d-h">{t('Try this week')}</h3>
+      <ol class="lrn-list is-steps">{x.practice.map((l) => <li>{l}</li>)}</ol>
+    </section>
+  );
+  const slips = (
+    <section class="lrn-d-sec" key="slips">
+      <h3 class="lrn-d-h">{t('Where it goes wrong')}</h3>
+      <ul class="lrn-list">{x.slips.map((l) => <li>{l}</li>)}</ul>
+    </section>
+  );
+  // understanding first (what it is, why, where you meet it, then what to do), or doing first; both hold all six
+  const chapters = lens === 'why' ? [idea, mind, levers, meet, tryIt, slips] : [tryIt, slips, meet, idea, mind, levers];
 
   return (
     <article class="lrn-detail" key={x.n}>
-      {/* on a wide screen the rail (the head, the scores, the lens) stays at the left while the chapters flow beside it; elsewhere both add no box (styles/learn.css) */}
+      {/* on a wide screen the rail (who it is, the scores) stays at the left while the chapters flow beside it; elsewhere both add no box (styles/learn.css) */}
       <div class="lrn-d-rail">
         <DetailHead id={x.id} hue={hueOf(x)} kicker={`${t('Principle {n}', { n: x.n })} · ${t(part.name)}`} title={x.title} line={x.line} onShare={onShare} />
 
@@ -353,38 +353,69 @@ function PrincipleDetail({ x, lens, setLens, practice, onToggle, onTried, go, op
           <Meter label={t('How hard')} value={x.hard} about={t('How hard it is to actually do')} />
           <Meter label={t('Everyday')} value={x.everyday} about={t('How often it comes up in ordinary life')} />
         </div>
-
-        {/* the lens: which half you read first (the other follows) */}
-        <div class="seg tabs" role="tablist" aria-label={t('Read as')} style={{ '--at': LENSES.indexOf(lens), '--tabs': LENSES.length }}>
-          <button role="tab" aria-selected={lens === 'why'} onClick={() => setLens('why')}><Ico name="brain" size={16} /> {t('Why it works')}</button>
-          <button role="tab" aria-selected={lens === 'how'} onClick={() => setLens('how')}><Ico name="list-check" size={16} /> {t('How to practise')}</button>
-        </div>
       </div>
 
       <div class="lrn-d-flow">
-        {lens === 'why' ? <>{why}{how}</> : <>{how}{why}</>}
+        {/* the lens sits right over what it reorders, and its line says what now comes first */}
+        <LensSwitch
+          label={t('Read as')}
+          value={lens}
+          onChange={setLens}
+          options={[
+            { id: 'why', icon: 'brain', label: t('Why it works'), hint: t('Starts with the idea and why it works, then how to practise it') },
+            { id: 'how', icon: 'list-check', label: t('How to practise'), hint: t('Starts with what to try this week, then the idea behind it') },
+          ]}
+        />
 
-        <div class="lrn-pair lrn-d-wide">
+        {chapters}
+
+        {/* the balance, once the idea is in: where it turns into flattery, beside the sincere version */}
+        <div class="lrn-pair">
           <Aside icon="moon" label={t('The shadow side')}>{x.shadow}</Aside>
           <Aside icon="heart" label={t('The honest version')}>{x.honest}</Aside>
         </div>
 
-        <blockquote class="lrn-quote lrn-d-wide">
-          <small>{t('A question to sit with')}</small>
-          {x.question}
-        </blockquote>
+        {/* reflect, then commit: the question to sit with, and the two buttons that keep count */}
+        <section class="lrn-d-sec">
+          <h3 class="lrn-d-h">{t('Your turn')}</h3>
+          <blockquote class="lrn-quote">
+            <small>{t('A question to sit with')}</small>
+            {x.question}
+          </blockquote>
+          <div class="lrn-actions">
+            <Tally icon={practice.on ? 'check' : 'plus'} label={practice.on ? t('Practising') : t('Practise this')} pressed={!!practice.on} onClick={() => { haptic(practice.on ? 6 : 10); onToggle(); }} />
+            <Tally icon="sparkles" label={t('I tried it')} n={practice.tried ?? 0} onClick={() => { haptic(10); onTried(); }} />
+          </div>
+        </section>
 
-        <div class="lrn-actions lrn-d-wide">
-          <Tally icon={practice.on ? 'check' : 'plus'} label={practice.on ? t('Practising') : t('Practise this')} pressed={!!practice.on} onClick={() => { haptic(practice.on ? 6 : 10); onToggle(); }} />
-          <Tally icon="sparkles" label={t('I tried it')} n={practice.tried ?? 0} onClick={() => { haptic(10); onTried(); }} />
-        </div>
-
-        {go && kin.length > 0 && (
-          <section class="lrn-d-sec lrn-d-wide">
-            <h3 class="lrn-d-h">{t('Related principles')}</h3>
-            <ol class="lrn-rows">
-              {kin.map((k) => <Row id={k.id} hue={hueOf(k)} top={t('Principle {n}', { n: k.n })} title={k.title} onClick={() => go(k.n)} />)}
-            </ol>
+        {/* every link out of the principle, gathered at the end, each kind under its own small label */}
+        {linked && (
+          <section class="lrn-d-sec">
+            <h3 class="lrn-d-h">{t('Connections')}</h3>
+            {openTrap && traps.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('The mind traps it disarms')}</p>
+                <div class="lrn-links">
+                  {traps.map(({ trap, how }) => <LinkRow hue={trapHue(trap)} id={trap.id} title={trap.name} how={how} onClick={() => openTrap(trap.id)} />)}
+                </div>
+              </div>
+            )}
+            {openLaw && laws.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('The laws of power it answers')}</p>
+                <div class="lrn-links">
+                  {laws.map(({ law, how }) => <LinkRow hue={lawHue(law)} id={law.id} kicker={t('Law {n}', { n: law.n })} title={law.title} how={how} onClick={() => openLaw(law.n)} />)}
+                </div>
+              </div>
+            )}
+            {go && kin.length > 0 && (
+              <div class="lrn-d-group">
+                <p class="kicker">{t('Related principles')}</p>
+                <ol class="lrn-rows">
+                  {kin.map((k) => <Row id={k.id} hue={hueOf(k)} top={t('Principle {n}', { n: k.n })} title={k.title} onClick={() => go(k.n)} />)}
+                </ol>
+              </div>
+            )}
           </section>
         )}
       </div>
