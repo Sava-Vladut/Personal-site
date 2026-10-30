@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.153.0',
+    date: '2026-10-30',
+    changes: [
+      'The Global Ops dev page is gone; Code on the wheel now holds just Repos',
+    ],
+  },
+  {
     version: '1.152.0',
     date: '2026-10-29',
     changes: [

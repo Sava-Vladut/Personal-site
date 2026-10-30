@@ -39,12 +39,11 @@ export const WHEEL: WheelNode[] = [
       { id: 'friends', name: t('Win friends'), sub: t('The 30 principles: why they work and how to practise them'), icon: 'heart-handshake', hue: 'joy', to: 'friends' },
     ],
   },
-  // what you build: your GitHub work and the game's development
+  // what you build: your GitHub work
   {
-    id: 'code', name: t('Code'), sub: t('Your GitHub work and the game’s development'), icon: 'code', hue: 'calm-safety',
+    id: 'code', name: t('Code'), sub: t('Your GitHub work'), icon: 'code', hue: 'calm-safety',
     kids: [
       { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
-      { id: 'glopsdev', name: t('Global Ops dev'), sub: t('The game’s development: agents at work, commits and deploys'), icon: 'terminal-2', hue: 'hope-interest', to: 'glopsdev' },
     ],
   },
   // Twitch, and small tools

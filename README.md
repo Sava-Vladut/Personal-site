@@ -117,14 +117,6 @@ The Global Ops page (Insights) shows who plays the browser port of Global Operat
 all-time highs, servers, play time and busy hours. The page fetches `/glops/net/analytics` straight from the game's
 multiplayer relay (public, no sign-in, nothing to configure here) every 30 seconds while it's open.
 
-The Global Ops dev page (Extras) follows the game's development while agents work on it. Point `GLOPS_DIR` at the
-port's folder (read-only is enough): the server reads the git state of `port/` (branch, push state, commits with their
-files, uncommitted changes), deploys from the backup folders in `backups/` (`glops-dist-*`, `glops-mp-*`, … named
-`<topic>-YYYYMMDD-HHMM`, matched to `port/PORTING_LOG.md`'s Status entries), every `port/recomp/build_*` build, the
-newest `*.log` files and screenshots, and `activity.jsonl`, which `tools/activity-hook.sh` there appends to as a Claude
-Code hook (PostToolUse and Stop; add UserPromptSubmit to also log what each agent was asked). Admin only. The page
-refreshes every 5 seconds while something changed in the last ten minutes, every 30 seconds otherwise.
-
 See [the performance and stability review](docs/performance-review-2026-09-29.md) for validation, measurements,
 and remaining browser-side and infrastructure scaling limits.
 

@@ -1426,7 +1426,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'twitch', 'glops']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['streamer', 'status', 'countdown', 'glopsdev']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'twitch', 'glops']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['streamer', 'status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 
@@ -1453,7 +1453,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   };
   const moved = await reload(old({ insights: ['stats', 'map'], extras: ['repos', 'twitch', 'streamer', 'status', 'countdown', 'glops'] }));
   assert.deepEqual(plain(moved.kids.insights), ['stats', 'map', 'glops']);
-  assert.ok(moved.kids.extras.includes('glopsdev') && !moved.kids.extras.includes('glops'));
+  assert.ok(!moved.kids.extras.includes('glops'));
   const mine = await reload(old({ insights: ['stats', 'map'], learn: ['traps', 'laws', 'friends', 'glops'] }));
   assert.ok(mine.kids.learn.includes('glops') && !mine.kids.insights.includes('glops'), 'Global Ops stays where you put it');
 });
