@@ -88,7 +88,9 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    if (url.pathname.startsWith('/api/')) return;
+    // A page load under /api/ is a login's hop (GitHub's or Spotify's callback). With navigation preload on, leaving it
+    // to the browser sends it to the server a second time, and a login code works only once: answer with the preload.
+    if (url.pathname.startsWith('/api/')) return req.mode === 'navigate' ? e.respondWith(Promise.resolve(e.preloadResponse).then((res) => res || fetch(req))) : undefined;
     // /game and /glops (the Global Ops port and its stats) are separate sites served by Caddy: never cache them, and
     // never let their pages replace the app shell.
     if (/^\/(?:game|glops)(?:\/|$)/.test(url.pathname)) return;

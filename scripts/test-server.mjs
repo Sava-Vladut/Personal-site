@@ -321,53 +321,92 @@ test('Spotify login hops to the redirect URI’s domain first, so the state cook
   assert.equal(go.headers['Set-Cookie'].length, 1);
 });
 
-test('GitHub login sends you to GitHub asking for repo access, then stores the token in a sealed cookie', async () => {
+/** Opens a GitHub login from the callback's domain: GitHub's address, the state it carries, and the browser's cookie. */
+async function ghStart(back = '', browser = '') {
+  const go = await raw('/api/github/connect' + (back ? `?back=${encodeURIComponent(back)}` : ''), browser, 'GET', 'example.test');
+  const auth = new URL(go.headers.Location);
+  return { go, auth, state: auth.searchParams.get('state'), browser: browser || go.headers['Set-Cookie'][0].split(';')[0] };
+}
+
+let codes = 0;
+/** Logs account `id` in through GitHub's whole flow, GitHub answering the code with `tokens`. Gives back the browser's sign-in cookie. */
+async function ghLogin(id, tokens) {
+  const { state, browser } = await ghStart();
+  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user' ? Response.json({ id: Number(id), login: 'octo' }) : Response.json(tokens);
+  const back = await raw(`/api/github/callback?code=login-${++codes}&state=${encodeURIComponent(state)}`, browser);
+  assert.match(back.headers.Location, /\?github=connected$/);
+  return back.headers['Set-Cookie'].find((c) => c.startsWith('mm_gh=')).split(';')[0];
+}
+
+function unsealCookie(cookie) {
+  const buf = Buffer.from(cookie.slice(cookie.indexOf('=') + 1), 'base64url');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, buf.subarray(0, 12));
+  decipher.setAuthTag(buf.subarray(12, 28));
+  return JSON.parse(Buffer.concat([decipher.update(buf.subarray(28)), decipher.final()]).toString('utf8'));
+}
+
+test('GitHub login sends you to GitHub asking for repo access; the tokens stay on the server, the cookie only says whose', async () => {
   // started from another domain: hop to the callback's domain first
   const hop = await raw('/api/github/connect', '', 'GET', 'other.test');
   assert.equal(hop.headers.Location, 'https://example.test/api/github/connect');
   assert.equal(hop.headers['Set-Cookie'].length, 0);
 
-  const go = await raw('/api/github/connect', '', 'GET', 'example.test');
+  const { go, auth, state, browser } = await ghStart();
   assert.equal(go.status, 302);
-  const auth = new URL(go.headers.Location);
   assert.equal(auth.origin + auth.pathname, 'https://github.com/login/oauth/authorize');
   assert.equal(auth.searchParams.get('client_id'), 'gh-client');
   assert.equal(auth.searchParams.get('scope'), 'repo');
   assert.equal(auth.searchParams.get('redirect_uri'), 'https://example.test/api/github/callback');
-  const state = auth.searchParams.get('state');
-  const stateCookie = go.headers['Set-Cookie'][0].split(';')[0];
+  assert.match(browser, /^mm_gbrowser=[a-f0-9]{32}$/);
 
-  // a callback whose state doesn't match is refused without contacting GitHub
+  // a callback whose state doesn't match, or that comes back to another browser, is refused without contacting GitHub
   globalThis.fetch = async () => assert.fail('must not exchange a code for a bad state');
-  const forged = await raw('/api/github/callback?code=abc&state=nope', stateCookie);
-  assert.match(forged.headers.Location, /\?github=error$/);
+  assert.match((await raw('/api/github/callback?code=abc&state=nope', browser)).headers.Location, /\?github=error$/);
+  const elsewhere = await ghStart();
+  assert.match((await raw(`/api/github/callback?code=abc&state=${encodeURIComponent(elsewhere.state)}`, browser)).headers.Location, /\?github=error$/);
 
+  let exchanged = 0;
   globalThis.fetch = async (url, options) => {
-    // the account's id is asked for, so other devices can fall back on this sign-in
     if (String(url) === 'https://api.github.com/user') return Response.json({ id: 7, login: 'octo' });
     assert.equal(String(url), 'https://github.com/login/oauth/access_token');
-    assert.equal(new URLSearchParams(options.body).get('code'), 'abc');
-    return Response.json({ access_token: 'gho_secret', scope: 'repo' });
+    assert.equal(new URLSearchParams(options.body).get('code'), 'first');
+    exchanged++;
+    return Response.json({ access_token: 'gho_secret', refresh_token: 'ghr_secret', expires_in: 28800, scope: 'repo' });
   };
-  const back = await raw(`/api/github/callback?code=abc&state=${state}`, stateCookie);
+  const callback = `/api/github/callback?code=first&state=${encodeURIComponent(state)}`;
+  const back = await raw(callback, browser);
   assert.match(back.headers.Location, /#\/settings\?github=connected$/);
   const login = back.headers['Set-Cookie'].find((c) => c.startsWith('mm_gh='));
-  assert.ok(login && !login.includes('gho_secret'), 'the token is sealed');
   assert.match(login, /HttpOnly/);
+  assert.deepEqual(Object.keys(unsealCookie(login.split(';')[0])).sort(), ['i', 't', 'u'], 'no token in the cookie');
+  assert.equal(unsealCookie(login.split(';')[0]).u, '7');
 
-  const cancelled = await raw(`/api/github/callback?error=access_denied&state=${state}`, stateCookie);
+  // the same callback arriving twice (a service worker's preload and the page) is a success both times, exchanged once
+  const twice = await raw(callback, browser);
+  assert.match(twice.headers.Location, /#\/settings\?github=connected$/);
+  assert.ok(twice.headers['Set-Cookie'].some((c) => c.startsWith('mm_gh=')));
+  assert.equal(exchanged, 1);
+
+  const cancelled = await raw(`/api/github/callback?error=access_denied&state=${encodeURIComponent(state)}`, browser);
   assert.match(cancelled.headers.Location, /\?github=cancelled$/);
+  // a login that went wrong while this browser is still signed in comes back quietly
+  const quiet = await raw('/api/github/callback?code=abc&state=nope', `${browser}; ${login.split(';')[0]}`);
+  assert.equal(quiet.headers.Location, 'https://example.test/#/settings');
+
+  // two logins started at once (two tabs) both still work: the browser keeps its cookie, so neither state goes stale
+  const second = await ghStart('', browser);
+  assert.equal(second.go.headers['Set-Cookie'].length, 0);
+  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user' ? Response.json({ id: 7 }) : Response.json({ access_token: 'gho_tab' });
+  assert.match((await raw(`/api/github/callback?code=tab-1&state=${encodeURIComponent(state)}`, browser)).headers.Location, /\?github=connected$/);
+  assert.match((await raw(`/api/github/callback?code=tab-2&state=${encodeURIComponent(second.state)}`, browser)).headers.Location, /\?github=connected$/);
 
   // started from another page: the hop keeps it, and the login comes back there
   assert.equal((await raw('/api/github/connect?back=%23%2Frepos', '', 'GET', 'other.test')).headers.Location, 'https://example.test/api/github/connect?back=%23%2Frepos');
-  const fromRepos = await raw('/api/github/connect?back=%23%2Frepos', '', 'GET', 'example.test');
-  const reposState = new URL(fromRepos.headers.Location).searchParams.get('state');
-  const again = await raw(`/api/github/callback?code=abc&state=${reposState}`, fromRepos.headers['Set-Cookie'][0].split(';')[0]);
-  assert.match(again.headers.Location, /^https:\/\/example\.test\/#\/repos\?github=connected$/);
+  const fromRepos = await ghStart('#/repos');
+  assert.match((await raw(`/api/github/callback?code=repos-1&state=${encodeURIComponent(fromRepos.state)}`, fromRepos.browser)).headers.Location, /^https:\/\/example\.test\/#\/repos\?github=connected$/);
   // anything that isn't one of the app's own pages goes back to Settings
-  const odd = await raw('/api/github/connect?back=https%3A%2F%2Fevil.test', '', 'GET', 'example.test');
-  const oddState = new URL(odd.headers.Location).searchParams.get('state');
-  assert.match((await raw(`/api/github/callback?error=access_denied&state=${oddState}`, odd.headers['Set-Cookie'][0].split(';')[0])).headers.Location, /^https:\/\/example\.test\/#\/settings\?github=cancelled$/);
+  const odd = await ghStart('https://evil.test');
+  assert.match((await raw(`/api/github/callback?error=access_denied&state=${encodeURIComponent(odd.state)}`, odd.browser)).headers.Location, /^https:\/\/example\.test\/#\/settings\?github=cancelled$/);
 });
 
 /** GitHub refusing every token, and confirming through its token check that they're gone. Records the tokens asked with. */
@@ -382,7 +421,7 @@ const revokedGithub = (asked = []) => async (url, options) => {
 };
 
 test('GitHub status reports public and private repo counts, and whether private ones are visible', async () => {
-  const cookie = sealedCookie({ a: 'gho_secret' }, 'mm_gh');
+  const cookie = await ghLogin('11', { access_token: 'gho_secret' });
   assert.deepEqual((await raw('/api/github/status')).body, { configured: true, connected: false });
 
   const scoped = { headers: { 'x-oauth-scopes': 'repo' } };
@@ -409,7 +448,7 @@ test('GitHub status reports public and private repo counts, and whether private 
   assert.equal(limited.private, undefined);
 
   // a revoked token, which GitHub confirms is gone, is reported as expired so the app logs in again;
-  // the cookie is kept, so a wrong answer from GitHub heals by itself
+  // the cookie is kept, so a later sign-in on any device carries it on
   globalThis.fetch = revokedGithub();
   const revoked = await raw('/api/github/status', cookie);
   assert.deepEqual(revoked.body, { configured: true, connected: false, expired: true });
@@ -421,7 +460,7 @@ test('GitHub status reports public and private repo counts, and whether private 
 });
 
 test('GitHub repos, commits and README are read with the sign-in cookie and trimmed down', async () => {
-  const cookie = sealedCookie({ a: 'gho_secret' }, 'mm_gh');
+  const cookie = await ghLogin('12', { access_token: 'gho_secret' });
   const repo = (id, name, extra = {}) => ({ id, name, full_name: 'octo/' + name, owner: { login: 'octo' }, description: 'd', language: 'Go', private: false, stargazers_count: 3, pushed_at: '2026-10-01T00:00:00Z', default_branch: 'main', html_url: `https://github.com/octo/${name}`, token: 'leak', ...extra });
   const seen = [];
   globalThis.fetch = async (raw, options) => {
@@ -530,42 +569,99 @@ test('Spotify being unreachable while renewing reports the sign-in as kept, not 
   assert.ok(!status.headers['Set-Cookie']?.some((c) => c.startsWith('mm_sp=')), 'the cookie is left alone');
 });
 
-test('a GitHub token revoked by newer sign-ins elsewhere is swapped for the account’s newest one', async () => {
-  // the phone signs in: the newest token for account 99
-  const go = await raw('/api/github/connect', '', 'GET', 'example.test');
-  const state = new URL(go.headers.Location).searchParams.get('state');
-  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user'
-    ? Response.json({ id: 99, login: 'octo' })
-    : Response.json({ access_token: 'gho_phone' });
-  await raw(`/api/github/callback?code=abc&state=${state}`, go.headers['Set-Cookie'][0].split(';')[0]);
+test('GitHub’s eight-hour tokens are renewed on the server before they run out, once for every request waiting', async () => {
+  const cookie = await ghLogin('13', { access_token: 'gho_a', refresh_token: 'ghr_a', expires_in: 60 });
+  const renewedWith = [];
+  const github = (tokens) => async (url, options) => {
+    if (String(url) === 'https://github.com/login/oauth/access_token') {
+      const body = new URLSearchParams(options.body);
+      assert.equal(body.get('grant_type'), 'refresh_token');
+      assert.equal(body.get('client_secret'), 'gh-secret');
+      renewedWith.push(body.get('refresh_token'));
+      await new Promise((r) => setTimeout(r, 5));
+      return Response.json(tokens[body.get('refresh_token')] ?? { error: 'bad_refresh_token' });
+    }
+    if (options.headers.Authorization === 'Bearer gho_a') return Response.json({ message: 'Bad credentials' }, { status: 401 });
+    return Response.json(String(url).includes('/user/repos') ? [] : { id: 13, login: 'octo' }, { headers: { 'x-oauth-scopes': 'repo' } });
+  };
+  globalThis.fetch = github({ ghr_a: { access_token: 'gho_b', refresh_token: 'ghr_b', expires_in: 28800 } });
+  const [status, repos] = await Promise.all([raw('/api/github/status', cookie), raw('/api/github/repos', cookie)]);
+  assert.equal(status.body.connected, true);
+  assert.equal(repos.status, 200);
+  assert.deepEqual(renewedWith, ['ghr_a'], 'one renewal, shared');
+  assert.ok(!status.headers['Set-Cookie']?.length, 'the browser’s cookie doesn’t change: the tokens live on the server');
 
-  // the desktop's older token has been revoked by GitHub
-  const desktop = sealedCookie({ a: 'gho_desktop', u: '99' }, 'mm_gh');
+  // another device of the same account uses the renewed token as it is
+  const other = sealedCookie({ u: '13', i: Date.now(), t: Date.now() }, 'mm_gh');
+  assert.equal((await raw('/api/github/status', other)).body.connected, true);
+  assert.deepEqual(renewedWith, ['ghr_a']);
+
+  // a token GitHub refuses before its time is renewed and the request asked again
+  globalThis.fetch = async (url, options) => options.headers?.Authorization === 'Bearer gho_b'
+    ? Response.json({ message: 'Bad credentials' }, { status: 401 })
+    : github({ ghr_b: { access_token: 'gho_c', refresh_token: 'ghr_c', expires_in: 28800 } })(url, options);
+  assert.equal((await raw('/api/github/status', cookie)).body.connected, true);
+  assert.deepEqual(renewedWith, ['ghr_a', 'ghr_b']);
+
+  // GitHub out of reach while renewing: a token with time left carries on
+  const soon = await ghLogin('14', { access_token: 'gho_soon', refresh_token: 'ghr_soon', expires_in: 300 });
+  globalThis.fetch = async (url) => {
+    if (String(url).startsWith('https://github.com/')) throw new TypeError('fetch failed');
+    return Response.json({ id: 14, login: 'octo' });
+  };
+  const kept = await raw('/api/github/status', soon);
+  assert.equal(kept.body.connected, true);
+  assert.equal(kept.body.error, undefined);
+
+  // GitHub ending the sign-in (its refresh token refused) is reported as expired, the cookie kept
+  globalThis.fetch = async (url, options) => String(url) === 'https://github.com/login/oauth/access_token'
+    ? Response.json({ error: 'bad_refresh_token' })
+    : Response.json({ message: 'Bad credentials' }, { status: 401 });
+  const ended = await raw('/api/github/status', soon);
+  assert.deepEqual(ended.body, { configured: true, connected: false, expired: true });
+  assert.ok(!ended.headers['Set-Cookie']?.length);
+
+  // signing in again anywhere carries the kept cookie on
+  await ghLogin('14', { access_token: 'gho_again', refresh_token: 'ghr_again', expires_in: 28800 });
+  globalThis.fetch = async (url, options) => options.headers.Authorization === 'Bearer gho_again'
+    ? Response.json({ id: 14, login: 'octo' })
+    : Response.json({ message: 'Bad credentials' }, { status: 401 });
+  assert.equal((await raw('/api/github/status', soon)).body.connected, true);
+
+  const log = readFileSync(join(scratch, 'sign-ins.log'), 'utf8');
+  assert.match(log, /GitHub: account 13's login was renewed/);
+  assert.match(log, /GitHub: account 14's refresh token was refused/);
+  assert.doesNotMatch(log, /gh[or]_/);
+});
+
+test('every device of a GitHub account shares its newest sign-in, older cookies included', async () => {
+  // the phone signs in: the newest tokens for account 99
+  await ghLogin('99', { access_token: 'gho_phone' });
+
+  // the desktop still has a cookie from before tokens moved to the server: it's rewritten without its token, and carries on with the phone's
   globalThis.fetch = async (url, options) => options.headers.Authorization === 'Bearer gho_phone'
     ? Response.json({ id: 99, login: 'octo', public_repos: 1 }, { headers: { 'x-oauth-scopes': 'repo' } })
     : Response.json({ message: 'Bad credentials' }, { status: 401 });
-  const status = await raw('/api/github/status', desktop);
+  const status = await raw('/api/github/status', sealedCookie({ a: 'gho_desktop', u: '99' }, 'mm_gh'));
   assert.equal(status.body.connected, true);
   assert.equal(status.body.user.name, 'octo');
-  assert.ok(status.headers['Set-Cookie'].some((c) => c.startsWith('mm_gh=') && !c.includes('Max-Age=0')), 'the desktop is handed the newest token');
+  const rewritten = status.headers['Set-Cookie'].find((c) => c.startsWith('mm_gh=') && !c.includes('Max-Age=0'));
+  assert.ok(rewritten, 'the desktop’s cookie is written again');
+  const desktop = rewritten.split(';')[0];
+  assert.equal(unsealCookie(desktop).a, undefined);
 
-  // once every token for the account is refused, the request answers 401 and the saved one is forgotten
-  globalThis.fetch = revokedGithub();
+  // once GitHub confirms the account's token is gone, requests answer 401 and nothing is left to try
+  const asked = [];
+  globalThis.fetch = revokedGithub(asked);
   const gone = await raw('/api/github/repos', desktop);
   assert.equal(gone.status, 401);
   assert.ok(!gone.headers['Set-Cookie']?.length, 'the desktop keeps its cookie');
-  const asked = [];
-  globalThis.fetch = revokedGithub(asked);
-  await raw('/api/github/repos', desktop);
-  assert.deepEqual(asked, ['Bearer gho_desktop'], 'nothing saved is left to try');
+  assert.deepEqual(asked, ['Bearer gho_phone']);
+  assert.equal((await raw('/api/github/repos', desktop)).status, 401);
+  assert.equal(asked.length, 1, 'GitHub isn’t asked again');
 
-  // the phone signs in again: the desktop's kept cookie carries on with it, without logging in there
-  const relog = await raw('/api/github/connect', '', 'GET', 'example.test');
-  const relogState = new URL(relog.headers.Location).searchParams.get('state');
-  globalThis.fetch = async (url) => String(url) === 'https://api.github.com/user'
-    ? Response.json({ id: 99, login: 'octo' })
-    : Response.json({ access_token: 'gho_phone2' });
-  await raw(`/api/github/callback?code=abc&state=${relogState}`, relog.headers['Set-Cookie'][0].split(';')[0]);
+  // the phone signs in again: the desktop carries on with it, without logging in there
+  await ghLogin('99', { access_token: 'gho_phone2' });
   globalThis.fetch = async (url, options) => options.headers.Authorization === 'Bearer gho_phone2'
     ? Response.json({ id: 99, login: 'octo', public_repos: 1 }, { headers: { 'x-oauth-scopes': 'repo' } })
     : Response.json({ message: 'Bad credentials' }, { status: 401 });
@@ -573,14 +669,13 @@ test('a GitHub token revoked by newer sign-ins elsewhere is swapped for the acco
 
   // what happened is kept in data/ across redeploys, with account ids but never a token
   const log = readFileSync(join(scratch, 'sign-ins.log'), 'utf8');
-  assert.match(log, /GitHub: account 99 signed in/);
-  assert.match(log, /GitHub: account 99's token was refused \(token check answered 404\)/);
-  assert.match(log, /GitHub: account 99 carried on with its newest sign-in/);
+  assert.match(log, /GitHub: account 99 signed in \(with a token that can’t be renewed\)/);
+  assert.match(log, /GitHub: account 99's token was refused \(token check answered 404/);
   assert.doesNotMatch(log, /gho_/);
 });
 
 test('GitHub being unreachable reports the sign-in as kept, not signed out', async () => {
-  const cookie = sealedCookie({ a: 'gho_secret', u: '5' }, 'mm_gh');
+  const cookie = await ghLogin('5', { access_token: 'gho_secret' });
   globalThis.fetch = async () => { throw new TypeError('fetch failed'); };
   const status = await raw('/api/github/status', cookie);
   assert.equal(status.status, 200);
@@ -590,7 +685,7 @@ test('GitHub being unreachable reports the sign-in as kept, not signed out', asy
 });
 
 test('a GitHub refusal that GitHub can’t confirm keeps the sign-in instead of signing out', async () => {
-  const cookie = sealedCookie({ a: 'gho_alive', u: '31', t: Date.now() }, 'mm_gh');
+  const cookie = await ghLogin('31', { access_token: 'gho_alive' });
   // the token check says the token is still valid: the 401 was a hiccup
   globalThis.fetch = async (url) => String(url).includes('/applications/')
     ? Response.json({ id: 1 })
@@ -614,15 +709,18 @@ test('a GitHub refusal that GitHub can’t confirm keeps the sign-in instead of 
 });
 
 test('a GitHub cookie in use is written again before it can expire, and an unreadable one is dropped', async () => {
+  await ghLogin('8', { access_token: 'gho_eight' });
   globalThis.fetch = async () => Response.json({ login: 'octo', id: 8 }, { headers: { 'x-oauth-scopes': 'repo' } });
-  const stale = await raw('/api/github/status', sealedCookie({ a: 'gho_old', u: '8', t: Date.now() - 40 * 86400_000 }, 'mm_gh'));
+  const stale = await raw('/api/github/status', sealedCookie({ u: '8', t: Date.now() - 40 * 86400_000 }, 'mm_gh'));
   const renewed = stale.headers['Set-Cookie'].find((c) => c.startsWith('mm_gh='));
   assert.match(renewed, /Max-Age=31536000/);
-  const fresh = await raw('/api/github/status', sealedCookie({ a: 'gho_new', u: '8', t: Date.now() }, 'mm_gh'));
+  const fresh = await raw('/api/github/status', sealedCookie({ u: '8', t: Date.now() }, 'mm_gh'));
   assert.ok(!fresh.headers['Set-Cookie']?.length, 'a recently written cookie is left as it is');
 
   globalThis.fetch = async () => assert.fail('an unreadable cookie never reaches GitHub');
-  const broken = await raw('/api/github/status', 'mm_gh=not-a-sealed-value');
-  assert.equal(broken.body.connected, false);
-  assert.match(broken.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  for (const cookie of ['mm_gh=not-a-sealed-value', sealedCookie({ a: 'gho_whose' }, 'mm_gh')]) {
+    const broken = await raw('/api/github/status', cookie);
+    assert.equal(broken.body.connected, false);
+    assert.match(broken.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  }
 });

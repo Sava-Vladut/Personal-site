@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.154.0',
+    date: '2026-10-30',
+    changes: [
+      'GitHub stays logged in: its logins only last eight hours, so the server now renews them by itself before they run out instead of asking you to log in again',
+      'No more “Couldn’t connect GitHub” message right after a login that worked (the login’s return trip was reaching the server twice)',
+      'Starting a GitHub login in two tabs at once, or tapping Log in twice, no longer makes one of them fail',
+      'Every device logged in to the same GitHub account shares one login, so logging in on one brings the others back too',
+      'After this update GitHub needs one last login (a quick hop to GitHub and back), then keeps you logged in',
+    ],
+  },
+  {
     version: '1.153.0',
     date: '2026-10-30',
     changes: [

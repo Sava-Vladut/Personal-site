@@ -129,6 +129,15 @@ test('API and non-GET requests remain outside the service worker', async () => {
   assert.equal(await app.request('/journal', 'cors', 'POST'), undefined);
 });
 
+test('a login’s callback page reaches the server once: its navigation preload is the answer', async () => {
+  let fetched = 0;
+  const app = worker({ fetch: async () => { fetched++; return new Response('again'); } });
+  const preload = new Response(null, { status: 302 });
+  assert.equal(await app.request('/api/github/callback?code=abc', 'navigate', 'GET', Promise.resolve(preload)), preload);
+  assert.equal(fetched, 0, 'the code isn’t sent a second time');
+  assert.equal(await (await app.request('/api/github/callback?code=abc', 'navigate', 'GET', Promise.resolve(undefined))).text(), 'again', 'no preload: the network');
+});
+
 test('caches left by the removed voice typing are deleted on activation', async () => {
   const app = worker({ entries: { 'mm-app-dev': {}, 'mm-voice-v1': {}, 'transformers-cache': {} } });
   await app.activate();
