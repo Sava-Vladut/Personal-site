@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { bodyOf, itemKey, itemsOf, type Item, type Media } from '../lib/body';
+import { bodyOf, itemKey, itemsOf, rowRatios, type Item, type Media } from '../lib/body';
 import { rangeLabel } from '../lib/dates';
 import { imageSrc } from '../lib/images';
 import { readShared, type PublicDetails, type PublicNote } from '../lib/share';
@@ -93,29 +93,28 @@ export function Shared({ token }: { token: string }) {
 function Pic({ m, note, src }: { m: Media; note: Note; src: (it: Item, size: 'thumb' | 'full') => string }) {
   const items = itemsOf(m).filter((it) => src(it, 'full'));
   if (!items.length) return null;
-  const album = m.kind === 'album' && items.length > 1;
+  const row = m.kind === 'album' && items.length > 1;
   const size = m.size ?? 100;
   const align = size < 100 ? m.align : undefined;
   const first = items[0];
   const photo = first.kind === 'photo' ? note.photos.find((p) => p.id === first.id) : undefined;
   const web = (it: Item) => (it.kind === 'image' ? note.images.find((i) => i.url === it.url) : undefined);
-  const credit = !album && first.kind === 'image' ? web(first) : undefined;
-  const tiles = items.slice(0, 5);
-  // no taller than 70% of the screen, as in the note itself (components/NoteMedia.tsx): an album by its shape, a
-  // picture by its own
-  const ratio = album ? [0, 0, 3 / 2, 4 / 3, 1, 1][tiles.length] : photo ? photo.w / photo.h : credit?.w && credit.h ? credit.w / credit.h : 0;
+  const credit = !row && first.kind === 'image' ? web(first) : undefined;
+  // a row's pictures side by side at the same height, each as wide as its shape, as in the note itself
+  // (components/NoteMedia.tsx); no taller than 70% of the screen, a row by its shape, a picture by its own
+  const ratios = row ? rowRatios(items, note) : [];
+  const ratio = row ? ratios.reduce((a, b) => a + b, 0) : photo ? photo.w / photo.h : credit?.w && credit.h ? credit.w / credit.h : 0;
   return (
     <figure
-      class={`media shared-media${album ? ' is-album' : ''}${align ? ' is-' + align : ''}`}
+      class={`media shared-media${row ? ' is-row' : ''}${align ? ' is-' + align : ''}`}
       style={{ width: `${size}%`, maxWidth: ratio ? `calc(70svh * ${ratio.toFixed(4)})` : undefined }}
     >
       <a class="media-pic" href={src(first, 'full')} target="_blank" rel="noopener noreferrer" aria-label={t('Open the picture')}>
-        {album ? (
-          <div class={`album n${tiles.length}`}>
-            {tiles.map((it, k) => (
-              <span key={itemKey(it)} class="album-tile">
+        {row ? (
+          <div class="pic-row" style={{ aspectRatio: ratio.toFixed(4) }}>
+            {items.map((it, k) => (
+              <span key={itemKey(it)} class="row-tile" style={{ flexGrow: ratios[k].toFixed(4) }}>
                 <img src={src(it, 'thumb')} alt={m.alt || web(it)?.title || ''} loading="lazy" referrerpolicy="no-referrer" />
-                {k === tiles.length - 1 && items.length > tiles.length && <span class="album-more">+{items.length - tiles.length + 1}</span>}
               </span>
             ))}
           </div>

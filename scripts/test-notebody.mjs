@@ -343,6 +343,52 @@ test('pictures: a slot for each, added at the caret or the end, moved and resize
   }
 });
 
+test('dragging a picture: the place it would land is drawn in the note, the picture lifted out, nothing written', async () => {
+  const { n, view, seen } = mount('one\n[[photo:a 40 right]]\ntwo\nthree');
+  await sleep(60);
+  const changes = seen.changes;
+  const from = n.media.posOf('photo:a');
+  assert.equal(from, 5);
+  const editor = view.dom;
+  // picked up: drawn where it is, the picture itself lifted out of the page
+  n.media.preview({ at: from, side: 'right', size: 40, ratio: 1.5, lifted: from, pic: () => view.dom.ownerDocument.createElement('img') });
+  const preview = editor.querySelector('.media-preview');
+  assert.ok(preview?.classList.contains('is-right'), 'on its side');
+  assert.equal(preview.style.width, '40%');
+  assert.equal(preview.querySelector('.media-preview-label').textContent, 'Text wraps around');
+  assert.ok(preview.querySelector('img'), 'a faint copy of the picture in it');
+  assert.ok(editor.querySelector('.media-node').classList.contains('is-lifted'));
+  // moved below "two", centred: drawn there instead, the words above it now
+  n.media.preview({ at: n.media.dropTargets().map((t) => t.pos).at(-2), side: 'center', size: 40, ratio: 1.5, lifted: from });
+  const kids = [...editor.children];
+  const at = kids.findIndex((el) => el.classList.contains('media-preview'));
+  assert.deepEqual([kids[at - 1].textContent, kids[at + 1].textContent], ['two', 'three'], 'between the lines it would go between');
+  assert.equal(editor.querySelector('.media-preview-label').textContent, 'On its own line');
+  assert.equal(n.text(), 'one\n[[photo:a 40 right]]\ntwo\nthree', 'only drawn: the note is as it was');
+  assert.equal(seen.changes, changes, 'nothing to save');
+  // dropped there: the preview goes, the picture is in its new place with its new side
+  n.media.preview(null);
+  assert.equal(editor.querySelector('.media-preview'), null);
+  assert.equal(editor.querySelector('.is-lifted'), null);
+  n.media.move('photo:a', n.media.dropTargets().map((t) => t.pos).at(-2), { size: 40 });
+  assert.equal(n.text(), 'one\ntwo\n[[photo:a 40]]\nthree');
+});
+
+test('a row: its pictures dropped on, put in order, taken out to a place, and one replaced', async () => {
+  const { n } = mount('a\n[[photo:p1]]\nb\n[[photo:p2 50 left]]\nc');
+  await sleep(60);
+  n.media.merge('photo:p2', 'photo:p1', 0);
+  assert.equal(n.text(), 'a\n[[album:photo:p2 photo:p1]]\nb\nc', 'side by side, where it was dropped among them');
+  n.media.reorder({ kind: 'photo', id: 'p1' }, 0);
+  assert.equal(n.text(), 'a\n[[album:photo:p1 photo:p2]]\nb\nc');
+  n.media.moveOut({ kind: 'photo', id: 'p2' }, n.media.dropTargets().at(-1).pos, { size: 30, align: 'right' });
+  assert.equal(n.text(), 'a\n[[photo:p1]]\nb\nc\n[[photo:p2 30 right]]\n', 'the one left stands on its own again');
+  n.media.moveInto({ kind: 'photo', id: 'p2' }, 'photo:p1', 1);
+  assert.equal(n.text(), 'a\n[[photo:p1]]\nb\nc\n[[photo:p2 30 right]]\n', 'only a row\u2019s pictures move this way');
+  n.media.replace({ kind: 'photo', id: 'p1' }, { kind: 'photo', id: 'p9' });
+  assert.equal(n.text(), 'a\n[[photo:p9]]\nb\nc\n[[photo:p2 30 right]]\n');
+});
+
 test('typing only moves the pictures along: the page isn\u2019t told again', async () => {
   const { seen, type, end } = mount('one\n[[photo:a]]\ntwo');
   await sleep(60);

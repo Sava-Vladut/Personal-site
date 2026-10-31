@@ -136,7 +136,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   replace abc accessible text-caption layout-sidebar
   row-insert-top row-insert-bottom column-insert-left column-insert-right row-remove column-remove table-minus
   message message-plus message-x message-up message-down messages messages-off
-  file-type-docx`.split(/\s+/);
+  file-type-docx photo-edit`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

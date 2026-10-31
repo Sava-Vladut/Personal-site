@@ -9,7 +9,8 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice } from '../lib/noteDoc';
 import {
   canStep, clearFind, commentAt, commentsOf, commentsState, deleteComment, dropTargets, focusComment, saveComment, selectComment, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger, isCell,
-  linkAt, litOf, mediaList, mergeMedia, moveMedia, parseClipboardText, removeItem, removeMedia, replaceAll, replaceCurrent, replaceTyped, sameLit, setFind,
+  linkAt, litOf, mediaList, mergeMedia, moveItemInto, moveItemOut, moveMedia, parseClipboardText, removeItem, removeMedia, reorderItem, replaceAll,
+  replaceCurrent, replaceItem, replaceTyped, sameLit, setFind,
   setMediaLayout, setMediaMeta, stepMedia, takeOutItem, typedAt, ungroupMedia, type Comment, type DropTarget, type FindQuery, type Heading, type LinkTarget, type Lit,
   type TableAction, type Typed,
 } from '../lib/noteDoc/edit';
@@ -17,12 +18,13 @@ import { dropComments } from '../lib/comments';
 import { itemKey, itemsOf, mediaKey, type Item, type Layout, type Media, type Meta } from '../lib/body';
 import { bindCommands, type NoteCommands } from './commands';
 import { MediaSlots, nodeViews, type MediaSlot } from './nodeViews';
+import { dropPreviewPlugin, setDropPreview, type DropPreview } from './dropPreview';
 import { tidyPasted, tidyPastedHTML } from './paste';
 import { notePlugins } from './plugins';
 import type { RefKind } from '../lib/refs';
 import { t } from '../lib/i18n';
 
-export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading, TableAction, Comment };
+export type { DropTarget, DropPreview, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading, TableAction, Comment };
 
 /** What Find has found: how many, and which is the current one (0-based; -1 when none is yet). */
 export interface FindInfo { count: number; current: number }
@@ -125,15 +127,26 @@ export interface NoteBodyHandle {
     meta(key: string, meta: Meta): void;
     remove(key: string): void;
     removeItem(item: Item): void;
-    merge(from: string, onto: string): void;
+    /** `from` dropped on `onto`: side by side, at place `at` among its pictures (after them without one) */
+    merge(from: string, onto: string, at?: number): void;
     ungroup(key: string): void;
     takeOut(item: Item): void;
+    /** one picture of a row: to place `at` among the row's, out on its own at a drop place, or into another picture */
+    reorder(item: Item, at: number): void;
+    moveOut(item: Item, to: number, layout?: Layout): void;
+    moveInto(item: Item, onto: string, at?: number): void;
+    /** another picture where `item` is, with its layout, caption and alt text */
+    replace(item: Item, next: Item): void;
     step(key: string, dir: -1 | 1): void;
     canStep(key: string, dir: -1 | 1): boolean;
     /** the caret at the start of the words just after a picture */
     writeAfter(key: string): void;
+    /** the position before a picture, or -1 */
+    posOf(key: string): number;
     dropTargets(): DropTarget[];
     move(key: string, to: number, layout?: Layout): void;
+    /** where a picture being dragged would land, drawn in the note (null: nothing drawn) */
+    preview(p: DropPreview | null): void;
   };
 }
 
@@ -310,6 +323,7 @@ export function NoteBody(p: Props) {
             find: (mode) => props.current.onFind?.(mode),
           }),
           placeholder(),
+          dropPreviewPlugin(),
           new Plugin({ props: { handleDOMEvents: { focus: () => void (placed = true) } } }),
         ],
       }),
@@ -576,9 +590,15 @@ export function NoteBody(p: Props) {
         meta: (key, meta) => void run(setMediaMeta(at(key), meta)),
         remove: (key) => void run(removeMedia(at(key))),
         removeItem: (item) => void run(removeItem(holding(item), item)),
-        merge: (from, onto) => void run(mergeMedia(at(from), at(onto))),
+        merge: (from, onto, k) => void run(mergeMedia(at(from), at(onto), k)),
         ungroup: (key) => void run(ungroupMedia(at(key))),
         takeOut: (item) => void run(takeOutItem(holding(item), item)),
+        reorder: (item, k) => void run(reorderItem(holding(item), item, k)),
+        moveOut: (item, to, layout) => void run(moveItemOut(holding(item), item, to, layout)),
+        moveInto: (item, onto, k) => void run(moveItemInto(holding(item), item, at(onto), k)),
+        replace: (item, next) => void run(replaceItem(holding(item), item, next)),
+        posOf: at,
+        preview: (p) => view.dispatch(setDropPreview(view.state, p)),
         step: (key, dir) => void run(stepMedia(at(key), dir)),
         canStep: (key, dir) => at(key) >= 0 && canStep(view.state, at(key), dir),
         writeAfter(key) {

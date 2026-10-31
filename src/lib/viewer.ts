@@ -16,7 +16,7 @@ export interface ViewItem {
   el?: HTMLElement | null;  // the picture on the page, to zoom out of and back into
   save?: string;            // a file name: offers a Save button
   link?: string;            // the page an image came from
-  album?: boolean;          // one of an album's pictures: offers taking it out
+  album?: boolean;          // one of a row's pictures: offers taking it out
 }
 
 export interface ViewOptions {
@@ -111,7 +111,7 @@ export async function openViewer(items: ViewItem[], index: number, opts: ViewOpt
       });
       button('source', 8, t('Open source'), icon('arrow-up-right'), (i) => !!i.link, (i) => open(i.link, '_blank', 'noopener,noreferrer'));
       if (opts.onTakeOut)
-        button('takeout', 8, t('Take out of the album'), icon('stack-pop'), (i) => !!i.album, () => {
+        button('takeout', 8, t('Take out of the row'), icon('stack-pop'), (i) => !!i.album, () => {
           const at = pswp.currIndex;
           pswp.close();
           opts.onTakeOut!(at);

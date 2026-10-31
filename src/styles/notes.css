@@ -307,9 +307,11 @@
 .note-body .md .md-task input::after { width: 0.5em; height: 0.28em; }
 /* Beside a picture on the left, a list line is a box of its own next to the picture. As a line of words it would run
    under the picture, its bullet, number or box drawn over the picture instead of beside its words. (Beside a picture
-   on the right it stays a line of words, wrapping round the picture and taking the whole width again under it.) */
-.note-editor > .media-node:has(> .media.is-left) ~ .md-li,
-.note-editor > .media-node:has(> .media.is-left) ~ * .md-li,
+   on the right it stays a line of words, wrapping round the picture and taking the whole width again under it.) The
+   same goes beside the place a picture being dragged would land (editor/dropPreview.ts). */
+.note-editor > .media-node:not(.is-lifted):has(> .media.is-left) ~ .md-li,
+.note-editor > .media-node:not(.is-lifted):has(> .media.is-left) ~ * .md-li,
+.note-editor > .media-preview.is-left ~ .md-li,
 .note-body > .media.is-left ~ .md .md-li { display: flow-root; }
 /* a #tag: the same letters on a soft wash that takes no room, so the line doesn't jump as it's typed, and a public
    note's page shows it as the note does */

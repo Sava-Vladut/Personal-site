@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { itemKey, itemsOf, mediaKey, MIN_SIZE, type Item, type Layout, type Media } from '../lib/body';
+import { itemKey, itemRatio, itemsOf, mediaKey, MIN_SIZE, rowRatios, type Item, type Layout, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Entry } from '../lib/store';
 import { Icon } from './icons';
@@ -12,20 +12,7 @@ export type Side = 'left' | 'center' | 'right';
 
 /** A size in % of the column, from a width in px: any size in between, no steps. */
 const pctOf = (w: number, col: number) => Math.round(Math.min(100, Math.max(MIN_SIZE, (w / col) * 100)));
-
-const itemRatio = (it: Item, draft: Entry) => {
-  if (it.kind === 'photo') {
-    const p = draft.photos.find((x) => x.id === it.id);
-    return p ? p.w / p.h : 0;
-  }
-  const i = draft.images.find((x) => x.url === it.url);
-  return i?.w && i.h ? i.w / i.h : 0;
-};
-/** How many tiles an album shows; the last one says how many more there are. */
-const TILES = 5;
-/** An album's shape: two side by side, one big and two stacked, a 2×2 grid, or two over three. */
-const ALBUM_RATIO = [0, 0, 3 / 2, 4 / 3, 1, 1];
-const ratioOf = (m: Media, draft: Entry) => (m.kind === 'album' ? ALBUM_RATIO[Math.min(TILES, m.items.length)] : itemRatio(m, draft));
+const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 /** One picture, filling its box. Its alt text is the one written for it (`alt`), else what it is. */
 function Pic({ it, draft, tile, alt }: { it: Item; draft: Entry; tile?: boolean; alt?: string }) {
@@ -40,9 +27,18 @@ function Pic({ it, draft, tile, alt }: { it: Item; draft: Entry; tile?: boolean;
 }
 
 /** Where a picture lands when dropped: its size (a side picture is at most half the column) and side. */
-export function dropLayout(m: Media, side: Side): Layout {
+export function dropLayout(m: Layout, side: Side): Layout {
   const size = m.size ?? 100;
   return side === 'center' ? { size } : { size: size >= 100 ? 50 : size, align: side };
+}
+
+/** Which of a row's pictures (its tiles in `box`) is under a point across, or -1. */
+export function tileAt(box: Element, x: number): number {
+  const tiles = [...box.querySelectorAll<HTMLElement>('.row-tile')];
+  return tiles.findIndex((el) => {
+    const r = el.getBoundingClientRect();
+    return x >= r.left - 2 && x <= r.right + 2;
+  });
 }
 
 interface Gesture {
@@ -56,24 +52,37 @@ interface Gesture {
   w0: number;
   col: number;
   pct?: number;
+  /** pressed on one picture of the selected row: that one is dragged, not the row */
+  tile?: { el: HTMLElement; item: Item };
 }
 
 /**
- * A photo or web image in a note. Smaller than full width, it sits on the left or right with the text wrapping around
- * it, or centred on its own. Tap to select it; then pinch it or pull a corner to resize, and drag it anywhere to move it.
- * On touch, holding a picture that isn't selected picks it up too. Selected, a tap opens it full screen.
+ * A photo or web image in a note, or a row of them side by side. Smaller than full width, it sits on the left or right
+ * with the text wrapping around it, or centred on its own. Tap to select it: a small bar over it sets its side, its
+ * caption or takes it out; pull a corner (or pinch) to resize, and drag it — or its handle in the bar — anywhere to
+ * move it. On touch, holding a picture that isn't selected picks it up too. In a selected row, each picture is
+ * dragged on its own: to another place in the row, out of it to stand alone, or onto another picture. Selected, a tap
+ * opens it full screen.
  */
-export function MediaBlock({ m, draft, editing, selected, dragging, merging, onSelect, onOpen, onResize, onDrag }: {
+export function MediaBlock({ m, draft, editing, selected, dragging, merging = null, lifted = null, onSelect, onOpen, onResize, onDrag, onSide, onCaption, onRemove, onSplit }: {
   m: Media;
   draft: Entry;
   editing: boolean;
   selected: boolean;
   dragging: boolean;
-  merging: boolean;   // a picture is being dragged over this one, to make an album with it
+  /** a picture is being dragged over this one, to stand beside it: where among its pictures it would go */
+  merging?: { at: number; own: boolean } | null;
+  /** which of the row's pictures is being dragged out of it (its itemKey) */
+  lifted?: string | null;
   onSelect: () => void;
   onOpen: (el: HTMLElement, item: number) => void;
   onResize: (size: number) => void;
-  onDrag: (e: PointerEvent, el: HTMLElement) => void;
+  /** picked up: the whole picture or row (`el` its box), or one picture of a row (`el` its tile) */
+  onDrag: (e: PointerEvent, el: HTMLElement, item?: Item) => void;
+  onSide?: (side: Side) => void;
+  onCaption?: () => void;
+  onRemove?: () => void;
+  onSplit?: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [live, setLive] = useState<number | null>(null); // size while pinching or pulling a corner
@@ -98,16 +107,20 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
     return () => el.removeEventListener('touchmove', block);
   }, []);
 
-  const items = itemsOf(m);
   const known = (it: Item) => (it.kind === 'photo' ? draft.photos.some((p) => p.id === it.id) : draft.images.some((i) => i.url === it.url));
-  if (!items.some(known)) return null;
-  const album = m.kind === 'album';
-  const ratio = ratioOf(m, draft);
+  const items = itemsOf(m).filter(known);
+  if (!items.length) return null;
+  const row = m.kind === 'album' && items.length > 1;
+  const ratios = row ? rowRatios(items, draft) : [];
+  const ratio = row ? sum(ratios) : itemRatio(items[0], draft);
   const img = m.kind === 'image' ? draft.images.find((i) => i.url === m.url) : undefined;
-  const label = album ? t('Album of {n}', { n: items.length }) : m.kind === 'photo' ? t('Photo') : img?.title ? t('Image: {title}', { title: img.title }) : t('Image');
+  const label = row ? t('{n} pictures side by side', { n: items.length }) : m.kind === 'photo' ? t('Photo') : img?.title ? t('Image: {title}', { title: img.title }) : t('Image');
   const size = live ?? m.size ?? 100;
   const align = size < 100 ? m.align : undefined;
+  const side: Side = align ?? 'center';
   const colWidth = () => box.current?.parentElement?.clientWidth ?? 0;
+  // where the line marking a drop beside this picture goes, across it: before picture `at` of the row (or after the last)
+  const insertAt = merging && (row ? (sum(ratios.slice(0, merging.at)) / ratio) * 100 : merging.at > 0 ? 100 : 0);
 
   const down = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -115,11 +128,18 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
     if (!g) {
       acted.current = false;
       const cur: Gesture = (g = gesture.current = { pts: new Map(), kind: 'press', x0: e.clientX, y0: e.clientY, last: e, d0: 0, w0: 0, col: 0 });
+      // in the selected row, the picture pressed is the one that moves
+      if (row && selected && editing) {
+        const k = tileAt(box.current!, e.clientX);
+        const el = k >= 0 ? box.current!.querySelectorAll<HTMLElement>('.row-tile')[k] : null;
+        if (el) cur.tile = { el, item: items[k] };
+      }
       const pickUp = (ev: PointerEvent) => {
         clearTimeout(cur.timer);
         cur.kind = 'done';
         acted.current = true;
-        onDrag(ev, box.current!);
+        if (cur.tile) onDrag(ev, cur.tile.el, cur.tile.item);
+        else onDrag(ev, box.current!);
       };
       const move = (ev: PointerEvent) => {
         if (!cur.pts.has(ev.pointerId)) return;
@@ -177,6 +197,15 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
     }
   };
 
+  // The bar's handle picks the whole picture (or row) up at once, with a mouse or a finger: no holding first.
+  const grip = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.pointerType !== 'mouse') haptic(10);
+    onDrag(e, box.current!);
+  };
+
   // Pulling a corner away from the picture makes it bigger. A centred picture grows on both sides, so twice as fast.
   const corner = (sx: -1 | 1, sy: -1 | 1) => (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -216,11 +245,18 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
     handle.addEventListener('pointercancel', end);
   };
   const corners: [string, -1 | 1, -1 | 1][] = [['tl', -1, -1], ['tr', 1, -1], ['bl', -1, 1], ['br', 1, 1]];
+  // (kept while it's dragged, only hidden: the finger that pressed its handle is still on it)
+  const tools = editing && selected && live === null && !!onSide;
+  const sides: [Side, 'float-left' | 'float-center' | 'float-right', string][] = [
+    ['left', 'float-left', t('Left, text wraps around it')],
+    ['center', 'float-center', t('Centre, on its own line')],
+    ['right', 'float-right', t('Right, text wraps around it')],
+  ];
 
   return (
     <div
       ref={box}
-      class={`media${album ? ' is-album' : ''}${align ? ' is-' + align : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${merging ? ' is-merging' : ''}${live !== null ? ' is-resizing' : ''}`}
+      class={`media${row ? ' is-row' : ''}${align ? ' is-' + align : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${merging ? ' is-merging' : ''}${live !== null ? ' is-resizing' : ''}`}
       data-key={mediaKey(m)}
       style={{ width: `${size}%`, maxWidth: ratio ? `calc(70svh * ${ratio.toFixed(4)})` : undefined }}
       onContextMenu={(e) => editing && e.preventDefault()}
@@ -232,20 +268,20 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
           onPointerDown={down}
           onClick={(e) => {
             if (acted.current) return void (acted.current = false);
-            // in an album, the tile that was tapped opens
-            const tile = (e.target as Element).closest<HTMLElement>('.album-tile');
-            if (selected || !editing) onOpen(tile ?? e.currentTarget, tile ? +tile.dataset.i! : 0);
+            // in a row, the picture that was tapped opens
+            const k = row ? Math.max(0, tileAt(e.currentTarget, e.clientX)) : 0;
+            const tile = row ? e.currentTarget.querySelectorAll<HTMLElement>('.row-tile')[k] : undefined;
+            if (selected || !editing) onOpen(tile ?? e.currentTarget, k);
             else onSelect();
           }}
           aria-label={selected || !editing ? t('View {what}', { what: (m.alt || label.toLowerCase()) }) : t('Select {what}', { what: (m.alt || label.toLowerCase()) })}
           aria-pressed={editing ? selected : undefined}
         >
-          {album ? (
-            <div class={`album n${Math.min(TILES, items.length)}`}>
-              {items.slice(0, TILES).map((it, k) => (
-                <span key={itemKey(it)} class="album-tile" data-i={k}>
+          {row ? (
+            <div class="pic-row" style={{ aspectRatio: ratio.toFixed(4) }}>
+              {items.map((it, k) => (
+                <span key={itemKey(it)} class={`row-tile${lifted === itemKey(it) ? ' is-lifted' : ''}`} data-i={k} style={{ flexGrow: ratios[k].toFixed(4) }}>
                   <Pic it={it} draft={draft} tile alt={m.alt} />
-                  {k === TILES - 1 && items.length > TILES && <span class="album-more">+{items.length - TILES + 1}</span>}
                 </span>
               ))}
             </div>
@@ -253,13 +289,39 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
             <Pic it={items[0]} draft={draft} alt={m.alt} />
           )}
         </button>
-        {merging && <span class="media-merge glass">{album ? t('Add to album') : t('Make an album')}</span>}
+        {merging && <span class="media-insert" style={{ left: `${insertAt}%` }} aria-hidden="true" />}
+        {merging && !merging.own && <span class="media-merge glass">{row ? t('Add to the row') : t('Side by side')}</span>}
         {selected && !dragging &&
           corners
             // a picture on a side is pulled from its free side, the one the text is on
             .filter(([, sx]) => !align || (align === 'left' ? sx > 0 : sx < 0))
             .map(([c, sx, sy]) => <span key={c} class={`media-corner ${c}`} onPointerDown={corner(sx, sy)} aria-hidden="true" />)}
         {live !== null && <span class="media-badge glass">{live === 100 ? t('Full width') : live + '%'}</span>}
+        {tools && (
+          // the few things done most to a picture, right over it: the rest are in the ribbon's Picture tab
+          <div class="media-quick glass" role="toolbar" aria-label={t('Picture')}>
+            <span class="media-grip" onPointerDown={grip} title={t('Drag to move')} aria-hidden="true">
+              <Icon name="grip-vertical" size={18} />
+            </span>
+            {sides.map(([s, icon, name]) => (
+              <button key={s} class="media-quick-btn" onClick={() => onSide!(s)} aria-pressed={side === s} aria-label={name} title={name}>
+                <Icon name={icon} size={18} />
+              </button>
+            ))}
+            <span class="media-quick-sep" aria-hidden="true" />
+            <button class="media-quick-btn" onClick={onCaption} aria-pressed={!!m.caption} aria-label={t('Caption')} title={t('Caption')}>
+              <Icon name="text-caption" size={18} />
+            </button>
+            {row && onSplit && (
+              <button class="media-quick-btn" onClick={onSplit} aria-label={t('Split the row')} title={t('Split the row')}>
+                <Icon name="layout-grid-remove" size={18} />
+              </button>
+            )}
+            <button class="media-quick-btn danger" onClick={onRemove} aria-label={row ? t('Remove the pictures') : t('Remove')} title={row ? t('Remove the pictures') : t('Remove')}>
+              <Icon name="trash" size={18} />
+            </button>
+          </div>
+        )}
       </div>
       {m.caption && <p class="media-caption">{m.caption}</p>}
     </div>
@@ -269,15 +331,17 @@ export function MediaBlock({ m, draft, editing, selected, dragging, merging, onS
 /**
  * The tools for the selected picture: the ribbon's Picture tab (or the bar's, on a phone). Each group carries its
  * caption, shown under it on a computer as Word does: how the text wraps around it, its size, moving it, and the
- * picture itself (view it, ungroup an album, remove it).
+ * picture itself (view it, put another in its place, split a row, remove it).
  */
-export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup, onWrite, onText }: {
+export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemove, onUngroup, onReplace, onWrite, onText }: {
   m: Media;
   /** Alt Text or Caption: the sheet to write it in */
   onText: (kind: 'alt' | 'caption') => void;
   canUp: boolean;
   canDown: boolean;
   onUngroup: () => void;
+  /** a photo from the device in its place (a picture on its own) */
+  onReplace?: () => void;
   onLayout: (l: Layout) => void;
   onStep: (dir: -1 | 1) => void;
   onOpen: () => void;
@@ -356,12 +420,17 @@ export function MediaTools({ m, canUp, canDown, onLayout, onStep, onOpen, onRemo
         <button class="format-btn" onClick={onOpen} aria-label={t('View')} title={t('View')}>
           <Icon name="maximize" size={18} />
         </button>
+        {m.kind !== 'album' && onReplace && (
+          <button class="format-btn" onClick={onReplace} aria-label={t('Replace the picture')} title={t('Replace the picture')}>
+            <Icon name="photo-edit" size={18} />
+          </button>
+        )}
         {m.kind === 'album' && (
-          <button class="format-btn" onClick={onUngroup} aria-label={t('Ungroup the album')} title={t('Ungroup the album')}>
+          <button class="format-btn" onClick={onUngroup} aria-label={t('Split the row')} title={t('Split the row')}>
             <Icon name="layout-grid-remove" size={18} />
           </button>
         )}
-        <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? t('Remove the album') : t('Remove')} title={m.kind === 'album' ? t('Remove the album') : t('Remove')}>
+        <button class="format-btn danger" onClick={onRemove} aria-label={m.kind === 'album' ? t('Remove the pictures') : t('Remove')} title={m.kind === 'album' ? t('Remove the pictures') : t('Remove')}>
           <Icon name="trash" size={18} />
         </button>
       </div>

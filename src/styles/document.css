@@ -156,7 +156,7 @@
   body:has(.note-sheet) > :not(#app),
   body:has(.note-sheet) #app > :not(main),
   .page.editor > :not(.note-sheet),
-  .note-sheet :is(.backlinks, .read-tail, .read-empty, .drop-slot, .details-open, .details-music, .details-add, .media-corner),
+  .note-sheet :is(.backlinks, .read-tail, .read-empty, .media-preview, .media-quick, .media-insert, .details-open, .details-music, .details-add, .media-corner),
   .note-sheet .details-items > :not(.details-date) { display: none !important; }
   :root:has(.note-sheet), body:has(.note-sheet), .app.route-note { background: #fff !important; }
   body:has(.note-sheet) { --doc-zoom: 1; }
@@ -172,6 +172,7 @@
   .note-sheet .note-head.has-cover { margin: 0 !important; }
   /* pictures fit the page across, and none is split between two pages */
   .note-sheet :is(img, video, canvas) { max-width: 100% !important; height: auto; }
+  .note-sheet .row-tile img { height: 100%; }
   .note-sheet .media { break-inside: avoid; }
   .note-sheet .media.is-selected { outline: none !important; box-shadow: none !important; }
   .note-sheet :is(h1, h2, h3, h4, h5, h6, .md-h) { break-after: avoid; }

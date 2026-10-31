@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { createPortal, flushSync } from 'preact/compat';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
-import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemsOf, mediaKey, mergeMedia, parseBody, plainText, removeItem, removeMedia, sameMedia, serializeBody, stepMedia, takeOut, ungroup, type Body, type Item, type Layout, type Media } from '../lib/body';
+import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemRatio, itemsOf, layoutPart, mediaKey, parseBody, plainText, removeItem, removeMedia, sameMedia, serializeBody, stepMedia, takeOut, ungroup, type Body, type Item, type Media } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import { addPhotos, photoUrl } from '../lib/photos';
 import { findBook, mentionOf } from '../lib/books';
@@ -28,9 +28,9 @@ import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { LinkSheet } from '../components/LinkSheet';
-import { NoteBody, pastesPictures, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
+import { NoteBody, pastesPictures, type DropTarget, type MediaSlot, type NoteBodyHandle, type Typed } from '../editor/NoteBody';
 import { CoverImg, DetailsSummary, NoteDetails } from '../components/NoteDetails';
-import { dropLayout, MediaBlock, MediaTools, PictureTextSheet, sideAt, type Side } from '../components/NoteMedia';
+import { dropLayout, MediaBlock, MediaTools, PictureTextSheet, sideAt, tileAt, type Side } from '../components/NoteMedia';
 import { FindBar } from '../components/FindBar';
 import { NavPane } from '../components/NavPane';
 import { CommentsPane } from '../components/CommentsPane';
@@ -131,9 +131,13 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const [coverAdding, setCoverAdding] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [sel, setSel] = useState<string | null>(null); // the selected picture's mediaKey
-  // a picture being dragged, and where it would land: how far down the note, on which side, and its size there
-  // — or the picture it's over, to make an album with
-  const [moving, setMoving] = useState<{ key: string; y: number; side: Side; layout: Layout; ratio: number; onto: string | null } | null>(null);
+  // a picture being dragged (or one of a row's, `item`), and the picture it's over, to stand beside: where among its
+  // pictures it would go (`own`: its own row's). Where in the text it would land the note draws itself.
+  const [moving, setMoving] = useState<{ key: string; item: string | null; onto: { key: string; at: number; own: boolean } | null } | null>(null);
+  // the picture a photo from the device is to replace
+  const replacing = useRef<Item | null>(null);
+  const replaceRef = useRef<HTMLInputElement>(null);
+  const picKey = useRef<((e: KeyboardEvent) => boolean) | null>(null); // the selected picture's keys (set each render)
   const [details, setDetails] = useState(false); // the Feelings page
   // an @tag (or [[ link) being typed: where its @ is and what follows it; and which suggestion is picked
   const [mention, setMentionState] = useState<Typed | null>(null);
@@ -476,7 +480,12 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       if (!(e.target as Element).closest?.('.media, .format-bar, .sheet, .toast, .pswp')) setSel(null);
     };
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !document.documentElement.classList.contains('sheet-open')) setSel(null);
+      if (document.documentElement.classList.contains('sheet-open') || e.defaultPrevented) return;
+      if (e.key === 'Escape') return setSel(null);
+      // the keys are the picture's while the focus is on it, or nowhere: not while it's in words or a field
+      const a = document.activeElement;
+      if (a?.closest('input, textarea, select') || (a?.closest('.note-editor') && !a.closest('.media'))) return;
+      if (picKey.current?.(e)) e.preventDefault();
     };
     document.addEventListener('pointerdown', down);
     document.addEventListener('keydown', key);
@@ -625,7 +634,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     if (next !== b) setBodyText(serializeBody(next));
   };
 
-  /** Removes a picture — on its own or from its album — or a whole album, with Undo. */
+  /** Removes a picture — on its own or from its row — or a whole row, with Undo. */
   const removePicture = (target: Media | Item) => {
     const d = latest.current;
     if (!d) return;
@@ -651,10 +660,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const restore = (e: Entry, now: string): Partial<Entry> => ({
       photos: [...e.photos, ...photos.filter((p) => !e.photos.some((x) => x.id === p.id))],
       images: [...e.images, ...images.filter((p) => !e.images.some((x) => x.url === p.url))],
-      // untouched since: as it was. Otherwise the picture goes back where it was, or (from an album) at the end.
+      // untouched since: as it was. Otherwise the picture goes back where it was, or (from a row) at the end.
       text: now === after ? before : alone ? serializeBody(insertMedia(parseBody(now), [at], Math.min(i, parseBody(now).texts.length - 1), pos)) : now,
     });
-    toast(gone.length > 1 ? t('Album removed') : gone[0].kind === 'photo' ? t('Photo removed') : t('Image removed'), {
+    toast(gone.length > 1 ? t('Pictures removed') : gone[0].kind === 'photo' ? t('Photo removed') : t('Image removed'), {
       label: t('Undo'),
       run: () => {
         if (alive.current && latest.current) {
@@ -670,60 +679,118 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
 
   /**
-   * Picks a picture up: a small copy of it follows the finger (or pointer), and an outline shows where it would land —
-   * which paragraph it goes before, and on which side: over the left or right third of the note it sits on that side
-   * with the text wrapping around it, over the middle it's centred on its own. Dropped on another picture, the two
-   * become an album (or it joins that album). Drops it on release; Escape cancels.
+   * Picks a picture up: the whole picture or row, or (`item`) one picture of a row, to take it out of the row or put it
+   * elsewhere in it. A small copy follows the finger (or pointer), and the note itself shows where it would land
+   * (editor/dropPreview.ts): before the line nearest the finger, on the side the picture's middle is over — the left or
+   * right third of the note, the text wrapping around it there, or the middle, on its own line. Over the middle of
+   * another picture, a line shows where among its pictures it would stand, side by side. Drops it on release; Escape
+   * cancels. The finger only moves the copy (a transform); what's under it is worked out once a frame, and the note
+   * drawn again only when the place or side changes.
    */
-  const startMove = (key: string, e: PointerEvent, el: HTMLElement) => {
+  const startMove = (key: string, e: PointerEvent, el: HTMLElement, item?: Item) => {
     cancelMove.current?.();
     const bodyEl = bodyRef.current;
     const n = noteRef.current;
+    const d = latest.current;
     const m = bodyNow().media.find((x) => mediaKey(x) === key);
-    if (!bodyEl || !n || !m) return;
-    const targets = n.media.dropTargets();
-    if (!targets.length) return;
-    // (the picture's own box, not its caption under it)
-    const r = (el.querySelector('.media-pic') ?? el).getBoundingClientRect();
-    const ratio = r.width / Math.max(1, r.height);
+    if (!bodyEl || !n || !d || !m) return;
+    const from = n.media.posOf(key);
+    if (from < 0) return;
+    const version = n.version();
+    const one = item ? itemKey(item) : null;
+    // (the picture's own box, not its caption under it; one of a row's, its tile)
+    const src = item ? el : el.querySelector<HTMLElement>('.media-pic') ?? el;
+    const r = src.getBoundingClientRect();
+    const ratio = (item && itemRatio(item, d)) || r.width / Math.max(1, r.height);
+    const base = layoutPart(m); // the size it keeps (one taken out of a row, the row's)
+    const copy = () => {
+      const c = src.cloneNode(true) as HTMLElement;
+      c.classList.remove('is-lifted');
+      c.setAttribute('inert', ''); // a picture of it, nothing to press or reach with Tab
+      return c;
+    };
 
     // the copy under the finger, shrunk about the point that was grabbed
     const ghost = document.createElement('div');
     ghost.className = 'media-ghost';
-    const pic = el.querySelector('.media-pic');
-    if (pic) ghost.append(pic.cloneNode(true));
-    const scale = Math.min(1, 150 / r.width, 150 / r.height);
+    ghost.append(copy());
+    const scale = Math.min(1, 140 / r.width, 140 / r.height);
     const ox = e.clientX - r.left, oy = e.clientY - r.top;
     Object.assign(ghost.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', transformOrigin: `${ox}px ${oy}px` });
     document.body.append(ghost);
     // it lifts off the page, shrinking smoothly about the finger, then follows it without delay
     requestAnimationFrame(() => (ghost.style.scale = String(scale)));
 
-    let target: { pos: number; y: number } | null = null;
-    let side: Side = 'center';
-    let onto: string | null = null;
+    // The side is the one the picture's middle would be over, carried along with the finger: picked up anywhere on it,
+    // it keeps its side until it's moved across.
+    const mid = r.left + r.width / 2 - e.clientX;
+    let side: Side = item ? 'center' : (m.size ?? 100) < 100 && m.align ? m.align : 'center';
+    let place: number | null = item ? null : from;
+    let onto: { key: string; at: number; own: boolean } | null = null;
+    let targets: DropTarget[] = [];
+    let here: number | null = null; // how far down the page the place it's at is drawn
+    let stale = true;
     let x = e.clientX, y = e.clientY;
+    let moved = true;
     let frame = 0;
-    let picked = false;
-    let shown = ''; // what the page last drew of the move: it's drawn again only when that changes, not on every move
+    let shown = ''; // what the note last drew of the move: it's drawn again only when that changes
+    let told = '-'; // and what the page last showed of it
+
+    /** The place it would land, drawn in the note. */
+    const show = () => {
+      const l = dropLayout(base, side);
+      n.media.preview({ at: place, side, size: l.size ?? 100, ratio, lifted: item ? null : from, pic: copy });
+      stale = true;
+    };
+    /** Where each place is down the page, and the place drawn; again after each change to the note's drawing. */
+    const measure = () => {
+      stale = false;
+      // just after the picture picked up is where it is already, as just before it is
+      targets = n.media.dropTargets().filter((t) => !!item || t.pos !== from + 1);
+      const p = bodyEl.querySelector('.media-preview')?.getBoundingClientRect();
+      here = p ? p.top + scrollY : null;
+    };
     const pick = () => {
-      const col = bodyEl.getBoundingClientRect();
-      const at = y + scrollY;
-      // the nearest place to land; the one it's at holds on until another is clearly nearer
-      const near = targets.reduce((a, b) => (Math.abs(b.y - at) < Math.abs(a.y - at) ? b : a));
-      if (!target || Math.abs(near.y - at) + 14 < Math.abs(target.y - at)) target = near;
-      side = sideAt(x, col, picked ? side : undefined);
-      picked = true;
-      // over another picture of this note (the copy under the finger lets touches through)
+      if (stale) measure();
+      // over the middle of another picture (or anywhere on its own row, for one of its pictures): beside it
       const over = document.elementFromPoint(x, y)?.closest<HTMLElement>('.media');
-      onto = over && bodyEl.contains(over) && over.dataset.key !== key ? over.dataset.key! : null;
-      ghost.style.translate = `${x - e.clientX}px ${y - e.clientY}px`;
+      let next: typeof onto = null;
+      const k = over?.dataset.key;
+      if (over && k && bodyEl.contains(over) && (k !== key || item)) {
+        const pr = (over.querySelector('.media-pic') ?? over).getBoundingClientRect();
+        const own = k === key;
+        const inner = own || (x > pr.left + pr.width * 0.15 && x < pr.right - pr.width * 0.15 && y > pr.top + pr.height * 0.15 && y < pr.bottom - pr.height * 0.15);
+        if (inner) {
+          const tiles = over.querySelectorAll<HTMLElement>('.row-tile');
+          const t = tiles.length ? tiles[Math.max(0, tileAt(over, x))].getBoundingClientRect() : pr;
+          const i = tiles.length ? Math.max(0, tileAt(over, x)) : 0;
+          next = { key: k, at: x < t.left + t.width / 2 ? i : i + 1, own };
+        }
+      }
+      onto = next;
       ghost.classList.toggle('is-merging', !!onto);
-      const slotY = target.y - (col.top + scrollY);
-      const now = `${slotY}|${side}|${onto}`;
+      if (!onto && targets.length) {
+        // where the picture's top would be, carried by the finger as it was picked up: it goes to the line nearest that
+        // (so it's still where it was at first, wherever it was held, and moves as far as the finger does)
+        const at = y - oy + scrollY;
+        // the nearest place to land; the one it's at holds on until another is clearly nearer
+        const dist = (t: DropTarget) => Math.abs((t.pos === place && here !== null ? here : t.y) - at);
+        const near = targets.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+        const cur = targets.find((t) => t.pos === place);
+        if (!cur || dist(near) + 14 < dist(cur)) place = near.pos;
+        side = sideAt(x + mid, bodyEl.getBoundingClientRect(), side);
+      }
+      const now = `${place}|${side}|${onto?.key}|${onto?.at}`;
       if (now === shown) return;
+      const drawn = shown.split('|');
       shown = now;
-      setMoving({ key, y: slotY, side, layout: dropLayout(m, side), ratio, onto });
+      if (!onto && (drawn[0] !== String(place) || drawn[1] !== side)) show();
+      // the page draws again only for what it shows of the move: the picture it's over, and where in it
+      const overNow = `${onto?.key}|${onto?.at}`;
+      if (overNow !== told) {
+        told = overNow;
+        setMoving({ key, item: one, onto });
+      }
     };
     // Near the top or bottom of the screen the page scrolls along.
     const tick = () => {
@@ -731,6 +798,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       const v = y < edge ? -(edge - y) / 4 : y > innerHeight - edge ? (y - innerHeight + edge) / 4 : 0;
       if (v) {
         scrollBy(0, v);
+        moved = true;
+      }
+      if (moved) {
+        moved = false;
         pick();
       }
       frame = requestAnimationFrame(tick);
@@ -739,7 +810,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       ev.preventDefault();
       x = ev.clientX;
       y = ev.clientY;
-      pick();
+      ghost.style.translate = `${x - e.clientX}px ${y - e.clientY}px`;
+      moved = true;
     };
     const end = (drop: boolean) => {
       cancelMove.current = null;
@@ -749,26 +821,32 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       removeEventListener('pointercancel', cancel);
       removeEventListener('keydown', esc, true);
       document.documentElement.classList.remove('is-moving');
-      const from = ghost.getBoundingClientRect();
+      const at = ghost.getBoundingClientRect();
       ghost.remove();
+      n.media.preview(null);
       setMoving(null);
-      settle(key, from);
-      if (!drop || !target || !alive.current) return;
+      // (the note changed under it meanwhile, from another device: the places found aren't its places any more)
+      if (!drop || !alive.current || n.version() !== version) return settle(key, at);
       if (onto) {
-        const into = onto;
-        let merged = '';
-        withBody(key, (b, j) => {
-          const k = b.media.findIndex((x) => mediaKey(x) === into);
-          if (k < 0) return b;
-          const next = mergeMedia(b, j, k);
-          merged = mediaKey(next.media[k > j ? k - 1 : k]);
-          return next;
-        });
-        if (merged) setSel(merged);
+        if (!item) n.media.merge(key, onto.key, onto.at);
+        else if (onto.own) n.media.reorder(item, onto.at);
+        else n.media.moveInto(item, onto.key, onto.at);
+        // a row goes by its first picture: what the one it went into is called now
+        const first = one ?? itemKey(itemsOf(m)[0]);
+        const now = n.media.list().find((x) => itemsOf(x).some((it) => itemKey(it) === first));
+        if (now) setSel(mediaKey(now));
         haptic(10);
         return;
       }
-      noteRef.current?.media.move(key, target.pos, dropLayout(m, side));
+      if (place === null) return settle(key, at);
+      if (item) {
+        n.media.moveOut(item, place, dropLayout(base, side));
+        setSel(one);
+        settle(one!, at);
+      } else {
+        n.media.move(key, place, dropLayout(base, side));
+        settle(key, at);
+      }
     };
     const up = () => end(true);
     const cancel = () => end(false);
@@ -785,26 +863,76 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     document.documentElement.classList.add('is-moving');
     (document.activeElement as HTMLElement | null)?.blur?.(); // the keyboard would only get in the way
     setSel(key);
+    if (!item) show();
     pick();
     frame = requestAnimationFrame(tick);
   };
 
-  /** Glides a dropped picture from where it was let go (`from`, on screen) into its place in the note. */
+  /** Glides a picture from where it was (`from`, on screen: a copy let go, or the picture before a change) into its place. */
   const settle = (key: string, from: DOMRect) => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const el = bodyRef.current?.querySelector<HTMLElement>(`.media[data-key="${CSS.escape(key)}"]`);
       if (!el || !el.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const to = el.getBoundingClientRect();
+      // (measured by the picture itself, at the top of the box: a caption under it isn't part of the glide)
+      const to = (el.querySelector('.media-pic') ?? el).getBoundingClientRect();
       if (!to.width || !to.height) return;
       const dx = from.left - to.left, dy = from.top - to.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(from.width - to.width) < 1) return;
       el.animate(
         [{ transformOrigin: '0 0', transform: `translate(${dx}px, ${dy}px) scale(${from.width / to.width}, ${from.height / to.height})` }, { transformOrigin: '0 0', transform: 'none' }],
         { duration: 340, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
       );
     }));
   };
+  /** Makes a change to a picture (its side, a step up or down) with the picture gliding from where it was. */
+  const glide = (key: string, change: () => void) => {
+    const from = bodyRef.current?.querySelector(`.media[data-key="${CSS.escape(key)}"] .media-pic`)?.getBoundingClientRect();
+    change();
+    if (from) settle(key, from);
+  };
+  /** The selected picture on a side, or centred on its own line. */
+  const setSide = (key: string, m: Media, s: Side) =>
+    glide(key, () => noteRef.current?.media.layout(key, s === 'center' ? { size: m.size ?? 100 } : dropLayout(m, s)));
+  /** Moves a picture a step up or down the note (past the nearest paragraph), gliding there. */
+  const stepPicture = (key: string, dir: -1 | 1) => glide(key, () => withBody(key, (b, i) => stepMedia(b, i, dir)));
+  /** Splits a row back into its pictures, one under another, the first of them selected. */
+  const splitRow = (key: string) => {
+    let first = '';
+    withBody(key, (b, i) => {
+      const next = ungroup(b, i);
+      first = mediaKey(next.media[i]);
+      return next;
+    });
+    if (first) setSel(first);
+  };
+  /** Asks for a photo from the device to put in a picture's place (Picture › Replace). */
+  const replacePicture = (item: Item) => {
+    replacing.current = item;
+    replaceRef.current?.click();
+  };
+  /** The photo picked to replace a picture: kept with the note, then put in its place (the old one waits for Undo). */
+  const replaceWith = async (file: File | undefined) => {
+    const old = replacing.current;
+    replacing.current = null;
+    if (!file || !old || !isImageFile(file) || !alive.current || removing.current) return;
+    pendingImports.current++;
+    try {
+      const { photos } = await addPhotos([file]);
+      const d = latest.current;
+      if (!photos[0] || !d || !alive.current || removing.current) return;
+      update({ photos: [...d.photos, photos[0]] });
+      const next: Item = { kind: 'photo', id: photos[0].id };
+      noteRef.current?.media.replace(old, next);
+      setSel((s) => (s === itemKey(old) ? itemKey(next) : s));
+    } catch {
+      if (alive.current && !removing.current) toast(t('Couldn’t save those photos. Please try again.'));
+    } finally {
+      pendingImports.current--;
+    }
+  };
 
-  /** Opens the note's pictures full screen — every picture, albums opened out — at picture `k` of the one named `key`. */
+
+  /** Opens the note's pictures full screen — every picture, rows opened out — at picture `k` of the one named `key`. */
   const view = async (key: string, k = 0, el?: HTMLElement | null) => {
     const d = latest.current;
     if (!d) return;
@@ -815,8 +943,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     const flat = b.media.flatMap((m, mi) => itemsOf(m).map((it, j) => ({ it, mi, j, album: m.kind === 'album' })));
     const items = await Promise.all(
       flat.map(async ({ it, mi, j, album }) => {
-        // what it grows out of: the tile (an album's hidden pictures, its last tile), or the picture
-        const tiles = blocks[mi]?.querySelectorAll<HTMLElement>('.album-tile');
+        // what it grows out of: its picture in the row, or the picture
+        const tiles = blocks[mi]?.querySelectorAll<HTMLElement>('.row-tile');
         const at = mi === i && j === k && el ? el : tiles?.length ? tiles[Math.min(j, tiles.length - 1)] : blocks[mi]?.querySelector<HTMLElement>('.media-pic');
         if (it.kind === 'photo') {
           const p = d.photos.find((x) => x.id === it.id);
@@ -1119,6 +1247,27 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const selBody = !selected ? null : cached && cached.version === version && version >= 0 ? cached.body : bodyNow();
   if (selected && selBody) selBodyAt.current = { version, body: selBody };
   const selIndex = selBody ? selBody.media.findIndex((m) => mediaKey(m) === selKey) : -1;
+  // The selected picture with the keyboard: Alt+↑ and ↓ move it a step, Alt+← and → to the next side over (right, the
+  // middle, left), Delete takes it out (with Undo). True when the key was the picture's.
+  picKey.current = (e) => {
+    if (!selected || !selBody || selIndex < 0 || e.ctrlKey || e.metaKey) return false;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !e.altKey) {
+      removePicture(selected);
+      return true;
+    }
+    if (!e.altKey) return false;
+    const dir = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+    if (dir) {
+      if (canStep(selBody, selIndex, dir)) stepPicture(selKey, dir);
+      return true;
+    }
+    const order: Side[] = ['left', 'center', 'right'];
+    const now = order.indexOf((selected.size ?? 100) < 100 && selected.align ? selected.align : 'center');
+    const to = order[now + (e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0)];
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return false;
+    if (to && to !== order[now]) setSide(selKey, selected, to);
+    return true;
+  };
 
   return (
     <div
@@ -1162,7 +1311,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           <DetailsSummary draft={draft} onOpen={() => setDetails(true)} onMusic={() => setOpen('music')} />
         </section>
 
-        <div class={`note-body${reading ? ' is-reading' : ''}`} ref={bodyRef} onClick={tapToWrite}>
+        <div class={`note-body${reading ? ' is-reading' : ''}${moving?.onto ? ' is-merging' : ''}`} ref={bodyRef} onClick={tapToWrite}>
           <NoteBody
             text={initialText}
             editable={!reading}
@@ -1193,25 +1342,21 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
                 editing={!reading}
                 selected={!reading && sel === key}
                 dragging={moving?.key === key}
-                merging={moving?.onto === key}
+                merging={moving?.onto?.key === key ? moving.onto : null}
+                lifted={moving?.key === key ? moving.item : null}
                 onSelect={() => setSel(key)}
                 onOpen={(el, k) => view(key, k, el)}
                 onResize={(size) => noteRef.current?.media.layout(key, { size, align: m.align })}
-                onDrag={(e, el) => !reading && startMove(key, e, el)}
+                onDrag={(e, el, item) => !reading && startMove(key, e, el, item)}
+                onSide={(s) => setSide(key, m, s)}
+                onCaption={() => setPicText({ key, kind: 'caption' })}
+                onRemove={() => removePicture(m)}
+                onSplit={() => splitRow(key)}
               />,
               dom,
             )}</Fragment>;
           })}
           {adding > 0 && Array.from({ length: adding }, () => <span class="inline-media photo-ph is-loading" aria-label={t('Adding photo')} />)}
-          {moving && !moving.onto && (
-            <span
-              class={`drop-slot is-${moving.side}`}
-              style={{ top: moving.y + 'px', width: (moving.layout.size ?? 100) + '%', aspectRatio: String(moving.ratio) }}
-              aria-hidden="true"
-            >
-              <span class="drop-slot-label glass">{moving.side === 'center' ? t('On its own line') : t('Text wraps around')}</span>
-            </span>
-          )}
           {reading && !plainText(draft.text).trim() && (
             <button class="read-empty" onClick={() => write('end')}>{t('Nothing written yet. Tap to write.')}</button>
           )}
@@ -1257,6 +1402,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         hidden
         onChange={(e) => { const input = e.currentTarget; addFiles([...(input.files ?? [])]); input.value = ''; }}
       />
+      {/* a photo to put in the selected picture's place */}
+      <input
+        ref={replaceRef}
+        type="file"
+        accept="image/*,.heic,.heif"
+        hidden
+        onChange={(e) => { const input = e.currentTarget; void replaceWith(input.files?.[0]); input.value = ''; }}
+      />
       <FormatBar
         note={note}
         swapLabel={typing?.link ? t('Link a note, a book, a bias or a law') : t('Tag someone, a book or music')}
@@ -1268,8 +1421,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               m={selected}
               canUp={canStep(selBody, selIndex, -1)}
               canDown={canStep(selBody, selIndex, 1)}
-              onLayout={(l) => noteRef.current?.media.layout(selKey, l)}
-              onStep={(dir) => withBody(selKey, (b, i) => stepMedia(b, i, dir))}
+              onLayout={(l) => glide(selKey, () => noteRef.current?.media.layout(selKey, l))}
+              onStep={(dir) => stepPicture(selKey, dir)}
               onOpen={() => view(selKey)}
               onWrite={() => {
                 // beside a picture on a side; a picture on its own line moves to the left first, half as wide
@@ -1280,15 +1433,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
               }}
               onRemove={() => removePicture(selected)}
               onText={(kind) => setPicText({ key: selKey, kind })}
-              onUngroup={() => {
-                let first = '';
-                withBody(selKey, (b, i) => {
-                  const next = ungroup(b, i);
-                  first = mediaKey(next.media[i]);
-                  return next;
-                });
-                if (first) setSel(first);
-              }}
+              onUngroup={() => splitRow(selKey)}
+              onReplace={selected.kind === 'album' ? undefined : () => replacePicture(itemOf(selected))}
             />
         ) } : undefined}
         ribbon={{
