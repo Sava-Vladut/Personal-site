@@ -508,31 +508,27 @@ function ReadingNow({ max }: { max: number }) {
   );
 }
 
-/** The first picture in a note's text, big enough to see on its card. */
-/** A picture keeps its own shape on the card: close to square or wide it fills the frame, a banner or a sliver is shown whole, and a small one isn't blown up. */
-function heroShape(p: Photo) {
-  const raw = p.w > 0 && p.h > 0 ? p.w / p.h : 16 / 9;
-  const ar = Math.min(2.4, Math.max(0.8, raw));
-  return { '--ar': ar, '--mw': `${Math.max(160, p.w)}px`, '--fit': raw === ar ? 'cover' : 'contain' };
-}
-
-function heroOf(e: Entry): { photo: Photo } | { image: WebImage } | null {
-  const first = bodyOf(e).media.flatMap(itemsOf)[0];
-  if (!first) return null;
-  if (first.kind === 'photo') {
-    const photo = e.photos.find((p) => p.id === first.id);
-    return photo ? { photo } : null;
+/** A note's pictures for its card, in the order they come in its text (any not in it after). */
+function picturesOf(e: Entry): ({ photo: Photo } | { image: WebImage })[] {
+  const out: ({ photo: Photo } | { image: WebImage })[] = [];
+  const photos = new Set<Photo>(), images = new Set<WebImage>();
+  for (const it of bodyOf(e).media.flatMap(itemsOf)) {
+    const photo = it.kind === 'photo' ? e.photos.find((p) => p.id === it.id) : undefined;
+    const image = it.kind === 'image' ? e.images.find((i) => i.url === it.url) : undefined;
+    if (photo && !photos.has(photo)) photos.add(photo), out.push({ photo });
+    if (image && !images.has(image)) images.add(image), out.push({ image });
   }
-  const image = e.images.find((i) => i.url === first.url);
-  return image ? { image } : null;
+  e.photos.forEach((photo) => photos.has(photo) || out.push({ photo }));
+  e.images.forEach((image) => images.has(image) || out.push({ image }));
+  return out;
 }
 
 /** What a card shows of a note's text, read once per version of the note (a saved note is a new object): a sync or a
  * saved person redraws every card, and reading each body again then made the journal catch. */
-const cardText = new WeakMap<Entry, { heading: string; preview: string; hero: ReturnType<typeof heroOf> }>();
+const cardText = new WeakMap<Entry, { heading: string; preview: string; pictures: ReturnType<typeof picturesOf> }>();
 function cardOf(e: Entry) {
   let c = cardText.get(e);
-  if (!c) cardText.set(e, (c = { ...previewOf(plainText(e.text), e.title, 560), hero: e.cover ? null : heroOf(e) }));
+  if (!c) cardText.set(e, (c = { ...previewOf(plainText(e.text), e.title, 560), pictures: picturesOf(e) }));
   return c;
 }
 
@@ -574,18 +570,19 @@ const worldsOf = (e: Entry) => [...new Set(e.emotions.map((id) => coreOf(id)?.id
 const hueOf = (e: Entry) => highlightOf(worldsOf(e));
 const skyOf = (worlds: string[]) => (worlds.length ? [worlds[0], worlds[1] ?? worlds[0], worlds[0]] : [...DAWN, DAWN[0]]);
 
+/** How many squares a card's pictures take at most (the last one a +N when there are more). */
+const THUMBS = 5;
+
 export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const byId = usePeopleById();
   const shelf = useBooks();
   const books = booksIn(e.text, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
-  const { heading, preview, hero } = cardOf(e);
-  const pictures = e.photos.length + e.images.length;
+  const { heading, preview, pictures } = cardOf(e);
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));
-  const strip = hero ? pictures - 1 : pictures;
-  const skip = hero && 'photo' in hero ? hero.photo.id : null;
-  const photos = e.photos.filter((p) => p.id !== skip);
-  const images = e.images.filter((i) => !(hero && 'image' in hero && hero.image.url === i.url));
+  // every picture a small square at the card's foot, the first few, then how many more
+  const strip = pictures.length;
+  const shown = strip > THUMBS ? THUMBS - 1 : strip;
   const w = weatherOf(e);
   // the note's feelings drift through its card as a soft cloud, brighter the stronger they were
   const worlds = [...new Set(e.emotions.map((id) => coreOf(id)?.id).filter(Boolean))];
@@ -605,11 +602,6 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
         </div>
       </div>
       {preview && <p class="note-text" style={{ '--lines': linesOf(e) }}>{preview}</p>}
-      {hero && (
-        <div class={`note-hero${'photo' in hero ? ' is-photo' : ''}`} style={'photo' in hero ? heroShape(hero.photo) : undefined}>
-          {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} card /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />}
-        </div>
-      )}
       {(e.emotions.length > 0 || strip > 0 || e.music.length > 0 || people.length > 0 || books.length > 0 || !!e.place?.name || !!e.share) && (
         <div class="note-foot">
           <div class="note-emos">
@@ -634,9 +626,10 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
           </div>
           {strip > 0 && (
             <div class="note-imgs">
-              {photos.slice(0, 3).map((p) => <PhotoImg photo={p} fit={false} card />)}
-              {images.slice(0, Math.max(0, 3 - photos.length)).map((img) => <img src={imageSrc(img, 'thumb')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />)}
-              {strip > 3 && <span class="more">+{strip - 3}</span>}
+              {pictures.slice(0, shown).map((x) => ('photo' in x
+                ? <PhotoImg key={x.photo.id} photo={x.photo} fit={false} card />
+                : <img key={x.image.url} src={imageSrc(x.image, 'thumb')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />))}
+              {strip > shown && <span class="more">+{strip - shown}</span>}
             </div>
           )}
         </div>

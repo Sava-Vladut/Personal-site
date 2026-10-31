@@ -368,8 +368,14 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .note-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .note-emos { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .note-imgs { display: flex; gap: 4px; flex: none; align-items: center; }
-.note-imgs img, .note-imgs .photo-ph { width: 40px; height: 40px; object-fit: cover; border-radius: var(--r-s); background: var(--surface-2); }
-.note-imgs .more { font-size: var(--text-s); color: var(--ink-3); padding-left: 2px; }
+.note-imgs img, .note-imgs .photo-ph { width: 40px; height: 40px; object-fit: cover; border-radius: var(--r-s); background: var(--surface-2); box-shadow: inset 0 0 0 0.5px var(--line-2); }
+/* more pictures than squares: the last square says how many */
+.note-imgs .more {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-s); background: var(--surface-2);
+  font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+/* a phone: five squares and the feelings don't fit on one line, so the squares get a line of their own */
+@media (max-width: 480px) { .note-foot:has(.note-imgs > :nth-child(4)) { flex-wrap: wrap; } }
 
 .checkin {
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
@@ -386,12 +392,6 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .checkin-run .swipe .checkin { padding-left: 26px; }
 .entries.compact .checkin-run > .swipe { border-top: 1px solid var(--line); }
 
-/* the first picture of a note without a cover, shown large on its card */
-.note-hero { margin-top: 10px; aspect-ratio: 16 / 9; border-radius: var(--r-m); overflow: hidden; background: var(--surface-2); }
-.note-hero img, .note-hero .photo-ph { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* a picture of its own shape (views/Journal.tsx heroShape): never taller than 440px, never larger than it really is */
-.note-hero.is-photo { aspect-ratio: var(--ar); max-width: min(var(--mw), calc(440px * var(--ar))); }
-.note-hero.is-photo img { object-fit: var(--fit); }
 
 /* ---------- the colour of a day (views/Journal.tsx, lib/mood.ts) ----------
    A day leads with the world it leaned toward and a line of what it was like; a ribbon under its label holds
@@ -1500,7 +1500,7 @@ html[data-loading] { cursor: progress; }
 
 /* Settings › Blur notes & people: what you've written and who's in it, out of focus until you open it (or point at it) */
 :root[data-blur] :is(
-  .note-title, .note-text, .note-hero, .note-imgs, .note-cover, .note-music,
+  .note-title, .note-text, .note-imgs, .note-cover, .note-music,
   .note-row .row-title, .note-row .row-text, .checkin-meta, .on-this-day .book-row-sub, .mind-card-quote,
   .avatar:not(.new), .person-card-name, .person-card-sub, .quiet-chip .book-row-title, .mind-card-name, .mind-row-name, .mind-summary b,
   .person-chip .emo-name, .person-pick-name, .person-pick-sub
