@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.167.0',
+    date: '2026-10-31',
+    changes: [
+      'Art of seduction now reads fully in Romanian: every seducer, victim and move, with its story, study, psychology, signs and defence',
+      'The Romanian text only loads when the app is set to Română, so English stays as light as before',
+      'Art of seduction: the chart of who falls for whom leaves more room for longer names',
+      'Laws of power: law 14’s Romanian title is spelled right (Prefă-te prieten, lucrează ca spion)',
+    ],
+  },
+  {
     version: '1.166.1',
     date: '2026-10-31',
     changes: [

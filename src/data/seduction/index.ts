@@ -3,6 +3,8 @@
 // from, the psychology that makes it work, the mind traps it springs, the laws of power it echoes and how to see it
 // coming. The content lives in seducers.ts, victims-1/2.ts and moves-1/2/3.ts. The prose is ours: only the titles are the book's.
 
+import { lang } from '../../lib/i18n';
+import { localize } from '../../lib/localize';
 import type { Entry, Flock, Kind, Move, Phase, Seducer, Victim } from './types';
 import { SEDUCERS as S } from './seducers';
 import { VICTIMS as V1 } from './victims-1';
@@ -13,9 +15,13 @@ import { MOVES as M3 } from './moves-3';
 
 export type { Entry, Flock, Kind, Move, Phase, Seducer, Victim };
 
-export const SEDUCERS: Seducer[] = [...S].sort((a, b) => a.n - b.n);
-export const VICTIMS: Victim[] = [...V1, ...V2].sort((a, b) => a.n - b.n);
-export const MOVES: Move[] = [...M1, ...M2, ...M3].sort((a, b) => a.n - b.n);
+// In Romanian the text comes from a separate file that only loads then (see data/ro-learn/); the rest of each entry stays as written.
+const RO = lang === 'ro' ? (await import('../ro-learn/seduction')).RO_SEDUCTION : null;
+const local = <T extends Entry>(x: T): T => (RO ? localize(x, RO[x.id]) : x);
+
+export const SEDUCERS: Seducer[] = S.map(local).sort((a, b) => a.n - b.n);
+export const VICTIMS: Victim[] = [...V1, ...V2].map(local).sort((a, b) => a.n - b.n);
+export const MOVES: Move[] = [...M1, ...M2, ...M3].map(local).sort((a, b) => a.n - b.n);
 /** All of them, in the book's order: the seducers, the victims, then the process. */
 export const ENTRIES: Entry[] = [...SEDUCERS, ...VICTIMS, ...MOVES];
 export const BY_ID = new Map(ENTRIES.map((x) => [x.id, x]));

@@ -60,3 +60,29 @@ export interface PrincipleRo {
 
 /** The three "gut answer" questions at the end of data/traps.ts, in order. */
 export interface ReflectRo { q: string; options: string[]; why: string }
+
+/** One entry of The Art of Seduction (data/seduction): a seducer, a victim or a move, keyed by its id. */
+export interface SeductionRo {
+  title: string;
+  line: string;
+  gist: string;
+  scene: { who: string; when: string; text: string };
+  mind: string;
+  levers: { name: string; text: string }[];
+  traps: { how: string }[];
+  laws: { how: string }[];
+  study: StudyRo;
+  today: string[];
+  scenario: string;
+  signs: string[];
+  defense: string[];
+  shadow: string;
+  honest: string;
+  question: string;
+  /** A seducer's. */
+  offers?: string;
+  faces?: { name: string; text: string }[];
+  /** A victim's. */
+  lack?: string;
+  seducers?: { how: string }[];
+}

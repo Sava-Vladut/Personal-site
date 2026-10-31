@@ -45,7 +45,7 @@ export const RO: Record<number, LawRo> = {
 
   /* ---------------- 14 ---------------- */
   14: {
-    title: 'Preface-te prieten, lucrează ca spion',
+    title: 'Prefă-te prieten, lucrează ca spion',
     line: 'Cel mai prietenos ascultător din încăpere poate fi cel care ia notițe.',
     gist: 'Să știi ce vor, de ce se tem și ce planuri fac rivalii tăi valorează mai mult decât aproape orice alt avantaj, iar cea mai bună sursă e chiar rivalul. Legea spune să aduni cunoașterea asta prin căldură: mese în doi, confidențe, conversații lejere în care celălalt se relaxează și vorbește. Oamenii își păzesc secretele de dușmani, nu de prieteni. Legea susține că o minte relaxată se scurge și că un ascultător priceput poate afla la o masă mai mult decât ar afla un spion furând scrisori.',
     scene: { who: 'Kim Philby și James Angleton', when: '1949–1951', text: 'Kim Philby a ajuns la Washington ca ofițer de legătură al serviciilor britanice cu CIA și FBI. S-a apropiat de James Angleton, un ofițer CIA în ascensiune, și cei doi se întâlneau la prânzuri lungi, stropite cu băutură, în care vorbeau liber despre meserie. Tot timpul, Philby era agent sovietic și transmitea la Moscova ce afla. Când colegii lui spioni Burgess și Maclean au fugit în 1951, suspiciunea a căzut asupra lui și a fost rechemat, deși abia în 1963 a dezertat. Angleton, care avusese încredere în el ca într-un prieten, și-a petrecut mare parte din restul carierei vânând cârtițe, cu o suspiciune pe care unii colegi au ajuns s-o socotească obsesivă.' },

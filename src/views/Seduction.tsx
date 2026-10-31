@@ -145,7 +145,7 @@ const FLOCKED = FLOCK_IDS.flatMap((f) => VICTIMS.filter((x) => x.flock === f));
 function Pairs({ open }: { open: (x: Entry) => void }) {
   const [hot, setHot] = useState<string | null>(null);
   // 12-unit labels in a 400-wide drawing: 10px or more on a phone
-  const W = 400, ROW = 19, P = 12, LX = 88, RX = 250, MID = (LX + RX) / 2;
+  const W = 400, ROW = 19, P = 12, LX = 88, RX = 242, MID = (LX + RX) / 2;
   const H = P * 2 + ROW * (FLOCKED.length - 1);
   const yOf = useMemo(() => new Map<string, number>([
     ...NINE.map((x, i): [string, number] => [x.id, P + (i * (H - P * 2)) / (NINE.length - 1)]),

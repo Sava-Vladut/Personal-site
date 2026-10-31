@@ -1,7 +1,9 @@
 // Checks a Romanian Learn file against the English data it mirrors, without building the app.
 //   node scripts/check-ro-learn.mjs src/data/ro-learn/laws-1.ts
 // The file's name says what it is: traps-1/traps-2 (+ reflect), laws-1…4 (laws 1–12, 13–24, 25–36, 37–48),
-// principles-1…3 (principles 1–9, 10–19, 20–30 by part). It must export RO (and RO_REFLECT in traps-2).
+// principles-1…3 (principles 1–9, 10–19, 20–30 by part), and The Art of Seduction's seducers, victims-1/2 and
+// moves-1…3 (each mirroring the file of the same name in src/data/seduction, keyed by id). It must export RO (and
+// RO_REFLECT in traps-2).
 import { rolldown } from 'rolldown';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,6 +19,9 @@ const english = {
   traps: [`${root}/src/data/traps.ts`, (m) => Object.fromEntries(m.TRAPS.slice(...(num === '1' ? [0, 19] : [19])).map((x) => [x.id, x]))],
   laws: [`${root}/src/data/laws/part-${num}.ts`, (m) => Object.fromEntries(m.LAWS.map((x) => [x.n, x]))],
   principles: [`${root}/src/data/principles/part-${num}.ts`, (m) => Object.fromEntries(m.PRINCIPLES.map((x) => [x.n, x]))],
+  seducers: [`${root}/src/data/seduction/seducers.ts`, (m) => Object.fromEntries(m.SEDUCERS.map((x) => [x.id, x]))],
+  victims: [`${root}/src/data/seduction/victims-${num}.ts`, (m) => Object.fromEntries(m.VICTIMS.map((x) => [x.id, x]))],
+  moves: [`${root}/src/data/seduction/moves-${num}.ts`, (m) => Object.fromEntries(m.MOVES.map((x) => [x.id, x]))],
 }[kind];
 if (!english) throw new Error(`unknown file ${name}`);
 
@@ -56,8 +61,8 @@ function walk(base, tr, path) {
     for (const k of Object.keys(base)) {
       if (typeof base[k] === 'number' || typeof base[k] === 'boolean') continue;
       if (Array.isArray(base[k]) && base[k].every((x) => typeof x !== 'string' && typeof x !== 'object')) continue;
-      if (['id', 'family', 'evidence', 'realm', 'part', 'kin', 'gut', 'answer'].includes(k)) continue;
-      if (k === 'traps' || k === 'laws') {
+      if (['id', 'family', 'evidence', 'realm', 'part', 'kin', 'gut', 'answer', 'kind', 'phase', 'flock'].includes(k)) continue;
+      if (k === 'traps' || k === 'laws' || k === 'seducers') {
         if (!Array.isArray(tr[k])) problems.push(`${path}.${k}: should be an array of { how }`);
         else tr[k].forEach((t, i) => (t?.id !== undefined || t?.n !== undefined) && problems.push(`${path}.${k}[${i}]: leave id/n out, only how`));
         if (Array.isArray(tr[k]) && tr[k].length !== base[k].length) problems.push(`${path}.${k}: ${tr[k].length} items, the English has ${base[k].length}`);
