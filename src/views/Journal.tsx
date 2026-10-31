@@ -529,6 +529,14 @@ function cardOf(e: Entry) {
   return c;
 }
 
+/** A highlighted note glows in its feelings' colours, or dawn's when it has none (lib/sky/look.ts). */
+const DAWN = ['hope-interest', 'love-connection'];
+const highlightOf = (worlds: string[]) => {
+  const [a, b] = worlds.length ? [worlds[0], worlds[1] ?? worlds[0]] : DAWN;
+  return { '--h1': `var(--emo-${a})`, '--h2': `var(--emo-${b})` };
+};
+const skyOf = (worlds: string[]) => (worlds.length ? [worlds[0], worlds[1] ?? worlds[0], worlds[0]] : [...DAWN, DAWN[0]]);
+
 export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const byId = usePeopleById();
   const shelf = useBooks();
@@ -546,7 +554,8 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const worlds = [...new Set(e.emotions.map((id) => coreOf(id)?.id).filter(Boolean))];
   const mood = worlds.length ? { '--c1': `var(--emo-${worlds[0]})`, '--c2': `var(--emo-${worlds[1] ?? worlds[0]})`, '--k': e.intensity, '--t': stagger(e.time) } : undefined;
   return (
-    <button class={`note card${e.cover ? ' has-cover' : ''}${mood ? ' has-mood' : ''}`} style={mood} {...hold}>
+    <button class={`note card${e.cover ? ' has-cover' : ''}${mood ? ' has-mood' : ''}${e.highlighted ? ' highlighted' : ''}`} style={{ ...mood, ...(e.highlighted && highlightOf(worlds)) }} {...hold}>
+      {e.highlighted && <span class="note-sky" aria-hidden="true"><Sky worlds={skyOf(worlds)} letters={worlds[0]} small /></span>}
       {e.cover && <CoverImg cover={e.cover} class="note-cover" card />}
       <div class="note-top">
         {e.icon && <span class="note-icon"><NoteIcon id={e.icon} size={22} /></span>}
@@ -606,7 +615,7 @@ export function NoteRow({ e, dated }: { e: Entry; dated?: boolean }) {
   const pictures = e.photos.length + e.images.length;
   const hold = useHold(e, () => navigate('note/' + e.id));
   return (
-    <button class="note-row" {...hold}>
+    <button class={`note-row${e.highlighted ? ' highlighted' : ''}`} style={e.highlighted ? highlightOf(worlds) : undefined} {...hold}>
       <span class="row-icon">{e.icon ? <NoteIcon id={e.icon} size={18} /> : <Icon name="notebook" size={18} />}</span>
       <span class="row-title">{heading || t('Untitled')}</span>
       <span class="row-text">{preview.replace(/\n+/g, ' · ')}</span>

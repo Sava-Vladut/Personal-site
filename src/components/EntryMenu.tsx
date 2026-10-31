@@ -88,6 +88,13 @@ export async function togglePin(e: Entry) {
   toast(pinned ? t('Pinned to the top') : t('Unpinned'), { label: t('Undo'), run: () => saveEntry({ ...saved, pinned: !pinned }) });
 }
 
+/** Makes a note glow on the journal, in a little sky of its own, or lets it go back to plain. */
+export async function toggleHighlight(e: Entry) {
+  const highlighted = !e.highlighted;
+  const saved = await saveEntry({ ...e, highlighted });
+  toast(highlighted ? t('Highlighted') : t('Highlight removed'), { label: t('Undo'), run: () => saveEntry({ ...saved, highlighted: !highlighted }) });
+}
+
 /** The options for the entry that was held. Rendered once, by the app. */
 export function EntryMenu() {
   const m = menu$.use();
@@ -129,6 +136,7 @@ export function EntryMenu() {
 
   const actions: { icon: UiName; label: string; run: () => unknown; danger?: boolean }[] = [];
   if (isNote) actions.push({ icon: entry.pinned ? 'pinned-off' : 'pin', label: entry.pinned ? t('Unpin') : t('Pin to the top'), run: () => { haptic(); return togglePin(entry); } });
+  if (isNote) actions.push({ icon: 'highlight', label: entry.highlighted ? t('Remove highlight') : t('Highlight note'), run: () => { haptic(); return toggleHighlight(entry); } });
   if (isNote) actions.push({ icon: 'copy-plus', label: t('Duplicate'), run: duplicate });
   if (shareText) actions.push({ icon: 'copy', label: t('Copy text'), run: copyText });
   if (shareText && 'share' in navigator) actions.push({ icon: 'share', label: t('Share'), run: share });

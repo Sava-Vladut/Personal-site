@@ -472,6 +472,34 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 
 @media (prefers-reduced-motion: reduce) { .day.has-mood::before, .note.has-mood::before { animation: none; } }
 
+/* a highlighted note (EntryMenu → Highlight note): a soft glow of --h1 around the card, which breathes twice as its day
+   comes into view, and a little sky of letters (components/Sky.tsx) drifting through its right side, behind the words */
+.note.highlighted {
+  position: relative; isolation: isolate; overflow: hidden;
+  border-color: color-mix(in oklab, var(--h1) 38%, var(--line));
+  background: linear-gradient(110deg, var(--surface) 35%, color-mix(in oklab, var(--h2) 8%, var(--surface)));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--h1) 9%, transparent), 0 4px 16px -6px color-mix(in oklab, var(--h1) 45%, transparent);
+  animation: hl-breathe 4.5s ease-in-out 2 paused;
+}
+@media (hover: hover) { .note.highlighted:hover { border-color: color-mix(in oklab, var(--h1) 55%, var(--line)); } }
+@keyframes hl-breathe {
+  50% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--h1) 14%, transparent), 0 4px 18px -4px color-mix(in oklab, var(--h1) 60%, transparent); }
+}
+.day[data-live] .note.highlighted { animation-play-state: running; }
+:root:is([data-covered], .sheet-open) .note.highlighted { animation-play-state: paused; }
+.note-sky {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.6;
+  animation: fade-in var(--dur-4) var(--ease) backwards;
+  -webkit-mask-image: linear-gradient(100deg, transparent 35%, rgb(0 0 0 / 0.45) 62%, #000 92%);
+  mask-image: linear-gradient(100deg, transparent 35%, rgb(0 0 0 / 0.45) 62%, #000 92%);
+}
+.note-sky > .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+.note.highlighted .emo { background: color-mix(in oklab, var(--surface-2) 78%, transparent); }
+/* in the compact journal, a wash of the same colour from the left */
+.note-row.highlighted { background: linear-gradient(90deg, color-mix(in oklab, var(--h1) 12%, transparent), transparent 70%); }
+.note-row.highlighted .row-icon { color: var(--h1); }
+@media (prefers-reduced-motion: reduce) { .note.highlighted, .note-sky { animation: none; } }
+
 /* a day from a year ago, on today's date */
 .on-this-day .coming-icon { background: color-mix(in oklab, var(--c, var(--ink-3)) 16%, var(--surface-2)); color: var(--c, var(--ink-2)); }
 .on-this-day .coming-main > svg { flex: none; color: var(--ink-3); margin-right: 4px; }

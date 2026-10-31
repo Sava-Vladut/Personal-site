@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.158.0',
+    date: '2026-10-31',
+    changes: [
+      'Highlight a note: right-click it (or hold it) and choose Highlight note',
+      'A highlighted note glows softly in its feelings’ colours on the journal, with a little cloud of letters drifting through it',
+    ],
+  },
+  {
     version: '1.157.2',
     date: '2026-10-31',
     changes: [

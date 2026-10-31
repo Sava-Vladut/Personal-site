@@ -74,6 +74,7 @@ export interface Entry {
   people: string[];         // ids of the people it's about or who were there
   cover: Cover | null;
   pinned: boolean;          // kept at the top of the journal
+  highlighted: boolean;     // glows on the journal, in a little sky of its own
   share: Share | null;      // set while the note is public: its link and what was published (see share.ts)
   place: Place | null;
   weather: Weather | null;
@@ -212,7 +213,7 @@ export function blankEntry(kind: Entry['kind'] = 'note'): Entry {
   const now = Date.now();
   return {
     id: uid(), kind, title: '', icon: null, text: '', emotions: [], intensity: 3,
-    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, share: null, place: null, weather: null,
+    date: todayKey(), dateEnd: null, time: now, images: [], photos: [], music: [], people: [], cover: null, pinned: false, highlighted: false, share: null, place: null, weather: null,
     created: now, updated: now,
   };
 }
@@ -595,6 +596,7 @@ function normalize(raw: any): Entry | null {
     people: Array.isArray(raw.people) ? [...new Set(raw.people.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, 20) : [],
     cover: coverPic && (coverCrop ? { ...coverPic, crop: coverCrop } : coverPic),
     pinned: raw.kind !== 'checkin' && raw.pinned === true,
+    highlighted: raw.kind !== 'checkin' && raw.highlighted === true,
     share: raw.kind !== 'checkin' ? normalizeShare(raw.share) : null,
     place: normalizePlace(raw.place),
     weather: normalizeWeather(raw.weather),
