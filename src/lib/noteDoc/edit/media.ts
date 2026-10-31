@@ -1,6 +1,7 @@
-// Pictures in the note: putting them in, sizing them, making and breaking albums, moving them by dragging or a step
-// at a time, and taking them out. Each does to the document what lib/body.ts does to the note's text (the old editor's
-// way), so the text written is the same: scripts/test-notedoc-edit.mjs checks
+// Pictures in the note: putting them in, sizing them, standing them side by side in a row (an album, in the text) and
+// apart again, moving them by dragging or a step at a time, a row's pictures within it or out of it, and taking them out.
+// Each does to the document what lib/body.ts does to the note's text (the old editor's way), so the text written is the
+// same: scripts/test-notedoc-edit.mjs checks
 //
 //   serializeNote(op(parseNote(t))) === serializeBody(bodyOp(parseBody(t)))
 //
@@ -11,8 +12,8 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { EditorState, Selection, type Command, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import {
-  albumOf, canStep as bodyCanStep, itemKey, itemsOf, layoutPart, mediaKey, parseBody, serializeBody, setLayout, stepMedia as bodyStep,
-  tidyMeta, type Item, type Layout, type Media, type Meta,
+  albumOf, canStep as bodyCanStep, itemKey, itemOf, itemsOf, layoutPart, mediaKey, metaPart, parseBody, serializeBody, setLayout,
+  stepMedia as bodyStep, tidyMeta, type Item, type Layout, type Media, type Meta,
 } from '../../body';
 import { replaceDoc } from '../diff';
 import { normalizeTr } from '../normalize';
@@ -189,15 +190,87 @@ export const setMediaMeta = (pos: number, meta: Meta): Command => (state, dispat
   return true;
 };
 
-/** Drops the picture (or album) at `from` onto the one at `onto`: one album, in `onto`'s place and layout. */
-export const mergeMedia = (from: number, onto: number): Command => (state, dispatch) => {
+/** `items` with `add` put in at place `at` (after the last when not given). */
+const withAt = (items: Item[], add: Item[], at?: number) => {
+  const k = Math.min(Math.max(0, at ?? items.length), items.length);
+  return [...items.slice(0, k), ...add, ...items.slice(k)];
+};
+
+/**
+ * Drops the picture (or row) at `from` onto the one at `onto`: one row, in `onto`'s place and layout, its pictures at
+ * place `at` among `onto`'s (after the last when not given).
+ */
+export const mergeMedia = (from: number, onto: number, at?: number): Command => (state, dispatch) => {
   const src = mediaAt(state.doc, from), dst = mediaAt(state.doc, onto);
   if (!src || !dst || from === onto) return false;
   if (dispatch) {
-    const tr = state.tr.setNodeMarkup(onto, null, { media: albumOf([...itemsOf(dst.attrs.media), ...itemsOf(src.attrs.media)], dst.attrs.media) });
+    const tr = state.tr.setNodeMarkup(onto, null, { media: albumOf(withAt(itemsOf(dst.attrs.media), itemsOf(src.attrs.media), at), dst.attrs.media) });
     cut(tr, from);
     dispatch(tidy(tr));
   }
+  return true;
+};
+
+/** The row at `pos` and where `item` is in it, or null when it isn't one of its pictures. */
+function inRow(doc: PMNode, pos: number, item: Item): { m: Media & { kind: 'album' }; k: number } | null {
+  const m = mediaAt(doc, pos)?.attrs.media as Media | undefined;
+  if (m?.kind !== 'album') return null;
+  const k = m.items.findIndex((x) => itemKey(x) === itemKey(item));
+  return k < 0 ? null : { m, k };
+}
+
+/** Puts `item` of the row at `pos` at place `at` among its pictures (counted with it still where it is). */
+export const reorderItem = (pos: number, item: Item, at: number): Command => (state, dispatch) => {
+  const row = inRow(state.doc, pos, item);
+  if (!row || at === row.k || at === row.k + 1) return false;
+  const items = row.m.items.filter((_, j) => j !== row.k);
+  items.splice(at > row.k ? at - 1 : at, 0, row.m.items[row.k]);
+  dispatch?.(state.tr.setNodeMarkup(pos, null, { media: albumOf(items, row.m) }));
+  return true;
+};
+
+/**
+ * Takes `item` out of the row at `pos` and drops it on its own at drop place `to` (dropPlaces), with `layout`: body.ts
+ * moveItemOut. The row keeps the others; with one left, it's a picture on its own again.
+ */
+export const moveItemOut = (pos: number, item: Item, to: number, layout: Layout = {}): Command => (state, dispatch) => {
+  const row = inRow(state.doc, pos, item);
+  if (!row || to < 0 || to > state.doc.content.size || state.doc.resolve(to).depth !== 0) return false;
+  if (dispatch) {
+    const single = setLayout({ texts: ['', ''], media: [itemOf(item) as Media] }, 0, layout).media[0];
+    // (the row stays one node, so the places after it stay where they were)
+    const tr = state.tr.setNodeMarkup(pos, null, { media: albumOf(row.m.items.filter((_, j) => j !== row.k), row.m) });
+    placeAt(tr, to, [single], true);
+    dispatch(tidy(tr));
+  }
+  return true;
+};
+
+/**
+ * Moves `item` of the row at `pos` onto the picture (or row) at `onto`, at place `at` among its pictures. The row it
+ * leaves keeps the others.
+ */
+export const moveItemInto = (pos: number, item: Item, onto: number, at?: number): Command => (state, dispatch) => {
+  const row = inRow(state.doc, pos, item);
+  const dst = mediaAt(state.doc, onto);
+  if (!row || !dst || onto === pos) return false;
+  if (dispatch) {
+    const tr = state.tr.setNodeMarkup(pos, null, { media: albumOf(row.m.items.filter((_, j) => j !== row.k), row.m) });
+    tr.setNodeMarkup(onto, null, { media: albumOf(withAt(itemsOf(dst.attrs.media), [item], at), dst.attrs.media) });
+    dispatch(tr);
+  }
+  return true;
+};
+
+/** Puts picture `next` where `item` is in the picture or row at `pos`, keeping its layout, caption and alt text. */
+export const replaceItem = (pos: number, item: Item, next: Item): Command => (state, dispatch) => {
+  const m = mediaAt(state.doc, pos)?.attrs.media as Media | undefined;
+  if (!m || !itemsOf(m).some((x) => itemKey(x) === itemKey(item))) return false;
+  if (mediaList(state.doc).some((x) => itemsOf(x.media).some((y) => itemKey(y) === itemKey(next)))) return false;
+  const media: Media = m.kind === 'album'
+    ? albumOf(m.items.map((x) => (itemKey(x) === itemKey(item) ? next : x)), m)
+    : ({ ...next, ...layoutPart(m), ...metaPart(m) } as Media);
+  dispatch?.(state.tr.setNodeMarkup(pos, null, { media }));
   return true;
 };
 

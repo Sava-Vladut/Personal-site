@@ -361,7 +361,7 @@ test('the document: every construct of a note, as Word has it', async () => {
   // pictures: inline drawings, sized from the width kept, alt text, caption under; one that couldn't be read leaves its words
   const WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
   const drawings = all(doc, 'inline', WP);
-  assert.equal(drawings.length, 3, 'one picture, then the album’s two (the web image couldn’t be read)');
+  assert.equal(drawings.length, 3, 'one picture, then the row’s two (the web image couldn’t be read)');
   const ext = (d) => d.getElementsByTagNameNS(WP, 'extent')[0];
   const half = 5731510 / 2;
   assert.ok(Math.abs(Number(ext(drawings[0]).getAttribute('cx')) - half) <= 1, '50% of the text’s width');
@@ -376,7 +376,10 @@ test('the document: every construct of a note, as Word has it', async () => {
   assert.equal(caption.style, 'Caption');
   assert.equal(find(ps, 'Gone').style, 'Caption');
   assert.ok(ps.some((p) => p.text === '[Picture]') === false, 'a caption is enough: no placeholder');
-  assert.equal(drawings[1].parentNode.parentNode.parentNode, drawings[2].parentNode.parentNode.parentNode, 'an album in one paragraph');
+  assert.equal(drawings[1].parentNode.parentNode.parentNode, drawings[2].parentNode.parentNode.parentNode, 'a row in one paragraph');
+  assert.equal(ext(drawings[1]).getAttribute('cy'), ext(drawings[2]).getAttribute('cy'), 'a row’s pictures the same height');
+  const across = Number(ext(drawings[1]).getAttribute('cx')) + Number(ext(drawings[2]).getAttribute('cx'));
+  assert.ok(across <= 5731510 && across > 5731510 * 0.95, 'side by side, the width across');
 
   // chips as their names
   assert.equal(find(ps, 'With ').text, 'With Ann, Our Song and Other note.');

@@ -479,21 +479,21 @@ class Writer {
       + '</w:tbl>';
   }
 
-  /** A picture or album: in its paragraph (an album's side by side), as wide as on the page; its caption under it. */
+  /**
+   * A picture or a row: in its paragraph, as wide as on the page; its caption under it. A row's pictures stand side
+   * by side at one height, each as wide as its shape, as the note draws them.
+   */
   private mediaBlock(m: Media): string[] {
-    const items = itemsOf(m);
     const jc = m.size && m.size < 100 && m.align ? m.align : 'center';
     const share = ((m.size ?? 100) / 100) * TEXT_W * EMU;
-    const gap = items.length > 1 ? 0.02 * TEXT_W * EMU : 0;
-    const drawn: string[] = [];
-    for (const it of items) {
-      const pic = this.note.pictures?.get(itemKey(it));
-      if (!pic || !pic.width || !pic.height) continue;
-      let cx = (share - gap * (items.length - 1)) / items.length;
-      let cy = (cx * pic.height) / pic.width;
-      if (cy > MAX_PIC_H) (cx = (cx * MAX_PIC_H) / cy, (cy = MAX_PIC_H));
-      drawn.push(this.drawing(itemKey(it), pic, Math.round(cx), Math.round(cy), m.alt ?? ''));
-    }
+    const pics = itemsOf(m)
+      .map((it) => ({ key: itemKey(it), pic: this.note.pictures?.get(itemKey(it)) }))
+      .filter((x): x is { key: string; pic: DocxPicture } => !!x.pic?.width && !!x.pic.height);
+    const gap = pics.length > 1 ? 0.02 * TEXT_W * EMU : 0;
+    // the height that fills the width across, no taller than a picture may be
+    const across = pics.reduce((a, x) => a + x.pic.width / x.pic.height, 0);
+    const cy = Math.min(MAX_PIC_H, (share - gap * (pics.length - 1)) / (across || 1));
+    const drawn = pics.map(({ key, pic }) => this.drawing(key, pic, Math.round((cy * pic.width) / pic.height), Math.round(cy), m.alt ?? ''));
     const out: string[] = [];
     const sep = gap ? `<w:r><w:t xml:space="preserve"> </w:t></w:r>` : '';
     if (drawn.length) out.push(para({ jc, keepNext: !!m.caption }, drawn.join(sep)));

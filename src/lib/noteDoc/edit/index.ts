@@ -56,6 +56,7 @@ export {
 export { painterKey, painterPlugin, painterOf, togglePainter, stopPainter, paint, type Painter } from './painter';
 export {
   mediaList, findMedia, insertMediaAt, removeMedia, removeItem, setMediaLayout, setMediaMeta, mergeMedia, ungroupMedia, takeOutItem,
+  reorderItem, moveItemOut, moveItemInto, replaceItem,
   dropPlaces, dropTargets, moveMedia, canStep, stepMedia, mediaPosAfter, type DropTarget,
 } from './media';
 export { typedAt, replaceTyped, insertAtom, insertTrigger, type Typed } from './mention';

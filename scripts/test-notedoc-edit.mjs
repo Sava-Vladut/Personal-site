@@ -738,6 +738,80 @@ test('pictures are taken out, sized, grouped and ungrouped as body.ts does it', 
   }
 });
 
+test('a picture dropped on another goes in at the place it was dropped among its pictures, as body.ts does it', () => {
+  for (const t of NOTES) {
+    const list = E.mediaList(docOf(t));
+    list.forEach(({ pos }, i) => list.forEach((onto, j) => {
+      if (i === j) return;
+      for (let at = 0; at <= B.itemsOf(onto.media).length; at++) {
+        assert.equal(textAfter(t, E.mergeMedia(pos, onto.pos, at)), bodyText(t, (b) => B.mergeMedia(b, i, j, at)), `merge ${i} onto ${j} at ${at}: ${JSON.stringify(t)}`);
+      }
+    }));
+  }
+  const [row, one] = E.mediaList(docOf(`a\n${ALBUM}\n\n${P('p1')}\nb`));
+  assert.equal(textAfter(`a\n${ALBUM}\n\n${P('p1')}\nb`, E.mergeMedia(one.pos, row.pos, 1)), 'a\n[[album:photo:a1 photo:p1 photo:a2 photo:a3 50 left]]\nb');
+});
+
+test('a row’s pictures are put in another order, taken out to any place, moved into another, or replaced', () => {
+  const ROWS = [
+    `a\n${ALBUM}\nb\n\nc\n${P('p1', ' 40 right')}\nd`,
+    `\n${ALBUM}\n\n[[album:photo:b1 image:https://x.y/i.png|caption=Two]]\n`,
+    `x\n[[album:photo:a1 photo:a2|caption=Us|alt=Both]]\n- i\n> q`,
+  ];
+  for (const t of ROWS) {
+    const doc = docOf(t);
+    const list = E.mediaList(doc);
+    list.forEach(({ pos, media }, i) => {
+      if (media.kind !== 'album') return;
+      for (const it of media.items) {
+        const where = `${JSON.stringify(t)} row ${i} ${B.itemKey(it)}`;
+        for (let at = 0; at <= media.items.length; at++) {
+          assert.equal(textAfter(t, E.reorderItem(pos, it, at)) ?? t, bodyText(t, (b) => B.reorderItem(b, i, it, at)), `reorder to ${at}: ${where}`);
+        }
+        for (const to of E.dropPlaces(doc)) {
+          const { seg, pos: at } = bodyPlace(doc, to);
+          for (const layout of [{}, { size: 50, align: 'left' }]) {
+            const want = bodyText(t, (b) => B.moveItemOut(b, i, it, seg, at, layout));
+            assert.equal(textAfter(t, E.moveItemOut(pos, it, to, layout)), want, `out to ${to} ${JSON.stringify(layout)}: ${where}`);
+          }
+        }
+        list.forEach((onto, j) => {
+          if (i === j) return;
+          const got = textAfter(t, E.moveItemInto(pos, it, onto.pos, 0));
+          const m = B.parseBody(got);
+          assert.equal(B.itemKey(B.itemsOf(m.media[j])[0]), B.itemKey(it), `into ${j}: ${where}`);
+          assert.equal(m.media[i].kind === 'album' ? m.media[i].items.length : 1, media.items.length - 1, `the row keeps the others: ${where}`);
+          assert.equal(nd.serializeNote(docOf(got)), got);
+        });
+        const next = { kind: 'photo', id: 'new1' };
+        assert.equal(textAfter(t, E.replaceItem(pos, it, next)), bodyText(t, (b) => B.replaceItem(b, it, next)), `replace: ${where}`);
+      }
+    });
+  }
+  // order: the third first; then the first last
+  const t = `a\n${ALBUM}\nb`;
+  const [{ pos }] = E.mediaList(docOf(t));
+  assert.equal(textAfter(t, E.reorderItem(pos, { kind: 'photo', id: 'a3' }, 0)), 'a\n[[album:photo:a3 photo:a1 photo:a2 50 left]]\nb');
+  assert.equal(textAfter(t, E.reorderItem(pos, { kind: 'photo', id: 'a1' }, 3)), 'a\n[[album:photo:a2 photo:a3 photo:a1 50 left]]\nb');
+  assert.equal(textAfter(t, E.reorderItem(pos, { kind: 'photo', id: 'a1' }, 1)), null, 'already there');
+  // out on its own, to the end: the row keeps two; out of a row of two, the one left stands alone with the row's caption
+  assert.equal(textAfter(t, E.moveItemOut(pos, { kind: 'photo', id: 'a2' }, docOf(t).content.size, { size: 30, align: 'right' })),
+    'a\n[[album:photo:a1 photo:a3 50 left]]\nb\n[[photo:a2 30 right]]\n');
+  const two = `x\n[[album:photo:a1 photo:a2|caption=Us|alt=Both]]\ny`;
+  assert.equal(textAfter(two, E.moveItemOut(E.mediaList(docOf(two))[0].pos, { kind: 'photo', id: 'a1' }, 0)), '\n[[photo:a1]]\nx\n[[photo:a2|caption=Us|alt=Both]]\ny');
+  // a picture already in the note can't replace another (it would be there twice)
+  assert.equal(textAfter(t, E.replaceItem(pos, { kind: 'photo', id: 'a1' }, { kind: 'photo', id: 'a2' })), null);
+  assert.equal(textAfter(`a\n${P('p1', ' 40 right|caption=C')}\nb`, E.replaceItem(3, { kind: 'photo', id: 'p1' }, { kind: 'photo', id: 'q' })),
+    `a\n${P('q', ' 40 right|caption=C')}\nb`, 'a picture on its own keeps its layout and caption');
+  // a row's pictures stand at one height, each as wide as its shape; one whose shape isn't known is a square
+  const shapes = { photos: [{ id: 'a1', w: 300, h: 200 }, { id: 'a2', w: 200, h: 400 }], images: [{ url: 'https://x.y/i.png' }] };
+  assert.deepEqual(B.rowRatios([{ kind: 'photo', id: 'a1' }, { kind: 'photo', id: 'a2' }, { kind: 'image', url: 'https://x.y/i.png' }, { kind: 'photo', id: 'gone' }], shapes), [1.5, 0.5, 1, 1]);
+  // an old album's line reads, and writes back, as it was: a row now, the same line
+  const old = 'a\n[[album:photo:a1 photo:a2 image:https://x.y/i.png 60 right|caption=Our trip|alt=Three]]\nb';
+  assert.equal(nd.serializeNote(docOf(old)), old);
+  assert.deepEqual(B.parseBody(old).media[0], { kind: 'album', items: [{ kind: 'photo', id: 'a1' }, { kind: 'photo', id: 'a2' }, { kind: 'image', url: 'https://x.y/i.png' }], size: 60, align: 'right', caption: 'Our trip', alt: 'Three' });
+});
+
 test('pictures move a step, and are dragged to any place, as body.ts does it', () => {
   for (const t of NOTES) {
     const doc = docOf(t);

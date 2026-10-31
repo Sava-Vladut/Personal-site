@@ -1,6 +1,8 @@
 // A note's text can hold its pictures inline: a line of its own that reads [[photo:<id>]] or [[image:<url>]].
 // A picture made smaller carries its width (in % of the column) and side: [[photo:<id> 50 left]].
-// Pictures dropped on each other make an album, one line listing them: [[album:photo:<id> image:<url> 50 left]].
+// Pictures dropped on each other stand side by side, a row, one line listing them: [[album:photo:<id> image:<url> 50 left]].
+// (Written "album", as the app first called them when it drew them as a grid. The line is read and written as it
+// was, so a note's pictures stay where they are on a device with that version of the app.)
 // A caption and alt text go last, each after a | with its name, caption first: [[photo:<id> 50 left|caption=Our trip|alt=A
 // boat at dusk]]. Their words never hold [, ], | or a line break (written %5B, %5D, %7C; a % before one of those codes is
 // %25), nor start or end with a space; a line that doesn't keep to that isn't a picture (it stays words).
@@ -66,6 +68,23 @@ export const itemsOf = (m: Media): Item[] => (m.kind === 'album' ? m.items : [it
 /** An album of `items` with `layout` (and its caption and alt text) — or just the picture, when there's only one. */
 export const albumOf = (items: Item[], layout: Layout & Meta): Media =>
   items.length === 1 ? { ...items[0], ...layoutPart(layout), ...metaPart(layout) } : { kind: 'album', items, ...layoutPart(layout), ...metaPart(layout) };
+
+/** What's known of a note's pictures' shapes (an entry, or a shared note's copy). */
+type Shapes = { photos: { id: string; w: number; h: number }[]; images: Pick<WebImage, 'url' | 'w' | 'h'>[] };
+/** A picture's width over its height, from what the note knows of it (0 when it knows nothing). */
+export function itemRatio(it: Item, note: Shapes): number {
+  if (it.kind === 'photo') {
+    const p = note.photos.find((x) => x.id === it.id);
+    return p?.w && p.h ? p.w / p.h : 0;
+  }
+  const i = note.images.find((x) => x.url === it.url);
+  return i?.w && i.h ? i.w / i.h : 0;
+}
+/**
+ * A row's pictures stand side by side at the same height, each as wide as its shape asks: their widths over that
+ * height (a square for one whose shape isn't known). Together they're the row's own shape.
+ */
+export const rowRatios = (items: Item[], note: Shapes) => items.map((it) => itemRatio(it, note) || 1);
 
 /** The line a picture or album is written as in the note's text. */
 export const mediaMarker = (m: Media) => {
@@ -247,15 +266,54 @@ export function moveMedia(b: Body, i: number, seg: number, pos: number): Body {
   return insertMedia(out, [m], seg, pos);
 }
 
-/* ---------- albums ---------- */
+/* ---------- rows (albums): pictures side by side ---------- */
 
-/** Drops picture (or album) `from` onto picture `onto`: they become one album, in `onto`'s place and layout. */
-export function mergeMedia(b: Body, from: number, onto: number): Body {
+/**
+ * Drops picture (or row) `from` onto picture `onto`: they become one row, in `onto`'s place and layout. `at` is where
+ * among `onto`'s pictures they go (after the last when not given).
+ */
+export function mergeMedia(b: Body, from: number, onto: number, at?: number): Body {
   if (from === onto) return b;
   const src = b.media[from], dst = b.media[onto];
   const out = removeMedia(b, src);
-  const media = out.media.map((m) => (sameMedia(m, dst) ? albumOf([...itemsOf(dst), ...itemsOf(src)], dst) : m));
+  const items = itemsOf(dst);
+  const k = Math.min(Math.max(0, at ?? items.length), items.length);
+  const media = out.media.map((m) => (sameMedia(m, dst) ? albumOf([...items.slice(0, k), ...itemsOf(src), ...items.slice(k)], dst) : m));
   return { texts: out.texts, media };
+}
+
+/** Puts picture `it` of row `i` at place `at` among the row's pictures (counted with it still where it was). */
+export function reorderItem(b: Body, i: number, it: Item, at: number): Body {
+  const m = b.media[i];
+  if (m?.kind !== 'album') return b;
+  const from = m.items.findIndex((x) => itemKey(x) === itemKey(it));
+  if (from < 0 || at === from || at === from + 1) return b;
+  const items = m.items.filter((_, k) => k !== from);
+  items.splice(at > from ? at - 1 : at, 0, m.items[from]);
+  return { texts: b.texts, media: b.media.map((x, j) => (j === i ? albumOf(items, m) : x)) };
+}
+
+/**
+ * Takes picture `it` out of row `i` and puts it on its own in text block `seg`, split at `pos` (both counted before),
+ * with `layout`. The row keeps the others (with one left, it's a picture on its own again).
+ */
+export function moveItemOut(b: Body, i: number, it: Item, seg: number, pos: number, layout: Layout = {}): Body {
+  const m = b.media[i];
+  if (m?.kind !== 'album' || !m.items.some((x) => itemKey(x) === itemKey(it))) return b;
+  const rest = albumOf(m.items.filter((x) => itemKey(x) !== itemKey(it)), m);
+  const kept = { texts: b.texts, media: b.media.map((x, j) => (j === i ? rest : x)) };
+  return insertMedia(kept, [setLayout({ texts: ['', ''], media: [itemOf(it) as Media] }, 0, layout).media[0]], seg, pos);
+}
+
+/** Puts picture `next` where `it` is (on its own or in a row), keeping the layout, caption and alt text it had. */
+export function replaceItem(b: Body, it: Item, next: Item): Body {
+  const { i } = findItem(b, it);
+  if (i < 0 || findItem(b, next).i >= 0) return b;
+  const m = b.media[i];
+  const swapped = m.kind === 'album'
+    ? albumOf(m.items.map((x) => (itemKey(x) === itemKey(it) ? next : x)), m)
+    : ({ ...next, ...layoutPart(m), ...metaPart(m) } as Media);
+  return { texts: b.texts, media: b.media.map((x, j) => (j === i ? swapped : x)) };
 }
 
 /** Breaks album `i` back into its pictures, one after another, each with the album's layout. */
