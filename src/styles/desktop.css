@@ -123,10 +123,6 @@
   .reading-chip:only-child { flex: none; max-width: 280px; }
   .search { max-width: 460px; }
 
-  /* ---------- people ---------- */
-
-  .people-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
-
   /* ---------- media ---------- */
 
   /* Repos: the numbers on the left, the search across the row under them */

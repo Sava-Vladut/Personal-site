@@ -11,14 +11,13 @@ import { SongRow } from '../components/music';
 import { MentionText } from '../components/MentionText';
 import { IconSheet } from '../components/IconPicker';
 import { Icon, NoteIcon } from '../components/icons';
-import { Avatar, initials } from '../components/people';
+import { Avatar, initials, lastSeen, useMoments, usePages } from '../components/people';
 import { KeyDates } from '../components/KeyDates';
 import { ThemeSong } from '../components/ThemeSong';
 import { connectSpotify } from '../lib/spotify';
 import { tipProps } from '../components/charts';
 import { Sheet } from '../components/Sheet';
 import { CheckInRow, NoteCard } from './Journal';
-import { lastSeen, useMoments, usePages } from './People';
 import { t } from '../lib/i18n';
 import { haptic } from '../lib/haptics';
 

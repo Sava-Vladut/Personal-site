@@ -7,20 +7,19 @@ import { goBack, navigate } from '../lib/router';
 import { usePeople, useReady, type Entry, type Person } from '../lib/store';
 import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
-import { Avatar } from '../components/people';
+import { Avatar, lastSeen, useMoments } from '../components/people';
 import { CountUp } from '../components/charts';
 import { Sky } from '../components/Sky';
-import { lastSeen, useMoments } from './People';
 import { count, rich, t } from '../lib/i18n';
 
-type Range = 'month' | 'year' | 'all';
-const RANGES: [Range, string, number][] = [
+export type Range = 'month' | 'year' | 'all';
+export const RANGES: [Range, string, number][] = [
   ['month', t('30 days'), 30],
   ['year', t('12 months'), 365],
   ['all', t('All time'), 0],
 ];
 
-interface Share {
+export interface Share {
   p: Person;
   weight: number;         // moments, each counted by how strong its feeling was (1–5; 3 when no feeling is logged)
   count: number;          // moments they're tagged in, within the range
@@ -37,7 +36,7 @@ function coreFor(p: Person, all: Entry[]) {
   return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
 
-const pctOf = (x: number) => (x > 0 && x < 0.01 ? '<1%' : Math.round(x * 100) + '%');
+export const pctOf = (x: number) => (x > 0 && x < 0.01 ? '<1%' : Math.round(x * 100) + '%');
 
 /** "a third of your thoughts", "almost half of your thoughts"… */
 function portion(x: number) {
@@ -73,7 +72,7 @@ function snippet(e: Entry) {
  * The colours of a sky, in proportion to how much of your mind each feeling world holds. Eight slots, biggest
  * first and spread out, so that any few clouds picked from the front still look like the whole.
  */
-function skyMix(shares: Share[]) {
+export function skyMix(shares: Share[]) {
   const by = new Map<string, number>();
   for (const x of shares) if (x.core && x.count) by.set(x.core, (by.get(x.core) ?? 0) + x.share);
   const seats = new Map<string, number>();
@@ -90,15 +89,11 @@ function skyMix(shares: Share[]) {
   return out;
 }
 
-export function Mind() {
+/** Everyone, with how much of your thoughts they took up in the range: biggest first. */
+export function useShares(range: Range) {
   const people = usePeople();
-  const ready = useReady();
   const moments = useMoments();
-  const [range, setRange] = usePref<Range>('mind-range', 'all', RANGES.map(([r]) => r));
-  const [picked, setPicked] = useState<string | null>(null);
-  const [hover, setHover] = useState<string | null>(null);
-
-  const shares = useMemo<Share[]>(() => {
+  return useMemo<Share[]>(() => {
     const days = RANGES.find((r) => r[0] === range)![2];
     const since = days ? Date.now() - days * DAY : -Infinity;
     const list = people.map((p) => {
@@ -111,6 +106,68 @@ export function Mind() {
     for (const x of list) x.share = total ? x.weight / total : 0;
     return list.sort((a, b) => b.weight - a.weight || (b.last?.time ?? 0) - (a.last?.time ?? 0) || a.p.name.localeCompare(b.p.name));
   }, [people, moments, range]);
+}
+
+/** The time ranges, as chips. */
+export function RangeChips({ range, onRange }: { range: Range; onRange: (r: Range) => void }) {
+  return (
+    <div class="chips filters" role="toolbar" aria-label={t('Time range')}>
+      {RANGES.map(([id, name]) => (
+        <button class="chip" aria-pressed={range === id} onClick={() => onRange(id)}>{name}</button>
+      ))}
+    </div>
+  );
+}
+
+/** The one you picked on the wheel: how much of your mind they hold, and the last thing you wrote with them in it. */
+export function MindCard({ sel }: { sel: Share }) {
+  return (
+    <div class="mind-card card" key={sel.p.id} style={{ '--c': sel.core ? `var(--emo-${sel.core})` : 'var(--ink-3)' }}>
+      <Avatar p={sel.p} size={48} />
+      <div class="mind-card-main">
+        <div class="mind-card-name">{sel.p.name || t('Unnamed')}</div>
+        <div class="mind-card-sub">
+          {sel.count ? `${count(sel.count, 'moment', 'moments')} · ${t('last {date}', { date: lastSeen(sel.last!.date) })}` : t('Not in your notes lately')}
+        </div>
+        {sel.last && snippet(sel.last) && <q class="mind-card-quote">{snippet(sel.last)}</q>}
+      </div>
+      <div class="mind-card-pct">{pctOf(sel.share)}</div>
+      <button class="icon-btn" onClick={() => navigate('person/' + sel.p.id)} aria-label={t('Open {name}', { name: sel.p.name })} title={t('Open')}><Icon name="chevron-right" /></button>
+    </div>
+  );
+}
+
+/** Who takes up the most of your mind in the range, in a sentence. */
+export function MindSummary({ shares, range }: { shares: Share[]; range: Range }) {
+  const top = shares[0];
+  const total = shares.reduce((s, x) => s + x.count, 0);
+  return (
+    <p class="mind-summary">
+      {total && top ? (
+        <>
+          {rich('{name} takes up {portion}{when}{hold}.', {
+            name: <b>{top.p.name || t('Unnamed')}</b>,
+            portion: portion(top.share),
+            when: range === 'all' ? '' : range === 'month' ? t(' this past month') : t(' this past year'),
+            hold: top.core ? `, ${HOLD[top.core]}` : '',
+          })}
+        </>
+      ) : range === 'all' ? (
+        t('Tag people in notes and check-ins, and the ones you think of most will fill the wheel.')
+      ) : (
+        t('No one tagged in this stretch of time. Try a longer range.')
+      )}
+    </p>
+  );
+}
+
+export function Mind() {
+  const people = usePeople();
+  const ready = useReady();
+  const [range, setRange] = usePref<Range>('mind-range', 'all', RANGES.map(([r]) => r));
+  const [picked, setPicked] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const shares = useShares(range);
 
   const total = shares.reduce((s, x) => s + x.count, 0);
   // the sky above the wheel is made of the people below it
@@ -129,13 +186,7 @@ export function Mind() {
         <Sky world={topWorld} worlds={worlds} />
         <PageHead title={t('What’s on your mind')} subtitle={t('Who takes up your thoughts, by how often you tag them in notes and check-ins, and how strongly you feel it.')} back={() => goBack('people')} />
 
-        {people.length > 0 && (
-          <div class="chips filters" role="toolbar" aria-label={t('Time range')}>
-            {RANGES.map(([id, name]) => (
-              <button class="chip" aria-pressed={range === id} onClick={() => { setRange(id); setPicked(null); }}>{name}</button>
-            ))}
-          </div>
-        )}
+        {people.length > 0 && <RangeChips range={range} onRange={(r) => { setRange(r); setPicked(null); }} />}
 
         {people.length > 0 && <Wheel key={range} shares={shares.filter((x) => x.count)} focus={focus} picked={picked} onPick={setPicked} onHover={setHover} />}
       </div>
@@ -148,39 +199,7 @@ export function Mind() {
         </div>
       )}
 
-      {people.length > 0 && (
-        sel ? (
-          <div class="mind-card card" key={sel.p.id} style={{ '--c': sel.core ? `var(--emo-${sel.core})` : 'var(--ink-3)' }}>
-            <Avatar p={sel.p} size={48} />
-            <div class="mind-card-main">
-              <div class="mind-card-name">{sel.p.name || t('Unnamed')}</div>
-              <div class="mind-card-sub">
-                {sel.count ? `${count(sel.count, 'moment', 'moments')} · ${t('last {date}', { date: lastSeen(sel.last!.date) })}` : t('Not in your notes lately')}
-              </div>
-              {sel.last && snippet(sel.last) && <q class="mind-card-quote">{snippet(sel.last)}</q>}
-            </div>
-            <div class="mind-card-pct">{pctOf(sel.share)}</div>
-            <button class="icon-btn" onClick={() => navigate('person/' + sel.p.id)} aria-label={t('Open {name}', { name: sel.p.name })} title={t('Open')}><Icon name="chevron-right" /></button>
-          </div>
-        ) : (
-          <p class="mind-summary">
-            {total && top ? (
-              <>
-                {rich('{name} takes up {portion}{when}{hold}.', {
-                  name: <b>{top.p.name || t('Unnamed')}</b>,
-                  portion: portion(top.share),
-                  when: range === 'all' ? '' : range === 'month' ? t(' this past month') : t(' this past year'),
-                  hold: top.core ? `, ${HOLD[top.core]}` : '',
-                })}
-              </>
-            ) : range === 'all' ? (
-              t('Tag people in notes and check-ins, and the ones you think of most will fill the wheel.')
-            ) : (
-              t('No one tagged in this stretch of time. Try a longer range.')
-            )}
-          </p>
-        )
-      )}
+      {people.length > 0 && (sel ? <MindCard sel={sel} /> : <MindSummary shares={shares} range={range} />)}
 
       {total > 0 && (
         <section class="section">
@@ -228,7 +247,7 @@ function arc(a0: number, a1: number) {
 }
 
 /** Everyone you thought of in the range, as slices of one wheel; the biggest start at twelve o'clock. */
-function Wheel({ shares, focus, picked, onPick, onHover }: {
+export function Wheel({ shares, focus, picked, onPick, onHover }: {
   shares: Share[];
   focus: string | null;
   picked: string | null;

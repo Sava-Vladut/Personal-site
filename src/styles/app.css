@@ -1257,7 +1257,6 @@ html[data-loading] { cursor: progress; }
 .song-chip .emo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .emo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.people-list { margin-top: 12px; }
 .person-card { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 12px 14px 12px 12px; color: var(--ink-3); transition: border-color var(--dur-1); }
 @media (hover: hover) { .person-card:hover { border-color: var(--line-2); } }
 .person-card-main { flex: 1; min-width: 0; display: grid; gap: 2px; color: var(--ink); }
@@ -1332,25 +1331,6 @@ html[data-loading] { cursor: progress; }
 .felt-item { display: inline-flex; align-items: center; gap: 4px; }
 
 /* ---------- mind: the share-of-mind wheel ---------- */
-.mind-link { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 12px 14px 12px 12px; margin-bottom: 12px; color: var(--ink-3); transition: border-color var(--dur-1); }
-@media (hover: hover) { .mind-link:hover { border-color: var(--line-2); } }
-.mind-link::before {
-  content: ''; position: absolute; inset: -60% 50% -60% -30%; pointer-events: none;
-  background: radial-gradient(closest-side, color-mix(in oklab, var(--emo-love-connection) 14%, transparent), transparent);
-}
-.mind-link-icon {
-  position: relative; flex: none; width: 46px; height: 46px; border-radius: var(--r-l); display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(140deg, color-mix(in oklab, var(--emo-love-connection) 24%, var(--surface)), color-mix(in oklab, var(--emo-hope-interest) 18%, var(--surface)));
-  color: color-mix(in oklab, var(--emo-love-connection) 60%, var(--ink));
-}
-.mind-link-main { position: relative; flex: 1; min-width: 0; display: grid; gap: 2px; color: var(--ink); }
-.mind-link-title { font: var(--w-medium) var(--text-l)/1.3 var(--serif); }
-.mind-link-sub { font-size: var(--text-m); line-height: 1.4; color: var(--ink-3); }
-.avatar-stack { display: flex; flex: none; }
-.avatar-stack .avatar { box-shadow: 0 0 0 2px var(--surface); }
-.avatar-stack .avatar + .avatar { margin-left: -9px; }
-@media (max-width: 400px) { .avatar-stack { display: none; } }
-
 .wheel { display: flex; justify-content: center; position: relative; width: min(100%, 380px); aspect-ratio: 1; margin: 8px auto 0; }
 .wheel svg { overflow: visible; animation: wheel-in var(--dur-5) var(--spring) 0.1s backwards; }
 @keyframes wheel-in { from { opacity: 0; transform: rotate(-45deg) scale(0.85); } }
@@ -1497,12 +1477,6 @@ html[data-loading] { cursor: progress; }
   flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--r-pill);
   background: color-mix(in oklab, var(--emo-love-connection) 18%, var(--surface-2)); color: var(--emo-love-connection);
 }
-
-/* ---------- people you haven't thought of in a while ---------- */
-
-.not-lately { margin-top: 18px; }
-.not-lately .section-title { margin-bottom: 0; }
-.quiet-chip .book-row-title { font: var(--w-medium) var(--text-base)/1.3 var(--serif); }
 
 /* ---------- how thinking of someone is changing, month by month ---------- */
 

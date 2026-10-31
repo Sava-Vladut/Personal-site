@@ -1,0 +1,186 @@
+/* ============================================================
+   The People page (views/People.tsx). The wheel of who's on your mind sits on the journal's sky, in a card under the
+   title (pinned at the left on a wide screen, so it stays in view and lights up whoever you point at). Then how each
+   person makes you feel, along one line from heavy to warm; what's shifting, who's drifting and whose day is coming;
+   and everyone, in the circles they sit in.
+   ============================================================ */
+
+/* ---------- the wheel's card ---------- */
+
+.journal-top.pp-top {
+  --gap: color-mix(in oklab, var(--sky) 7%, var(--surface));
+  margin: 0; padding: 16px 16px 20px;
+  border: 1px solid var(--line); border-radius: var(--r-l);
+}
+.pp-top-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pp-top-head .section-title { margin: 0; font: var(--w-medium) var(--text-l)/1.3 var(--serif); }
+.pp-top .chips { margin: 10px 0 0; }
+.pp-top .wheel { margin-top: 12px; }
+.pp-top .mind-summary { margin-top: 6px; }
+.pp-top .mind-card { margin-top: 12px; }
+.pp-more {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; height: var(--h-s); padding: 0 8px 0 12px; margin-right: -8px;
+  border-radius: var(--r-pill); font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-3);
+  transition: background-color var(--dur-1), color var(--dur-1);
+}
+@media (hover: hover) { .pp-more:hover { background: color-mix(in oklab, var(--surface) 70%, transparent); color: var(--ink); } }
+
+.pp-main { min-width: 0; }
+.pp-main .section-title > svg { color: var(--ink-3); }
+.pp-count { font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* ---------- how they make you feel: one line from heavy to warm ---------- */
+
+.pp-feel { margin-top: 24px; }
+.pp-feel-card { position: relative; overflow: hidden; }
+.pp-field {
+  position: relative; min-height: 72px; transition: height var(--dur-3) var(--ease);
+  background: linear-gradient(90deg,
+    color-mix(in oklab, var(--emo-sadness) 13%, transparent), transparent 40%,
+    transparent 60%, color-mix(in oklab, var(--emo-joy) 13%, transparent));
+}
+/* the line itself, faint, running from the heavy colour to the warm one */
+.pp-field::before {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 50%; height: 2px; translate: 0 -50%; border-radius: 2px; opacity: 0.4;
+  background: linear-gradient(90deg, var(--emo-sadness), color-mix(in oklab, var(--emo-sadness) 50%, var(--emo-joy)), var(--emo-joy));
+}
+.pp-third { position: absolute; top: 10px; bottom: 10px; width: 0; border-left: 1px dashed var(--line); }
+
+.pp-dot {
+  position: absolute; display: flex; translate: -50% -50%; border-radius: var(--r-pill);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 14px color-mix(in oklab, var(--c) 55%, transparent);
+  transition: scale var(--dur-3) var(--spring), opacity var(--dur-2) var(--ease), left var(--dur-3) var(--ease), top var(--dur-3) var(--ease);
+  animation: pp-pop var(--dur-4) var(--spring-bouncy) backwards; animation-delay: calc(0.15s + var(--i) * 40ms);
+}
+@keyframes pp-pop { from { opacity: 0; scale: 0.3; } }
+.pp-dot.on { z-index: 2; scale: 1.18; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c), 0 0 20px color-mix(in oklab, var(--c) 70%, transparent); }
+@media (hover: hover) { .pp-dot:hover { z-index: 2; scale: 1.12; } }
+.pp-feel-card[data-focus] .pp-dot:not(.on) { opacity: 0.4; }
+
+.pp-scale {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; padding: 8px 14px 9px;
+  border-top: 1px solid var(--line); font-size: var(--text-s); color: var(--ink-3);
+}
+.pp-scale span:nth-child(2) { text-align: center; }
+.pp-scale span:last-child { text-align: right; }
+.pp-scale b { margin-left: 3px; font-weight: var(--w-bold); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+.pp-unfelt { display: flex; align-items: center; gap: 12px; padding: 8px 14px 10px; border-top: 1px solid var(--line); }
+.pp-unfelt-label { flex: none; font-size: var(--text-s); color: var(--ink-3); }
+.pp-unfelt-faces { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.pp-unfelt-faces button { display: flex; border-radius: var(--r-pill); opacity: 0.7; transition: opacity var(--dur-2), scale var(--dur-2) var(--spring); }
+.pp-unfelt-faces button.on { opacity: 1; scale: 1.15; }
+@media (hover: hover) { .pp-unfelt-faces button:hover { opacity: 1; scale: 1.15; } }
+
+.pp-feel-read { margin: 10px 2px 0; font: var(--w-regular) var(--text-base)/1.45 var(--serif); color: var(--ink-2); text-wrap: pretty; }
+.pp-feel-who {
+  display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 6px 10px 14px; border-radius: var(--r-m);
+  border: 1px solid color-mix(in oklab, var(--c) 26%, var(--line));
+  background: linear-gradient(120deg, color-mix(in oklab, var(--c) 12%, var(--surface)), var(--surface) 75%);
+  animation: rise-in var(--dur-3) var(--ease-emph) backwards;
+}
+.pp-feel-who-main { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.pp-feel-who-main > b { font: var(--w-medium) var(--text-l)/1.3 var(--serif); }
+.pp-feel-who-main > span:not(.note-emos) { font-size: var(--text-m); color: var(--ink-3); }
+
+/* ---------- shifting, drifting, coming up ---------- */
+
+.pp-body { display: grid; grid-template-columns: minmax(0, 1fr); }
+.pp-notes { display: grid; gap: 22px; min-width: 0; margin-top: 26px; }
+.pp-notes:empty { display: none; }
+.pp-note .section-title { margin-bottom: 8px; }
+
+.pp-mini {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 58px; padding: 8px 8px 8px 12px; text-align: left;
+  border-bottom: 1px solid var(--line); transition: background-color var(--dur-1);
+}
+.pp-mini:last-child { border-bottom: 0; }
+.pp-mini-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; }
+@media (hover: hover) { button.pp-mini:hover, .pp-mini:has(> .pp-mini-open:hover) { background: var(--surface-2); } }
+.pp-mini-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.pp-mini-name { font: var(--w-medium) var(--text-base)/1.3 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-mini-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-mini.is-today .coming-icon { box-shadow: 0 0 0 2px color-mix(in oklab, var(--emo-love-connection) 45%, transparent); }
+
+.pp-trend { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-s); font-weight: var(--w-medium); }
+.pp-trend.is-warmer { color: color-mix(in oklab, var(--emo-joy) 65%, var(--ink)); }
+.pp-trend.is-heavier { color: color-mix(in oklab, var(--emo-sadness) 65%, var(--ink)); }
+.pp-trend.is-heavier svg { scale: 1 -1; }
+/* twelve months, oldest first: how much was felt, in the colour felt most */
+.pp-months { flex: none; display: flex; align-items: flex-end; gap: 2px; height: 22px; margin-right: 4px; }
+.pp-months i { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--surface-3); }
+
+/* ---------- everyone, in their circles ---------- */
+
+.pp-all { margin-top: 28px; min-width: 0; }
+.pp-all-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 10px; }
+.pp-all-head .section-title { margin: 0; }
+.pp-all-head .chips { margin: 0; }
+.pp-all .search { margin-bottom: 0; }
+
+.pp-run { margin-top: 20px; animation: fade-in var(--dur-2) var(--ease); }
+.pp-run-head { display: flex; align-items: center; gap: 9px; font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; }
+.pp-run-head .pp-count { font: var(--w-medium) var(--text-m)/1 var(--sans); letter-spacing: 0; }
+.pp-run-note { margin: 3px 0 0; max-width: 62ch; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.pp-run > :is(.pp-inner, .pp-rows) { margin-top: 10px; }
+
+/* each ring's mark: the inner circle a warm glowing dot, then rings that fade outwards; the feelings in their colours */
+.pp-run:is(.is-inner, .is-close, .is-around, .is-far, .is-lifts, .is-mixed, .is-weighs, .is-unfelt) .pp-run-head::before {
+  content: ''; flex: none; width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--ink-3);
+}
+.pp-run.is-inner .pp-run-head::before {
+  border: 0; background: var(--emo-love-connection); box-shadow: 0 0 0 3px color-mix(in oklab, var(--emo-love-connection) 25%, transparent), 0 0 12px var(--emo-love-connection);
+}
+.pp-run.is-close .pp-run-head::before { border-color: var(--emo-love-connection); }
+.pp-run.is-around .pp-run-head::before { border-style: dashed; }
+.pp-run.is-far .pp-run-head::before { border-style: dotted; opacity: 0.6; }
+.pp-run.is-lifts .pp-run-head::before { border: 0; background: var(--emo-joy); box-shadow: 0 0 10px color-mix(in oklab, var(--emo-joy) 70%, transparent); }
+.pp-run.is-mixed .pp-run-head::before { border: 0; background: linear-gradient(90deg, var(--emo-sadness) 50%, var(--emo-joy) 50%); }
+.pp-run.is-weighs .pp-run-head::before { border: 0; background: var(--emo-sadness); }
+.pp-run.is-unfelt .pp-run-head::before { border-style: dashed; }
+
+.pp-inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.person-card.on { border-color: color-mix(in oklab, var(--m1, var(--ink-3)) 50%, var(--line)); }
+
+.pp-rows { container-type: inline-size; }
+.pp-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 14px 10px 12px; text-align: left;
+  border-bottom: 1px solid var(--line); transition: background-color var(--dur-1);
+}
+.pp-row:last-child { border-bottom: 0; }
+@media (hover: hover) { .pp-row:hover { background: color-mix(in oklab, var(--c) 7%, var(--surface)); } }
+.pp-row.on { background: color-mix(in oklab, var(--c) 11%, var(--surface)); }
+.pp-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pp-row-name { font: var(--w-medium) var(--text-l)/1.3 var(--serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-row-sub { font-size: var(--text-m); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-row-feel { display: none; flex: none; flex-wrap: nowrap; }
+@container (min-width: 600px) { .pp-row-feel { display: flex; } }
+/* how much of your thoughts, as a bar in the colours of what you feel with them */
+.pp-row-mind { flex: none; display: grid; justify-items: end; gap: 6px; width: 64px; }
+.pp-row-mind b { font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pp-bar { display: block; width: 100%; height: 6px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.pp-row.on .pp-bar { background: var(--surface-3); }
+.pp-bar > span {
+  display: flex; gap: 1px; height: 100%; width: calc(var(--w) * 100%); border-radius: inherit; overflow: hidden; transform-origin: left;
+  animation: grow-x var(--dur-5) var(--ease-emph) 0.2s backwards;
+}
+.pp-bar i { display: block; height: 100%; min-width: 2px; opacity: 0.85; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-dot, .pp-bar > span, .pp-run, .pp-feel-who { animation: none; }
+}
+
+/* ---------- a wide screen: the wheel pinned at the left, the rest beside it; the notes get their own column ---------- */
+
+@media (min-width: 1024px) {
+  .pp-page { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .pp-page > :is(.page-head, .empty) { grid-column: 1 / -1; }
+  .app .page.pp-page > .journal-top.pp-top { grid-column: 1; grid-row: 2; position: sticky; top: 18px; margin: 0; padding: 20px 22px 22px; }
+  .pp-page > .pp-main { grid-column: 2; grid-row: 2; }
+  .pp-feel { margin-top: 0; }
+}
+@media (min-width: 1280px) {
+  .pp-body { grid-template-columns: minmax(0, 1fr) 300px; column-gap: 24px; align-items: start; }
+  .pp-body > .pp-all { grid-column: 1; grid-row: 1; }
+  .pp-body > .pp-notes { grid-column: 2; grid-row: 1; }
+}

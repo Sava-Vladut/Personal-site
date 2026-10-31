@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.162.0',
+    date: '2026-10-31',
+    changes: [
+      'People is redesigned: no more grid of cards',
+      'The What’s on your mind wheel is always on the People page, pinned at the left on a wide screen; point at anyone on the page and their slice lights up',
+      'How they make you feel: everyone on one line from “weighs on you” to “lifts you up”, bigger the more you feel about them, with a short reading of the whole',
+      'Everyone is grouped into circles (inner circle, close by, around you, further out) by how present they are lately, or by how they make you feel, or A–Z',
+      'Each person’s row shows a bar as long as their share of your thoughts, in the colours of what you feel with them',
+      'Shifting lately: who feels warmer or heavier than before, with their last twelve months',
+      'Drifting away: people you haven’t thought of in a month, the ones who used to be closest first, with check in and write buttons',
+      'Coming up: birthdays and anniversaries in the next month',
+    ],
+  },
+  {
     version: '1.161.1',
     date: '2026-10-31',
     changes: [

@@ -1,9 +1,55 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
-import { blankPerson, savePerson, toast, useEntries, usePeople, type Person } from '../lib/store';
+import { dayLabel } from '../lib/dates';
+import { momentsByPerson, pagesByPerson } from '../lib/people';
+import { blankPerson, savePerson, toast, useBooks, useEntries, usePeople, useSongs, type Person } from '../lib/store';
 import { Icon, NoteIcon } from './icons';
 import { Sheet } from './Sheet';
 import { t } from '../lib/i18n';
+
+/** "today", "yesterday", "24 Sep" */
+export function lastSeen(k: string) {
+  const d = dayLabel(k);
+  return [t('Today'), t('Yesterday'), t('Tomorrow')].includes(d) ? d.toLowerCase() : d.replace(/^\S+ /, '');
+}
+
+/** The last answer for the last inputs, so the many screens and hooks that ask share one pass over everything. */
+function lastOf<A extends unknown[], R>(fn: (...args: A) => R) {
+  let args: A | null = null, value: R;
+  return (...next: A) => {
+    if (!args || next.some((x, i) => x !== args![i])) { value = fn(...next); args = next; }
+    return value;
+  };
+}
+const momentsOf = lastOf(momentsByPerson);
+const pagesOf = lastOf(pagesByPerson);
+
+/** Notes and check-ins each person is tagged in, under "Thinking of" or in their words, newest first. */
+export function useMoments() {
+  const entries = useEntries();
+  const people = usePeople();
+  return momentsOf(entries, people);
+}
+
+/** The pages of other people, books and songs that tag each person, last changed first. */
+export function usePages() {
+  const people = usePeople();
+  const books = useBooks();
+  const songs = useSongs();
+  return pagesOf(people, books, songs);
+}
+
+/** When someone was last on your mind: their latest moment, or the latest page that tags them. */
+export function useLastThought() {
+  const moments = useMoments();
+  const pages = usePages();
+  return useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [id, list] of moments) m.set(id, list[0].time);
+    for (const [id, list] of pages) m.set(id, Math.max(m.get(id) ?? 0, list[0].item.updated));
+    return m;
+  }, [moments, pages]);
+}
 
 export function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
