@@ -62,6 +62,8 @@ test('only the admin can turn the status on, read its settings or stop it', asyn
 });
 
 test('the public link shows only the whitelisted check-in, and the note only when chosen', async () => {
+  // a countdown still running (the one from before it could be changed ended on 30 October 2026); the next test removes it
+  await send('PUT', '/api/countdown', { headers: admin, body: { countdown: { id: 'first', start: Date.now() - 1000, end: Date.now() + 86_400_000 } } });
   const r = await send('PUT', '/api/status', { headers: admin, body: { show: { note: 'yes' }, checkin: checkin({ people: ['p1'], place: { lat: 1 } }) } });
   assert.equal(r.status, 200);
   const { token, show } = await r.json();
@@ -81,7 +83,7 @@ test('the public link shows only the whitelisted check-in, and the note only whe
   assert.equal(again.token, token);
   const full = await (await send('GET', '/api/status/' + token)).json();
   assert.equal(full.owner, 'Sava V');
-  assert.deepEqual(Object.keys(full.countdowns[0]).sort(), ['end', 'name', 'start']); // the one from before it could be changed, until one is saved; no id
+  assert.deepEqual(Object.keys(full.countdowns[0]).sort(), ['end', 'name', 'start']); // no id
   assert.equal(full.checkin.text, 'A good @[Ana] day');
   // a comment in the note is private: the server leaves it out, whatever it's sent (the app does too, lib/share.ts plainTags)
   await send('PUT', '/api/status', { headers: admin, body: { show: ALL, owner: 'Sava V', checkin: checkin({ text: 'A <span class="comment">good</span><!-- comment: SECRET --> day <!-- comment: SECRET-->' }) } });

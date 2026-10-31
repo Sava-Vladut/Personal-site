@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.166.1',
+    date: '2026-10-31',
+    changes: [
+      'Tests: the public status check saves a running countdown of its own, now that the first one has ended',
+      'Tests: the person page checks follow the People redesign, and the wheel checks no longer expect the Map in Insights',
+    ],
+  },
+  {
     version: '1.166.0',
     date: '2026-10-31',
     changes: [

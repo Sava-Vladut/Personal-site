@@ -253,7 +253,7 @@ test('submitting an exact name chooses that person rather than a recent partial 
 const person = { id: 'ann', name: 'Ann', relation: '', text: '', emotions: [], icon: null };
 const book = { id: 'book-1', title: 'Before', authors: '', text: '', emotions: [], from: null, status: 'want', pages: null, page: null, rating: 0, started: null, finished: null, year: null };
 const song = { id: 'song-1', text: '', emotions: [], from: null, music: { kind: 'track', id: 'track-1', title: 'Song' } };
-const personModules = { '/People': { useMoments: () => new Map(), usePages: () => new Map() }, '/lib/people': { monthsOf: () => [], trendOf: () => null }, '/mentions': { renamePersonMentions: () => [] } };
+const personModules = { '/components/people': { Avatar: () => null, initials: () => '', lastSeen: () => '', useMoments: () => new Map(), usePages: () => new Map() }, '/lib/people': { monthsOf: () => [], trendOf: () => null }, '/mentions': { renamePersonMentions: () => [] } };
 const bookModules = { '/books': { mentionsByBook: () => new Map(), STATUS_LABEL: {}, progressOf: () => null, renameMentions: () => [] } };
 function deferred() {
   let resolve, reject;
