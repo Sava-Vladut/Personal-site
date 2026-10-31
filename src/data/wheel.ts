@@ -29,13 +29,14 @@ export const WHEEL: WheelNode[] = [
       { id: 'glops', name: t('Global Ops'), sub: t('Who plays the game in the browser: online now and all-time highs'), icon: 'device-gamepad-2', to: 'glops' },
     ],
   },
-  // things to read: how minds, power and people work
+  // things to read: how minds, power, people and desire work
   {
-    id: 'learn', name: t('Learn'), sub: t('How minds slip, how power plays and how to win people over'), icon: 'books', hue: 'shame-aversion',
+    id: 'learn', name: t('Learn'), sub: t('How minds slip, how power plays, and how people are won over and seduced'), icon: 'books', hue: 'shame-aversion',
     kids: [
       { id: 'traps', name: t('Mind traps'), sub: t('40 ways your brain fools you, ranked by how hard they pull'), icon: 'spiral', hue: 'sadness', to: 'traps' },
       { id: 'laws', name: t('Laws of power'), sub: t('The 48 laws: the history, the psychology and how to see them coming'), icon: 'crown', hue: 'anger', to: 'laws' },
       { id: 'friends', name: t('Win friends'), sub: t('The 30 principles: why they work and how to practise them'), icon: 'heart-handshake', hue: 'joy', to: 'friends' },
+      { id: 'seduction', name: t('Art of seduction'), sub: t('Nine seducers, eighteen victims and 24 moves: the psychology and how to see them coming'), icon: 'flame', hue: 'love-connection', to: 'seduction' },
     ],
   },
   // what you build: your GitHub work

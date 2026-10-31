@@ -69,7 +69,7 @@ onBlocked(() =>
 // Otherwise the journal opens at once, no password asked, first playing the opening when the app opens on the journal.
 const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
 const status = location.pathname.match(/^\/status\/([A-Za-z0-9_-]{32})\/?$/);
-const learn = location.pathname.match(/^\/learn\/(traps|laws|friends)\/?$/);
+const learn = location.pathname.match(/^\/learn\/(traps|laws|friends|seduction)\/?$/);
 if (shared) void bootShared(shared[1]);
 else if (status) void bootStatus(status[1]);
 else if (learn) void bootLearn(learn[1] as RouteName);

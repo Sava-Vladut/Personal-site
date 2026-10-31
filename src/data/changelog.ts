@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.166.0',
+    date: '2026-10-31',
+    changes: [
+      'Learn: a new page, Art of seduction, from Robert Greene’s book, under Learn on the wheel',
+      'Art of seduction: the nine seducer types and their opposite, the Anti-Seducer, each with its faces as the book draws them',
+      'Art of seduction: the eighteen kinds of victim, grouped by what they hunger for, with the seducers who suit each',
+      'Art of seduction: the 24 moves in the book’s four phases, each with its history, psychology, experiment, signs and defence',
+      'Art of seduction: every entry has its own drawing, a shadow side, an honest version and links to Mind traps and Laws of power',
+      'Art of seduction: the arc of the 24 moves as a spiral, a chart of who falls for whom, and a game to name the move, type or victim',
+      'Art of seduction: read any entry as the seducer or as the target, count what’s been played on you, and share a page publicly',
+    ],
+  },
+  {
     version: '1.165.0',
     date: '2026-10-31',
     changes: [

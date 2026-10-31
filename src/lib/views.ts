@@ -22,6 +22,7 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   traps: () => import('../views/Traps').then((m) => m.Traps),
   laws: () => import('../views/Laws').then((m) => m.Laws),
   friends: () => import('../views/Friends').then((m) => m.Friends),
+  seduction: () => import('../views/Seduction').then((m) => m.Seduction),
   status: () => import('../views/StatusPage').then((m) => m.StatusPage),
   countdown: () => import('../views/Countdown').then((m) => m.Countdown),
   glops: () => import('../views/Glops').then((m) => m.Glops),

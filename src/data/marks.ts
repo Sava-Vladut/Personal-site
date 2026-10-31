@@ -578,3 +578,7 @@ export const SPOT_MARKS: Record<string, string> = {
     g('rotate(-20 72 76)', pk(rect(72, 32, 12, 44, 1.5)), k('M75 39h6M75 69h6', 2.6)) +
     k('M12 77H88', 4.4) + glint(84, 22, 4),
 };
+
+/* ---------- the pen, for marks drawn in other files (data/seduction/marks-*.ts) ---------- */
+
+export const PEN = { INK, PAPER, W, n, k, p, pk, f, pl, circle, oval, rect, poly, g, star, glint, heart, cloud, ask, person, hand, pencil, crown, bubble, fluff, sheep, dashed, flower, bulb, boat, drop };

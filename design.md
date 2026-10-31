@@ -206,10 +206,11 @@ change the stroke, except the active tab (2 vs 1.6).
 
 ## Illustrations (marks)
 
-The Learn screens (Mind traps, Laws of power, Win friends) give every entry a **mark**: a small spot
+The Learn screens (Mind traps, Laws of power, Win friends, Art of seduction) give every entry a **mark**: a small spot
 illustration in the manner of Anthropic's editorial drawings, with ivory cut-paper shapes and loose black
 brush lines on a flat, papery colour tile. `<Mark id hue />` (`src/components/Mark.tsx`) draws the tile and
-runs the lines through a seeded wobble so they look hand-inked; the drawings live in `src/data/marks.ts`.
+runs the lines through a seeded wobble so they look hand-inked; the drawings live in `src/data/marks.ts`, and
+Art of seduction's beside its data (`src/data/seduction/marks-*.ts`, drawn with the same pen, `PEN`, and added by its page with `addMarks`).
 
 Line icons are for **doing**, marks are for **meaning**. Use a mark where the app wants to make you
 feel or understand something, and where a line icon would feel thin:

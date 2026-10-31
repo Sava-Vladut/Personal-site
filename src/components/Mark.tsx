@@ -3,7 +3,7 @@ import { LAW_MARKS, PRINCIPLE_MARKS, SPOT_MARKS, TRAP_MARKS } from '../data/mark
 import '../styles/mark.css';
 
 /*
- * A mind trap's, a law's or a principle's mark (or a spot for another screen, `spot:<name>`): its drawing (data/marks.ts) on a flat tile in its family's or arena's colour.
+ * A mind trap's, a law's, a principle's or an Art of Seduction entry's mark (or a spot for another screen, `spot:<name>`): its drawing (data/marks.ts) on a flat tile in its family's or arena's colour.
  * The lines are run through a little noise so they waver like brush ink; the noise is seeded from the id,
  * so a mark always wavers the same way.
  *
@@ -12,6 +12,11 @@ import '../styles/mark.css';
  */
 
 const ART: Record<string, string> = { ...TRAP_MARKS, ...LAW_MARKS, ...PRINCIPLE_MARKS, ...SPOT_MARKS };
+
+/** Adds a page's own marks (Art of seduction's 52 come with its page, so no other screen downloads them). */
+export function addMarks(more: Record<string, string>) {
+  Object.assign(ART, more);
+}
 
 const seedOf = (id: string) => {
   let h = 0;

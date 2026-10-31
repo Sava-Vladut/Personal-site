@@ -1356,10 +1356,10 @@ test('the wheel keeps your order, hidden places and groups, and new places still
     groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
   });
   assert.deepEqual(plain(saved.kids.insights), ['stats', 'map', 'twitch', 'glops'], 'your own grouping stays as you left it, and new places join their group');
-  assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends'], 'new places land in their usual group, which turns up too');
+  assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends', 'seduction'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'twitch', 'glops']], ['learn', ['traps', 'laws', 'friends']], ['extras', ['streamer', 'status', 'countdown']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'map', 'twitch', 'glops']], ['learn', ['traps', 'laws', 'friends', 'seduction']], ['extras', ['streamer', 'status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['map'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 

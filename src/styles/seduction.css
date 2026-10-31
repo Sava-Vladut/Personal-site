@@ -1,0 +1,121 @@
+/* ============================================================
+   The Art of Seduction (views/Seduction.tsx). The layout, rows, game, sheet and buttons are the Learn pages' own
+   (styles/learn.css); what's here is this page's two charts (the arc of the 24 moves, who falls for whom), the switch
+   between the book's three parts, and the few small pieces only it has.
+   Each entry wears its group's world colour (--c); the page's colour is --accent, set on its root.
+   ============================================================ */
+
+/* ---------- the arc: the 24 moves on a spiral ---------- */
+
+.sd-arc svg { display: block; width: 100%; max-width: 340px; height: auto; margin-inline: auto; overflow: visible; touch-action: manipulation; }
+.sd-arc-leg {
+  fill: none; stroke: var(--c); stroke-width: 5; stroke-linecap: round; opacity: 0.55;
+  transition: opacity var(--dur-2) var(--ease);
+}
+.sd-arc-leg.dim { opacity: 0.16; }
+/* 12 units of a 300-wide drawing at its widest: 10px or more on a phone */
+.sd-arc-k { font-size: 12px; font-weight: var(--w-bold); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--ink-3); }
+.sd-arc-name { font: var(--w-medium) 17px var(--serif); fill: var(--ink); }
+.sd-stop { cursor: pointer; outline: none; }
+.sd-stop-hit { fill: transparent; }
+.sd-stop-dot {
+  fill: color-mix(in oklab, var(--c) 30%, var(--surface)); stroke: var(--c); stroke-width: 1.5;
+  transform-box: fill-box; transform-origin: center;
+  transition: scale var(--dur-2) var(--ease), fill var(--dur-1), opacity var(--dur-2) var(--ease);
+}
+.sd-stop-n { font-size: 12px; font-weight: var(--w-bold); fill: var(--ink); font-variant-numeric: tabular-nums; pointer-events: none; transition: opacity var(--dur-2) var(--ease); }
+.sd-stop.hot .sd-stop-dot, .sd-stop:focus-visible .sd-stop-dot { scale: 1.3; fill: var(--c); }
+.sd-stop:focus-visible .sd-stop-dot { stroke: var(--ink); stroke-width: 2; }
+.sd-stop.dim .sd-stop-dot, .sd-stop.dim .sd-stop-n { opacity: 0.4; }
+
+.sd-legend {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; list-style: none; margin: 8px 0 0; padding: 0;
+  font-size: var(--text-s); color: var(--ink-2);
+}
+.sd-legend li { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- who falls for whom ---------- */
+
+.sd-pairs svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: manipulation; }
+.sd-edges path {
+  fill: none; stroke: var(--c); stroke-width: 1.3; opacity: 0.38;
+  transition: opacity var(--dur-2) var(--ease), stroke-width var(--dur-2) var(--ease);
+}
+.sd-edges.is-lit path { opacity: 0.07; }
+.sd-edges.is-lit path.on { opacity: 1; stroke-width: 2.2; }
+.sd-node { cursor: pointer; outline: none; }
+.sd-node-hit { fill: transparent; }
+.sd-node-dot {
+  fill: var(--c); stroke: var(--surface); stroke-width: 1.5;
+  transform-box: fill-box; transform-origin: center; transition: scale var(--dur-2) var(--ease);
+}
+/* 12 units of a 400-wide drawing: 10px or more on a phone */
+.sd-node-label { font-size: 12px; fill: var(--ink-2); transition: fill var(--dur-1), opacity var(--dur-2) var(--ease); }
+.sd-node.hot .sd-node-dot, .sd-node:focus-visible .sd-node-dot { scale: 1.6; }
+.sd-node.hot .sd-node-label, .sd-node:focus-visible .sd-node-label { fill: var(--ink); font-weight: var(--w-bold); }
+.sd-node.dim .sd-node-label, .sd-node.dim .sd-node-dot { opacity: 0.35; }
+
+/* ---------- name it ---------- */
+
+/* room kept for the longest scene (about 8 lines on a phone) and verdict, so nothing jumps between rounds */
+.lrn-q.sd-scene { min-height: 8lh; font-weight: var(--w-regular); }
+.sd-verdict { min-height: calc(3lh + 10px); font-size: var(--text-base); line-height: 1.5; }
+.sd-game-actions { display: flex; gap: 8px; }
+
+/* ---------- the mind traps it springs: the Stats page's ranked rows, each one a button ---------- */
+
+.sd-sprung li { padding: 0; }
+.sd-sprung button {
+  display: grid; gap: 6px; width: 100%; min-width: 0; padding: 7px 2px 8px; border-radius: inherit;
+  text-align: left; color: var(--ink); transition: background-color var(--dur-1);
+}
+.sd-sprung button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- the book's three parts, over the list ---------- */
+
+.sd-kinds { margin-bottom: 12px; }
+
+/* ---------- about the book ---------- */
+
+.sd-about .btn { margin-top: 12px; }
+
+/* ---------- a wide screen (from 1024px; nothing below reaches a phone) ----------
+   The frame is learn.css's. These are this page's own adjustments to it, started at `.seduction-page` so the other
+   Learn pages are left alone. */
+
+@media (min-width: 1024px) {
+  /* the sky: a figure's label wraps instead of being cut off */
+  .seduction-page .lrn-top .stat { align-content: start; }
+  .seduction-page .lrn-top .stat small { white-space: normal; text-wrap: balance; }
+
+  /* a row's top line wraps instead of cutting off the seen counts */
+  .seduction-page .lrn-main .lrn-row-top { flex-wrap: wrap; row-gap: 2px; white-space: normal; }
+
+  /* the game's score has its own line when the buttons leave it no room */
+  .seduction-page .lrn-quiz-foot { flex-wrap: wrap; row-gap: 6px; }
+  .seduction-page .lrn-score { flex: 1 1 140px; }
+
+  /* the closing note: the button beside the text when the column is wide enough */
+  .seduction-page .sd-about { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+  .seduction-page .sd-about p { flex: 1 1 240px; margin: 0; }
+  .seduction-page .sd-about .btn { flex: none; margin-top: 0; }
+
+  /* the parts switch keeps a sensible width over a wide list */
+  .seduction-page .sd-kinds { max-width: 560px; }
+}
+/* 1024-1279: the list column is ~330px; the order chip takes its own line rather than leaving the group chips a ~210px strip */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .seduction-page .lrn-head { flex-wrap: wrap; row-gap: 8px; }
+  .seduction-page .lrn-head > .chips { flex: 1 1 100%; }
+  .seduction-page .lrn-head > .sort-chip { margin-left: auto; }
+}
+@media (min-width: 1536px) {
+  /* two cards across rather than one stretched card */
+  .seduction-page .lrn-main .lrn-rows { grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+  .seduction-page .lrn-top > .media-stats { max-width: 680px; }
+  .seduction-page .lrn-top > .search { width: 100%; max-width: 520px; justify-self: end; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-arc-leg, .sd-stop-dot, .sd-stop-n, .sd-edges path, .sd-node-dot, .sd-node-label { transition: none; }
+}
