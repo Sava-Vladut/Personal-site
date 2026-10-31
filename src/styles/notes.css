@@ -375,8 +375,11 @@
    Clouds drift behind it, partly drawn in letters (components/Sky.tsx). --sky is the world you
    last checked in with today; without one it's a dawn of peach, pink and blue. */
 
+/* registered as a colour so a new world fades in across the panel instead of snapping (the clouds blend too) */
+@property --sky { syntax: '<color>'; inherits: true; initial-value: #eb6834; }
 .journal-top {
   --sky: var(--emo-hope-interest);
+  transition: --sky 0.9s var(--ease);
   position: relative;
   isolation: isolate;
   overflow: hidden;

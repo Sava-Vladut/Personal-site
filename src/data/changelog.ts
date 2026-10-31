@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.155.1',
+    date: '2026-10-31',
+    changes: [
+      'Moving between emotion worlds, the cloud sky behind the wheel blends smoothly into the new colours instead of snapping: the clouds shift hue, the old letters fade under the new, and the panel and wheel glow follow',
+    ],
+  },
+  {
     version: '1.155.0',
     date: '2026-10-30',
     changes: [

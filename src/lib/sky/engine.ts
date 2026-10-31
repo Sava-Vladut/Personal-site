@@ -16,6 +16,7 @@ const SPRITE = 64; // a soft puff, painted once per colour and stamped for every
 const LUT_N = 256;
 const MIN_FRAME = 15; // never step faster than ~60fps, even on 120Hz screens
 const STRIDE = 10;
+const FADE = 900; // ms a new look takes to blend in over the old one
 
 // the sun: low, from the upper left
 const SUN = { x: -0.55, y: -0.83 };
@@ -29,6 +30,8 @@ interface Cloud {
   x: number; y: number; speed: number; tone: number; puffs: Puff[]; span: number;
   spreadPhase: number; spreadRate: number;
 }
+/** A layer's cloud colours, as they are right now (mid-blend, they're neither the old look's nor the new one's). */
+interface Tones { tones: RGB[]; shadow: RGB[]; light: RGB[] }
 interface Layer {
   spec: Spec;
   cloudCv: Canvas; cloudCtx: Ctx;
@@ -43,6 +46,8 @@ interface Layer {
 }
 
 const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 // a small seeded random, so the same sky comes back on every visit
@@ -116,6 +121,12 @@ function tick(now: number) {
 export class SkyScene {
   private layers: Layer[];
   private look: Look | null = null;
+  // while a new look blends in: the one it replaces, the colours it starts from, and how far along it is (0…1)
+  private prev: Look | null = null;
+  private from: Tones[] = [];
+  private shown: Tones[] = [];
+  private fadeAt = 0;
+  private fade = 1;
   private w = 0;
   private h = 0;
   private dark = false;
@@ -147,7 +158,10 @@ export class SkyScene {
     });
   }
 
-  /** New colours and letters: the clouds keep where they are and change colour in place. */
+  /**
+   * New colours and letters: the clouds keep where they are and change colour in place. A moving sky blends into
+   * them (the clouds' colours shift, the old letters fade under the new); a still one just takes them.
+   */
   setLook(look: Look) {
     const old = this.look;
     this.look = look;
@@ -158,17 +172,49 @@ export class SkyScene {
       const t = Math.sqrt(k / LUT_N);
       this.lut[k] = t < 0.55 ? body[0] + (body[1] - body[0]) * (t / 0.55) : body[1] * (1 - (t - 0.55) / 0.45);
     }
-    this.layers.forEach((L, i) => {
-      const { tones, shadow, light } = look.layers[i];
-      L.sprites = tones.map((tone, j) => [
-        this.blob(tone, [[0, body[0]], [0.55, body[1]], [1, 0]], 1),
-        this.blob(shadow[j], [[0, dark ? 0.32 : 0.26], [1, 0]], 0.75),
-        this.blob(light[j], [[0, dark ? 0.4 : 0.6], [1, 0]], 0.75),
-      ]);
-      L.clouds.forEach((c, k) => (c.tone = (k + L.spec.toneShift) % tones.length));
-    });
-    if (old) release(old);
+    // a look that arrives mid-blend starts from the colours on screen, under whichever letters show most
+    if (old && scenes.has(this) && this.shown.length) {
+      const keep = this.prev && this.fade < 0.5 ? this.prev : old;
+      if (this.prev && this.prev !== keep) release(this.prev);
+      if (old !== keep) release(old);
+      this.prev = keep;
+      this.from = this.shown;
+      this.fadeAt = this.clock;
+      this.fade = 0;
+    } else {
+      if (this.prev) release(this.prev);
+      if (old) release(old);
+      this.prev = null;
+      this.fade = 1;
+    }
+    this.layers.forEach((L, i) => L.clouds.forEach((c, k) => (c.tone = (k + L.spec.toneShift) % look.layers[i].tones.length)));
+    this.tint();
     this.draw();
+  }
+
+  /** Paints each layer's cloud puffs in the colours of this moment of the blend. */
+  private tint() {
+    const look = this.look;
+    if (!look) return;
+    const dark = this.dark;
+    const body = dark ? [0.42, 0.2] : [0.6, 0.3];
+    const k = smooth(this.fade);
+    this.shown = this.layers.map((L, i) => {
+      const to = look.layers[i], from = this.fade < 1 ? this.from[i] : undefined;
+      const at = (list: RGB[], old: RGB[] | undefined, j: number) => (old?.length ? mix(old[j % old.length], list[j], k) : list[j]);
+      const now: Tones = {
+        tones: to.tones.map((_, j) => at(to.tones, from?.tones, j)),
+        shadow: to.shadow.map((_, j) => at(to.shadow, from?.shadow, j)),
+        light: to.light.map((_, j) => at(to.light, from?.light, j)),
+      };
+      const was = L.sprites;
+      L.sprites = now.tones.map((tone, j) => [
+        this.blob(tone, [[0, body[0]], [0.55, body[1]], [1, 0]], 1, was[j]?.[0]),
+        this.blob(now.shadow[j], [[0, dark ? 0.32 : 0.26], [1, 0]], 0.75, was[j]?.[1]),
+        this.blob(now.light[j], [[0, dark ? 0.4 : 0.6], [1, 0]], 0.75, was[j]?.[2]),
+      ]);
+      return now;
+    });
   }
 
   /** The sky's size in CSS px, and the screen's pixel ratio. */
@@ -217,20 +263,22 @@ export class SkyScene {
   dispose() {
     this.run(false);
     if (this.look) release(this.look);
-    this.look = null;
+    if (this.prev) release(this.prev);
+    this.look = this.prev = null;
     for (const L of this.layers) {
       L.sprites = [];
       L.cloudCv.width = L.cloudCv.height = L.glyphCv.width = L.glyphCv.height = 0;
     }
   }
 
-  /** One soft round puff, painted once so it can be stamped instead of drawn as a gradient every frame. */
-  private blob(col: RGB, stops: [number, number][], radius: number): Canvas {
-    const c = this.make(SPRITE, SPRITE);
+  /** One soft round puff, painted once (or into `into`, mid-blend) so it can be stamped instead of drawn as a gradient every frame. */
+  private blob(col: RGB, stops: [number, number][], radius: number, into?: Canvas): Canvas {
+    const c = into ?? this.make(SPRITE, SPRITE);
     const g = c.getContext('2d') as Ctx;
     const half = SPRITE / 2;
+    g.clearRect(0, 0, SPRITE, SPRITE);
     const grad = g.createRadialGradient(half, half, 0, half, half, half * radius);
-    for (const [at, a] of stops) grad.addColorStop(at, rgba(col, a));
+    for (const [at, a] of stops) grad.addColorStop(at, rgba(col.map(Math.round) as RGB, a));
     g.fillStyle = grad;
     g.fillRect(0, 0, SPRITE, SPRITE);
     return c;
@@ -310,8 +358,11 @@ export class SkyScene {
 
   private drawLayer(L: Layer, look: Look, i: number, t: number, s: number) {
     const { spec, cells, dens, dens2, cols, rows, dpr } = L;
-    const { atlas, tile } = look.layers[i];
-    const glyphIdx = look.glyphIdx;
+    // mid-blend, the old letters fade out under the new ones
+    const k = this.prev ? smooth(this.fade) : 1;
+    const sets = [look, ...(this.prev ? [this.prev] : [])].map((l, n) => ({
+      glyphIdx: l.glyphIdx, top: l.glyphIdx.length - 1, atlas: l.layers[i].atlas, tile: l.layers[i].tile, weight: n ? 1 - k : k,
+    }));
     this.paintClouds(L, s);
     this.density(L);
 
@@ -329,8 +380,7 @@ export class SkyScene {
     const sw = Math.sin(wt), cw = Math.cos(wt), sw9 = Math.sin(wt * 0.9), cw9 = Math.cos(wt * 0.9);
     const st = Math.sin(t), ct = Math.cos(t), st11 = Math.sin(t * 1.1), ct11 = Math.cos(t * 1.1);
     const wobbleX = 1.4 * spec.pull, wobbleY = 1.2 * spec.pull;
-    const top = glyphIdx.length - 1, shadeTop = SHADES - 1;
-    const half = tile / 2;
+    const shadeTop = SHADES - 1;
     const ink = (this.dark ? 0.85 : 1) * spec.ink;
 
     for (let row = 0, c = 0; row < rows; row++) {
@@ -348,10 +398,7 @@ export class SkyScene {
         }
         const wave = (sw * cells[o + 3] + cw * cells[o + 2] + cw9 * cells[o + 5] + sw9 * cells[o + 4] + 2) / 4;
         const level = cloud * 0.78 + wave * 0.3 - 0.1 + near * 0.55;
-        const lvl = Math.min(top, Math.max(0, Math.floor(level * top)));
-        if (lvl === 0) continue;
-        const variants = glyphIdx[lvl];
-        if (!variants.length) continue;
+        if (level * sets[0].top < 1 && (sets.length === 1 || level * sets[1].top < 1)) continue;
 
         // sunlit where the cloud thins out toward the sun, quiet on the far side, bright along thin edges
         const toward = Math.min(1, (1 - dens2[c]) * norm);
@@ -361,13 +408,20 @@ export class SkyScene {
         let y = by + (ct11 * cells[o + 9] + st11 * cells[o + 8]) * wobbleY;
         if (near > 0 && dist > 0) { x += (dx / dist) * near * 8; y += (dy / dist) * near * 8; }
 
-        const glyph = variants[variants.length === 1 ? 0 : (col * 3 + row * 5) % variants.length];
         const shade = Math.round(((light - SHADE_LOW) / (1 - SHADE_LOW)) * shadeTop);
-        ctx.globalAlpha = Math.min(0.7, (0.07 + cloud * 0.2 + (lvl / top) * 0.175 + near * 0.35) * (1 + light * 0.5)) * ink;
-        ctx.drawImage(
-          atlas, glyph * tile, shade * tile, tile, tile,
-          Math.round(x * dpr - half), Math.round(y * dpr - half), tile, tile,
-        );
+        for (const { glyphIdx, top, atlas, tile, weight } of sets) {
+          const lvl = Math.min(top, Math.max(0, Math.floor(level * top)));
+          if (lvl === 0 || weight <= 0) continue;
+          const variants = glyphIdx[lvl];
+          if (!variants.length) continue;
+          const glyph = variants[variants.length === 1 ? 0 : (col * 3 + row * 5) % variants.length];
+          const half = tile / 2;
+          ctx.globalAlpha = Math.min(0.7, (0.07 + cloud * 0.2 + (lvl / top) * 0.175 + near * 0.35) * (1 + light * 0.5)) * ink * weight;
+          ctx.drawImage(
+            atlas, glyph * tile, shade * tile, tile, tile,
+            Math.round(x * dpr - half), Math.round(y * dpr - half), tile, tile,
+          );
+        }
       }
     }
     ctx.globalAlpha = 1;
@@ -399,11 +453,21 @@ export class SkyScene {
     pointer.y += (pointer.ty - pointer.y) * 0.12;
     pointer.pull += (pointer.target - pointer.pull) * 0.06;
     if (!this.w || !look) return;
+    // a blend in progress repaints the puffs in its next colours and redraws every layer each frame
+    const blending = !!this.prev;
+    if (blending) {
+      this.fade = Math.min(1, (this.clock - this.fadeAt) / FADE);
+      this.tint();
+      if (this.fade >= 1) {
+        release(this.prev!);
+        this.prev = null;
+      }
+    }
     const active = pointer.target > 0 || pointer.pull > 0.01;
     const t = this.clock * 0.0011, s = this.clock / 1000;
     this.layers.forEach((L, i) => {
       // slow, quiet skies only need redrawing now and then; the canvases keep what was last drawn
-      if (this.clock - L.drawn >= (active ? L.spec.active : L.spec.idle) * EASE[this.ease] - 5) {
+      if (blending || this.clock - L.drawn >= (active ? L.spec.active : L.spec.idle) * EASE[this.ease] - 5) {
         L.drawn = this.clock;
         this.drawLayer(L, look, i, t, s);
       }
