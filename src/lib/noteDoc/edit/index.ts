@@ -4,6 +4,7 @@
 //
 // Keys (keymap, priority 1000):
 //   Enter → enter · Shift-Enter → newLine · Backspace → backspace (after undoInputRule) · Delete → deleteForward
+//   (beside a tag, both select it first: selectChip) · ArrowLeft / ArrowRight beside a tag → stepOverChip(-1 / 1)
 //   Tab / Shift-Tab → tab(false) / tab(true) · Mod-[ / Mod-] → noteCommands.indent(true / false) (always swallowed)
 //   ArrowDown at the end of a code block → exitCode · Alt-Shift-ArrowUp / ArrowDown → moveBlocks(-1 / 1)
 //   In a table: Tab / Shift-Tab → cellTab (the next / previous cell; Tab in the last adds a row), Enter and Shift-Enter →
@@ -58,6 +59,7 @@ export {
   dropPlaces, dropTargets, moveMedia, canStep, stepMedia, mediaPosAfter, type DropTarget,
 } from './media';
 export { typedAt, replaceTyped, insertAtom, insertTrigger, type Typed } from './mention';
+export { isChip, stepOverChip, selectChip, removeChip, retypeChip } from './chips';
 export {
   insertTable, tableCommand, cellTab, cellEnter, tableEnter, deleteTable, cellAlignAt, inTable, isCell, emptyTable, isCellsSlice, oneLine, TABLE_MAX, type TableAction,
 } from './tables';

@@ -11,6 +11,7 @@ import { closeHistory } from '@tiptap/pm/history';
 import { normalizeTr } from '../normalize';
 import { countOnAfter, indentList, itemToParagraph, listEnter } from './lists';
 import { cellEnter, cellTab, inTable, isCell, tableEnter } from './tables';
+import { selectChip } from './chips';
 import { deleteSelectionSafe, first, inQuote, liftBlocks, lineText, placeBlock, replaceSelectionText, selectedBlocks, unCallout } from './util';
 import type { Align } from '../syntax';
 
@@ -205,12 +206,14 @@ function topEdge($c: ResolvedPos, end: boolean): number | null {
  * Backspace at the start of a line, as in Notion and Word: a nested item steps out a level, an item, heading or quote
  * line turns back into plain text (numbers after it count again), a callout's title takes the callout with it (its
  * body stays a quote). Just after a picture, an empty line goes when the picture keeps text below it; nothing else does.
- * Otherwise (and anywhere but a line's start) it's the usual Backspace. A selection is taken out safely (deleteSelectionSafe:
+ * Just after a tag, the tag is selected (the next Backspace takes it out). Otherwise (and anywhere but a line's start)
+ * it's the usual Backspace. A selection is taken out safely (deleteSelectionSafe:
  * ProseMirror's own throws on one from a quote into a callout).
  */
 export const backspace: Command = (state, dispatch) => {
   const sel = state.selection;
   if (!sel.empty) return deleteSelected(state, dispatch);
+  if (selectChip(-1)(state, dispatch)) return true;
   if (!(sel instanceof TextSelection) || sel.$from.parentOffset > 0) return false;
   const $c = sel.$from;
   const tb = $c.parent;
@@ -282,11 +285,13 @@ export const backspace: Command = (state, dispatch) => {
  * Delete at the end of the line just before a picture does nothing (the picture never goes by a stray key). Next to
  * code, lines don't run into each other either (as with Backspace): an empty line goes, else nothing. At the end of a
  * quote or callout, the line after it runs on from its last line (an empty one just goes), as Backspace at that line's
- * start does: it never goes into the quote as a line of its own. A selection is taken out as Backspace does it.
+ * start does: it never goes into the quote as a line of its own. Just before a tag, the tag is selected first, as with
+ * Backspace. A selection is taken out as Backspace does it.
  */
 export const deleteForward: Command = (state, dispatch) => {
   const sel = state.selection;
   if (!sel.empty) return deleteSelected(state, dispatch);
+  if (selectChip(1)(state, dispatch)) return true;
   if (!(sel instanceof TextSelection) || sel.$from.parentOffset < sel.$from.parent.content.size) return false;
   const $c = sel.$from;
   const tb = $c.parent;

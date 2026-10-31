@@ -15,7 +15,7 @@ import { dropCursor } from '@tiptap/pm/dropcursor';
 import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
 import {
   AUTOCORRECT, BLOCK_RULES, backspace, commentsPlugin, deleteForward, enter, exitCode, findOf, findPlugin, findStep, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
-  painterPlugin, renumberChanged, stopPainter, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
+  painterPlugin, renumberChanged, stepOverChip, stopPainter, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
 } from '../lib/noteDoc/edit';
 
 /* ---------- typing Markdown ---------- */
@@ -336,6 +336,19 @@ const chipsInRange = new Plugin({
   },
 });
 
+/** Left and Right go past a tag in one press, as past a letter (in a right-to-left note, the other way round). */
+const overChip = (dir: -1 | 1): Command => (state, dispatch, view) =>
+  stepOverChip(view && getComputedStyle(view.dom).direction === 'rtl' ? (-dir as -1 | 1) : dir)(state, dispatch);
+
+/** Enter with a tag selected (Backspace beside it, a tap) opens its card, as a tap on it does, instead of a new line in its place. */
+const openChip: Command = (state, _dispatch, view) => {
+  const sel = state.selection;
+  if (!(sel instanceof NodeSelection) || !CHIP.test(sel.node.type.name)) return false;
+  const tag = (view?.nodeDOM(sel.from) as HTMLElement | null)?.querySelector<HTMLElement>('[role="button"]');
+  tag?.click();
+  return !!tag;
+};
+
 /* ---------- suggestions ---------- */
 
 /**
@@ -373,7 +386,7 @@ export interface PluginOptions extends KeyOptions {
 
 export function notePlugins(opts: PluginOptions): Plugin[] {
   const keys = keymap({
-    Enter: enter,
+    Enter: chainCommands(openChip, enter),
     'Shift-Enter': newLine,
     // a page break, as in Word (in code, a new line)
     'Mod-Enter': chainCommands(noteCommands.insert('pagebreak'), newLine),
@@ -383,6 +396,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     Tab: tab(false),
     'Shift-Tab': tab(true),
     ArrowDown: exitCode,
+    ArrowLeft: overChip(-1),
+    ArrowRight: overChip(1),
     // the line (or the selected lines) up or down past the block beside it, as in Word
     'Alt-Shift-ArrowUp': moveBlocks(-1),
     'Alt-Shift-ArrowDown': moveBlocks(1),

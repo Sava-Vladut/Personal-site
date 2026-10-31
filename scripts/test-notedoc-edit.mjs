@@ -508,6 +508,50 @@ test('picking a tag swaps the query for its chip, with a space after it', () => 
   assert.equal(E.replaceTyped(t, '@[Ann]')(changed), false);
 });
 
+test('the arrows go past a tag in one press; Backspace and Delete select it first, the next press takes it out', () => {
+  const { NodeSelection } = nd.pmState;
+  const C = { caret: '‸' };
+  assert.equal(after('hi @[person:p1|Ann]‸ x', E.stepOverChip(-1), C), 'hi ‸@[person:p1|Ann] x');
+  assert.equal(after('hi ‸@[person:p1|Ann] x', E.stepOverChip(1), C), 'hi @[person:p1|Ann]‸ x');
+  assert.equal(after('[[note:n1|N]]‸♪[Song]', E.stepOverChip(1), C), '[[note:n1|N]]♪[Song]‸', 'from one tag straight past the next');
+  assert.equal(run('hi‸ @[Ann]', E.stepOverChip(1), C)[1], false, 'beside a letter: the browser’s own');
+  assert.equal(run('a «b» @[Ann]', E.stepOverChip(1))[1], false, 'not with a selection');
+  for (const [text, cmd] of [['hi @[person:p1|Ann]‸ x', Backspace], ['hi ‸@[person:p1|Ann] x', Delete]]) {
+    let [, ok, s] = run(text, cmd, C);
+    assert.equal(ok, true);
+    assert.ok(s.selection instanceof NodeSelection && s.selection.node.type.name === 'person', 'the tag selected, nothing gone');
+    assert.equal(nd.serializeNote(s.doc), 'hi @[person:p1|Ann] x');
+    assert.equal(after(s, cmd, C), 'hi ‸ x', 'the second press takes it out');
+  }
+  assert.equal(run('Ann‸ @[Bo]', Backspace, C)[1], false, 'after a letter: the browser’s own, as before');
+});
+
+test('a tag’s card takes it out (and a space with it) or puts its @ or [[ back for another', () => {
+  const chipAt = (s) => {
+    let at = -1;
+    s.doc.descendants((n, pos) => (E.isChip(n) && at < 0 ? ((at = pos), false) : true));
+    return at;
+  };
+  const C = { caret: '‸' };
+  const on = (text, cmd) => {
+    const s = stateFrom(text, C);
+    return after(s, cmd(chipAt(s)), C);
+  };
+  assert.equal(on('I met @[person:p1|Ann] today‸', E.removeChip), 'I met ‸today');
+  assert.equal(on('with @[person:p1|Ann].‸', E.removeChip), 'with‸.');
+  assert.equal(on('with @[person:p1|Ann]‸', E.removeChip), 'with‸');
+  assert.equal(on('@[person:p1|Ann] came‸', E.removeChip), '‸came');
+  assert.equal(on('(@[person:p1|Ann]) x‸', E.removeChip), '(‸) x');
+  assert.equal(on('a @[Ann]@[Bo] b‸', E.removeChip), 'a ‸@[Bo] b', 'a tag beside it stays where it was');
+  assert.equal(on('I met @[person:p1|Ann] today‸', E.retypeChip), 'I met @‸ today');
+  assert.equal(on('see [[note:n1|Note]]‸', E.retypeChip), 'see [[‸');
+  assert.equal(on('**hi @[Ann]**‸', E.retypeChip), '**hi @‸**', 'with the styles it had');
+  assert.equal(on('x♪[Song]‸', E.retypeChip), 'x @‸', 'apart from the word before, so the suggestions come');
+  const s = stateFrom('I met @[person:p1|Ann] today‸', C);
+  assert.deepEqual(E.typedAt(run(s, E.retypeChip(chipAt(s)))[2]), { from: 7, to: 8, q: '', link: false });
+  assert.equal(E.removeChip(1)(stateFrom('plain‸', C)), false, 'not a tag: nothing');
+});
+
 test('the @ and link buttons type their sign, apart from the word before', () => {
   assert.equal(after('hi|', E.insertTrigger('@')), 'hi @|');
   assert.equal(after('hi |', E.insertTrigger('@')), 'hi @|');

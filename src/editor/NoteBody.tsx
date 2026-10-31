@@ -19,6 +19,7 @@ import { bindCommands, type NoteCommands } from './commands';
 import { MediaSlots, nodeViews, type MediaSlot } from './nodeViews';
 import { tidyPasted, tidyPastedHTML } from './paste';
 import { notePlugins } from './plugins';
+import type { RefKind } from '../lib/refs';
 import { t } from '../lib/i18n';
 
 export type { DropTarget, Lit, Typed, MediaSlot, NoteCommands, FindQuery, Heading, TableAction, Comment };
@@ -157,6 +158,8 @@ interface Props {
   margins: () => { top: number; bottom: number };
   /** a tap on a comment's words (where it starts): on a phone, its sheet opens */
   onCommentTap?: (at: number) => void;
+  /** a mind trap's, law's or principle's tag to change: its sheet opens, the tag selected (what's picked takes its place) */
+  onRef?: (kind: RefKind) => void;
 }
 
 /**
@@ -311,7 +314,7 @@ export function NoteBody(p: Props) {
         ],
       }),
       editable: () => props.current.editable,
-      nodeViews: nodeViews(slots, () => settled),
+      nodeViews: nodeViews(slots, () => settled, { ref: (kind) => props.current.onRef?.(kind) }),
       attributes: {
         class: 'note-editor md',
         role: 'textbox',

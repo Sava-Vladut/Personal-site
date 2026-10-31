@@ -1176,6 +1176,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             knows={knows}
             margins={margins}
             onCommentTap={(at) => !wide && setCommentSheet(at)}
+            onRef={(kind) => setOpen(kind)}
             onReady={(h) => {
               if (!h) return;
               noteRef.current = h;

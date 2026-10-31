@@ -357,7 +357,12 @@
 .note-editor .note-chip { display: inline; -webkit-user-select: none; user-select: none; }
 .note-editor .note-chip.is-in-range > * { box-shadow: inset 0 0 0 100vmax color-mix(in oklab, var(--word-ink) 22%, transparent); }
 .note-editor .note-chip .mention { cursor: pointer; }
-.note-editor .note-chip.is-selected .mention, .note-editor .ProseMirror-selectednode .mention { outline: 2px solid var(--word-ink); outline-offset: 1px; }
+/* a tag selected whole (Backspace or Delete beside it, the next press takes it out; Enter opens its card): ringed and
+   washed in the selection's blue, as selected words are, its own tint still under it. Nothing on the line moves. */
+.note-editor :is(.note-chip.is-selected, .ProseMirror-selectednode) .mention {
+  outline: 2px solid var(--word-ink); outline-offset: 1px;
+  box-shadow: inset 0 0 0 100vmax color-mix(in oklab, var(--word-ink) 16%, transparent);
+}
 .note-editor .media-node { display: block; }
 .note-editor hr.ProseMirror-selectednode { outline: 2px solid var(--word-ink); outline-offset: 4px; }
 /* the caret between two blocks it can't sit in (a picture and a divider): a short line */

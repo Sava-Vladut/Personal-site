@@ -2,49 +2,62 @@
    Tags: people, books and music named in a note, and links to other notes
    ============================================================ */
 
-/* ---------- in a note being read: a chip in the colour of the feeling it brings ---------- */
+/* ---------- in a note: a tag in the colour of the feeling it brings ----------
+   One look for every kind: a soft pill in the words' own type (their face, size, weight and colour, so it reads as
+   part of the sentence, and bold, italic or a colour put on it show), its picture first. Only the picture and the tint
+   say what it is. It sits on the line by its name's baseline and takes no more height than the words do (the margins
+   above and below give back what the pill adds), so a line with a tag is as tall as one without and doesn't move when
+   one lands, in a heading's tighter lines too. Sizes are in em: it grows with the note's text size. */
 
 .mention {
   --tone: var(--c, var(--ink-3));
-  /* the chip sits on the line by its name's baseline (the picture before it centred), whatever comes first: a line
-     with a tag is as tall as one without, and doesn't move when one lands. clip, not hidden, keeps that baseline. */
-  position: relative; overflow: clip; display: inline-flex; align-items: baseline; gap: 5px; max-width: 100%;
-  margin: 0 1px; padding: 1px 9px 1px 3px; border-radius: var(--r-pill); vertical-align: baseline; translate: 0 -1px;
-  font: var(--w-bold) 0.84em/1.55 var(--sans); color: var(--ink); text-decoration: none;
+  --thumb: 1.04em;
+  position: relative; display: inline-flex; align-items: baseline; gap: 0.3em; max-width: 100%;
+  margin: -0.12em 0.04em; padding: 0 0.5em 0 0.14em; border-radius: var(--r-pill); vertical-align: baseline;
+  font: inherit; line-height: 1.32; color: inherit; text-decoration: none; text-align: start;
   background: color-mix(in oklab, var(--tone) 14%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 32%, transparent);
   transition: scale var(--dur-3) var(--spring), box-shadow var(--dur-2), background-color var(--dur-2);
 }
-.mention > :not(:last-child) { align-self: center; }
-.mention > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mention .avatar { flex: none; font-size: 8px !important; }
-.mention.is-book { border-radius: var(--r-s); padding-left: 4px; }
-.mention.is-book .book-cover { border-radius: var(--r-2xs); box-shadow: none; }
-.mention.is-book .book-cover-title { display: none; }
-.mention.is-note, .mention.is-trap, .mention.is-law, .mention.is-principle { border-radius: var(--r-s); padding-left: 5px; }
-.mention.is-note > svg, .mention.is-trap > svg, .mention.is-law > svg, .mention.is-principle > svg { flex: none; color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
-/* a sheen runs across each tag as the note opens */
+/* the picture, centred on the pill; a square one (a cover, a mark, an icon) a little further in from its round end */
+.mention > :not(:last-child) { flex: none; align-self: center; }
+.mention:is(.is-book, .is-note, .is-trap, .is-law, .is-principle) { padding-left: 0.24em; }
+.mention > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the pictures are drawn in px for their other places; here each is the same height, in the words' em */
+.mention .avatar { width: 2.6em !important; height: 2.6em !important; font-size: 0.4em !important; }
+.mention .avatar svg { width: 1.45em; height: 1.45em; }
+.mention .book-cover { width: auto !important; height: var(--thumb); border-radius: var(--r-2xs); box-shadow: none; }
+.mention .book-cover-title { display: none; }
+.mention .mini-record { width: var(--thumb); height: var(--thumb); }
+.mention .mini-record img { width: 0.4em; height: 0.4em; }
+.mention .mini-tape { width: 1.3em; height: 0.84em; padding: 0 0.12em; }
+.mention .mini-tape i { width: 0.26em; height: 0.26em; }
+.mention .mark { width: var(--thumb); height: var(--thumb); border-radius: 4px; }
+.mention > svg:not(.mark) { width: 0.96em; height: 0.96em; color: color-mix(in oklab, var(--tone) 70%, var(--ink)); }
+/* a finger gets a little more than the pill to hit, above and below it (not beside it: a tap there is for the caret) */
+@media (pointer: coarse) { .mention::before { content: ''; position: absolute; inset: -0.24em 0; } }
+/* a sheen runs across each tag as the note opens: a band drawn from off the pill's left to off its right, where it
+   rests (nothing is drawn outside the pill, so the pill needn't clip, and the finger's room above stays) */
 .mention::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none; translate: -110% 0;
-  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.55) 50%, transparent 80%);
-  animation: tag-sheen var(--dur-5) ease-out 0.2s;
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(100deg, transparent 40%, rgb(255 255 255 / 0.55) 50%, transparent 60%) 0 0 / 250% 100% no-repeat;
+  animation: tag-sheen var(--dur-5) ease-out 0.2s backwards;
 }
-:root[data-theme='dark'] .mention::after { background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.16) 50%, transparent 80%); }
+:root[data-theme='dark'] .mention::after { background-image: linear-gradient(100deg, transparent 40%, rgb(255 255 255 / 0.16) 50%, transparent 60%); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .mention::after { background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.16) 50%, transparent 80%); }
+  :root:not([data-theme='light']) .mention::after { background-image: linear-gradient(100deg, transparent 40%, rgb(255 255 255 / 0.16) 50%, transparent 60%); }
 }
 /* only as the note opens: a tag drawn again later (typed, pasted, undone) stays still */
 .note-chip.is-quiet .mention::after { display: none; }
-@keyframes tag-sheen { from { translate: -110% 0; } to { translate: 110% 0; } }
+@keyframes tag-sheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @media (hover: hover) {
   .mention:hover { background: color-mix(in oklab, var(--tone) 22%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 45%, transparent), 0 5px 14px -6px color-mix(in oklab, var(--tone) 70%, transparent); }
   .mention.is-song:hover .mini-record { animation: turn 1.8s linear infinite; }
 }
-.mention:active { scale: var(--press, 0.93); transition-duration: var(--dur-0), var(--dur-2), var(--dur-2); }
-.mention:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: var(--r-pill); }
-.mention:is(.is-book, .is-note, .is-trap, .is-law, .is-principle):focus-visible { border-radius: var(--r-s); }
-.mention.is-missing { overflow: visible; padding: 0; background: none; box-shadow: none; color: var(--ink-3); font-weight: var(--w-medium); }
-.mention.is-missing::after { display: none; }
+.mention:active { scale: var(--press, 0.96); transition-duration: var(--dur-0), var(--dur-2), var(--dur-2); }
+.mention:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.mention.is-missing { margin: 0; padding: 0; background: none; box-shadow: none; color: var(--ink-3); }
+.mention.is-missing::before, .mention.is-missing::after { display: none; }
 
 /* ---------- the card a tag opens ---------- */
 
@@ -76,8 +89,12 @@
 .peek-head > :is(.record, .cassette, .book-cover) { flex: none; }
 .peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
 .peek-actions { display: flex; gap: 8px; }
+/* while writing, under a hairline: the tag itself, changed or taken out. Quieter than what the card is about. */
+.peek-edit { display: flex; gap: 8px; margin: 0 -4px -4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.peek-edit .btn { color: var(--ink-2); }
+@media (hover: hover) { .peek-edit .btn:hover { background: var(--surface-2); color: var(--ink); } }
 /* a finger's height for the card's buttons on a phone */
-@media (pointer: coarse) { .peek-actions .btn-s { height: var(--h-m); } }
+@media (pointer: coarse) { :is(.peek-actions, .peek-edit) .btn-s { height: var(--h-m); } }
 .peek .progress { margin: -4px 0 0; }
 /* Insert › Mind trap, Law or Win friends (RefSheet.tsx): a tab each, then the marks their pages show, by family */
 .ref-tabs { margin-bottom: 10px; }

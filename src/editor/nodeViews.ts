@@ -3,11 +3,13 @@
 // break says what it is (in the reader's language), and a picture is a slot the editor (views/Editor.tsx) fills with its MediaBlock through a portal.
 import { h, render } from 'preact';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { NodeSelection, type Command } from '@tiptap/pm/state';
 import type { EditorView, NodeView, NodeViewConstructor } from '@tiptap/pm/view';
-import { toggleTask } from '../lib/noteDoc/edit';
+import { removeChip, retypeChip, toggleTask } from '../lib/noteDoc/edit';
 import type { ListItemAttrs } from '../lib/noteDoc';
 import type { Media } from '../lib/body';
-import { InText, PersonMention, SongMention, WikiLink } from '../components/mentions';
+import { InText, PersonMention, SongMention, WikiLink, type TagEdit } from '../components/mentions';
+import { refTarget, type RefKind } from '../lib/refs';
 import { t } from '../lib/i18n';
 
 /* ---------- list items ---------- */
@@ -108,15 +110,55 @@ class ListItemView implements NodeView {
 
 /* ---------- chips ---------- */
 
-/** A tag in the text: the app's own chip (the same as in the reading view), one character to the caret. */
+/** What the editor does for a tag beyond the document: `ref` opens the sheet of mind traps, laws or principles (Change). */
+export interface ChipOptions { ref?: (kind: RefKind) => void }
+
+/**
+ * A tag in the text: the app's own chip (the same as in the reading view), one character to the caret. While writing,
+ * its card can take it out of the note or change it for another (TagEdit), and a click at its very edge puts the caret
+ * beside it (as a click by a letter does) instead of opening the card.
+ */
 class ChipView implements NodeView {
   dom: HTMLElement;
+  private edit: TagEdit;
 
   /** `quiet`: drawn after the note opened (typed, pasted, undone), so without the sheen the opening plays */
-  constructor(private node: PMNode, quiet: boolean, private view: EditorView) {
+  constructor(private node: PMNode, quiet: boolean, private view: EditorView, private getPos: () => number | undefined, opts: ChipOptions) {
     this.dom = document.createElement('span');
     this.dom.className = quiet ? 'note-chip is-quiet' : 'note-chip';
     this.dom.contentEditable = 'false';
+    const run = (cmd: (pos: number) => Command) => {
+      const pos = this.getPos();
+      if (pos === undefined) return;
+      // the focus first: the suggestions a Change brings up are only read while the note has it (and on iOS the
+      // keyboard comes up in the same tap)
+      this.view.focus();
+      cmd(pos)(this.view.state, this.view.dispatch);
+    };
+    this.edit = {
+      editable: () => this.view.editable,
+      remove: () => run(removeChip),
+      change: () => {
+        const ref = refTarget(this.node.attrs.target ?? undefined);
+        const pos = this.getPos();
+        if (!ref || !opts.ref || pos === undefined) return run(retypeChip);
+        // a trap, a law or a principle: its sheet, the tag selected so the one picked there takes its place
+        this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+        opts.ref(ref.kind);
+      },
+    };
+    // A click at the tag's very edge only puts the caret beside it, on that side (NoteBody's handleClickOn puts it
+    // there, as for any tap on a tag): it's someone aiming just before or after the tag, not at it. Caught on the way
+    // down, before the chip's own click opens its card. A click from the keyboard (Enter) has no detail.
+    this.dom.addEventListener('click', (e) => {
+      if (!this.view.editable || !e.detail) return;
+      const r = (this.dom.firstElementChild ?? this.dom).getBoundingClientRect();
+      // a finger's edge is wider than a mouse's; never more than a quarter of the tag, so its middle always opens it
+      const edge = Math.min(r.width / 4, matchMedia('(pointer: coarse)').matches ? 10 : 5);
+      if (e.clientX >= r.left + edge && e.clientX <= r.right - edge) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
     this.draw();
   }
 
@@ -124,7 +166,7 @@ class ChipView implements NodeView {
     const { target, label } = this.node.attrs as { target: string | null; label: string };
     const props = { target: target ?? undefined, text: label };
     const C = this.node.type.name === 'person' ? PersonMention : this.node.type.name === 'song' ? SongMention : WikiLink;
-    render(h(InText.Provider, { value: { focusable: !this.view.editable } }, h(C, props)), this.dom);
+    render(h(InText.Provider, { value: { focusable: !this.view.editable, edit: this.edit } }, h(C, props)), this.dom);
   }
 
   update(node: PMNode) {
@@ -237,9 +279,12 @@ const pageBreak: NodeViewConstructor = () => {
   return { dom, ignoreMutation: () => true };
 };
 
-/** The node views, for EditorView's nodeViews prop. `settled`: the note has opened (its tags' sheen has played). */
-export function nodeViews(slots: MediaSlots, settled: () => boolean = () => false): Record<string, NodeViewConstructor> {
-  const chip: NodeViewConstructor = (node, view) => new ChipView(node, settled(), view);
+/**
+ * The node views, for EditorView's nodeViews prop. `settled`: the note has opened (its tags' sheen has played).
+ * `chips`: what a tag's card can ask of the editor.
+ */
+export function nodeViews(slots: MediaSlots, settled: () => boolean = () => false, chips: ChipOptions = {}): Record<string, NodeViewConstructor> {
+  const chip: NodeViewConstructor = (node, view, getPos) => new ChipView(node, settled(), view, getPos, chips);
   return {
     listItem: (node, view, getPos) => new ListItemView(node, view, getPos),
     person: chip,

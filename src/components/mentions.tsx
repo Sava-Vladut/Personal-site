@@ -26,7 +26,13 @@ const tint = (emotions: string[]) => (emotions[0] ? `var(--emo-${coreOf(emotions
 
 /* ---------- the card a tag opens ---------- */
 
-interface Target { kind: MentionKind; id: string; x: number; top: number; bottom: number; el: Element }
+/**
+ * What the note's editor lets a tag's card do to the tag (src/editor/nodeViews.ts): take it out of the note, or change
+ * it for another of its kind. Only while the note is being written (`editable`).
+ */
+export interface TagEdit { editable(): boolean; remove(): void; change(): void }
+
+interface Target { kind: MentionKind; id: string; x: number; top: number; bottom: number; el: Element; edit?: TagEdit }
 const peek$ = observable<Target | null>(null);
 const visibleViewport = () => {
   const v = window.visualViewport;
@@ -34,10 +40,10 @@ const visibleViewport = () => {
 };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
-export function openPeek(kind: MentionKind, id: string, el: Element) {
+export function openPeek(kind: MentionKind, id: string, el: Element, edit?: TagEdit) {
   const r = el.getBoundingClientRect();
   const now = peek$.get();
-  peek$.set(now && now.kind === kind && now.id === id ? null : { kind, id, x: r.left + r.width / 2, top: r.top, bottom: r.bottom, el });
+  peek$.set(now && now.kind === kind && now.id === id && now.el === el ? null : { kind, id, x: r.left + r.width / 2, top: r.top, bottom: r.bottom, el, edit });
 }
 export const closePeek = () => void (peek$.get() && peek$.set(null));
 
@@ -45,8 +51,9 @@ export const closePeek = () => void (peek$.get() && peek$.set(null));
  * Whether a tag is drawn in a note's text (the editor, reading or writing). There it's a span acting as a button, not
  * a <button>: a phone won't start or carry a text selection through a button, and a press on one takes the focus (and
  * the keyboard) away from the note. `focusable`: while reading, Tab reaches it (plugins.ts keeps that up to date).
+ * `edit`: in the note's editor, what its card can do to it.
  */
-export const InText = createContext<{ focusable: boolean } | null>(null);
+export const InText = createContext<{ focusable: boolean; edit?: TagEdit } | null>(null);
 
 function Chip({ kind, id, c, children }: { kind: MentionKind; id: string; c?: string; children: ComponentChildren }) {
   const inText = useContext(InText);
@@ -65,7 +72,7 @@ function Chip({ kind, id, c, children }: { kind: MentionKind; id: string; c?: st
       const p = press.current && e.timeStamp - press.current.at < 5000 ? press.current : null;
       press.current = null;
       if (e.detail > 1 || (e.detail && p && (e.timeStamp - p.at > 500 || Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10))) return;
-      openPeek(kind, id, e.currentTarget as Element);
+      openPeek(kind, id, e.currentTarget as Element, inText?.edit);
     },
   };
   if (!inText) return <button type="button" {...props}>{children}</button>;
@@ -78,7 +85,7 @@ function Chip({ kind, id, c, children }: { kind: MentionKind; id: string; c?: st
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         e.stopPropagation();
-        openPeek(kind, id, e.currentTarget);
+        openPeek(kind, id, e.currentTarget, inText.edit);
       }}
     >
       {children}
@@ -136,6 +143,23 @@ const go = (to: string) => {
   closePeek();
   navigate(to);
 };
+
+/** A press on the card's Change or Remove keeps the focus (and a phone's keyboard) in the note. */
+const keepFocus = (e: Event) => e.preventDefault();
+
+/** While writing: the tag itself changed for another of its kind, or taken out of the note (Ctrl+Z puts it back). */
+function TagEditRow({ edit }: { edit: TagEdit }) {
+  const act = (fn: () => void) => () => {
+    closePeek();
+    fn();
+  };
+  return (
+    <div class="peek-edit">
+      <button type="button" class="btn btn-s grow" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={act(edit.change)}><Icon name="replace" size={16} /> {t('Change')}</button>
+      <button type="button" class="btn btn-s grow" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={act(edit.remove)}><Icon name="x" size={16} /> {t('Remove')}</button>
+    </div>
+  );
+}
 
 /** The card itself, floating by the tag that opened it, with a tail pointing back at it. */
 export function PeekLayer() {
@@ -320,7 +344,7 @@ export function PeekLayer() {
       aria-label={t('About this tag')}
       style={{ left: `${left}px`, top: `${top}px`, width: `${W}px`, maxHeight: `${availableHeight}px`, '--peek-height': `${availableHeight}px`, '--tail': `${clamp(peek.x - left, 20, W - 20)}px`, ...(c ? { '--c': c } : {}) }}
     >
-      <div class="peek-content">{body}</div>
+      <div class="peek-content">{body}{peek.edit?.editable() && <TagEditRow edit={peek.edit} />}</div>
     </div>
   );
 }
