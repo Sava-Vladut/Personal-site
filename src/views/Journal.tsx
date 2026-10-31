@@ -22,6 +22,7 @@ import { Swipe } from '../components/Swipe';
 import { EmotionChip } from '../components/emotion';
 import { Sky } from '../components/Sky';
 import { AsciiCloud } from '../components/cloud';
+import { Threads } from '../components/Threads';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
@@ -149,8 +150,12 @@ export function Journal() {
     return () => clearTimeout(timer);
   }, []);
 
+  // what moves the highlighted notes' threads: which are shown, how many days are drawn, how they're laid out
+  const lit = shown.filter((e) => e.highlighted).map((e) => e.id).join() + `|${upTo}|${compact}|${searching}|${calOpen}`;
+
   return (
     <div ref={pageRef} class="page" data-settled={settled ? '' : undefined}>
+      <Threads page={pageRef} changes={lit} />
       {/* the day and the check-in, set apart from the notes below on a panel of their own */}
       <aside class="journal-side">
       <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
