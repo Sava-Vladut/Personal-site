@@ -14,8 +14,6 @@ const WAVE = 96;
 const WAVE_FOR_MS = 24000;
 /** A thread is at full strength within NEAR px of its note, fading to MIN (of that) by FAR px away. */
 const NEAR = 140, FAR = 1000, MIN = 0.3;
-/** Two taps this close together on a touch screen are a double tap. */
-const DOUBLE_TAP_MS = 400;
 
 type Line = { x: number; left: number; y: number; top: number; into: boolean; open: boolean; amp: number; h1: string; h2: string };
 /** A highlighted note's colours (views/Journal.tsx highlightOf). */
@@ -29,7 +27,6 @@ export type Hue = { '--h1': string; '--h2': string };
  *
  * Each thread is one line, its wave calming to straight just above the bend into its note, so the two always meet. The
  * topmost note's thread runs nearest the notes and each one below it further out, so no thread crosses another's bend.
- * Clicking a thread (a double tap on a phone) goes to the highlighted notes in turn (jump below).
  *
  * A note that isn't drawn yet still has its thread, so they're all there when the journal opens: one in a day further
  * down than the feed has drawn (`waiting`) rises from the end of the feed, and one in a day that skips drawing while
@@ -43,8 +40,6 @@ export function Threads({ page, changes, waiting }: { page: RefObject<HTMLElemen
   const id = useId();
   // how long they've waved so far, so measuring again doesn't start the waves over
   const clock = useRef(0);
-  const tap = useRef({ at: 0, touch: false });
-  const lastJump = useRef<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
     const el = page.current;
@@ -96,15 +91,15 @@ export function Threads({ page, changes, waiting }: { page: RefObject<HTMLElemen
     };
   }, [changes]);
 
-  // The waves rise for a while as the journal appears, then rest, and rise again while a highlighted note or a thread is
-  // pointed at or focused (design.md: quiet by default). ~30 frames a second; still with reduced motion, and holding
+  // The waves rise for a while as the journal appears, then rest, and rise again while a highlighted note is pointed at
+  // or focused (design.md: quiet by default). ~30 frames a second; still with reduced motion, and holding
   // still under a sheet or the wheel and while a page change slides (lib/covered.ts).
   useEffect(() => {
     const el = page.current;
     const paths = [...(svg.current?.querySelectorAll<SVGPathElement>('.thread-line') ?? [])];
     if (!el || !paths.length) return;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-    const pointed = () => !!el.querySelector(':is(.note, .note-row).highlighted:is(:hover, :focus-visible), .thread:hover');
+    const pointed = () => !!el.querySelector(':is(.note, .note-row).highlighted:is(:hover, :focus-visible)');
     const waving = () => !reduced.matches && !document.hidden && !pageCovered() && (clock.current < WAVE_FOR_MS || pointed());
     let raf = 0, last = 0;
     const frame = (stamp: number) => {
@@ -136,51 +131,6 @@ export function Threads({ page, changes, waiting }: { page: RefObject<HTMLElemen
     };
   }, [lines]);
 
-  /**
-   * Brings the nearest highlighted note to the middle of the screen, or, when the last one gone to is still on screen
-   * (or one already sits in the middle), the next one down, and back to the first after the last. Past the last note
-   * drawn it goes to the end of the feed, which draws the days below.
-   */
-  const jump = () => {
-    const el = page.current;
-    if (!el) return;
-    const cards = [...el.querySelectorAll<HTMLElement>('.note.highlighted, .note-row.highlighted')];
-    const more = later.current.length ? el.querySelector<HTMLElement>('.feed-more') : null;
-    const mid = innerHeight / 2;
-    const spots = cards.map(spotOf);
-    let here = cards.indexOf(lastJump.current!);
-    if (here >= 0 && (spots[here].bottom <= 0 || spots[here].top >= innerHeight)) here = -1;
-    if (here < 0) spots.forEach((r, i) => { if (Math.abs(r.top + r.height / 2 - mid) < 40) here = i; });
-    let to: HTMLElement | null | undefined;
-    if (here >= 0) to = cards[here + 1] ?? more ?? cards[0];
-    else {
-      let best = Infinity;
-      spots.forEach((r, i) => {
-        const d = Math.abs(r.top + r.height / 2 - mid);
-        if (d < best) [best, to] = [d, cards[i]];
-      });
-      to ??= more;
-    }
-    if (!to) return;
-    lastJump.current = to;
-    const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-    if (to.checkVisibility?.({ contentVisibilityAuto: true }) !== false) return to.scrollIntoView({ block: 'center', behavior });
-    // a note in a day that isn't drawn while off screen: go to its day, then settle on the note once the day is drawn
-    (to.closest<HTMLElement>('.entries') ?? to).scrollIntoView({ block: 'start', behavior });
-    const card = to;
-    setTimeout(() => card.isConnected && card.scrollIntoView({ block: 'center', behavior }), behavior === 'smooth' ? 700 : 60);
-  };
-
-  const onClick = () => {
-    const t = tap.current;
-    if (t.touch) {
-      const now = performance.now();
-      if (now - t.at > DOUBLE_TAP_MS) return void (t.at = now);
-      t.at = 0;
-    }
-    jump();
-  };
-
   if (!lines.length) return null;
   const s = clock.current / 1000;
   return (
@@ -190,12 +140,11 @@ export function Threads({ page, changes, waiting }: { page: RefObject<HTMLElemen
         const fadeTop = l.into ? 0 : 60 / len;
         const stops = stopsOf(l, fadeTop);
         return (
-          <g class="thread" onPointerDown={(e) => (tap.current.touch = e.pointerType === 'touch')} onClick={onClick}>
+          <g class="thread">
             <linearGradient id={`${id}-${i}`} gradientUnits="userSpaceOnUse" x1="0" y1={l.top} x2="0" y2={l.y}>
               {stops.map(([at, color, alpha]) => <stop offset={at} style={{ stopColor: color, stopOpacity: alpha }} />)}
             </linearGradient>
             <path class="thread-line" stroke={`url(#${id}-${i})`} d={pathOf(l, i, s)} />
-            <path class="thread-hit" d={pathOf({ ...l, top: l.top + fadeTop * len, amp: 0 }, i, 0)} />
           </g>
         );
       })}

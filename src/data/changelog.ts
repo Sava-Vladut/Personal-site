@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.162.1',
+    date: '2026-10-31',
+    changes: [
+      'Highlight threads no longer jump between notes when clicked or double-tapped',
+    ],
+  },
+  {
     version: '1.162.0',
     date: '2026-10-31',
     changes: [
