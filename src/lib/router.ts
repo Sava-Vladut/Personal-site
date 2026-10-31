@@ -161,6 +161,13 @@ export const kept = <T>(key: string): Partial<T> => (history.state?.mmKept?.[key
  * keeps where it was scrolled to (app.tsx scrolls back there).
  */
 export function navigate(to: string, replace = false, motion?: Motion) {
+  // An open sheet's history entries go first: its closing as the page goes would otherwise pop the new page back off.
+  const open = !replace && history.state?.mmSheet;
+  if (open) {
+    addEventListener('popstate', () => navigate(to, false, motion), { once: true });
+    if (!pops) history.go(-open); // else the sheets already closing are popping their entries
+    return;
+  }
   asked = motion ?? null;
   const hash = '#/' + to.replace(/^[#/]+/, '');
   if (replace) history.replaceState({ mmInApp: history.state?.mmInApp }, '', hash);
