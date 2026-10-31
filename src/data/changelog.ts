@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.157.1',
+    date: '2026-10-31',
+    changes: [
+      'Feelings page: the Back and Done buttons show on desktop too',
+    ],
+  },
+  {
     version: '1.157.0',
     date: '2026-10-31',
     changes: [
