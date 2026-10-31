@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.159.1',
+    date: '2026-10-31',
+    changes: [
+      'Highlight threads show as soon as the journal opens, even for notes far down the feed',
+      'Highlight threads are a touch easier to see on a phone',
+    ],
+  },
+  {
     version: '1.159.0',
     date: '2026-10-31',
     changes: [

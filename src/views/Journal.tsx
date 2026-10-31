@@ -22,7 +22,7 @@ import { Swipe } from '../components/Swipe';
 import { EmotionChip } from '../components/emotion';
 import { Sky } from '../components/Sky';
 import { AsciiCloud } from '../components/cloud';
-import { Threads } from '../components/Threads';
+import { Threads, type Hue } from '../components/Threads';
 import { CoverImg } from '../components/NoteDetails';
 import { PhotoImg } from '../components/Photo';
 import { PersonChip, usePeopleById } from '../components/people';
@@ -152,10 +152,12 @@ export function Journal() {
 
   // what moves the highlighted notes' threads: which are shown, how many days are drawn, how they're laid out
   const lit = shown.filter((e) => e.highlighted).map((e) => e.id).join() + `|${upTo}|${compact}|${searching}|${calOpen}`;
+  // highlighted notes in days the feed hasn't drawn yet: their threads rise from its end
+  const waiting = useMemo(() => groups.slice(upTo).flatMap(([, list]) => list.filter((e) => e.highlighted).map(hueOf)), [groups, upTo]);
 
   return (
     <div ref={pageRef} class="page" data-settled={settled ? '' : undefined}>
-      <Threads page={pageRef} changes={lit} />
+      <Threads page={pageRef} changes={lit} waiting={waiting} />
       {/* the day and the check-in, set apart from the notes below on a panel of their own */}
       <aside class="journal-side">
       <div class="journal-top" style={world ? { '--sky': `var(--emo-${world})` } : undefined}>
@@ -536,10 +538,12 @@ function cardOf(e: Entry) {
 
 /** A highlighted note glows in its feelings' colours, or dawn's when it has none (lib/sky/look.ts). */
 const DAWN = ['hope-interest', 'love-connection'];
-const highlightOf = (worlds: string[]) => {
+const highlightOf = (worlds: string[]): Hue => {
   const [a, b] = worlds.length ? [worlds[0], worlds[1] ?? worlds[0]] : DAWN;
   return { '--h1': `var(--emo-${a})`, '--h2': `var(--emo-${b})` };
 };
+const worldsOf = (e: Entry) => [...new Set(e.emotions.map((id) => coreOf(id)?.id).filter(Boolean))] as string[];
+const hueOf = (e: Entry) => highlightOf(worldsOf(e));
 const skyOf = (worlds: string[]) => (worlds.length ? [worlds[0], worlds[1] ?? worlds[0], worlds[0]] : [...DAWN, DAWN[0]]);
 
 export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
