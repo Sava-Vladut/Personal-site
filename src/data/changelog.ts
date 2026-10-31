@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.165.0',
+    date: '2026-10-31',
+    changes: [
+      'Notes: drag a picture anywhere and the note shows where it will land, with the words already wrapping around it',
+      'Notes: pictures dropped on each other stand side by side in a row instead of a grid; drag them to reorder or pull one out',
+      'Notes: a selected picture has a small bar to drag it, set its side, add a caption, split a row or remove it',
+      'Notes: replace a picture with another photo, and move pictures with Alt and the arrow keys',
+      'Notes: tags look the same for every kind, one pill at the size of your words, and bold or italic on a tag now shows',
+      'Notes: the arrow keys go past a tag in one press; Backspace or Delete next to one selects it first, the next press removes it',
+      'Notes: a tag’s card has Change and Remove while you write, and a tap at a tag’s very edge puts the caret beside it',
+    ],
+  },
+  {
     version: '1.164.1',
     date: '2026-10-31',
     changes: [

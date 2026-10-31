@@ -10,3 +10,5 @@ data
 .codex
 # the Docs page reads its PDFs from a mounted folder, not the image
 docs
+# Claude Code worktrees and settings
+.claude
