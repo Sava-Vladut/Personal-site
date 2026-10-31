@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { LAW_MARKS, PRINCIPLE_MARKS, SPOT_MARKS, TRAP_MARKS } from '../data/marks';
 import '../styles/mark.css';
 
@@ -72,8 +72,11 @@ function onSight(el: Element, fn: () => void) {
   };
 }
 
+// its clip and ink filter need ids unique on the page; useId's repeat across separate roots (a note's tags are one each)
+let made = 0;
+
 export function Mark({ id, hue, size, class: cls, still }: { id: string; hue: string; size?: number; class?: string; still?: boolean }) {
-  const uid = 'mk' + useId().replace(/\W/g, '');
+  const [uid] = useState(() => 'mk' + ++made);
   const ref = useRef<SVGSVGElement>(null);
   // starts in its "not yet drawn" state from the first paint, so the finished art never flashes before it's made
   const anim = motion && !still;

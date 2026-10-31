@@ -79,12 +79,41 @@
 /* a finger's height for the card's buttons on a phone */
 @media (pointer: coarse) { .peek-actions .btn-s { height: var(--h-m); } }
 .peek .progress { margin: -4px 0 0; }
-.ref-rows { margin-top: 12px; }
-.ref-row-icon {
-  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-s);
-  color: color-mix(in oklab, var(--c) 70%, var(--ink)); background: color-mix(in oklab, var(--c) 16%, transparent);
-  font-size: var(--text-m); font-variant-numeric: tabular-nums;
+/* Insert › Mind trap, Law or Win friends (RefSheet.tsx): a tab each, then the marks their pages show, by family */
+.ref-tabs { margin-bottom: 10px; }
+.ref-tabs button { min-width: 0; padding: 0 8px; }
+.ref-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-tab-n { flex: none; min-width: 18px; padding: 0 5px; border-radius: var(--r-pill); background: var(--surface-3); font-size: var(--text-xs); line-height: 18px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { .ref-tabs button > svg { display: none; } .ref-tabs button { font-size: var(--text-m); } }
+.ref-rows { display: grid; gap: 14px; margin-top: 12px; }
+.ref-group { display: grid; gap: 2px; }
+.ref-group-head {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding: 0 8px;
+  font: var(--w-medium) var(--text-base)/1.2 var(--serif); color: var(--ink-2);
 }
+.ref-group-head > svg { color: var(--ink-3); }
+.ref-group-n { font: var(--w-medium) var(--text-s)/1 var(--sans); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.ref-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 10px 8px 8px;
+  border-radius: var(--r-m); transition: background-color var(--dur-1);
+}
+.ref-row.is-active { background: color-mix(in oklab, var(--c) 12%, var(--surface-2)); }
+@media (hover: hover) { .ref-row:hover { background: color-mix(in oklab, var(--c) 10%, var(--surface-2)); } }
+.ref-row-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.ref-row-top { font-size: var(--text-s); font-weight: var(--w-medium); color: color-mix(in oklab, var(--c) 55%, var(--ink-3)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-row-title { font-weight: var(--w-bold); font-size: var(--text-base); line-height: 1.3; text-wrap: pretty; }
+.ref-row-sub {
+  font-size: var(--text-m); line-height: 1.4; color: var(--ink-3);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.ref-row-add {
+  flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--line-2);
+  transition: background-color var(--dur-1), color var(--dur-1), box-shadow var(--dur-1);
+}
+.ref-row:is(:hover, .is-active) .ref-row-add { background: var(--c); color: #fff; box-shadow: none; }
+/* a ref's mark, small, in a tag, a suggestion and its card */
+.mention .mark { border-radius: 4px; }
 .peek-note-icon {
   flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--r-m);
   color: color-mix(in oklab, var(--c, var(--ink-3)) 70%, var(--ink));

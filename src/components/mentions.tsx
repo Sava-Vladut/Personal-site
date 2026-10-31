@@ -16,6 +16,7 @@ import { observable, useBooks, useEntries, usePeople, useSongs, type Person } fr
 import { BookCover, Stars } from './books';
 import { EmotionChip } from './emotion';
 import { Icon, NoteIcon } from './icons';
+import { Mark } from './Mark';
 import { MiniMusic, MusicEmbed, MusicThing, musicSub } from './music';
 import { Avatar } from './people';
 import '../styles/mentions.css';
@@ -106,7 +107,12 @@ function RefLink({ kind, id, text }: { kind: Ref['kind']; id: string; text: stri
   const list = useRefs();
   const r = findRef(list, kind, id);
   if (list && !r) return <span class="md-wiki">{text}</span>;
-  return <Chip kind={kind} id={id} c={r && `var(--emo-${r.hue})`}><Icon name={REF_ICON[kind]} size={14} /><span>{r?.name ?? text}</span></Chip>;
+  return (
+    <Chip kind={kind} id={id} c={r && `var(--emo-${r.hue})`}>
+      {r ? <Mark id={r.mark} hue={r.hue} size={16} still /> : <Icon name={REF_ICON[kind]} size={14} />}
+      <span>{r?.name ?? text}</span>
+    </Chip>
+  );
 }
 
 function ShelfLink({ target, text }: { target?: string; text: string }) {
@@ -269,7 +275,7 @@ export function PeekLayer() {
     body = (
       <>
         <div class="peek-head">
-          <span class="peek-note-icon"><Icon name={REF_ICON[r.kind]} size={22} /></span>
+          <Mark id={r.mark} hue={r.hue} size={46} />
           <div class="peek-who">
             <b class="peek-name">{r.name}</b>
             <span class="peek-sub">{r.kind === 'trap' ? t('Mind trap · {family}', { family: t(r.sub) }) : r.kind === 'law' ? t('Law {n} · {realm}', { n: r.id, realm: t(r.sub) }) : t('Principle {n} · {part}', { n: r.id, part: t(r.sub) })}</span>
@@ -409,9 +415,9 @@ export function MentionStrip<S extends Suggestion | LinkSuggestion>({ items, act
           s.kind === 'person' ? [s.item.name || t('Unnamed'), s.item.relation || t('Person'), <Avatar p={s.item} size={26} />, tint(s.item.emotions)]
           : s.kind === 'book' ? [s.item.title.trim() || t('Untitled'), s.item.authors || t('Book'), <BookCover b={s.item} width={19} />, tint(s.item.emotions)]
           : s.kind === 'note' ? [noteLabel(s.item), rangeLabel(s.item.date, s.item.dateEnd), s.item.icon ? <NoteIcon id={s.item.icon} size={20} /> : <Icon name="notebook" size={18} />, tint(s.item.emotions)]
-          : s.kind === 'trap' ? [s.item.name, t('Mind trap'), <Icon name="spiral" size={18} />, `var(--emo-${s.item.hue})`]
-          : s.kind === 'law' ? [s.item.name, t('Law {n}', { n: s.item.id }), <Icon name="crown" size={18} />, `var(--emo-${s.item.hue})`]
-          : s.kind === 'principle' ? [s.item.name, t('Principle {n}', { n: s.item.id }), <Icon name="heart-handshake" size={18} />, `var(--emo-${s.item.hue})`]
+          : s.kind === 'trap' ? [s.item.name, t('Mind trap'), <Mark id={s.item.mark} hue={s.item.hue} size={26} still />, `var(--emo-${s.item.hue})`]
+          : s.kind === 'law' ? [s.item.name, t('Law {n}', { n: s.item.id }), <Mark id={s.item.mark} hue={s.item.hue} size={26} still />, `var(--emo-${s.item.hue})`]
+          : s.kind === 'principle' ? [s.item.name, t('Principle {n}', { n: s.item.id }), <Mark id={s.item.mark} hue={s.item.hue} size={26} still />, `var(--emo-${s.item.hue})`]
           : [s.item.music.title, s.item.music.sub ?? t('Music'), <MiniMusic m={s.item.music} />, tint(s.item.emotions)];
         return (
           <button key={`${s.kind}:${s.item.id}`} id={`${listId}-option-${i}`} type="button" role="option" tabIndex={-1} aria-selected={i === active} class={`mention-pick is-${s.kind}`} style={c ? { '--c': c } : undefined} {...pick(() => onPick(s as S))}>

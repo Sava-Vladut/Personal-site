@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.164.0',
+    date: '2026-10-31',
+    changes: [
+      'Notes: inserting a mind trap, a law of power or a Win friends principle shows each one with its own drawing from its page',
+      'Notes: the insert sheet has a tab for mind traps, laws and Win friends, so you can switch without closing it',
+      'Notes: the insert sheet groups traps and principles by family, shows the ones you put in lately first, and no longer cuts titles short',
+      'Notes: search the insert sheet and see how many match in each tab; the arrow keys and Enter pick one without the mouse',
+      'Notes: trap, law and principle tags in a note, their cards and the [[ suggestions show the same drawings',
+    ],
+  },
+  {
     version: '1.163.0',
     date: '2026-10-31',
     changes: [

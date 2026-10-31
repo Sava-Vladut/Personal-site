@@ -21,6 +21,8 @@ export interface Ref {
   hue: string;
   /** where its page opens it */
   to: string;
+  /** its drawing's id (components/Mark), the one its page shows */
+  mark: string;
 }
 
 let refs: Ref[] | null = null;
@@ -32,15 +34,15 @@ export function loadRefs(): Promise<Ref[]> {
     const list: Ref[] = [
       ...tr.TRAPS.map((x): Ref => ({
         kind: 'trap', id: x.id, name: x.name, sub: tr.FAMILIES[x.family].name, line: x.line,
-        hue: tr.FAMILIES[x.family].hue, to: `traps?open=${x.id}`,
+        hue: tr.FAMILIES[x.family].hue, to: `traps?open=${x.id}`, mark: x.id,
       })),
       ...lw.LAWS.map((x): Ref => ({
         kind: 'law', id: String(x.n), name: x.title, sub: lw.REALMS[x.realm].name, line: x.line,
-        hue: lw.REALMS[x.realm].hue, to: `laws?open=${x.n}`,
+        hue: lw.REALMS[x.realm].hue, to: `laws?open=${x.n}`, mark: x.id,
       })),
       ...pr.PRINCIPLES.map((x): Ref => ({
         kind: 'principle', id: String(x.n), name: x.title, sub: pr.PARTS[x.part].name, line: x.line,
-        hue: pr.PARTS[x.part].hue, to: `friends?open=${x.n}`,
+        hue: pr.PARTS[x.part].hue, to: `friends?open=${x.n}`, mark: x.id,
       })),
     ];
     refs = list;
