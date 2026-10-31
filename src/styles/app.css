@@ -364,7 +364,7 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 .note-icon + .note-main { padding-top: 7px; }
 .note-title { flex: 1; min-width: 0; font: var(--w-medium) var(--text-l)/1.3 var(--serif); letter-spacing: -0.005em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .note-when { font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.note-text { margin-top: 6px; font-size: var(--text-base); color: var(--ink-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.note-text { margin-top: 6px; font-size: var(--text-base); color: var(--ink-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: var(--lines, 3); -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .note-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .note-emos { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .note-imgs { display: flex; gap: 4px; flex: none; align-items: center; }

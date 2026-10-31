@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.160.0',
+    date: '2026-10-31',
+    changes: [
+      'Note cards show more of what you wrote when there’s more of it: from 3 lines for your shortest notes up to 6 for your longest',
+      'Highlighted notes always show the full 6 lines',
+      'Highlighting a note doubles its feelings in your mood: the day’s mood, Stats and My Mind all count it twice',
+    ],
+  },
+  {
     version: '1.159.1',
     date: '2026-10-31',
     changes: [

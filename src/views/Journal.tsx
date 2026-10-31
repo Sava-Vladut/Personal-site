@@ -4,7 +4,7 @@ import { usePref } from '../lib/prefs';
 import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { keepOnLeave, kept, navigate } from '../lib/router';
-import { useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
+import { getEntries, useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
 import { booksIn } from '../lib/books';
 import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
 import { bodyOf, itemsOf, pictureWords, plainText } from '../lib/body';
@@ -532,8 +532,36 @@ function heroOf(e: Entry): { photo: Photo } | { image: WebImage } | null {
 const cardText = new WeakMap<Entry, { heading: string; preview: string; hero: ReturnType<typeof heroOf> }>();
 function cardOf(e: Entry) {
   let c = cardText.get(e);
-  if (!c) cardText.set(e, (c = { ...previewOf(plainText(e.text), e.title), hero: e.cover ? null : heroOf(e) }));
+  if (!c) cardText.set(e, (c = { ...previewOf(plainText(e.text), e.title, 560), hero: e.cover ? null : heroOf(e) }));
   return c;
+}
+
+/** How much a note has written in it, read once per version of the note. */
+const sizes = new WeakMap<Entry, number>();
+const sizeOf = (e: Entry) => {
+  let n = sizes.get(e);
+  if (n === undefined) sizes.set(e, (n = plainText(e.text).trim().length));
+  return n;
+};
+/** Every written note's size, smallest first, once per version of the journal. */
+const ranked = new WeakMap<Entry[], number[]>();
+function sizesOf(all: Entry[]) {
+  let r = ranked.get(all);
+  if (!r) ranked.set(all, (r = all.filter((e) => e.kind === 'note').map(sizeOf).filter(Boolean).sort((a, b) => a - b)));
+  return r;
+}
+/** How many lines of its text a card shows: from 3 for the shortest notes to 6 for the longest, by where the note falls
+ * among everything else written (so it keeps up as the journal grows). A highlighted note always shows all 6. */
+function linesOf(e: Entry) {
+  if (e.highlighted) return 6;
+  const all = sizesOf(getEntries()), n = sizeOf(e);
+  let lo = 0, hi = all.length; // how many notes are shorter than this one
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (all[mid] < n) lo = mid + 1;
+    else hi = mid;
+  }
+  return 3 + Math.round((lo / Math.max(1, all.length - 1)) * 3);
 }
 
 /** A highlighted note glows in its feelings' colours, or dawn's when it has none (lib/sky/look.ts). */
@@ -576,7 +604,7 @@ export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
           </div>
         </div>
       </div>
-      {preview && <p class="note-text">{preview}</p>}
+      {preview && <p class="note-text" style={{ '--lines': linesOf(e) }}>{preview}</p>}
       {hero && (
         <div class={`note-hero${'photo' in hero ? ' is-photo' : ''}`} style={'photo' in hero ? heroShape(hero.photo) : undefined}>
           {'photo' in hero ? <PhotoImg photo={hero.photo} fit={false} card /> : <img src={imageSrc(hero.image, 'full')} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />}

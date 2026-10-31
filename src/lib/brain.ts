@@ -7,6 +7,7 @@ import { dropComments } from './comments';
 import { count, listOf, t } from './i18n';
 import { ZONES } from './brainShape';
 import { dex, moodOf, pct, streaks } from './stats';
+import { counted, weightOf } from './mood';
 import type { Entry } from './store';
 
 export const SPAN = 49; // seven weeks, the shortest stretch
@@ -83,14 +84,14 @@ function levelWord(share: number) {
 
 const hasFeelings = (e: Entry) => e.emotions.length > 0 && e.emotions.every((id) => EMOTION[id]);
 
-/** How much each world lit up: a main feeling counts its full intensity, the others half, and older days fade. */
+/** How much each world lit up: a main feeling counts its full intensity, the others half, a highlighted note twice, and older days fade. */
 function weigh(felt: Entry[], end: string, span: number) {
   const weight = new Map<string, number>();
   for (const e of felt) {
     const fade = Math.pow(0.5, Math.max(0, diffDays(e.date, end)) / halfLife(span));
     e.emotions.forEach((id, i) => {
       const w = coreOf(id).id;
-      weight.set(w, (weight.get(w) ?? 0) + e.intensity * (i ? 0.5 : 1) * fade);
+      weight.set(w, (weight.get(w) ?? 0) + e.intensity * (i ? 0.5 : 1) * weightOf(e) * fade);
     });
   }
   return weight;
@@ -141,9 +142,9 @@ export function readBrain(all: Entry[], span = SPAN, end = todayKey(), compare =
   const days: Day[] = Array.from({ length: span }, (_, i) => {
     const date = addDays(start, i);
     const es = byDay.get(date) ?? [];
-    return { date, n: es.length, mood: mean(es.map(moodOf).filter((m): m is number => m !== null)) };
+    return { date, n: es.length, mood: mean(counted(es).map(moodOf).filter((m): m is number => m !== null)) };
   });
-  const moodsOf = (from: number, to: number) => days.slice(from, to).flatMap((d) => (byDay.get(d.date) ?? []).map(moodOf)).filter((m): m is number => m !== null);
+  const moodsOf = (from: number, to: number) => days.slice(from, to).flatMap((d) => counted(byDay.get(d.date) ?? []).map(moodOf)).filter((m): m is number => m !== null);
   const split = span - Math.round((span * 3) / 7);
   const recent = moodsOf(split, span), earlier = moodsOf(0, split);
   const weeks = Array.from({ length: Math.ceil(span / 7) }, (_, w) => ({ start: days[w * 7].date, moods: moodsOf(w * 7, w * 7 + 7) })).filter((w) => w.moods.length >= 2);
@@ -154,7 +155,7 @@ export function readBrain(all: Entry[], span = SPAN, end = todayKey(), compare =
 
   const activeDays = byDay.size;
   const alive = activeDays / span;
-  const force = felt.length ? felt.reduce((s, e) => s + e.intensity, 0) / felt.length / 5 : 0;
+  const force = felt.length ? mean(counted(felt).map((e) => e.intensity))! / 5 : 0;
 
   let sub: string;
   const period = weeksOf(span);
@@ -239,7 +240,7 @@ function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string, spa
   const timed = list.filter((e) => keyOf(new Date(e.time)) === e.date);
   const late = timed.filter((e) => { const h = new Date(e.time).getHours(); return h >= 23 || h < 5; });
   if (late.length >= 3 && late.length / timed.length >= 0.15) {
-    const a = mean(late.map(moodOf).filter((m): m is number => m !== null)), b = mean(timed.filter((e) => !late.includes(e)).map(moodOf).filter((m): m is number => m !== null));
+    const a = mean(counted(late).map(moodOf).filter((m): m is number => m !== null)), b = mean(counted(timed.filter((e) => !late.includes(e))).map(moodOf).filter((m): m is number => m !== null));
     add('night', 75, t('The night shift'),
       a !== null && b !== null && a < b - 0.5
         ? t('{entries} came after 11 pm, and they run heavier ({a}) than the rest ({b}). After a night without sleep, the amygdala reacted about 60% more strongly to upsetting pictures (Yoo and Walker, 2007).', { entries: count(late.length, 'entry', 'entries'), a: a.toFixed(1), b: b.toFixed(1) })

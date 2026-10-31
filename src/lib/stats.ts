@@ -5,6 +5,7 @@ import { plainText } from './body';
 import { dropComments } from './comments';
 import { count, t } from './i18n';
 import type { Entry } from './store';
+import { counted, weightOf } from './mood';
 
 export type RangeKey = '7d' | '30d' | '90d' | '1y' | 'all';
 export const RANGES: [RangeKey, string, number | null][] = [
@@ -21,6 +22,8 @@ export function moodOf(e: Entry): number | null {
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 const inc = <K>(m: Map<K, number>, k: K, by = 1) => m.set(k, (m.get(k) ?? 0) + by);
+/** Adds an entry's mood to a list, twice for a highlighted note. */
+const addMood = (xs: number[], m: number, e: Entry) => { for (let k = weightOf(e); k--; ) xs.push(m); };
 /** Whether an entry's clock time belongs to its calendar day (notes back-dated to another day don't). */
 const timed = (e: Entry) => keyOf(new Date(e.time)) === e.date;
 
@@ -40,8 +43,8 @@ export function streaks(entries: Entry[]) {
 }
 
 function kpis(list: Entry[]) {
-  const moods = list.map(moodOf).filter((m): m is number => m !== null);
-  const occ = list.flatMap((e) => e.emotions);
+  const moods = counted(list).map(moodOf).filter((m): m is number => m !== null);
+  const occ = counted(list).flatMap((e) => e.emotions);
   const pleasant = occ.filter((id) => valence(id) > 0).length;
   const leaves = new Map<string, number>();
   occ.forEach((id) => inc(leaves, id));
@@ -56,7 +59,7 @@ function kpis(list: Entry[]) {
     activeDays,
     perDay: activeDays ? list.length / activeDays : 0,
     mood: mean(moods),
-    intensity: mean(list.filter((e) => e.emotions.length).map((e) => e.intensity)),
+    intensity: mean(counted(list).filter((e) => e.emotions.length).map((e) => e.intensity)),
     pleasantShare: total ? pleasant / total : null,
     feelings: new Set(occ.filter((id) => EMOTION[id]?.depth === 2)).size,
     diversity: total > 1 && leaves.size > 1 ? (entropy / Math.log(Math.min(total, 48 + 24 + 8))) * 100 : null,
@@ -105,12 +108,12 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
     const m = moodOf(e);
     if (m !== null && m > 0) b.pleasant++;
     if (m !== null && m < 0) b.unpleasant++;
-    for (const id of e.emotions) b.cores[coreOf(id).id] = (b.cores[coreOf(id).id] ?? 0) + 1;
+    for (const id of e.emotions) b.cores[coreOf(id).id] = (b.cores[coreOf(id).id] ?? 0) + weightOf(e);
   }
   const win = step === 1 ? 7 : 4;
   // Reuse each bucket's totals instead of rescanning its entries for every rolling window.
   const totals = buckets.map((b) => {
-    const moods = b.entries.map(moodOf).filter((m): m is number => m !== null);
+    const moods = counted(b.entries).map(moodOf).filter((m): m is number => m !== null);
     const sum = moods.reduce((s, mood) => s + mood, 0);
     b.mood = moods.length ? sum / moods.length : null;
     return { sum, count: moods.length };
@@ -129,10 +132,11 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
   for (const e of list)
     for (const id of e.emotions) {
       const em = EMOTION[id];
-      inc(cores, em.core);
-      if (em.depth === 2) inc(families, em.parent!);
-      if (em.depth === 1) inc(families, em.id);
-      inc(exact, id);
+      const w = weightOf(e);
+      inc(cores, em.core, w);
+      if (em.depth === 2) inc(families, em.parent!, w);
+      if (em.depth === 1) inc(families, em.id, w);
+      inc(exact, id, w);
     }
   const occurrences = [...cores.values()].reduce((a, b) => a + b, 0);
 
@@ -144,14 +148,14 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
   const dpCounts = DAYPARTS.map(() => 0);
   for (const e of list) {
     const m = moodOf(e);
-    if (m !== null) wdMoods[weekday(e.date)].push(m);
+    if (m !== null) addMood(wdMoods[weekday(e.date)], m, e);
     if (!timed(e)) continue;
     const h = new Date(e.time).getHours();
     heat[weekday(e.date)][Math.floor(h / 3)]++;
-    e.emotions.forEach((id) => inc(heatCores[weekday(e.date) * 8 + Math.floor(h / 3)], coreOf(id).id));
+    e.emotions.forEach((id) => inc(heatCores[weekday(e.date) * 8 + Math.floor(h / 3)], coreOf(id).id, weightOf(e)));
     const p = DAYPARTS.findIndex((d) => d.test(h));
     dpCounts[p]++;
-    if (m !== null) dpMoods[p].push(m);
+    if (m !== null) addMood(dpMoods[p], m, e);
   }
 
   /* intensity distribution, split by valence */
@@ -184,9 +188,9 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
   for (const e of list) {
     const d = days.get(e.date) ?? { cores: new Map<string, number>(), moods: [] as number[], n: 0 };
     d.n++;
-    e.emotions.forEach((id) => inc(d.cores, coreOf(id).id));
+    e.emotions.forEach((id) => inc(d.cores, coreOf(id).id, weightOf(e)));
     const m = moodOf(e);
-    if (m !== null) d.moods.push(m);
+    if (m !== null) addMood(d.moods, m, e);
     days.set(e.date, d);
   }
   const calendar = new Map(
@@ -292,7 +296,7 @@ function trimmed<T extends { n: number }>(rows: T[]) {
 /** How the weather and where you were go with your mood, over some entries. Only weather for an entry's own day counts. */
 export function weatherStats(list: Entry[]) {
   const rated = list.filter((e) => e.weather && e.weather.day === e.date);
-  const scored = rated.map((e) => ({ w: e.weather!, m: moodOf(e) })).filter((x): x is { w: NonNullable<Entry['weather']>; m: number } => x.m !== null);
+  const scored = counted(rated).map((e) => ({ w: e.weather!, m: moodOf(e) })).filter((x): x is { w: NonNullable<Entry['weather']>; m: number } => x.m !== null);
   /** Average mood for each key, over the scored entries that key() puts there. */
   const group = <K>(key: (w: (typeof scored)[number]['w']) => K, keys: K[]) => {
     const by = new Map<K, number[]>(keys.map((k) => [k, []]));
@@ -321,8 +325,8 @@ export function weatherStats(list: Entry[]) {
     const g = spots.get(key) ?? { name: key, lat: e.place.lat, lon: e.place.lon, ms: [], ids: [], cores: new Map<string, number>() };
     g.ids.push(e.id);
     const m = moodOf(e);
-    if (m !== null) g.ms.push(m);
-    e.emotions.forEach((id) => inc(g.cores, coreOf(id).id));
+    if (m !== null) addMood(g.ms, m, e);
+    e.emotions.forEach((id) => inc(g.cores, coreOf(id).id, weightOf(e)));
     spots.set(key, g);
   }
   const places: PlaceGroup[] = [...spots.values()]

@@ -24,12 +24,17 @@ export interface DayMood {
   ribbon: string;
 }
 
+/** A highlighted note's feelings count twice in every reading of your mood. */
+export const weightOf = (e: Entry) => (e.highlighted ? 2 : 1);
+/** The entries as your mood counts them: a highlighted note twice over. */
+export const counted = (list: Entry[]) => list.flatMap((e) => (e.highlighted ? [e, e] : [e]));
+
 const hourOf = (ms: number) => {
   const d = new Date(ms);
   return d.getHours() + d.getMinutes() / 60;
 };
 
-/** A main feeling counts its full strength, the others half of it. */
+/** A main feeling counts its full strength, the others half of it (and all of them twice in a highlighted note). */
 export function dayMood(list: Entry[]): DayMood | null {
   const felt = list.filter((e) => e.emotions.length && coreOf(e.emotions[0])).sort((a, b) => a.time - b.time);
   if (!felt.length) return null;
@@ -37,7 +42,7 @@ export function dayMood(list: Entry[]): DayMood | null {
   for (const e of felt) {
     e.emotions.forEach((id, i) => {
       const c = coreOf(id)?.id;
-      if (c) weight.set(c, (weight.get(c) ?? 0) + e.intensity * (i ? 0.5 : 1));
+      if (c) weight.set(c, (weight.get(c) ?? 0) + e.intensity * (i ? 0.5 : 1) * weightOf(e));
     });
   }
   const total = [...weight.values()].reduce((a, b) => a + b, 0);
