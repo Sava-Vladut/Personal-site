@@ -4,7 +4,7 @@ import { navigate } from '../lib/router';
 import { monthLabel } from '../lib/dates';
 import { blankSong, findSong, getSongs, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
 import { Stars } from '../components/books';
-import { GhostRows, letterOf, MediaHead, More, Rail, Runs, runsOf, showList, SortChip, type Sort } from '../components/collection';
+import { GhostRows, letterOf, MediaHead, More, Rail, Runs, runsOf, showList, SortChip, SORTS, type Sort } from '../components/collection';
 import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { usePref } from '../lib/prefs';
@@ -27,8 +27,13 @@ const RAIL = 12;
 const WAITING = 60;
 const keyOf = (m: Pick<Music, 'kind' | 'id'>) => m.kind + ':' + m.id;
 
-/** The heading a record files under: the month it joined (newest first), its first letter, or its stars. */
-const labelFor = (sort: Sort) => (s: Song) => {
+/** Music's orders: as the playlist it came from (the order a playlist was added in, kept song by song), then the rest. */
+type MusicSort = 'playlist' | Sort;
+const MUSIC_SORTS: [MusicSort, string][] = [['playlist', t('Playlist order')], ...SORTS];
+
+/** The heading a record files under: none in playlist order, the month it joined (newest first), its first letter, or its stars. */
+const labelFor = (sort: MusicSort) => (s: Song) => {
+  if (sort === 'playlist') return '';
   if (sort === 'title') return letterOf(s.music.title);
   if (sort === 'rating') return s.rating ? countOf(s.rating, 'star', 'stars') : t('Not rated');
   const d = new Date(s.created);
@@ -45,7 +50,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
   const entries = useEntries();
   const ready = useReady();
   const [chosen, setKind] = usePref<Kind>('music-kind', 'all', ['all', 'repeat', ...KINDS.map(([k]) => k)]);
-  const [sort, setSort] = usePref<Sort>('music-sort', 'recent', ['recent', 'title', 'rating']);
+  const [sort, setSort] = usePref<MusicSort>('music-sort-v2', 'playlist', MUSIC_SORTS.map(([s]) => s));
   const [notesOpen, setNotesOpen] = useState(false);
   const [rankOpen, setRankOpen] = useState(false);
   const keeping = useRef(new Set<string>());
@@ -157,7 +162,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
         {songs.length > 0 && (
           <>
             <MediaHead title={query ? t('Found') : t('All music')} count={shown.length}>
-              <SortChip sort={sort} onSort={setSort} />
+              <SortChip<MusicSort> sort={sort} onSort={setSort} options={MUSIC_SORTS} />
             </MediaHead>
             {chips.length > 0 && (
               <div class="chips scroll-x mx-chips" role="toolbar" aria-label={t('Kind and order')}>

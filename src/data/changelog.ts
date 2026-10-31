@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.156.0',
+    date: '2026-10-31',
+    changes: [
+      'All music has a new order, Playlist order, and it is the default: songs stand as they came from the playlist, one unbroken list',
+      'The order chip opens a dropdown of every order instead of stepping to the next one on each tap (Media and the Learn pages)',
+    ],
+  },
+  {
     version: '1.155.1',
     date: '2026-10-31',
     changes: [

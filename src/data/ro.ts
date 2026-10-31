@@ -986,6 +986,8 @@ export const RO: Record<string, string> = {
   'Search people': 'Caută oameni',
   'Sort': 'Sortare',
   'Recent': 'Recente',
+  'Playlist order': 'Ordinea din playlist',
+  'Order': 'Ordine',
   'A–Z': 'A–Z',
   'No one here yet': 'Încă nu e nimeni aici',
   'Add the people who matter to you — friends, family, anyone on your mind — and keep what you think and feel about them in one place.': 'Adaugă oamenii care contează pentru tine — prieteni, familie, oricine îți e în gând — și păstrează într-un singur loc ce gândești și simți despre ei.',

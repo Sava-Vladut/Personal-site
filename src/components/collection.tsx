@@ -8,16 +8,19 @@ import { t } from '../lib/i18n';
 export type Sort = 'recent' | 'title' | 'rating';
 export const SORTS: [Sort, string][] = [['recent', t('Recent')], ['title', t('A–Z')], ['rating', t('Top rated')]];
 
-/** One chip for the order: each tap moves to the next. `options` are [value, label] pairs, in the order a tap steps
- * through them (Media's recent, A–Z, top rated by default). */
+/** The order, as a chip that opens a dropdown of the ways to sort. `options` are [value, label] pairs, in the order
+ * the dropdown lists them (Media's recent, A–Z, top rated by default). */
 export function SortChip<S extends string>({ sort, onSort, options = SORTS as [S, string][] }: { sort: S; onSort: (s: S) => void; options?: [S, string][] }) {
   const at = Math.max(0, options.findIndex(([s]) => s === sort));
-  const next = options[(at + 1) % options.length];
   return (
-    <button class="chip sort-chip" onClick={() => onSort(next[0])} aria-label={t('Order: {now}. Change to {next}', { now: options[at][1], next: next[1] })} title={t('Order by {next}', { next: next[1] })}>
+    <label class="chip sort-chip" title={t('Order')}>
       <Icon name="arrow-down" size={16} />
       <span key={sort}>{options[at][1]}</span>
-    </button>
+      <Icon name="chevron-down" size={14} />
+      <select value={options[at][0]} onChange={(e) => onSort((e.currentTarget as HTMLSelectElement).value as S)} aria-label={t('Order')}>
+        {options.map(([s, label]) => <option value={s}>{label}</option>)}
+      </select>
+    </label>
   );
 }
 

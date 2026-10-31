@@ -253,7 +253,11 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 .chip[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
 /* the order (components/collection.tsx SortChip): an outlined chip, so it doesn't read as one of the filters */
 .sort-chip { flex: none; gap: 4px; padding-left: 10px; background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
+.sort-chip { position: relative; cursor: pointer; }
 .sort-chip span { animation: fade-in var(--dur-2) var(--ease); }
+/* the native dropdown lies over the whole chip, unseen: a tap opens the platform's own list */
+.sort-chip select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; background: var(--surface); color: var(--ink); outline: none; }
+.sort-chip:has(select:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
 .filters { margin: 14px 0 6px; }
 .range-note { align-self: center; margin-left: auto; padding-left: 6px; white-space: nowrap; }
 
