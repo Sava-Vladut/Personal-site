@@ -501,38 +501,20 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .note.highlighted, .note-sky { animation: none; } }
 
 /* a thread from each highlighted note up the margin to the top (components/Threads.tsx): a fine line in the note's
-   colours, --h1 at the note fading to --h2 above, its wave slowly rising while the whole thread sways. It sits behind
-   everything, in the margin beside the other notes, and goes in under the sky panel's rounded corner (.into) or fades
-   out at the top of the feed (components/Threads.tsx places notes not drawn yet). The wave is a 96px tile, moved a whole tile at a time so it loops without a seam.
-   Quiet by default (design.md): they wave for a while as the journal appears, then rest, and wave again while a
-   highlighted note is pointed at or focused. */
-.page:has(> .threads) { position: relative; --thread-runs: 4; }
-.page:has(:is(.note, .note-row).highlighted:is(:hover, :focus-visible)) { --thread-runs: infinite; }
-.threads { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.65; animation: fade-in var(--dur-4) var(--ease) backwards; }
-.thread, .thread-bend { position: absolute; }
-.thread {
-  width: 12px; overflow: hidden; --fade-top: 60px; --fade-end: 18px;
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-end)), transparent);
-  mask-image: linear-gradient(180deg, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-end)), transparent);
-  animation: thread-sway calc(9s + var(--i) * 1.3s) ease-in-out var(--thread-runs) alternate;
-  animation-delay: calc(var(--i) * -2.1s);
+   colours, --h1 at the note fading to --h2 above, its wave slowly rising while the whole thread sways, calming to
+   straight just above the bend into its note. It sits behind everything, in the margin beside the other notes, and goes
+   in under the sky panel's rounded corner or fades out at the top of the feed (Threads.tsx draws and moves them).
+   Clicking one (a double tap on a phone) goes to the highlighted notes in turn; under the pointer it thickens a little.
+   The wide, invisible .thread-hit is what catches the click, so the fine line is easy to hit. */
+.page:has(> .threads) { position: relative; }
+.threads {
+  position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none;
+  opacity: 0.65; transition: opacity var(--dur-2) var(--ease); animation: fade-in var(--dur-4) var(--ease) backwards;
 }
-.thread.into { --fade-top: 0px; }
-/* a note further down than the feed has drawn: its thread rises from the end of the feed, fading in from below */
-.thread.open { --fade-end: 140px; }
-.thread > i {
-  position: absolute; inset: 0 0 -96px; display: block;
-  background: linear-gradient(0deg, var(--h1), var(--h2) 70%);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='96'%3E%3Cpath d='M6-48C10-32 10-16 6 0S2 32 6 48s4 32 0 48-4 32 0 48' fill='none' stroke='%23000' stroke-width='1.4'/%3E%3C/svg%3E") 0 0 / 12px 96px repeat-y;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='96'%3E%3Cpath d='M6-48C10-32 10-16 6 0S2 32 6 48s4 32 0 48-4 32 0 48' fill='none' stroke='%23000' stroke-width='1.4'/%3E%3C/svg%3E") 0 0 / 12px 96px repeat-y;
-  animation: thread-rise calc(6s + var(--i) * 0.7s) linear var(--thread-runs);
-}
-.thread-bend { overflow: visible; fill: none; stroke: var(--h1); stroke-width: 1.4; stroke-linecap: round; }
-@keyframes thread-rise { to { transform: translate3d(0, -96px, 0); } }
-@keyframes thread-sway { from { transform: translate3d(-1.5px, 0, 0); } to { transform: translate3d(1.5px, 0, 0); } }
-/* they wait under a sheet or the wheel, and while a page change slides */
-:root:is([data-covered], [data-nav], .sheet-open) :is(.thread, .thread > i) { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) { .thread, .thread > i { animation: none; } }
+.threads:has(.thread:hover) { opacity: 0.9; }
+.thread-line { fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; transition: stroke-width var(--dur-1); }
+.thread:hover .thread-line { stroke-width: 2.2; }
+.thread-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 /* a day from a year ago, on today's date */
 .on-this-day .coming-icon { background: color-mix(in oklab, var(--c, var(--ink-3)) 16%, var(--surface-2)); color: var(--c, var(--ink-2)); }

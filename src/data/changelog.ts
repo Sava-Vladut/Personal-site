@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.161.0',
+    date: '2026-10-31',
+    changes: [
+      'Click a highlight thread (double tap on a phone) to go to the nearest highlighted note; again for the next one',
+      'Each highlight thread is one unbroken line that always meets its note',
+      'Highlight threads never cross: the higher the note, the closer its thread runs to the notes',
+    ],
+  },
+  {
     version: '1.160.0',
     date: '2026-10-31',
     changes: [
