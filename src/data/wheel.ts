@@ -23,10 +23,9 @@ export const WHEEL: WheelNode[] = [
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
   // everything that's numbers about you, in one place
   {
-    id: 'insights', name: t('Insights'), sub: t('Your patterns, your places and who plays Global Ops'), icon: 'chart-dots', hue: 'hope-interest',
+    id: 'insights', name: t('Insights'), sub: t('Your patterns and places, and who plays Global Ops'), icon: 'chart-dots', hue: 'hope-interest',
     kids: [
-      { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to'), icon: 'chart-bar', to: 'stats' },
-      { id: 'map', name: t('Map'), sub: t('Where you’ve been, as a heatmap'), icon: 'map', hue: 'calm-safety', to: 'map' },
+      { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to, and where'), icon: 'chart-bar', to: 'stats' },
       { id: 'glops', name: t('Global Ops'), sub: t('Who plays the game in the browser: online now and all-time highs'), icon: 'device-gamepad-2', to: 'glops' },
     ],
   },

@@ -16,31 +16,15 @@ export function MapView({ query }: { query: URLSearchParams }) {
   const entries = useEntries();
   const { places } = useSettings();
   const located = useMemo(() => entries.filter((e) => e.place), [entries]);
-  const pins = useMemo<Pin[]>(
-    () => {
-      // on the heat map, recent and strong feelings burn brighter; older ones linger, fainter
-      const now = Date.now();
-      return located.map((e) => ({
-        id: e.id, lat: e.place!.lat, lon: e.place!.lon, core: e.emotions[0] ? coreOf(e.emotions[0]).id : null,
-        weight: (0.35 + 0.65 * Math.exp(-Math.max(0, now - e.time) / (60 * 86_400_000))) * (0.6 + e.intensity * 0.12),
-      }));
-    },
-    [located],
-  );
+  const pins = useMemo(() => heatPins(located), [located]);
   const focus = located.find((e) => e.id === query.get('focus'))?.place ?? null;
   const [open, setOpen] = useState<string[] | null>(null);
-  const shown = open ? located.filter((e) => open.includes(e.id)) : [];
-
-  // the sheet's title: the name most of its entries share
-  const names = new Map<string, number>();
-  shown.forEach((e) => names.set(placeLabel(e.place!), (names.get(placeLabel(e.place!)) ?? 0) + 1));
-  const title = [...names].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
 
   return (
     <div class="map-page">
       <PlaceMap pins={pins} focus={focus} onOpen={setOpen} remember={focus ? undefined : 'map'} heat />
       <div class="map-bar">
-        <button class="glass glass-btn round" onClick={() => goBack('stats?tab=weather')} aria-label={t('Back')}><Icon name="arrow-left" /></button>
+        <button class="glass glass-btn round" onClick={() => goBack('stats?tab=map')} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <div class="glass map-title">
           <b>{t('Your map')}</b>
           <span>{t('{count} with a place', { count: count(located.length, 'entry', 'entries') })}</span>
@@ -53,12 +37,33 @@ export function MapView({ query }: { query: URLSearchParams }) {
           {!places && <button class="btn btn-primary" onClick={() => navigate('settings')}>{t('Open Settings')}</button>}
         </div>
       )}
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={<span class="row gap-s"><Icon name="map-pin" /> {title}</span>} label={title}>
-        <div class="spot-list">
-          {shown.map((e) => <SpotRow e={e} onGo={() => { navigateAfterSheet('note/' + e.id); setOpen(null); }} />)}
-        </div>
-      </Sheet>
+      <SpotSheet ids={open} located={located} onClose={() => setOpen(null)} />
     </div>
+  );
+}
+
+/** Pins for the heat map: recent and strong feelings burn brighter; older ones linger, fainter. */
+export function heatPins(located: Entry[]): Pin[] {
+  const now = Date.now();
+  return located.map((e) => ({
+    id: e.id, lat: e.place!.lat, lon: e.place!.lon, core: e.emotions[0] ? coreOf(e.emotions[0]).id : null,
+    weight: (0.35 + 0.65 * Math.exp(-Math.max(0, now - e.time) / (60 * 86_400_000))) * (0.6 + e.intensity * 0.12),
+  }));
+}
+
+/** The entries at a spot you tapped on the map, in a sheet. */
+export function SpotSheet({ ids, located, onClose }: { ids: string[] | null; located: Entry[]; onClose: () => void }) {
+  const shown = ids ? located.filter((e) => ids.includes(e.id)) : [];
+  // the sheet's title: the name most of its entries share
+  const names = new Map<string, number>();
+  shown.forEach((e) => names.set(placeLabel(e.place!), (names.get(placeLabel(e.place!)) ?? 0) + 1));
+  const title = [...names].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+  return (
+    <Sheet open={!!ids} onClose={onClose} title={<span class="row gap-s"><Icon name="map-pin" /> {title}</span>} label={title}>
+      <div class="spot-list">
+        {shown.map((e) => <SpotRow e={e} onGo={() => { navigateAfterSheet('note/' + e.id); onClose(); }} />)}
+      </div>
+    </Sheet>
   );
 }
 

@@ -17,7 +17,7 @@ import type { WheelNode } from './data/wheel';
 try { localStorage.removeItem('mm-lock'); } catch {}
 
 /** Which sidebar item a page belongs under. */
-const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos' };
+const SECTION: Partial<Record<RouteName, RouteName>> = { note: 'journal', mind: 'people', person: 'people', book: 'media', song: 'media', repo: 'repos', map: 'stats' };
 
 export function App() {
   const route = useRoute(prepareView, () => toast(t('Couldn’t open this page. Try again.')));

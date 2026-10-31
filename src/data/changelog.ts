@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.163.0',
+    date: '2026-10-31',
+    changes: [
+      'The map moved into Stats: a new Map tab next to Weather, and Map is gone from Insights in the sidebar',
+      'The Map tab follows the time range: a heat map you can move and zoom in place, your places, where you felt best and how far you went',
+      'Tap a spot on the Map tab to see what you wrote there, or open the map full screen',
+      'Weather sticks to the sky: its places chart moved to the Map tab',
+    ],
+  },
+  {
     version: '1.162.1',
     date: '2026-10-31',
     changes: [

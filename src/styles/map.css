@@ -46,8 +46,6 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 }
 .map-credit a { color: inherit; }
 
-/* the stats preview */
-.map-preview { height: 220px; margin-top: 12px; border-radius: var(--r-m); }
 
 /* the map page: the map fills the screen, with a bar over its top */
 .app.route-map { padding-bottom: 0; }

@@ -1,12 +1,10 @@
 import { useMemo } from 'preact/hooks';
-import { coreOf } from '../../data/emotions';
 import { fmtTemp } from '../../data/weather';
 import { navigate } from '../../lib/router';
 import { fmtMood, pct, weatherInsights, weatherStats, type Stats as S } from '../../lib/stats';
 import { useSettings } from '../../lib/store';
 import { ChartCard, MoodRows, RevealStack } from '../../components/charts';
 import { Icon, Sprite } from '../../components/icons';
-import { PlaceMap, type Pin } from '../../components/PlaceMap';
 import { Tile } from './parts';
 import { count, t } from '../../lib/i18n';
 
@@ -16,10 +14,6 @@ export function Weather({ s }: { s: S }) {
   const settings = useSettings();
   const w = useMemo(() => weatherStats(s.list), [s]);
   const notes = useMemo(() => weatherInsights(w), [w]);
-  const pins = useMemo<Pin[]>(
-    () => s.list.filter((e) => e.place).map((e) => ({ id: e.id, lat: e.place!.lat, lon: e.place!.lon, core: e.emotions[0] ? coreOf(e.emotions[0]).id : null })),
-    [s],
-  );
 
   const why = !settings.weather
     ? t('Turn on Weather in Settings to see how the sky, the temperature and the length of the day go with your mood.')
@@ -27,7 +21,7 @@ export function Weather({ s }: { s: S }) {
       ? t('Set your home in Settings, so the weather can be added to your entries.')
       : t('The weather is being added to your entries. It needs a connection, so check back in a moment.');
 
-  if (!w.covered && !w.located)
+  if (!w.covered)
     return (
       <div class="card weather-empty">
         <span class="weather-empty-ico"><Icon name="haze" size={26} /></span>
@@ -42,20 +36,12 @@ export function Weather({ s }: { s: S }) {
 
   return (
     <RevealStack>
-      {w.covered ? (
-        <div class="tiles">
-          <Tile k={0} icon={common.icon} label={t('Most common sky')} small value={common.name} sub={t('{share} of entries', { share: pct(common.entries / w.covered) })} />
-          <Tile k={1} icon="temperature" label={t('Temperature')} value={w.temp === null ? '—' : fmtTemp(w.temp)} sub={t('on average')} />
-          <Tile k={2} icon="sunrise" label={t('Daylight')} value={hours(w.daylight)} sub={t('a day, on average')} />
-          <Tile k={3} icon="map-pin" label={t('Places')} value={w.places.length} sub={t('{n} of {count}', { n: w.located, count: count(w.total, 'entry', 'entries') })} meter={w.total ? w.located / w.total : 0} />
-        </div>
-      ) : (
-        <button class="card weather-hint" onClick={() => navigate('settings')}>
-          <Icon name="haze" size={20} />
-          <span class="grow">{why}</span>
-          <Icon name="chevron-right" size={18} />
-        </button>
-      )}
+      <div class="tiles">
+        <Tile k={0} icon={common.icon} label={t('Most common sky')} small value={common.name} sub={t('{share} of entries', { share: pct(common.entries / w.covered) })} />
+        <Tile k={1} icon="temperature" label={t('Temperature')} value={w.temp === null ? '—' : fmtTemp(w.temp)} sub={t('on average')} />
+        <Tile k={2} icon="sunrise" label={t('Daylight')} value={hours(w.daylight)} sub={t('a day, on average')} />
+        <Tile k={3} icon="cloud" label={t('With weather')} value={pct(w.covered / w.total)} sub={t('{n} of {count}', { n: w.covered, count: count(w.total, 'entry', 'entries') })} meter={w.covered / w.total} />
+      </div>
 
       {notes.length > 0 && (
         <section class="card insights">
@@ -111,17 +97,6 @@ export function Weather({ s }: { s: S }) {
         </ChartCard>
       )}
 
-      {w.places.length > 0 && (
-        <ChartCard
-          title={t('Places')}
-          sub={t('Where you wrote, in the colour of what you felt there.')}
-          table={{ head: [t('Place'), t('Mood'), t('Entries')], rows: w.places.map((p) => [p.name, fmtMood(p.mood), p.n]) }}
-        >
-          <PlaceMap pins={pins} still onTap={() => navigate('map')} class="map-preview" />
-          <MoodRows rows={w.places.slice(0, 8).map((p) => ({ label: p.name, core: p.core, mood: p.mood, n: p.n }))} />
-          <button class="btn btn-quiet block map-open" onClick={() => navigate('map')}><Icon name="map" size={18} /> {t('Open the map')}</button>
-        </ChartCard>
-      )}
     </RevealStack>
   );
 }

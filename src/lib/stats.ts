@@ -376,7 +376,12 @@ export function weatherInsights(w: WeatherStats): Insight[] {
   const [day, night] = w.dark;
   if (day && night && day.n >= MIN_N && night.n >= MIN_N && Math.abs(day.mood! - night.mood!) >= DIFF)
     out.push({ text: t(night.mood! < day.mood! ? 'Your mood is lower after dark ({a}) than in daylight ({b}).' : 'Your mood is higher after dark ({a}) than in daylight ({b}).', { a: fmtMood(night.mood), b: fmtMood(day.mood) }) });
+  return out;
+}
 
+/** What stands out about where you wrote. */
+export function placeInsights(w: WeatherStats): Insight[] {
+  const out: Insight[] = [];
   const top = w.places[0];
   if (top && top.n >= MIN_N) out.push({ text: t('You wrote most from {place} ({count}).', { place: top.name, count: count(top.n, 'entry', 'entries') }), core: top.core ?? undefined });
   const best = w.places.filter((p) => p.n >= MIN_N && p.mood !== null).sort((a, b) => b.mood! - a.mood!);

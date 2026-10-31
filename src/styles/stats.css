@@ -37,6 +37,8 @@ html:not([data-nav]) { transition: --accent var(--dur-3) ease; }
   transition: translate var(--dur-3) var(--spring);
 }
 .seg.tabs button[aria-selected='true'] { background: none; box-shadow: none; }
+/* six tabs on a phone: a size smaller so every name fits */
+@media (max-width: 480px) { .stats-top .seg.tabs button { min-width: 0; font-size: var(--text-m); letter-spacing: -0.01em; white-space: nowrap; } }
 
 /* ---------- scroll reveal: each card waits, paused at its first frame, until it comes into view ---------- */
 
@@ -283,9 +285,8 @@ html:not([data-nav]) { transition: --accent var(--dur-3) ease; }
   width: 52px; height: 52px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center;
   background: color-mix(in oklab, var(--accent) 16%, var(--surface)); color: color-mix(in oklab, var(--accent) 80%, var(--ink));
 }
-.map-open { margin-top: 12px; }
-.weather-hint { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; text-align: left; font-size: var(--text-base); color: var(--ink-2); }
-.weather-hint > svg { flex: none; color: var(--ink-3); }
+/* the map tab: the heat map in a card, moved and zoomed in place */
+.st-map-view { height: clamp(320px, 58vh, 560px); margin-top: 12px; border-radius: var(--r-m); }
 
 /* ============================================================
    The report's look, after the journal and the records: three figures on the sky, serif titles, ranked rows with

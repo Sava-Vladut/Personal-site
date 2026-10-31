@@ -8,6 +8,7 @@ import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { Dex } from './stats/Dex';
 import { Emotions } from './stats/Emotions';
+import { MapTab } from './stats/Map';
 import { Overview } from './stats/Overview';
 import { Patterns } from './stats/Patterns';
 import { Weather } from './stats/Weather';
@@ -17,7 +18,7 @@ import { usePref } from '../lib/prefs';
 import '../styles/stats.css';
 import { t } from '../lib/i18n';
 
-const TABS = [['overview', t('Overview')], ['emotions', t('Emotions')], ['patterns', t('Patterns')], ['weather', t('Weather')], ['dex', t('Dex')]] as const;
+const TABS = [['overview', t('Overview')], ['emotions', t('Emotions')], ['patterns', t('Patterns')], ['weather', t('Weather')], ['map', t('Map')], ['dex', t('Dex')]] as const;
 type Tab = (typeof TABS)[number][0];
 
 function loadRange(): RangeKey {
@@ -121,6 +122,8 @@ export function Stats({ query }: { query: URLSearchParams }) {
           <Emotions s={s} range={range} />
         ) : tab === 'weather' ? (
           <Weather s={s} />
+        ) : tab === 'map' ? (
+          <MapTab s={s} />
         ) : (
           <Patterns s={s} weekStart={weekStart} />
         )}
