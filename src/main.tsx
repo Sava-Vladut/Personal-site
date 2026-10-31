@@ -1,4 +1,4 @@
-import { render, type ComponentType } from 'preact';
+import { render } from 'preact';
 import '@fontsource-variable/source-serif-4/wght.css';
 import '@fontsource-variable/instrument-sans/index.css';
 import './styles/app.css';
@@ -35,8 +35,7 @@ import { startImageFade } from './lib/fadeImages';
 import { startReveal } from './lib/reveal';
 import { routeName, type RouteName } from './lib/router';
 import { preloadViews, prepareView, viewFor } from './lib/views';
-import { authStatus, introSeen, markIntroSeen, opensOn, rememberSignedIn, signedInHere, stillSignedIn } from './lib/auth';
-import type { IntroProps } from './views/Intro';
+import { introSeen, markIntroSeen } from './lib/auth';
 
 applyTheme();
 startImageFade();
@@ -67,20 +66,15 @@ onBlocked(() =>
 );
 // A public note's link opens just that note, and a public status's link just the latest check-in, for anyone: no sign-in
 // and nothing of the journal is loaded.
-// Otherwise, a device that's signed in opens the journal at once and checks with the server in the background, first playing
-// the opening when the app opens on the journal; one that isn't (or no longer is) gets the intro, which boots the journal
-// once you sign in.
+// Otherwise the journal opens at once, no password asked, first playing the opening when the app opens on the journal.
 const shared = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{32})\/?$/);
 const status = location.pathname.match(/^\/status\/([A-Za-z0-9_-]{32})\/?$/);
 const learn = location.pathname.match(/^\/learn\/(traps|laws|friends)\/?$/);
 if (shared) void bootShared(shared[1]);
 else if (status) void bootStatus(status[1]);
 else if (learn) void bootLearn(learn[1] as RouteName);
-else if (signedInHere()) {
-  if (routeName() === 'journal' && !introSeen() && !matchMedia('(prefers-reduced-motion: reduce)').matches) void openWithBrain();
-  else boot();
-  void stillSignedIn().then((ok) => ok || location.reload());
-} else void gate();
+else if (routeName() === 'journal' && !introSeen() && !matchMedia('(prefers-reduced-motion: reduce)').matches) void openWithBrain();
+else boot();
 
 async function bootShared(token: string) {
   try {
@@ -121,33 +115,7 @@ async function bootLearn(page: RouteName) {
   }
 }
 
-/** Signed out here: the intro, unless the server has no password to ask for or this browser's cookie is still good. */
-async function gate() {
-  const intro = prepareView('intro');
-  intro?.catch(() => {}); // only waited for below, when the intro is what opens
-  const status = await authStatus();
-  if (opensOn(status) === 'app') {
-    if (status?.admin) rememberSignedIn(true);
-    return boot();
-  }
-  try {
-    await intro;
-  } catch (e) {
-    return failed(e, false);
-  }
-  const Intro = viewFor('intro') as ComponentType<IntroProps>;
-  render(
-    <Intro
-      onEnter={(dive) => {
-        if (routeName() === 'intro') history.replaceState(history.state, '', '#/');
-        boot(dive);
-      }}
-    />,
-    document.getElementById('app')!,
-  );
-}
-
-/** Opening the app, signed in: the brain closes in on a dark screen while storage and the journal load behind it, and the
+/** Opening the app: the brain closes in on a dark screen while storage and the journal load behind it, and the
  * journal opens up from inside it. */
 async function openWithBrain() {
   markIntroSeen();

@@ -134,7 +134,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
   };
   const signedIn = signedInHere();
   const leave = async () => {
-    if (!(await ask({ title: t('Sign out on this device?'), text: t('It opens on the intro until you sign in again.'), ok: t('Sign out') }))) return;
+    if (!(await ask({ title: t('Sign out on this device?'), text: t('It can’t publish notes or change the miner’s channels until you sign in again.'), ok: t('Sign out') }))) return;
     try {
       await signOut();
       location.reload();
@@ -290,7 +290,7 @@ export function Settings({ query }: { query: URLSearchParams }) {
           <div class="list-row">
             <div>
               <div class="row gap-s"><Icon name="lock" size={18} /> {signedIn ? t('Signed in on this device') : t('No sign-in needed here')}</div>
-              <div class="muted small">{t('Anyone who isn’t signed in sees the intro instead of your journal.')}</div>
+              <div class="muted small">{t('The site opens without a password. Signing in only lets a device publish notes and change the miner’s channels.')}</div>
             </div>
             {signedIn && <button class="btn btn-quiet" onClick={leave}>{t('Sign out')}</button>}
           </div>

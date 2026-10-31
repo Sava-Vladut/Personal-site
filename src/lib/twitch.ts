@@ -3,6 +3,7 @@
 // when it's a minute old.
 import { useEffect, useState } from 'preact/hooks';
 import { t } from './i18n';
+import { useSync } from './sync';
 
 export interface Change { day: number; week: number; month: number }
 export interface Channel {
@@ -63,8 +64,37 @@ export function loadPoints(force = false) {
   return pending;
 }
 
-/** The channel points, loaded while `on` and refreshed every minute the page stays visible. */
+/*
+ * The miner only shows on a device synced with one code (Settings → Save on server): on others it's left out everywhere.
+ * The code reads the journal, so only a slow hash of it is kept here, never the code itself.
+ */
+const MINER_HASH = 'ORai1dF_9h5Cp9j4_2Y8vKZ_mzirSIVSQ4EmnPOtMl4';
+const minerChecks = new Map<string, Promise<boolean>>();
+
+async function isMinerCode(code: string) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('my-mind miner v1'), iterations: 600_000 }, base, 256);
+  return btoa(String.fromCharCode(...new Uint8Array(bits))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') === MINER_HASH;
+}
+
+/** Whether the miner shows here: undefined while the code is still being checked (a moment, once per visit). */
+export function useMinerShown(): boolean | undefined {
+  const code = useSync().code;
+  const [known, setKnown] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!code || code in known) return;
+    let check = minerChecks.get(code);
+    if (!check) minerChecks.set(code, (check = isMinerCode(code).catch(() => false)));
+    void check.then((ok) => setKnown((k) => ({ ...k, [code]: ok })));
+  }, [code]);
+  return code ? known[code] : false;
+}
+
+/** The channel points, loaded while `on` and refreshed every minute the page stays visible; nothing where the miner isn't shown. */
 export function usePoints(on = true) {
+  const shown = !!useMinerShown();
+  on &&= shown;
   const [s, setS] = useState(state);
   useEffect(() => {
     subs.add(setS);
@@ -82,7 +112,7 @@ export function usePoints(on = true) {
       document.removeEventListener('visibilitychange', wake);
     };
   }, [on]);
-  return s;
+  return shown ? s : { data: null, error: null, loading: false };
 }
 
 /* ---------- the miner's channel list: anyone can read it, the admin can change it (signing in: lib/auth) ---------- */

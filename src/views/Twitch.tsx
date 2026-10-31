@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { keyOf, shortDate } from '../lib/dates';
-import { compact, loadPoints, usePoints, type Change, type Channel, type Points } from '../lib/twitch';
+import { compact, loadPoints, useMinerShown, usePoints, type Change, type Channel, type Points } from '../lib/twitch';
 import { ChartCard, CountUp, RevealStack, TipRow, tipProps, useWidth } from '../components/charts';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
@@ -46,7 +46,14 @@ function useAccent() {
   }, []);
 }
 
+/** Where the miner isn't shown (lib/twitch's useMinerShown), its page sends you back to the journal. */
 export function Twitch({ query }: { query: URLSearchParams }) {
+  const shown = useMinerShown();
+  useEffect(() => void (shown === false && navigate('', true)), [shown]);
+  return shown ? <PointsPage query={query} /> : null;
+}
+
+function PointsPage({ query }: { query: URLSearchParams }) {
   useAccent();
   const { data, error, loading } = usePoints();
   const pick = query.get('channel');

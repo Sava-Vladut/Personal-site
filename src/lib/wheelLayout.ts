@@ -5,6 +5,7 @@ import { WHEEL, type WheelNode } from '../data/wheel';
 import type { UiName } from '../components/icons';
 import { observable } from './store';
 import { t } from './i18n';
+import { useMinerShown } from './twitch';
 
 export interface Group { name: string; icon: UiName; hue: string }
 
@@ -139,9 +140,10 @@ export function nodeOf(l: WheelLayout, id: string): WheelNode {
 export const groupOf = (l: WheelLayout, id: string) => l.top.find((g) => l.kids[g]?.includes(id)) ?? null;
 export { isGroup };
 
-/** The wheel as you've arranged it: hidden things left out, and groups with nothing left in them gone. */
-export function treeOf(l: WheelLayout): WheelNode[] {
+/** The wheel as you've arranged it: hidden things left out (Channel points too, where the miner isn't shown), and groups with nothing left in them gone. */
+export function treeOf(l: WheelLayout, miner = true): WheelNode[] {
   const hidden = new Set(l.hidden);
+  if (!miner) hidden.add('twitch');
   const out: WheelNode[] = [];
   for (const id of l.top) {
     if (hidden.has(id)) continue;
@@ -159,10 +161,11 @@ export function treeOf(l: WheelLayout): WheelNode[] {
   return out;
 }
 
-let cache: [WheelLayout, WheelNode[]] | null = null;
+let cache: [WheelLayout, boolean, WheelNode[]] | null = null;
 /** The places wheel, as arranged here; it follows the editor as you change it. */
 export function useWheel() {
   const l = useWheelLayout();
-  if (cache?.[0] !== l) cache = [l, treeOf(l)];
-  return cache[1];
+  const miner = !!useMinerShown();
+  if (cache?.[0] !== l || cache[1] !== miner) cache = [l, miner, treeOf(l, miner)];
+  return cache[2];
 }

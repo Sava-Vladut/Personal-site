@@ -1,3 +1,4 @@
+import { useMinerShown } from '../lib/twitch';
 import { WIDGETS, type WidgetDef } from '../data/widgets';
 import { defaultLayout, isDefault, saveWidgets, useWidgets, type WidgetLayout } from '../lib/widgets';
 import { toast } from '../lib/store';
@@ -21,6 +22,7 @@ const ZONES: [WidgetDef['zone'], string, string][] = [
  */
 export function WidgetEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const layout = useWidgets();
+  const miner = !!useMinerShown();
 
   const change = (f: (l: WidgetLayout) => void) => {
     const next = copy(layout);
@@ -48,7 +50,7 @@ export function WidgetEditor({ open, onClose }: { open: boolean; onClose: () => 
       <div class="we">
         <p class="hint we-hint">{t('Hide the cards you don’t use, change their order, and set what each one shows.')}</p>
         {ZONES.map(([zone, name, sub]) => {
-          const list = layout.order.map((id) => WIDGETS.find((w) => w.id === id)!).filter((w) => w.zone === zone);
+          const list = layout.order.map((id) => WIDGETS.find((w) => w.id === id)!).filter((w) => w.zone === zone && (miner || w.id !== 'points'));
           return (
             <section class="wd-zone" key={zone}>
               <h3 class="section-label wd-zone-head">{name} <small>{sub}</small></h3>

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.157.0',
+    date: '2026-10-31',
+    changes: [
+      'The site opens without a password: no sign-in screen in the way, on any device',
+      'Channel points (the miner) only shows on a device synced with your code: its card, notices, wheel place and page are hidden everywhere else',
+    ],
+  },
+  {
     version: '1.156.1',
     date: '2026-10-31',
     changes: [

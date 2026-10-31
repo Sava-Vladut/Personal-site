@@ -56,8 +56,8 @@ export interface Word { text: string; world: string }
 interface Props {
   words: Word[];
   label: string;
-  /** Goes up by one each time the brain should flinch, for a wrong password. */
-  flinch: number;
+  /** Goes up by one each time the brain should flinch. */
+  flinch?: number;
   /** Going in: the letters burst out toward you and fade. */
   diving: boolean;
   /** Skip the fly-in, for a second look in the same visit. */
@@ -68,7 +68,7 @@ interface Props {
   onLanded?: () => void;
 }
 
-export function AsciiBrain({ words, label, flinch, diving, quick, onSpot, onLanded }: Props) {
+export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, onLanded }: Props) {
   const cv = useRef<HTMLCanvasElement>(null);
   const live = useRef({ words, flinch, diving, onSpot, onLanded });
   live.current = { words, flinch, diving, onSpot, onLanded };

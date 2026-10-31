@@ -1,4 +1,5 @@
 import { useRef } from 'preact/hooks';
+import { useMinerShown } from '../lib/twitch';
 import { GROUP_ICONS, HUES, defaultLayout, groupOf, isDefault, isGroup, nodeOf, saveLayout, treeOf, useWheelLayout, type WheelLayout } from '../lib/wheelLayout';
 import { toast } from '../lib/store';
 import { haptic } from '../lib/haptics';
@@ -18,6 +19,7 @@ const listOf = (l: WheelLayout, id: string) => (l.top.includes(id) ? l.top : l.k
  */
 export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const layout = useWheelLayout();
+  const miner = !!useMinerShown();
   const fresh = useRef<string | null>(null); // a group just made, whose name gets the focus
 
   const change = (f: (l: WheelLayout) => void) => {
@@ -69,9 +71,10 @@ export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   const groups = layout.top.filter((id) => isGroup(layout, id));
-  const ring = treeOf(layout);
+  const ring = treeOf(layout, miner);
 
   const row = (id: string, inGroup: string | null, list: string[]) => {
+    if (id === 'twitch' && !miner) return null;
     const n = nodeOf(layout, id);
     const group = isGroup(layout, id);
     const own = !!layout.groups[id];

@@ -1,14 +1,13 @@
-// The front door: what a device that isn't signed in sees instead of the journal. A brain drawn in letters turns in a
-// sky of letter clouds, its regions taking turns to light up; sign in and it bursts toward you as the journal comes in.
-// Always dark, whatever the theme: the letters glow better. Signed in, it's at #/intro to look at again (opening the app
-// plays lib/opening.ts instead).
+// The intro: a brain drawn in letters turns in a sky of letter clouds, its regions taking turns to light up; enter and
+// it bursts toward you as the journal comes back. Always dark, whatever the theme: the letters glow better. It's at
+// #/intro to look at (opening the app plays lib/opening.ts instead).
 import { useEffect, useLayoutEffect, useMemo, useState } from 'preact/hooks';
 import { AsciiBrain, DIVE_MS, type Word } from '../components/AsciiBrain';
 import { CloudTitle } from '../components/cloud';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
 import { CORES, shortName } from '../data/emotions';
-import { introSeen, markIntroSeen, signIn, signedInHere } from '../lib/auth';
+import { introSeen, markIntroSeen } from '../lib/auth';
 import { ZONES } from '../lib/brainShape';
 import { LANGS, lang, setLang, t } from '../lib/i18n';
 import { goBack } from '../lib/router';
@@ -35,14 +34,8 @@ function ringWords(): Word[] {
 }
 
 export function Intro({ onEnter }: IntroProps) {
-  const signedIn = useMemo(signedInHere, []);
   const quick = useMemo(introSeen, []);
   const words = useMemo(ringWords, []);
-  const [asking, setAsking] = useState(false);
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [flinch, setFlinch] = useState(0);
   const [diving, setDiving] = useState(false);
   const [about, setAbout] = useState(false);
   const [spot, setSpot] = useState<string | null>(null);
@@ -68,23 +61,6 @@ export function Intro({ onEnter }: IntroProps) {
     else void dive.then(() => goBack(''));
   };
 
-  const submit = async (e: Event) => {
-    e.preventDefault();
-    if (!password || busy || diving) return;
-    setBusy(true);
-    setError('');
-    try {
-      await signIn(password);
-      setPassword('');
-      enter();
-    } catch (err) {
-      setError(t((err as Error).message));
-      setFlinch((n) => n + 1);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <div class={diving ? 'intro diving' : 'intro'}>
       <div class="intro-sky" aria-hidden="true"><Sky /></div>
@@ -102,7 +78,6 @@ export function Intro({ onEnter }: IntroProps) {
         <AsciiBrain
           words={words}
           label={t('A brain drawn in letters, turning slowly')}
-          flinch={flinch}
           diving={diving}
           quick={quick}
           onSpot={setSpot}
@@ -116,37 +91,11 @@ export function Intro({ onEnter }: IntroProps) {
         <CloudTitle text="My Mind" />
         <p class="intro-tag">{t('A private journal for feelings, people and the things that fill your days.')}</p>
 
-        {signedIn ? (
-          <div class="intro-actions">
-            <button class="btn btn-primary intro-go" onClick={enter} disabled={diving}>
-              {t('Enter')} <Icon name="chevron-right" size={18} />
-            </button>
-          </div>
-        ) : asking ? (
-          <form class={error ? 'intro-form shake' : 'intro-form'} key={flinch} onSubmit={submit}>
-            <input
-              class="input"
-              type="password"
-              value={password}
-              onInput={(e) => setPassword(e.currentTarget.value)}
-              placeholder={t('Password')}
-              aria-label={t('Password')}
-              autocomplete="current-password"
-              enterkeyhint="go"
-              autoFocus
-            />
-            <button class="btn btn-primary" type="submit" disabled={busy || diving || !password}>
-              {busy ? t('Signing in…') : t('Sign in')}
-            </button>
-          </form>
-        ) : (
-          <div class="intro-actions">
-            <button class="btn btn-primary intro-go" onClick={() => setAsking(true)}>
-              <Icon name="key" size={18} /> {t('Sign in')}
-            </button>
-          </div>
-        )}
-        {error && <p class="intro-error" role="alert">{error}</p>}
+        <div class="intro-actions">
+          <button class="btn btn-primary intro-go" onClick={enter} disabled={diving}>
+            {t('Enter')} <Icon name="chevron-right" size={18} />
+          </button>
+        </div>
 
         <button class="intro-about-toggle" aria-expanded={about} onClick={() => setAbout(!about)}>
           <Icon name="info-circle" size={16} /> {t('What is this?')}

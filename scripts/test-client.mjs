@@ -440,7 +440,7 @@ test('a failed database startup offers recovery without rendering an empty journ
   await load('src/main.tsx', {
     preact: { render: (node) => rendered.push(node) },
     'preact/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
-    './app': { App }, './lib/db': { onBlocked() {} }, './lib/auth': { signedInHere: () => true, introSeen: () => true, stillSignedIn: async () => true }, 
+    './app': { App }, './lib/db': { onBlocked() {} }, './lib/auth': { signedInHere: () => true, introSeen: () => true }, 
     './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView() {} },
     './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
   }, {
@@ -460,7 +460,7 @@ test('startup keeps the app unmounted until the current deep link screen is load
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
-    './lib/auth': { signedInHere: () => true, introSeen: () => true, stillSignedIn: async () => true }, './lib/router': { routeName: () => route },
+    './lib/auth': { signedInHere: () => true, introSeen: () => true }, './lib/router': { routeName: () => route },
     './lib/views': { preloadViews() {}, prepareView: name => ({ journal, laws }[name].promise) },
     './lib/weather': { startWeather: () => weather++ }, './lib/sync': { initSync: () => sync++ }, './lib/status': { initStatus() {} },
   }, {
@@ -482,7 +482,7 @@ test('a failed initial screen load reports a connection problem and offers a rel
   const rendered = [];
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-    './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} }, './lib/auth': { signedInHere: () => true, introSeen: () => true, stillSignedIn: async () => true }, 
+    './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => {} }, './lib/auth': { signedInHere: () => true, introSeen: () => true }, 
     './lib/router': { routeName: () => 'journal' },
     './lib/views': { preloadViews() {}, prepareView: () => Promise.reject(new Error('Offline')) },
   }, {
@@ -494,61 +494,22 @@ test('a failed initial screen load reports a connection problem and offers a rel
   assert.doesNotMatch(JSON.stringify(rendered[0]), /storage is unavailable/);
 });
 
-test('a signed-out device opens on the intro without touching storage, and the journal comes in after the dive', async () => {
-  const rendered = [], dive = deferred(), replaced = [];
-  let inits = 0, remembered = null;
+test('any device opens straight on the journal: no password, no intro in the way', async () => {
+  const rendered = [];
+  let inits = 0;
   function App() {}
-  function Intro() {}
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => { inits++; } },
-    './lib/auth': {
-      signedInHere: () => false, authStatus: async () => ({ configured: true, admin: false }),
-      opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
-    },
-    './lib/router': { routeName: () => 'intro' },
-    './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: (name) => (name === 'intro' ? Intro : null) },
+    './lib/auth': { introSeen: () => true, markIntroSeen() {} },
+    './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => undefined, viewFor() {} },
   }, {
     navigator: {}, addEventListener() {},
-    history: { state: null, replaceState: (_s, _t, hash) => replaced.push(hash) },
     document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
   });
-  await settle();
-  assert.equal(rendered.length, 1);
-  assert.equal(rendered[0].type, Intro);
-  assert.equal(inits, 0, 'the journal stays closed behind the intro');
-  assert.equal(remembered, null);
-
-  rendered[0].props.onEnter(dive.promise);
-  await settle();
-  assert.equal(inits, 1, 'storage opens while the brain dives');
-  assert.deepEqual(replaced, ['#/'], 'signing in from #/intro lands on the journal');
-  assert.equal(rendered.length, 1, 'the app waits for the dive to finish');
-  dive.resolve(); await settle();
-  assert.equal(rendered[1].type, App);
-});
-
-test('a device without the note goes straight in when its cookie is still good, or the server has no password', async () => {
-  for (const [status, note] of [[{ configured: true, admin: true }, true], [{ configured: false, admin: false }, null]]) {
-    const rendered = [];
-    let remembered = null;
-    function App() {}
-    await load('src/main.tsx', {
-      preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-      './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
-      './lib/auth': {
-        signedInHere: () => false, authStatus: async () => status,
-        opensOn: (s) => (s && (!s.configured || s.admin) ? 'app' : 'intro'), rememberSignedIn: (on) => { remembered = on; },
-      },
-      './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => undefined, viewFor() {} },
-    }, {
-      navigator: {}, addEventListener() {},
-      document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
-    });
-    await settle(); await settle();
-    assert.equal(rendered[0]?.type, App);
-    assert.equal(remembered, note);
-  }
+  await settle(); await settle();
+  assert.equal(inits, 1);
+  assert.equal(rendered[0]?.type, App);
 });
 
 /** The page as far as the opening touches it: the cover it adds over the app. */
@@ -565,7 +526,7 @@ test('a signed-in device opens with the brain once a visit, with the journal loa
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => { inits++; } },
-    './lib/auth': { signedInHere: () => true, introSeen: () => false, markIntroSeen: () => seen++, stillSignedIn: async () => true },
+    './lib/auth': { signedInHere: () => true, introSeen: () => false, markIntroSeen: () => seen++ },
     './lib/router': { routeName: () => 'journal' },
     './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: () => null },
     './lib/opening': { playOpening: (cover, ready, reveal) => (played.push({ cover, ready, reveal }), finished.promise) },
@@ -597,7 +558,7 @@ test('a signed-in device goes straight in after the opening has played, on a dee
     await load('src/main.tsx', {
       preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
       './app': { App }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
-      './lib/auth': { signedInHere: () => true, introSeen: () => seen, markIntroSeen() {}, stillSignedIn: async () => true },
+      './lib/auth': { signedInHere: () => true, introSeen: () => seen, markIntroSeen() {} },
       './lib/router': { routeName: () => route },
       './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor() {} },
       './lib/opening': { playOpening: async () => { if (!loads) throw new Error('Offline'); await new Promise(() => {}); } },
@@ -616,7 +577,7 @@ test('a storage failure behind the opening waits for the brain to fill the scree
   await load('src/main.tsx', {
     preact: { render: node => rendered.push(node) }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
     './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/store': { applyTheme() {}, init: async () => { throw new Error('Unavailable'); } },
-    './lib/auth': { signedInHere: () => true, introSeen: () => false, markIntroSeen() {}, stillSignedIn: async () => true },
+    './lib/auth': { signedInHere: () => true, introSeen: () => false, markIntroSeen() {} },
     './lib/router': { routeName: () => 'journal' },
     './lib/views': { preloadViews() {}, prepareView: () => Promise.resolve(), viewFor: () => null },
     './lib/opening': { playOpening: (cover, ready, reveal) => (played.push({ ready, reveal }), new Promise(() => {})) },
@@ -692,22 +653,7 @@ test('the opening: letters close in, the brain lights up, the camera flies in, a
   assert.equal(listeners.size + windowListeners.size, 0, 'cleaned up');
 });
 
-test('a signed-in device reloads into the intro once the server says it was signed out', async () => {
-  let reloads = 0;
-  await load('src/main.tsx', {
-    preact: { render() {} }, 'preact/jsx-runtime': { jsx, jsxs: jsx },
-    './app': { App() {} }, './lib/db': { onBlocked() {} }, './lib/weather': { startWeather() {} }, './lib/sync': { initSync() {} }, './lib/status': { initStatus() {} }, './lib/store': { applyTheme() {}, init: async () => {} },
-    './lib/auth': { signedInHere: () => true, introSeen: () => true, stillSignedIn: async () => false },
-    './lib/router': { routeName: () => 'journal' }, './lib/views': { preloadViews() {}, prepareView: () => undefined },
-  }, {
-    navigator: {}, addEventListener() {}, location: { reload: () => reloads++ },
-    document: { getElementById: () => ({}), querySelector: () => null, addEventListener() {} },
-  });
-  await settle();
-  assert.equal(reloads, 1);
-});
-
-test('sign-in state: the note opens the app at once, and only a clear no from the server signs a device out', async () => {
+test('sign-in state: signing in and out keeps the note in step, and a wrong password or no server is an error', async () => {
   const store = new Map();
   const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
   let answer = null;
@@ -722,23 +668,10 @@ test('sign-in state: the note opens the app at once, and only a clear no from th
   };
   const auth = await load('src/lib/auth.ts', {}, { localStorage, fetch, AbortController, setTimeout, clearTimeout });
 
-  assert.equal(auth.opensOn(null), 'intro', 'offline with no note: the intro');
-  assert.equal(auth.opensOn({ configured: true, admin: false }), 'intro');
-  assert.equal(auth.opensOn({ configured: true, admin: true }), 'app');
-  assert.equal(auth.opensOn({ configured: false, admin: false }), 'app');
-
   await assert.rejects(auth.signIn('wrong'), /not the password/);
   assert.equal(auth.signedInHere(), false);
   await auth.signIn('right');
   assert.equal(auth.signedInHere(), true);
-
-  answer = 'offline';
-  assert.equal(await auth.stillSignedIn(), true, 'offline it stays signed in');
-  answer = { configured: true, admin: true };
-  assert.equal(await auth.stillSignedIn(), true);
-  answer = { configured: true, admin: false };
-  assert.equal(await auth.stillSignedIn(), false);
-  assert.equal(auth.signedInHere(), false);
 
   await auth.signIn('right');
   await auth.signOut();
