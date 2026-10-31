@@ -498,7 +498,12 @@ async function spotify(req, res, url, p, setCookies, out) {
   const pm = p.match(/^\/api\/spotify\/playlists\/([A-Za-z0-9]{10,40})\/items$/);
   if (pm) {
     const body = await api(`/playlists/${pm[1]}/items?limit=50&offset=${offset}&additional_types=track,episode`);
-    return out({ items: (body.items || []).map((it) => musicOut(it?.item ?? it?.track)).filter(Boolean), next: nextOffset(body) });
+    // with the moment each song joined the playlist, so the records can stand in the playlist's order
+    const items = (body.items || []).map((it) => {
+      const m = musicOut(it?.item ?? it?.track);
+      return m && (it?.added_at ? { ...m, added: it.added_at } : m);
+    });
+    return out({ items: items.filter(Boolean), next: nextOffset(body) });
   }
 
   if (p === '/api/spotify/now') {

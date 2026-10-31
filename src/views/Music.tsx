@@ -9,6 +9,7 @@ import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { usePref } from '../lib/prefs';
 import { usePaged } from '../lib/inView';
+import { usePlaylistOrder } from '../lib/playlistOrder';
 import { isTape, MusicThing, musicSub } from '../components/music';
 import { MostPickedSheet, SongOfDay, usePicked, type DayPick } from '../components/SongOfDay';
 import { Sheet } from '../components/Sheet';
@@ -27,7 +28,7 @@ const RAIL = 12;
 const WAITING = 60;
 const keyOf = (m: Pick<Music, 'kind' | 'id'>) => m.kind + ':' + m.id;
 
-/** Music's orders: as the playlist it came from (the order a playlist was added in, kept song by song), then the rest. */
+/** Music's orders: as the Spotify playlist it came from (by date added, newest first, as Spotify lists it), then the rest. */
 type MusicSort = 'playlist' | Sort;
 const MUSIC_SORTS: [MusicSort, string][] = [['playlist', t('Playlist order')], ...SORTS];
 
@@ -56,6 +57,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
   const keeping = useRef(new Set<string>());
   const list = useRef<HTMLElement>(null);
   const picked = usePicked(songs);
+  const playlist = usePlaylistOrder(sort === 'playlist', songs);
 
   // what search looks through, lowercased once per change to the records rather than on every key
   const hay = useMemo(() => new Map(songs.map((s) => [s, `${s.music.title} ${s.music.sub ?? ''}`.toLowerCase()])), [songs]);
@@ -81,8 +83,11 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
     const list = songs.filter((s) => (kind === 'all' || (kind === 'repeat' ? s.repeat : kindOf(s.music) === kind)) && (!words.length || words.every((w) => hay.get(s)!.includes(w))));
     if (sort === 'title') list.sort((a, b) => a.music.title.localeCompare(b.music.title, undefined, { sensitivity: 'base' }));
     if (sort === 'rating') list.sort((a, b) => b.rating - a.rating || b.created - a.created);
+    const rank = playlist.rank;
+    // songs not on the playlist come after it, newest first
+    if (sort === 'playlist' && rank) list.sort((a, b) => (rank.get(keyOf(a.music)) ?? Infinity) - (rank.get(keyOf(b.music)) ?? Infinity) || b.created - a.created);
     return list;
-  }, [songs, hay, kind, sort, query]);
+  }, [songs, hay, kind, sort, query, playlist.rank]);
 
   const repeat = useMemo(() => songs.filter((s) => s.repeat), [songs]);
 

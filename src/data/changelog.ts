@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.156.1',
+    date: '2026-10-31',
+    changes: [
+      'Playlist order now really follows your Spotify playlist: songs stand as Spotify lists them by date added, newest first, and songs not on the playlist come after',
+    ],
+  },
+  {
     version: '1.156.0',
     date: '2026-10-31',
     changes: [
