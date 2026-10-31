@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.161.1',
+    date: '2026-10-31',
+    changes: [
+      'Highlight threads are strongest near their note and fade the further up they run, never fully disappearing',
+    ],
+  },
+  {
     version: '1.161.0',
     date: '2026-10-31',
     changes: [

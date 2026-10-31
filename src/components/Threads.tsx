@@ -12,6 +12,8 @@ const BEND = 30;
 const WAVE = 96;
 /** How long they wave on their own as the journal appears, before resting. */
 const WAVE_FOR_MS = 24000;
+/** A thread is at full strength within NEAR px of its note, fading to MIN (of that) by FAR px away. */
+const NEAR = 140, FAR = 1000, MIN = 0.3;
 /** Two taps this close together on a touch screen are a double tap. */
 const DOUBLE_TAP_MS = 400;
 
@@ -186,15 +188,7 @@ export function Threads({ page, changes, waiting }: { page: RefObject<HTMLElemen
       {lines.map((l, i) => {
         const len = l.y - l.top;
         const fadeTop = l.into ? 0 : 60 / len;
-        // --h1 at the note fading to --h2 above (70% of the way up), fading out at the top of the feed, and from below
-        // for a note the feed hasn't drawn yet
-        const stops: [number, string, number][] = [
-          [0, l.h2, l.into ? 1 : 0],
-          [fadeTop, l.h2, 1],
-          [Math.max(fadeTop, 0.3), l.h2, 1],
-          [l.open ? Math.max(0.3, 1 - 140 / len) : 1, l.h1, 1],
-          [1, l.h1, l.open ? 0 : 1],
-        ];
+        const stops = stopsOf(l, fadeTop);
         return (
           <g class="thread" onPointerDown={(e) => (tap.current.touch = e.pointerType === 'touch')} onClick={onClick}>
             <linearGradient id={`${id}-${i}`} gradientUnits="userSpaceOnUse" x1="0" y1={l.top} x2="0" y2={l.y}>
@@ -207,6 +201,32 @@ export function Threads({ page, changes, waiting }: { page: RefObject<HTMLElemen
       })}
     </svg>
   );
+}
+
+/**
+ * A thread's gradient, as [offset, colour, opacity] from the top down: --h1 at the note fading to --h2 above (70% of the
+ * way up), strongest near its note and fainter the further up it runs (never below MIN), fading out at the top of the
+ * feed, and from below for a note the feed hasn't drawn yet.
+ */
+function stopsOf(l: Line, fadeTop: number): [number, string, number][] {
+  const len = l.y - l.top;
+  const blend = Math.max(fadeTop, 0.3);
+  const end = l.open ? Math.max(0.3, 1 - 140 / len) : 1;
+  const at = new Set([0, fadeTop, blend, end, 1]);
+  for (let j = 0; j <= 6; j++) {
+    const d = NEAR + (j * (FAR - NEAR)) / 6;
+    if (d < len) at.add(1 - d / len);
+  }
+  return [...at].sort((a, b) => a - b).map((o) => {
+    const d = (1 - o) * len;
+    const k = Math.min(1, Math.max(0, (d - NEAR) / (FAR - NEAR)));
+    let alpha = 1 - (1 - MIN) * k * k * (3 - 2 * k);
+    if (!l.into && o < fadeTop) alpha *= o / fadeTop;
+    if (l.open && o > end) alpha *= (1 - o) / (1 - end);
+    const p = o <= blend ? 0 : o >= end ? 1 : (o - blend) / (end - blend);
+    const color = p === 0 ? l.h2 : p === 1 ? l.h1 : `color-mix(in oklab, ${l.h1} ${Math.round(p * 100)}%, ${l.h2})`;
+    return [o, color, alpha];
+  });
 }
 
 /**
