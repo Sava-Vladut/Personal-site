@@ -185,6 +185,75 @@ test('names are checked, unknown channels are said to be unknown, and only GET i
   assert.equal((await call(h, '/api/streamers/alpha', 'POST')).status, 405);
 });
 
+/* ---------- Streams Charts ---------- */
+
+const { createStreamsCharts, combine, normalize } = await import('../server/streamscharts.js');
+
+test('Streams Charts: a month that’s over is asked for once, one running to today again after 12 hours', async () => {
+  let t = Date.UTC(2026, 10, 1, 8);
+  const asked = [];
+  const answer = (time) => ({ data: { hours_watched: 1000, average_viewers: 100, peak_viewers: 300, airtime_in_m: 600, followers_gain: 5, total_followers: 50, stream_count: 2, stream_days: 2, games_count: 1,
+    top_5_games_by_hw: [{ name: 'RPG', hours_watched: 800, '%_of_hours_watched': 80 }], time } });
+  const fetch = async (url, init) => {
+    assert.equal(init.headers['Client-ID'], 'id');
+    assert.equal(init.headers.Token, 'tok');
+    const time = new URL(url).searchParams.get('time');
+    asked.push(time);
+    return { ok: true, status: 200, json: async () => answer(time) };
+  };
+  const sc = createStreamsCharts({ clientId: 'id', token: 'tok', fetch, now: () => t });
+  const store = {};
+  const h = await sc.history(store, 'alpha', 365, null);
+  assert.equal(h.on, true);
+  assert.equal(h.months.length, 13, 'November 2025 to November 2026');
+  assert.deepEqual(h.months[0][1].games, [['RPG', 800, 80]]);
+  assert.equal(h.range.hw, 1000);
+  assert.ok(asked.includes('2025-11-02,2026-11-01') && asked.includes('2024-11-02,2025-11-01'), 'the range and the one before');
+  asked.length = 0;
+  t += 2 * 3_600_000;
+  await sc.history(store, 'alpha', 365, null);
+  assert.deepEqual(asked, [], 'all kept');
+  t += 11 * 3_600_000;
+  await sc.history(store, 'alpha', 365, null);
+  assert.deepEqual(asked.sort(), ['2025-11-02,2026-11-01', '2026-11-01,2026-11-01'], 'only what runs to today, and the month now running');
+  const summary = await sc.summary(store, 'alpha');
+  assert.deepEqual([summary.hoursWatched, summary.minutes, summary.followers, summary.followersTotal], [1000, 600, 5, 50]);
+});
+
+test('Streams Charts: off without a key, held back after a refusal, and ranges add up', async () => {
+  const off = createStreamsCharts({});
+  assert.deepEqual(await off.history({}, 'alpha', 30, null), { on: false, months: [], range: null, prev: null });
+  let calls = 0;
+  const sc = createStreamsCharts({ clientId: 'id', token: 'tok', now: () => now, fetch: async () => (calls++, { ok: false, status: 402, json: async () => ({}) }) });
+  const store = {};
+  await sc.history(store, 'alpha', 30, null);
+  await sc.history(store, 'alpha', 7, null);
+  assert.equal(calls, 1, 'out of credits: nothing more asked for an hour');
+  const both = combine([normalize({ hours_watched: 100, airtime_in_m: 60, peak_viewers: 9, stream_count: 1, top_5_games_by_hw: [{ name: 'A', hours_watched: 100 }] }),
+    normalize({ hours_watched: 300, airtime_in_m: 120, peak_viewers: 20, stream_count: 2, top_5_games_by_hw: [{ name: 'A', hours_watched: 100 }, { name: 'B', hours_watched: 200 }] })]);
+  assert.deepEqual([both.hw, both.avg, both.peak, both.streams], [400, 133, 20, 3]);
+  assert.deepEqual(both.games.map((g) => g.slice(0, 2)), [['A', 200], ['B', 200]]);
+});
+
+test('the history is asked for through the streamer API and kept with the channel', async () => {
+  const scFake = { enabled: true, summary: async () => null, history: async (store, login, days) => ((store.sc = { asked: { at: 1, v: null } }), { on: true, months: [], range: null, prev: null, days }) };
+  const dir = join(root, 'hist');
+  const h = createStreamerHandler({ directory: dir, channelsFile, streamsCharts: scFake, fetch: fake, now: () => clock });
+  await call(h, '/api/streamers/alpha');
+  const res = await (async () => {
+    let out = {};
+    await h.api({ method: 'GET', url: '/api/streamers/alpha/history?days=all' }, { writeHead: (status) => (out.status = status), end: (b) => (out.body = JSON.parse(b)) }, '/api/streamers/alpha/history');
+    return out;
+  })();
+  assert.equal(res.status, 200);
+  assert.equal(res.body.days, null);
+  const saved = JSON.parse(await readFile(join(dir, 'alpha.json'), 'utf8'));
+  assert.ok(saved.sc.asked, 'what Streams Charts said is saved');
+  let bad = 0;
+  try { await h.api({ method: 'GET', url: '/api/streamers/alpha/history?days=5000' }, {}, '/api/streamers/alpha/history'); } catch (e) { bad = e.status; }
+  assert.equal(bad, 400);
+});
+
 /* ---------- the page's arithmetic ---------- */
 
 const bundle = await rolldown({
@@ -275,17 +344,31 @@ test('a career adds the clips up by year and by game; over time adds everything 
   assert.equal(s.streams, 1);
 });
 
-test('hours watched follow a stream’s viewer line, and SullyGnome links match the stretch', () => {
+test('hours watched follow a stream’s viewer line', () => {
   // two hours: 100 watching the first, 300 the second; the average is 200 and stays the total
   const s = { start: 0, end: 2 * HOUR, title: '', segs: [], avg: 200, curve: [[0, 100], [60, 300]] };
   assert.equal(lib.watchedIn(s, 0, 2 * HOUR), 400 * HOUR);
   assert.equal(lib.watchedIn(s, HOUR, 2 * HOUR), 300 * HOUR);
   assert.equal(lib.watchedIn({ ...s, avg: undefined }, 0, HOUR), null);
-  const at = (y, m, d) => Date.UTC(y, m, d);
-  assert.equal(lib.sullyUrl('alpha', now - 30 * DAY, now, now), 'https://sullygnome.com/channel/alpha/30');
-  assert.equal(lib.sullyUrl('alpha', now - 1000 * DAY, now, now), 'https://sullygnome.com/channel/alpha/2026');
-  assert.equal(lib.sullyUrl('alpha', at(2024, 2, 3), at(2024, 2, 20), now), 'https://sullygnome.com/channel/alpha/2024march');
-  assert.equal(lib.sullyUrl('alpha', at(2023, 1, 1), at(2023, 9, 1), now), 'https://sullygnome.com/channel/alpha/2023');
+});
+
+test('a month Streams Charts knows takes its figures, its games shared out by hours watched', () => {
+  const data = {
+    now, games: { 2: ['RPG', null] }, followerDays: [], trackerDays: [],
+    streams: [{ start: Date.UTC(2026, 9, 21, 22), end: Date.UTC(2026, 9, 22, 2), title: '', segs: [['2', 0, 4 * HOUR]], avg: 100, peak: 150 }],
+  };
+  const sc = (o) => ({ hw: null, avg: null, peak: null, airMin: null, gained: null, followers: null, streams: null, days: null, gamesCount: null, games: [], ...o });
+  const h = { on: true, range: null, prev: null, months: [
+    ['2025-03', sc({ hw: 3000, avg: 300, peak: 900, airMin: 600, gained: 40, streams: 3, games: [['RPG', 2000, 66.7], ['New Game', 500, 16.7]] })],
+  ] };
+  assert.equal(lib.knownFrom(data, h), Date.UTC(2025, 2, 1));
+  const ps = lib.overTime(data, Date.UTC(2025, 2, 1), now, 'month', h);
+  const march = ps[0];
+  assert.deepEqual([march.ms / HOUR, march.watched, march.avg, march.peak, march.streams, march.gained, march.full], [10, 3000, 300, 900, 3, 40, true]);
+  const games = Object.fromEntries([...march.games].map(([g, ms]) => [g, Math.round(ms / MIN)]));
+  assert.deepEqual(games, { 2: 400, 'name:New Game': 100, [lib.OTHER_GAMES]: 100 }, 'RPG is the Twitch game; the rest is other games');
+  assert.equal(lib.gameName(data, 'name:New Game'), 'New Game');
+  assert.equal(ps.at(-1).full, undefined, 'a month it doesn’t know keeps what’s seen here');
 });
 
 test('usual start times wrap around midnight, and durations read naturally', () => {

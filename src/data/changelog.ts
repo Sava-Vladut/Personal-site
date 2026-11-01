@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.172.0',
+    date: '2026-11-01',
+    changes: [
+      'Streamer stats: a channel’s history back to June 2019 from the Streams Charts API: every month’s hours, hours watched, viewers, streams and followers',
+      'Streamer stats: the performance summary counts every stream of the range, with changes against the range before, and lists its most-watched games',
+      'Streamer stats: bars, game lists and stream strips take a tint of each game’s box art',
+      'Streamer stats: tooltips line up: the label on the left, the number on the right, then the games with their colours',
+      'Tooltips stay on screen however wide they are',
+      'Streamer stats: no more links or notes about other stats sites, and no source text at the bottom',
+    ],
+  },
+  {
     version: '1.171.0',
     date: '2026-11-01',
     changes: [

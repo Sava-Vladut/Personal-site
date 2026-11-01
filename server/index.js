@@ -35,6 +35,7 @@ import { createLearnHandler } from './learn.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createStreamerHandler } from './streamers.js';
+import { createStreamsCharts } from './streamscharts.js';
 import { createTwitchHandler } from './twitch.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -996,7 +997,14 @@ const share = createShareHandler({ directory: SHARE_DIR, indexFile: join(DIST, '
 const learnPage = createLearnHandler({ indexFile: join(DIST, 'index.html') });
 const status = createStatusHandler({ directory: STATUS_DIR, indexFile: join(DIST, 'index.html'), isAdmin, adminConfigured: !!adminHash });
 const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH_CHANNELS, isAdmin });
-const streamers = createStreamerHandler({ directory: STREAMERS_DIR, channelsFile: TWITCH_CHANNELS });
+// Streams Charts' API for a channel's history since 2019, when a key is set (it's paid for in credits)
+const streamsCharts = createStreamsCharts({
+  clientId: process.env.STREAMSCHARTS_CLIENT_ID || '',
+  token: process.env.STREAMSCHARTS_TOKEN || '',
+  base: process.env.STREAMSCHARTS_BASE || undefined,
+  dailyCalls: Number(process.env.STREAMSCHARTS_DAILY_CALLS) || undefined,
+});
+const streamers = createStreamerHandler({ directory: STREAMERS_DIR, channelsFile: TWITCH_CHANNELS, streamsCharts });
 // the recorder runs where the miner does; elsewhere (tests, a laptop) channels are only looked up when asked
 if (TWITCH_CHANNELS) streamers.start();
 

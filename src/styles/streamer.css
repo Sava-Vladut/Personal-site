@@ -67,8 +67,7 @@
 
 .sr-rangebar { padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .sr-range-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font-size: var(--text-s); color: var(--ink-3); }
-.sr-sully { display: inline-flex; align-items: center; gap: 3px; color: color-mix(in oklab, var(--accent) 75%, var(--ink)); font-weight: var(--w-medium); text-decoration: none; white-space: nowrap; }
-@media (hover: hover) { .sr-sully:hover { text-decoration: underline; } }
+.sr-loading { animation: fade-in var(--dur-3) ease; color: color-mix(in oklab, var(--accent) 70%, var(--ink-3)); }
 .sr-section { margin: 14px 2px 0; font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; }
 
 /* ---------- the career ---------- */
@@ -252,7 +251,6 @@
 .sr-stream-games { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-stream-v { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-s); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
-.sr-source { padding: 4px 2px 8px; font-size: var(--text-s); line-height: 1.45; color: var(--ink-3); }
 
 /* ---------- one stream, in its sheet ---------- */
 
@@ -281,3 +279,20 @@
   .sr-stream-games { grid-column: 3; grid-row: 2; }
   .sr-stream-v { grid-column: 4; grid-row: 1 / span 2; justify-content: flex-end; }
 }
+
+/* ---------- tooltips: label left, number right, the charted measure in bold, then the games with their colours ---------- */
+
+.tooltip:has(.sr-tip) { max-width: 290px; }
+.sr-tip { display: grid; gap: 6px; min-width: 170px; }
+.sr-tip .tip-title { margin: 0; font-weight: var(--w-bold); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr-tip dl { display: grid; gap: 2px; margin: 0; }
+.sr-tip dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.sr-tip dt { color: var(--ink-3); white-space: nowrap; }
+.sr-tip dd { margin: 0; font-weight: var(--w-medium); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-2); }
+.sr-tip dl > .on dt { color: var(--ink); }
+.sr-tip dl > .on dd { color: var(--ink); font-weight: var(--w-bold); }
+.sr-tip ul { list-style: none; margin: 0; padding: 6px 0 0; border-top: 1px solid var(--line); display: grid; gap: 3px; }
+.sr-tip li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.sr-tip li i { width: 8px; height: 8px; border-radius: 2px; }
+.sr-tip li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.sr-tip li b { font-weight: var(--w-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }

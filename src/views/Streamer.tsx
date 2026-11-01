@@ -2,14 +2,15 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { WEEKDAYS, formatDate, keyOf, shortDate, timeLabel } from '../lib/dates';
-import { age, analyse, career, clock, forget, gameColors, hours, knownFrom, overTime, sullyUrl, sums, unitFor, useChoices, useStreamer, watchedIn, type Analysis, type Career, type Choice, type GameRow, type Period, type Stream, type Streamer as Data, type Unit } from '../lib/streamer';
+import { PALETTE, age, analyse, career, clock, forget, gameColors, gameIdOf, gameName, hours, knownFrom, overTime, sums, unitFor, useChoices, useHistory, useStreamer, watchedIn, type Analysis, type Career, type Choice, type GameRow, type History, type Period, type ScStats, type Stream, type Streamer as Data, type Unit } from '../lib/streamer';
+import { useArtColors } from '../lib/artColor';
 import { compact } from '../lib/twitch';
-import { ChartCard, CountUp, LegendItem, RevealStack, TipRow, barPath, hideTip, tipProps, useWidth } from '../components/charts';
+import { ChartCard, CountUp, LegendItem, RevealStack, barPath, hideTip, tipProps, useWidth } from '../components/charts';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { Sky } from '../components/Sky';
-import { LOCALE, count, noun, t } from '../lib/i18n';
+import { LOCALE, count, t } from '../lib/i18n';
 import '../styles/stats.css';
 import '../styles/twitch.css';
 import '../styles/streamer.css';
@@ -36,6 +37,40 @@ const longDay = (ms: number) => formatDate(ms, { weekday: 'long', day: 'numeric'
 const fullDay = (ms: number) => formatDate(ms, { day: 'numeric', month: 'short', year: 'numeric' });
 /** viewer-ms as hours watched, short */
 const watchedH = (ms: number) => compact(Math.round(ms / HOUR));
+
+/** The games of some periods, most played first. */
+function topGames(ps: Period[]) {
+  const ms = new Map<string, number>();
+  for (const p of ps) for (const [g, x] of p.games) ms.set(g, (ms.get(g) ?? 0) + x);
+  return [...ms].sort((a, b) => b[1] - a[1]).map(([g]) => g);
+}
+
+type TipLine = [string, ComponentChildren, boolean?] | false | null | undefined;
+
+/**
+ * A tooltip of this page: the title, then a label and its number on each line, numbers lined up on the right (the
+ * measure being charted in bold), then the games, each with its colour.
+ */
+function Tip({ title, rows, games }: { title: string; rows: TipLine[]; games?: [string, string, string][] }) {
+  const lines = rows.filter((r): r is [string, ComponentChildren, boolean?] => !!r);
+  return (
+    <div class="sr-tip">
+      <div class="tip-title">{title}</div>
+      {lines.length > 0 && (
+        <dl>
+          {lines.map(([label, value, on]) => (
+            <div class={on ? 'on' : ''}><dt>{label}</dt><dd>{value}</dd></div>
+          ))}
+        </dl>
+      )}
+      {games && games.length > 0 && (
+        <ul>
+          {games.map(([color, name, value]) => <li><i style={{ background: color }} /><span>{name}</span><b>{value}</b></li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 /** The page is Twitch purple, like Channel points; charts and tooltips read the accent from the root. */
 function useAccent() {
@@ -161,17 +196,27 @@ function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRa
   const a = useMemo(() => analyse(d, days), [d, days]);
   const c = useMemo(() => career(d), [d]);
   const colors = useMemo(() => gameColors(d.streams, d.clips ?? []), [d]);
+  const h = useHistory(d.login, days, !!d.history);
+  const hist = h.data?.on ? h.data : null;
   const [open, setOpen] = useState<Stream | null>(null);
-  const colorOf = (g: string) => (colors.has(g) ? `var(--emo-${colors.get(g)})` : OTHER);
-  const range = days ? r[3] : t('since {date}', { date: day(a.from) });
+  const arts = useArtColors(useMemo(() => [...new Set(Object.values(d.games).map((g) => g[1]).filter((u): u is string => !!u))], [d]));
+  // each game in the colour of its box art, leaning a little to the page's purple; games without art keep a palette colour
+  const colorOf = (g: string) => {
+    const art = d.games[g]?.[1] && arts.get(d.games[g][1]!);
+    if (art) return `color-mix(in oklab, ${art} 80%, var(--accent))`;
+    if (colors.has(g)) return `var(--emo-${colors.get(g)})`;
+    if (g.startsWith('name:')) return `var(--emo-${PALETTE[[...g].reduce((n, ch) => n + ch.charCodeAt(0), 0) % PALETTE.length]})`;
+    return OTHER;
+  };
+  const range = days ? r[3] : t('since {date}', { date: day(hist?.months.length ? knownFrom(d, hist) ?? a.from : a.from) });
 
   return (
     <div class={stale ? 'sr-stale' : ''}>
       <RevealStack>
         <Banner d={d} />
-        <RangeBar d={d} r={r} from={a.from} onRange={onRange} />
+        <RangeBar r={r} from={days ? a.from : knownFrom(d, hist) ?? a.from} onRange={onRange} loading={h.loading && !!d.history} />
 
-        <OverTime key={`${rangeId}-${a.from}`} d={d} from={a.from} colorOf={colorOf} colors={colors} />
+        <OverTime key={`${rangeId}-${a.from}-${hist?.months[0]?.[0] ?? ''}`} d={d} h={hist} from={days ? a.from : Math.min(a.from, knownFrom(d, hist) ?? a.from)} colorOf={colorOf} colors={colors} />
 
         {!d.streams.length ? (
           <section class="card sr-note">
@@ -179,17 +224,18 @@ function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRa
             {d.recordingSince && <p>{t('Streams are recorded here from now on, every 5 minutes while it’s live.')}</p>}
           </section>
         ) : (
-          <Summary d={d} a={a} r={r} range={range} />
+          <Summary d={d} a={a} r={r} range={range} h={hist} />
         )}
 
         {a.count > 0 && (
           <>
             <Games d={d} a={a} colorOf={colorOf} range={range} />
+            {hist?.range?.games.length ? <TopGames d={d} s={hist.range} colorOf={colorOf} range={range} /> : null}
             <When a={a} />
           </>
         )}
 
-        <Audience d={d} a={a} />
+        <Audience d={d} a={a} colorOf={colorOf} />
         <Followers d={d} from={a.from} />
         {d.streams.length > 0 && a.count > 0 && <Streams d={d} a={a} colorOf={colorOf} onOpen={setOpen} />}
 
@@ -201,10 +247,6 @@ function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRa
             <Moments d={d} c={c} />
           </>
         )}
-
-        <p class="sr-source">
-          {t('From Twitch: the channel, its past broadcasts with their chapters and views (Twitch keeps them up to 60 days) and its 100 most-watched clips; TwitchTracker’s last 30 days; and what this server records every 5 minutes, kept for good. SullyGnome has every stream back to 2015 but asks not to be scraped, so it’s linked, not copied. Times are yours.')}
-        </p>
       </RevealStack>
       <StreamSheet d={d} s={open} colorOf={colorOf} onClose={() => setOpen(null)} />
     </div>
@@ -268,8 +310,8 @@ const Life = ({ label, value, sub }: { label: string; value: string; sub: Compon
   </div>
 );
 
-/** The range every card below reads: a week up to all time, and the same stretch on SullyGnome. */
-function RangeBar({ d, r, from, onRange }: { d: Data; r: Range; from: number; onRange: (id: string) => void }) {
+/** The range every card below reads, a week up to all time. */
+function RangeBar({ r, from, onRange, loading }: { r: Range; from: number; onRange: (id: string) => void; loading: boolean }) {
   return (
     <section class="card sr-rangebar wide">
       <div class="seg tabs compact sr-range" role="tablist" aria-label={t('Time range')} style={{ '--at': RANGES.indexOf(r), '--tabs': RANGES.length }}>
@@ -277,9 +319,7 @@ function RangeBar({ d, r, from, onRange }: { d: Data; r: Range; from: number; on
       </div>
       <p class="sr-range-text">
         <span>{r[5] ? t('{from} – today', { from: fullDay(from) }) : t('Everything known, since {date}', { date: fullDay(from) })}</span>
-        <a class="sr-sully" href={sullyUrl(d.login, r[5] ? from : d.now - 365 * DAY, d.now, d.now)} target="_blank" rel="noopener">
-          {t('On SullyGnome')} <Icon name="external-link" size={14} />
-        </a>
+        {loading && <span class="sr-loading">{t('Loading the history…')}</span>}
       </p>
     </section>
   );
@@ -295,7 +335,7 @@ function CareerChart({ d, c, colorOf, colors }: { d: Data; c: Career; colorOf: (
   const y = (v: number) => T + ph - (v / max) * ph;
   const band = pw / Math.max(1, n);
   const bw = Math.max(4, Math.min(28, band - 6));
-  const named = (g: string) => (g ? d.games[g]?.[0] ?? t('Unknown game') : t('No category'));
+  const named = (g: string) => gameName(d, g);
   const present = new Set(c.clips.map((x) => x.game));
   const legend = [...colors.keys()].filter((g) => present.has(g));
   const hasOther = [...present].some((g) => !colors.has(g));
@@ -343,15 +383,11 @@ function CareerChart({ d, c, colorOf, colors }: { d: Data; c: Career; colorOf: (
               let base = 0;
               return (
                 <g class="sr-col" style={{ '--k': i }} {...tipProps(() => (
-                  <>
-                    <div class="tip-title">{yr.year}</div>
-                    {yr.clips ? (
-                      <>
-                        <TipRow value={num(yr.views)} label={t('clip views')} />
-                        {parts.slice(0, 4).map(([g, v]) => <TipRow value={compact(v)} label={named(g)} color={colorOf(g)} />)}
-                      </>
-                    ) : <span>{yr.year < 2016 ? t('Before Twitch had clips') : t('None of the top clips')}</span>}
-                  </>
+                  <Tip
+                    title={String(yr.year)}
+                    rows={yr.clips ? [[t('Clip views'), num(yr.views), true], [t('Clips'), num(yr.clips)]] : [[yr.year < 2016 ? t('Before Twitch had clips') : t('None of the top clips'), '']]}
+                    games={parts.slice(0, 4).map(([g, v]) => [colorOf(g), named(g), compact(v)])}
+                  />
                 ), `${yr.year}: ${num(yr.views)}`)}>
                   <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
                   {parts.map(([g, v], j) => {
@@ -424,7 +460,7 @@ function Eras({ d, c, colorOf }: { d: Data; c: Career; colorOf: (g: string) => s
 /** The most-watched clips of all time. */
 function Moments({ d, c }: { d: Data; c: Career }) {
   const [shown, setShown] = useState(5);
-  const named = (g: string) => (g ? d.games[g]?.[0] ?? t('Unknown game') : t('No category'));
+  const named = (g: string) => gameName(d, g);
   const len = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   return (
     <section class="card tw-list sr-moments">
@@ -464,14 +500,14 @@ const METRICS: [Metric, string][] = [
 const MIN_SPAN = 2 * DAY;
 
 /** Everything known in the range, a day, week or month at a time, one measure at a time, to zoom into and pan along. */
-function OverTime({ d, from, colorOf, colors }: { d: Data; from: number; colorOf: (g: string) => string; colors: Map<string, string> }) {
+function OverTime({ d, h, from, colorOf, colors }: { d: Data; h: History | null; from: number; colorOf: (g: string) => string; colors: Map<string, string> }) {
   const to = d.now;
   const [metric, setMetric] = useState<Metric>('hours');
   const [view, setView] = useState<[number, number]>([from, to]);
   const [a, b] = view;
   const unit = unitFor(b - a);
-  const ps = useMemo(() => overTime(d, a, b, unit), [d, a, b, unit]);
-  const known = useMemo(() => knownFrom(d), [d]);
+  const ps = useMemo(() => overTime(d, a, b, unit, h), [d, a, b, unit, h]);
+  const known = useMemo(() => knownFrom(d, h), [d, h]);
   const whole = b - a >= to - from - 1;
 
   /** A stretch kept inside the range and no shorter than MIN_SPAN, its middle kept where it can be. */
@@ -484,7 +520,7 @@ function OverTime({ d, from, colorOf, colors }: { d: Data; from: number; colorOf
   const zoom = (k: number, at = (a + b) / 2) => setView(fit(at - (at - a) * k, at + (b - at) * k));
   const pan = (k: number) => setView(fit(a + (b - a) * k, b + (b - a) * k));
 
-  const named = (g: string) => (g ? d.games[g]?.[0] ?? t('Unknown game') : t('No category'));
+  const named = (g: string) => gameName(d, g);
   const label = (p: Period) =>
     unit === 'month' ? formatDate(p.start, { month: 'long', year: 'numeric' }) : unit === 'week' ? t('Week of {date}', { date: day(p.start) }) : longDay(p.start);
   const value = (p: Period) => (metric === 'hours' ? p.ms / HOUR : metric === 'streams' ? p.streams : p[metric]);
@@ -493,6 +529,7 @@ function OverTime({ d, from, colorOf, colors }: { d: Data; from: number; colorOf
   const shown = ps.filter((p) => p.end > a && p.start < b);
   const known_ = shown.map(value).filter((v): v is number => v !== null);
   const units = { day: t('Each day'), week: t('Each week'), month: t('Each month') };
+  void colors;
 
   return (
     <ChartCard
@@ -520,18 +557,13 @@ function OverTime({ d, from, colorOf, colors }: { d: Data; from: number; colorOf
       </div>
       <ZoomPlot view={view} unit={unit} ps={ps} metric={metric} value={value} fmt={fmt} label={label} known={known}
         colorOf={colorOf} named={named} onView={(na, nb) => setView(fit(na, nb))} onZoom={zoom} onReset={() => setView([from, to])} empty={!known_.length} />
-      {!whole && <Overview d={d} from={from} to={to} view={view} onView={(na, nb) => setView(fit(na, nb))} />}
+      {!whole && <Overview d={d} h={h} from={from} to={to} view={view} onView={(na, nb) => setView(fit(na, nb))} />}
       {metric === 'hours' && (
         <div class="legend">
-          {[...colors.keys()].filter((g) => shown.some((p) => p.games.has(g))).map((g) => <LegendItem color={colorOf(g)} label={named(g)} />)}
+          {topGames(shown).slice(0, 8).map((g) => <LegendItem color={colorOf(g)} label={named(g)} />)}
         </div>
       )}
-      <p class="sr-small">
-        {known !== null && a < known
-          ? t('Nothing is known here before {date}: Twitch keeps past streams for 60 days, and this server keeps everything since.', { date: fullDay(known) }) + ' '
-          : ''}
-        <a class="sr-sully" href={sullyUrl(d.login, a, b, d.now)} target="_blank" rel="noopener">{t('This stretch on SullyGnome')} <Icon name="external-link" size={14} /></a>
-      </p>
+      {unit !== 'month' && h?.months.length && known !== null && a < d.now - 60 * DAY ? <p class="sr-small">{t('Further back there are only monthly figures: zoom out to see them.')}</p> : null}
     </ChartCard>
   );
 }
@@ -659,18 +691,20 @@ function ZoomPlot({ view, unit, ps, metric, value, fmt, label, known, colorOf, n
               let base = 0;
               return (
                 <g class="sr-col" style={{ '--k': Math.min(i, 60) }} {...tipProps(() => (
-                  <>
-                    <div class="tip-title">{label(p)}</div>
-                    <TipRow value={p.ms ? hours(p.ms) : '—'} label={t('streamed')} color={metric === 'hours' ? 'var(--accent)' : undefined} />
-                    <TipRow value={p.streams} label={noun(p.streams, 'stream', 'streams')} color={metric === 'streams' ? 'var(--accent)' : undefined} />
-                    {p.watched !== null && <TipRow value={compact(p.watched)} label={t('hours watched')} color={metric === 'watched' ? 'var(--accent)' : undefined} />}
-                    {p.avg !== null && <TipRow value={num(p.avg)} label={t('average viewers')} color={metric === 'avg' ? 'var(--accent)' : undefined} />}
-                    {p.peak !== null && <TipRow value={num(p.peak)} label={t('at the peak')} color={metric === 'peak' ? 'var(--accent)' : undefined} />}
-                    {p.views !== null && <TipRow value={compact(p.views)} label={t('VOD views')} color={metric === 'views' ? 'var(--accent)' : undefined} />}
-                    {p.gained !== null && <TipRow value={signed(p.gained)} label={t('followers')} color={metric === 'gained' ? 'var(--accent)' : undefined} />}
-                    {p.rank !== null && <TipRow value={`#${num(p.rank)}`} label={t('rank')} />}
-                    {metric === 'hours' && [...p.games].sort((m, n) => n[1] - m[1]).slice(0, 4).map(([g, ms]) => <TipRow value={hours(ms)} label={named(g)} color={colorOf(g)} />)}
-                  </>
+                  <Tip
+                    title={label(p)}
+                    rows={[
+                      [t('Hours streamed'), p.ms ? hours(p.ms) : '—', metric === 'hours'],
+                      [t('Streams'), num(p.streams), metric === 'streams'],
+                      p.watched !== null && [t('Hours watched'), compact(p.watched), metric === 'watched'],
+                      p.avg !== null && [t('Average viewers'), num(p.avg), metric === 'avg'],
+                      p.peak !== null && [t('Peak viewers'), num(p.peak), metric === 'peak'],
+                      p.views !== null && [t('VOD views'), compact(p.views), metric === 'views'],
+                      p.gained !== null && [t('Followers gained'), signed(p.gained), metric === 'gained'],
+                      p.rank !== null && [t('Rank'), `#${num(p.rank)}`, false],
+                    ]}
+                    games={[...p.games].sort((m, n) => n[1] - m[1]).slice(0, 5).map(([g, ms]) => [colorOf(g), named(g), hours(ms)])}
+                  />
                 ), `${label(p)}: ${v !== null ? fmt(v) : '—'}`)}>
                   <rect x={x(p.start)} y={T} width={Math.max(1, x(p.end) - x(p.start))} height={ph} fill="transparent" />
                   {metric === 'hours'
@@ -682,7 +716,9 @@ function ZoomPlot({ view, unit, ps, metric, value, fmt, label, known, colorOf, n
                         const rr = j === parts.length - 1 ? Math.min(r, yBot - yTop) : 0;
                         return <path d={`M${x0},${yBot}V${yTop + rr}Q${x0},${yTop} ${x0 + rr},${yTop}H${x0 + w - rr}Q${x0 + w},${yTop} ${x0 + w},${yTop + rr}V${yBot}Z`} fill={colorOf(g)} />;
                       })
-                    : v !== null && Math.abs(y(v) - y(0)) > 0.75 && <path d={barPath(x0, w, y(0), y(v))} class={v < 0 ? 'sr-vbar down' : 'sr-vbar'} />}
+                    : v !== null && Math.abs(y(v) - y(0)) > 0.75 && (
+                        <path d={barPath(x0, w, y(0), y(v))} class={v < 0 ? 'sr-vbar down' : 'sr-vbar'} style={v < 0 ? undefined : { fill: colorOf(topGames([p])[0] ?? '') }} />
+                      )}
                 </g>
               );
             })}
@@ -703,9 +739,9 @@ function ZoomPlot({ view, unit, ps, metric, value, fmt, label, known, colorOf, n
 }
 
 /** The whole range in miniature with the zoomed stretch picked out: drag it along, or tap to jump there. */
-function Overview({ d, from, to, view, onView }: { d: Data; from: number; to: number; view: [number, number]; onView: (a: number, b: number) => void }) {
+function Overview({ d, h, from, to, view, onView }: { d: Data; h: History | null; from: number; to: number; view: [number, number]; onView: (a: number, b: number) => void }) {
   const [ref, W] = useWidth();
-  const ps = useMemo(() => overTime(d, from, to, unitFor(to - from)), [d, from, to]);
+  const ps = useMemo(() => overTime(d, from, to, unitFor(to - from), h), [d, h, from, to]);
   const H = 34, L = 46, R = 6;
   const pw = Math.max(0, W - L - R);
   const x = (ms: number) => L + ((ms - from) / (to - from)) * pw;
@@ -744,22 +780,28 @@ function Overview({ d, from, to, view, onView }: { d: Data; from: number; to: nu
 }
 
 /** The range at a glance: six big numbers set against the range before, then how the streams run. */
-function Summary({ d, a, r, range }: { d: Data; a: Analysis; r: Range; range: string }) {
+function Summary({ d, a, r, range, h }: { d: Data; a: Analysis; r: Range; range: string; h: History | null }) {
   const days = r[5];
   const s = d.summary;
   const cur = useMemo(() => sums(d, a.from, d.now), [d, a.from]);
   const prev = useMemo(() => (days ? sums(d, a.from - days * DAY, a.from) : null), [d, a.from, days]);
-  // TwitchTracker's month covers the 30-day range better than what's been recorded here so far
-  const tt = days === 30 && s;
-  const avg = tt && s.avg !== null ? s.avg : cur.avg;
-  const peak = tt && s.peak !== null ? s.peak : cur.peak;
-  const gained = tt && s.followers !== null ? s.followers : cur.gained;
-  const watched = tt && s.hoursWatched !== null ? s.hoursWatched : cur.watched;
-  const change = (now: number | null, then: number | null, ok: boolean) => (ok && now !== null && then ? (now - then) / then : null);
+  // the whole range's figures, every stream counted, when there are some; else the month's for 30 days; else what's recorded here
+  const full: ScStats | null = h?.range ?? null;
+  const before: ScStats | null = h?.prev ?? null;
+  const month = !full && days === 30 && s;
+  const avg = full?.avg ?? (month && s.avg !== null ? s.avg : cur.avg);
+  const peak = full?.peak ?? (month && s.peak !== null ? s.peak : cur.peak);
+  const gained = full?.gained ?? (month && s.followers !== null ? s.followers : cur.gained);
+  const watched = full?.hw ?? (month && s.hoursWatched !== null ? s.hoursWatched : cur.watched);
+  const hoursLive = full?.airMin != null ? full.airMin / 60 : a.total / HOUR;
+  const streams = full?.streams ?? a.count;
+  const change = (now: number | null | undefined, then: number | null | undefined, ok: boolean) => (ok && now != null && then ? (now - then) / then : null);
   const vs = r[4];
-  const recordedBoth = !!prev?.recorded && !tt;
-  const source = (ttHas: boolean, mine: boolean) => (tt && ttHas ? t('TwitchTracker') : mine ? t('recorded here') : t('not recorded yet'));
-  const hoursLive = a.total / HOUR;
+  const recordedBoth = !!prev?.recorded && !month;
+  const foot = (has: boolean, mine: boolean) => (full || (month && has) ? undefined : mine ? t('recorded here') : t('not recorded yet'));
+  /** a delta: the range before from the same source, else what's recorded here */
+  const delta = (k: 'hw' | 'avg' | 'peak' | 'airMin' | 'streams', mine: number | null, then: number | null, ok: boolean) =>
+    full ? change(full[k], before?.[k], !!before) : change(mine, then, ok);
   return (
     <section class="card sr-summary">
       <header class="sr-summary-head">
@@ -768,26 +810,27 @@ function Summary({ d, a, r, range }: { d: Data; a: Analysis; r: Range; range: st
           <p class="chart-sub">{t('Streamed in {range}', { range })}</p>
         </div>
       </header>
-      {!a.count ? (
+      {!a.count && !full?.streams ? (
         <p class="sr-small">{t('No streams in {range}. Try a longer range.', { range })}</p>
       ) : (
         <>
           <div class="sr-kpis">
-            <Kpi k={0} label={t('Hours streamed')} value={<CountUp value={Math.round(hoursLive)} />} delta={change(a.total, prev?.ms ?? null, !!prev?.whole)} vs={vs} />
-            <Kpi k={1} label={t('Hours watched')} value={watched !== null ? compact(watched) : '—'} delta={change(cur.watched, prev?.watched ?? null, recordedBoth)} vs={vs} foot={tt && s.hoursWatched !== null ? t('TwitchTracker') : cur.watched !== null ? t('recorded streams only') : t('not recorded yet')} />
-            <Kpi k={2} label={t('Average viewers')} value={avg !== null ? <CountUp value={avg} /> : '—'} delta={change(cur.avg, prev?.avg ?? null, recordedBoth)} vs={vs} foot={source(s?.avg != null, cur.avg !== null)} />
-            <Kpi k={3} label={t('Peak viewers')} value={peak !== null ? <CountUp value={peak} /> : '—'} delta={change(cur.peak, prev?.peak ?? null, recordedBoth)} vs={vs} foot={source(s?.peak != null, cur.peak !== null)} />
-            <Kpi k={4} label={t('Followers gained')} value={gained !== null ? signed(gained) : '—'} tone={gained !== null && gained < 0 ? 'down' : undefined} foot={source(s?.followers != null, gained !== null)} />
-            <Kpi k={5} label={t('Streams')} value={<CountUp value={a.count} />} delta={change(cur.streams, prev?.streams ?? null, !!prev?.whole)} vs={vs} />
+            <Kpi k={0} label={t('Hours streamed')} value={<CountUp value={Math.round(hoursLive)} />} delta={delta('airMin', a.total, prev?.ms ?? null, !!prev?.whole)} vs={vs} />
+            <Kpi k={1} label={t('Hours watched')} value={watched !== null ? compact(watched) : '—'} delta={delta('hw', cur.watched, prev?.watched ?? null, recordedBoth)} vs={vs}
+              foot={full || (month && s.hoursWatched !== null) ? undefined : cur.watched !== null ? t('recorded streams only') : t('not recorded yet')} />
+            <Kpi k={2} label={t('Average viewers')} value={avg !== null ? <CountUp value={avg} /> : '—'} delta={delta('avg', cur.avg, prev?.avg ?? null, recordedBoth)} vs={vs} foot={foot(s?.avg != null, cur.avg !== null)} />
+            <Kpi k={3} label={t('Peak viewers')} value={peak !== null ? <CountUp value={peak} /> : '—'} delta={delta('peak', cur.peak, prev?.peak ?? null, recordedBoth)} vs={vs} foot={foot(s?.peak != null, cur.peak !== null)} />
+            <Kpi k={4} label={t('Followers gained')} value={gained !== null ? signed(gained) : '—'} tone={gained !== null && gained < 0 ? 'down' : undefined} foot={foot(s?.followers != null, gained !== null)} />
+            <Kpi k={5} label={t('Streams')} value={<CountUp value={streams} />} delta={delta('streams', cur.streams, prev?.streams ?? null, !!prev?.whole)} vs={vs} />
           </div>
           <div class="sr-facts">
-            <Mini icon="calendar" label={t('Days live')} value={t('{n} of {days}', { n: a.daysLive, days: a.span })} sub={a.streak > 1 ? t('{n} days in a row at most', { n: a.streak }) : t('{n} a day on average', { n: hours(a.total / a.span) })} />
-            <Mini icon="device-gamepad-2" label={t('Games')} value={String(a.games.length)} sub={t('{n} a stream on average', { n: a.perStream.toFixed(1) })} />
+            <Mini icon="calendar" label={t('Days live')} value={t('{n} of {days}', { n: full?.days ?? a.daysLive, days: a.span })} sub={a.streak > 1 ? t('{n} days in a row at most', { n: a.streak }) : t('{n} a day on average', { n: hours(a.total / a.span) })} />
+            <Mini icon="device-gamepad-2" label={t('Games')} value={String(full?.gamesCount ?? a.games.length)} sub={t('{n} a stream on average', { n: a.perStream.toFixed(1) })} />
             <Mini icon="clock" label={t('Average stream')} value={hours(a.average)} sub={t('{n} a day on average', { n: hours(a.total / a.span) })} />
             <Mini icon="flame" label={t('Longest stream')} value={a.longest ? hours(a.longest.end - a.longest.start) : '—'} sub={a.longest ? day(a.longest.start) : ''} />
             <Mini icon="hourglass" label={t('Longest break')} value={a.gap ? hours(a.gap.ms) : '—'} sub={a.gap ? `${day(a.gap.from)} – ${day(a.gap.to)}` : t('none in this range')} />
             <Mini icon="sunrise" label={t('Usually goes live')} value={a.starts !== null ? clock(a.starts) : '—'} sub={a.ends !== null ? t('until about {time}', { time: clock(a.ends) }) : t('no set time')} />
-            <Mini icon="user-plus" label={t('Followers per hour live')} value={gained !== null && hoursLive >= 1 ? signed(Math.round(gained / hoursLive)) : '—'} sub={gained !== null ? t('over {n}', { n: hours(a.total) }) : t('not recorded yet')} />
+            <Mini icon="user-plus" label={t('Followers per hour live')} value={gained !== null && hoursLive >= 1 ? signed(Math.round(gained / hoursLive)) : '—'} sub={gained !== null ? t('over {n}', { n: hours(hoursLive * HOUR) }) : t('not recorded yet')} />
             <Mini icon="player-play" label={t('VOD views')} value={a.vodViews ? compact(a.vodViews.views) : '—'} sub={a.vodViews ? t('over {n} still on Twitch', { n: count(a.vodViews.vods, 'VOD', 'VODs') }) : t('no VODs left on Twitch')} />
           </div>
         </>
@@ -893,6 +936,34 @@ function Games({ d, a, colorOf, range }: { d: Data; a: Analysis; colorOf: (g: st
   );
 }
 
+/** The games that drew the most hours watched over the whole range, every stream counted. */
+function TopGames({ d, s, colorOf, range }: { d: Data; s: ScStats; colorOf: (g: string) => string; range: string }) {
+  const max = Math.max(1, ...s.games.map((g) => g[1]));
+  return (
+    <section class="card tw-list sr-games">
+      <h3 class="chart-title">{t('Most-watched games')}</h3>
+      <p class="chart-sub">{t('By hours watched in {range}', { range })}</p>
+      <ul>
+        {s.games.map(([name, hw, pct], i) => {
+          const id = gameIdOf(d, name);
+          const box = d.games[id]?.[1] ?? null;
+          return (
+            <li style={{ '--k': i, '--w': `${(hw / max) * 100}%`, '--c': colorOf(id) }}>
+              {box ? <img class="sr-box" src={box} alt="" width={26} height={36} loading="lazy" /> : <span class="sr-box"><Icon name="device-gamepad-2" size={14} /></span>}
+              <span class="sr-game">
+                <b>{name}</b>
+                <span class="sr-game-bar"><i /></span>
+                <small>{t('{share} of the hours watched', { share: `${pct}%` })}</small>
+              </span>
+              <span class="sr-game-h">{compact(Math.round(hw))}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /** How often they're live at each hour of each weekday, in the viewer's time. */
 function When({ a }: { a: Analysis }) {
   const hoursRow = Array.from({ length: 24 }, (_, h) => h);
@@ -922,10 +993,7 @@ function When({ a }: { a: Analysis }) {
                   style={{ '--v': v.toFixed(3) }}
                   class={v ? '' : 'off'}
                   {...tipProps(() => (
-                    <>
-                      <div class="tip-title">{`${w} ${clock(h * 60)}–${clock(((h + 1) % 24) * 60)}`}</div>
-                      <TipRow value={`${Math.round(v * 100)}%`} label={t('of the time live')} color="var(--accent)" />
-                    </>
+                    <Tip title={`${w} ${clock(h * 60)}–${clock(((h + 1) % 24) * 60)}`} rows={[[t('Live then'), `${Math.round(v * 100)}%`, true]]} />
                   ), `${w} ${clock(h * 60)}: ${Math.round(v * 100)}%`)}
                 />
               );
@@ -947,8 +1015,8 @@ function When({ a }: { a: Analysis }) {
   );
 }
 
-/** How many watch: TwitchTracker's month, and what was recorded here per stream. */
-function Audience({ d, a }: { d: Data; a: Analysis }) {
+/** How many watch: the last 30 days, and what was recorded here per stream. */
+function Audience({ d, a, colorOf }: { d: Data; a: Analysis; colorOf: (g: string) => string }) {
   const s = d.summary;
   const rec = a.streams.filter((x) => x.avg !== undefined).slice().reverse();
   if (!s && !rec.length && !d.recordingSince) return null;
@@ -958,17 +1026,15 @@ function Audience({ d, a }: { d: Data; a: Analysis }) {
       <h3 class="chart-title">{t('Audience')}</h3>
       {s ? (
         <>
-          <p class="chart-sub">{t('The last 30 days, from TwitchTracker')}</p>
+          <p class="chart-sub">{t('The last 30 days')}</p>
           <div class="sr-stats">
             <Stat label={t('Average viewers')} value={s.avg !== null ? num(s.avg) : '—'} />
             <Stat label={t('Peak viewers')} value={s.peak !== null ? num(s.peak) : '—'} />
             <Stat label={t('Hours watched')} value={s.hoursWatched !== null ? compact(s.hoursWatched) : '—'} />
-            <Stat label={t('Rank on Twitch')} value={s.rank !== null ? `#${num(s.rank)}` : '—'} />
+            {s.rank !== null ? <Stat label={t('Rank on Twitch')} value={`#${num(s.rank)}`} /> : <Stat label={t('Hours streamed')} value={s.minutes !== null ? hours(s.minutes * MIN) : '—'} />}
           </div>
         </>
-      ) : (
-        <p class="chart-sub">{t('TwitchTracker has no numbers for this channel right now.')}</p>
-      )}
+      ) : null}
       {v && (
         <>
           <h4 class="sr-sub-title">{t('Recorded here')}</h4>
@@ -978,7 +1044,7 @@ function Audience({ d, a }: { d: Data; a: Analysis }) {
             <Stat label={t('Hours watched')} value={compact(v.hoursWatched)} />
             <Stat label={t('Streams')} value={String(v.streams)} />
           </div>
-          {rec.length > 1 && <ViewerBars streams={rec} />}
+          {rec.length > 1 && <ViewerBars streams={rec} colorOf={colorOf} named={(g) => gameName(d, g)} />}
         </>
       )}
       {d.recordingSince && (
@@ -995,7 +1061,7 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 );
 
 /** Average viewers of each recorded stream, oldest first. */
-function ViewerBars({ streams }: { streams: Stream[] }) {
+function ViewerBars({ streams, colorOf, named }: { streams: Stream[]; colorOf: (g: string) => string; named: (g: string) => string }) {
   const [ref, W] = useWidth();
   const H = 120, L = 38, R = 4, T = 8, B = 20;
   const n = streams.length;
@@ -1016,16 +1082,14 @@ function ViewerBars({ streams }: { streams: Stream[] }) {
           ))}
           {streams.map((s, i) => {
             const x = L + i * band + (band - bw) / 2, top = y(s.avg!), r = Math.min(3, bw / 2, T + ph - top);
+            const main = [...s.segs].sort((p, q) => q[2] - p[2])[0]?.[0] ?? '';
             return (
               <g class="sr-col" style={{ '--k': i }} {...tipProps(() => (
-                <>
-                  <div class="tip-title">{day(s.start)}</div>
-                  <TipRow value={num(s.avg!)} label={t('average viewers')} color="var(--accent)" />
-                  <TipRow value={num(s.peak ?? 0)} label={t('at the peak')} />
-                </>
+                <Tip title={longDay(s.start)} rows={[[t('Average viewers'), num(s.avg!), true], [t('Peak viewers'), num(s.peak ?? 0)], [t('Hours streamed'), hours(s.end - s.start)]]}
+                  games={[[colorOf(main), named(main), '']]} />
               ), `${day(s.start)}: ${num(s.avg!)}`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
-                {T + ph - top > 0.75 && <path d={`M${x},${T + ph}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${T + ph}Z`} class="sr-vbar" />}
+                {T + ph - top > 0.75 && <path d={`M${x},${T + ph}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${T + ph}Z`} class="sr-vbar" style={{ fill: colorOf(main) }} />}
               </g>
             );
           })}
@@ -1111,12 +1175,7 @@ function FollowerChart({ pts }: { pts: [number, number][] }) {
             ))}
             <path d={line} class="tw-line" pathLength={1} />
             {pts.map((p) => (
-              <g class="tw-col" {...tipProps(() => (
-                <>
-                  <div class="tip-title">{day(p[0])}</div>
-                  <TipRow value={num(p[1])} label={t('followers')} color="var(--accent)" />
-                </>
-              ), `${day(p[0])}: ${num(p[1])}`)}>
+              <g class="tw-col" {...tipProps(() => <Tip title={longDay(p[0])} rows={[[t('Followers'), num(p[1]), true]]} />, `${day(p[0])}: ${num(p[1])}`)}>
                 <rect x={x(p[0]) - pw / pts.length / 2} y={T} width={pw / pts.length} height={ph} fill="transparent" />
                 <line x1={x(p[0])} x2={x(p[0])} y1={T} y2={T + ph} class="tw-guide" />
               </g>
@@ -1145,7 +1204,7 @@ function StreamSheet({ d, s, colorOf, onClose }: { d: Data; s: Stream | null; co
 
 function StreamDetail({ d, s, colorOf }: { d: Data; s: Stream; colorOf: (g: string) => string }) {
   const len = Math.max(1, s.end - s.start);
-  const named = (g: string) => (g ? d.games[g]?.[0] ?? t('Unknown game') : t('No category'));
+  const named = (g: string) => gameName(d, g);
   return (
     <div class="sr-detail">
       <p class="sr-detail-when">
@@ -1209,12 +1268,7 @@ function Curve({ s }: { s: Stream }) {
           ))}
           <path d={line} class="tw-line" pathLength={1} />
           {pts.map((p) => (
-            <g class="tw-col" {...tipProps(() => (
-              <>
-                <div class="tip-title">{timeLabel(s.start + p[0] * 60_000)}</div>
-                <TipRow value={num(p[1])} label={t('watching')} color="var(--accent)" />
-              </>
-            ), `${timeLabel(s.start + p[0] * 60_000)}: ${num(p[1])}`)}>
+            <g class="tw-col" {...tipProps(() => <Tip title={timeLabel(s.start + p[0] * 60_000)} rows={[[t('Watching'), num(p[1]), true]]} />, `${timeLabel(s.start + p[0] * 60_000)}: ${num(p[1])}`)}>
               <rect x={x(p[0]) - pw / pts.length / 2} y={T} width={pw / pts.length} height={ph} fill="transparent" />
               <line x1={x(p[0])} x2={x(p[0])} y1={T} y2={T + ph} class="tw-guide" />
             </g>

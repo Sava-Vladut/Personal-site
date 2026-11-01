@@ -148,11 +148,19 @@ export function TooltipLayer() {
       removeEventListener('scroll', hideTip, { capture: true });
     };
   }, []);
+  // kept on screen by its own width once drawn (a wide one near the edge would otherwise run off it)
+  const el = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(180);
+  useLayoutEffect(() => {
+    const now = el.current?.offsetWidth;
+    if (now && Math.abs(now - w) > 1) setW(now);
+  });
   if (!tip) return null;
-  const x = Math.min(Math.max(tip.x, 90), innerWidth - 90);
+  const half = w / 2 + 8;
+  const x = Math.min(Math.max(tip.x, half), Math.max(half, innerWidth - half));
   const below = tip.y < 90;
   return (
-    <div class="tooltip" role="status" style={{ left: `${x}px`, top: `${below ? tip.y + 18 : tip.y - 14}px`, transform: `translate(-50%, ${below ? '0' : '-100%'})` }}>
+    <div ref={el} class="tooltip" role="status" style={{ left: `${x}px`, top: `${below ? tip.y + 18 : tip.y - 14}px`, transform: `translate(-50%, ${below ? '0' : '-100%'})` }}>
       {tip.content}
     </div>
   );
