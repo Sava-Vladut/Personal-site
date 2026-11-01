@@ -47,7 +47,9 @@ export const resolveSpotify = (url: string) => get<Music>('/resolve?url=' + enco
 export const searchSpotify = (q: string, offset?: number) => get<Page<Music>>(`/search?q=${encodeURIComponent(q.trim())}&${at(offset)}`);
 export const nowPlaying = () => get<NowPlaying>('/now');
 export const listPlaylists = (offset?: number) => get<Page<Playlist>>('/playlists?' + at(offset));
-export const listPlaylistItems = (id: string, offset?: number) => get<Page<Music>>(`/playlists/${encodeURIComponent(id)}/items?${at(offset)}`);
+export const listPlaylistItems = (id: string, offset?: number) => get<Page<Music & { added?: string }>>(`/playlists/${encodeURIComponent(id)}/items?${at(offset)}`);
+/** A playlist's name, cover and snapshot (which changes whenever its songs do). */
+export const playlistInfo = (id: string) => get<{ id: string; name: string; cover?: string; snapshot?: string }>(`/playlists/${encodeURIComponent(id)}`);
 
 /** Leaves for Spotify's sign-in; comes back to the current screen (or `back`) with ?spotify=connected. */
 export const connectSpotify = (back = location.hash) => {

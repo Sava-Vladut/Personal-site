@@ -8,6 +8,7 @@ import { PageHead } from '../components/PageHead';
 import { Sky } from '../components/Sky';
 import { Dex } from './stats/Dex';
 import { Emotions } from './stats/Emotions';
+import { Eras } from './stats/Eras';
 import { MapTab } from './stats/Map';
 import { Overview } from './stats/Overview';
 import { Patterns } from './stats/Patterns';
@@ -18,7 +19,7 @@ import { usePref } from '../lib/prefs';
 import '../styles/stats.css';
 import { t } from '../lib/i18n';
 
-const TABS = [['overview', t('Overview')], ['emotions', t('Emotions')], ['patterns', t('Patterns')], ['weather', t('Weather')], ['map', t('Map')], ['dex', t('Dex')]] as const;
+const TABS = [['overview', t('Overview')], ['emotions', t('Emotions')], ['patterns', t('Patterns')], ['weather', t('Weather')], ['map', t('Map')], ['music', t('Music')], ['dex', t('Dex')]] as const;
 type Tab = (typeof TABS)[number][0];
 
 function loadRange(): RangeKey {
@@ -65,11 +66,11 @@ export function Stats({ query }: { query: URLSearchParams }) {
         <PageHead
           title={t('Your patterns')}
           back={() => goBack()}
-          subtitle={tab === 'dex' ? t('Every feeling you have named, all time.') : lead ? <>{t('Mostly')} <b>{shortName(lead)}</b> {RANGE_PHRASE[range]}.</> : t('Your feelings, over time.')}
+          subtitle={tab === 'dex' ? t('Every feeling you have named, all time.') : tab === 'music' ? t('The eras of your music, and how they felt.') : lead ? <>{t('Mostly')} <b>{shortName(lead)}</b> {RANGE_PHRASE[range]}.</> : t('Your feelings, over time.')}
         />
 
         {/* the range in three figures, on the sky like the records' */}
-        {tab !== 'dex' && s.k.entries > 0 && (
+        {tab !== 'dex' && tab !== 'music' && s.k.entries > 0 && (
           <div class="media-stats stats-figures">
             <span class="stat" style={{ '--i': 0 }}>
               <b><CountUp value={fmtMood(s.k.mood)} />{s.prev && s.prev.mood !== null && s.k.mood !== null && <em class="stat-aside"><Delta cur={s.k.mood} prev={s.prev.mood} digits={1} /></em>}</b>
@@ -92,7 +93,7 @@ export function Stats({ query }: { query: URLSearchParams }) {
           ))}
         </div>
 
-        {tab !== 'dex' && (
+        {tab !== 'dex' && tab !== 'music' && (
           <div class="chips filters fade-arrive-soft" role="toolbar" aria-label={t('Time range')}>
             {RANGES.map(([id, name]) => (
               <button class="chip" aria-pressed={range === id} onClick={() => setRange(id)}>{name}</button>
@@ -102,8 +103,10 @@ export function Stats({ query }: { query: URLSearchParams }) {
         )}
       </div>
 
-      <div class="tab-panel" key={tab === 'dex' ? tab : tab + range}>
-        {!entries.length ? (
+      <div class="tab-panel" key={tab === 'dex' || tab === 'music' ? tab : tab + range}>
+        {tab === 'music' ? (
+          <Eras />
+        ) : !entries.length ? (
           <div class="empty">
             <h2 class="title-s">{t('No stats yet')}</h2>
             <p>{t('Check in or write a note with a feeling attached, and your patterns will start to show here.')}</p>

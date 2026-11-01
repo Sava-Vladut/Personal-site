@@ -1,16 +1,17 @@
 import { memo } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
-import { monthLabel } from '../lib/dates';
-import { blankSong, findSong, getSongs, saveSong, toast, useEntries, useReady, useSongs, type Music, type Song } from '../lib/store';
-import { Stars } from '../components/books';
-import { GhostRows, letterOf, MediaHead, More, Rail, Runs, runsOf, showList, SortChip, SORTS, type Sort } from '../components/collection';
+import { addedAt, blankPeriod, blankSong, findSong, getSongs, saveSong, toast, useEntries, usePeriods, useReady, useSongs, type Music, type Period, type Song } from '../lib/store';
+import { artIn, Stars } from '../components/books';
+import { GhostRows, MediaHead, More, Rail, showList, SortChip } from '../components/collection';
 import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
 import { usePref } from '../lib/prefs';
 import { usePaged } from '../lib/inView';
-import { usePlaylistOrder } from '../lib/playlistOrder';
-import { isTape, MusicThing, musicSub } from '../components/music';
+import { usePlaylistSync } from '../lib/playlistSync';
+import { isTape, MusicThing, musicSub, smallArt } from '../components/music';
+import { addedLabel, duration, MusicWave, PeriodList, PeriodSheet, periodColor, periodName, spanLabel, spanOf } from '../components/periods';
+import { SyncLine, SyncSheet } from '../components/PlaylistSync';
 import { MostPickedSheet, SongOfDay, usePicked, type DayPick } from '../components/SongOfDay';
 import { Sheet } from '../components/Sheet';
 import { count as countOf, t } from '../lib/i18n';
@@ -28,36 +29,37 @@ const RAIL = 12;
 const WAITING = 60;
 const keyOf = (m: Pick<Music, 'kind' | 'id'>) => m.kind + ':' + m.id;
 
-/** Music's orders: as the Spotify playlist it came from (by date added, newest first, as Spotify lists it), then the rest. */
-type MusicSort = 'playlist' | Sort;
-const MUSIC_SORTS: [MusicSort, string][] = [['playlist', t('Playlist order')], ...SORTS];
-
-/** The heading a record files under: none in playlist order, the month it joined (newest first), its first letter, or its stars. */
-const labelFor = (sort: MusicSort) => (s: Song) => {
-  if (sort === 'playlist') return '';
-  if (sort === 'title') return letterOf(s.music.title);
-  if (sort === 'rating') return s.rating ? countOf(s.rating, 'star', 'stars') : t('Not rated');
-  const d = new Date(s.created);
-  return monthLabel(d.getFullYear(), d.getMonth());
-};
+/** Music's orders: by date added, newest first (as Spotify lists a playlist), by title, or by your stars. */
+type MusicSort = 'added' | 'title' | 'rating';
+const MUSIC_SORTS: [MusicSort, string][] = [['added', t('Date added')], ['title', t('A–Z')], ['rating', t('Top rated')]];
 
 /**
  * The Media page's music. First what's on now: today's song, what's on repeat, what you pick most and what's waiting in
- * your notes, each a row you swipe through (in a column at the right on a wide screen). Then the whole collection as a
- * list, in runs by the month it joined, its letter or its stars.
+ * your notes, each a row you swipe through (in a column at the right on a wide screen). Then your music over time as a
+ * wave with the periods you named on it, and the whole collection as Spotify lists a playlist: number, title and
+ * artists, album, date added and length, kept in step with the synced Spotify playlists.
+ * Selecting songs (or dragging across the wave) makes a period: an era you name and give a feeling.
  */
 export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onClearSearch: () => void; onAdd: () => void; picker: DayPick }) {
   const songs = useSongs();
   const entries = useEntries();
   const ready = useReady();
   const [chosen, setKind] = usePref<Kind>('music-kind', 'all', ['all', 'repeat', ...KINDS.map(([k]) => k)]);
-  const [sort, setSort] = usePref<MusicSort>('music-sort-v2', 'playlist', MUSIC_SORTS.map(([s]) => s));
+  const [sort, setSort] = usePref<MusicSort>('music-sort-v3', 'added', MUSIC_SORTS.map(([s]) => s));
   const [notesOpen, setNotesOpen] = useState(false);
   const [rankOpen, setRankOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const keeping = useRef(new Set<string>());
   const list = useRef<HTMLElement>(null);
   const picked = usePicked(songs);
-  const playlist = usePlaylistOrder(sort === 'playlist', songs);
+  const sync = usePlaylistSync(ready);
+  const periods = usePeriods();
+  // songs picked for a period (null: not picking), the period open in its sheet, and the one whose songs the list shows
+  const [sel, setSel] = useState<Set<string> | null>(null);
+  const [period, setPeriod] = useState<Period | null>(null);
+  const [only, setOnly] = useState<string | null>(null);
+  const showing = only ? periods.find((p) => p.id === only) ?? null : null;
+  const byId = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
 
   // what search looks through, lowercased once per change to the records rather than on every key
   const hay = useMemo(() => new Map(songs.map((s) => [s, `${s.music.title} ${s.music.sub ?? ''}`.toLowerCase()])), [songs]);
@@ -80,14 +82,13 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
   const query = q.trim().toLowerCase();
   const shown = useMemo(() => {
     const words = query.split(/\s+/).filter(Boolean);
-    const list = songs.filter((s) => (kind === 'all' || (kind === 'repeat' ? s.repeat : kindOf(s.music) === kind)) && (!words.length || words.every((w) => hay.get(s)!.includes(w))));
+    const inPeriod = showing ? new Set(showing.songs) : null;
+    const list = songs.filter((s) => (kind === 'all' || (kind === 'repeat' ? s.repeat : kindOf(s.music) === kind)) && (!inPeriod || inPeriod.has(s.id)) && (!words.length || words.every((w) => hay.get(s)!.includes(w))));
     if (sort === 'title') list.sort((a, b) => a.music.title.localeCompare(b.music.title, undefined, { sensitivity: 'base' }));
-    if (sort === 'rating') list.sort((a, b) => b.rating - a.rating || b.created - a.created);
-    const rank = playlist.rank;
-    // songs not on the playlist come after it, newest first
-    if (sort === 'playlist' && rank) list.sort((a, b) => (rank.get(keyOf(a.music)) ?? Infinity) - (rank.get(keyOf(b.music)) ?? Infinity) || b.created - a.created);
+    else if (sort === 'rating') list.sort((a, b) => b.rating - a.rating || addedAt(b) - addedAt(a));
+    else list.sort((a, b) => addedAt(b) - addedAt(a));
     return list;
-  }, [songs, hay, kind, sort, query, playlist.rank]);
+  }, [songs, hay, kind, sort, query, showing]);
 
   const repeat = useMemo(() => songs.filter((s) => s.repeat), [songs]);
 
@@ -108,8 +109,34 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
   useEffect(() => { if (!waiting.length) setNotesOpen(false); }, [waiting.length]);
 
   // Only the first rows are drawn; the rest come in as you scroll toward them, so a big collection opens quickly.
-  const paged = usePaged(shown.length, PAGE, `${kind}|${sort}|${query}`);
-  const runs = useMemo(() => runsOf(shown.slice(0, paged.n), labelFor(sort)), [shown, paged.n, sort]);
+  const paged = usePaged(shown.length, PAGE, `${kind}|${sort}|${query}|${only}`);
+
+  // Picking songs for a period: a tap picks one, shift picks every row up to the last one picked.
+  const last = useRef<number | null>(null);
+  const pick = useRef<(s: Song, shift: boolean) => void>(() => {});
+  pick.current = (s, shift) => {
+    const next = new Set(sel ?? []);
+    const at = shown.indexOf(s);
+    if (shift && last.current !== null) {
+      const [a, b] = [Math.min(at, last.current), Math.max(at, last.current)];
+      shown.slice(a, b + 1).forEach((x) => next.add(x.id));
+    } else if (next.has(s.id)) next.delete(s.id);
+    else next.add(s.id);
+    last.current = at;
+    setSel(next);
+  };
+  const onPick = useMemo(() => (s: Song, shift: boolean) => pick.current(s, shift), []);
+  const pickSpan = useMemo(() => (sel?.size ? spanOf({ songs: [...sel] }, byId) : null), [sel, byId]);
+  // a stretch dragged on the wave: every song that joined in it
+  const pickStretch = (from: number, to: number) => {
+    const ids = songs.filter((s) => addedAt(s) >= from && addedAt(s) <= to).map((s) => s.id);
+    if (!ids.length) return toast(t('No songs joined then.'));
+    setSel(new Set(ids));
+    last.current = null;
+  };
+  const stopPicking = () => { setSel(null); last.current = null; };
+  const makePeriod = () => sel?.size && setPeriod(blankPeriod({ songs: [...sel] }));
+  useEffect(() => { if (only && !showing) setOnly(null); }, [only, showing]);
 
   const keep = async (m: Music) => {
     const key = keyOf(m);
@@ -131,6 +158,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
   };
 
   const now = songs.length > 0 && !query;
+  const at = Date.now();
   return (
     <div class={`mx${now ? ' has-now' : ''}`}>
       {now && (
@@ -163,14 +191,35 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
         </div>
       )}
 
-      <section class="mx-list" ref={list}>
+      <section class={`mx-list${sel ? ' is-picking' : ''}`} ref={list}>
+        {songs.length > 0 && !query && (
+          <section class="mx-time fade-arrive-soft" aria-label={t('Your music over time')}>
+            <MediaHead title={t('Over time')} icon="chart-dots">
+              <span class="hint mx-time-hint">{sel ? countOf(sel.size, 'song picked', 'songs picked') : t('Drag across the wave to pick a period')}</span>
+            </MediaHead>
+            <MusicWave songs={songs} periods={periods} picked={pickSpan} onPick={pickStretch} onOpen={setPeriod} />
+            {periods.length > 0 && <PeriodList periods={periods} songs={songs} onOpen={setPeriod} />}
+          </section>
+        )}
+
         {songs.length > 0 && (
           <>
-            <MediaHead title={query ? t('Found') : t('All music')} count={shown.length}>
-              <SortChip<MusicSort> sort={sort} onSort={setSort} options={MUSIC_SORTS} />
+            <MediaHead title={query ? t('Found') : showing ? periodName(showing) : t('All music')} count={shown.length}>
+              <div class="row gap-s">
+                <button class="btn btn-quiet btn-s" aria-pressed={!!sel} onClick={() => (sel ? stopPicking() : setSel(new Set()))}>
+                  <Icon name="list-check" size={16} /> {sel ? t('Done') : t('Select')}
+                </button>
+                <SortChip<MusicSort> sort={sort} onSort={setSort} options={MUSIC_SORTS} />
+              </div>
             </MediaHead>
-            {chips.length > 0 && (
+            <SyncLine status={sync} onOpen={() => setSyncOpen(true)} />
+            {(chips.length > 0 || showing) && (
               <div class="chips scroll-x mx-chips fade-arrive-soft" role="toolbar" aria-label={t('Kind and order')}>
+                {showing && (
+                  <button class="chip mx-period-chip" aria-pressed="true" onClick={() => setOnly(null)} style={{ '--c': periodColor(showing) }} aria-label={`${t('Show all music')}: ${periodName(showing)}`}>
+                    <i aria-hidden="true" /> {periodName(showing)} <Icon name="x" size={14} stroke={2} />
+                  </button>
+                )}
                 <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>{t('All')} {songs.length}</button>
                 {chips.map(([k, name]) => (
                   <button class="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>
@@ -190,19 +239,47 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
             <Mark id="spot:records" hue="love-connection" size={96} />
             <p>{t('No records yet')}</p>
             <button class="btn btn-primary" onClick={onAdd}><Icon name="plus" size={18} /> {t('Add music')}</button>
+            <button class="btn btn-quiet" onClick={() => setSyncOpen(true)}><Icon name="brand-spotify" size={18} /> {t('Sync a Spotify playlist')}</button>
           </div>
         )}
         {!!songs.length && !shown.length && (
           <div class="empty-note center">
             <p>{t('No music matches.')}</p>
-            <button class="btn btn-quiet" onClick={() => { onClearSearch(); setKind('all'); }}>{t('Clear filters')}</button>
+            <button class="btn btn-quiet" onClick={() => { onClearSearch(); setKind('all'); setOnly(null); }}>{t('Clear filters')}</button>
           </div>
         )}
 
-        {shown.length > 0 && <Runs runs={runs} row={(s: Song) => <SongLine key={s.id} s={s} />} />}
+        {shown.length > 0 && (
+          <div class="mx-table" role="list" aria-label={t('All music')}>
+            <div class="mx-thead" aria-hidden="true">
+              <span class="mx-n">#</span>
+              <button class="mx-th" aria-pressed={sort === 'title'} onClick={() => setSort('title')} tabIndex={-1}>{t('Title')}</button>
+              <span class="mx-album">{t('Album')}</span>
+              <button class="mx-th mx-date" aria-pressed={sort === 'added'} onClick={() => setSort('added')} tabIndex={-1}>{t('Date added')}</button>
+              <span class="mx-end"><Icon name="clock" size={16} /></span>
+            </div>
+            {shown.slice(0, paged.n).map((s, i) => (
+              <TrackRow key={s.id} s={s} n={i + 1} at={at} picking={!!sel} picked={!!sel?.has(s.id)} onPick={onPick} />
+            ))}
+          </div>
+        )}
         {paged.more && <div ref={paged.ref} class="feed-more" aria-hidden="true" />}
+
+        {sel && (
+          <div class="mx-selbar fade-arrive-soft" role="toolbar" aria-label={t('Picked songs')}>
+            <span class="mx-selbar-text">
+              <b>{countOf(sel.size, 'song', 'songs')}</b>
+              <span>{pickSpan ? spanLabel(pickSpan) : t('Tap songs, or drag across the wave')}</span>
+            </span>
+            {sel.size > 0 && <button class="btn btn-quiet btn-s" onClick={() => setSel(new Set())}>{t('Clear selection')}</button>}
+            <button class="btn btn-primary btn-s" onClick={makePeriod} disabled={!sel.size}><Icon name="sparkles" size={16} /> {t('Make a period')}</button>
+            <button class="icon-btn" onClick={stopPicking} aria-label={t('Stop selecting')}><Icon name="x" size={18} /></button>
+          </div>
+        )}
       </section>
 
+      <PeriodSheet period={period} songs={songs} onClose={() => setPeriod(null)} onSaved={stopPicking} onShow={(p) => { setOnly(p.id); setKind('all'); showList(list.current); }} />
+      <SyncSheet open={syncOpen} onClose={() => setSyncOpen(false)} />
       <MostPickedSheet stats={picked} open={rankOpen} onClose={() => setRankOpen(false)} />
       <Sheet open={notesOpen} onClose={() => setNotesOpen(false)} title={<span class="row gap-s"><Icon name="notebook" /> {t('In your notes')}</span>} label={t('In your notes')} tall>
         <p class="hint">{t('Music you added to notes. Keep it to rate it and say what it means to you.')}</p>
@@ -243,30 +320,45 @@ function RecordItem({ s, place }: { s: Song; place?: number }) {
   );
 }
 
-type LineProps = { s: Song };
+type RowProps = { s: Song; n: number; at: number; picking: boolean; picked: boolean; onPick: (s: Song, shift: boolean) => void };
 /** Every save reads the records back as new objects, so a row is the same while its record's id and last change are. */
-const sameLine = (a: LineProps, b: LineProps) => a.s.id === b.s.id && a.s.updated === b.s.updated;
+const sameRow = (a: RowProps, b: RowProps) =>
+  a.s.id === b.s.id && a.s.updated === b.s.updated && a.n === b.n && a.picking === b.picking && a.picked === b.picked && Math.floor(a.at / 6e4) === Math.floor(b.at / 6e4);
 
-/** A record in the collection: the disc or tape, its name, who it's by, and at the end its stars (and whether it's on repeat). */
-const SongLine = memo(function SongLine({ s }: LineProps) {
+/**
+ * A song as Spotify lists it in a playlist: its number, cover, title and artists, album, date added and length (with
+ * your stars and whether it's on repeat before the length). Narrow, the album and date fold under the title.
+ * While picking songs for a period, the number is a tick box and a tap picks the song.
+ */
+const TrackRow = memo(function TrackRow({ s, n, at, picking, picked, onPick }: RowProps) {
+  const m = s.music;
+  const when = addedLabel(addedAt(s), at);
   return (
     <button
-      class={`book-row mx-row${isTape(s.music) ? ' is-tape' : ''}`}
-      onClick={() => navigate('song/' + s.id)}
-      aria-label={`${s.music.title}, ${musicSub(s.music)}${s.repeat ? ', ' + t('On repeat') : ''}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
+      role="listitem"
+      class={`mx-tr${picked ? ' is-picked' : ''}`}
+      onClick={(e) => (picking ? onPick(s, e.shiftKey) : navigate('song/' + s.id))}
+      aria-pressed={picking ? picked : undefined}
+      aria-label={`${m.title}, ${musicSub(m)}, ${t('added {when}', { when })}${s.repeat ? ', ' + t('On repeat') : ''}${s.rating ? ', ' + t('{n} of 5 stars', { n: s.rating }) : ''}`}
     >
-      <span class="mx-row-art"><MusicThing m={s.music} size={40} /></span>
-      <span class="book-row-main">
-        <span class="book-row-title">{s.music.title}</span>
-        <span class="book-row-sub">{musicSub(s.music)}</span>
+      <span class="mx-n" aria-hidden="true">{picking ? <span class="mx-tick">{picked && <Icon name="check" size={13} stroke={2.75} />}</span> : n}</span>
+      <span class="mx-t">
+        <span class={`mx-cover${isTape(m) ? ' is-tape' : ''}`}>{m.image && <img class="art-fade" src={smallArt(m.image)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable={false} onLoad={artIn} />}</span>
+        <span class="mx-t-text">
+          <span class="mx-t-title">{m.title}</span>
+          <span class="mx-t-sub">{musicSub(m)}<span class="mx-t-when"> · {when}</span></span>
+        </span>
       </span>
-      <span class="mx-row-end" aria-hidden="true">
+      <span class="mx-album">{m.album ?? ''}</span>
+      <span class="mx-date">{when}</span>
+      <span class="mx-end">
         {s.repeat && <span class="mx-repeat"><Icon name="repeat" size={14} stroke={2} /></span>}
-        {s.rating > 0 && <Stars value={s.rating} size={12} />}
+        {s.rating > 0 && <Stars value={s.rating} size={11} />}
+        <span class="mx-dur">{duration(m.ms)}</span>
       </span>
     </button>
   );
-}, sameLine);
+}, sameRow);
 
 /** The line under the records' title: records, tapes, and the average rating. */
 export function musicSummary(songs: Song[]): string {

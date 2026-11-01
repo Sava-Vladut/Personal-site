@@ -331,6 +331,9 @@ function musicOut(t) {
     sub: sub ? String(sub).slice(0, 300) : undefined,
     image: pickImage(t.album?.images || t.images || t.show?.images),
     link: `https://open.spotify.com/${t.type}/${t.id}`,
+    // a song's album and length, for the records' Spotify-style list
+    album: t.type === 'track' && t.album?.name ? String(t.album.name).slice(0, 300) : undefined,
+    ms: Number.isSafeInteger(t.duration_ms) && t.duration_ms > 0 ? t.duration_ms : undefined,
   };
 }
 
@@ -493,6 +496,14 @@ async function spotify(req, res, url, p, setCookies, out) {
     // Spotify only lets apps read the songs of playlists you own or collaborate on, so only those are listed.
     const items = (body.items || []).filter((pl) => pl?.id && (pl.collaborative || !u || pl.owner?.id === u)).map(playlistOut);
     return out({ items, next: nextOffset(body, maxOffset) });
+  }
+
+  // A synced playlist's name, cover and snapshot: the snapshot changes whenever its songs do, so one small request
+  // tells whether the whole playlist needs reading again.
+  const one = p.match(/^\/api\/spotify\/playlists\/([A-Za-z0-9]{10,40})$/);
+  if (one) {
+    const pl = await api(`/playlists/${one[1]}?fields=id,name,snapshot_id,images`);
+    return out({ id: pl.id, name: pl.name, cover: pickImage(pl.images), snapshot: pl.snapshot_id });
   }
 
   const pm = p.match(/^\/api\/spotify\/playlists\/([A-Za-z0-9]{10,40})\/items$/);

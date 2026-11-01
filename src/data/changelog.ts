@@ -11,6 +11,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.169.0',
+    date: '2026-11-01',
+    changes: [
+      'Music: your records are listed the way Spotify lists a playlist, with number, cover, title and artists, album, date added and length',
+      'Music: newest first by date added, using the date you added each song in Spotify; tap Title or Date added to change the order',
+      'Music: sync a Spotify playlist and the records keep in step: songs you add in Spotify show up within a minute, songs you take off leave',
+      'Music: songs you rated, wrote about or put in a period stay even when they leave the playlist',
+      'Music: a wave of the songs you added over time; drag across it, or tap Select and pick songs, to make a period',
+      'Periods: name an era, say how it felt and what was going on; they lie on the wave as coloured bands and show their songs in a tap',
+      'Stats: a new Music tab with your eras on the wave, how they felt together, and each one with its feelings and songs',
+    ],
+  },
+  {
     version: '1.168.1',
     date: '2026-11-01',
     changes: [

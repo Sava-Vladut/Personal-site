@@ -25,6 +25,8 @@ export interface Music {
   sub?: string;      // artists, show or owner
   image?: string;
   link: string;      // https://open.spotify.com/<kind>/<id>
+  album?: string;    // a song's album
+  ms?: number;       // a song's length
 }
 const MUSIC_KINDS = ['track', 'album', 'playlist', 'episode', 'show', 'artist'];
 
@@ -157,10 +159,26 @@ export interface Song {
   emotions: string[];       // how it makes you feel, first one is the main feeling
   from: string | null;      // the person it brings to mind
   days: string[];           // 'YYYY-MM-DD' days it was your song of the day, oldest first
+  added: number | null;     // when it joined the synced Spotify playlist (ms), as Spotify's "Date added" says
+  lists: string[];          // the synced Spotify playlists it's on
   created: number;
   updated: number;
 }
 const MAX_SONG_DAYS = 5000;
+/** When a record joined: the playlist's date added, else when it was kept here. */
+export const addedAt = (s: Song) => s.added ?? s.created;
+
+/** A stretch of your music: songs picked together and named as an era, with how it felt. */
+export interface Period {
+  id: string;
+  name: string;
+  text: string;             // what that time was like
+  emotions: string[];       // how it felt, first one is the main feeling
+  songs: string[];          // the records in it (Song ids)
+  created: number;
+  updated: number;
+}
+const MAX_PERIOD_SONGS = 3000;
 
 /* ---------- tiny observable ---------- */
 
@@ -411,7 +429,7 @@ export const getSongs = songs.list$.get;
 
 export function blankSong(music: Music, patch: Partial<Song> = {}): Song {
   const now = Date.now();
-  return { id: uid(), music, repeat: false, rating: 0, text: '', emotions: [], from: null, days: [], created: now, updated: now, ...patch };
+  return { id: uid(), music, repeat: false, rating: 0, text: '', emotions: [], from: null, days: [], added: null, lists: [], created: now, updated: now, ...patch };
 }
 export const saveSong = songs.save;
 export const saveSongs = songs.saveMany;
@@ -432,6 +450,19 @@ export async function pickSongOfDay(song: Song | null, day: string) {
   if (fresh && !fresh.days.includes(day)) await saveSong({ ...fresh, days: [...fresh.days, day].sort().slice(-MAX_SONG_DAYS) });
 }
 
+const byStart = (a: Period, b: Period) => b.created - a.created;
+const periods = collection<Period>('periods', normalizePeriod, byStart);
+export const usePeriods = periods.list$.use;
+export const getPeriods = periods.list$.get;
+
+export function blankPeriod(patch: Partial<Period> = {}): Period {
+  const now = Date.now();
+  return { id: uid(), name: '', text: '', emotions: [], songs: [], created: now, updated: now, ...patch };
+}
+export const savePeriod = periods.save;
+/** Forgets a period. Its songs stay in your records. */
+export const deletePeriod = periods.remove;
+
 const byRepoName = (a: Repo, b: Repo) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 const repos = collection<Repo>('repos', normalizeRepo, byRepoName);
 export const useRepos = repos.list$.use;
@@ -446,7 +477,7 @@ export const saveRepo = repos.save;
 export const deleteRepo = repos.remove;
 
 type Collection = ReturnType<typeof collection<any>>;
-const COLLECTIONS: Collection[] = [people, books, songs, repos];
+const COLLECTIONS: Collection[] = [people, books, songs, repos, periods];
 let clearRevision = 0;
 let lastClearAt = 0;
 const freshSinceClear = new Set<string>();
@@ -560,6 +591,8 @@ function normalizeMusic(m: any): Music | null {
   return {
     kind: m.kind, id: m.id, title: str(m.title, 300) || 'Untitled', sub: str(m.sub, 300) || undefined,
     image: /^https:\/\//.test(m.image) ? str(m.image, 2000) : undefined, link: `https://open.spotify.com/${m.kind}/${m.id}`,
+    ...(str(m.album, 300) && { album: str(m.album, 300) }),
+    ...(Number.isSafeInteger(m.ms) && m.ms > 0 && m.ms < 864e5 && { ms: m.ms }),
   };
 }
 
@@ -677,6 +710,23 @@ function normalizeSong(raw: any): Song | null {
     emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     from: typeof raw.from === 'string' && raw.from.length <= 40 ? raw.from : null,
     days: Array.isArray(raw.days) ? [...new Set(raw.days.filter(isDateKey) as string[])].sort().slice(-MAX_SONG_DAYS) : [],
+    added: Number.isFinite(raw.added) && raw.added > 0 ? raw.added : null,
+    lists: Array.isArray(raw.lists) ? [...new Set(raw.lists.filter((x: unknown) => typeof x === 'string' && /^[A-Za-z0-9]{10,40}$/.test(x)) as string[])].slice(0, 20) : [],
+    created: Number.isFinite(raw.created) ? raw.created : now,
+    updated: Number.isFinite(raw.updated) ? raw.updated : now,
+  };
+}
+
+/** Coerces untrusted input into a valid Period, or null. */
+function normalizePeriod(raw: any): Period | null {
+  if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id || raw.id.length > 40) return null;
+  const now = Date.now();
+  return {
+    id: raw.id,
+    name: str(raw.name, 120),
+    text: typeof raw.text === 'string' ? raw.text.slice(0, 20_000) : '',
+    emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
+    songs: Array.isArray(raw.songs) ? [...new Set(raw.songs.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, MAX_PERIOD_SONGS) : [],
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };
@@ -711,7 +761,7 @@ export async function exportJSON() {
   const entries = entries$.get();
   try { localStorage.setItem(LAST_EXPORT, String(Date.now())); } catch {}
   const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
-  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), photos }, null, 1);
+  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), periods: getPeriods(), photos }, null, 1);
 }
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
@@ -739,7 +789,7 @@ export async function importJSON(text: string) {
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()])) return interrupted();
   const [pChanged, bChanged, sChanged, rChanged] = merged;
 
-  if (changed.length || pChanged.length || bChanged.length || sChanged.length || rChanged.length || restoredPhotos) changeHandler();
+  if (changed.length || pChanged.length || bChanged.length || sChanged.length || rChanged.length || merged[4].length || restoredPhotos) changeHandler();
   return {
     changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, repos: rChanged.length, photos: restoredPhotos, total: incoming.length,
     icons: iconsOf([...changed, ...pChanged]),
@@ -752,7 +802,7 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Merges another device's copy: the newest edit of each entry wins, and a deletion wins over edits made before it.
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
-export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; repos?: unknown; deleted?: unknown }) {
+export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; repos?: unknown; periods?: unknown; deleted?: unknown }) {
   const revision = clearRevision;
   const incoming = newestById((Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[]);
   const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
@@ -762,7 +812,7 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   // Local deletions can happen while IndexedDB is busy; neither their tombstones nor their visible removal
   // may be replaced by the snapshot taken when this merge began.
   deleted = combineDeleted(deleted, committedDeleted);
-  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs' | 'repos']));
+  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs' | 'repos' | 'periods']));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()]))
     return { changed: [] as Entry[], removed: removed.length, icons: [] as string[] };
   const current = new Map(newestById([
@@ -770,7 +820,7 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   ]).filter((e) => !(deleted[e.id] >= e.updated)).map((e) => [e.id, e]));
 
   // People, books, songs and repos follow the same rules. Older app versions don't send them: then nothing changes here.
-  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs' | 'repos'], deleted, false) }));
+  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs' | 'repos' | 'periods'], deleted, false) }));
 
   const visible = entries$.get();
   if (visible.length !== current.size || visible.some((e) => current.get(e.id) !== e)) entries$.set([...current.values()].sort(byNewest));
