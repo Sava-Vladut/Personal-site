@@ -7,8 +7,9 @@
 //    file per channel. Chapters are kept there too, and nothing is thrown away (old streams are thinned to a
 //    viewer line), so the history grows past Twitch's 60 days for as long as the channel is recorded.
 //  • The channel's 100 most-watched clips of all time, the one part of Twitch that reaches back over a whole career.
-//  • TwitchTracker's public summary of the last 30 days (average and peak viewers, hours watched), when it answers;
-//    each day's is kept too, so the months add up. (TwitchTracker asks not to be scraped, so only that API is used.)
+//  • TwitchTracker's public summary of the last 30 days (average and peak viewers, hours watched and streamed), when it
+//    answers; each day's is kept too, so the months add up. (TwitchTracker asks not to be scraped, so only that API is
+//    used; SullyGnome asks the same and has no API, so the page only links to it.)
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -41,7 +42,7 @@ const CHANNEL = `query($login: String!) { user(login: $login) {
   id login displayName description createdAt profileImageURL(width: 150)
   followers { totalCount } roles { isPartner isAffiliate } broadcastSettings { language }
   stream { id type createdAt title viewersCount ${GAME} }
-  videos(first: 100, type: ARCHIVE, sort: TIME) { edges { node { id status title createdAt lengthSeconds ${GAME} } } }
+  videos(first: 100, type: ARCHIVE, sort: TIME) { edges { node { id status title createdAt lengthSeconds viewCount ${GAME} } } }
   clips(first: 100, criteria: { period: ALL_TIME, sort: VIEWS_DESC }) { edges { node { slug title viewCount createdAt durationSeconds thumbnailURL(width: 480, height: 272) ${GAME} } } }
 } }`;
 const USERS = `query($logins: [String!]) { users(logins: $logins) {
@@ -102,10 +103,10 @@ function thin(r) {
   r.thin = 1;
 }
 
-/** TwitchTracker's 30 days as they stood each day: [midnight UTC, rank, average viewers, peak, followers]. */
+/** TwitchTracker's 30 days as they stood each day: [midnight UTC, rank, average viewers, peak, followers, hours watched, minutes streamed]. */
 function keepTracker(store, tt, t) {
   store.tracker ??= [];
-  const row = [dayOf(t), tt.rank, tt.avg, tt.peak, tt.followersTotal];
+  const row = [dayOf(t), tt.rank, tt.avg, tt.peak, tt.followersTotal, tt.hoursWatched, tt.minutes];
   if (store.tracker.at(-1)?.[0] === row[0]) store.tracker[store.tracker.length - 1] = row;
   else store.tracker.push(row);
 }
@@ -137,6 +138,7 @@ function keepVods(store, videos, t) {
       ms: Math.max(0, (v.lengthSeconds | 0) * 1000),
       title: String(v.title ?? ''),
       game: gameOf(store, v.game),
+      views: Number.isFinite(v.viewCount) ? v.viewCount : had?.views,
       live: v.status === 'RECORDING' || undefined,
       // a finished broadcast's chapters don't change; a live one's grow
       ch: had?.ch && v.status !== 'RECORDING' ? had.ch : undefined,
@@ -188,7 +190,8 @@ function viewersOf(r) {
  */
 export function streamsOf(store, liveId = null) {
   const vods = Object.entries(store.vods).map(([id, v]) => ({
-    start: v.start, end: v.start + v.ms, title: v.title, vod: id, segs: segmentsOfVod(v), ...(v.live ? { live: true } : {}),
+    start: v.start, end: v.start + v.ms, title: v.title, vod: id, segs: segmentsOfVod(v),
+    ...(v.views !== undefined ? { views: v.views } : {}), ...(v.live ? { live: true } : {}),
   }));
   const out = [...vods];
   for (const r of store.streams) {

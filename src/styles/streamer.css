@@ -1,7 +1,8 @@
 /* ============================================================
    Streamer stats (views/Streamer.tsx): a Twitch channel's career, games, hours and audience, in Channel points'
    purple (--accent). Builds on stats.css (tiles, chart cards) and twitch.css (lists, the live dot, the line).
-   The page reads top down: who it is, the whole career, every month known, then the chosen range up close.
+   The page reads top down: who it is, the range every card reads, the range over time (zoomable), the range up
+   close, then the clips.
    Games wear six emotion colours in a fixed order; every other game is a quiet grey.
    ============================================================ */
 
@@ -40,7 +41,8 @@
 .sr-name { font: var(--w-medium) var(--text-2xl)/1.2 var(--serif); letter-spacing: -0.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-meta { margin-top: 2px; font-size: var(--text-s); color: var(--ink-3); }
 .sr-life { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; border-radius: var(--r-m); overflow: hidden; background: var(--line); }
-@media (min-width: 720px) { .sr-life { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 560px) { .sr-life { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .sr-life { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .sr-life-item { display: grid; align-content: start; gap: 2px; padding: 10px 12px; background: color-mix(in oklab, var(--surface-2) 70%, var(--surface)); min-width: 0; }
 .sr-life-item small { font-size: var(--text-xs); font-weight: var(--w-medium); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
 .sr-life-item b { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -60,6 +62,14 @@
 .sr-live-n b { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; }
 .sr-live-n small { font-size: var(--text-s); color: var(--ink-3); }
 .sr-bio { font-size: var(--text-m); line-height: 1.45; color: var(--ink-2); }
+
+/* ---------- the range every card reads, and the clips' heading ---------- */
+
+.sr-rangebar { padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sr-range-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font-size: var(--text-s); color: var(--ink-3); }
+.sr-sully { display: inline-flex; align-items: center; gap: 3px; color: color-mix(in oklab, var(--accent) 75%, var(--ink)); font-weight: var(--w-medium); text-decoration: none; white-space: nowrap; }
+@media (hover: hover) { .sr-sully:hover { text-decoration: underline; } }
+.sr-section { margin: 14px 2px 0; font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; }
 
 /* ---------- the career ---------- */
 
@@ -113,7 +123,22 @@
 
 /* ---------- over time ---------- */
 
-.sr-metric { margin: 2px 0 10px !important; }
+.sr-page .chart-card .sr-metric { margin: 2px -16px 6px; padding-inline: 16px; }
+.sr-metric .chip { height: 30px; padding: 0 12px; font-size: var(--text-s); }
+.sr-metric .chip[aria-selected='true'] { background: var(--accent); color: var(--surface); }
+
+/* zooming: the stretch shown and the buttons, a brush while dragging, the whole range in miniature under it */
+.sr-zoombar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.sr-zoom-hint { min-width: 0; font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sr-zoom-btns { flex: none; display: flex; gap: 2px; }
+.sr-zoom-btns .icon-btn:disabled { opacity: 0.35; }
+/* sideways drags (and a pinch) are the chart's; up and down still scroll the page */
+.sr-zoom { touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: crosshair; }
+.sr-brush { fill: color-mix(in oklab, var(--accent) 18%, transparent); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; }
+.sr-overview { margin-top: 4px; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+.sr-overview:active { cursor: grabbing; }
+.sr-ov-bar { fill: color-mix(in oklab, var(--ink-3) 35%, transparent); }
+.sr-ov-win { fill: color-mix(in oklab, var(--accent) 16%, transparent); stroke: var(--accent); stroke-width: 1.5; }
 .sr-zero { stroke: var(--ink-3); stroke-width: 1; }
 .sr-empty-chart { padding: 40px 0; text-align: center; }
 
@@ -122,7 +147,8 @@
 .sr-summary { padding: 14px 16px 16px; display: grid; gap: 14px; }
 .sr-summary-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
 .sr-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-@media (min-width: 720px) { .sr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 560px) { .sr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .sr-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .sr-kpi {
   display: grid; align-content: start; gap: 2px; padding: 12px 14px; border-radius: var(--r-m); min-width: 0;
   background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 9%, var(--surface-2)), var(--surface-2));
@@ -144,7 +170,9 @@
 
 /* ---------- games ---------- */
 
-.sr-games li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; }
+.sr-games-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; margin-bottom: 4px; }
+.sr-games li { display: grid; grid-template-columns: 26px minmax(0, 1fr) 4.5em; align-items: center; gap: 12px; padding: 8px 0; }
+.sr-games .sr-game small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-games li + li { border-top: 1px solid var(--line); }
 .sr-box {
   display: grid; place-items: center; width: 26px; height: 36px; flex: none; border-radius: var(--r-xs); object-fit: cover;

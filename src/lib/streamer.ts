@@ -5,6 +5,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { keyOf, timeLabel } from './dates';
 import { LOCALE, count, t } from './i18n';
 
+const MIN = 60_000;
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
@@ -22,6 +23,8 @@ export interface Stream {
   peak?: number;
   /** [minutes from the start, viewers] */
   curve?: [number, number][];
+  /** the VOD's views on Twitch */
+  views?: number;
 }
 export interface Summary { avg: number | null; peak: number | null; hoursWatched: number | null; minutes: number | null; followers: number | null; followersTotal?: number | null; rank: number | null }
 /** one of the channel's most-watched clips */
@@ -50,8 +53,8 @@ export interface Streamer {
   games: Record<string, [string, string | null]>;
   /** [midnight UTC, followers] */
   followerDays: [number, number][];
-  /** TwitchTracker's 30 days as they stood each day: [midnight UTC, rank, average viewers, peak, followers] */
-  trackerDays?: [number, number | null, number | null, number | null, number | null][];
+  /** TwitchTracker's 30 days as they stood each day: [midnight UTC, rank, average viewers, peak, followers, hours watched, minutes streamed] */
+  trackerDays?: [number, number | null, number | null, number | null, number | null, (number | null)?, (number | null)?][];
   /** the 100 most-watched clips of all time, biggest first */
   clips?: Clip[];
   /** TwitchTracker's last 30 days */
@@ -171,8 +174,57 @@ function usualTime(times: number[]) {
   return Math.round(m / 15) * 15 % 1440;
 }
 
-export interface GameRow { id: string; name: string; box: string | null; ms: number; streams: number; last: number }
-export interface Bucket { start: number; key: string; ms: number; games: Map<string, number> }
+/**
+ * How many watched a stream between a and b, in viewer-ms: its average over its length, shared out along its viewer
+ * line where there is one (so a game played to a bigger crowd gets more of it). null when nobody was counted.
+ */
+export function watchedIn(s: Stream, a: number, b: number): number | null {
+  if (s.avg === undefined) return null;
+  const len = s.end - s.start;
+  a = Math.max(a, s.start);
+  b = Math.min(b, s.end);
+  if (b <= a || len <= 0) return 0;
+  const whole = s.avg * len;
+  const c = s.curve;
+  if (!c || c.length < 2 || (a === s.start && b === s.end)) return whole * ((b - a) / len);
+  // each point of the line holds until the next
+  let part = 0, all = 0;
+  for (let i = 0; i < c.length; i++) {
+    const p0 = i ? s.start + c[i][0] * MIN : s.start, p1 = i + 1 < c.length ? s.start + c[i + 1][0] * MIN : s.end;
+    all += c[i][1] * Math.max(0, p1 - p0);
+    part += c[i][1] * Math.max(0, Math.min(b, p1) - Math.max(a, p0));
+  }
+  return all ? whole * (part / all) : whole * ((b - a) / len);
+}
+
+export interface GameRow {
+  id: string;
+  name: string;
+  box: string | null;
+  ms: number;
+  streams: number;
+  first: number;
+  last: number;
+  /** viewer-ms over the streams where viewers were counted, and how long it was played in those */
+  watched: number;
+  recMs: number;
+  /** [when, how long] each time it was played */
+  hits: [number, number][];
+}
+
+/** The longest run of days in a row among 'YYYY-MM-DD' keys. */
+function streakOf(keys: Iterable<string>) {
+  const days = [...keys].sort().map((k) => {
+    const [y, m, d] = k.split('-').map(Number);
+    return new Date(y, m - 1, d).getTime();
+  });
+  let best = 0, run = 0;
+  days.forEach((ms, i) => {
+    run = i && Math.round((ms - days[i - 1]) / DAY) === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  });
+  return best;
+}
 
 export function analyse(data: Streamer, days: number | null) {
   const now = data.now;
@@ -180,27 +232,9 @@ export function analyse(data: Streamer, days: number | null) {
   const from = days ? now - days * DAY : Math.min(oldest, now - DAY);
   const streams = data.streams.filter((s) => s.end > from && s.start < now);
 
-  const gameMs = new Map<string, { ms: number; streams: Set<number>; last: number }>();
+  const gameMs = new Map<string, Omit<GameRow, 'id' | 'name' | 'box' | 'streams'> & { streams: Set<number> }>();
   let total = 0;
   const dayKeys = new Set<string>();
-  // one bucket per local day, or per week when the range is long
-  const weekly = (now - from) / DAY > 62;
-  const first = new Date(from);
-  first.setHours(0, 0, 0, 0);
-  if (weekly) first.setDate(first.getDate() - ((first.getDay() + 6) % 7));
-  const buckets: Bucket[] = [];
-  for (const d = new Date(first); d.getTime() < now; d.setDate(d.getDate() + (weekly ? 7 : 1))) {
-    buckets.push({ start: d.getTime(), key: keyOf(d), ms: 0, games: new Map() });
-  }
-  const bucketOf = (ms: number) => {
-    let lo = 0, hi = buckets.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (buckets[mid].start <= ms) lo = mid;
-      else hi = mid - 1;
-    }
-    return buckets[lo];
-  };
   // how much of each weekday-hour they were live: rows Monday first, 24 columns
   const heat = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
 
@@ -208,17 +242,16 @@ export function analyse(data: Streamer, days: number | null) {
     for (const p of pieces(s, from, now)) {
       const d = p.b - p.a;
       total += d;
-      const g = gameMs.get(p.game) ?? { ms: 0, streams: new Set(), last: 0 };
+      const g = gameMs.get(p.game) ?? { ms: 0, streams: new Set(), first: p.a, last: 0, watched: 0, recMs: 0, hits: [] };
       g.ms += d;
       g.streams.add(i);
+      g.first = Math.min(g.first, p.a);
       g.last = Math.max(g.last, p.b);
+      g.hits.push([p.a, d]);
+      const w = watchedIn(s, p.a, p.b);
+      if (w !== null) (g.watched += w), (g.recMs += d);
       gameMs.set(p.game, g);
-      split(p.a, p.b, 'day', (at, ms) => {
-        if (ms >= 60_000) dayKeys.add(keyOf(at));
-        const b = bucketOf(at.getTime());
-        b.ms += ms;
-        b.games.set(p.game, (b.games.get(p.game) ?? 0) + ms);
-      });
+      split(p.a, p.b, 'day', (at, ms) => ms >= 60_000 && dayKeys.add(keyOf(at)));
       split(p.a, p.b, 'hour', (at, ms) => (heat[(at.getDay() + 6) % 7][at.getHours()] += ms));
     }
   });
@@ -233,7 +266,7 @@ export function analyse(data: Streamer, days: number | null) {
   });
 
   const games: GameRow[] = [...gameMs]
-    .map(([id, g]) => ({ id, name: id ? data.games[id]?.[0] ?? t('Unknown game') : t('No category'), box: id ? data.games[id]?.[1] ?? null : null, ms: g.ms, streams: g.streams.size, last: g.last }))
+    .map(([id, g]) => ({ ...g, id, name: id ? data.games[id]?.[0] ?? t('Unknown game') : t('No category'), box: id ? data.games[id]?.[1] ?? null : null, streams: g.streams.size }))
     .sort((a, b) => b.ms - a.ms);
 
   const lengths = streams.map((s) => s.end - s.start);
@@ -241,6 +274,14 @@ export function analyse(data: Streamer, days: number | null) {
   const watched = streams.filter((s) => s.avg !== undefined);
   const watchedMs = watched.reduce((a, s) => a + (s.end - s.start), 0);
   const span = Math.max(1, Math.round((now - from) / DAY));
+  // the longest time off between two streams of the range
+  const inOrder = streams.slice().reverse();
+  let gap: { ms: number; from: number; to: number } | null = null;
+  for (let i = 1; i < inOrder.length; i++) {
+    const ms = inOrder[i].start - inOrder[i - 1].end;
+    if (ms > 0 && (!gap || ms > gap.ms)) gap = { ms, from: inOrder[i - 1].end, to: inOrder[i].start };
+  }
+  const withViews = streams.filter((s) => s.views !== undefined);
 
   return {
     from,
@@ -251,9 +292,12 @@ export function analyse(data: Streamer, days: number | null) {
     average: lengths.length ? lengths.reduce((a, b) => a + b, 0) / lengths.length : 0,
     longest,
     daysLive: dayKeys.size,
+    streak: streakOf(dayKeys),
+    gap,
+    /** games played in a stream, on average */
+    perStream: streams.length ? streams.reduce((a, s) => a + new Set(s.segs.map((x) => x[0])).size, 0) / streams.length : 0,
+    vodViews: withViews.length ? { views: withViews.reduce((a, s) => a + s.views!, 0), vods: withViews.length } : null,
     games,
-    buckets,
-    weekly,
     often,
     /** average hours live on each weekday, Monday first */
     byWeekday: byWeekday.map((ms) => ms / HOUR),
@@ -338,7 +382,11 @@ export function age(since: number, now: number) {
   return m ? `${count(y, 'year', 'years')}, ${count(m, 'month', 'months')}` : count(y, 'year', 'years');
 }
 
-/* ---------- over time: everything known, a month (or week) at a time ---------- */
+/* ---------- over time: any stretch, a day, week or month at a time ---------- */
+
+export type Unit = 'day' | 'week' | 'month';
+/** Days while a stretch is under seven weeks or so, weeks while it's under ten months, then months. */
+export const unitFor = (ms: number): Unit => (ms <= 45 * DAY ? 'day' : ms <= 300 * DAY ? 'week' : 'month');
 
 export interface Period {
   start: number;
@@ -348,6 +396,10 @@ export interface Period {
   streams: number;
   avg: number | null;
   peak: number | null;
+  /** viewer-hours, over the streams where viewers were counted */
+  watched: number | null;
+  /** views of the VODs of the streams that started in it */
+  views: number | null;
   /** followers at its end, and gained over it */
   followers: number | null;
   gained: number | null;
@@ -361,40 +413,56 @@ const valueAt = (pts: [number, number][], at: number) => {
   return v;
 };
 
-/**
- * Every month since the first thing known of the channel (its oldest past stream, follower count or TwitchTracker
- * day), or every week while that's under four months: hours, streams, viewers and followers.
- */
-export function overTime(d: Streamer) {
-  const tracker = d.trackerDays ?? [];
-  const firsts = [d.streams.at(-1)?.start, d.followerDays[0]?.[0], tracker[0]?.[0]].filter((x): x is number => x !== undefined);
-  if (!firsts.length) return null;
-  const from = Math.min(...firsts), now = d.now;
-  const monthly = now - from > 120 * DAY;
-  const at = new Date(from);
+/** The first thing known of the channel: its oldest past stream, follower count or TwitchTracker day. */
+export function knownFrom(d: Streamer) {
+  const firsts = [d.streams.at(-1)?.start, d.followerDays[0]?.[0], d.trackerDays?.[0]?.[0]].filter((x): x is number => x !== undefined);
+  return firsts.length ? Math.min(...firsts) : null;
+}
+
+/** The local day, Monday or first of the month a time falls in. */
+export function unitStart(ms: number, unit: Unit) {
+  const at = new Date(ms);
   at.setHours(0, 0, 0, 0);
-  if (monthly) at.setDate(1);
-  else at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
+  if (unit === 'month') at.setDate(1);
+  else if (unit === 'week') at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
+  return at.getTime();
+}
+
+/** Every day, week or month that touches [from, to): hours, streams, viewers, VOD views and followers. */
+export function overTime(d: Streamer, from: number, to: number, unit: Unit) {
+  const tracker = d.trackerDays ?? [];
+  const at = new Date(unitStart(from, unit));
   const periods: Period[] = [];
-  while (at.getTime() < now) {
+  while (at.getTime() < to) {
     const start = at.getTime();
-    if (monthly) at.setMonth(at.getMonth() + 1);
-    else at.setDate(at.getDate() + 7);
-    periods.push({ start, end: at.getTime(), ms: 0, games: new Map(), streams: 0, avg: null, peak: null, followers: null, gained: null, rank: null });
+    if (unit === 'month') at.setMonth(at.getMonth() + 1);
+    else at.setDate(at.getDate() + (unit === 'week' ? 7 : 1));
+    periods.push({ start, end: at.getTime(), ms: 0, games: new Map(), streams: 0, avg: null, peak: null, watched: null, views: null, followers: null, gained: null, rank: null });
   }
+  if (!periods.length) return periods;
+  const lo = periods[0].start;
+  const streams = d.streams.filter((s) => s.end > lo && s.start < to);
   for (const p of periods) {
-    const mine = d.streams.filter((s) => s.start >= p.start && s.start < p.end);
+    const end = Math.min(p.end, d.now);
+    for (const s of streams) {
+      for (const x of pieces(s, p.start, end)) {
+        p.ms += x.b - x.a;
+        p.games.set(x.game, (p.games.get(x.game) ?? 0) + x.b - x.a);
+      }
+      const w = s.end > p.start && s.start < end ? watchedIn(s, p.start, end) : null;
+      if (w !== null) p.watched = (p.watched ?? 0) + w / HOUR;
+    }
+    if (p.watched !== null) p.watched = Math.round(p.watched);
+    const mine = streams.filter((s) => s.start >= p.start && s.start < p.end);
     p.streams = mine.length;
-    for (const s of d.streams) for (const x of pieces(s, p.start, Math.min(p.end, now))) {
-      p.ms += x.b - x.a;
-      p.games.set(x.game, (p.games.get(x.game) ?? 0) + x.b - x.a);
+    const counted = mine.filter((s) => s.avg !== undefined);
+    if (counted.length) {
+      const ms = counted.reduce((a, s) => a + (s.end - s.start), 0) || 1;
+      p.avg = Math.round(counted.reduce((a, s) => a + s.avg! * (s.end - s.start), 0) / ms);
+      p.peak = Math.max(...counted.map((s) => s.peak ?? s.avg!));
     }
-    const watched = mine.filter((s) => s.avg !== undefined);
-    if (watched.length) {
-      const ms = watched.reduce((a, s) => a + (s.end - s.start), 0) || 1;
-      p.avg = Math.round(watched.reduce((a, s) => a + s.avg! * (s.end - s.start), 0) / ms);
-      p.peak = Math.max(...watched.map((s) => s.peak ?? s.avg!));
-    }
+    const viewed = mine.filter((s) => s.views !== undefined);
+    if (viewed.length) p.views = viewed.reduce((a, s) => a + s.views!, 0);
     const inside = d.followerDays.filter(([day]) => day >= p.start && day < p.end);
     if (inside.length) {
       p.followers = inside[inside.length - 1][1];
@@ -405,7 +473,22 @@ export function overTime(d: Streamer) {
     const ranks = tracker.filter(([day, rank]) => day >= p.start && day < p.end && rank !== null);
     if (ranks.length) p.rank = ranks[ranks.length - 1][1];
   }
-  return { from, monthly, periods };
+  return periods;
+}
+
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+/**
+ * The same stretch on SullyGnome, as near as its pages go: the last 3–365 days when it runs to now, else the month or
+ * year it sits in. (SullyGnome asks not to be scraped, so its numbers are linked to, not read.)
+ */
+export function sullyUrl(login: string, from: number, to: number, now: number) {
+  const base = `https://sullygnome.com/channel/${login}/`;
+  const span = (to - from) / DAY;
+  const a = new Date(from), b = new Date(to - 1);
+  if (now - to < 2 * DAY && span <= 366) return base + ([3, 7, 14, 30, 90, 180].find((n) => n >= span - 0.5) ?? 365);
+  const y = Math.max(2015, b.getUTCFullYear());
+  if (a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth()) return base + y + MONTHS[b.getUTCMonth()];
+  return base + y;
 }
 
 /** What a stretch of time adds up to, to set one range against the one before it. */
@@ -414,6 +497,11 @@ export function sums(d: Streamer, from: number, to: number) {
   for (const s of d.streams) for (const p of pieces(s, from, to)) ms += p.b - p.a;
   const watched = d.streams.filter((s) => s.avg !== undefined && s.start >= from && s.start < to);
   const wms = watched.reduce((a, s) => a + (s.end - s.start), 0) || 1;
+  let hw: number | null = null;
+  for (const s of d.streams) {
+    const w = s.end > from && s.start < to ? watchedIn(s, from, to) : null;
+    if (w !== null) hw = (hw ?? 0) + w / HOUR;
+  }
   const a = valueAt(d.followerDays, from + DAY), b = valueAt(d.followerDays, to);
   // the follower count has to be known from the start of the stretch
   const known = d.followerDays.length > 0 && d.followerDays[0][0] <= from + DAY;
@@ -421,6 +509,9 @@ export function sums(d: Streamer, from: number, to: number) {
     ms,
     avg: watched.length ? Math.round(watched.reduce((x, s) => x + s.avg! * (s.end - s.start), 0) / wms) : null,
     peak: watched.length ? Math.max(...watched.map((s) => s.peak ?? s.avg!)) : null,
+    /** viewer-hours over the streams where viewers were counted */
+    watched: hw !== null ? Math.round(hw) : null,
+    streams: d.streams.filter((s) => s.start >= from && s.start < to).length,
     gained: known && a !== null && b !== null ? b - a : null,
     /** whether every stream of the stretch is known (the past ones Twitch lists, or recorded here) */
     whole: (d.streams.at(-1)?.start ?? Infinity) <= from || (d.recordingSince ?? Infinity) <= from,

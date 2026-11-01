@@ -28,7 +28,7 @@ const twitch = {
     stream: { id: 's2', type: 'live', createdAt: iso(liveSince), title: 'Live!', viewersCount: 500, game: GTA },
     videos: { edges: [
       { node: { id: 'v2', status: 'RECORDING', title: 'Live!', createdAt: iso(liveSince + 5_000), lengthSeconds: 3500, game: GTA } },
-      { node: { id: 'v1', status: 'RECORDED', title: 'Yesterday', createdAt: iso(yesterday), lengthSeconds: 4 * 3600, game: RPG } },
+      { node: { id: 'v1', status: 'RECORDED', title: 'Yesterday', createdAt: iso(yesterday), lengthSeconds: 4 * 3600, viewCount: 321, game: RPG } },
     ] },
     clips: { edges: [
       { node: { slug: 'Big', title: ' The big one ', viewCount: 9000, createdAt: '2019-05-01T12:00:00Z', durationSeconds: 30.4, thumbnailURL: 'https://example.test/big.jpg', game: { id: '4', displayName: 'Old Game', boxArtURL: null } } },
@@ -103,13 +103,15 @@ test('a report has the channel, its streams with their games, and TwitchTracker�
   assert.equal(live.end, now, 'a live stream runs to now');
   assert.deepEqual(past.segs, [['1', 0, HOUR], ['2', HOUR, 3 * HOUR]]);
   assert.equal(past.avg, undefined);
+  assert.equal(past.views, 321, 'a VOD’s views come along');
+  assert.equal(live.views, undefined);
   assert.deepEqual(body.games['2'], ['Some RPG', RPG.boxArtURL]);
   assert.equal(body.summary.avg, 450);
   assert.equal(body.summary.rank, 9);
   assert.deepEqual(body.followerDays, [[Date.UTC(2026, 9, 22), 1234]]);
   assert.deepEqual(body.clips[0], { slug: 'Big', title: 'The big one', views: 9000, at: Date.UTC(2019, 4, 1, 12), game: '4', secs: 30, thumb: 'https://example.test/big.jpg' });
   assert.deepEqual(body.games['4'], ['Old Game', null], 'the games of the clips come along');
-  assert.deepEqual(body.trackerDays, [[Date.UTC(2026, 9, 22), 9, 450, 900, 1234]]);
+  assert.deepEqual(body.trackerDays, [[Date.UTC(2026, 9, 22), 9, 450, 900, 1234, 4500, 600]]);
 });
 
 test('a finished stream is thinned to its viewer line, keeping its games, average and peak', async () => {
@@ -197,7 +199,7 @@ const { output } = await bundle.generate({ format: 'esm' });
 const lib = await import('data:text/javascript;base64,' + Buffer.from(output[0].code).toString('base64'));
 await bundle.close();
 
-test('a range adds up to hours per game, per day and per weekday-hour', () => {
+test('a range adds up to hours per game, per weekday-hour, and how many watched each game', () => {
   // Thursday 22 Oct 2026, 20:00 UTC; streams on the 20th (Tue) 14:00–18:00 and the 21st (Wed) 22:00–02:00
   const data = {
     now,
@@ -213,13 +215,15 @@ test('a range adds up to hours per game, per day and per weekday-hour', () => {
   assert.equal(a.total, 8 * HOUR);
   assert.deepEqual(a.games.map((g) => [g.name, g.ms / HOUR, g.streams]), [['RPG', 7, 2], ['Chat', 1, 1]]);
   assert.equal(a.daysLive, 3, 'the late stream runs into the next day');
-  const byKey = Object.fromEntries(a.buckets.map((b) => [b.key, b.ms / HOUR]));
-  assert.deepEqual([byKey['2026-10-20'], byKey['2026-10-21'], byKey['2026-10-22']], [4, 2, 2]);
+  assert.equal(a.streak, 3, 'the 20th, 21st and 22nd in a row');
+  assert.deepEqual(a.gap, { ms: 28 * HOUR, from: Date.UTC(2026, 9, 20, 18), to: Date.UTC(2026, 9, 21, 22) });
+  assert.equal(a.perStream, 1.5);
+  const rpg = a.games[0];
+  assert.deepEqual([rpg.watched / HOUR, rpg.recMs / HOUR, rpg.hits.length], [400, 4, 2], 'only the recorded stream is counted');
   assert.equal(a.often[1][15], 1, 'live every Tuesday of the week at 15:00');
   assert.equal(a.often[1][19], 0);
   assert.deepEqual(a.viewers, { streams: 1, avg: 100, peak: 150, hoursWatched: 400 });
   assert.equal(lib.analyse(data, null).count, 3);
-  assert.equal(lib.analyse(data, null).weekly, false);
   // colours go to the games streamed most over everything, so they don't move with the range
   assert.deepEqual([...lib.gameColors(data.streams)], [['2', 'sadness'], ['1', 'hope-interest']]);
 });
@@ -249,20 +253,39 @@ test('a career adds the clips up by year and by game; over time adds everything 
   // the clip games take the colours the streams leave
   assert.deepEqual([...lib.gameColors(data.streams, data.clips)], [['2', 'sadness'], ['1', 'hope-interest']]);
 
-  const o = lib.overTime(data);
-  assert.equal(o.monthly, false);
-  assert.equal(o.periods[0].start, Date.UTC(2026, 8, 28), 'weeks start on the Monday before the first thing known');
-  const last = o.periods.at(-1);
-  assert.deepEqual([last.ms, last.streams, last.avg, last.peak, last.gained, last.rank], [4 * HOUR, 1, 100, 150, 50, 12]);
-  const early = o.periods.find((p) => p.start === Date.UTC(2026, 9, 5));
-  assert.deepEqual([early.ms, early.streams, early.avg, early.gained], [2 * HOUR, 1, null, null]);
-  assert.equal(o.periods.find((p) => p.start === Date.UTC(2026, 9, 12)).gained, 100);
+  assert.equal(lib.knownFrom(data), Date.UTC(2026, 9, 1));
+  const o = lib.overTime(data, lib.knownFrom(data), now, 'week');
+  assert.equal(o[0].start, Date.UTC(2026, 8, 28), 'weeks start on the Monday before the first thing known');
+  const last = o.at(-1);
+  assert.deepEqual([last.ms, last.streams, last.avg, last.peak, last.watched, last.gained, last.rank], [4 * HOUR, 1, 100, 150, 400, 50, 12]);
+  const early = o.find((p) => p.start === Date.UTC(2026, 9, 5));
+  assert.deepEqual([early.ms, early.streams, early.avg, early.watched, early.gained], [2 * HOUR, 1, null, null, null]);
+  assert.equal(o.find((p) => p.start === Date.UTC(2026, 9, 12)).gained, 100);
+  // zoomed in to two days, a day at a time: the late stream is split at midnight, viewers and all
+  const days = lib.overTime(data, Date.UTC(2026, 9, 21), Date.UTC(2026, 9, 23), 'day');
+  assert.deepEqual(days.map((p) => [p.ms / HOUR, p.watched, p.streams]), [[2, 200, 1], [2, 200, 0]]);
+  assert.deepEqual(['day', 'week', 'month'], [lib.unitFor(30 * DAY), lib.unitFor(180 * DAY), lib.unitFor(3 * 365 * DAY)]);
 
   const s = lib.sums(data, now - 7 * DAY, now);
   assert.equal(s.ms, 4 * HOUR);
   assert.equal(s.avg, 100);
   assert.equal(s.gained, 50);
   assert.equal(s.whole, true);
+  assert.equal(s.watched, 400);
+  assert.equal(s.streams, 1);
+});
+
+test('hours watched follow a stream’s viewer line, and SullyGnome links match the stretch', () => {
+  // two hours: 100 watching the first, 300 the second; the average is 200 and stays the total
+  const s = { start: 0, end: 2 * HOUR, title: '', segs: [], avg: 200, curve: [[0, 100], [60, 300]] };
+  assert.equal(lib.watchedIn(s, 0, 2 * HOUR), 400 * HOUR);
+  assert.equal(lib.watchedIn(s, HOUR, 2 * HOUR), 300 * HOUR);
+  assert.equal(lib.watchedIn({ ...s, avg: undefined }, 0, HOUR), null);
+  const at = (y, m, d) => Date.UTC(y, m, d);
+  assert.equal(lib.sullyUrl('alpha', now - 30 * DAY, now, now), 'https://sullygnome.com/channel/alpha/30');
+  assert.equal(lib.sullyUrl('alpha', now - 1000 * DAY, now, now), 'https://sullygnome.com/channel/alpha/2026');
+  assert.equal(lib.sullyUrl('alpha', at(2024, 2, 3), at(2024, 2, 20), now), 'https://sullygnome.com/channel/alpha/2024march');
+  assert.equal(lib.sullyUrl('alpha', at(2023, 1, 1), at(2023, 9, 1), now), 'https://sullygnome.com/channel/alpha/2023');
 });
 
 test('usual start times wrap around midnight, and durations read naturally', () => {

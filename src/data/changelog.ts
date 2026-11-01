@@ -11,6 +11,20 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.171.0',
+    date: '2026-11-01',
+    changes: [
+      'Streamer stats: pick 7 days, 1, 3 or 6 months, 1 or 3 years, or all time, and every card follows the range',
+      'Streamer stats: channel performance over time zooms: drag across to zoom in, pinch or Ctrl+scroll, pan with the arrows or the overview strip, double-click to zoom out',
+      'Streamer stats: the over-time chart goes by day, week or month as you zoom, and adds hours watched, streams and VOD views',
+      'Streamer stats: hours first: the banner leads with hours watched, hours streamed and viewers instead of clip views',
+      'Streamer stats: the games list sorts by hours streamed, hours watched or viewers, with each game’s streams on a timeline',
+      'Streamer stats: more numbers: days live and streaks, longest break, games per stream, followers per hour live and VOD views',
+      'Streamer stats: links to the same stretch on SullyGnome, which has every stream back to 2015',
+      'Streamer stats: clips move to their own section at the bottom',
+    ],
+  },
+  {
     version: '1.170.0',
     date: '2026-11-01',
     changes: [
