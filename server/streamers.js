@@ -7,10 +7,9 @@
 //    file per channel. Chapters are kept there too, and nothing is thrown away (old streams are thinned to a
 //    viewer line), so the history grows past Twitch's 60 days for as long as the channel is recorded.
 //  • The channel's 100 most-watched clips of all time, the one part of Twitch that reaches back over a whole career.
-//  • Streams Charts' API (server/streamscharts.js), when a key is set: any stretch since June 2019, month by month.
+//  • SullyGnome (server/sullygnome.js), with its owner's permission: every stream since 2015, read when the page asks.
 //  • TwitchTracker's public summary of the last 30 days (average and peak viewers, hours watched and streamed), when it
-//    answers; each day's is kept too, so the months add up. (TwitchTracker asks not to be scraped, so only that API is
-//    used; SullyGnome asks the same and has no API, so the page only links to it.)
+//    answers; each day's is kept too, so the months add up. (TwitchTracker asks not to be scraped, so only that API is used.)
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -218,14 +217,13 @@ export function streamsOf(store, liveId = null) {
  * `directory`: where each channel's recordings are kept (created when needed). `channelsFile`: the miner's
  * settings/channels.json, the channels recorded for good. `fetch` and `now` can be swapped in tests.
  */
-export function createStreamerHandler({ directory, channelsFile, streamsCharts = null, fetch: get = globalThis.fetch, now = Date.now }) {
+export function createStreamerHandler({ directory, channelsFile, sullyGnome = null, fetch: get = globalThis.fetch, now = Date.now }) {
   const stores = new Map();   // login → Promise<store>
   const writing = new Map();  // login → the write in progress, so writes to one file never overlap
   const seenAt = new Map();   // login → when it was last looked up, for every channel kept on disk
   const live = new Map();     // login → what the recorder last saw it streaming
   const reports = new Map();  // login → { at, promise }
   const tracker = new Map();  // login → { at, value }
-  const histories = new Map(); // `${login} ${days}` → { at, promise }
   let lookups = [];           // when fresh reports were started, for the rate limit
   let timer = null;
 
@@ -452,7 +450,6 @@ export function createStreamerHandler({ directory, channelsFile, streamsCharts =
     if (vodsOk) keepVods(store, user.videos.edges, t);
     if (tt) keepTracker(store, tt, t);
     const clips = clipsOf(store, user);
-    const charts = streamsCharts?.enabled ? await streamsCharts.summary(store, login) : null;
     await chapters(store);
     await save(login, store);
     await trim();
@@ -483,8 +480,8 @@ export function createStreamerHandler({ directory, channelsFile, streamsCharts =
       followerDays: store.followers,
       trackerDays: store.tracker ?? [],
       clips,
-      summary: charts ?? tt,
-      history: !!streamsCharts?.enabled,
+      summary: tt,
+      history: !!sullyGnome,
     };
   }
 
@@ -514,22 +511,13 @@ export function createStreamerHandler({ directory, channelsFile, streamsCharts =
     return { channels };
   }
 
-  /** Streams Charts' months and range for a channel; the same question asked twice in a minute is answered once. */
-  async function history(login, days) {
-    const key = `${login} ${days}`;
-    const hit = histories.get(key);
-    if (hit && now() - hit.at < MIN) return hit.promise;
-    const promise = (async () => {
-      await ready;
-      const store = await load(login);
-      const out = await streamsCharts.history(store, login, days, store.created ?? null);
-      if (store.id || store.seen) await save(login, store);
-      return out;
-    })();
-    histories.set(key, { at: now(), promise });
-    promise.catch(() => histories.get(key)?.promise === promise && histories.delete(key));
-    if (histories.size > 200) histories.delete(histories.keys().next().value);
-    return promise;
+  /** What SullyGnome has of a channel so far; a look at it starts bringing it up to date when that's due. */
+  async function history(login) {
+    await ready;
+    const store = await load(login);
+    if (!store.seen) throw new HttpError(404, 'Look the channel up first.');
+    if (sullyGnome.due(store) && !sullyGnome.syncing(login)) sullyGnome.start(store, login, () => save(login, store));
+    return sullyGnome.history(store, login);
   }
 
   async function api(req, res, path) {
@@ -546,11 +534,8 @@ export function createStreamerHandler({ directory, channelsFile, streamsCharts =
     const login = raw.replace(/^@/, '').replace(/^https?:\/\/(www\.)?twitch\.tv\//, '').replace(/\/.*$/, '');
     if (!LOGIN.test(login)) throw new HttpError(400, 'That isn’t a Twitch channel name.');
     if (wantsHistory) {
-      if (!streamsCharts?.enabled) return json(res, 200, { on: false, months: [], range: null, prev: null });
-      const q = new URL(req.url ?? '', 'http://x').searchParams.get('days');
-      const days = q === 'all' ? null : Number(q);
-      if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= 1095)) throw new HttpError(400, 'Ask for 1 to 1095 days, or all.');
-      return json(res, 200, await history(login, days));
+      if (!sullyGnome) throw new HttpError(404, 'No history here.');
+      return json(res, 200, await history(login));
     }
     return json(res, 200, await report(login));
   }

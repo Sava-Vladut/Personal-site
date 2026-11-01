@@ -185,73 +185,107 @@ test('names are checked, unknown channels are said to be unknown, and only GET i
   assert.equal((await call(h, '/api/streamers/alpha', 'POST')).status, 405);
 });
 
-/* ---------- Streams Charts ---------- */
+/* ---------- SullyGnome ---------- */
 
-const { createStreamsCharts, combine, normalize } = await import('../server/streamscharts.js');
+const { createSullyGnome, gamesOf } = await import('../server/sullygnome.js');
+const sgRow = (iso, min, avg, games = 'Just Chatting|Just_Chatting|https://static-cdn.jtvnw.net/ttv-boxart/509658-136x190.jpg?imwidth=100') =>
+  ({ startDateTime: iso, length: min, avgviewers: avg, maxviewers: avg * 2, followergain: 7, viewminutes: avg * min, gamesplayed: games });
 
-test('Streams Charts: a month that’s over is asked for once, one running to today again after 12 hours', async () => {
-  let t = Date.UTC(2026, 10, 1, 8);
+/** A fake SullyGnome: alpha is channel 99, with 150 streams in 2025 and a few in 2026. */
+function fakeSully() {
   const asked = [];
-  const answer = (time) => ({ data: { hours_watched: 1000, average_viewers: 100, peak_viewers: 300, airtime_in_m: 600, followers_gain: 5, total_followers: 50, stream_count: 2, stream_days: 2, games_count: 1,
-    top_5_games_by_hw: [{ name: 'RPG', hours_watched: 800, '%_of_hours_watched': 80 }], time } });
-  const fetch = async (url, init) => {
-    assert.equal(init.headers['Client-ID'], 'id');
-    assert.equal(init.headers.Token, 'tok');
-    const time = new URL(url).searchParams.get('time');
-    asked.push(time);
-    return { ok: true, status: 200, json: async () => answer(time) };
+  const y2025 = Array.from({ length: 150 }, (_, i) => sgRow(new Date(Date.UTC(2025, 11, 31) - i * DAY).toISOString(), 60, 10 + i));
+  let y2026 = [sgRow('2026-10-01T18:00:00Z', 120, 50)];
+  const ok = (body) => ({ ok: true, status: 200, json: async () => body, text: async () => body });
+  const fetch = async (url) => {
+    const path = url.replace('https://sullygnome.com', '');
+    asked.push(path);
+    if (path === '/channel/alpha') return ok('<script>var PageInfo = {"dayranges":[],"id":99,"name":"Alpha"};</script>');
+    if (path.startsWith('/channel/')) return { ok: false, status: 302 };
+    let m = /^\/api\/tables\/channeltables\/streams\/(\d{4})\/99\/%20\/1\/1\/desc\/(\d+)\/100$/.exec(path);
+    if (m) {
+      const rows = m[1] === '2025' ? y2025 : m[1] === '2026' ? y2026 : [];
+      return ok({ recordsTotal: rows.length, data: rows.slice(+m[2], +m[2] + 100) });
+    }
+    m = /^\/api\/tables\/channeltables\/games\/(\d{4})\/99\//.exec(path);
+    if (m) return ok({ data: [{ streamtime: 900, gamesplayed: 'Just Chatting|Just_Chatting|https://static-cdn.jtvnw.net/ttv-boxart/509658-136x190.jpg' }] });
+    throw new Error('unexpected ' + path);
   };
-  const sc = createStreamsCharts({ clientId: 'id', token: 'tok', fetch, now: () => t });
-  const store = {};
-  const h = await sc.history(store, 'alpha', 365, null);
-  assert.equal(h.on, true);
-  assert.equal(h.months.length, 13, 'November 2025 to November 2026');
-  assert.deepEqual(h.months[0][1].games, [['RPG', 800, 80]]);
-  assert.equal(h.range.hw, 1000);
-  assert.ok(asked.includes('2025-11-02,2026-11-01') && asked.includes('2024-11-02,2025-11-01'), 'the range and the one before');
-  asked.length = 0;
-  t += 2 * 3_600_000;
-  await sc.history(store, 'alpha', 365, null);
-  assert.deepEqual(asked, [], 'all kept');
-  t += 11 * 3_600_000;
-  await sc.history(store, 'alpha', 365, null);
-  assert.deepEqual(asked.sort(), ['2025-11-02,2026-11-01', '2026-11-01,2026-11-01'], 'only what runs to today, and the month now running');
-  const summary = await sc.summary(store, 'alpha');
-  assert.deepEqual([summary.hoursWatched, summary.minutes, summary.followers, summary.followersTotal], [1000, 600, 5, 50]);
+  return { asked, fetch, addStream: (row) => (y2026 = [row, ...y2026]) };
+}
+
+test('SullyGnome: games come with their Twitch ids, and unknown ones by name', () => {
+  assert.deepEqual(gamesOf('Just Chatting|Just_Chatting|https://static-cdn.jtvnw.net/ttv-boxart/509658-136x190.jpg?x=1|GTA V|GTA|https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-136x190.jpg|Odd|Odd|'), [
+    ['509658', 'Just Chatting', 'https://static-cdn.jtvnw.net/ttv-boxart/509658-52x72.jpg'],
+    ['32982', 'GTA V', 'https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-52x72.jpg'],
+    ['name:Odd', 'Odd', null],
+  ]);
 });
 
-test('Streams Charts: off without a key, held back after a refusal, and ranges add up', async () => {
-  const off = createStreamsCharts({});
-  assert.deepEqual(await off.history({}, 'alpha', 30, null), { on: false, months: [], range: null, prev: null });
-  let calls = 0;
-  const sc = createStreamsCharts({ clientId: 'id', token: 'tok', now: () => now, fetch: async () => (calls++, { ok: false, status: 402, json: async () => ({}) }) });
-  const store = {};
-  await sc.history(store, 'alpha', 30, null);
-  await sc.history(store, 'alpha', 7, null);
-  assert.equal(calls, 1, 'out of credits: nothing more asked for an hour');
-  const both = combine([normalize({ hours_watched: 100, airtime_in_m: 60, peak_viewers: 9, stream_count: 1, top_5_games_by_hw: [{ name: 'A', hours_watched: 100 }] }),
-    normalize({ hours_watched: 300, airtime_in_m: 120, peak_viewers: 20, stream_count: 2, top_5_games_by_hw: [{ name: 'A', hours_watched: 100 }, { name: 'B', hours_watched: 200 }] })]);
-  assert.deepEqual([both.hw, both.avg, both.peak, both.streams], [400, 133, 20, 3]);
-  assert.deepEqual(both.games.map((g) => g.slice(0, 2)), [['A', 200], ['B', 200]]);
+test('SullyGnome: every page of a year is read once, the running year only its newest page again after 3 hours', async () => {
+  let t = Date.UTC(2026, 10, 1, 9);
+  const sully = fakeSully();
+  const sg = createSullyGnome({ fetch: sully.fetch, now: () => t, gap: 0 });
+  const store = { created: Date.UTC(2025, 0, 1) };
+  let saves = 0;
+  sg.start(store, 'alpha', async () => saves++);
+  assert.equal(sg.syncing('alpha'), true);
+  while (sg.syncing('alpha')) await new Promise((ok) => setTimeout(ok, 5));
+  const h = sg.history(store, 'alpha');
+  assert.equal(h.streams.length, 151);
+  assert.ok(h.streams[0][0] < h.streams.at(-1)[0], 'oldest first');
+  assert.deepEqual(h.streams.at(-1), [Date.UTC(2026, 9, 1, 18), 120, 50, 100, 7, 6000, ['509658']]);
+  assert.deepEqual(h.games['509658'], ['Just Chatting', 'https://static-cdn.jtvnw.net/ttv-boxart/509658-52x72.jpg']);
+  assert.equal(h.mins[2025]['509658'], 900);
+  assert.equal(saves, 2, 'saved after each year');
+  assert.equal(sully.asked.filter((p) => p.includes('/streams/2025/')).length, 2, 'two pages of 2025');
+  assert.equal(sg.due(store), false);
+
+  sully.asked.length = 0;
+  t += 4 * 3_600_000;
+  sully.addStream(sgRow('2026-11-01T10:00:00Z', 30, 70));
+  assert.equal(sg.due(store), true);
+  sg.start(store, 'alpha', async () => {});
+  while (sg.syncing('alpha')) await new Promise((ok) => setTimeout(ok, 5));
+  assert.deepEqual(sully.asked.filter((p) => p.includes('/streams/')), ['/api/tables/channeltables/streams/2026/99/%20/1/1/desc/0/100'], '2025 is over: kept');
+  assert.equal(sg.history(store, 'alpha').streams.length, 152);
 });
 
-test('the history is asked for through the streamer API and kept with the channel', async () => {
-  const scFake = { enabled: true, summary: async () => null, history: async (store, login, days) => ((store.sc = { asked: { at: 1, v: null } }), { on: true, months: [], range: null, prev: null, days }) };
+test('SullyGnome: a channel it doesn’t know is asked about again only after a week', async () => {
+  const sully = fakeSully();
+  const sg = createSullyGnome({ fetch: sully.fetch, now: () => now, gap: 0 });
+  const store = {};
+  sg.start(store, 'nobody', async () => {});
+  while (sg.syncing('nobody')) await new Promise((ok) => setTimeout(ok, 5));
+  assert.deepEqual(sg.history(store, 'nobody'), { known: false, syncing: false, streams: [], games: {}, mins: {} });
+  assert.equal(sg.due(store), false);
+});
+
+test('the history is asked for through the streamer API once the channel’s been looked up', async () => {
+  const sully = fakeSully();
   const dir = join(root, 'hist');
-  const h = createStreamerHandler({ directory: dir, channelsFile, streamsCharts: scFake, fetch: fake, now: () => clock });
-  await call(h, '/api/streamers/alpha');
-  const res = await (async () => {
+  const h = createStreamerHandler({ directory: dir, channelsFile, sullyGnome: createSullyGnome({ fetch: sully.fetch, now: () => clock, gap: 0 }), fetch: fake, now: () => clock });
+  const ask = async () => {
     let out = {};
-    await h.api({ method: 'GET', url: '/api/streamers/alpha/history?days=all' }, { writeHead: (status) => (out.status = status), end: (b) => (out.body = JSON.parse(b)) }, '/api/streamers/alpha/history');
+    try {
+      await h.api({ method: 'GET', url: '/api/streamers/alpha/history' }, { writeHead: (status) => (out.status = status), end: (b) => (out.body = JSON.parse(b)) }, '/api/streamers/alpha/history');
+    } catch (e) {
+      out = { status: e.status };
+    }
     return out;
-  })();
-  assert.equal(res.status, 200);
-  assert.equal(res.body.days, null);
+  };
+  assert.equal((await ask()).status, 404, 'not before the channel is looked up');
+  const report = await call(h, '/api/streamers/alpha');
+  assert.equal(report.body.history, true);
+  const first = await ask();
+  assert.equal(first.status, 200);
+  assert.equal(first.body.syncing, true);
+  let last = first;
+  for (let i = 0; i < 200 && last.body.syncing; i++) (await new Promise((ok) => setTimeout(ok, 5))), (last = await ask());
+  assert.equal(last.body.syncing, false);
+  assert.ok(last.body.streams.length > 0);
   const saved = JSON.parse(await readFile(join(dir, 'alpha.json'), 'utf8'));
-  assert.ok(saved.sc.asked, 'what Streams Charts said is saved');
-  let bad = 0;
-  try { await h.api({ method: 'GET', url: '/api/streamers/alpha/history?days=5000' }, {}, '/api/streamers/alpha/history'); } catch (e) { bad = e.status; }
-  assert.equal(bad, 400);
+  assert.equal(saved.sg.id, 99, 'kept with the channel');
 });
 
 /* ---------- the page's arithmetic ---------- */
@@ -352,23 +386,30 @@ test('hours watched follow a stream’s viewer line', () => {
   assert.equal(lib.watchedIn({ ...s, avg: undefined }, 0, HOUR), null);
 });
 
-test('a month Streams Charts knows takes its figures, its games shared out by hours watched', () => {
+test('SullyGnome’s streams join the report: the ones already known keep their chapters and take its viewers', () => {
   const data = {
     now, games: { 2: ['RPG', null] }, followerDays: [], trackerDays: [],
-    streams: [{ start: Date.UTC(2026, 9, 21, 22), end: Date.UTC(2026, 9, 22, 2), title: '', segs: [['2', 0, 4 * HOUR]], avg: 100, peak: 150 }],
+    streams: [{ start: Date.UTC(2026, 9, 21, 22), end: Date.UTC(2026, 9, 22, 2), title: 'Mine', segs: [['2', 0, 4 * HOUR]] }],
   };
-  const sc = (o) => ({ hw: null, avg: null, peak: null, airMin: null, gained: null, followers: null, streams: null, days: null, gamesCount: null, games: [], ...o });
-  const h = { on: true, range: null, prev: null, months: [
-    ['2025-03', sc({ hw: 3000, avg: 300, peak: 900, airMin: 600, gained: 40, streams: 3, games: [['RPG', 2000, 66.7], ['New Game', 500, 16.7]] })],
-  ] };
-  assert.equal(lib.knownFrom(data, h), Date.UTC(2025, 2, 1));
-  const ps = lib.overTime(data, Date.UTC(2025, 2, 1), now, 'month', h);
-  const march = ps[0];
-  assert.deepEqual([march.ms / HOUR, march.watched, march.avg, march.peak, march.streams, march.gained, march.full], [10, 3000, 300, 900, 3, 40, true]);
-  const games = Object.fromEntries([...march.games].map(([g, ms]) => [g, Math.round(ms / MIN)]));
-  assert.deepEqual(games, { 2: 400, 'name:New Game': 100, [lib.OTHER_GAMES]: 100 }, 'RPG is the Twitch game; the rest is other games');
-  assert.equal(lib.gameName(data, 'name:New Game'), 'New Game');
-  assert.equal(ps.at(-1).full, undefined, 'a month it doesn’t know keeps what’s seen here');
+  const h = {
+    known: true, syncing: false, games: { 2: ['RPG (SG)', 'box2'], 7: ['Chat', 'box7'] }, mins: { 2024: { 2: 300, 7: 100 } },
+    streams: [
+      [Date.UTC(2024, 4, 1, 18), 240, 500, 900, 30, 120000, ['2', '7']],
+      [Date.UTC(2026, 9, 21, 22, 5), 230, 800, 1200, 12, 184000, ['2']],
+    ],
+  };
+  const all = lib.withHistory(data, h);
+  assert.equal(all.streams.length, 2, 'the October stream is the same broadcast');
+  assert.deepEqual([all.streams[0].title, all.streams[0].avg, all.streams[0].fol], ['Mine', 800, 12]);
+  assert.equal(data.streams[0].avg, undefined, 'the report itself is left alone');
+  const old = all.streams[1];
+  assert.deepEqual(old.segs, [['2', 0, 3 * HOUR], ['7', 3 * HOUR, HOUR]], 'shared by that year’s minutes per game');
+  assert.deepEqual([old.avg, old.peak, old.sg], [500, 900, true]);
+  assert.equal(all.games[2][0], 'RPG', 'Twitch’s names win');
+  assert.equal(all.games[7][0], 'Chat');
+  const may = lib.overTime(all, Date.UTC(2024, 4, 1), Date.UTC(2024, 5, 1), 'month')[0];
+  assert.deepEqual([may.ms / HOUR, may.avg, may.watched, may.gained], [4, 500, 2000, 30]);
+  assert.equal(lib.sums(all, Date.UTC(2024, 3, 1), Date.UTC(2024, 6, 1)).gained, 30);
 });
 
 test('usual start times wrap around midnight, and durations read naturally', () => {

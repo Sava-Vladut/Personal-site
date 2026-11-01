@@ -25,17 +25,22 @@ export interface Stream {
   curve?: [number, number][];
   /** the VOD's views on Twitch */
   views?: number;
+  /** followers gained over it, from SullyGnome */
+  fol?: number;
+  /** known only from SullyGnome */
+  sg?: true;
 }
 export interface Summary { avg: number | null; peak: number | null; hoursWatched: number | null; minutes: number | null; followers: number | null; followersTotal?: number | null; rank: number | null; streams?: number | null; days?: number | null }
-/** a stretch from Streams Charts: hours watched, viewers, minutes live, followers gained, streams, days live, top games */
-export interface ScStats {
-  hw: number | null; avg: number | null; peak: number | null; airMin: number | null; gained: number | null; followers: number | null;
-  streams: number | null; days: number | null; gamesCount: number | null;
-  /** [game name, hours watched, % of the hours watched] */
-  games: [string, number, number][];
+/** SullyGnome's streams of a channel: [start, minutes, average viewers, peak, followers gained, minutes watched, game ids], oldest first */
+export interface History {
+  known: boolean;
+  /** more years are on their way */
+  syncing: boolean;
+  streams: [number, number, number, number, number, number, string[]][];
+  games: Record<string, [string, string | null]>;
+  /** each year's minutes per game, to share a stream among its games */
+  mins: Record<string, Record<string, number>>;
 }
-/** months as ['YYYY-MM', stats], and the range asked for with the one before it */
-export interface History { on: boolean; months: [string, ScStats][]; range: ScStats | null; prev: ScStats | null }
 /** one of the channel's most-watched clips */
 export interface Clip { slug: string; title: string; views: number; at: number; game: string; secs: number; thumb: string | null }
 export interface Streamer {
@@ -66,9 +71,9 @@ export interface Streamer {
   trackerDays?: [number, number | null, number | null, number | null, number | null, (number | null)?, (number | null)?][];
   /** the 100 most-watched clips of all time, biggest first */
   clips?: Clip[];
-  /** the last 30 days, from Streams Charts or TwitchTracker */
+  /** the last 30 days */
   summary: Summary | null;
-  /** whether Streams Charts can be asked for this channel's history */
+  /** whether the server can be asked for this channel's whole history */
   history?: boolean;
 }
 export interface Choice { login: string; name: string; live: { game: string | null; viewers: number } | null; mining: boolean }
@@ -118,26 +123,67 @@ export function useStreamer(login: string | null, again = 0): Got<Streamer> {
 
 const histories = new Map<string, { at: number; data: History }>();
 
-/** Streams Charts' history for a range (null days: all of it), once the report says it can be asked for. */
-export function useHistory(login: string | null, days: number | null, on: boolean): { data: History | null; loading: boolean } {
-  const key = `${login} ${days ?? 'all'}`;
-  const [s, setS] = useState<{ key: string; data: History | null; loading: boolean }>({ key, data: histories.get(key)?.data ?? null, loading: false });
+/** A channel's whole history, asked for again every few seconds while the server is still reading it. */
+export function useHistory(login: string | null, on: boolean): { data: History | null; loading: boolean } {
+  const [s, setS] = useState<{ login: string | null; data: History | null; loading: boolean }>({ login, data: login ? histories.get(login)?.data ?? null : null, loading: false });
   useEffect(() => {
-    if (!login || !on) return setS({ key, data: null, loading: false });
-    const had = histories.get(key);
-    if (had && Date.now() - had.at < 10 * FRESH) return setS({ key, data: had.data, loading: false });
-    setS({ key, data: had?.data ?? null, loading: true });
-    let alive = true;
-    get<History>(`/api/streamers/${encodeURIComponent(login)}/history?days=${days ?? 'all'}`).then(
-      (data) => {
-        histories.set(key, { at: Date.now(), data });
-        if (alive) setS({ key, data, loading: false });
-      },
-      () => alive && setS({ key, data: had?.data ?? null, loading: false }),
-    );
-    return () => void (alive = false);
-  }, [key, on]);
-  return s.key === key ? s : { data: null, loading: true };
+    if (!login || !on) return setS({ login, data: null, loading: false });
+    let alive = true, timer = 0;
+    const had = histories.get(login);
+    const ask = () =>
+      get<History>(`/api/streamers/${encodeURIComponent(login)}/history`).then(
+        (data) => {
+          histories.set(login, { at: Date.now(), data });
+          if (!alive) return;
+          setS({ login, data, loading: data.syncing });
+          if (data.syncing) timer = window.setTimeout(ask, 4_000);
+        },
+        () => alive && setS({ login, data: histories.get(login)?.data ?? null, loading: false }),
+      );
+    if (had && Date.now() - had.at < 10 * FRESH && !had.data.syncing) setS({ login, data: had.data, loading: false });
+    else {
+      setS({ login, data: had?.data ?? null, loading: true });
+      void ask();
+    }
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [login, on]);
+  return s.login === login ? s : { data: null, loading: true };
+}
+
+/**
+ * The report with SullyGnome's streams added: each one the server saw or Twitch still lists keeps its chapters, and
+ * takes SullyGnome's viewers and followers when it has none; the rest join it, their length shared among their games
+ * by how long each was played that year.
+ */
+export function withHistory(d: Streamer, h: History | null): Streamer {
+  if (!h?.streams.length) return d;
+  const own = d.streams.map((s) => ({ ...s }));
+  const added: Stream[] = [];
+  const oldest = own.at(-1)?.start ?? Infinity;
+  for (const [start, min, avg, peak, fol, , ids] of h.streams) {
+    const end = start + min * MIN;
+    const twin = start > oldest - DAY ? own.find((s) => s.start < end && s.end > start && Math.min(s.end, end) - Math.max(s.start, start) > 0.5 * Math.min(s.end - s.start, end - start)) : undefined;
+    if (twin) {
+      if (twin.avg === undefined && avg) (twin.avg = avg), (twin.peak = peak);
+      twin.fol ??= fol;
+      continue;
+    }
+    const year = h.mins[new Date(start).getUTCFullYear()] ?? {};
+    const weights = ids.map((g) => Math.max(1, year[g] ?? 0));
+    const sum = weights.reduce((a, b) => a + b, 0) || 1;
+    let at = 0;
+    const segs: [string, number, number][] = ids.map((g, i) => {
+      const len = i === ids.length - 1 ? end - start - at : Math.round(((end - start) * weights[i]) / sum);
+      const seg: [string, number, number] = [g, at, len];
+      at += len;
+      return seg;
+    });
+    added.push({ start, end, title: '', segs: segs.length ? segs : [['', 0, end - start]], ...(avg ? { avg, peak } : {}), fol, sg: true });
+  }
+  return { ...d, games: { ...h.games, ...d.games }, streams: [...own, ...added].sort((a, b) => b.start - a.start) };
 }
 
 /** The channels to offer: the miner's, then the ones looked up lately. */
@@ -171,15 +217,9 @@ export function gameColors(streams: Stream[], clips: Clip[] = []) {
   return new Map(top.map((g, i) => [g, PALETTE[i]]));
 }
 
-/** Streams Charts names its games: one Twitch also named is that game, any other is kept as 'name:…'; the rest as OTHER_GAMES. */
-export const OTHER_GAMES = 'other:';
-export function gameIdOf(d: Streamer, name: string) {
-  const want = name.trim().toLowerCase();
-  for (const [id, [n]] of Object.entries(d.games)) if (n.toLowerCase() === want) return id;
-  return `name:${name}`;
-}
+/** A game's name; one SullyGnome names without a Twitch id is kept as 'name:…'. */
 export const gameName = (d: Streamer, g: string) =>
-  g === OTHER_GAMES ? t('Other games') : g.startsWith('name:') ? g.slice(5) : g ? d.games[g]?.[0] ?? t('Unknown game') : t('No category');
+  g.startsWith('name:') ? g.slice(5) : g ? d.games[g]?.[0] ?? t('Unknown game') : t('No category');
 
 /** A stream's games as pieces of time, cut to [from, to). */
 function pieces(s: Stream, from: number, to: number) {
@@ -449,8 +489,6 @@ export interface Period {
   followers: number | null;
   gained: number | null;
   rank: number | null;
-  /** its figures are Streams Charts' for the whole month */
-  full?: boolean;
 }
 
 /** The last [day, value] at or before a time. */
@@ -461,10 +499,8 @@ const valueAt = (pts: [number, number][], at: number) => {
 };
 
 /** The first thing known of the channel: its oldest past stream, follower count or TwitchTracker day. */
-export function knownFrom(d: Streamer, h: History | null = null) {
-  const first = h?.months[0]?.[0];
-  const firsts = [d.streams.at(-1)?.start, d.followerDays[0]?.[0], d.trackerDays?.[0]?.[0], first ? new Date(+first.slice(0, 4), +first.slice(5, 7) - 1, 1).getTime() : undefined]
-    .filter((x): x is number => x !== undefined);
+export function knownFrom(d: Streamer) {
+  const firsts = [d.streams.at(-1)?.start, d.followerDays[0]?.[0], d.trackerDays?.[0]?.[0]].filter((x): x is number => x !== undefined);
   return firsts.length ? Math.min(...firsts) : null;
 }
 
@@ -477,13 +513,8 @@ export function unitStart(ms: number, unit: Unit) {
   return at.getTime();
 }
 
-/**
- * Every day, week or month that touches [from, to): hours, streams, viewers, VOD views and followers. A month Streams
- * Charts knows takes its figures, which count every stream; its games keep the hours seen here when those cover it,
- * else they're shared out by hours watched.
- */
-export function overTime(d: Streamer, from: number, to: number, unit: Unit, h: History | null = null) {
-  const months = new Map(unit === 'month' ? h?.months ?? [] : []);
+/** Every day, week or month that touches [from, to): hours, streams, viewers, VOD views and followers. */
+export function overTime(d: Streamer, from: number, to: number, unit: Unit) {
   const tracker = d.trackerDays ?? [];
   const at = new Date(unitStart(from, unit));
   const periods: Period[] = [];
@@ -526,31 +557,19 @@ export function overTime(d: Streamer, from: number, to: number, unit: Unit, h: H
     }
     const ranks = tracker.filter(([day, rank]) => day >= p.start && day < p.end && rank !== null);
     if (ranks.length) p.rank = ranks[ranks.length - 1][1];
-    const at = new Date(p.start);
-    const m = months.get(`${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}`);
-    if (m) {
-      const ms = m.airMin !== null ? m.airMin * MIN : p.ms;
-      if (p.ms < ms * 0.9 && m.hw) {
-        p.games = new Map();
-        let left = ms;
-        for (const [name, hw] of m.games) {
-          const part = (hw / m.hw) * ms;
-          const id = gameIdOf(d, name);
-          p.games.set(id, (p.games.get(id) ?? 0) + part);
-          left -= part;
-        }
-        if (left > MIN) p.games.set(OTHER_GAMES, left);
-      }
-      p.ms = ms;
-      p.watched = m.hw ?? p.watched;
-      p.avg = m.avg ?? p.avg;
-      p.peak = m.peak ?? p.peak;
-      p.streams = m.streams ?? p.streams;
-      p.gained = m.gained ?? p.gained;
-      p.full = true;
+    // before follower counts were kept here, SullyGnome's followers per stream
+    if (p.gained === null) {
+      const fol = mine.filter((s) => s.fol !== undefined);
+      if (fol.length) p.gained = fol.reduce((a, s) => a + s.fol!, 0);
     }
   }
   return periods;
+}
+
+/** Followers gained over the streams that started in a stretch, from SullyGnome; null when it has none of them. */
+function folIn(d: Streamer, from: number, to: number) {
+  const xs = d.streams.filter((s) => s.start >= from && s.start < to);
+  return xs.length && xs.every((s) => s.fol !== undefined) ? xs.reduce((a, s) => a + s.fol!, 0) : null;
 }
 
 /** What a stretch of time adds up to, to set one range against the one before it. */
@@ -574,9 +593,10 @@ export function sums(d: Streamer, from: number, to: number) {
     /** viewer-hours over the streams where viewers were counted */
     watched: hw !== null ? Math.round(hw) : null,
     streams: d.streams.filter((s) => s.start >= from && s.start < to).length,
-    gained: known && a !== null && b !== null ? b - a : null,
+    gained: known && a !== null && b !== null ? b - a : folIn(d, from, to),
     /** whether every stream of the stretch is known (the past ones Twitch lists, or recorded here) */
     whole: (d.streams.at(-1)?.start ?? Infinity) <= from || (d.recordingSince ?? Infinity) <= from,
-    recorded: (d.recordingSince ?? Infinity) <= from,
+    /** whether every stream of the stretch has its viewers counted */
+    recorded: watched.length > 0 && d.streams.every((s) => s.start < from || s.start >= to || s.avg !== undefined),
   };
 }

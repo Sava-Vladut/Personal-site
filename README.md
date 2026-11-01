@@ -93,7 +93,7 @@ and a link to its source page, shown when you open it.
 
 Spotify settings are described in `.env.example`.
 GitHub login needs a GitHub OAuth App (Settings → Developer settings → OAuth Apps) with callback URL `<PUBLIC_URL>/api/github/callback`; put its keys in `.env` as `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
-Streamer stats reads a channel's history since June 2019 from the [Streams Charts API](https://streamscharts.com/api) when `STREAMSCHARTS_CLIENT_ID` and `STREAMSCHARTS_TOKEN` are in `.env` (from streamscharts.com/api/token). It's paid in credits: every answer is kept with the channel, months that are over are never asked for again, and `STREAMSCHARTS_DAILY_CALLS` (default 300) caps the requests a day. Without a key the page shows what Twitch and the server's own recording know.
+Streamer stats reads each channel's streams back to 2015 from SullyGnome, with its owner's permission: one request at a time, a year that's over read once and kept with the channel, the running year looked at again at most every 3 hours.
 
 ## Deploying
 

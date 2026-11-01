@@ -2836,9 +2836,6 @@ export const RO: Record<string, string> = {
   "Hours watched and viewers count the streams recorded here, shared out along each stream’s viewer line.": "Orele vizionate și privitorii numără streamurile înregistrate aici, împărțite după linia de privitori a fiecărui stream.",
   "{n} views of the VOD": "{n} vizualizări ale VOD-ului",
   "Loading the history…": "Se încarcă istoricul…",
-  "Further back there are only monthly figures: zoom out to see them.": "Mai în urmă sunt doar cifre lunare: micșorează ca să le vezi.",
-  "Most-watched games": "Cele mai vizionate jocuri",
-  "By hours watched in {range}": "După orele vizionate în {range}",
-  "{share} of the hours watched": "{share} din orele vizionate",
   "Live then": "Live atunci",
+  "No earlier history was found for this channel.": "Nu s-a găsit niciun istoric mai vechi pentru acest canal.",
 };

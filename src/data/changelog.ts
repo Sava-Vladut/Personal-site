@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.173.0',
+    date: '2026-11-01',
+    changes: [
+      'Streamer stats: every stream back to 2015 joins the page, with its length, viewers, hours watched, followers and games, so every card and range reads the whole career',
+      'Streamer stats: the history loads in the background, newest year first, and fills in as it comes',
+      'Streamer stats: the paid Streams Charts history is gone',
+    ],
+  },
+  {
     version: '1.172.0',
     date: '2026-11-01',
     changes: [

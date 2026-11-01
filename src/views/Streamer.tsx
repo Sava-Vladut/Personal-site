@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { WEEKDAYS, formatDate, keyOf, shortDate, timeLabel } from '../lib/dates';
-import { PALETTE, age, analyse, career, clock, forget, gameColors, gameIdOf, gameName, hours, knownFrom, overTime, sums, unitFor, useChoices, useHistory, useStreamer, watchedIn, type Analysis, type Career, type Choice, type GameRow, type History, type Period, type ScStats, type Stream, type Streamer as Data, type Unit } from '../lib/streamer';
+import { PALETTE, age, analyse, career, clock, forget, gameColors, gameName, hours, knownFrom, overTime, sums, unitFor, useChoices, useHistory, useStreamer, watchedIn, withHistory, type Analysis, type Career, type Choice, type GameRow, type Period, type Stream, type Streamer as Data, type Unit } from '../lib/streamer';
 import { useArtColors } from '../lib/artColor';
 import { compact } from '../lib/twitch';
 import { ChartCard, CountUp, LegendItem, RevealStack, barPath, hideTip, tipProps, useWidth } from '../components/charts';
@@ -190,14 +190,15 @@ function Status({ d }: { d: Data }) {
 
 type Range = (typeof RANGES)[number];
 
-function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRange: (id: string) => void; stale: boolean }) {
+function Report({ d: report, rangeId, onRange, stale }: { d: Data; rangeId: string; onRange: (id: string) => void; stale: boolean }) {
   const r = RANGES.find((x) => x[0] === rangeId)!;
   const days = r[5];
+  // the report with every stream SullyGnome has, so each card reads the whole career
+  const h = useHistory(report.login, !!report.history);
+  const d = useMemo(() => withHistory(report, h.data), [report, h.data]);
   const a = useMemo(() => analyse(d, days), [d, days]);
   const c = useMemo(() => career(d), [d]);
   const colors = useMemo(() => gameColors(d.streams, d.clips ?? []), [d]);
-  const h = useHistory(d.login, days, !!d.history);
-  const hist = h.data?.on ? h.data : null;
   const [open, setOpen] = useState<Stream | null>(null);
   const arts = useArtColors(useMemo(() => [...new Set(Object.values(d.games).map((g) => g[1]).filter((u): u is string => !!u))], [d]));
   // each game in the colour of its box art, leaning a little to the page's purple; games without art keep a palette colour
@@ -208,15 +209,15 @@ function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRa
     if (g.startsWith('name:')) return `var(--emo-${PALETTE[[...g].reduce((n, ch) => n + ch.charCodeAt(0), 0) % PALETTE.length]})`;
     return OTHER;
   };
-  const range = days ? r[3] : t('since {date}', { date: day(hist?.months.length ? knownFrom(d, hist) ?? a.from : a.from) });
+  const range = days ? r[3] : t('since {date}', { date: day(a.from) });
 
   return (
     <div class={stale ? 'sr-stale' : ''}>
       <RevealStack>
         <Banner d={d} />
-        <RangeBar r={r} from={days ? a.from : knownFrom(d, hist) ?? a.from} onRange={onRange} loading={h.loading && !!d.history} />
+        <RangeBar r={r} from={a.from} onRange={onRange} loading={h.loading && !!d.history} />
 
-        <OverTime key={`${rangeId}-${a.from}-${hist?.months[0]?.[0] ?? ''}`} d={d} h={hist} from={days ? a.from : Math.min(a.from, knownFrom(d, hist) ?? a.from)} colorOf={colorOf} colors={colors} />
+        <OverTime key={`${rangeId}-${days ? '' : a.from}`} d={d} from={a.from} colorOf={colorOf} colors={colors} />
 
         {!d.streams.length ? (
           <section class="card sr-note">
@@ -224,13 +225,12 @@ function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRa
             {d.recordingSince && <p>{t('Streams are recorded here from now on, every 5 minutes while it’s live.')}</p>}
           </section>
         ) : (
-          <Summary d={d} a={a} r={r} range={range} h={hist} />
+          <Summary d={d} a={a} r={r} range={range} />
         )}
 
         {a.count > 0 && (
           <>
             <Games d={d} a={a} colorOf={colorOf} range={range} />
-            {hist?.range?.games.length ? <TopGames d={d} s={hist.range} colorOf={colorOf} range={range} /> : null}
             <When a={a} />
           </>
         )}
@@ -238,6 +238,7 @@ function Report({ d, rangeId, onRange, stale }: { d: Data; rangeId: string; onRa
         <Audience d={d} a={a} colorOf={colorOf} />
         <Followers d={d} from={a.from} />
         {d.streams.length > 0 && a.count > 0 && <Streams d={d} a={a} colorOf={colorOf} onOpen={setOpen} />}
+        {h.data && !h.data.known && <p class="sr-small sr-unknown">{t('No earlier history was found for this channel.')}</p>}
 
         {c.clips.length > 0 && (
           <>
@@ -500,14 +501,14 @@ const METRICS: [Metric, string][] = [
 const MIN_SPAN = 2 * DAY;
 
 /** Everything known in the range, a day, week or month at a time, one measure at a time, to zoom into and pan along. */
-function OverTime({ d, h, from, colorOf, colors }: { d: Data; h: History | null; from: number; colorOf: (g: string) => string; colors: Map<string, string> }) {
+function OverTime({ d, from, colorOf, colors }: { d: Data; from: number; colorOf: (g: string) => string; colors: Map<string, string> }) {
   const to = d.now;
   const [metric, setMetric] = useState<Metric>('hours');
   const [view, setView] = useState<[number, number]>([from, to]);
   const [a, b] = view;
   const unit = unitFor(b - a);
-  const ps = useMemo(() => overTime(d, a, b, unit, h), [d, a, b, unit, h]);
-  const known = useMemo(() => knownFrom(d, h), [d, h]);
+  const ps = useMemo(() => overTime(d, a, b, unit), [d, a, b, unit]);
+  const known = useMemo(() => knownFrom(d), [d]);
   const whole = b - a >= to - from - 1;
 
   /** A stretch kept inside the range and no shorter than MIN_SPAN, its middle kept where it can be. */
@@ -557,13 +558,12 @@ function OverTime({ d, h, from, colorOf, colors }: { d: Data; h: History | null;
       </div>
       <ZoomPlot view={view} unit={unit} ps={ps} metric={metric} value={value} fmt={fmt} label={label} known={known}
         colorOf={colorOf} named={named} onView={(na, nb) => setView(fit(na, nb))} onZoom={zoom} onReset={() => setView([from, to])} empty={!known_.length} />
-      {!whole && <Overview d={d} h={h} from={from} to={to} view={view} onView={(na, nb) => setView(fit(na, nb))} />}
+      {!whole && <Overview d={d} from={from} to={to} view={view} onView={(na, nb) => setView(fit(na, nb))} />}
       {metric === 'hours' && (
         <div class="legend">
           {topGames(shown).slice(0, 8).map((g) => <LegendItem color={colorOf(g)} label={named(g)} />)}
         </div>
       )}
-      {unit !== 'month' && h?.months.length && known !== null && a < d.now - 60 * DAY ? <p class="sr-small">{t('Further back there are only monthly figures: zoom out to see them.')}</p> : null}
     </ChartCard>
   );
 }
@@ -739,9 +739,9 @@ function ZoomPlot({ view, unit, ps, metric, value, fmt, label, known, colorOf, n
 }
 
 /** The whole range in miniature with the zoomed stretch picked out: drag it along, or tap to jump there. */
-function Overview({ d, h, from, to, view, onView }: { d: Data; h: History | null; from: number; to: number; view: [number, number]; onView: (a: number, b: number) => void }) {
+function Overview({ d, from, to, view, onView }: { d: Data; from: number; to: number; view: [number, number]; onView: (a: number, b: number) => void }) {
   const [ref, W] = useWidth();
-  const ps = useMemo(() => overTime(d, from, to, unitFor(to - from), h), [d, h, from, to]);
+  const ps = useMemo(() => overTime(d, from, to, unitFor(to - from)), [d, from, to]);
   const H = 34, L = 46, R = 6;
   const pw = Math.max(0, W - L - R);
   const x = (ms: number) => L + ((ms - from) / (to - from)) * pw;
@@ -780,28 +780,23 @@ function Overview({ d, h, from, to, view, onView }: { d: Data; h: History | null
 }
 
 /** The range at a glance: six big numbers set against the range before, then how the streams run. */
-function Summary({ d, a, r, range, h }: { d: Data; a: Analysis; r: Range; range: string; h: History | null }) {
+function Summary({ d, a, r, range }: { d: Data; a: Analysis; r: Range; range: string }) {
   const days = r[5];
   const s = d.summary;
   const cur = useMemo(() => sums(d, a.from, d.now), [d, a.from]);
   const prev = useMemo(() => (days ? sums(d, a.from - days * DAY, a.from) : null), [d, a.from, days]);
-  // the whole range's figures, every stream counted, when there are some; else the month's for 30 days; else what's recorded here
-  const full: ScStats | null = h?.range ?? null;
-  const before: ScStats | null = h?.prev ?? null;
-  const month = !full && days === 30 && s;
-  const avg = full?.avg ?? (month && s.avg !== null ? s.avg : cur.avg);
-  const peak = full?.peak ?? (month && s.peak !== null ? s.peak : cur.peak);
-  const gained = full?.gained ?? (month && s.followers !== null ? s.followers : cur.gained);
-  const watched = full?.hw ?? (month && s.hoursWatched !== null ? s.hoursWatched : cur.watched);
-  const hoursLive = full?.airMin != null ? full.airMin / 60 : a.total / HOUR;
-  const streams = full?.streams ?? a.count;
+  // the month's summary covers 30 days better than streams with no viewers counted
+  const month = !cur.recorded && days === 30 && s;
+  const avg = month && s.avg !== null ? s.avg : cur.avg;
+  const peak = month && s.peak !== null ? s.peak : cur.peak;
+  const gained = month && s.followers !== null ? s.followers : cur.gained;
+  const watched = month && s.hoursWatched !== null ? s.hoursWatched : cur.watched;
+  const hoursLive = a.total / HOUR;
+  const streams = a.count;
   const change = (now: number | null | undefined, then: number | null | undefined, ok: boolean) => (ok && now != null && then ? (now - then) / then : null);
   const vs = r[4];
-  const recordedBoth = !!prev?.recorded && !month;
-  const foot = (has: boolean, mine: boolean) => (full || (month && has) ? undefined : mine ? t('recorded here') : t('not recorded yet'));
-  /** a delta: the range before from the same source, else what's recorded here */
-  const delta = (k: 'hw' | 'avg' | 'peak' | 'airMin' | 'streams', mine: number | null, then: number | null, ok: boolean) =>
-    full ? change(full[k], before?.[k], !!before) : change(mine, then, ok);
+  const recordedBoth = cur.recorded && !!prev?.recorded;
+  const foot = (has: boolean, mine: boolean) => (cur.recorded || (month && has) ? undefined : mine ? t('recorded streams only') : t('not recorded yet'));
   return (
     <section class="card sr-summary">
       <header class="sr-summary-head">
@@ -810,22 +805,22 @@ function Summary({ d, a, r, range, h }: { d: Data; a: Analysis; r: Range; range:
           <p class="chart-sub">{t('Streamed in {range}', { range })}</p>
         </div>
       </header>
-      {!a.count && !full?.streams ? (
+      {!a.count ? (
         <p class="sr-small">{t('No streams in {range}. Try a longer range.', { range })}</p>
       ) : (
         <>
           <div class="sr-kpis">
-            <Kpi k={0} label={t('Hours streamed')} value={<CountUp value={Math.round(hoursLive)} />} delta={delta('airMin', a.total, prev?.ms ?? null, !!prev?.whole)} vs={vs} />
-            <Kpi k={1} label={t('Hours watched')} value={watched !== null ? compact(watched) : '—'} delta={delta('hw', cur.watched, prev?.watched ?? null, recordedBoth)} vs={vs}
-              foot={full || (month && s.hoursWatched !== null) ? undefined : cur.watched !== null ? t('recorded streams only') : t('not recorded yet')} />
-            <Kpi k={2} label={t('Average viewers')} value={avg !== null ? <CountUp value={avg} /> : '—'} delta={delta('avg', cur.avg, prev?.avg ?? null, recordedBoth)} vs={vs} foot={foot(s?.avg != null, cur.avg !== null)} />
-            <Kpi k={3} label={t('Peak viewers')} value={peak !== null ? <CountUp value={peak} /> : '—'} delta={delta('peak', cur.peak, prev?.peak ?? null, recordedBoth)} vs={vs} foot={foot(s?.peak != null, cur.peak !== null)} />
+            <Kpi k={0} label={t('Hours streamed')} value={<CountUp value={Math.round(hoursLive)} />} delta={change(a.total, prev?.ms ?? null, !!prev?.whole)} vs={vs} />
+            <Kpi k={1} label={t('Hours watched')} value={watched !== null ? compact(watched) : '—'} delta={change(cur.watched, prev?.watched ?? null, recordedBoth)} vs={vs}
+              foot={foot(s?.hoursWatched != null, cur.watched !== null)} />
+            <Kpi k={2} label={t('Average viewers')} value={avg !== null ? <CountUp value={avg} /> : '—'} delta={change(cur.avg, prev?.avg ?? null, recordedBoth)} vs={vs} foot={foot(s?.avg != null, cur.avg !== null)} />
+            <Kpi k={3} label={t('Peak viewers')} value={peak !== null ? <CountUp value={peak} /> : '—'} delta={change(cur.peak, prev?.peak ?? null, recordedBoth)} vs={vs} foot={foot(s?.peak != null, cur.peak !== null)} />
             <Kpi k={4} label={t('Followers gained')} value={gained !== null ? signed(gained) : '—'} tone={gained !== null && gained < 0 ? 'down' : undefined} foot={foot(s?.followers != null, gained !== null)} />
-            <Kpi k={5} label={t('Streams')} value={<CountUp value={streams} />} delta={delta('streams', cur.streams, prev?.streams ?? null, !!prev?.whole)} vs={vs} />
+            <Kpi k={5} label={t('Streams')} value={<CountUp value={streams} />} delta={change(cur.streams, prev?.streams ?? null, !!prev?.whole)} vs={vs} />
           </div>
           <div class="sr-facts">
-            <Mini icon="calendar" label={t('Days live')} value={t('{n} of {days}', { n: full?.days ?? a.daysLive, days: a.span })} sub={a.streak > 1 ? t('{n} days in a row at most', { n: a.streak }) : t('{n} a day on average', { n: hours(a.total / a.span) })} />
-            <Mini icon="device-gamepad-2" label={t('Games')} value={String(full?.gamesCount ?? a.games.length)} sub={t('{n} a stream on average', { n: a.perStream.toFixed(1) })} />
+            <Mini icon="calendar" label={t('Days live')} value={t('{n} of {days}', { n: a.daysLive, days: a.span })} sub={a.streak > 1 ? t('{n} days in a row at most', { n: a.streak }) : t('{n} a day on average', { n: hours(a.total / a.span) })} />
+            <Mini icon="device-gamepad-2" label={t('Games')} value={String(a.games.length)} sub={t('{n} a stream on average', { n: a.perStream.toFixed(1) })} />
             <Mini icon="clock" label={t('Average stream')} value={hours(a.average)} sub={t('{n} a day on average', { n: hours(a.total / a.span) })} />
             <Mini icon="flame" label={t('Longest stream')} value={a.longest ? hours(a.longest.end - a.longest.start) : '—'} sub={a.longest ? day(a.longest.start) : ''} />
             <Mini icon="hourglass" label={t('Longest break')} value={a.gap ? hours(a.gap.ms) : '—'} sub={a.gap ? `${day(a.gap.from)} – ${day(a.gap.to)}` : t('none in this range')} />
@@ -932,34 +927,6 @@ function Games({ d, a, colorOf, range }: { d: Data; a: Analysis; colorOf: (g: st
         </button>
       )}
       {counted && <p class="sr-small">{t('Hours watched and viewers count the streams recorded here, shared out along each stream’s viewer line.')}</p>}
-    </section>
-  );
-}
-
-/** The games that drew the most hours watched over the whole range, every stream counted. */
-function TopGames({ d, s, colorOf, range }: { d: Data; s: ScStats; colorOf: (g: string) => string; range: string }) {
-  const max = Math.max(1, ...s.games.map((g) => g[1]));
-  return (
-    <section class="card tw-list sr-games">
-      <h3 class="chart-title">{t('Most-watched games')}</h3>
-      <p class="chart-sub">{t('By hours watched in {range}', { range })}</p>
-      <ul>
-        {s.games.map(([name, hw, pct], i) => {
-          const id = gameIdOf(d, name);
-          const box = d.games[id]?.[1] ?? null;
-          return (
-            <li style={{ '--k': i, '--w': `${(hw / max) * 100}%`, '--c': colorOf(id) }}>
-              {box ? <img class="sr-box" src={box} alt="" width={26} height={36} loading="lazy" /> : <span class="sr-box"><Icon name="device-gamepad-2" size={14} /></span>}
-              <span class="sr-game">
-                <b>{name}</b>
-                <span class="sr-game-bar"><i /></span>
-                <small>{t('{share} of the hours watched', { share: `${pct}%` })}</small>
-              </span>
-              <span class="sr-game-h">{compact(Math.round(hw))}</span>
-            </li>
-          );
-        })}
-      </ul>
     </section>
   );
 }
