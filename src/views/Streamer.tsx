@@ -153,6 +153,7 @@ function Report({ d, days, stale }: { d: Data; days: number | null; stale: boole
   const range = days ? t('the last {n} days', { n: days }) : t('since {date}', { date: day(a.from) });
 
   return (
+    <>
     <div class={stale ? 'sr-stale' : ''}>
       <RevealStack>
         <Profile d={d} />
@@ -200,8 +201,10 @@ function Report({ d, days, stale }: { d: Data; days: number | null; stale: boole
           {t('From Twitch’s past broadcasts and their chapters (Twitch keeps them up to 60 days), TwitchTracker’s last 30 days and what this server records every 5 minutes. Times are yours.')}
         </p>
       </RevealStack>
-      <StreamSheet d={d} s={open} colorOf={colorOf} onClose={() => setOpen(null)} />
     </div>
+    {/* outside the dimmed wrapper: a refresh under an open sheet would grey it and stop its taps */}
+    <StreamSheet d={d} s={open} colorOf={colorOf} onClose={() => setOpen(null)} />
+    </>
   );
 }
 

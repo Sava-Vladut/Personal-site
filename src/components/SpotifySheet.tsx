@@ -40,6 +40,7 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
   const [tab, setTab] = useState<Tab>('now');
   const [status, setStatus] = useState<SpotifyStatus | null>(null);
   const [selected, setSelected] = useState<Music[]>([]);
+  const [setup, setSetup] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -58,9 +59,10 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
   const row = (m: Music) => (
     <MusicRow m={m} pressed={isSel(m)} onClick={() => toggle(m)} end={<span class="track-check"><Icon name="check" size={14} stroke={2.5} /></span>} />
   );
-  const gate = status && !status.connected ? <Gate status={status} onConnect={onConnect} /> : null;
+  const gate = status && !status.connected ? <Gate status={status} onConnect={onConnect} onSetup={() => setSetup(true)} /> : null;
 
   return (
+    <>
     <Sheet
       open={open}
       onClose={onClose}
@@ -98,19 +100,20 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
       )}
       <p class="attribution"><Icon name="brand-spotify" size={14} /> {t('Music and artwork from Spotify')}</p>
     </Sheet>
+    {/* beside the sheet, not in it: the sheet's frosted glass would become the setup sheet's screen */}
+    <ConnectSetup redirect={status?.redirect} open={setup} onClose={() => setSetup(false)} />
+    </>
   );
 }
 
-function Gate({ status, onConnect }: { status: SpotifyStatus; onConnect: () => void }) {
-  const [setup, setSetup] = useState(false);
+function Gate({ status, onConnect, onSetup }: { status: SpotifyStatus; onConnect: () => void; onSetup: () => void }) {
   if (status.offline)
     return <p class="empty-note fade-arrive-soft">{rich('Search and playlists need the app’s server. Start it with {start}, or paste a Spotify link instead.', { start: <code>npm start</code> })}</p>;
   return (
     <div class="empty-note center fade-arrive-soft">
       <p>{t('Log in with Spotify to search music and pick songs from your playlists.')}</p>
-      <button class="btn btn-primary" onClick={status.configured ? onConnect : () => setSetup(true)}><Icon name="brand-spotify" size={18} /> {t('Log in with Spotify')}</button>
+      <button class="btn btn-primary" onClick={status.configured ? onConnect : onSetup}><Icon name="brand-spotify" size={18} /> {t('Log in with Spotify')}</button>
       {!status.configured && <p>{t('Pasting a song link works without logging in.')}</p>}
-      <ConnectSetup redirect={status.redirect} open={setup} onClose={() => setSetup(false)} />
     </div>
   );
 }

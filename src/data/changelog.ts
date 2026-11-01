@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.168.2',
+    date: '2026-11-01',
+    changes: [
+      'On desktop, sheets opened from the journal (Today’s song, the update notes, the feed editor) are centred again and dim the whole screen, not just the part left of the side panel',
+      'The Stats Dex and Streamer sheets no longer sit inside a block that shifts or greys them',
+      'The Spotify connect dialog covers the whole screen instead of being squeezed inside the Spotify sheet',
+      'Shared Learn pages and the intro are centred on desktop (no empty strip where the sidebar would be), and the empty journal keeps its full width',
+    ],
+  },
+  {
     version: '1.169.2',
     date: '2026-11-01',
     changes: [

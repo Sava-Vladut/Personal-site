@@ -181,6 +181,9 @@
 
   /* public pages (a shared note, a status) have no sidebar to make room for */
   .app.route-shared { padding-left: 0; }
+  /* so have a shared Learn link and the intro: no sidebar on the page, so no room kept for one (and the toasts centre on the screen) */
+  .app:not(:has(~ .side)) { padding-left: 0; }
+  .app:not(:has(~ .side)) ~ .toasts { left: 50%; }
   .route-shared .page.shared { max-width: 760px; }
 }
 
@@ -196,8 +199,11 @@
   }
   .route-journal .page > .journal-side > .journal-top { margin: 0; padding: 22px 22px 18px; }
   .route-journal .page > .journal-side > .sotd { margin: 0; }
-  .route-journal .page > :not(.journal-side) { margin-right: 412px; }
+  /* every block clears the panel, but not the overlays (a sheet is fixed to the screen, and a margin would shrink it) */
+  .route-journal .page > :not(.journal-side, .sheet-wrap) { margin-right: 412px; }
   .route-journal .page > section.day:first-of-type { margin-top: 0; }
+  /* the empty state is a grid, which sits beside the panel by itself: the margin above would take the room twice */
+  .route-journal .page > .empty { margin-right: 0; }
 
   /* tracker: the picker on the left, today and the feelings count beside it */
   .route-tracker .page {

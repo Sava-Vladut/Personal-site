@@ -21,6 +21,7 @@ export function Dex() {
   const info = open ? found.get(open) : null;
 
   return (
+    <>
     <RevealStack>
       <section class="card hero">
         <div class="tile-label">{t('Feelings named · all time')}</div>
@@ -68,15 +69,17 @@ export function Dex() {
           </section>
         );
       })}
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={e?.name ?? ''}>
-        {e && info && (
-          <div class="stack">
-            <div class="row gap-s"><Sprite core={e.core} size={18} /><span class="muted">{trail(e.id)}</span></div>
-            <p class="definition big">{e.def}</p>
-            <p class="muted small">{t('Named {count} · first on {date}', { count: count(info.count, 'time', 'times'), date: shortDate(info.first) })}</p>
-          </div>
-        )}
-      </Sheet>
     </RevealStack>
+    {/* beside the stack, not in it: the stack's rules (a margin, a delayed rise) would shrink and fade a fixed sheet */}
+    <Sheet open={!!open} onClose={() => setOpen(null)} title={e?.name ?? ''}>
+      {e && info && (
+        <div class="stack">
+          <div class="row gap-s"><Sprite core={e.core} size={18} /><span class="muted">{trail(e.id)}</span></div>
+          <p class="definition big">{e.def}</p>
+          <p class="muted small">{t('Named {count} · first on {date}', { count: count(info.count, 'time', 'times'), date: shortDate(info.first) })}</p>
+        </div>
+      )}
+    </Sheet>
+    </>
   );
 }
