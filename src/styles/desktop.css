@@ -171,7 +171,7 @@
   .tw-page .reveal.stack-l > :is(.hero, .tiles) { column-span: all; }
   /* the balance over time runs across; the lists sit side by side under it */
   .tw-page:not(.sr-page) .reveal.stack-l > .chart-card { column-span: all; }
-  .sr-page .reveal.stack-l > :is(.sr-profile, .sr-note, .sr-source) { column-span: all; }
+  .sr-page .reveal.stack-l > :is(.sr-banner, .sr-note, .sr-summary, .sr-source, .wide) { column-span: all; }
 
   /* pages of one or two cards don't stretch across the screen */
   :is(.route-countdown, .route-status) .page { max-width: 880px; }

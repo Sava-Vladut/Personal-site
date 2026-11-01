@@ -3,7 +3,7 @@
 // viewer's own: a day is a local day and the hours are local hours.
 import { useEffect, useState } from 'preact/hooks';
 import { keyOf, timeLabel } from './dates';
-import { LOCALE, t } from './i18n';
+import { LOCALE, count, t } from './i18n';
 
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
@@ -23,7 +23,9 @@ export interface Stream {
   /** [minutes from the start, viewers] */
   curve?: [number, number][];
 }
-export interface Summary { avg: number | null; peak: number | null; hoursWatched: number | null; minutes: number | null; followers: number | null; rank: number | null }
+export interface Summary { avg: number | null; peak: number | null; hoursWatched: number | null; minutes: number | null; followers: number | null; followersTotal?: number | null; rank: number | null }
+/** one of the channel's most-watched clips */
+export interface Clip { slug: string; title: string; views: number; at: number; game: string; secs: number; thumb: string | null }
 export interface Streamer {
   login: string;
   name: string;
@@ -48,6 +50,10 @@ export interface Streamer {
   games: Record<string, [string, string | null]>;
   /** [midnight UTC, followers] */
   followerDays: [number, number][];
+  /** TwitchTracker's 30 days as they stood each day: [midnight UTC, rank, average viewers, peak, followers] */
+  trackerDays?: [number, number | null, number | null, number | null, number | null][];
+  /** the 100 most-watched clips of all time, biggest first */
+  clips?: Clip[];
   /** TwitchTracker's last 30 days */
   summary: Summary | null;
 }
@@ -112,12 +118,18 @@ export function useChoices(again = 0): Got<Choice[]> {
 
 /* ---------- what it adds up to ---------- */
 
-/** The games given a colour: the five streamed most over everything loaded, so a colour stays with its game whatever the range. */
-export const PALETTE = ['sadness', 'hope-interest', 'calm-safety', 'joy', 'love-connection'];
-export function gameColors(streams: Stream[]) {
+/**
+ * The games given a colour: the five streamed most over everything loaded, so a colour stays with its game whatever
+ * the range, then the games of the biggest clips while colours are left, so the career wears the same ones.
+ */
+export const PALETTE = ['sadness', 'hope-interest', 'calm-safety', 'joy', 'love-connection', 'anger'];
+export function gameColors(streams: Stream[], clips: Clip[] = []) {
   const ms = new Map<string, number>();
   for (const s of streams) for (const [g, , d] of s.segs) if (g) ms.set(g, (ms.get(g) ?? 0) + d);
-  const top = [...ms].sort((a, b) => b[1] - a[1]).slice(0, PALETTE.length).map(([g]) => g);
+  const top = [...ms].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([g]) => g);
+  const views = new Map<string, number>();
+  for (const c of clips) if (c.game) views.set(c.game, (views.get(c.game) ?? 0) + c.views);
+  for (const [g] of [...views].sort((a, b) => b[1] - a[1])) if (top.length < PALETTE.length && !top.includes(g)) top.push(g);
   return new Map(top.map((g, i) => [g, PALETTE[i]]));
 }
 
@@ -271,3 +283,147 @@ export function hours(ms: number) {
 
 /** A time of day given in minutes after midnight, the local way. */
 export const clock = (min: number) => timeLabel(new Date(2000, 0, 1, Math.floor(min / 60), min % 60).getTime());
+
+/* ---------- the whole career ---------- */
+
+export interface Year { year: number; views: number; clips: number; games: Map<string, number> }
+export interface Era { id: string; name: string; box: string | null; views: number; clips: Clip[]; first: number; last: number }
+
+/**
+ * A career as its most-watched clips tell it: each year since the channel was made with the views of the clips
+ * made that year, and the games those clips came from. Clips only reach back to 2016, when Twitch added them.
+ */
+export function career(d: Streamer) {
+  const clips = (d.clips ?? []).slice().sort((a, b) => b.views - a.views);
+  const nowYear = new Date(d.now).getFullYear();
+  const first = Math.min(d.createdAt ? new Date(d.createdAt).getFullYear() : nowYear, ...clips.map((c) => new Date(c.at).getFullYear()));
+  const years: Year[] = [];
+  for (let y = first; y <= nowYear; y++) years.push({ year: y, views: 0, clips: 0, games: new Map() });
+  const eras = new Map<string, Era>();
+  for (const c of clips) {
+    const y = years[new Date(c.at).getFullYear() - first];
+    if (y) {
+      y.views += c.views;
+      y.clips++;
+      y.games.set(c.game, (y.games.get(c.game) ?? 0) + c.views);
+    }
+    const e = eras.get(c.game) ?? { id: c.game, name: c.game ? d.games[c.game]?.[0] ?? t('Unknown game') : t('No category'), box: c.game ? d.games[c.game]?.[1] ?? null : null, views: 0, clips: [], first: c.at, last: c.at };
+    e.views += c.views;
+    e.clips.push(c);
+    e.first = Math.min(e.first, c.at);
+    e.last = Math.max(e.last, c.at);
+    eras.set(c.game, e);
+  }
+  const views = clips.reduce((a, c) => a + c.views, 0);
+  const best = clips.length ? years.reduce((m, y) => (y.views > m.views ? y : m)) : null;
+  return {
+    clips,
+    years,
+    eras: [...eras.values()].sort((a, b) => b.views - a.views),
+    views,
+    best,
+    /** the first of January of the first year shown */
+    start: new Date(first, 0, 1).getTime(),
+  };
+}
+export type Career = ReturnType<typeof career>;
+
+/** How long since a date, as "12 years, 8 months". */
+export function age(since: number, now: number) {
+  const a = new Date(since), b = new Date(now);
+  let y = b.getFullYear() - a.getFullYear(), m = b.getMonth() - a.getMonth();
+  if (b.getDate() < a.getDate()) m--;
+  if (m < 0) (y--, (m += 12));
+  if (y <= 0) return count(Math.max(0, m), 'month', 'months');
+  return m ? `${count(y, 'year', 'years')}, ${count(m, 'month', 'months')}` : count(y, 'year', 'years');
+}
+
+/* ---------- over time: everything known, a month (or week) at a time ---------- */
+
+export interface Period {
+  start: number;
+  end: number;
+  ms: number;
+  games: Map<string, number>;
+  streams: number;
+  avg: number | null;
+  peak: number | null;
+  /** followers at its end, and gained over it */
+  followers: number | null;
+  gained: number | null;
+  rank: number | null;
+}
+
+/** The last [day, value] at or before a time. */
+const valueAt = (pts: [number, number][], at: number) => {
+  let v: number | null = null;
+  for (const [day, n] of pts) if (day <= at) v = n;
+  return v;
+};
+
+/**
+ * Every month since the first thing known of the channel (its oldest past stream, follower count or TwitchTracker
+ * day), or every week while that's under four months: hours, streams, viewers and followers.
+ */
+export function overTime(d: Streamer) {
+  const tracker = d.trackerDays ?? [];
+  const firsts = [d.streams.at(-1)?.start, d.followerDays[0]?.[0], tracker[0]?.[0]].filter((x): x is number => x !== undefined);
+  if (!firsts.length) return null;
+  const from = Math.min(...firsts), now = d.now;
+  const monthly = now - from > 120 * DAY;
+  const at = new Date(from);
+  at.setHours(0, 0, 0, 0);
+  if (monthly) at.setDate(1);
+  else at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
+  const periods: Period[] = [];
+  while (at.getTime() < now) {
+    const start = at.getTime();
+    if (monthly) at.setMonth(at.getMonth() + 1);
+    else at.setDate(at.getDate() + 7);
+    periods.push({ start, end: at.getTime(), ms: 0, games: new Map(), streams: 0, avg: null, peak: null, followers: null, gained: null, rank: null });
+  }
+  for (const p of periods) {
+    const mine = d.streams.filter((s) => s.start >= p.start && s.start < p.end);
+    p.streams = mine.length;
+    for (const s of d.streams) for (const x of pieces(s, p.start, Math.min(p.end, now))) {
+      p.ms += x.b - x.a;
+      p.games.set(x.game, (p.games.get(x.game) ?? 0) + x.b - x.a);
+    }
+    const watched = mine.filter((s) => s.avg !== undefined);
+    if (watched.length) {
+      const ms = watched.reduce((a, s) => a + (s.end - s.start), 0) || 1;
+      p.avg = Math.round(watched.reduce((a, s) => a + s.avg! * (s.end - s.start), 0) / ms);
+      p.peak = Math.max(...watched.map((s) => s.peak ?? s.avg!));
+    }
+    const inside = d.followerDays.filter(([day]) => day >= p.start && day < p.end);
+    if (inside.length) {
+      p.followers = inside[inside.length - 1][1];
+      const before = valueAt(d.followerDays, p.start - 1);
+      const base = before ?? (inside.length > 1 ? inside[0][1] : null);
+      if (base !== null) p.gained = p.followers - base;
+    }
+    const ranks = tracker.filter(([day, rank]) => day >= p.start && day < p.end && rank !== null);
+    if (ranks.length) p.rank = ranks[ranks.length - 1][1];
+  }
+  return { from, monthly, periods };
+}
+
+/** What a stretch of time adds up to, to set one range against the one before it. */
+export function sums(d: Streamer, from: number, to: number) {
+  let ms = 0;
+  for (const s of d.streams) for (const p of pieces(s, from, to)) ms += p.b - p.a;
+  const watched = d.streams.filter((s) => s.avg !== undefined && s.start >= from && s.start < to);
+  const wms = watched.reduce((a, s) => a + (s.end - s.start), 0) || 1;
+  const a = valueAt(d.followerDays, from + DAY), b = valueAt(d.followerDays, to);
+  // the follower count has to be known from the start of the stretch
+  const known = d.followerDays.length > 0 && d.followerDays[0][0] <= from + DAY;
+  return {
+    ms,
+    avg: watched.length ? Math.round(watched.reduce((x, s) => x + s.avg! * (s.end - s.start), 0) / wms) : null,
+    peak: watched.length ? Math.max(...watched.map((s) => s.peak ?? s.avg!)) : null,
+    gained: known && a !== null && b !== null ? b - a : null,
+    /** whether every stream of the stretch is known (the past ones Twitch lists, or recorded here) */
+    whole: (d.streams.at(-1)?.start ?? Infinity) <= from || (d.recordingSince ?? Infinity) <= from,
+    recorded: (d.recordingSince ?? Infinity) <= from,
+  };
+}

@@ -1,7 +1,8 @@
 /* ============================================================
-   Streamer stats (views/Streamer.tsx): a Twitch channel's games, hours and audience, in Channel points' purple
-   (--accent). Builds on stats.css (hero, tiles, chart cards) and twitch.css (lists, the live dot, the line).
-   Games wear the first five emotion colours in a fixed order; every other game is a quiet grey.
+   Streamer stats (views/Streamer.tsx): a Twitch channel's career, games, hours and audience, in Channel points'
+   purple (--accent). Builds on stats.css (tiles, chart cards) and twitch.css (lists, the live dot, the line).
+   The page reads top down: who it is, the whole career, every month known, then the chosen range up close.
+   Games wear six emotion colours in a fixed order; every other game is a quiet grey.
    ============================================================ */
 
 /* ---------- the header: find a channel, pick one, pick a range ---------- */
@@ -11,28 +12,41 @@
 .sr-find .btn { flex: none; }
 .sr-page .stats-top .filters { margin-top: 12px; }
 .sr-page .chips .chip { display: inline-flex; align-items: center; white-space: nowrap; }
-.sr-range { margin: 12px 0 0; }
 
 /* a channel being fetched again stays, faded, instead of blinking out */
 .sr-stale { opacity: 0.6; transition: opacity var(--dur-2); pointer-events: none; }
 
 .sr-note { padding: 14px 16px; color: var(--ink-2); display: grid; gap: 8px; }
 
-/* ---------- who it is ---------- */
+/* segmented controls inside cards: equal tabs, as wide as the longest name, so the sliding pill fits each */
+.sr-page .card .seg.tabs { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; max-width: 100%; }
+.sr-page .card .seg.tabs button { padding: 0 12px; font-size: var(--text-m); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 480px) { .sr-page .card .seg.tabs button { padding: 0 8px; font-size: var(--text-s); } }
 
-.sr-profile { padding: 14px 16px; display: grid; gap: 12px; }
-.sr-who { display: flex; align-items: center; gap: 12px; }
+/* ---------- who it is: a banner with the lifetime figures under the name ---------- */
+
+.sr-banner {
+  padding: 16px; display: grid; gap: 14px; position: relative; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 62%),
+    var(--surface);
+}
+.sr-who { display: flex; align-items: center; gap: 14px; }
 .sr-avatar {
-  flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--surface-2);
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in oklab, var(--accent) 40%, transparent);
+  flex: none; width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in oklab, var(--accent) 45%, transparent);
 }
 .sr-who-text { flex: 1; min-width: 0; }
-.sr-name { font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-name { font: var(--w-medium) var(--text-2xl)/1.2 var(--serif); letter-spacing: -0.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-meta { margin-top: 2px; font-size: var(--text-s); color: var(--ink-3); }
-.sr-followers { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: var(--text-m); color: var(--ink-3); }
-.sr-followers b { font-size: var(--text-base); font-weight: var(--w-bold); color: var(--ink); }
-.sr-followers .up { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-medium); }
-.sr-followers .down { color: var(--danger); font-weight: var(--w-medium); }
+.sr-life { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; border-radius: var(--r-m); overflow: hidden; background: var(--line); }
+@media (min-width: 720px) { .sr-life { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sr-life-item { display: grid; align-content: start; gap: 2px; padding: 10px 12px; background: color-mix(in oklab, var(--surface-2) 70%, var(--surface)); min-width: 0; }
+.sr-life-item small { font-size: var(--text-xs); font-weight: var(--w-medium); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.sr-life-item b { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-life-item > span { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-page .up { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-medium); }
+.sr-page .down { color: var(--danger); font-weight: var(--w-medium); }
 .sr-live {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-m);
   background: color-mix(in oklab, var(--accent) 10%, var(--surface-2));
@@ -47,9 +61,86 @@
 .sr-live-n small { font-size: var(--text-s); color: var(--ink-3); }
 .sr-bio { font-size: var(--text-m); line-height: 1.45; color: var(--ink-2); }
 
-/* the hours, with the Twitch mark at the far end */
-.sr-page .tw-hero .hero-row { justify-content: flex-start; align-items: baseline; }
-.sr-mark { margin-left: auto; align-self: center; }
+/* ---------- the career ---------- */
+
+.sr-career-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 12px; }
+@media (min-width: 720px) { .sr-career-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sr-fact { display: grid; gap: 1px; padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2); min-width: 0; border-left: 3px solid color-mix(in oklab, var(--accent) 55%, transparent); }
+.sr-fact small { font-size: var(--text-s); color: var(--ink-3); }
+.sr-fact b { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-fact span { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the years before Twitch had clips, and the year the channel was made */
+.sr-before { fill: color-mix(in oklab, var(--ink-3) 7%, transparent); }
+.sr-joined { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.sr-tick-strong { fill: var(--ink); font-weight: var(--w-bold); }
+
+/* each game across the career: its stretch as a thin line, a dot for every clip, bigger for more views */
+.sr-eras li { display: grid; grid-template-columns: 26px minmax(0, 1fr) 4.5em; align-items: center; gap: 12px; padding: 8px 0; }
+.sr-eras li + li { border-top: 1px solid var(--line); }
+.sr-track { position: relative; height: 14px; margin: 1px 0; }
+.sr-track::before { content: ''; position: absolute; inset: 50% 0 auto; height: 1px; background: var(--line); }
+.sr-span {
+  position: absolute; top: calc(50% - 1.5px); height: 3px; border-radius: var(--r-pill); background: color-mix(in oklab, var(--c) 45%, transparent);
+  transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) calc(0.1s + var(--k, 0) * 30ms) backwards;
+}
+.sr-pip {
+  position: absolute; top: 50%; width: calc(12px * var(--s)); height: calc(12px * var(--s)); border-radius: 50%; translate: -50% -50%;
+  background: var(--c); box-shadow: 0 0 0 1.5px var(--surface); animation: fade-in var(--dur-3) ease calc(0.2s + var(--k, 0) * 30ms) backwards;
+}
+.sr-track-axis { display: flex; justify-content: space-between; margin: 2px calc(4.5em + 12px) 4px 38px; font-size: var(--text-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* the most-watched clips */
+.sr-moments ol { list-style: none; margin: 6px 0 0; padding: 0; }
+.sr-moments li + li .sr-clip { border-top: 1px solid var(--line); }
+.sr-clip {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  width: calc(100% + 16px); margin: 0 -8px; padding: 8px; border-radius: var(--r-m); color: inherit; text-decoration: none;
+  transition: background-color var(--dur-1); animation: fade-in var(--dur-3) ease calc(0.1s + var(--k, 0) * 30ms) backwards;
+}
+@media (hover: hover) { .sr-clip:hover { background: var(--surface-2); } }
+.sr-thumb { position: relative; width: 96px; aspect-ratio: 16 / 9; border-radius: var(--r-s); overflow: hidden; background: color-mix(in oklab, var(--accent) 14%, var(--surface-2)); }
+.sr-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sr-thumb em {
+  position: absolute; top: 4px; left: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill);
+  display: grid; place-items: center; font: normal var(--w-bold) var(--text-xs)/1 var(--sans);
+  background: var(--accent); color: var(--surface);
+}
+.sr-thumb small { position: absolute; right: 4px; bottom: 4px; padding: 1px 4px; border-radius: var(--r-2xs); font-size: var(--text-xs); background: rgb(0 0 0 / 0.6); color: #fff; font-variant-numeric: tabular-nums; }
+.sr-clip-text { display: grid; gap: 2px; min-width: 0; }
+.sr-clip-text b { font-weight: var(--w-bold); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.sr-clip-text small { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-clip-v { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- over time ---------- */
+
+.sr-metric { margin: 2px 0 10px !important; }
+.sr-zero { stroke: var(--ink-3); stroke-width: 1; }
+.sr-empty-chart { padding: 40px 0; text-align: center; }
+
+/* ---------- the range up close: the big four set against the range before, then how the streams run ---------- */
+
+.sr-summary { padding: 14px 16px 16px; display: grid; gap: 14px; }
+.sr-summary-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
+.sr-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 720px) { .sr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sr-kpi {
+  display: grid; align-content: start; gap: 2px; padding: 12px 14px; border-radius: var(--r-m); min-width: 0;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 9%, var(--surface-2)), var(--surface-2));
+  animation: fade-in var(--dur-3) ease calc(0.05s + var(--k, 0) * 40ms) backwards;
+}
+.sr-kpi small { font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
+.sr-kpi b { font: var(--w-bold) clamp(26px, 7vw, 34px)/1.15 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-kpi b.down { color: var(--danger); }
+.sr-kpi > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-size: var(--text-xs); color: var(--ink-3); min-height: 1.4em; }
+.sr-kpi em { font-style: normal; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.sr-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+@media (min-width: 560px) { .sr-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.sr-mini { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.sr-mini .tile-ico { margin-top: 2px; }
+.sr-mini-text { display: grid; gap: 1px; min-width: 0; }
+.sr-mini-text small { font-size: var(--text-s); color: var(--ink-3); }
+.sr-mini-text b { font-size: var(--text-base); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.sr-mini-text span { font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- games ---------- */
 
@@ -77,6 +168,7 @@
 .sr-col:focus-visible path { opacity: 0.75; }
 @media (hover: hover) { .sr-col:hover path { opacity: 0.75; } }
 .sr-vbar { fill: var(--accent); }
+.sr-vbar.down { fill: var(--danger); }
 
 /* how often they're live, weekday by hour */
 .sr-heat { display: grid; grid-template-columns: auto repeat(24, minmax(0, 1fr)); gap: 2px; margin-top: 12px; }
@@ -149,3 +241,15 @@
 .sr-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
 .sr-curve { margin-top: 14px; }
 .sr-vod { justify-self: start; display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; }
+
+/* on a wide screen the streams read as a table: date, hours, games, viewers, length */
+@media (min-width: 1024px) {
+  .sr-stream { grid-template-columns: 7.5em 8.5em minmax(0, 1fr) 5.5em 5em; gap: 4px 16px; }
+  .sr-stream-top { display: contents; }
+  .sr-stream-top b { grid-column: 1; grid-row: 1 / span 2; }
+  .sr-stream-top > span:not(.sr-stream-len) { grid-column: 2; grid-row: 1 / span 2; }
+  .sr-stream-len { grid-column: 5; grid-row: 1 / span 2; margin: 0; text-align: right; }
+  .sr-strip { grid-column: 3; grid-row: 1; }
+  .sr-stream-games { grid-column: 3; grid-row: 2; }
+  .sr-stream-v { grid-column: 4; grid-row: 1 / span 2; justify-content: flex-end; }
+}

@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.170.0',
+    date: '2026-11-01',
+    changes: [
+      'Streamer stats: a new layout that reads from the top down: the channel, its whole career, every month so far, then the range you pick',
+      'Streamer stats: a banner with lifetime figures: followers, time on Twitch, rank and the views of the top clips',
+      'Streamer stats: career on Twitch: each year since the channel was made, from its 100 most-watched clips, coloured by game',
+      'Streamer stats: the games of a career, each on a line across the years with a dot for every big clip',
+      'Streamer stats: biggest moments: the most-watched clips of all time, with thumbnails and links',
+      'Streamer stats: channel performance over time, by week or month: hours, average and peak viewers, followers gained and rank',
+      'Streamer stats: the performance summary sets hours and viewers against the range before, with the range tabs beside it',
+      'Streamer stats: recent streams line up as a table on wide screens',
+      'Streamer stats: recorded streams and follower counts are now kept for good, so the history keeps growing',
+    ],
+  },
+  {
     version: '1.169.3',
     date: '2026-11-01',
     changes: [

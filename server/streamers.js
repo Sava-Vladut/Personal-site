@@ -4,8 +4,11 @@
 //    chapters, which say when the game changed.
 //  • A recorder that checks the miner's channels, and any looked up on the page in the last 30 days, every few
 //    minutes: viewers and follower counts, and streams that outlive their VODs, kept in `directory` as one JSON
-//    file per channel. Chapters are kept there too, so the history grows past Twitch's 60 days.
-//  • TwitchTracker's public summary of the last 30 days (average and peak viewers, hours watched), when it answers.
+//    file per channel. Chapters are kept there too, and nothing is thrown away (old streams are thinned to a
+//    viewer line), so the history grows past Twitch's 60 days for as long as the channel is recorded.
+//  • The channel's 100 most-watched clips of all time, the one part of Twitch that reaches back over a whole career.
+//  • TwitchTracker's public summary of the last 30 days (average and peak viewers, hours watched), when it answers;
+//    each day's is kept too, so the months add up. (TwitchTracker asks not to be scraped, so only that API is used.)
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -18,7 +21,7 @@ const UA = 'Mozilla/5.0 (compatible; MyMind/1.0)';
 const MIN = 60_000;
 const DAY = 86_400_000;
 const POLL_MS = 5 * MIN;
-const KEEP = 400 * DAY;        // how long recorded streams, chapters and follower counts are kept
+const THIN = 2 * DAY;          // a recorded stream this long over keeps just its viewer line
 const LOOKED = 30 * DAY;       // a channel looked up on the page is recorded for this long after
 const MAX_TRACKED = 60;        // channels the recorder checks at most, the miner's first
 const MAX_FILES = 100;         // channels kept on disk besides the miner's; the least recently looked up go first
@@ -39,6 +42,7 @@ const CHANNEL = `query($login: String!) { user(login: $login) {
   followers { totalCount } roles { isPartner isAffiliate } broadcastSettings { language }
   stream { id type createdAt title viewersCount ${GAME} }
   videos(first: 100, type: ARCHIVE, sort: TIME) { edges { node { id status title createdAt lengthSeconds ${GAME} } } }
+  clips(first: 100, criteria: { period: ALL_TIME, sort: VIEWS_DESC }) { edges { node { slug title viewCount createdAt durationSeconds thumbnailURL(width: 480, height: 272) ${GAME} } } }
 } }`;
 const USERS = `query($logins: [String!]) { users(logins: $logins) {
   id login displayName followers { totalCount } stream { id type createdAt title viewersCount ${GAME} }
@@ -47,7 +51,7 @@ const chaptersQuery = (ids) => `query { ${ids.map((id, i) => `v${i}: video(id: $
 
 /* ---------- what's kept per channel ---------- */
 
-const blank = (login) => ({ v: 1, login, id: null, name: login, seen: 0, since: 0, followers: [], streams: [], games: {}, vods: {} });
+const blank = (login) => ({ v: 1, login, id: null, name: login, seen: 0, since: 0, followers: [], streams: [], games: {}, vods: {}, tracker: [] });
 
 /** Remember a game's name and cover; returns its id ('' when there's no category). */
 function gameOf(store, g) {
@@ -82,10 +86,43 @@ export function record(store, u, t) {
     r.end = Math.max(r.end, t);
     r.title = String(s.title ?? r.title);
   }
-  const old = t - KEEP;
-  if (store.streams.length && store.streams[0].end < old) store.streams = store.streams.filter((r) => r.end >= old);
-  if (store.followers.length && store.followers[0][0] < old) store.followers = store.followers.filter((f) => f[0] >= old);
+  for (const r of store.streams) if (r.end < t - THIN && !r.thin) thin(r), (changed = true);
   return changed;
+}
+
+/**
+ * A finished stream's samples, thinned to its viewer line: its games, average and peak are worked out first and
+ * kept, so it reads the same, a few hundred bytes instead of a sample every 5 minutes for good.
+ */
+function thin(r) {
+  const seen = viewersOf(r);
+  r.segs = segmentsOfSamples(r);
+  if (seen.avg !== undefined) (r.avg = seen.avg), (r.peak = seen.peak);
+  r.s = (seen.curve ?? []).map(([m, v]) => [r.start + m * MIN, v, '']);
+  r.thin = 1;
+}
+
+/** TwitchTracker's 30 days as they stood each day: [midnight UTC, rank, average viewers, peak, followers]. */
+function keepTracker(store, tt, t) {
+  store.tracker ??= [];
+  const row = [dayOf(t), tt.rank, tt.avg, tt.peak, tt.followersTotal];
+  if (store.tracker.at(-1)?.[0] === row[0]) store.tracker[store.tracker.length - 1] = row;
+  else store.tracker.push(row);
+}
+
+/** The channel's most-watched clips, biggest first. */
+function clipsOf(store, user) {
+  const edges = user.clips?.edges;
+  if (!Array.isArray(edges)) return [];
+  return edges.map(({ node: c }) => c && {
+    slug: String(c.slug ?? ''),
+    title: String(c.title ?? '').trim(),
+    views: Math.max(0, c.viewCount | 0),
+    at: Date.parse(c.createdAt) || 0,
+    game: gameOf(store, c.game),
+    secs: Math.max(0, Math.round(c.durationSeconds || 0)),
+    thumb: typeof c.thumbnailURL === 'string' ? c.thumbnailURL : null,
+  }).filter((c) => c?.slug && c.at);
 }
 
 /** The past broadcasts Twitch lists, kept with what's known of their chapters. */
@@ -105,8 +142,6 @@ function keepVods(store, videos, t) {
       ch: had?.ch && v.status !== 'RECORDING' ? had.ch : undefined,
     };
   }
-  const old = t - KEEP;
-  for (const [id, v] of Object.entries(store.vods)) if (v.start < old) delete store.vods[id];
 }
 
 /** Chapters as [game id, start, length] in ms from the broadcast's start, laid end to end over its length. */
@@ -121,6 +156,7 @@ function segmentsOfVod(v) {
 
 /** Where the game changed, from the samples: each sample's game holds until the next one says otherwise. */
 function segmentsOfSamples(r) {
+  if (r.segs) return r.segs;
   const out = [];
   for (const [t, , gid] of r.s) {
     const at = Math.max(0, t - r.start);
@@ -143,7 +179,7 @@ function viewersOf(r) {
     const part = r.s.slice(i, i + step);
     curve.push([Math.round((part[0][0] - r.start) / MIN), Math.round(part.reduce((s, x) => s + x[1], 0) / part.length)]);
   }
-  return { avg: Math.round(v.reduce((a, b) => a + b, 0) / v.length), peak: Math.max(...v), curve };
+  return { avg: r.avg ?? Math.round(v.reduce((a, b) => a + b, 0) / v.length), peak: r.peak ?? Math.max(...v), curve };
 }
 
 /**
@@ -347,7 +383,7 @@ export function createStreamerHandler({ directory, channelsFile, fetch: get = gl
       const j = r.ok ? await r.json() : null;
       if (Number.isFinite(j?.avg_viewers)) {
         const n = (k) => (Number.isFinite(j[k]) ? j[k] : null);
-        value = { avg: n('avg_viewers'), peak: n('max_viewers'), hoursWatched: n('hours_watched'), minutes: n('minutes_streamed'), followers: n('followers'), rank: n('rank') };
+        value = { avg: n('avg_viewers'), peak: n('max_viewers'), hoursWatched: n('hours_watched'), minutes: n('minutes_streamed'), followers: n('followers'), followersTotal: n('followers_total'), rank: n('rank') };
       }
     } catch {}
     tracker.set(login, { at: now(), value });
@@ -408,6 +444,8 @@ export function createStreamerHandler({ directory, channelsFile, fetch: get = gl
     live.set(login, liveOf(user));
     const vodsOk = Array.isArray(user.videos?.edges);
     if (vodsOk) keepVods(store, user.videos.edges, t);
+    if (tt) keepTracker(store, tt, t);
+    const clips = clipsOf(store, user);
     await chapters(store);
     await save(login, store);
     await trim();
@@ -416,6 +454,7 @@ export function createStreamerHandler({ directory, channelsFile, fetch: get = gl
     const games = {};
     const streams = streamsOf(store, liveId);
     for (const s of streams) for (const [gid] of s.segs) if (gid && store.games[gid]) games[gid] = store.games[gid];
+    for (const c of clips) if (c.game && store.games[c.game]) games[c.game] = store.games[c.game];
     const s = user.stream;
     return {
       login,
@@ -435,6 +474,8 @@ export function createStreamerHandler({ directory, channelsFile, fetch: get = gl
       streams,
       games,
       followerDays: store.followers,
+      trackerDays: store.tracker ?? [],
+      clips,
       summary: tt,
     };
   }
