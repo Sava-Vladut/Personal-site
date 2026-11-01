@@ -413,7 +413,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
   const core = focus ? CORE[focus] : null;
 
   return (
-    <div class={`ew${tip?.live ? ' holding' : ''}`} onClick={outside} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
+    <div class={`ew${tip?.live ? ' holding' : ''}`} style={focus ? { '--ew-c': `var(--emo-${focus})` } : undefined} onClick={outside} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
       <div class="ew-stage" ref={stage}>
       <svg
         class="ew-svg" viewBox="0 0 400 400" role="group" aria-label={core ? t('{world}: zones and feelings', { world: core.name }) : t('Emotion wheel')}

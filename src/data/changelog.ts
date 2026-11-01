@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.177.1',
+    date: '2026-11-01',
+    changes: ['Feeling wheel in sheets (periods, songs and more) now looks like the check-in one: a calm disc with a soft glow, sized to fit without scrolling'],
+  },
+  {
     version: '1.177.0',
     date: '2026-11-01',
     changes: ['Global Ops widget beside the feed: who’s online and in a match, with the last 24 hours as a line (Edit the feed to hide it or its graph)'],

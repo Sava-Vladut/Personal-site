@@ -1443,14 +1443,19 @@ html[data-loading] { cursor: progress; }
    rather than frosted: re-blurring the moving sky behind a wheel this size costs every frame */
 .journal-top.track-top { padding-bottom: 24px; margin-bottom: 6px; }
 .journal-top.track-top .page-head { margin-bottom: 18px; }
-.journal-top .ew-stage::before {
+/* the emotion picker in a sheet (periods, songs, notes) gets the same disc and glow, tinted by the world you're in,
+   and a wheel small enough that its caption and buttons fit without scrolling */
+.sheet .ew { --sky: var(--ew-c, var(--ink-3)); padding-top: 6px; }
+.sheet .ew-stage { max-width: min(100%, max(240px, calc(100dvh - 380px))); }
+.sheet .ew-caption { margin-top: 18px; }
+:is(.journal-top, .sheet) .ew-stage::before {
   content: ''; position: absolute; inset: -1.5%; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, var(--surface) 88%, color-mix(in oklab, var(--sky) 10%, transparent));
   box-shadow: 0 24px 60px -24px color-mix(in oklab, var(--sky) 70%, transparent), inset 0 0 0 1px color-mix(in oklab, var(--line) 60%, transparent);
   transition: box-shadow var(--dur-3);
 }
-.journal-top .ew-stage > * { position: relative; }
-.journal-top .ew-stage > .ew-tip { position: absolute; }
+:is(.journal-top, .sheet) .ew-stage > * { position: relative; }
+:is(.journal-top, .sheet) .ew-stage > .ew-tip { position: absolute; }
 .journal-top.mind-top .wheel { margin-top: 14px; }
 
 .mind-summary { font: var(--w-regular) var(--text-l)/1.45 var(--serif); color: var(--ink-2); text-align: center; max-width: 32ch; margin: 8px auto 0; text-wrap: balance; animation: rise-in var(--dur-3) var(--ease-emph) backwards; }
