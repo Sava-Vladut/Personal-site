@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.174.0',
+    date: '2026-11-01',
+    changes: [
+      'New app icon: the Mind traps head with a spiral where the brain sits, drawn like the Learn marks, on a dark tile',
+    ],
+  },
+  {
     version: '1.173.1',
     date: '2026-11-01',
     changes: [

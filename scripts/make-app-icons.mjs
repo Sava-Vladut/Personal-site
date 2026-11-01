@@ -1,72 +1,63 @@
-// Renders the pixel thought-bubble mark into the PWA icons (PNG + SVG). No dependencies:
-// pixel art is just filled squares, so we write the PNG bytes directly.
+// Renders the app icon, the Mind traps head with a spiral where the brain sits, drawn like the Learn marks
+// (data/marks.ts: ivory cut paper and black brush ink) on the app's dark tile, into the PWA icons (SVG + PNG).
+// The SVG carries the marks' ink wobble (components/Mark.tsx); the PNGs are drawn by ImageMagick (`convert`, needed
+// only to run this) without it. Run from the repo root: node scripts/make-app-icons.mjs
+import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { deflateSync } from 'node:zlib';
 
-const MARK = ['..XX.XX.', '.XXXXXXX', 'XXXXXXXX', 'XXXXXXXX', '.XXXXXX.', '........', '.XX.....', 'X.......'];
-const BG = [0x1a, 0x1a, 0x19];
-const FG = [0xf3, 0xf3, 0xf1];
+const TILE = '#1a1a19';
+const INK = '#141413';
+const PAPER = '#faf9f5';
+const GLINT = '#9085e9'; // the dark theme's fear violet, so the glints show on the dark tile
 
-const crcTable = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-const crc32 = (buf) => {
-  let c = 0xffffffff;
-  for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-}
+const n = (v) => +v.toFixed(1);
 
-/** size: image px; scale: fraction of the image the 8×8 mark spans; radius: corner radius fraction (0 = square) */
-function png(size, scale, radius) {
-  const cell = Math.floor((size * scale) / 8);
-  const off = Math.floor((size - cell * 8) / 2);
-  const r = size * radius;
-  const rows = [];
-  for (let y = 0; y < size; y++) {
-    const row = Buffer.alloc(1 + size * 4);
-    for (let x = 0; x < size; x++) {
-      // rounded-square background with transparent corners
-      const cx = Math.max(r - x - 0.5, x + 0.5 - (size - r), 0);
-      const cy = Math.max(r - y - 0.5, y + 0.5 - (size - r), 0);
-      const inside = r === 0 || cx * cx + cy * cy <= r * r;
-      const mx = Math.floor((x - off) / cell), my = Math.floor((y - off) / cell);
-      const on = x >= off && y >= off && mx < 8 && my < 8 && MARK[my][mx] === 'X';
-      const [R, G, B] = on ? FG : BG;
-      row.set([R, G, B, inside ? 255 : 0], 1 + x * 4);
-    }
-    rows.push(row);
+/** An inward spiral round (cx, cy), out to r, as one line. */
+function spiral(cx, cy, r, turns = 2.6) {
+  const pts = [];
+  for (let i = 0; i <= 90; i++) {
+    const t = i / 90, a = -Math.PI / 2 + t * turns * 2 * Math.PI, rr = 1.2 + (r - 1.2) * t;
+    pts.push(`${n(cx + rr * Math.cos(a))} ${n(cy + rr * Math.sin(a))}`);
   }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr.set([8, 6, 0, 0, 0], 8); // 8-bit RGBA
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(Buffer.concat(rows), { level: 9 })),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
+  return 'M' + pts.join('L');
 }
+const glint = (cx, cy, r) => `M${cx} ${cy - r}Q${cx} ${cy} ${cx + r} ${cy}Q${cx} ${cy} ${cx} ${cy + r}Q${cx} ${cy} ${cx - r} ${cy}Q${cx} ${cy} ${cx} ${cy - r}Z`;
 
-writeFileSync('public/icon-192.png', png(192, 0.5, 0.22));
-writeFileSync('public/icon-512.png', png(512, 0.5, 0.22));
-writeFileSync('public/icon-maskable-512.png', png(512, 0.42, 0)); // full-bleed; OS applies its own mask
-writeFileSync('public/apple-touch-icon.png', png(180, 0.5, 0)); // iOS rounds corners itself
+// [d, fill, stroke, stroke width] in a 100 × 100 box
+const ART = [
+  ['M28 92V72Q14 62 16 42Q20 14 48 14Q72 16 74 38L80 52L74 54V62Q74 68 66 68H58V92Z', PAPER, INK, 3.6],
+  [spiral(44, 38, 17), 'none', INK, 3.2],
+  ['M41.2 38a2.8 2.8 0 1 0 5.6 0a2.8 2.8 0 1 0 -5.6 0Z', INK],
+  [glint(88, 18, 5.5), GLINT],
+  [glint(86, 74, 4), GLINT],
+];
 
-let d = '';
-MARK.forEach((row, y) => [...row].forEach((c, x) => c === 'X' && (d += `M${x + 4} ${y + 4}h1v1h-1z`)));
+const svgArt = ART.map(([d, fill, stroke, w]) =>
+  `<path d="${d}" fill="${fill}"${stroke ? ` stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"` : ''}/>`).join('');
+
 writeFileSync(
   'public/icon.svg',
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect width="16" height="16" rx="3.5" fill="#1a1a19"/><path d="${d}" fill="#f3f3f1"/></svg>\n`,
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>' +
+  '<filter id="w" filterUnits="userSpaceOnUse" x="-5" y="-5" width="110" height="110" color-interpolation-filters="sRGB">' +
+  '<feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="137" result="n"/>' +
+  '<feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></defs>' +
+  `<rect width="100" height="100" rx="22" fill="${TILE}"/><g filter="url(#w)">${svgArt}</g></svg>\n`,
 );
+
+/** size: image px; scale: the art's size against the tile's; radius: corner radius fraction (0 = square) */
+function png(file, size, scale, radius) {
+  const u = size / 100, r = size * radius;
+  const mvg = [
+    `fill '${TILE}'`, radius ? `roundrectangle 0,0 ${size - 1},${size - 1} ${r},${r}` : `rectangle 0,0 ${size},${size}`,
+    `translate ${(size * (1 - scale)) / 2},${(size * (1 - scale)) / 2}`, `scale ${u * scale},${u * scale}`,
+    'stroke-linecap round', 'stroke-linejoin round',
+    ...ART.flatMap(([d, fill, stroke, w]) => [`fill '${fill}'`, stroke ? `stroke '${stroke}'` : 'stroke none', `stroke-width ${w ?? 0}`, `path '${d}'`]),
+  ].join('\n');
+  execFileSync('convert', ['-size', `${size}x${size}`, 'xc:none', '-draw', mvg, '-depth', '8', '-strip', file]);
+}
+
+png('public/icon-192.png', 192, 1, 0.22);
+png('public/icon-512.png', 512, 1, 0.22);
+png('public/icon-maskable-512.png', 512, 0.8, 0); // full-bleed, art inside the safe zone; the OS applies its own mask
+png('public/apple-touch-icon.png', 180, 1, 0); // iOS rounds corners itself
 console.log('icons written to public/');
