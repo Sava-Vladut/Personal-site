@@ -23,10 +23,11 @@ export const WHEEL: WheelNode[] = [
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
   // everything that's numbers about you, in one place
   {
-    id: 'insights', name: t('Insights'), sub: t('Your patterns and places, and who plays Global Ops'), icon: 'chart-dots', hue: 'hope-interest',
+    id: 'insights', name: t('Insights'), sub: t('Your patterns and places, and who plays the games'), icon: 'chart-dots', hue: 'hope-interest',
     kids: [
       { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to, and where'), icon: 'chart-bar', to: 'stats' },
       { id: 'glops', name: t('Global Ops'), sub: t('Who plays the game in the browser: online now and all-time highs'), icon: 'device-gamepad-2', to: 'glops' },
+      { id: 'cardwars', name: t('Card Wars'), sub: t('Who plays Card Wars, how far they got and how PvP goes'), icon: 'cards', hue: 'joy', to: 'cardwars' },
     ],
   },
   // things to read: how minds, power, people and desire work

@@ -52,13 +52,17 @@
 .gl-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; animation: draw-line var(--dur-5) var(--ease-emph) backwards; }
 .gl-line.online { stroke: var(--gl-online); }
 .gl-line.playing { stroke: var(--gl-playing); stroke-width: 2.25; }
+.gl-dot { stroke: var(--surface); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: dot-in var(--dur-3) var(--spring-bouncy) 0.1s backwards; }
+.gl-dot.online { fill: var(--gl-online); }
+.gl-dot.playing { fill: var(--gl-playing); }
 .gl-col { outline: none; }
 .gl-guide { stroke: var(--line-2); stroke-width: 1; opacity: 0; transition: opacity var(--dur-0); }
 .gl-col:focus-visible .gl-guide { opacity: 1; }
 @media (hover: hover) { .gl-col:hover .gl-guide { opacity: 1; } }
 
 .gl-bars { display: grid; gap: 10px; padding-bottom: 6px !important; }
-.gl-bars li { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) 3em; align-items: center; gap: 10px; font-size: var(--text-m); }
+.gl-bars li { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) 3em; align-items: center; gap: 10px; font-size: var(--text-m); border-radius: var(--r-s); outline: none; }
+.gl-bars li:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ink-3); }
 .gl-bar-label { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gl-bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
 .gl-bar i { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--accent); transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) calc(0.1s + var(--k, 0) * 25ms) backwards; }

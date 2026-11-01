@@ -62,7 +62,8 @@
 .wd-opt > span { flex: none; }
 @media (max-width: 380px) { .wd-opt { padding-left: 18px; } }
 
-/* Global Ops on the side: the channel points card in hope's green, its live dot too */
+/* Global Ops and Card Wars on the side: the channel points card in hope’s green or joy’s yellow, its live dot too */
 .gl-mini { --accent: var(--emo-hope-interest); }
 .gl-mini .tw-live { background: var(--accent); }
 .gl-mini .tw-live::before { background: color-mix(in oklab, var(--accent) 30%, transparent); }
+.cw-mini { --accent: var(--emo-joy); }

@@ -37,6 +37,7 @@ import '../styles/notes.css';
 import '../styles/widgets.css';
 import { usePoints } from '../lib/twitch';
 import { useGlops } from '../lib/glops';
+import { useCardWars } from '../lib/cardwars';
 import { optionOf, shownIn, useWidgets, type WidgetLayout } from '../lib/widgets';
 import type { WidgetId } from '../data/widgets';
 import { count, LOCALE, t } from '../lib/i18n';
@@ -278,6 +279,7 @@ function Widget({ id, layout, entries, byDay, onOpenDay, picker, news }: {
     case 'song': return <JournalSong picker={picker} />;
     case 'points': return <JournalPoints graph={!!optionOf(layout, id, 'graph')} />;
     case 'glops': return <JournalGlops graph={!!optionOf(layout, id, 'graph')} />;
+    case 'cardwars': return <JournalCardWars graph={!!optionOf(layout, id, 'graph')} />;
   }
 }
 
@@ -448,6 +450,33 @@ function JournalGlops({ graph }: { graph: boolean }) {
         <span class="tw-mini-sub">
           {playing > 0 && <span class="tw-live" aria-hidden="true" />}
           {playing > 0 ? t('{n} in a match right now', { n: playing }) : t('{n} visitors so far', { n: visitors.toLocaleString(LOCALE) })}
+        </span>
+      </span>
+      {graph && tail.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}
+      <Icon name="chevron-right" size={16} />
+    </button>
+  );
+}
+
+/** Desktop only: who has Card Wars open right now, who's in a match and the last day of it as a line, a tap from its page. */
+function JournalCardWars({ graph }: { graph: boolean }) {
+  const wide = useWide();
+  const { data } = useCardWars(wide);
+  if (!wide || !data) return null;
+  const { online, totals, series, seriesMs } = data;
+  const tail = series.slice(-Math.round(86_400_000 / seriesMs));
+  const hi = Math.max(1, ...tail.map((p) => p[1]));
+  const W = 120, H = 34;
+  const d = tail.map((p, i) => `${i ? 'L' : 'M'}${((i / (tail.length - 1 || 1)) * W).toFixed(1)},${(H - 2 - (p[1] / hi) * (H - 4)).toFixed(1)}`).join('');
+  return (
+    <button class="tw-mini gl-mini cw-mini fade-arrive" onClick={() => navigate('cardwars')} aria-label={t('Card Wars')}>
+      <span class="tw-mini-ico"><Icon name="cards" size={18} /></span>
+      <span class="tw-mini-main">
+        <small>{t('Card Wars')}</small>
+        <b>{online.total ? t('{n} online', { n: online.total }) : t('Nobody on')}</b>
+        <span class="tw-mini-sub">
+          {online.inMatch > 0 && <span class="tw-live" aria-hidden="true" />}
+          {online.inMatch > 0 ? t('{n} in a match right now', { n: online.inMatch }) : t('{n} players so far', { n: totals.players.toLocaleString(LOCALE) })}
         </span>
       </span>
       {graph && tail.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}

@@ -89,6 +89,32 @@ test('malformed request URLs return 400 and the next health request succeeds', a
   assert.deepEqual(await request('/api/health'), { status: 200, body: { ok: true } });
 });
 
+test('Card Wars stats come from the relay as they are, shared for 15 seconds, and a 502 when it can’t be reached', async () => {
+  const realNow = Date.now;
+  let now = realNow(), calls = 0;
+  Date.now = () => now;
+  try {
+    globalThis.fetch = async (url) => {
+      assert.equal(String(url), 'http://cardwars-mp:5080/stats');
+      return Response.json({ online: { total: ++calls } });
+    };
+    assert.deepEqual(await request('/api/cardwars/stats'), { status: 200, body: { online: { total: 1 } } });
+    now += 14_000;
+    assert.deepEqual(await request('/api/cardwars/stats'), { status: 200, body: { online: { total: 1 } } });
+    now += 1_000;
+    assert.deepEqual(await request('/api/cardwars/stats'), { status: 200, body: { online: { total: 2 } } });
+    now += 15_000;
+    globalThis.fetch = async () => { throw new TypeError('fetch failed'); };
+    const down = await request('/api/cardwars/stats');
+    assert.equal(down.status, 502);
+    assert.match(down.body.error, /Card Wars/);
+    globalThis.fetch = async () => new Response('<html>', { status: 200 });
+    assert.equal((await request('/api/cardwars/stats')).status, 502, 'what isn’t JSON is never passed on');
+  } finally {
+    Date.now = realNow;
+  }
+});
+
 test('playlist items paginate past 1050 without repeating songs', async () => {
   const offsets = upstream(1101, 'items');
   const ids = [];

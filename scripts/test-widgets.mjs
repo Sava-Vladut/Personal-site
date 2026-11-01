@@ -21,7 +21,7 @@ await bundle.close();
 globalThis.localStorage = { store: new Map(), getItem(k) { return this.store.get(k) ?? null; }, setItem(k, v) { this.store.set(k, v); }, removeItem(k) { this.store.delete(k); } };
 const w = await import('data:text/javascript;base64,' + Buffer.from(output[0].code).toString('base64'));
 
-const IDS = ['notices', 'on-this-day', 'coming-up', 'reading', 'song', 'points'];
+const IDS = ['notices', 'on-this-day', 'coming-up', 'reading', 'song', 'points', 'glops', 'cardwars'];
 
 test('nothing saved gives every widget once, in the usual order, none hidden', () => {
   assert.deepEqual(w.normalize(null), { order: IDS, hidden: [], options: {} });
@@ -30,7 +30,7 @@ test('nothing saved gives every widget once, in the usual order, none hidden', (
 
 test('a saved order keeps its own sequence, drops strangers and repeats, and takes back what is missing', () => {
   const l = w.normalize({ order: ['reading', 'nope', 'notices', 'reading', 5], hidden: ['notices', 'nope'] });
-  assert.equal(new Set(l.order).size, 6);
+  assert.equal(new Set(l.order).size, IDS.length);
   assert.deepEqual([...l.order].sort(), [...IDS].sort());
   assert.ok(l.order.indexOf('reading') < l.order.indexOf('notices'));
   assert.deepEqual(l.hidden, ['notices']);
@@ -38,7 +38,7 @@ test('a saved order keeps its own sequence, drops strangers and repeats, and tak
 
 test('a widget added later turns up after the one before it', () => {
   const l = w.normalize({ order: ['notices', 'coming-up', 'reading', 'song', 'points'] });
-  assert.deepEqual(l.order, ['notices', 'on-this-day', 'coming-up', 'reading', 'song', 'points']);
+  assert.deepEqual(l.order, ['notices', 'on-this-day', 'coming-up', 'reading', 'song', 'points', 'glops', 'cardwars']);
 });
 
 test('settings keep only offered values that differ from the default', () => {
@@ -52,7 +52,7 @@ test('settings keep only offered values that differ from the default', () => {
 test('each zone shows its own visible widgets in the layout order', () => {
   const l = w.normalize({ order: ['song', 'reading', 'points', 'notices', 'coming-up', 'on-this-day'], hidden: ['coming-up'] });
   assert.deepEqual(w.shownIn(l, 'panel'), ['reading', 'notices', 'on-this-day']);
-  assert.deepEqual(w.shownIn(l, 'side'), ['song', 'points']);
+  assert.deepEqual(w.shownIn(l, 'side'), ['song', 'points', 'glops', 'cardwars']);
 });
 
 test('saving stores the layout, and the default clears it', () => {

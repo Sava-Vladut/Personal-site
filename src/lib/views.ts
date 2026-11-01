@@ -26,6 +26,7 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   status: () => import('../views/StatusPage').then((m) => m.StatusPage),
   countdown: () => import('../views/Countdown').then((m) => m.Countdown),
   glops: () => import('../views/Glops').then((m) => m.Glops),
+  cardwars: () => import('../views/CardWars').then((m) => m.CardWars),
   intro: () => import('../views/Intro').then((m) => m.Intro),
 };
 const loaded = new Map<RouteName, View>();

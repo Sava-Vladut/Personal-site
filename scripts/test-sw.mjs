@@ -126,6 +126,8 @@ test('API and non-GET requests remain outside the service worker', async () => {
   assert.equal(await app.request('/api/health'), undefined);
   assert.equal(await app.request('/glops/', 'navigate'), undefined, 'the game’s page is its own site');
   assert.equal(await app.request('/glops/net/analytics'), undefined, 'live player stats are never cached');
+  assert.equal(await app.request('/cardwars/', 'navigate'), undefined, 'Card Wars is its own site too');
+  assert.equal(await app.request('/api/cardwars/stats'), undefined);
   assert.equal(await app.request('/journal', 'cors', 'POST'), undefined);
 });
 

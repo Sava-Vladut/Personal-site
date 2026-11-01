@@ -19,6 +19,7 @@
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 //  • streamer stats: what a Twitch channel plays and for how long (server/streamers.js), from Twitch's public API,
 //    with the miner's channels (and any looked up lately) recorded every few minutes into STREAMERS_DIR.
+//  • Card Wars player stats: passed on from the game's PvP relay (CARDWARS_STATS_URL), which only the server can reach.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
@@ -1002,6 +1003,36 @@ const streamers = createStreamerHandler({ directory: STREAMERS_DIR, channelsFile
 // the recorder runs where the miner does; elsewhere (tests, a laptop) channels are only looked up when asked
 if (TWITCH_CHANNELS) streamers.start();
 
+/* ---------------- Card Wars player stats ---------------- */
+
+// The game's PvP relay counts its players, but only answers on the Docker network: the app passes its stats on as
+// they are, public, no sign-in (like Global Ops'). One answer serves everyone for 15 seconds.
+const CARDWARS_STATS = process.env.CARDWARS_STATS_URL || 'http://cardwars-mp:5080/stats';
+const CARDWARS_FRESH = 15_000;
+let cardWars = { at: 0, body: '', pending: null };
+
+async function cardWarsStats(req, res) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
+  if (!cardWars.body || Date.now() - cardWars.at >= CARDWARS_FRESH) {
+    cardWars.pending ??= fetch(CARDWARS_STATS, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5_000) })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Card Wars relay answered ${r.status}`);
+        const body = await r.text();
+        JSON.parse(body); // only ever pass on what parses
+        cardWars = { at: Date.now(), body, pending: null };
+      })
+      .finally(() => { cardWars.pending = null; });
+    try {
+      await cardWars.pending;
+    } catch (e) {
+      console.warn(`Card Wars stats: ${e.message}`);
+      return json(res, 502, { error: 'The Card Wars server can’t be reached right now.' });
+    }
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(cardWars.body);
+}
+
 async function api(req, res, url) {
   const p = url.pathname.replace(/\/+$/, '');
   const setCookies = [];
@@ -1018,6 +1049,7 @@ async function api(req, res, url) {
     if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
     if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p);
+    if (p === '/api/cardwars/stats') return await cardWarsStats(req, res);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

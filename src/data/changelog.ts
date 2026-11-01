@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.178.0',
+    date: '2026-11-01',
+    changes: [
+      'Card Wars in Insights: who plays the port right now, in a browser or on Windows, with players, sessions, hours played, busy hours and where the time goes',
+      'Its Progress tab: stars per quest line, quests done, and coins, gems and trophies',
+      'Its PvP tab: modes, how matches end, how often the first seat wins, match length, Random Deck levels, top heroes and cards, both leaderboards and the last 30 matches',
+      'A Card Wars widget beside the feed: online now, in a match, and the last 24 hours as a line',
+      'Players online charts (Global Ops too) show a dot for an hour on its own instead of nothing',
+    ],
+  },
+  {
     version: '1.177.1',
     date: '2026-11-01',
     changes: ['Feeling wheel in sheets (periods, songs and more) now looks like the check-in one: a calm disc with a soft glow, sized to fit without scrolling'],

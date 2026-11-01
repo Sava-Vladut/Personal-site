@@ -1,8 +1,8 @@
 // Global Ops player stats: who plays the browser port at savavlad.com/glops, counted by its multiplayer relay
 // (netrelay.mjs in the port's repo) and served next to the game at /glops/net/analytics, public, no sign-in.
-// One copy for the whole app, fetched again every 30 seconds while the page is open and visible.
-import { useEffect, useState } from 'preact/hooks';
+// One copy for the whole app, fetched again every 30 seconds while the page is open and visible (lib/liveStats.ts).
 import { LOCALE, t } from './i18n';
+import { liveStats } from './liveStats';
 
 export interface Peak { n: number; at: string | null }
 export interface GlopsDay { day: string; peak: number; playing: number; visitors: number; new: number; sessions: number; plays: number; playMin: number }
@@ -36,53 +36,10 @@ export interface GlopsStats {
   seriesMs: number;
 }
 
-type State = { data: GlopsStats | null; error: string | null; loading: boolean };
-
-const FRESH = 30_000;
-let state: State = { data: null, error: null, loading: false };
-let fetchedAt = 0;
-let pending: Promise<void> | null = null;
-const subs = new Set<(s: State) => void>();
-const set = (next: Partial<State>) => {
-  state = { ...state, ...next };
-  subs.forEach((f) => f(state));
-};
-
-export function loadGlops(force = false) {
-  if (pending || (!force && Date.now() - fetchedAt < FRESH && state.data)) return pending;
-  set({ loading: true });
-  pending = fetch('/glops/net/analytics', { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
-    .then(async (r) => {
-      if (!r.ok) throw new Error(t('The game’s stats aren’t available right now.'));
-      fetchedAt = Date.now();
-      set({ data: (await r.json()) as GlopsStats, error: null, loading: false });
-    }, () => { throw new Error(t('Couldn’t reach the server. Check your connection.')); })
-    .catch((e: Error) => set({ error: e.message || t('The game’s stats aren’t available right now.'), loading: false }))
-    .finally(() => (pending = null));
-  return pending;
-}
-
+const live = liveStats<GlopsStats>('/glops/net/analytics');
+export const loadGlops = live.load;
 /** The stats, loaded while `on` and refreshed every 30 seconds the page stays visible. */
-export function useGlops(on = true) {
-  const [s, setS] = useState(state);
-  useEffect(() => {
-    subs.add(setS);
-    setS(state);
-    return () => void subs.delete(setS);
-  }, []);
-  useEffect(() => {
-    if (!on) return;
-    loadGlops();
-    const timer = setInterval(() => !document.hidden && loadGlops(), FRESH);
-    const wake = () => !document.hidden && loadGlops();
-    document.addEventListener('visibilitychange', wake);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', wake);
-    };
-  }, [on]);
-  return s;
-}
+export const useGlops = live.use;
 
 /** Minutes with the game open by weekday (Monday first) and 3-hour block of the viewer's own day. */
 export function busyBlocks(week: number[], offsetMin = -new Date().getTimezoneOffset()) {
