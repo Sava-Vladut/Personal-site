@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from './icons';
+import { Unfold } from './Unfold';
 import { t } from '../lib/i18n';
 import type { FindInfo, NoteBodyHandle } from '../editor/NoteBody';
 
@@ -33,6 +34,10 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
   const [said, setSaid] = useState('');
   const findRef = useRef<HTMLInputElement>(null);
   const repRef = useRef<HTMLInputElement>(null);
+  // Esc or Close: the bar fades away before it's taken out; Ctrl+F again in that moment keeps it
+  const [leaving, setLeaving] = useState(false);
+  const leave = useRef(0);
+  useEffect(() => () => clearTimeout(leave.current), []);
   const withReplace = replace && !reading;
 
   useEffect(() => note.watchFind(setInfo), [note]);
@@ -43,6 +48,12 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
   }, [q, matchCase, whole]);
   // Ctrl+F (or Ctrl+H) again: the field it's for, its words selected; the selected words in the note looked for
   useLayoutEffect(() => {
+    if (leave.current) {
+      clearTimeout(leave.current);
+      leave.current = 0;
+      setLeaving(false);
+      setInfo(note.find.set({ text: q, caseSensitive: matchCase, wholeWord: whole })); // closing had cleared what was lit
+    }
     const sel = note.find.selected();
     if (sel && sel !== q) setQ(sel);
     findRef.current?.focus();
@@ -50,8 +61,10 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
   }, [focus]);
 
   const close = () => {
+    if (leave.current) return;
     note.find.close();
-    onClose();
+    setLeaving(true);
+    leave.current = window.setTimeout(onClose, 150); // (--dur-1)
   };
   const step = (dir: 1 | -1) => {
     setSaid('');
@@ -84,7 +97,7 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
 
   const status = !q ? '' : info.count ? t('{n} of {total}', { n: Math.max(0, info.current) + 1, total: info.count }) : t('No results');
   return (
-    <div class={`find-bar${withReplace ? ' is-replacing' : ''}`} role="search" aria-label={withReplace ? t('Find and replace') : t('Find')} onKeyDown={onKey}
+    <div class={`find-bar${withReplace ? ' is-replacing' : ''}${leaving ? ' is-leaving' : ''}`} role="search" aria-label={withReplace ? t('Find and replace') : t('Find')} onKeyDown={onKey}
       // a press on its buttons leaves the focus in the field it was in (and a phone's keyboard up)
       onMouseDown={(e) => (e.target as Element).closest('button') && e.preventDefault()}>
       <div class="find-row">
@@ -130,7 +143,7 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
           <Icon name="x" size={18} />
         </button>
       </div>
-      {withReplace && (
+      <Unfold open={withReplace}>
         <div class="find-row">
           <input
             ref={repRef}
@@ -147,7 +160,7 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
           <button type="button" class="find-btn" disabled={!info.count} onClick={replaceOne}>{t('Replace')}</button>
           <button type="button" class="find-btn" disabled={!info.count} onClick={replaceAll}>{t('Replace All')}</button>
         </div>
-      )}
+      </Unfold>
     </div>
   );
 }

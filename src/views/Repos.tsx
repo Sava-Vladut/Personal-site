@@ -224,7 +224,7 @@ export function Repos() {
             {shown.map((row, i) => <RepoRow key={`${row.id}:${revision}`} row={row} last={i === shown.length - 1} i={i} connected={connected} />)}
           </ol>
         )}
-        {shown.length > 0 && <p class="repo-count muted small">{shown.length} {noun(shown.length, 'repo', 'repos')}</p>}
+        {shown.length > 0 && <p class="repo-count muted small fade-arrive-soft">{shown.length} {noun(shown.length, 'repo', 'repos')}</p>}
       </div>
     </div>
   );

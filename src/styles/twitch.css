@@ -36,7 +36,8 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 .tw-list ul { list-style: none; margin: 10px 0 0; padding: 0; }
-.tw-list li { animation: rise-in var(--dur-3) var(--ease-emph) calc(0.08s + var(--k, 0) * 25ms) backwards; }
+/* a long list (the rest of the games, more streams) still lands within ~0.4s */
+.tw-list li { animation: rise-in var(--dur-3) var(--ease-emph) calc(0.08s + min(var(--k, 0), 12) * 25ms) backwards; }
 
 .tw-channel {
   width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px;

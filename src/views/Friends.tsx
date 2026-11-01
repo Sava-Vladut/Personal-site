@@ -592,14 +592,14 @@ export function Friends({ query: params }: { query: URLSearchParams }) {
                     return list.length > 0 && (
                       <section class="lrn-group" key={part}>
                         <GroupHead hue={PARTS[part].hue} title={t(PARTS[part].name)} motto={t(PARTS[part].motto)} about={t(PARTS[part].about)} count={list.length} />
-                        <ol class="lrn-rows">{list.map((x) => row(x))}</ol>
+                        <ol class="lrn-rows fade-rows-soft">{list.map((x) => row(x))}</ol>
                       </section>
                     );
                   })
                   : (
                     <section class="lrn-group" key={sort}>
                       <GroupHead title={sort === 'easy' ? t('Easiest') : t('Commonest')} count={shown.length} />
-                      <ol class="lrn-rows">{shown.map((x, i) => row(x, i + 1))}</ol>
+                      <ol class="lrn-rows fade-rows-soft">{shown.map((x, i) => row(x, i + 1))}</ol>
                     </section>
                   )}
               </div>

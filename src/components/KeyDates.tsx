@@ -1,5 +1,6 @@
 // The days in someone's year, on their page: a chip for each, and the sheet that adds or changes one.
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { Unfold } from './Unfold';
 import { MAX_KEY_DATES, toast, uid, type KeyDate, type KeyDateKind, type Person } from '../lib/store';
 import { dateName, KEY_DATE_LABEL, nextOf, whatsComing, whenLabel } from '../lib/people';
 import { Icon, type UiName } from './icons';
@@ -120,9 +121,9 @@ function KeyDateSheet({ open, value, first, hasBirthday, onClose, onSave, onRemo
             </button>
           ))}
         </div>
-        {kind === 'other' && (
+        <Unfold open={kind === 'other'}>
           <input class="input" placeholder={t('What is it? First met, name day…')} value={label} maxLength={60} onInput={(e) => setLabel(e.currentTarget.value)} aria-label={t('What it is')} />
-        )}
+        </Unfold>
         <div class="key-date-day">
           <select class="input" value={Math.min(day, days)} onChange={(e) => setDay(Number(e.currentTarget.value))} aria-label={t('Day')}>
             {Array.from({ length: days }, (_, i) => <option value={i + 1}>{i + 1}</option>)}

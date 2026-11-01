@@ -212,7 +212,7 @@
   background: var(--surface-2); color: var(--ink); transition: background-color var(--dur-2), color var(--dur-2);
 }
 .deck.is-on .deck-button { background: var(--ink); color: var(--on-ink); }
-.deck-player { display: grid; gap: 10px; padding: 0 10px 10px; animation: fade-in var(--dur-2) ease-out; }
+.deck-player { display: grid; gap: 10px; padding: 0 10px 10px; animation: arrive-soft var(--dur-3) var(--ease-emph); }
 
 /* in the music picker */
 .track-thing { flex: none; display: flex; align-items: center; }
@@ -247,10 +247,10 @@
 .song-head .stars.is-input { margin-left: 0; }
 .song-actions { margin-top: 12px; flex-wrap: wrap; justify-content: center; }
 .song-actions .btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
-.song-player { margin-top: 16px; animation: fade-in var(--dur-2) ease-out; }
+.song-player { margin-top: 16px; animation: arrive-soft var(--dur-3) var(--ease-emph); }
 
 @media (prefers-reduced-motion: reduce) {
-  .spine, .due-card { animation: none; }
+  .spine, .due-card, .deck-player, .song-player { animation: none; }
   .record-spin, .reel { animation: none !important; }
 }
 

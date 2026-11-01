@@ -31,6 +31,7 @@ import { MiniMusic } from '../components/music';
 import { DayPicker, SongOfDay, useDayPick, type DayPick } from '../components/SongOfDay';
 import { PageHead } from '../components/PageHead';
 import { WidgetEditor } from '../components/WidgetEditor';
+import { Unfold } from '../components/Unfold';
 import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 import '../styles/widgets.css';
@@ -146,8 +147,12 @@ export function Journal() {
     const timer = setTimeout(() => {
       for (const el of pageRef.current?.querySelectorAll('.day') ?? []) if (el.getBoundingClientRect().top < innerHeight) el.setAttribute('data-near', '');
       setSettled(true);
+      feedSettled = true;
     }, 1000);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      feedSettled = false;
+    };
   }, []);
 
   // what moves the highlighted notes' threads: which are shown, how many days are drawn, how they're laid out
@@ -179,14 +184,14 @@ export function Journal() {
         </>}
       />
 
-      {searching && (
+      <Unfold open={searching}>
         <label class="search">
           <Icon name="search" size={18} />
           <input type="search" autoFocus={!was.q} enterKeyHint="search" onKeyDown={(e) => e.key === 'Enter' && !e.isComposing && e.currentTarget.blur()} placeholder={t('Search notes, feelings, people, songs and books')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search notes')} />
         </label>
-      )}
+      </Unfold>
 
-      {calOpen && (
+      <Unfold open={calOpen}>
         <div class="card pad-s">
           <Calendar
             focus={day ?? todayKey()}
@@ -204,7 +209,7 @@ export function Journal() {
             }}
           />
         </div>
-      )}
+      </Unfold>
 
       {!filtering && (
         <div class="widgets">
@@ -212,12 +217,14 @@ export function Journal() {
         </div>
       )}
 
-      {day && (
-        <div class="row between filter-note">
-          <span>{t('Showing {day}', { day: rangeLabel(day, null) })}</span>
-          <button class="link" onClick={() => setDay(null)}>{t('Show all days')}</button>
-        </div>
-      )}
+      <Unfold open={!!day}>
+        {day && (
+          <div class="row between filter-note">
+            <span>{t('Showing {day}', { day: rangeLabel(day, null) })}</span>
+            <button class="link" onClick={() => setDay(null)}>{t('Show all days')}</button>
+          </div>
+        )}
+      </Unfold>
       </div>
       {shownIn(widgets, 'side').map((id) => <Widget key={id} id={id} layout={widgets} entries={entries} byDay={byDay} onOpenDay={setDay} picker={picker} news={news} />)}
       </aside>
@@ -243,16 +250,20 @@ export function Journal() {
       )}
 
       {pinned.length > 0 && (
-        <section class="day pinned">
-          <h2 class="day-label"><Icon name="pin" size={13} /> {t('Pinned')}</h2>
-          <Entries list={pinned} compact={compact} dated />
-        </section>
+        <Pinned list={pinned} compact={compact} />
       )}
       {groups.slice(0, upTo).map(([date, list]) => <Day key={date} date={date} list={list} compact={compact} />)}
       {hasMore && <div ref={moreRef} class="feed-more" aria-hidden="true" />}
     </div>
   );
 }
+
+/**
+ * Whether the feed has been up a moment: days drawn after that (the next page as you scroll, a search or a day picked)
+ * come up softly. The ones drawn with the page arrive with it, so they don't play twice.
+ */
+let feedSettled = false;
+const useArrives = () => useState(() => (feedSettled ? 'fade-arrive-soft' : ''))[0];
 
 /** One of the feed's widgets (data/widgets.ts), set up as the layout says. */
 function Widget({ id, layout, entries, byDay, onOpenDay, picker, news }: {
@@ -290,8 +301,9 @@ function DayOf({ date, list, compact }: DayProps) {
     return el ? watchView(el, (on) => el.toggleAttribute('data-live', on)) : undefined;
   }, []);
   const style = mood ? { '--d1': `var(--emo-${mood.worlds[0]})`, '--d2': `var(--emo-${mood.worlds[1] ?? mood.worlds[0]})` } : undefined;
+  const arrives = useArrives();
   return (
-    <section ref={ref} class={mood ? 'day has-mood' : 'day'} style={style}>
+    <section ref={ref} class={`${mood ? 'day has-mood' : 'day'} ${arrives}`} style={style}>
       <h2 class="day-label">
         {mood && <Sprite core={mood.worlds[0]} size={12} idle="view" delay={stagger(+date.replace(/-/g, ''))} />}
         <span>{dayLabel(date)}</span>
@@ -300,6 +312,17 @@ function DayOf({ date, list, compact }: DayProps) {
         {mood && <i class="day-ribbon" style={{ background: mood.ribbon }} aria-hidden="true" />}
       </h2>
       <Entries list={list} compact={compact} />
+    </section>
+  );
+}
+
+/** The pinned notes, under the date; the first pin makes it appear. */
+function Pinned({ list, compact }: { list: Entry[]; compact: boolean }) {
+  const arrives = useArrives();
+  return (
+    <section class={`day pinned ${arrives}`}>
+      <h2 class="day-label"><Icon name="pin" size={13} /> {t('Pinned')}</h2>
+      <Entries list={list} compact={compact} dated />
     </section>
   );
 }
@@ -345,7 +368,7 @@ function CheckInRun({ list }: { list: Entry[] }) {
         <span class="checkin-time">{span}</span>
         <Icon name="chevron-down" size={14} />
       </button>
-      {open && list.map((e) => <Swipe key={e.id} e={e}><CheckInRow e={e} /></Swipe>)}
+      <Unfold open={open}>{list.map((e) => <Swipe key={e.id} e={e}><CheckInRow e={e} /></Swipe>)}</Unfold>
     </div>
   );
 }
@@ -450,8 +473,14 @@ function seen(): string[] {
 function ComingUp({ within, max }: { within: number; max: number }) {
   const people = usePeople();
   const [hidden, setHidden] = useState(seen);
+  // a put-away chip folds away first, then it's taken out
+  const [leaving, setLeaving] = useState<string[]>([]);
   const list = upcoming(people, within).filter((u) => !hidden.includes(occurrence(u))).slice(0, max);
   if (!list.length) return null;
+  const fold = (u: Upcoming) => {
+    setLeaving((l) => [...l, occurrence(u)]);
+    setTimeout(() => hide(u), 240);
+  };
   const hide = (u: Upcoming) => {
     const keep = new Set(list.map(occurrence));
     // only this year's ones are worth remembering; older ones have passed
@@ -464,7 +493,8 @@ function ComingUp({ within, max }: { within: number; max: number }) {
       {list.map((u) => {
         const { what, years } = whatsComing(u);
         return (
-          <div class={`coming-chip card${u.days === 0 ? ' is-today' : ''}`} role="listitem">
+          <div class={`unfold${leaving.includes(occurrence(u)) ? ' is-out' : ''}`} inert={leaving.includes(occurrence(u))} key={occurrence(u)} role="listitem"><div class="unfold-in">
+          <div class={`coming-chip card${u.days === 0 ? ' is-today' : ''}`}>
             <button class="coming-main" onClick={() => navigate('person/' + u.person.id)}>
               <span class="coming-icon"><Icon name={u.date.kind === 'birthday' ? 'cake' : u.date.kind === 'anniversary' ? 'heart' : 'calendar-event'} size={18} /></span>
               <span class="book-row-main">
@@ -472,10 +502,11 @@ function ComingUp({ within, max }: { within: number; max: number }) {
                 <span class="book-row-sub">{[whenLabel(u.days), u.days > 1 ? formatDate(u.on, { weekday: 'short', day: 'numeric', month: 'short' }) : '', years].filter(Boolean).join(' · ')}</span>
               </span>
             </button>
-            <button class="icon-btn small" onClick={() => hide(u)} aria-label={t('Put away until next time')} title={t('Put away')}>
+            <button class="icon-btn small" onClick={() => fold(u)} aria-label={t('Put away until next time')} title={t('Put away')}>
               <Icon name="x" size={16} />
             </button>
           </div>
+          </div></div>
         );
       })}
     </div>

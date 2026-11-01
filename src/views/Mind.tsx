@@ -204,7 +204,8 @@ export function Mind() {
       {total > 0 && (
         <section class="section">
           <h2 class="section-title">{t('Share of mind')}</h2>
-          <div class="card list mind-list">
+          {/* keyed by the range, so a new range lays the list out afresh: rows cascade in and the bars grow, like the wheel beside it */}
+          <div class="card list mind-list fade-rows-soft" key={range}>
             {shares.map((x) => (
               <button
                 class={`list-row action mind-row${focus === x.p.id ? ' on' : ''}`}

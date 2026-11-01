@@ -181,6 +181,13 @@ function ContextMenu({ at, open, onClose, label, actions }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // once closed it fades away rather than vanishing
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (open) return;
+    const timer = setTimeout(() => setGone(true), 130);
+    return () => clearTimeout(timer);
+  }, [open]);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
@@ -216,7 +223,7 @@ function ContextMenu({ at, open, onClose, label, actions }: {
     };
   }, [open]);
 
-  if (!open) return null;
+  if (gone) return null;
 
   const onKeyDown = (ev: KeyboardEvent) => {
     const items = [...ref.current!.querySelectorAll<HTMLElement>('button')];
@@ -232,7 +239,8 @@ function ContextMenu({ at, open, onClose, label, actions }: {
   return (
     <div
       ref={ref}
-      class="ctx-menu glass"
+      class={`ctx-menu glass${open ? '' : ' closing'}`}
+      inert={!open}
       role="menu"
       aria-label={label}
       style={pos ? { left: pos.left, top: pos.top } : { left: at.x, top: at.y, visibility: 'hidden' }}

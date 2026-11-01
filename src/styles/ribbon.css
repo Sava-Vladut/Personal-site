@@ -444,8 +444,9 @@
   position: fixed; z-index: 33; top: var(--ribbon-h, 0px); bottom: var(--status-h, 0px); left: var(--side-w, 0px); width: var(--nav-w);
   display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line);
   font: var(--w-regular) var(--text-m)/1.3 var(--sans);
-  animation: fade-in var(--dur-2) var(--ease-emph);
+  animation: nav-pane-in var(--dur-3) var(--ease-emph);
 }
+@keyframes nav-pane-in { from { opacity: 0; translate: -14px 0; } }
 .nav-head { flex: none; display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 6px 0 14px; font-weight: var(--w-bold); color: var(--ink-2); }
 .nav-head .format-btn { width: 28px; height: 28px; border-radius: var(--r-xs); }
 .nav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 12px; }
@@ -460,16 +461,21 @@
 @media (hover: hover) { .navp-item:hover { background: var(--surface-2); } }
 .navp-item[aria-current] { background: var(--word-wash); color: var(--word); box-shadow: inset 3px 0 var(--word); }
 .navp-item:focus-visible { outline: 2px solid var(--word); outline-offset: -2px; }
-.nav-empty { margin: 8px 14px; font-size: var(--text-m); line-height: 1.5; color: var(--ink-3); }
+.nav-empty { margin: 8px 14px; font-size: var(--text-m); line-height: 1.5; color: var(--ink-3); animation: arrive-soft var(--dur-2) var(--ease-emph); }
 /* on a phone, in a sheet: bigger rows to tap */
 .sheet .navp-item { padding-block: 11px; font-size: var(--text-base); }
 .sheet .nav-empty { margin: 4px 0 12px; }
 
 @media (min-width: 1024px) {
   :root { --nav-w: 260px; }
+  /* the page slides over as the pane opens or closes, rather than jumping */
+  .route-note .page.editor { transition: padding-left var(--dur-3) var(--ease-emph); }
   /* the page makes room for it, as Word's does */
   :root[data-nav-pane] .route-note .page.editor { padding-left: calc(var(--nav-w) + 28px); }
   :root[data-note-focus] .nav-pane { display: none; }
   :root[data-nav-pane][data-note-focus] .route-note .page.editor { padding-left: 28px; }
 }
-@media (prefers-reduced-motion: reduce) { .find-bar, .nav-pane { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  .find-bar, .nav-pane, .nav-empty { animation: none !important; }
+  .route-note .page.editor { transition: none; }
+}

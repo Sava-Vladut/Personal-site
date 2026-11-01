@@ -109,3 +109,17 @@ button.map-pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2p
 
 /* picking a place in its sheet */
 .place-map { height: min(52vh, 420px); border-radius: var(--r-m); }
+
+/* the "no places yet" card rises in over the map instead of being there from the first frame */
+.map-empty { animation: rise-in var(--dur-3) var(--ease-emph) 0.1s backwards; }
+@media (prefers-reduced-motion: reduce) { .map-empty { animation: none; } }
+
+/* the heat layer and the zoom buttons fade in as the map comes up, not on its first frame */
+.map-heat { animation: fade-in var(--dur-4) var(--ease) backwards; }
+.map-tools { animation: fade-in var(--dur-3) var(--ease) 0.1s backwards; }
+.map-tools > .glass-btn { animation: fade-in var(--dur-2) var(--ease) backwards; } /* "show every place" arriving later */
+@media (prefers-reduced-motion: reduce) { .map-heat, .map-tools, .map-tools > .glass-btn { animation: none; } }
+
+/* the map in the place sheet comes up when "Pick on the map" is tapped, not all at once */
+.place-map { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+@media (prefers-reduced-motion: reduce) { .place-map { animation: none; } }

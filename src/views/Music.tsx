@@ -134,7 +134,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
   return (
     <div class={`mx${now ? ' has-now' : ''}`}>
       {now && (
-        <div class="mx-now">
+        <div class="mx-now fade-arrive-soft">
           <SongOfDay songs={songs} picker={picker} />
 
           {repeat.length > 0 && (
@@ -170,7 +170,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
               <SortChip<MusicSort> sort={sort} onSort={setSort} options={MUSIC_SORTS} />
             </MediaHead>
             {chips.length > 0 && (
-              <div class="chips scroll-x mx-chips" role="toolbar" aria-label={t('Kind and order')}>
+              <div class="chips scroll-x mx-chips fade-arrive-soft" role="toolbar" aria-label={t('Kind and order')}>
                 <button class="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>{t('All')} {songs.length}</button>
                 {chips.map(([k, name]) => (
                   <button class="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>

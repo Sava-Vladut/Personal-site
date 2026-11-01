@@ -92,6 +92,20 @@ function Notice({ row, onHide }: { row: Row; onHide: () => void }) {
   );
 }
 
+/** A line of the bar. Putting it away folds it up first, so the lines under it glide up instead of jumping. */
+function Slot({ row, onHide }: { row: Row; onHide: () => void }) {
+  const [leaving, setLeaving] = useState(false);
+  const fold = () => {
+    setLeaving(true);
+    setTimeout(onHide, 240);
+  };
+  return (
+    <div class={`notice-slot unfold${leaving ? ' is-out' : ''}`} inert={leaving}>
+      <div class="unfold-in"><Notice row={row} onHide={fold} /></div>
+    </div>
+  );
+}
+
 const ico = (name: UiName) => <Icon name={name} size={18} />;
 
 function readHidden(): Record<string, string> {
@@ -335,7 +349,7 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
   const more = shown.length - FIRST;
   return (
     <div class="notices card fade-arrive">
-      {(all ? shown : shown.slice(0, FIRST)).map((r) => <div key={r.id} class="notice-slot"><Notice row={r} onHide={() => hide(r)} /></div>)}
+      {(all ? shown : shown.slice(0, FIRST)).map((r) => <Slot key={r.id} row={r} onHide={() => hide(r)} />)}
       {more > 0 && (
         <button class="notice-more" aria-expanded={all} onClick={() => setAll(!all)}>
           {all ? t('Show less') : t('{n} more', { n: more })}

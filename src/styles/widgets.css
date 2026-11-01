@@ -11,10 +11,12 @@
   position: relative; display: flex; align-items: center; border-radius: calc(var(--r-l) - 4px);
   transition: background-color var(--dur-2), scale var(--dur-3) var(--spring);
 }
-.notice-slot + .notice-slot > .notice::before { content: ''; position: absolute; inset: -0.5px 12px auto 56px; height: 1px; background: var(--line); }
+.notice-slot + .notice-slot .notice::before { content: ''; position: absolute; inset: -0.5px 12px auto 56px; height: 1px; background: var(--line); }
 .notice:has(.notice-go:active) { scale: 0.98; transition-duration: var(--dur-2), var(--dur-0); }
 @media (hover: hover) { .notice:hover { background: color-mix(in oklab, var(--c) 8%, transparent); } .notice:hover .notice-x { opacity: 1; } }
 .notice-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 2px 8px 8px; text-align: left; color: var(--ink); }
+/* the lines past the first few come up as "more" opens */
+.notice-slot.unfold:not(.is-out):nth-child(n + 5) { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
 /* put away: small and quiet, a clear tap target all the same */
 .notice-x {
   flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin-right: 4px; border-radius: 50%;

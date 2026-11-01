@@ -11,3 +11,11 @@
 .export-dates .input { width: 100%; }
 .export-span { margin: 2px 0 8px; }
 .export-details { padding-bottom: 4px; }
+
+/* what opens in the sheet (the dates, the span, a row of choices) takes back the gap before it, so it doesn't jump */
+.export-sheet > .unfold { margin-top: -6px; --unfold-gap: 0px; }
+.export-sheet > .unfold > .unfold-in > .export-dates { margin-top: 10px; }
+.export-sheet > .unfold > .unfold-in > .export-span { margin-top: 8px; }
+.export-sheet > .unfold > .unfold-in > .share-parts { margin-top: 6px; }
+.share-parts > .unfold { margin-top: -2px; }
+.share-parts > .unfold > .unfold-in > .share-part { margin-top: 2px; }

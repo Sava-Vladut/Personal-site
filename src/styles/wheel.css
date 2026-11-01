@@ -242,8 +242,10 @@
 .nw-cap-name { font: var(--w-medium) var(--text-l)/1.25 var(--serif); }
 .nw-cap-sub { margin: 4px 0 0; color: var(--ink-3); font-size: var(--text-base); text-wrap: balance; }
 .nw-cap-stat { margin: 6px 0 0; font-size: var(--text-m); font-weight: var(--w-bold); color: color-mix(in oklab, var(--sky) 70%, var(--ink)); font-variant-numeric: tabular-nums; }
+.nw-cap-in { animation: arrive-soft var(--dur-2) var(--ease-emph) backwards; }
 
 @media (prefers-reduced-motion: reduce) {
+  .nw-cap-in { animation: none; }
   .nw-fx, .nw-pops { display: none; }
   .nw-beckon .nw-mark-wrap, .nw-beckon .nw-mark-wrap::before, .nw-beckon .nw-mark-wrap::after { animation: none; }
   .nw-trigger::before, .nw-mark, .nw-mark-wrap, .nw-mark-wrap::before, .nw-mark-wrap::after, .nw-mark-arcs, .nw-mark-arcs path, .nw-mark-orbit, .nw-mark-hub, .nw-mark-halo, .nw-mark-ticks, .nw-mark-inner, .nw-hint, .nw-svg, .nw-ring, .nw-stage, .nw-layer.closing .nw-stage, .nw-layer > .sky, .nw.opening .nw-seg, .nw-head, .nw-caption { animation: none; }

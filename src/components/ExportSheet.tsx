@@ -4,6 +4,7 @@ import { addDays, isDateKey, shortDate, todayKey } from '../lib/dates';
 import { toast, useBooks, useEntries, usePeople, useRepos, useSongs } from '../lib/store';
 import { count, t } from '../lib/i18n';
 import { Sheet } from './Sheet';
+import { Unfold } from './Unfold';
 import { Icon, type UiName } from './icons';
 import '../styles/shared.css';
 import '../styles/export.css';
@@ -137,7 +138,7 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
             <button class="chip" role="radio" aria-checked={s.range === r} aria-pressed={s.range === r} onClick={() => set({ range: r })}>{rangeName(r)}</button>
           ))}
         </div>
-        {s.range === 'custom' && (
+        <Unfold open={s.range === 'custom'}>
           <div class="export-dates">
             <label>
               <span class="muted small">{t('From')}</span>
@@ -148,12 +149,14 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
               <input class="input input-s" type="date" value={s.to} max={todayKey()} onInput={(e) => isDateKey(e.currentTarget.value) && set({ to: e.currentTarget.value })} />
             </label>
           </div>
-        )}
-        {scope && (
-          <p class="hint export-span">
-            {shortDate(scope.from)} – {shortDate(scope.to)} · {count(scope.entries.length, 'entry', 'entries')}
-          </p>
-        )}
+        </Unfold>
+        <Unfold open={!!scope}>
+          {scope && (
+            <p class="hint export-span">
+              {shortDate(scope.from)} – {shortDate(scope.to)} · {count(scope.entries.length, 'entry', 'entries')}
+            </p>
+          )}
+        </Unfold>
 
         <div class="share-parts">
           <div class="share-parts-head">{t('What goes in')}</div>
@@ -167,7 +170,7 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
               <button class="switch" role="switch" aria-checked={s.parts.includes(p)} aria-label={PART[p][1]} onClick={() => set({ parts: EXPORT_PARTS.filter((x) => toggle(s.parts, p).includes(x)) })} />
             </label>
           ))}
-          {s.range !== 'all' && others && (
+          <Unfold open={s.range !== 'all' && !!others}>
             <label class="share-part">
               <Icon name="link" size={18} />
               <span class="share-part-main">
@@ -176,10 +179,11 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
               </span>
               <button class="switch" role="switch" aria-checked={s.linked} aria-label={t('Only what’s tied to these days')} onClick={() => set({ linked: !s.linked })} />
             </label>
-          )}
+          </Unfold>
         </div>
 
-        {journal && (
+        <Unfold open={!!journal}>
+          {journal && (
           <div class="share-parts">
             <div class="share-parts-head">{t('In each note and check-in')}</div>
             <div class="chips export-details" role="group" aria-label={t('In each note and check-in')}>
@@ -198,7 +202,8 @@ export function ExportSheet({ open, onClose }: { open: boolean; onClose: () => v
               <button class="switch" role="switch" aria-checked={s.newest} aria-label={t('Newest first')} onClick={() => set({ newest: !s.newest })} />
             </label>
           </div>
-        )}
+          )}
+        </Unfold>
 
         <div class="share-parts">
           <label class="share-part">

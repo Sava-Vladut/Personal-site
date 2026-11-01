@@ -69,14 +69,14 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
   const pct = progressOf(b);
   const written = [...notes].sort((x, y) => (x.date === y.date ? x.time - y.time : x.date < y.date ? -1 : 1));
   const rows: preact.JSX.Element[] = [
-    <li>
+    <li key="shelf">
       <span class="due-date"><span class="stamp faint" style={{ rotate: `${tilt(0)}deg` }}>{stamped(keyOf(new Date(b.created)))}</span></span>
       <span class="due-what">{t('On your shelf')}</span>
     </li>,
   ];
   if (b.status !== 'want')
     rows.push(
-      <li>
+      <li key="started" class="fade-arrive-soft">
         <Stamp value={b.started} label={t('Started')} tilt={tilt(1)} onChange={(started) => update({ started })} />
         <span class="due-what">{t('Started')}</span>
       </li>,
@@ -84,7 +84,7 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
   written.forEach((e, i) => {
     const name = previewOf(plainText(e.text), e.title, 60).heading || (e.kind === 'checkin' ? t('Check-in') : t('A note'));
     rows.push(
-      <li>
+      <li key={e.id} class="fade-arrive-soft">
         <span class="due-date"><span class="stamp faint" style={{ rotate: `${tilt(i + 2)}deg` }}>{stamped(e.date)}</span></span>
         <a class="due-what due-note" href={'#/note/' + e.id} onClick={(ev) => { ev.preventDefault(); navigate('note/' + e.id); }}>{name}</a>
       </li>,
@@ -92,21 +92,21 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
   });
   if (done)
     rows.push(
-      <li>
+      <li key="finished" class="fade-arrive-soft">
         <Stamp red value={b.finished} min={b.started} label={b.status === 'dnf' ? t('Stopped') : t('Finished')} tilt={tilt(99)} onChange={(finished) => update({ finished })} />
         <span class="due-what">{b.status === 'dnf' ? t('Put down') : t('Finished')}</span>
       </li>,
     );
   if (b.status === 'reading')
     rows.push(
-      <li class="due-pages">
+      <li key="pages" class="due-pages fade-arrive-soft">
         <span class="due-what">
           {t('On page')}
           <input class="due-input" type="number" inputMode="numeric" min={0} value={b.page ?? ''} onInput={(e) => update({ page: num(e.currentTarget.value, 100_000) })} aria-label={t('Current page')} />
           {t('of')}
           <input class="due-input" type="number" inputMode="numeric" min={1} value={b.pages ?? ''} onInput={(e) => update({ pages: num(e.currentTarget.value, 100_000) })} aria-label={t('Pages')} />
         </span>
-        {pct !== null && <span class="stamp" style={{ rotate: `${tilt(98)}deg` }}>{pct}%</span>}
+        {pct !== null && <span class="stamp fade-arrive-soft" style={{ rotate: `${tilt(98)}deg` }}>{pct}%</span>}
       </li>,
     );
   return (
@@ -120,7 +120,7 @@ function DueCard({ b, notes, update }: { b: Book; notes: Entry[]; update: (patch
         <div class="due-cols" aria-hidden="true"><span>{t('Date')}</span><span>{b.status === 'want' ? t('Wanted') : t('Read')}</span></div>
         <ol class="due-rows">
           {rows}
-          {b.status === 'want' && <li class="due-hint"><span /><span class="due-what">{t('Move it to Reading to stamp the day you start.')}</span></li>}
+          {b.status === 'want' && <li key="hint" class="due-hint fade-arrive-soft"><span /><span class="due-what">{t('Move it to Reading to stamp the day you start.')}</span></li>}
           {Array.from({ length: Math.max(2, 6 - rows.length - (b.status === 'want' ? 1 : 0)) }, () => <li class="blank" aria-hidden="true" />)}
         </ol>
       </div>
@@ -335,7 +335,7 @@ export function BookView({ id }: { id: string }) {
           </button>
         )}
       </div>
-      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition">{EMOTION[draft.emotions[0]].def}</p>}
+      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition fade-arrive-soft" key={draft.emotions[0]}>{EMOTION[draft.emotions[0]].def}</p>}
 
       <div class="eyebrow person-label">{t('Thinking of')}</div>
       <div class="meta person-meta">
@@ -363,7 +363,7 @@ export function BookView({ id }: { id: string }) {
           <button class="btn btn-quiet grow" onClick={write}><Icon name="pencil" size={18} /> {t('Write about it')}</button>
         </div>
         {felt.total > 0 && (
-          <div class="card person-felt">
+          <div class="card person-felt fade-arrive-soft">
             <div class="chart-title">{t('How your notes about it felt')}</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
@@ -372,7 +372,7 @@ export function BookView({ id }: { id: string }) {
         )}
         {groups.length ? (
           groups.map(([date, list]) => (
-            <section class="day">
+            <section class="day fade-arrive-soft">
               <h3 class="day-label">{dayLabel(date)}</h3>
               <div class="entries">{list.map((e) => (e.kind === 'checkin' ? <CheckInRow e={e} /> : <NoteCard e={e} />))}</div>
             </section>

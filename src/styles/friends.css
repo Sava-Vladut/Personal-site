@@ -110,3 +110,12 @@
 @media (prefers-reduced-motion: reduce) {
   .wf-dot-mark, .wf-pip { transition: none; }
 }
+
+/* ---------- things that appear ---------- */
+
+/* the verdict lands in its reserved slot, a ring draws round a principle you start practising, and the lines to a
+   principle's kin fade in under the pointer */
+.wf-verdict > .lrn-verdict { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+.wf-dot-on, .wf-map-kin { animation: fade-in var(--dur-2) var(--ease) backwards; }
+/* a group that the filter or search brings back fades in; one that stays is left alone */
+.friends-page .lrn-group { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }

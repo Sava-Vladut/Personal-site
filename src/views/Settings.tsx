@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
 import { connectSpotify, disconnectSpotify, spotifyStatus, type SpotifyStatus } from '../lib/spotify';
 import { connectGithub, disconnectGithub, forgetRepos, githubStatus, relogin, type GithubStatus } from '../lib/github';
 import { goBack, navigate } from '../lib/router';
@@ -21,6 +22,7 @@ import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
 import '../styles/shared.css';
+import '../styles/settings.css';
 
 // Chrome/Android offer an install prompt; iOS uses Share → Add to Home Screen.
 let installEvent: (Event & { prompt: () => Promise<void> }) | null = null;
@@ -40,6 +42,27 @@ const copy = async (text: string) => {
     toast(t('Couldn’t copy — select it and copy by hand'));
   }
 };
+
+/**
+ * Content that opens and closes in place: it stays mounted so the height, fade and slide can run both ways, and is
+ * inert while closed. `row` is for a whole row of a list (it keeps the list's dividers; see styles/settings.css).
+ * What it shows is held for the exit, then let go, so nothing private (a sync code) lingers in the page once gone.
+ */
+function Reveal({ open, row, children }: { open: boolean; row?: boolean; children: ComponentChildren }) {
+  const held = useRef<ComponentChildren>(open ? children : null);
+  const [, redraw] = useState(0);
+  if (open) held.current = children;
+  useEffect(() => {
+    if (open) return;
+    const id = setTimeout(() => { held.current = null; redraw((n) => n + 1); }, 600);
+    return () => clearTimeout(id);
+  }, [open]);
+  return (
+    <div class={row ? 'xp list-row' : 'xp'} data-open={open ? '' : undefined} inert={!open}>
+      <div class="xp-in">{open ? children : held.current}</div>
+    </div>
+  );
+}
 
 function ago(time: number) {
   const m = Math.round((Date.now() - time) / 60_000);
@@ -314,15 +337,17 @@ export function Settings({ query }: { query: URLSearchParams }) {
             <div>
               <div class="row gap-s"><Icon name="map-pin" size={18} /> {t('Places')}</div>
               <div class="muted small">{locating ? t('Finding you…') : t('Saves where you are when you write, and puts your entries on a map. Uses your location, with names from OpenStreetMap.')}</div>
-              {settings.places && iOS && (
-                <div class="muted small settings-tip">
-                  {rich('If your iPhone asks for your location every time: open {path} and choose {allow}. Then it won’t ask again.', { path: <b>{t('Settings › Apps › Safari › Location')}</b>, allow: <b>{t('Allow')}</b> })}
-                </div>
+              {iOS && (
+                <Reveal open={settings.places}>
+                  <div class="muted small settings-tip">
+                    {rich('If your iPhone asks for your location every time: open {path} and choose {allow}. Then it won’t ask again.', { path: <b>{t('Settings › Apps › Safari › Location')}</b>, allow: <b>{t('Allow')}</b> })}
+                  </div>
+                </Reveal>
               )}
             </div>
             <button class="switch" role="switch" aria-checked={settings.places} aria-label={t('Places')} onClick={togglePlaces} disabled={locating} />
           </label>
-          {(settings.weather || settings.home) && (
+          <Reveal row open={settings.weather || !!settings.home}>
             <button class="list-row action" onClick={() => setHomeOpen(true)}>
               <span class="grow">
                 <span class="row gap-s"><Icon name="home" size={18} /> {t('Home')} <span class="muted list-value">{settings.home ? placeLabel(settings.home) : t('Not set')}</span></span>
@@ -330,13 +355,13 @@ export function Settings({ query }: { query: URLSearchParams }) {
               </span>
               <Icon name="chevron-right" size={18} />
             </button>
-          )}
-          {entries.some((e) => e.place) && (
+          </Reveal>
+          <Reveal row open={entries.some((e) => e.place)}>
             <button class="list-row action" onClick={() => navigate('map')}>
               <span class="row gap-s"><Icon name="map" size={18} /> {t('Map of your entries')}</span>
               <Icon name="chevron-right" size={18} />
             </button>
-          )}
+          </Reveal>
         </div>
       </section>
 
@@ -420,19 +445,21 @@ export function Settings({ query }: { query: URLSearchParams }) {
             </div>
             <button class="switch" role="switch" aria-checked={sync.on} aria-label={t('Save on server')} onClick={toggleSync} />
           </label>
-          {sync.on && sync.code && (
-            <div class="list-row">
-              <div>
-                <div class="muted small">{t('Your code')}</div>
-                <code class="sync-code">{formatCode(sync.code)}</code>
-                <div class="muted small">{t('Enter it on another device under Settings → Load with a code. Anyone with it can read your journal, so keep it private.')}</div>
+          <Reveal row open={!!(sync.on && sync.code)}>
+            {sync.code && (
+              <div class="list-row">
+                <div>
+                  <div class="muted small">{t('Your code')}</div>
+                  <code class="sync-code">{formatCode(sync.code)}</code>
+                  <div class="muted small">{t('Enter it on another device under Settings → Load with a code. Anyone with it can read your journal, so keep it private.')}</div>
+                </div>
+                <button class="btn btn-quiet btn-s" onClick={() => copy(formatCode(sync.code!))}><Icon name="copy" size={16} /> {t('Copy')}</button>
               </div>
-              <button class="btn btn-quiet btn-s" onClick={() => copy(formatCode(sync.code!))}><Icon name="copy" size={16} /> {t('Copy')}</button>
-            </div>
-          )}
-          {!sync.on && (
+            )}
+          </Reveal>
+          <Reveal row open={!sync.on}>
             <button class="list-row action" onClick={() => setJoining(true)}><span class="row gap-s"><Icon name="key" size={18} /> {t('Load with a code')}</span><Icon name="chevron-right" size={18} /></button>
-          )}
+          </Reveal>
           <button class="list-row action" onClick={download}><span class="row gap-s"><Icon name="download" size={18} /> {t('Export backup')}</span><Icon name="chevron-right" size={18} /></button>
           <button class="list-row action" onClick={() => setExporting(true)} disabled={!entries.length && !people.length && !books.length && !songs.length && !repos.length}>
             <span class="grow">
@@ -443,9 +470,9 @@ export function Settings({ query }: { query: URLSearchParams }) {
           </button>
           <button class="list-row action" onClick={() => file.current?.click()}><span class="row gap-s"><Icon name="upload" size={18} /> {t('Import backup')}</span><Icon name="chevron-right" size={18} /></button>
           <button class="list-row action danger" onClick={wipe} disabled={!entries.length && !people.length && !books.length && !songs.length && !repos.length}><span class="row gap-s"><Icon name="trash" size={18} /> {t('Delete all entries')}</span></button>
-          {sync.on && (
+          <Reveal row open={sync.on}>
             <button class="list-row action danger" onClick={removeServer}><span class="row gap-s"><Icon name="cloud" size={18} /> {t('Delete server copy')}</span></button>
-          )}
+          </Reveal>
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.currentTarget.files?.[0]; if (f) upload(f); e.currentTarget.value = ''; }} />
         </div>
       </section>
@@ -531,7 +558,7 @@ function JoinSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           enterkeyhint="go"
         />
       </form>
-      {error && <p class="hint danger" role="alert">{error}</p>}
+      {error && <p class="hint danger fade-arrive-soft" role="alert">{error}</p>}
     </Sheet>
   );
 }
@@ -562,7 +589,7 @@ function PublicNotes() {
   return (
     <section class="section">
       <h2 class="section-title">{t('Public notes')}</h2>
-      <div class="card list">
+      <div class="card list fade-rows-soft">
         {error ? (
           <div class="list-row"><div class="muted small">{error}</div></div>
         ) : !items ? (

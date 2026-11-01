@@ -93,7 +93,7 @@ export function Stats({ query }: { query: URLSearchParams }) {
         </div>
 
         {tab !== 'dex' && (
-          <div class="chips filters" role="toolbar" aria-label={t('Time range')}>
+          <div class="chips filters fade-arrive-soft" role="toolbar" aria-label={t('Time range')}>
             {RANGES.map(([id, name]) => (
               <button class="chip" aria-pressed={range === id} onClick={() => setRange(id)}>{name}</button>
             ))}

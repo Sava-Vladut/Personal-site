@@ -166,7 +166,7 @@ export function PeopleSheet({ open, onClose, selected, onChange, title = t('Thin
       </form>
       <div class="person-picks">
         {needle && !exact && (
-          <button class="person-pick" onClick={create}>
+          <button class="person-pick fade-arrive-soft" onClick={create}>
             <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="user-plus" size={18} /></span>
             <span class="person-pick-main"><span class="person-pick-name">{t('Add “{name}”', { name: q.trim() })}</span><span class="person-pick-sub">{t('New person')}</span></span>
           </button>

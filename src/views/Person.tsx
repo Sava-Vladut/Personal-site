@@ -275,7 +275,7 @@ export function PersonView({ id }: { id: string }) {
         )}
       </div>
       {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && (
-        <p class="definition">{EMOTION[draft.emotions[0]].def}</p>
+        <p class="definition fade-arrive-soft" key={draft.emotions[0]}>{EMOTION[draft.emotions[0]].def}</p>
       )}
 
       <div class="eyebrow person-label">{t('Key dates')}</div>
@@ -293,7 +293,7 @@ export function PersonView({ id }: { id: string }) {
       <section class="section">
         <div class="row between">
           <h2 class="section-title">{t('Thinking of {name}', { name: first })}</h2>
-          {moments.length + pages.length > 0 && <span class="muted small">{moments.length + pages.length}{moments.length ? ' · ' + t('since {date}', { date: lastSeen(moments[moments.length - 1].date) }) : ''}</span>}
+          {moments.length + pages.length > 0 && <span class="muted small fade-arrive-soft">{moments.length + pages.length}{moments.length ? ' · ' + t('since {date}', { date: lastSeen(moments[moments.length - 1].date) }) : ''}</span>}
         </div>
         <div class="row gap-s person-actions">
           <button class="btn btn-quiet grow" onClick={() => write('note')} disabled={!draft.name.trim()}><Icon name="pencil" size={18} /> {t('Write about {title}', { title: first })}</button>
@@ -301,13 +301,13 @@ export function PersonView({ id }: { id: string }) {
         </div>
 
         {felt.total > 0 && (
-          <div class="card person-felt">
+          <div class="card person-felt fade-arrive-soft">
             <div class="chart-title">{t('How thinking of {name} felt', { name: first })}</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
             </div>
             {months.some((m, i) => m.total && i < months.length - 1) && (
-              <div class="month-strip-wrap">
+              <div class="month-strip-wrap fade-arrive-soft">
                 <div class="month-strip" role="img" aria-label={t('Feelings month by month over the last year') + (trend ? ': ' + (trend === 'warmer' ? t('lately warmer') : trend === 'heavier' ? t('lately heavier') : t('lately about the same')) : '')}>
                   {months.map((m) => (
                     <span
@@ -320,7 +320,7 @@ export function PersonView({ id }: { id: string }) {
                   ))}
                 </div>
                 {trend && (
-                  <p class="muted small month-trend">
+                  <p class="muted small month-trend fade-arrive-soft">
                     {trend === 'warmer' ? t('Lately, thinking of {name} has felt warmer than before.', { name: first }) : trend === 'heavier' ? t('Lately, thinking of {name} has felt heavier than before.', { name: first }) : t('Lately it feels much as it did before.')}
                   </p>
                 )}
@@ -347,7 +347,7 @@ export function PersonView({ id }: { id: string }) {
       </section>
 
       {pages.length > 0 && (
-        <section class="section">
+        <section class="section fade-arrive-soft">
           <h2 class="section-title">{t('Mentioned on')}</h2>
           <div class="book-rows">
             {pages.map((pg) =>
@@ -369,14 +369,14 @@ export function PersonView({ id }: { id: string }) {
       )}
 
       {books.length > 0 && (
-        <section class="section">
+        <section class="section fade-arrive-soft">
           <h2 class="section-title">{t('Books · thinking of {name}', { name: first })}</h2>
           <div class="book-rows">{books.map((b) => <BookRow b={b} onClick={() => { flush(); navigate('book/' + b.id); }} />)}</div>
         </section>
       )}
 
       {songs.length > 0 && (
-        <section class="section">
+        <section class="section fade-arrive-soft">
           <h2 class="section-title">{t('Music · thinking of {name}', { name: first })}</h2>
           <div class="book-rows">{songs.map((s) => <SongRow s={s} onClick={() => { flush(); navigate('song/' + s.id); }} />)}</div>
         </section>

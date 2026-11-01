@@ -135,7 +135,7 @@ export function IconSheet({ open, onClose, value, onChange }: {
       {list.length > limit && (
         <div class="center pad"><button class="btn btn-quiet" onClick={() => setLimit(limit + 480)}>{t('Show more')}</button></div>
       )}
-      {results && !results.length && <p class="hint center">{all ? t('No icons match “{q}”.', { q }) : t('No icons match “{q}” here.', { q })}</p>}
+      {results && !results.length && <p class="hint center fade-arrive-soft">{all ? t('No icons match “{q}”.', { q }) : t('No icons match “{q}” here.', { q })}</p>}
       {!all && (
         <div class="center pad">
           <button class="btn btn-quiet" onClick={searchAll} disabled={loadingAll}>
@@ -143,7 +143,7 @@ export function IconSheet({ open, onClose, value, onChange }: {
           </button>
         </div>
       )}
-      {error && <p class="error">{error}</p>}
+      {error && <p class="error fade-arrive-soft">{error}</p>}
       <p class="credit">Tabler Icons · Fluent Emoji (Microsoft) — MIT</p>
     </Sheet>
   );

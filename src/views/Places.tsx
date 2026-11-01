@@ -60,7 +60,7 @@ export function SpotSheet({ ids, located, onClose }: { ids: string[] | null; loc
   const title = [...names].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
   return (
     <Sheet open={!!ids} onClose={onClose} title={<span class="row gap-s"><Icon name="map-pin" /> {title}</span>} label={title}>
-      <div class="spot-list">
+      <div class="spot-list fade-rows-soft">
         {shown.map((e) => <SpotRow e={e} onGo={() => { navigateAfterSheet('note/' + e.id); onClose(); }} />)}
       </div>
     </Sheet>

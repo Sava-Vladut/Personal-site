@@ -12,7 +12,7 @@ import { PageHead } from '../components/PageHead';
 import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LinkRow, Meter, Option, Row, Tally, Today, Verdict, jumpTop, useLocal } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/traps.css';
 
@@ -79,10 +79,10 @@ function Quiz({ q, options, answer, reveal, gut, onAnswer }: { q: string; option
       </div>
       <div aria-live="polite">
         {picked != null && (
-          <p class="lrn-verdict">
+          <Verdict>
             {answer != null && <b class={picked === answer ? 'is-right' : 'is-wrong'}>{picked === answer ? t('Right.') : picked === gut ? t('That’s the gut answer.') : t('Not quite.')}</b>}
             {answer != null && ' '}{reveal}
-          </p>
+          </Verdict>
         )}
       </div>
     </div>
@@ -467,7 +467,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
               <p class="lrn-score" aria-live="polite">{answered === REFLECT.length ? t('You got {n} of 3.', { n: score.filter(Boolean).length }) : ''}</p>
             </div>
             {answered === REFLECT.length && (
-              <p class="lrn-verdict">{t('In Shane Frederick’s 2005 study of 3,428 people, only 17% got all three; even at MIT, fewer than half did. The wrong answers aren’t random: almost everyone who misses picks the same one, the one that jumps out first.')}</p>
+              <Verdict>{t('In Shane Frederick’s 2005 study of 3,428 people, only 17% got all three; even at MIT, fewer than half did. The wrong answers aren’t random: almost everyone who misses picks the same one, the one that jumps out first.')}</Verdict>
             )}
           </section>
         </div>
@@ -498,7 +498,7 @@ export function Traps({ query: params }: { query: URLSearchParams }) {
                       about={f && picked ? t(FAMILIES[f].about) : undefined}
                       count={list.length}
                     />
-                    <ol class="lrn-rows">{list.map((x) => row(x, sort === 'power'))}</ol>
+                    <ol class="lrn-rows fade-rows-soft">{list.map((x) => row(x, sort === 'power'))}</ol>
                   </section>
                 ))}
               </div>

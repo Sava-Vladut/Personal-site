@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.168.0',
+    date: '2026-11-01',
+    changes: [
+      'Feeling wheel: “All worlds” and “Just …” slide up and fade in when a world opens, and slide away when you leave; the caption cross-fades',
+      'Things that used to pop in now fade or unfold across the whole site, in both directions where it fits',
+      'Journal: the search bar, calendar, check-in runs, notices, find bar, share and export sheets and the feelings page unfold and fade; deleted entries close up smoothly',
+      'Learn: quiz verdicts, map captions, filtered lists and the lens switch ease in; Intro and What’s on your mind do too',
+      'Media: covers fade up as they load, Spotify tabs, song and book pages, repo details and channel lists fade in',
+      'People, Stats and Settings: settings rows and chart tooltips open smoothly, person and tracker pieces fade in',
+    ],
+  },
+  {
     version: '1.167.0',
     date: '2026-10-31',
     changes: [

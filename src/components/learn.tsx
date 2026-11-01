@@ -1,6 +1,7 @@
 // The pieces the three Learn pages (Mind traps, Laws of power, Win friends) are built from, so they look and move
-// alike (styles/learn.css). Nothing here animates in on its own: the page transition and lib/reveal.ts bring things
-// in, hovers only change colour, a press sinks to .98 and springs back, and anything whose content changes keeps its
+// alike (styles/learn.css). Nothing here animates in on its own except what appears or swaps after the page is up (a
+// verdict, the caption under a map, a new list row, a reordered chapter): the page transition and lib/reveal.ts bring
+// the rest in, hovers only change colour, a press sinks to .98 and springs back, and anything whose content changes keeps its
 // size. Only the icons move, inside their own box (Ico, styles/icon-motion.css). `hue` is always the name of a world colour (the part after --emo-, e.g. 'sadness'), as Mark takes it.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -89,6 +90,18 @@ export function useLive(value: unknown): boolean {
   const at = useRef({ value, live: false });
   if (!Object.is(at.current.value, value)) at.current = { value, live: true };
   return at.current.live;
+}
+
+/**
+ * Whether `value` has changed since `scope` (the entry that's open) was put on screen: true after a switch inside one
+ * entry (the lens), false again for the next entry. It lets chapters that were reordered fade in without the entry
+ * itself, which the sheet already fades, doing it twice.
+ */
+export function useSwapped(scope: unknown, value: unknown): boolean {
+  const at = useRef({ scope, value, swapped: false });
+  if (!Object.is(at.current.scope, scope)) at.current = { scope, value, swapped: false };
+  else if (!Object.is(at.current.value, value)) at.current = { scope, value, swapped: true };
+  return at.current.swapped;
 }
 
 /** Plays the press gesture of the Ico in the clicked control (the dice tumbling): call it from the control's onClick. */
@@ -213,13 +226,14 @@ export function Caption({ title, sub, idle }: { title?: ComponentChildren; sub?:
   const on = title != null && title !== false && title !== '';
   return (
     <div class="lrn-caption" aria-live="polite">
+      {/* keyed by what's shown, so moving across a map cross-fades the caption instead of swapping its text */}
       {on ? (
         <>
-          <b class="lrn-caption-title">{title}</b>
-          {sub != null && sub !== false && <span class="lrn-caption-sub">{sub}</span>}
+          <b class="lrn-caption-title" key={`t:${title}`}>{title}</b>
+          {sub != null && sub !== false && <span class="lrn-caption-sub" key={`s:${title}`}>{sub}</span>}
         </>
       ) : (
-        <span class="lrn-caption-idle">{idle}</span>
+        <span class="lrn-caption-idle" key="idle">{idle}</span>
       )}
     </div>
   );
@@ -252,6 +266,18 @@ export function Option({ index, label, state, disabled, pressed, onClick }: {
       </span>
       <span class="lrn-opt-label">{label}</span>
     </button>
+  );
+}
+
+/**
+ * What an answer means, under the options: it unfolds (height, fade and a small rise) instead of popping in, so what's
+ * below it eases down. Render it only once there's an answer; it plays as it mounts.
+ */
+export function Verdict({ children }: { children: ComponentChildren }) {
+  return (
+    <div class="lrn-verdict-wrap">
+      <div><p class="lrn-verdict">{children}</p></div>
+    </div>
   );
 }
 

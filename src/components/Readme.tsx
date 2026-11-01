@@ -157,7 +157,7 @@ export function readmeExcerpt(text: string): string {
 /** A README, formatted. */
 export function Readme({ text, base }: { text: string; base: ReadmeBase }) {
   return (
-    <div class="rd">
+    <div class="rd fade-arrive-soft">
       {parse(text.slice(0, 80_000)).map((b) => {
         switch (b.t) {
           case 'hr': return <hr />;

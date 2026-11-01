@@ -151,8 +151,8 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home', current }: {
         </>
       ) : undefined}
     >
-      {onMap && <button class="back-link" onClick={() => setOnMap(false)}><Icon name="chevron-left" size={18} /> {t('Back')}</button>}
-      {kind === 'home' && !onMap && <p class="hint">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>}
+      {onMap && <button class="back-link fade-arrive-soft" onClick={() => setOnMap(false)}><Icon name="chevron-left" size={18} /> {t('Back')}</button>}
+      {kind === 'home' && !onMap && <p class="hint fade-arrive-soft">{t('Used for the weather when an entry has no place saved, and to fill in the weather for older entries.')}</p>}
       <button class="person-pick" onClick={useHere} disabled={locating}>
         <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="current-location" size={18} /></span>
         <span class="person-pick-main">
@@ -161,7 +161,7 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home', current }: {
         </span>
       </button>
       {!onMap && (
-        <button class="person-pick" onClick={openMap}>
+        <button class="person-pick fade-arrive-soft" onClick={openMap}>
           <span class="avatar new" style={{ width: 36, height: 36 }}><Icon name="map" size={18} /></span>
           <span class="person-pick-main">
             <span class="person-pick-name">{t('Pick on the map')}</span>
@@ -173,7 +173,7 @@ export function HomeSheet({ open, onClose, onPick, kind = 'home', current }: {
         <Icon name="search" size={18} />
         <input type="search" placeholder={t('Search for a town or city, or type coordinates')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search for a town or city, or type coordinates')} enterkeyhint="search" />
       </form>
-      {error && <p class="hint danger" role="alert">{error}</p>}
+      {error && <p class="hint danger fade-arrive-soft" role="alert">{error}</p>}
       <div class="person-picks fade-rows">
         {coords && (
           <button class="person-pick" onClick={useCoords} disabled={locating}>

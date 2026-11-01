@@ -107,8 +107,9 @@ export function RefSheet({ kind, onClose, onPick }: { kind: RefKind | null; onCl
         />
       </label>
       {!list && <p class="hint center">{t('Loading…')}</p>}
-      {list && !flat.length && <p class="hint center">{t('Nothing with that name')}</p>}
-      <div class="ref-rows" ref={rowsEl}>
+      {list && !flat.length && <p class="hint center fade-arrive-soft">{t('Nothing with that name')}</p>}
+      {/* keyed on the tab and on the list arriving, so the rows come up softly then (and not on every letter typed) */}
+      <div key={`${shown}${list ? '' : '-wait'}`} class={list ? 'ref-rows fade-arrive-soft' : 'ref-rows'} ref={rowsEl}>
         {sections.map((s) => (
           <section key={s.title} class="ref-group">
             {s.title && (

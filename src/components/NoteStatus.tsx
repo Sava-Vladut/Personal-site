@@ -61,7 +61,7 @@ export function NoteStatus({ text, note, save, savedNow, onRetry, reading, onRea
         {picked === null ? count(words, 'word', 'words') : `${t('{n} of {total}', { n: picked, total: words })} ${noun(words, 'word', 'words')}`}
       </span>
       <span class="note-status-item">{count(chars, 'character', 'characters')}</span>
-      {minutes > 0 && <span class="note-status-item">{t('{n} min read', { n: minutes })}</span>}
+      {minutes > 0 && <span class="note-status-item note-min">{t('{n} min read', { n: minutes })}</span>}
       {shown === 'error' ? (
         <button class="note-status-item note-save is-error" onClick={onRetry} title={t('Try saving again')}>
           <Icon name="alert-circle" size={13} />

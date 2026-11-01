@@ -117,7 +117,7 @@ export function SongOfDay({ songs, picker }: { songs: Song[]; picker: DayPick })
         </span>
         {streak > 1 && <span class="sotd-streak" title={`${t('Days in a row')} · ${t('best streak')} ${best}`}><Icon name="flame" size={14} stroke={2} /> {streak}</span>}
         {song && (
-          <span class="sotd-tools">
+          <span class="sotd-tools fade-arrive-soft">
             <button class="sotd-tool" onClick={() => open(today)} aria-label={t('Change')} title={t('Change')}><Icon name="refresh" size={16} /></button>
             <button class="sotd-tool" onClick={surprise} disabled={busy || songs.length < 2} aria-label={t('Shuffle')} title={t('Shuffle')}><Icon name="dice-5" size={16} /></button>
             <button class="sotd-tool" onClick={() => navigate('song/' + song.id)} aria-label={t('Open')} title={t('Open')}><Icon name="arrow-up-right" size={16} /></button>
@@ -141,7 +141,7 @@ export function SongOfDay({ songs, picker }: { songs: Song[]; picker: DayPick })
           {on && <div class="sotd-player"><MusicEmbed m={song.music} /></div>}
         </div>
       ) : (
-        <div class="sotd-empty">
+        <div class="sotd-empty fade-arrive-soft">
           <p class="sotd-ask">{t('What does today sound like?')}</p>
           <div class="sotd-ideas" role="list">
             {ideas.map((s, k) => (
@@ -209,7 +209,7 @@ export function DayPicker({ songs, picker }: { songs: Song[]; picker: DayPick })
         <Icon name="search" size={18} />
         <input type="search" placeholder={t('Search your music')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search your music')} />
       </label>
-      <div class="tracks sotd-picks">
+      <div class="tracks sotd-picks fade-rows-soft">
         {shown.slice(0, paged.n).map((s) => (
           <button key={s.id} class="track" aria-pressed={s === current} disabled={busy} onClick={() => day && (setQ(''), void pick(s, day))}>
             <span class="track-thing"><MusicThing m={s.music} size={38} /></span>

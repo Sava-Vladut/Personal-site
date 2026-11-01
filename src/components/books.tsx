@@ -10,6 +10,9 @@ import { Sheet } from './Sheet';
 import '../styles/objects.css';
 import { count, t } from '../lib/i18n';
 
+/** A cover that has come in stops being hidden: it fades up instead of popping in (`.art-fade`, books.css). */
+export const artIn = (e: Event) => (e.currentTarget as HTMLElement).classList.add('is-in');
+
 /** The book's cover, or a plain one with its title, tinted with the main feeling it left you with. */
 export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> & { emotions?: string[] }; width?: number }) {
   const [broken, setBroken] = useState<string | null>(null);
@@ -17,7 +20,7 @@ export function BookCover({ b, width = 56 }: { b: Pick<Book, 'title' | 'cover'> 
   return (
     <span class={`book-cover${main ? ' tinted' : ''}`} style={{ width, '--c': main ? `var(--emo-${main})` : undefined }} aria-hidden="true">
       {b.cover && b.cover !== broken ? (
-        <img src={b.cover} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => setBroken(b.cover)} />
+        <img class="art-fade" src={b.cover} alt="" loading="lazy" referrerpolicy="no-referrer" onLoad={artIn} onError={() => setBroken(b.cover)} />
       ) : (
         <span class="book-cover-title" style={{ fontSize: Math.max(8, Math.round(width / 7)) }}>{b.title.trim() || t('Untitled')}</span>
       )}
@@ -190,13 +193,13 @@ export function BookSheet({ open, onClose, onPick, title = t('Add a book'), stat
       </label>
       {mine.length > 0 && (
         <>
-          <div class="section-label book-sheet-label">{words.length ? t('On your shelf') : t('Recent on your shelf')}</div>
-          <div class="book-rows">{mine.map((b) => <BookRow key={b.id} b={b} onClick={() => pick(b)} />)}</div>
+          <div class="section-label book-sheet-label fade-arrive-soft">{words.length ? t('On your shelf') : t('Recent on your shelf')}</div>
+          <div class="book-rows fade-rows-soft">{mine.map((b) => <BookRow key={b.id} b={b} onClick={() => pick(b)} />)}</div>
         </>
       )}
       {needle.length >= 2 && (
         <>
-          <div class="section-label book-sheet-label">{t('From Open Library')}</div>
+          <div class="section-label book-sheet-label fade-arrive-soft">{t('From Open Library')}</div>
           <div class="book-rows fade-rows">
             {found.map((f) => {
               const have = shelf.find((b) => sameWork(b, f));
@@ -212,14 +215,14 @@ export function BookSheet({ open, onClose, onPick, title = t('Add a book'), stat
               );
             })}
           </div>
-          {busy && <p class="hint center">{t('Searching…')}</p>}
-          {error && <p class="error">{error}</p>}
-          {!busy && more && <button class="btn btn-quiet block" onClick={() => load(page + 1)}>{t('More results')}</button>}
-          {!busy && !error && !found.length && <p class="hint center">{t('Open Library has nothing called that.')}</p>}
+          {busy && <p class="hint center fade-arrive-soft">{t('Searching…')}</p>}
+          {error && <p class="error fade-arrive-soft">{error}</p>}
+          {!busy && more && <button class="btn btn-quiet block fade-arrive-soft" onClick={() => load(page + 1)}>{t('More results')}</button>}
+          {!busy && !error && !found.length && <p class="hint center fade-arrive-soft">{t('Open Library has nothing called that.')}</p>}
           <button class="btn btn-quiet block" onClick={byHand}><Icon name="pencil" size={18} /> {t('Add “{title}” by hand', { title: needle })}</button>
         </>
       )}
-      {needle.length < 2 && !mine.length && <p class="hint center">{t('Search millions of books from Open Library.')}</p>}
+      {needle.length < 2 && !mine.length && <p class="hint center fade-arrive-soft">{t('Search millions of books from Open Library.')}</p>}
       <p class="attribution"><Icon name="books" size={14} /> {t('Book data and covers from Open Library')}</p>
     </Sheet>
   );

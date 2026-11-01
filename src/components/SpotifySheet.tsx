@@ -81,9 +81,9 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
         <button role="tab" aria-selected={tab === 'search'} onClick={() => setTab('search')}>{t('Search')}</button>
         <button role="tab" aria-selected={tab === 'playlists'} onClick={() => setTab('playlists')}>{t('Playlists')}</button>
       </div>
-      {status?.error && <p class="error">{status.error}</p>}
+      {status?.error && <p class="error fade-arrive-soft">{status.error}</p>}
       {!status ? (
-        <p class="hint">{t('Checking Spotify…')}</p>
+        <p class="hint fade-arrive-soft">{t('Checking Spotify…')}</p>
       ) : gate ? (
         <>
           {gate}
@@ -91,9 +91,9 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
         </>
       ) : (
         <>
-          <div hidden={tab !== 'now'}><NowTab row={row} active={tab === 'now'} onConnect={onConnect} /></div>
-          <div hidden={tab !== 'search'}><SearchTab row={row} /></div>
-          <div hidden={tab !== 'playlists'}><PlaylistsTab row={row} onAddAll={whole ? add : undefined} /></div>
+          <div class="fade-arrive-soft" hidden={tab !== 'now'}><NowTab row={row} active={tab === 'now'} onConnect={onConnect} /></div>
+          <div class="fade-arrive-soft" hidden={tab !== 'search'}><SearchTab row={row} /></div>
+          <div class="fade-arrive-soft" hidden={tab !== 'playlists'}><PlaylistsTab row={row} onAddAll={whole ? add : undefined} /></div>
         </>
       )}
       <p class="attribution"><Icon name="brand-spotify" size={14} /> {t('Music and artwork from Spotify')}</p>
@@ -104,9 +104,9 @@ export function SpotifySheet({ open, onClose, onAdd, onConnect, addLabel = (n) =
 function Gate({ status, onConnect }: { status: SpotifyStatus; onConnect: () => void }) {
   const [setup, setSetup] = useState(false);
   if (status.offline)
-    return <p class="empty-note">{rich('Search and playlists need the app’s server. Start it with {start}, or paste a Spotify link instead.', { start: <code>npm start</code> })}</p>;
+    return <p class="empty-note fade-arrive-soft">{rich('Search and playlists need the app’s server. Start it with {start}, or paste a Spotify link instead.', { start: <code>npm start</code> })}</p>;
   return (
-    <div class="empty-note center">
+    <div class="empty-note center fade-arrive-soft">
       <p>{t('Log in with Spotify to search music and pick songs from your playlists.')}</p>
       <button class="btn btn-primary" onClick={status.configured ? onConnect : () => setSetup(true)}><Icon name="brand-spotify" size={18} /> {t('Log in with Spotify')}</button>
       {!status.configured && <p>{t('Pasting a song link works without logging in.')}</p>}
@@ -174,12 +174,12 @@ function SearchTab({ row }: { row: (m: Music) => preact.JSX.Element }) {
         <input type="search" autoFocus placeholder={t('Songs, artists, or paste a link')} value={q} onInput={(e) => setQ(e.currentTarget.value)} aria-label={t('Search Spotify')} />
       </label>
       <div class="tracks fade-rows">{res.items.map(row)}</div>
-      {res.busy && <p class="hint center">{t('Searching…')}</p>}
-      {res.error && <p class="error">{res.error}</p>}
-      {!res.busy && res.next !== undefined && <button class="btn btn-quiet block" onClick={() => res.load(fetchPage, true)}>{t('More results')}</button>}
-      {!res.busy && !res.error && q.trim() && !res.items.length && <p class="hint center">{t('No songs found.')}</p>}
-      {res.items.length === 1 && isLink(q) && res.items[0].kind !== 'track' && <MusicEmbed m={res.items[0]} />}
-      {!q.trim() && <p class="hint center">{t('Find the song that goes with this moment.')}</p>}
+      {res.busy && <p class="hint center fade-arrive-soft">{t('Searching…')}</p>}
+      {res.error && <p class="error fade-arrive-soft">{res.error}</p>}
+      {!res.busy && res.next !== undefined && <button class="btn btn-quiet block fade-arrive-soft" onClick={() => res.load(fetchPage, true)}>{t('More results')}</button>}
+      {!res.busy && !res.error && q.trim() && !res.items.length && <p class="hint center fade-arrive-soft">{t('No songs found.')}</p>}
+      {res.items.length === 1 && isLink(q) && res.items[0].kind !== 'track' && <div class="fade-arrive-soft"><MusicEmbed m={res.items[0]} /></div>}
+      {!q.trim() && <p class="hint center fade-arrive-soft">{t('Find the song that goes with this moment.')}</p>}
     </div>
   );
 }
@@ -215,7 +215,7 @@ function NowTab({ row, active, onConnect }: { row: (m: Music) => preact.JSX.Elem
 
   if (now?.reconnect)
     return (
-      <div class="empty-note center">
+      <div class="empty-note center fade-arrive-soft">
         <p>{t('Log in with Spotify again to see what you’re listening to.')}</p>
         <button class="btn btn-primary" onClick={onConnect}><Icon name="brand-spotify" size={18} /> {t('Log in again')}</button>
       </div>
@@ -232,11 +232,11 @@ function NowTab({ row, active, onConnect }: { row: (m: Music) => preact.JSX.Elem
       ) : now ? (
         <p class="hint fade-arrive">{t('Nothing playing right now. Play something in Spotify and it’ll show up here.')}</p>
       ) : null}
-      {!now && busy && <p class="hint center">{t('Loading…')}</p>}
-      {error && <p class="error">{error}</p>}
+      {!now && busy && <p class="hint center fade-arrive-soft">{t('Loading…')}</p>}
+      {error && <p class="error fade-arrive-soft">{error}</p>}
       {!!now?.recent.length && (
         <>
-          <span class="section-label">{t('Recently played')}</span>
+          <span class="section-label fade-arrive-soft">{t('Recently played')}</span>
           <div class="tracks fade-rows">{now.recent.map(row)}</div>
         </>
       )}
@@ -285,7 +285,7 @@ function PlaylistsTab({ row, onAddAll }: { row: (m: Music) => preact.JSX.Element
 
   if (open)
     return (
-      <div class="stack">
+      <div class="stack fade-arrive-soft" key="songs">
         <button class="back-link" onClick={() => setOpen(null)}><Icon name="chevron-left" size={18} /> {open.name}</button>
         {onAddAll && open.count > 0 && (
           <button class="btn btn-primary block" onClick={addAll} disabled={!!all && !all.error}>
@@ -293,17 +293,17 @@ function PlaylistsTab({ row, onAddAll }: { row: (m: Music) => preact.JSX.Element
             {all && !all.error ? t('Getting the songs… {got} of {n}', { got: all.got, n: open.count }) : t('Add all {n} songs', { n: open.count })}
           </button>
         )}
-        {all?.error && <p class="error">{all.error}</p>}
+        {all?.error && <p class="error fade-arrive-soft">{all.error}</p>}
         <div class="tracks fade-rows">{songs.items.map(row)}</div>
-        {songs.busy && <p class="hint center">{t('Loading…')}</p>}
-        {songs.error && <p class="error">{songs.error}</p>}
-        {!songs.busy && songs.next !== undefined && <button class="btn btn-quiet block" onClick={() => songs.load((o) => listPlaylistItems(open.id, o), true)}>{t('Load more')}</button>}
-        {!songs.busy && !songs.error && !songs.items.length && <p class="hint center">{t('This playlist is empty.')}</p>}
+        {songs.busy && <p class="hint center fade-arrive-soft">{t('Loading…')}</p>}
+        {songs.error && <p class="error fade-arrive-soft">{songs.error}</p>}
+        {!songs.busy && songs.next !== undefined && <button class="btn btn-quiet block fade-arrive-soft" onClick={() => songs.load((o) => listPlaylistItems(open.id, o), true)}>{t('Load more')}</button>}
+        {!songs.busy && !songs.error && !songs.items.length && <p class="hint center fade-arrive-soft">{t('This playlist is empty.')}</p>}
       </div>
     );
 
   return (
-    <div class="stack">
+    <div class="stack" key="lists">
       <div class="board-grid fade-rows">
         {lists.items.map((p) => (
           <button class="board" onClick={() => setOpen(p)}>
@@ -313,11 +313,11 @@ function PlaylistsTab({ row, onAddAll }: { row: (m: Music) => preact.JSX.Element
           </button>
         ))}
       </div>
-      {lists.busy && <p class="hint center">{t('Loading…')}</p>}
-      {lists.error && <p class="error">{lists.error}</p>}
-      {!lists.busy && lists.next !== undefined && <button class="btn btn-quiet block" onClick={() => lists.load(listPlaylists, true)}>{t('Load more')}</button>}
+      {lists.busy && <p class="hint center fade-arrive-soft">{t('Loading…')}</p>}
+      {lists.error && <p class="error fade-arrive-soft">{lists.error}</p>}
+      {!lists.busy && lists.next !== undefined && <button class="btn btn-quiet block fade-arrive-soft" onClick={() => lists.load(listPlaylists, true)}>{t('Load more')}</button>}
       {!lists.busy && !lists.error && !lists.items.length && lists.next === undefined && (
-        <p class="hint center">{t('No playlists of your own yet. Spotify only lets apps open playlists you made or collaborate on.')}</p>
+        <p class="hint center fade-arrive-soft">{t('No playlists of your own yet. Spotify only lets apps open playlists you made or collaborate on.')}</p>
       )}
     </div>
   );
@@ -376,7 +376,7 @@ function LinkTab({ onAdd, label }: { onAdd: (m: Music) => void; label: string })
         {'clipboard' in navigator && !url && <button type="button" class="btn btn-quiet" onClick={paste}>{t('Paste')}</button>}
       </div>
       <button class="btn btn-primary block" disabled={busy || !url.trim()}>{busy ? t('Finding it…') : t('Get music')}</button>
-      {error && <p class="error">{error}</p>}
+      {error && <p class="error fade-arrive-soft">{error}</p>}
       {preview && (
         <div class="stack fade-arrive-soft">
           <MusicEmbed m={preview} />

@@ -26,3 +26,7 @@
 
 @media (min-width: 560px) { .brain-zones { grid-template-columns: repeat(4, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .brain-zone-lit::after { transition: none; } }
+
+/* the sky charts' labels and hit areas (components/CloudChart.tsx) are added once the chart has been measured: they fade in with the clouds */
+.cc-over { animation: fade-in var(--dur-3) var(--ease) backwards; }
+@media (prefers-reduced-motion: reduce) { .cc-over { animation: none; } }

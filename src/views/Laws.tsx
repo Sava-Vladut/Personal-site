@@ -12,7 +12,7 @@ import { PageHead } from '../components/PageHead';
 import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, Ico, LensSwitch, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LensSwitch, LinkRow, Meter, Option, Row, Tally, Today, Verdict, jumpTop, playIcon, shuffle, useLive, useLocal, useSwapped } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/laws.css';
 
@@ -146,35 +146,39 @@ function NameTheMove({ open }: { open: (x: Law) => void }) {
   };
   const next = () => { setRound(deal(round.law.n)); setPicked(null); };
   const won = picked === round.law.n;
+  // the next scene and its answers rise in together (not the first one: the card is already arriving with the page)
+  const dealt = useLive(round.law.n);
   return (
     <div class="lrn-quiz">
-      <p class="lrn-q lw-scene">{round.law.scenario}</p>
-      <div class="lrn-opts">
-        {round.options.map((x, i) => {
-          const state = picked == null ? 'idle' : x.n === round.law.n ? 'right' : picked === x.n ? 'wrong' : 'idle';
-          return (
-            <Option
-              index={i}
-              label={x.title}
-              state={state}
-              disabled={picked != null && state === 'idle'}
-              pressed={picked === x.n}
-              onClick={() => pick(x.n)}
-            />
-          );
-        })}
+      <div key={round.law.n} class={dealt ? 'fade-arrive-soft' : undefined}>
+        <p class="lrn-q lw-scene">{round.law.scenario}</p>
+        <div class="lrn-opts">
+          {round.options.map((x, i) => {
+            const state = picked == null ? 'idle' : x.n === round.law.n ? 'right' : picked === x.n ? 'wrong' : 'idle';
+            return (
+              <Option
+                index={i}
+                label={x.title}
+                state={state}
+                disabled={picked != null && state === 'idle'}
+                pressed={picked === x.n}
+                onClick={() => pick(x.n)}
+              />
+            );
+          })}
+        </div>
       </div>
       <div class="lw-verdict" role="status">
         {picked != null && (
-          <p class="lrn-verdict">
+          <Verdict>
             <b class={won ? 'is-right' : 'is-wrong'}>{won ? t('Right.') : t('It was law {n}.', { n: round.law.n })}</b> {round.law.line}
-          </p>
+          </Verdict>
         )}
       </div>
       <div class="lrn-quiz-foot">
         <p class="lrn-score">{score.played > 0 ? `${t('{right} of {played}', score)}${score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}` : ''}</p>
-        {/* always laid out (hidden until you answer), so the card keeps its height between rounds */}
-        <div class="lw-game-actions" style={picked == null ? { visibility: 'hidden' } : undefined}>
+        {/* always laid out (faded out until you answer), so the card keeps its height between rounds */}
+        <div class={picked == null ? 'lw-game-actions is-off' : 'lw-game-actions'} inert={picked == null}>
           <button class="btn btn-quiet btn-s" onClick={() => open(round.law)}>{t('Read the law')}</button>
           <button class="btn btn-primary btn-s" onClick={next}>{t('Next move')} <Ico name="chevron-right" size={16} /></button>
         </div>
@@ -218,12 +222,15 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
   const kin = x.kin.map((k) => BY_N.get(k)).filter((k): k is Law => !!k);
   // on a shared link there's nowhere to go (no handlers), so those links hide, and with them the whole section
   const linked = (openTrap && traps.length > 0) || (openPrinciple && answers.length > 0) || (go && kin.length > 0);
+  // switching the lens fades the reordered chapters in, one after another (learn.css .is-swapped)
+  const swapped = useSwapped(x.n, lens);
+  const sec = swapped ? 'lrn-d-sec is-swapped' : 'lrn-d-sec';
 
   // one idea to a chapter: a heading and one paragraph, and at most one list or story under it, so each reads as one
-  // chunk with a rest after it. Keyed, so switching the lens moves them rather than rewriting them in place.
+  // chunk with a rest after it. Keyed by the lens too, so switching it brings them in afresh, in their new order.
   const chapters = {
     law: (
-      <section class="lrn-d-sec" key="law">
+      <section class={sec} key={`${lens}:law`}>
         <h3 class="lrn-d-h">{t('The law')}</h3>
         <p class="lrn-d-p is-lead">{x.gist}</p>
         {/* the story right after the idea, so the idea sticks */}
@@ -231,7 +238,7 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
       </section>
     ),
     why: (
-      <section class="lrn-d-sec" key="why">
+      <section class={sec} key={`${lens}:why`}>
         <h3 class="lrn-d-h">{t('Why it works')}</h3>
         <p class="lrn-d-p">{x.mind}</p>
         <div class="lrn-d-group">
@@ -241,25 +248,25 @@ function LawDetail({ x, lens, onLens, seen, onSeen, go, openTrap, openPrinciple,
       </section>
     ),
     test: (
-      <section class="lrn-d-sec" key="test">
+      <section class={sec} key={`${lens}:test`}>
         <h3 class="lrn-d-h">{t('Put to the test')}</h3>
         <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
       </section>
     ),
     today: (
-      <section class="lrn-d-sec" key="today">
+      <section class={sec} key={`${lens}:today`}>
         <h3 class="lrn-d-h">{t('Where you’ll meet it today')}</h3>
         <ul class="lrn-list">{x.today.map((l) => <li>{l}</li>)}</ul>
       </section>
     ),
     signs: (
-      <section class="lrn-d-sec" key="signs">
+      <section class={sec} key={`${lens}:signs`}>
         <h3 class="lrn-d-h">{t('How to spot it')}</h3>
         <ul class="lrn-list">{x.signs.map((l) => <li>{l}</li>)}</ul>
       </section>
     ),
     defence: (
-      <section class="lrn-d-sec" key="defence">
+      <section class={sec} key={`${lens}:defence`}>
         <h3 class="lrn-d-h">{t('How to defend yourself')}</h3>
         <ol class="lrn-list is-steps">{x.defense.map((l) => <li>{l}</li>)}</ol>
       </section>
@@ -524,7 +531,7 @@ export function Laws({ query: params }: { query: URLSearchParams }) {
                       about={info && picked ? t(info.about) : undefined}
                       count={g.laws.length}
                     />
-                    <ol class="lrn-rows">
+                    <ol class="lrn-rows fade-rows-soft">
                       {g.laws.map((x, i) => {
                         const s = seen[x.n];
                         return (

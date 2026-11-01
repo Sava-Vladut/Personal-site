@@ -350,3 +350,21 @@ html:not([data-nav]) { transition: --accent var(--dur-3) ease; }
 
 /* a week of the calendar shouldn't fill a phone with big squares */
 .pixels.weeks { max-width: 300px; }
+
+/* ---------- things that appear ---------- */
+
+/* the tooltip fades up from just below its mark. It stays mounted while the pointer moves between marks, so this
+   plays once per hover; `translate` and `scale` leave its own `transform` (the centring) alone */
+.tooltip { animation: tip-arrive var(--dur-1) var(--ease-emph) backwards; }
+@keyframes tip-arrive { from { opacity: 0; translate: 0 4px; scale: 0.97; } }
+/* the crosshair and the dot on the line fade in when the pointer reaches the chart, not snap on */
+.chart .crosshair, .chart .dot.ring, .cc-cross { animation: fade-in var(--dur-1) var(--ease) backwards; }
+/* the chart ⇄ table switch: the table settles in like the chart does */
+.chart-card .table-wrap { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+/* a tab with nothing to show (no weather, no places) arrives with the rest of the tab */
+.tab-panel > .weather-empty { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+/* the brain's description changes with the part you pick: the new text rises in */
+.brain-detail > * { animation: arrive-soft var(--dur-2) var(--ease-emph) backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .tooltip, .chart .crosshair, .chart .dot.ring, .cc-cross, .chart-card .table-wrap, .tab-panel > .weather-empty, .brain-detail > * { animation: none; }
+}

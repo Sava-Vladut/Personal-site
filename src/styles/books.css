@@ -7,6 +7,10 @@
 }
 .book-cover.tinted { background: color-mix(in oklab, var(--c) 30%, var(--surface-2)); }
 .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+/* a cover (book, record, tape) fades up once it has loaded, rather than popping in over its placeholder (components/books.tsx artIn) */
+.art-fade { opacity: 0; transition: opacity var(--dur-3) var(--ease); }
+.art-fade.is-in { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .art-fade { transition: none; } }
 .book-cover-title {
   padding: 8%; font-family: var(--serif); font-weight: var(--w-bold); line-height: 1.15; text-align: center;
   display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;

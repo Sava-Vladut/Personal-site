@@ -99,6 +99,8 @@
   }
   .note-status-item { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; white-space: nowrap; }
   .note-save { min-width: 7em; }
+  /* the word count's "min read" appears with the first words; Saved / Not saved come in as the note is kept */
+  .note-min, .note-save:not(.is-now) { animation: fade-in var(--dur-2) ease-out; }
   .note-save svg { color: var(--word-ink); }
   .note-save svg.is-hidden { visibility: hidden; }
   .note-save.is-error { color: var(--danger); }

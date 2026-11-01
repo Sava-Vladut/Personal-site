@@ -96,7 +96,7 @@ export function Streamer({ query }: { query: URLSearchParams }) {
           <button class="btn btn-primary" disabled={!typed.trim()}>{t('Look up')}</button>
         </form>
         {chips.length > 0 && (
-          <div class="chips filters scroll-x" role="toolbar" aria-label={t('Channel')}>
+          <div class="chips filters scroll-x fade-arrive-soft" role="toolbar" aria-label={t('Channel')}>
             {chips.map((c) => (
               <button class="chip" aria-pressed={c.login === login} onClick={() => go(c.login)} title={c.live ? t('Live: {game}', { game: c.live.game ?? '—' }) : undefined}>
                 {c.live && <span class="tw-live" aria-label={t('live')} />}{c.name}
@@ -105,7 +105,7 @@ export function Streamer({ query }: { query: URLSearchParams }) {
           </div>
         )}
         {shown && shown.streams.length > 0 && (
-          <div class="seg tabs sr-range" role="tablist" aria-label={t('Time range')} style={{ '--at': RANGES.findIndex((r) => r[0] === rangeId), '--tabs': RANGES.length }}>
+          <div class="seg tabs sr-range fade-arrive-soft" role="tablist" aria-label={t('Time range')} style={{ '--at': RANGES.findIndex((r) => r[0] === rangeId), '--tabs': RANGES.length }}>
             {RANGES.map(([id, name]) => (
               <button role="tab" aria-selected={id === rangeId} onClick={() => go(login, id)}>{name}</button>
             ))}

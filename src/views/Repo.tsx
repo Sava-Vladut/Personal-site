@@ -24,7 +24,7 @@ const factsOf = (g: GhRepo): Pick<Repo, 'name' | 'description' | 'language' | 'p
 /** Why GitHub's answer didn't come, in a sentence. */
 function Trouble({ error, status, what, onRetry }: { error: string; status?: number; what: string; onRetry: () => void }) {
   return (
-    <div class="repo-trouble">
+    <div class="repo-trouble fade-arrive-soft">
       <p class="muted small">{status === 401 ? t('Log in with GitHub to see {what}.', { what }) : error}</p>
       {status === 401 ? <button class="btn btn-primary btn-s" onClick={() => connectGithub()}>{t('Log in')}</button> : <button class="btn btn-quiet btn-s" onClick={onRetry}><Icon name="refresh" size={16} /> {t('Try again')}</button>}
     </div>
@@ -98,8 +98,8 @@ function CommitLog({ id }: { id: string }) {
       {state.loading && <p class="repo-wait loading-note">{t('Reading the commits…')}</p>}
       {state.error && <Trouble error={state.error} status={state.status} what={t('its commits')} onRetry={() => (items.length ? more(next ?? 1) : setRound((r) => r + 1))} />}
       {!state.loading && !state.error && !items.length && <p class="empty-note">{t('No commits yet.')}</p>}
-      {!state.loading && next && items.length > 0 && <button class="btn btn-quiet gl-load" onClick={() => more(next)}>{t('Older commits')}</button>}
-      {!state.loading && !next && items.length > 0 && <p class="gl-end" aria-hidden="true">— {t('the first commit')} —</p>}
+      {!state.loading && next && items.length > 0 && <button class="btn btn-quiet gl-load fade-arrive-soft" onClick={() => more(next)}>{t('Older commits')}</button>}
+      {!state.loading && !next && items.length > 0 && <p class="gl-end fade-arrive-soft" aria-hidden="true">— {t('the first commit')} —</p>}
     </div>
   );
 }
@@ -110,11 +110,12 @@ function ReadmeFrame({ id, base }: { id: string; base: { repo: string; branch: s
   const [whole, setWhole] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const [tall, setTall] = useState(false);
+  const [full, setFull] = useState(0);
   // tall enough to need the button? Pictures arriving later can change that, so keep watching its size
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    const measure = () => setTall(el.scrollHeight > 460);
+    const measure = () => { setTall(el.scrollHeight > 460); setFull(el.scrollHeight); };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const watch = new ResizeObserver(measure);
@@ -129,8 +130,8 @@ function ReadmeFrame({ id, base }: { id: string; base: { repo: string; branch: s
       {readme.data && (readme.data.text === null || !readme.data.text.trim()) && <p class="empty-note">{t('This repo has no README.')}</p>}
       {readme.data?.text?.trim() && (
         <>
-          <div ref={box} class={`rd-scroll fade-arrive-soft${tall && !whole ? ' is-clipped' : ''}`}><Readme text={readme.data.text} base={base} /></div>
-          {tall && <button class="rd-expand" aria-expanded={whole} onClick={() => setWhole(!whole)}>{whole ? t('Show less') : t('Show the whole README')}</button>}
+          <div ref={box} class={`rd-scroll fade-arrive-soft${tall && !whole ? ' is-clipped' : ''}`} style={full ? { '--full': `${full}px` } : undefined}><Readme text={readme.data.text} base={base} /></div>
+          {tall && <button class="rd-expand fade-arrive-soft" aria-expanded={whole} onClick={() => setWhole(!whole)}>{whole ? t('Show less') : t('Show the whole README')}</button>}
         </>
       )}
     </div>
@@ -170,14 +171,14 @@ function CloneToServer({ id }: { id: string }) {
   };
   const running = busy || job?.state === 'running';
   return (
-    <div class="repo-clone">
+    <div class="repo-clone fade-arrive-soft">
       {job?.state !== 'done' && (
         <button class="btn btn-quiet btn-s" onClick={start} disabled={running}>
           {running ? <><Spin /> {t('Cloning onto the server…')}</> : <><Icon name="download" size={16} /> {job?.state === 'failed' ? t('Try the clone again') : t('Clone to the server')}</>}
         </button>
       )}
-      {job?.state === 'done' && <p class="muted small"><Icon name="check" size={14} /> {t('Cloned to {path}', { path: job.path })}</p>}
-      {(error || (job?.state === 'failed' && job.error)) && <p class="muted small">{error || t(job!.error!)}</p>}
+      {job?.state === 'done' && <p class="muted small fade-arrive-soft"><Icon name="check" size={14} /> {t('Cloned to {path}', { path: job.path })}</p>}
+      {(error || (job?.state === 'failed' && job.error)) && <p class="muted small fade-arrive-soft">{error || t(job!.error!)}</p>}
     </div>
   );
 }
@@ -320,14 +321,14 @@ export function RepoView({ id }: { id: string }) {
         <div class="repo-facts">
           <span class="repo-vis">{isPrivate ? <><Icon name="lock" size={14} /> {t('Private')}</> : t('Public')}</span>
           {language && <span class="repo-lang"><i style={{ background: languageColor(language) }} />{language}</span>}
-          {gh && gh.stars > 0 && <span><Icon name="star" size={13} /> {gh.stars}</span>}
-          {gh?.fork && <span>{t('Fork')}</span>}
-          {gh?.archived && <span>{t('Archived')}</span>}
-          {gh?.pushed && <span>{t('pushed {when}', { when: ago(gh.pushed) })}</span>}
+          {gh && gh.stars > 0 && <span class="fade-arrive-soft"><Icon name="star" size={13} /> {gh.stars}</span>}
+          {gh?.fork && <span class="fade-arrive-soft">{t('Fork')}</span>}
+          {gh?.archived && <span class="fade-arrive-soft">{t('Archived')}</span>}
+          {gh?.pushed && <span class="fade-arrive-soft">{t('pushed {when}', { when: ago(gh.pushed) })}</span>}
         </div>
         <h1 class="repo-title"><small>{owner}</small>{short}</h1>
-        {description && <p class="repo-about">{description}</p>}
-        {url && <a class="repo-open" href={url} target="_blank" rel="noopener noreferrer"><Icon name="external-link" size={15} /> {t('Open on GitHub')}</a>}
+        {description && <p class="repo-about fade-arrive-soft">{description}</p>}
+        {url && <a class="repo-open fade-arrive-soft" href={url} target="_blank" rel="noopener noreferrer"><Icon name="external-link" size={15} /> {t('Open on GitHub')}</a>}
         <CloneToServer id={number} />
         <Stars value={draft.rating} onChange={(rating) => update({ rating })} size={24} />
       </div>
@@ -341,7 +342,7 @@ export function RepoView({ id }: { id: string }) {
           </button>
         )}
       </div>
-      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition">{EMOTION[draft.emotions[0]].def}</p>}
+      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition fade-arrive-soft" key={draft.emotions[0]}>{EMOTION[draft.emotions[0]].def}</p>}
 
       <MentionText
         class="body-input person-text"

@@ -85,7 +85,7 @@ function PointsPage({ query }: { query: URLSearchParams }) {
           )}
         />
         {data && data.channels.length > 1 && (
-          <div class="chips filters scroll-x" role="toolbar" aria-label={t('Channel')}>
+          <div class="chips filters scroll-x fade-arrive-soft" role="toolbar" aria-label={t('Channel')}>
             <button class="chip" aria-pressed={!channel} onClick={() => select(null)}>{t('All channels')}</button>
             {data.channels.map((c) => (
               <button class="chip" aria-pressed={channel === c} onClick={() => select(c.name)}>

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION, shortName } from '../data/emotions';
 import { fingerprint, partsOf, publicNote, publish, shareUrl, unpublish } from '../lib/share';
 import { toast, type Entry, type Share, type SharePart } from '../lib/store';
@@ -37,6 +38,12 @@ function PartValue({ part, entry }: { part: SharePart; entry: Entry }) {
   }
 }
 
+/** A piece of the sheet. One put in after the sheet is open comes up softly; what's there as it opens comes with the sheet. */
+function Soft({ lively, tag: Tag = 'div', class: cls = '', children }: { lively: { current: boolean }; tag?: 'div' | 'p'; class?: string; children: ComponentChildren }) {
+  const [soft] = useState(() => lively.current);
+  return <Tag class={`${cls}${soft ? ' fade-arrive-soft' : ''}`}>{children}</Tag>;
+}
+
 /**
  * Making this one note public. Off until turned on here, for this note only. The link is secret (nobody can guess it),
  * but anyone who has it can read the note, so it can be switched off again at any time.
@@ -45,6 +52,8 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [parts, setParts] = useState<SharePart[]>(entry.share?.parts ?? []);
+  const lively = useRef(false);
+  if (!open) lively.current = false;
   useEffect(() => {
     if (!open) return;
     setError('');
@@ -56,9 +65,10 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
   const offered = partsOf(entry);
   const chosen = parts.filter((p) => offered.includes(p));
   const changed = !!share && share.hash !== fingerprint(publicNote(entry, chosen));
-  const toggle = (p: SharePart) => setParts((list) => (list.includes(p) ? list.filter((x) => x !== p) : [...list, p]));
+  const toggle = (p: SharePart) => (lively.current = true, setParts((list) => (list.includes(p) ? list.filter((x) => x !== p) : [...list, p])));
 
   const run = async (work: () => Promise<void>) => {
+    lively.current = true;
     setBusy(true);
     setError('');
     try {
@@ -116,7 +126,7 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
     <Sheet open={open} onClose={onClose} title={t('Public link')}>
       <div class="share-sheet">
         {!share ? (
-          <>
+          <Soft key="private" lively={lively} class="share-view">
             <p class="share-lead">{t('Anyone with the link can read this note without signing in. Only this note is shared, and you can stop at any time.')}</p>
             <ul class="share-facts">
               <li><Icon name="check" size={16} /> <span>{t('Always shared: the title, the text, the pictures and the day.')}</span></li>
@@ -126,9 +136,9 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
             <button class="btn btn-primary share-main" onClick={makePublic} disabled={busy}>
               {busy ? t('Making it public…') : t('Make public')}
             </button>
-          </>
+          </Soft>
         ) : (
-          <>
+          <Soft key="public" lively={lively} class="share-view">
             <p class="share-lead">{t('Anyone with this link can read this note. Nobody can find it without the link.')}</p>
             {parts_}
             <div class="share-link">
@@ -137,17 +147,17 @@ export function ShareSheet({ open, onClose, entry, onChange }: { open: boolean; 
               {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={18} /></button>}
             </div>
             {changed ? (
-              <div class="share-changed">
+              <Soft key="changed" lively={lively} class="share-changed">
                 <span>{t('The public page shows an earlier version of this note, or other details than the ones chosen here.')}</span>
                 <button class="btn btn-primary btn-s" onClick={makePublic} disabled={busy}>{busy ? t('Updating…') : t('Update public copy')}</button>
-              </div>
+              </Soft>
             ) : (
-              <p class="share-ok"><Icon name="check" size={16} /> {t('The public page shows this note as it is now.')}</p>
+              <Soft key="ok" tag="p" lively={lively} class="share-ok"><Icon name="check" size={16} /> {t('The public page shows this note as it is now.')}</Soft>
             )}
             <button class="btn btn-quiet share-stop danger" onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
-          </>
+          </Soft>
         )}
-        {error && <p class="share-error" role="alert">{error}</p>}
+        {error && <Soft key="error" tag="p" lively={lively} class="share-error">{error}</Soft>}
       </div>
     </Sheet>
   );

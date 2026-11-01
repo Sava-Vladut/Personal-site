@@ -170,6 +170,15 @@
   .pp-dot, .pp-bar > span, .pp-run, .pp-feel-who { animation: none; }
 }
 
+/* ---------- things that appear ---------- */
+
+/* the one-line reading under the map comes back (after a person's card goes) the way the card arrives; a chip added to
+   a person, or a tagged person, settles in; the notes beside the list (shifting, drifting, coming up) arrive as they're
+   worked out, and the "not felt yet" row when someone is added without a feeling */
+.pp-feel-read, .pp-note, .pp-unfelt, .pp-run-note { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+.person-meta > .emo, .meta > .person-chip { animation: arrive-soft var(--dur-2) var(--ease-emph) backwards; }
+@media (prefers-reduced-motion: reduce) { .pp-feel-read, .pp-note, .pp-unfelt, .pp-run-note, .person-meta > .emo, .meta > .person-chip { animation: none; } }
+
 /* ---------- a wide screen: the wheel pinned at the left, the rest beside it; the notes get their own column ---------- */
 
 @media (min-width: 1024px) {

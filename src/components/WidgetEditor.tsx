@@ -6,6 +6,7 @@ import { haptic } from '../lib/haptics';
 import { t } from '../lib/i18n';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import { Unfold } from './Unfold';
 import '../styles/wheel.css';
 import '../styles/widgets.css';
 
@@ -73,7 +74,7 @@ export function WidgetEditor({ open, onClose }: { open: boolean; onClose: () => 
                           </button>
                         </div>
                       </div>
-                      {!off && w.options.map((o) => {
+                      <Unfold open={!off}>{w.options.map((o) => {
                         const now = layout.options[w.id]?.[o.key] ?? o.fallback;
                         return (
                           <div class="wd-opt" style={{ '--c': `var(--emo-${w.hue})` }} key={o.key}>
@@ -85,7 +86,7 @@ export function WidgetEditor({ open, onClose }: { open: boolean; onClose: () => 
                             </div>
                           </div>
                         );
-                      })}
+                      })}</Unfold>
                     </div>
                   );
                 })}

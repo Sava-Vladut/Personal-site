@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { pushBack } from '../lib/router';
 import { Icon } from './icons';
+import { Unfold } from './Unfold';
 import { t } from '../lib/i18n';
 
 /** Focus into a sheet as it opens: the field that asks for it (autofocus), else the sheet itself; not when it's in already. */
@@ -109,7 +110,8 @@ export function Sheet({ open, onClose, title, children, footer, tall, label, cla
           </header>
         )}
         <div class="sheet-body">{children}</div>
-        {footer && <footer class="sheet-foot">{footer}</footer>}
+        {/* a footer that turns up once the sheet is open (a selection to add) unfolds; one there from the start comes with the sheet */}
+        <Unfold open={!!footer} class="sheet-foot-wrap"><footer class="sheet-foot">{footer}</footer></Unfold>
       </div>
     </div>
   );

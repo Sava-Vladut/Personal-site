@@ -18,7 +18,7 @@ import { PageHead } from '../components/PageHead';
 import { LearnShare, SharedEntry, ShareButton, onSharedLink, type ShareTarget } from '../components/LearnShare';
 import { Sky } from '../components/Sky';
 import { SortChip } from '../components/collection';
-import { Aside, Caption, DetailHead, GroupHead, Ico, LensSwitch, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal } from '../components/learn';
+import { Aside, Caption, DetailHead, GroupHead, Ico, LensSwitch, LinkRow, Meter, Option, Row, Tally, Today, jumpTop, playIcon, shuffle, useLocal, Verdict, useLive, useSwapped } from '../components/learn';
 import '../styles/stats.css';
 import '../styles/seduction.css';
 
@@ -232,31 +232,35 @@ function NameIt({ open }: { open: (x: Entry) => void }) {
   };
   const next = () => { setRound(deal(round.x.id)); setPicked(null); };
   const won = picked === round.x.id;
+  // the next scene, its question and its answers rise in together (not the first: the card is already arriving with the page)
+  const dealt = useLive(round.x.id);
   return (
     <section class="card lrn-card">
       <header class="lrn-card-head">
         <h3 class="lrn-card-title">{t('Name it')}</h3>
-        <p class="lrn-card-sub">{t(ASK[round.x.kind])}</p>
+        <p key={round.x.id} class={dealt ? 'lrn-card-sub fade-arrive-soft' : 'lrn-card-sub'}>{t(ASK[round.x.kind])}</p>
       </header>
       <div class="lrn-quiz">
-        <p class="lrn-q sd-scene">{round.x.scenario}</p>
-        <div class="lrn-opts">
-          {round.options.map((o, i) => {
-            const state = picked == null ? 'idle' : o.id === round.x.id ? 'right' : picked === o.id ? 'wrong' : 'idle';
-            return <Option index={i} label={o.title} state={state} disabled={picked != null && state === 'idle'} pressed={picked === o.id} onClick={() => pick(o.id)} />;
-          })}
+        <div key={round.x.id} class={dealt ? 'fade-arrive-soft' : undefined}>
+          <p class="lrn-q sd-scene">{round.x.scenario}</p>
+          <div class="lrn-opts">
+            {round.options.map((o, i) => {
+              const state = picked == null ? 'idle' : o.id === round.x.id ? 'right' : picked === o.id ? 'wrong' : 'idle';
+              return <Option index={i} label={o.title} state={state} disabled={picked != null && state === 'idle'} pressed={picked === o.id} onClick={() => pick(o.id)} />;
+            })}
+          </div>
         </div>
         <div class="sd-verdict" role="status">
           {picked != null && (
-            <p class="lrn-verdict">
+            <Verdict>
               <b class={won ? 'is-right' : 'is-wrong'}>{won ? t('Right.') : t('It was {title}.', { title: round.x.title })}</b> {round.x.line}
-            </p>
+            </Verdict>
           )}
         </div>
         <div class="lrn-quiz-foot">
           <p class="lrn-score">{score.played > 0 ? `${t('{right} of {played}', score)}${score.streak > 2 ? ` · ${t('{n} in a row', { n: score.streak })}` : ''}` : ''}</p>
-          {/* always laid out (hidden until you answer), so the card keeps its height between rounds */}
-          <div class="sd-game-actions" style={picked == null ? { visibility: 'hidden' } : undefined}>
+          {/* always laid out (faded out until you answer), so the card keeps its height between rounds */}
+          <div class={picked == null ? 'sd-game-actions is-off' : 'sd-game-actions'} inert={picked == null}>
             <button class="btn btn-quiet btn-s" onClick={() => open(round.x)}>{t('Read it')}</button>
             <button class="btn btn-primary btn-s" onClick={next}>{t('Next one')} <Ico name="chevron-right" size={16} /></button>
           </div>
@@ -332,19 +336,22 @@ function EntryDetail({ x, lens, onLens, seen, onSeen, onMe, go, openTrap, openLa
     : x.kind === 'seducer' ? (DRAWS.get(x.id) ?? []).map(({ v, how }) => ({ e: v as Entry, how })) : [];
   // on a shared link there's nowhere to go (no handlers), so those links hide, and with them the whole section
   const linked = (go && (pairs.length > 0 || kin.length > 0)) || (openTrap && traps.length > 0) || (openLaw && laws.length > 0);
+  // switching the lens fades the reordered chapters in, one after another (learn.css .is-swapped)
+  const swapped = useSwapped(x.id, lens);
+  const sec = swapped ? 'lrn-d-sec is-swapped' : 'lrn-d-sec';
 
-  // one idea to a chapter: a heading and one paragraph, and at most one list or story under it. Keyed, so switching
-  // the lens moves them rather than rewriting them in place.
+  // one idea to a chapter: a heading and one paragraph, and at most one list or story under it. Keyed by the lens
+  // too, so switching it brings them in afresh, in their new order.
   const chapters: Record<Chapter, JSX.Element | null> = {
     what: (
-      <section class="lrn-d-sec" key="what">
+      <section class={sec} key={`${lens}:what`}>
         <h3 class="lrn-d-h">{L.what}</h3>
         <p class="lrn-d-p is-lead">{x.gist}</p>
         <Aside icon="book" label={t('From history')} title={x.scene.who} who={x.scene.when}>{x.scene.text}</Aside>
       </section>
     ),
     core: x.kind === 'seducer' ? (
-      <section class="lrn-d-sec" key="core">
+      <section class={sec} key={`${lens}:core`}>
         <h3 class="lrn-d-h">{x.anti ? t('What they fail to offer') : t('What they offer')}</h3>
         <p class="lrn-d-p">{x.offers}</p>
         <div class="lrn-d-group">
@@ -353,13 +360,13 @@ function EntryDetail({ x, lens, onLens, seen, onSeen, onMe, go, openTrap, openLa
         </div>
       </section>
     ) : x.kind === 'victim' ? (
-      <section class="lrn-d-sec" key="core">
+      <section class={sec} key={`${lens}:core`}>
         <h3 class="lrn-d-h">{t('What they lack')}</h3>
         <p class="lrn-d-p">{x.lack}</p>
       </section>
     ) : null,
     why: (
-      <section class="lrn-d-sec" key="why">
+      <section class={sec} key={`${lens}:why`}>
         <h3 class="lrn-d-h">{L.why}</h3>
         <p class="lrn-d-p">{x.mind}</p>
         <div class="lrn-d-group">
@@ -369,25 +376,25 @@ function EntryDetail({ x, lens, onLens, seen, onSeen, onMe, go, openTrap, openLa
       </section>
     ),
     test: (
-      <section class="lrn-d-sec" key="test">
+      <section class={sec} key={`${lens}:test`}>
         <h3 class="lrn-d-h">{t('Put to the test')}</h3>
         <Aside icon="info-circle" label={t('The experiment')} title={x.study.title} who={x.study.who}>{x.study.text}</Aside>
       </section>
     ),
     today: (
-      <section class="lrn-d-sec" key="today">
+      <section class={sec} key={`${lens}:today`}>
         <h3 class="lrn-d-h">{L.today}</h3>
         <ul class="lrn-list">{x.today.map((l) => <li>{l}</li>)}</ul>
       </section>
     ),
     signs: (
-      <section class="lrn-d-sec" key="signs">
+      <section class={sec} key={`${lens}:signs`}>
         <h3 class="lrn-d-h">{L.signs}</h3>
         <ul class="lrn-list">{x.signs.map((l) => <li>{l}</li>)}</ul>
       </section>
     ),
     defence: (
-      <section class="lrn-d-sec" key="defence">
+      <section class={sec} key={`${lens}:defence`}>
         <h3 class="lrn-d-h">{L.defence}</h3>
         <ol class="lrn-list is-steps">{x.defense.map((l) => <li>{l}</li>)}</ol>
       </section>
@@ -683,7 +690,7 @@ export function Seduction({ query: params }: { query: URLSearchParams }) {
                     about={g.info && group !== 'all' ? t(g.info.about) : undefined}
                     count={g.list.length}
                   />
-                  <ol class="lrn-rows">
+                  <ol class="lrn-rows fade-rows-soft">
                     {g.list.map((x, i) => {
                       const s = seen[x.id];
                       const grouped = !q && (sort === 'group' || group !== 'all');

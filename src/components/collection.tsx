@@ -89,7 +89,7 @@ export function Runs<T>({ runs, row }: { runs: [string, T[]][]; row: (x: T) => C
       {runs.map(([label, list]) => (
         <section class="mx-run" key={label}>
           {runs.length > 1 && <h3 class="mx-run-label">{label}</h3>}
-          <div class="mx-rows">{list.map(row)}</div>
+          <div class="mx-rows fade-rows-soft">{list.map(row)}</div>
         </section>
       ))}
     </div>

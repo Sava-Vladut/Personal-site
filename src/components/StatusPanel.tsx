@@ -153,10 +153,10 @@ export function StatusPanel() {
               <Sprite core={em.core} size={22} />
               <span class="status-preview-main">
                 <span class="status-preview-name">{em.depth === 0 ? shortName(em.id) : em.name} · <span class="muted">{INTENSITY[preview.intensity - 1]} · {timeLabel(preview.time)}</span></span>
-                {preview.text && <span class="status-preview-note">“{preview.text}”</span>}
+                {preview.text && <span class="status-preview-note fade-arrive-soft">“{preview.text}”</span>}
                 {trail && <StatusTrail trail={trail} compact />}
                 {(d?.people || d?.place || d?.weather) && (
-                  <span class="status-preview-extra">
+                  <span class="status-preview-extra fade-arrive-soft">
                     {d.people && <span><Icon name="heart" size={14} /> {d.people.map((p) => p.name).join(', ')}</span>}
                     {d.place && <span><Icon name="map-pin" size={14} /> {d.place.name}</span>}
                     {d.weather && <span><Icon name="cloud" size={14} /> {fmtTemp(d.weather.temp)} · {weatherName(d.weather.code)}</span>}
@@ -229,11 +229,11 @@ export function StatusPanel() {
             <button class="btn btn-quiet share-stop danger fade-arrive" style={{ '--i': 2 }} onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
           </>
         ) : (
-          <button class="btn btn-primary share-main" onClick={start} disabled={busy || (!status && !!loadError)}>
+          <button class="btn btn-primary share-main fade-arrive" onClick={start} disabled={busy || (!status && !!loadError)}>
             {busy ? t('Making it public…') : t('Make public')}
           </button>
         )}
-        {(error || (!status && loadError)) && <p class="share-error" role="alert">{error || loadError}</p>}
+        {(error || (!status && loadError)) && <p class="share-error fade-arrive-soft" role="alert">{error || loadError}</p>}
       </div>
   );
 }

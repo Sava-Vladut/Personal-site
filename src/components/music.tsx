@@ -4,6 +4,7 @@ import { useRef, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
 import { embedHeight, embedUrl, KIND_LABEL } from '../lib/spotify';
 import { blankSong, findSong, getSongs, saveSong, toast, useSongs, type Music, type Song } from '../lib/store';
+import { artIn } from './books';
 import { Icon } from './icons';
 import '../styles/objects.css';
 import { t } from '../lib/i18n';
@@ -25,7 +26,7 @@ const SMALL = 100;
 
 const Art = ({ m, class: cls, small }: { m: Music; class: string; small?: boolean }) =>
   m.image
-    ? <img class={cls} src={small ? smallArt(m.image) : m.image} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable={false} />
+    ? <img class={`${cls} art-fade`} src={small ? smallArt(m.image) : m.image} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable={false} onLoad={artIn} />
     : <span class={`${cls} no-art`} />;
 
 const sized = (size?: number) => (size ? { '--s': `${size}px` } : undefined);

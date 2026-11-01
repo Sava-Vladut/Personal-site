@@ -71,7 +71,7 @@ export function BooksTab({ q, onClearSearch, onAdd }: { q: string; onClearSearch
   return (
     <div class={`mx${now ? ' has-now' : ''}`}>
       {now && (
-        <div class="mx-now">
+        <div class="mx-now fade-arrive-soft">
           {reading.length > 0 && (
             <section class="mx-rail">
               <MediaHead title={t('Reading now')} icon="book" count={reading.length > 1 ? reading.length : undefined} />
@@ -132,7 +132,7 @@ export function BooksTab({ q, onClearSearch, onAdd }: { q: string; onClearSearch
               <SortChip sort={sort} onSort={setSort} />
             </MediaHead>
             {chips.length > 0 && (
-              <div class="chips scroll-x mx-chips" role="toolbar" aria-label={t('Shelf and order')}>
+              <div class="chips scroll-x mx-chips fade-arrive-soft" role="toolbar" aria-label={t('Shelf and order')}>
                 <button class="chip" aria-pressed={shelf === 'all'} onClick={() => setShelf('all')}>{t('All')} {books.length}</button>
                 {chips.map((s) => <button class="chip" aria-pressed={shelf === s} onClick={() => setShelf(s)}>{STATUS_LABEL[s]} {count(s)}</button>)}
               </div>

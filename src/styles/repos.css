@@ -95,7 +95,7 @@
 .gl-msg { text-align: left; font-size: var(--text-base); line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
 @media (hover: hover) { button.gl-msg:hover { text-decoration: underline; text-underline-offset: 3px; } }
 .gl-more { color: var(--ink-3); font-family: var(--mono); }
-.gl-body { margin: 2px 0 4px; padding: 8px 10px; font: var(--text-s)/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-s); animation: fade-in var(--dur-1) ease-out; }
+.gl-body { margin: 2px 0 4px; padding: 8px 10px; font: var(--text-s)/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); background: var(--surface-2); border-radius: var(--r-s); animation: arrive-soft var(--dur-2) var(--ease-emph); }
 .gl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: var(--text-s); color: var(--ink-3); }
 .gl-meta code { background: none; padding: 0; font-size: var(--text-s); color: var(--ink-2); }
 .gl-meta a { text-decoration: none; }
@@ -114,7 +114,9 @@
 .rd-bar span { margin-left: 8px; }
 .rd-frame > .repo-wait, .rd-frame > .repo-trouble, .rd-frame > .empty-note { padding-inline: 14px; }
 .rd-scroll { padding: 14px 16px 6px; }
-.rd-scroll.is-clipped { max-height: 440px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+/* "Show the whole README" grows the window to the text's height (--full, measured) instead of snapping */
+.rd-scroll { max-height: var(--full, none); overflow: hidden; transition: max-height var(--dur-4) var(--ease-emph); }
+.rd-scroll.is-clipped { max-height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
 .rd-expand { display: block; width: 100%; padding: 11px; border-top: 1px solid var(--line); font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); background: var(--surface); }
 @media (hover: hover) { .rd-expand:hover { background: var(--surface-2); color: var(--ink); } }
 
@@ -147,5 +149,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .repo-item, .repo-branch, .repo-connect, .gl-commit, .gl-commit::before { animation: none; }
-  .repo-card { transition: none; }
+  .repo-card, .rd-scroll { transition: none; }
+  .gl-body { animation: none; }
 }

@@ -131,7 +131,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
                 <h2 class="confirm-name">{p.depth === 0 ? EMOTION[p.core].name : p.name}</h2>
                 {p.depth === 2 && !named.has(p.id) && <span class="badge">{t('New')}</span>}
               </div>
-              {p.depth > 0 && <div class="confirm-path">{trail(p.id)}</div>}
+              {p.depth > 0 && <div class="confirm-path fade-arrive-soft">{trail(p.id)}</div>}
             </div>
             <button class="btn btn-quiet btn-s" onClick={() => setPicked(null)}>{t('Change')}</button>
           </div>
@@ -167,7 +167,7 @@ export function Tracker({ query }: { query: URLSearchParams }) {
                   <Icon name="clock" size={16} /> {t('Now')} <Icon name="chevron-down" size={14} />
                 </button>
               ) : (
-                <input class="input input-s confirm-when" type="datetime-local" value={when} max={localInput(Date.now())} onInput={(e) => setWhen(e.currentTarget.value)} aria-label={t('When')} />
+                <input class="input input-s confirm-when fade-arrive-soft" type="datetime-local" value={when} max={localInput(Date.now())} onInput={(e) => setWhen(e.currentTarget.value)} aria-label={t('When')} />
               )}
             </div>
           </div>
@@ -189,14 +189,14 @@ export function Tracker({ query }: { query: URLSearchParams }) {
         <div class="row between">
           <h2 class="section-title">{t('Today')}</h2>
           <span class="row gap-s">
-            {streak > 1 && <span class="muted small">{t('{n}-day streak', { n: streak })}</span>}
+            {streak > 1 && <span class="muted small fade-arrive-soft">{t('{n}-day streak', { n: streak })}</span>}
             <button class={`chip status-chip${status?.token ? ' is-on' : ''}`} onClick={() => navigate('status')} aria-label={t('Public status')}>
               <Icon name="world" size={16} /> {status?.token ? t('Public') : t('Share status')}
             </button>
           </span>
         </div>
         {todays.length ? (
-          <div class="entries">{todays.map((e) => <CheckInRow e={e} />)}</div>
+          <div class="entries fade-rows-soft">{todays.map((e) => <CheckInRow key={e.id} e={e} />)}</div>
         ) : (
           <p class="empty-note">{t('No check-ins yet today.')}</p>
         )}

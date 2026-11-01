@@ -495,3 +495,58 @@ canvas.sky:not([data-drawn]) { opacity: 0; }
   .cm-pane { display: none !important; }
   .note-editor :is(.cm, .cm-draft, .cm-active) { background: none !important; border-bottom: 0 !important; }
 }
+
+/* ---------- Opening and closing in place (components/Unfold.tsx) ----------
+   The wrapper is a one-row grid whose row eases between 0fr and 1fr, so what's below moves smoothly, while the
+   content fades and slides down a few px. Clipped only while it moves, so a focus ring or shadow at its edge shows
+   once it's open. A gap before it in a flex or grid parent is taken back (`--unfold-gap`), so it doesn't jump. */
+.unfold { display: grid; grid-template-rows: 1fr; }
+.unfold > .unfold-in { min-height: 0; }
+.unfold:is(.is-in, .is-out) > .unfold-in { overflow: hidden; }
+.unfold.is-in { animation: unfold-in var(--dur-3) var(--ease-emph) backwards; }
+.unfold.is-out { animation: unfold-out var(--dur-2) var(--ease) forwards; pointer-events: none; }
+@keyframes unfold-in { from { grid-template-rows: 0fr; opacity: 0; translate: 0 -8px; } }
+@keyframes unfold-out { to { grid-template-rows: 0fr; opacity: 0; translate: 0 -8px; margin-bottom: calc(var(--unfold-gap, 0px) * -1); } }
+.coming-up > .unfold { --unfold-gap: 8px; }
+.sheet-foot-wrap { flex: none; }
+/* a run of check-ins unfolded: each line keeps the rule above it */
+.entries.compact .checkin-run .unfold-in > .swipe { border-top: 1px solid var(--line); }
+
+/* the Feelings page: a feeling's chip stays the size of the chip */
+.late-chip { display: inline-flex; }
+
+/* the pieces of a note that turn up after it's open */
+.read-empty { animation: fade-in var(--dur-2) var(--ease); }
+.media-frame > :is(.media-merge, .media-badge) { animation: fade-in var(--dur-1) ease-out; }
+.media-caption { animation: fade-in var(--dur-2) var(--ease); }
+.note-head-cover { animation: fade-in var(--dur-3) var(--ease); }
+/* a cover added or taken away: the title makes room, or closes up, with it */
+.note-head { transition: margin var(--dur-2) var(--ease-emph), padding var(--dur-2) var(--ease-emph); }
+
+/* a right-click menu fades away */
+.ctx-menu.glass.closing { animation: fade-out var(--dur-1) ease-in forwards; pointer-events: none; }
+
+/* the comments' column making room at the page's right (and giving it back) */
+@media (min-width: 1024px) {
+  .route-note .page.editor { transition: padding-right var(--dur-3) var(--ease-emph); }
+}
+
+/* the Find bar fades away, as it came */
+.find-bar.is-leaving { animation: find-out var(--dur-1) ease-in forwards; pointer-events: none; }
+@keyframes find-out { to { opacity: 0; } }
+@media (min-width: 1024px) { @keyframes find-out { to { opacity: 0; translate: 0 -6px; } } }
+/* Replace's row lines up under the find field; the bar's 4px gap is taken back so it doesn't jump as the row folds */
+.find-bar > .unfold { margin-top: -4px; }
+.find-bar .unfold-in > .find-row { margin-top: 4px; padding-left: 34px; }
+@media (max-width: 1023.98px) { .find-bar .unfold-in > .find-row { padding-left: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .note-head { transition: none; }
+  .route-note .page.editor { transition: none; }
+}
+
+/* a date's own name field opens in the form without a jump from the form's 12px gap */
+.key-date-form > .unfold { margin-top: -12px; }
+.key-date-form > .unfold > .unfold-in > .input { margin-top: 12px; }
+/* an icon picked for the note appears beside the title */
+.editor-top > .icon-pick { animation: fade-in var(--dur-2) var(--ease); }

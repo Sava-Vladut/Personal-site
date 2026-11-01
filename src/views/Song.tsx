@@ -179,10 +179,10 @@ export function SongView({ id }: { id: string }) {
           </button>
         )}
       </div>
-      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition">{EMOTION[draft.emotions[0]].def}</p>}
+      {draft.emotions.length === 1 && EMOTION[draft.emotions[0]]?.depth === 2 && <p class="definition fade-arrive-soft" key={draft.emotions[0]}>{EMOTION[draft.emotions[0]].def}</p>}
 
       {themeOf.length > 0 && (
-        <p class="theme-of">
+        <p class="theme-of fade-arrive-soft">
           <Icon name="vinyl" size={15} /> {themeOf.map((p, i) => <>{i > 0 && (i === themeOf.length - 1 ? ' and ' : ', ')}<a href={'#/person/' + p.id} onClick={(e) => { e.preventDefault(); flush(); navigate('person/' + p.id); }}>{p.name.trim().split(/\s+/)[0]}</a></>)}’s theme song
         </p>
       )}
@@ -213,7 +213,7 @@ export function SongView({ id }: { id: string }) {
           <button class="btn btn-quiet grow" onClick={write}><Icon name="pencil" size={18} /> {t('Write about it')}</button>
         </div>
         {felt.total > 0 && (
-          <div class="card person-felt">
+          <div class="card person-felt fade-arrive-soft">
             <div class="chart-title">{t('How your notes with it felt')}</div>
             <div class="split-bar" role="img" aria-label={felt.worlds.map(([c, n]) => `${shortName(c)} ${Math.round((n / felt.total) * 100)}%`).join(', ')}>
               {felt.worlds.map(([c, n]) => <i style={{ flex: n, background: `var(--emo-${c})` }} title={`${shortName(c)} · ${n}`} />)}
@@ -222,7 +222,7 @@ export function SongView({ id }: { id: string }) {
         )}
         {groups.length ? (
           groups.map(([date, list]) => (
-            <section class="day">
+            <section class="day fade-arrive-soft">
               <h3 class="day-label">{dayLabel(date)}</h3>
               <div class="entries">{list.map((e) => (e.kind === 'checkin' ? <CheckInRow e={e} /> : <NoteCard e={e} />))}</div>
             </section>

@@ -88,7 +88,7 @@ export function Media({ query }: { query: URLSearchParams }) {
         <Sky world={worlds[0]} worlds={worlds} letters={tab} />
         <PageHead
           title={isBooks ? t('Your shelf') : t('Your records')}
-          subtitle={has ? summary : isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')}
+          subtitle={<span class="media-sub fade-arrive-soft" key={`${tab}${has}`}>{has ? summary : isBooks ? t('Keep the books you read, rate them, and mention them in your notes.') : t('Keep the songs, albums and playlists that mean something to you.')}</span>}
           wheel world={worlds[0]}
           actions={<>
             <button class="icon-btn" onClick={() => setAdding(tab)} aria-label={isBooks ? t('Add a book') : t('Add music')} title={isBooks ? t('Add a book') : t('Add music')}>

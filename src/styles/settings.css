@@ -1,0 +1,24 @@
+/* ============================================================
+   Settings: rows and notes that open and close in place (Reveal in views/Settings.tsx). They stay mounted, so the
+   height eases (0fr → 1fr), the content fades and slides a few px, and it eases back out when it goes. The same
+   idea as the emotion wheel's "All worlds" buttons (.ew-actions-wrap in app.css).
+   ============================================================ */
+
+.xp {
+  display: grid; grid-template-rows: 0fr; opacity: 0; translate: 0 8px;
+  transition: grid-template-rows var(--dur-3) var(--ease-emph), opacity var(--dur-2) var(--ease), translate var(--dur-3) var(--ease-emph);
+}
+.xp[data-open] { grid-template-rows: 1fr; opacity: 1; translate: 0 0; transition-delay: 0ms, 60ms, 60ms; }
+.xp > .xp-in { overflow: hidden; min-height: 0; }
+
+/* a whole row of a card list: the wrapper is a .list-row only so the list's own "last row has no divider" rule still
+   sees the rows around it; it has no box of its own. Dividers beside a wrapper are drawn as a border-top on the
+   later row, so a closed one leaves no stray line and an open one leaves exactly one. */
+.list > .xp.list-row { display: grid; padding: 0; min-height: 0; gap: 0; border: 0; justify-content: stretch; align-items: stretch; }
+.list > .list-row:has(+ .xp) { border-bottom-width: 0; }
+.list > .xp .xp-in > .list-row { border-top: 1px solid var(--line); border-bottom: 0; }
+.list > .xp + .list-row { border-top: 1px solid var(--line); }
+/* the list's first row never has a divider above it */
+.list > .xp:first-child .xp-in > .list-row { border-top-width: 0; }
+
+@media (prefers-reduced-motion: reduce) { .xp { transition: none; } }

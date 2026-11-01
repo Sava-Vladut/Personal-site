@@ -47,6 +47,18 @@ export function Swipe({ e, children }: { e: Entry; children: ComponentChildren }
     }
   };
 
+  /** The row's place closes up after it has slid off, so what's below it glides up instead of jumping. */
+  const foldAway = () => {
+    const r = root.current;
+    if (!r?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+    const gap = parseFloat(getComputedStyle(r.parentElement!).rowGap) || 0;
+    r.style.overflow = 'hidden';
+    return r.animate(
+      [{ height: `${r.offsetHeight}px`, marginBottom: '0px' }, { height: '0px', marginBottom: `${-gap}px` }],
+      { duration: 200, easing: 'cubic-bezier(0.3, 0.7, 0.3, 1)', fill: 'forwards' },
+    ).finished.then(() => {}, () => {});
+  };
+
   return (
     <div
       ref={root}
@@ -80,7 +92,7 @@ export function Swipe({ e, children }: { e: Entry; children: ComponentChildren }
         if (d.dx <= -COMMIT) {
           face.current!.style.transition = 'transform var(--dur-1) ease-in';
           face.current!.style.transform = 'translateX(-105%)';
-          setTimeout(() => removeEntry(e), 150); // once it has slid away (--dur-1)
+          setTimeout(() => void foldAway().then(() => removeEntry(e)), 150); // once it has slid away (--dur-1)
         } else {
           settle();
           if (d.dx >= COMMIT && canPin) togglePin(e);

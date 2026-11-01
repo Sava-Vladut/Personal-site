@@ -48,7 +48,7 @@ export function StatusTrail({ trail, compact }: { trail: PublicTrail; compact?: 
   if (!slots.some((s) => s.dot)) return null;
   const title = trail.by === 'checkins' ? t('Last 5 check-ins') : t('Last 7 days');
   const list = (
-    <ol class={`status-recent is-${trail.by}`} aria-label={title}>
+    <ol class={`status-recent is-${trail.by}${compact ? ' fade-arrive-soft' : ''}`} aria-label={title}>
       {slots.map((s) => (
         <li key={s.key} class={`status-recent-slot${s.now ? ' is-now' : ''}`} aria-label={s.spoken} title={compact ? s.spoken : undefined}>
           <i class={`status-recent-dot${s.dot ? '' : ' is-empty'}`} style={s.dot ? dotStyle(s.dot) : undefined} aria-hidden="true" />

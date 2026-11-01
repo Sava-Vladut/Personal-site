@@ -529,14 +529,15 @@ export function NavWheel({ world, tree: own, look }: { world?: string | null; tr
         </div>
       </div>
       <div class="nw-caption" aria-live="polite">
+        {/* keyed, so the words cross-fade as the pointer moves from one segment to the next */}
         {info ? (
-          <>
+          <div class="nw-cap-in" key={info.n.id}>
             <div class="nw-cap-name">{info.n.name}</div>
             <p class="nw-cap-sub">{info.n.sub}</p>
             {isTwitch(info.n) && pointsLine && <p class="nw-cap-stat">{pointsLine}</p>}
-          </>
+          </div>
         ) : (
-          <p class="nw-cap-sub">{look?.hint ?? t('Tap one to open it, the middle to close')}</p>
+          <p class="nw-cap-sub nw-cap-in" key="hint">{look?.hint ?? t('Tap one to open it, the middle to close')}</p>
         )}
       </div>
     </div>

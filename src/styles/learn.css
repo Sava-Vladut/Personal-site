@@ -5,8 +5,9 @@
    screen the page runs the full width: the list is at the left in cards and the feature column at the right, and an
    opened entry is a large panel with a rail and two columns of chapters (the last block of this file).
 
-   Calm on purpose: nothing here animates in (the page transition and lib/reveal.ts do that), hovers only change
-   colour, a press sinks to .98 and springs back, and every box whose content changes keeps its size.
+   Calm on purpose: the page transition and lib/reveal.ts bring things in, and what appears or swaps afterwards (a
+   list after a filter, a verdict, a map's caption, reordered chapters) fades and rises a few px instead of popping;
+   hovers only change colour, a press sinks to .98 and springs back, and every box whose content changes keeps its size.
    Spacing: 26 between sections, 24 between groups, 12 between cards, 10 from a head to its content.
    Each page CSS file keeps only its own map.
    ============================================================ */
@@ -71,7 +72,7 @@
 
 .lrn-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 .lrn-group { min-width: 0; }
-.lrn-group-head { margin: 0 0 10px; padding-left: 6px; }
+.lrn-group-head { margin: 0 0 10px; padding-left: 6px; animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
 .lrn-group-title { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 0; font: var(--w-medium) var(--text-xl)/1.2 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
 .lrn-group-title .lrn-dot { width: 10px; height: 10px; }
 .lrn-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -122,6 +123,8 @@
 .lrn-caption-title { flex: none; font: var(--w-medium) var(--text-base)/1.35 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lrn-caption-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-variant-numeric: tabular-nums; }
 .lrn-caption-idle { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* each is keyed by what it shows (components/learn.tsx Caption), so pointing at another dot fades the new text in */
+:is(.lrn-caption-title, .lrn-caption-sub, .lrn-caption-idle) { animation: fade-in var(--dur-2) var(--ease) backwards; }
 
 /* ---------- quizzes and games ---------- */
 
@@ -150,8 +153,14 @@
 .lrn-opt.is-wrong .lrn-opt-key { background: var(--danger); color: var(--on-color); }
 .lrn-opt:is(.is-right, .is-wrong, .is-picked) { cursor: default; }
 
-/* what the answer means: always under the options, fading in */
-.lrn-verdict { margin: 10px 0 0; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); animation: fade-in var(--dur-2) var(--ease); }
+/* what the answer means: always under the options. On its own it rises in; in a Verdict (components/learn.tsx) its
+   box unfolds from nothing as well, so what's below it eases down instead of jumping. The clip div carries no padding,
+   so it folds to nothing; the paragraph's 10px margin stays inside it */
+.lrn-verdict { margin: 10px 0 0; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); animation: arrive-soft var(--dur-2) var(--ease-emph) backwards; }
+.lrn-verdict-wrap { display: grid; grid-template-rows: 1fr; animation: lrn-unfold var(--dur-3) var(--ease-emph) backwards; }
+.lrn-verdict-wrap > div { min-height: 0; overflow: hidden; }
+.lrn-verdict-wrap .lrn-verdict { animation: none; }
+@keyframes lrn-unfold { from { grid-template-rows: 0fr; opacity: 0; translate: 0 6px; } }
 .lrn-verdict b { font-weight: var(--w-bold); color: var(--ink); }
 .lrn-verdict .is-right { color: color-mix(in oklab, var(--emo-calm-safety) 75%, var(--ink)); }
 .lrn-verdict .is-wrong { color: var(--danger); }
@@ -160,6 +169,9 @@
 /* the running score: always there (an empty one keeps its line) and on one line, so nothing near it moves when it counts */
 .lrn-score { flex: 1; min-width: 0; min-height: 1.4em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--text-s); line-height: 1.4; font-weight: var(--w-bold); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .lrn-score:empty::before { content: '\00a0'; }
+/* the game's buttons are laid out from the start and fade in once you've answered (`inert` keeps them out of reach until then) */
+:is(.lw-game-actions, .sd-game-actions) { transition: opacity var(--dur-2) var(--ease), translate var(--dur-3) var(--ease-emph); }
+:is(.lw-game-actions, .sd-game-actions).is-off { opacity: 0; translate: 0 6px; pointer-events: none; }
 
 /* ---------- one entry, opened (in a sheet) ---------- */
 
@@ -188,6 +200,14 @@
 /* the one paragraph that says what the entry is, a size up, so it's what you read first */
 .lrn-d-p.is-lead { font-size: var(--text-l); line-height: 1.5; }
 .lrn-d-sec > .seg.tabs { margin: 0; }
+
+/* the chapters after the lens is switched (useSwapped): they come in afresh in their new order, one after another.
+   The flow's first child is the lens, so the chapters start at the 2nd */
+.lrn-d-flow > .is-swapped { animation: arrive-soft var(--dur-3) var(--ease-emph) backwards; }
+.lrn-d-flow > .is-swapped:nth-child(3) { animation-delay: 25ms; }
+.lrn-d-flow > .is-swapped:nth-child(4) { animation-delay: 50ms; }
+.lrn-d-flow > .is-swapped:nth-child(5) { animation-delay: 75ms; }
+.lrn-d-flow > .is-swapped:nth-child(n + 6) { animation-delay: 100ms; }
 
 /* the lens (LensSwitch): the control, and under it the line saying what it puts first, both hints in one slot */
 .lrn-lens { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
@@ -370,7 +390,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lrn-detail, .lrn-verdict, .lrn-meter-track > b { animation: none; }
-  .lrn-lens-hint > span { transition: none; }
+  .lrn-detail, .lrn-verdict, .lrn-verdict-wrap, .lrn-meter-track > b, .lrn-group-head, .lrn-d-flow > .is-swapped,
+  :is(.lrn-caption-title, .lrn-caption-sub, .lrn-caption-idle) { animation: none; }
+  .lrn-lens-hint > span, :is(.lw-game-actions, .sd-game-actions) { transition: none; }
   :is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally), :is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally):active:not(:disabled) { transition: background-color var(--dur-1), color var(--dur-1), opacity var(--dur-2); scale: 1; }
 }

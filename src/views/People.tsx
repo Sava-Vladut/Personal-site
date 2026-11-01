@@ -203,7 +203,7 @@ function MindPanel({ shares, range, onRange, focus, picked, onPick, onHover }: {
       </header>
       <RangeChips range={range} onRange={onRange} />
       <Wheel key={range} shares={inWheel} focus={lit} picked={picked} onPick={onPick} onHover={onHover} />
-      {sel ? <MindCard sel={sel} /> : <MindSummary shares={shares} range={range} />}
+      {sel ? <MindCard key={sel.p.id} sel={sel} /> : <MindSummary shares={shares} range={range} />}
     </section>
   );
 }

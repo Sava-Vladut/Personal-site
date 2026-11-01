@@ -107,7 +107,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
       {admin ? (
         <>
           <p class="hint">{t('Twitch only counts two live channels at a time, and the miner takes them in this order, so move a channel up to have it watched first. Saving restarts it, so it stops for a few seconds.')}</p>
-          <ol class="tw-edit fade-arrive">
+          <ol class="tw-edit fade-rows-soft">
             {list.map((c, i) => (
               <li key={c}>
                 <span class="tw-edit-n">{i + 1}</span>
@@ -132,7 +132,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
             />
             <button class="btn btn-quiet" type="submit" disabled={!pending}><Icon name="plus" size={18} /> {t('Add')}</button>
           </form>
-          {error && <p class="hint danger" role="alert">{error}</p>}
+          {error && <p class="hint danger fade-arrive-soft" role="alert">{error}</p>}
           <button class="link small muted tw-signout" onClick={() => run(async () => (await signOut(), setAdmin(false)))}>{t('Sign out on this device')}</button>
         </>
       ) : (
@@ -151,7 +151,7 @@ export function ChannelsSheet({ open, onClose }: { open: boolean; onClose: () =>
               enterkeyhint="go"
             />
           </form>
-          {error && <p class="hint danger" role="alert">{error}</p>}
+          {error && <p class="hint danger fade-arrive-soft" role="alert">{error}</p>}
         </>
       )}
     </Sheet>

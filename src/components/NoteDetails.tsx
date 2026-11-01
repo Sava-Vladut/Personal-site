@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EMOTION, coreOf } from '../data/emotions';
 import { weatherIcon } from '../data/weather';
@@ -45,7 +46,7 @@ export function DetailsSummary({ draft, onOpen, onMusic }: { draft: Entry; onOpe
   const people = draft.people.map((id) => byId.get(id)!).filter(Boolean);
   const w = weatherOf(draft);
   // the place and weather are looked up after a new note is kept: ones that turn up then fade in, ones already there don't
-  const [had] = useState(() => ({ w: !!w, place: !!draft.place?.name }));
+  const [had] = useState(() => ({ w: !!w, place: !!draft.place?.name, music: draft.music.length > 0, feel: draft.emotions.length > 0 }));
   return (
     <div class="details-line">
       <button class="details-summary" onClick={onOpen} aria-label={t('Feelings, people, date, place and cover')}>
@@ -56,13 +57,13 @@ export function DetailsSummary({ draft, onOpen, onMusic }: { draft: Entry; onOpe
         {draft.emotions.map((id) => <EmotionChip id={id} size="sm" />)}
         {draft.emotions.length > 0 && <Bars n={draft.intensity} />}
         {people.map((p) => <PersonChip p={p} size="sm" />)}
-        {!draft.emotions.length && <span class="details-add"><Icon name="mood-plus" size={14} /> {t('How does it feel?')}</span>}
+        {!draft.emotions.length && <span class={had.feel ? 'details-add fade-arrive-soft' : 'details-add'}><Icon name="mood-plus" size={14} /> {t('How does it feel?')}</span>}
         </span>
         {/* the chips alone don't read as a button: a chevron that never fades out says the line opens something */}
         <span class="details-open" aria-hidden="true"><Icon name="chevron-right" size={14} /></span>
       </button>
       {draft.music.length > 0 && (
-        <button class="details-music" onClick={onMusic} aria-label={t('Music in this note')}>
+        <button class={had.music ? 'details-music' : 'details-music fade-arrive-soft'} onClick={onMusic} aria-label={t('Music in this note')}>
           <Icon name="music" size={14} /> {count(draft.music.length, 'song', 'songs')}
         </button>
       )}
@@ -76,6 +77,16 @@ function Bars({ n }: { n: number }) {
       {INTENSITY.map((_, i) => <i class={i < n ? 'on' : ''} style={{ height: `${4 + i * 2}px` }} />)}
     </span>
   );
+}
+
+/**
+ * The Feelings page slides in whole; what's put into it after that (a feeling, a place, a cover) comes up softly. The
+ * pieces already there as it opens come with the slide, so they don't play on top of it.
+ */
+let slidIn = false;
+function Late({ class: cls, tag: Tag = 'div', children }: { class?: string; tag?: 'div' | 'span' | 'p'; children: ComponentChildren }) {
+  const [late] = useState(() => slidIn);
+  return <Tag class={`${cls ?? ''}${late ? ' fade-arrive-soft' : ''}`}>{children}</Tag>;
 }
 
 type Open = null | 'date' | 'emotion' | 'people' | 'cover-search' | 'cover-crop' | 'place';
@@ -107,10 +118,13 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
     if (open) {
       setMounted(true);
       setClosing(false);
+      const slid = setTimeout(() => (slidIn = true), 480); // once it has slid in (--dur-3)
       const release = pushBack(() => closeRef.current());
       const prev = document.activeElement as HTMLElement | null;
       const focusFrame = requestAnimationFrame(() => focusIn(panel.current));
       return () => {
+        clearTimeout(slid);
+        slidIn = false;
         locationRequest.current++;
         cancelAnimationFrame(focusFrame);
         release();
@@ -172,7 +186,7 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
           <h2 class="eyebrow">{t('How does it feel?')}</h2>
           <div class="meta">
             {draft.emotions.map((eid) => (
-              <EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} />
+              <Late key={eid} tag="span" class="late-chip"><EmotionChip id={eid} onRemove={() => update({ emotions: draft.emotions.filter((x) => x !== eid) })} /></Late>
             ))}
             {draft.emotions.length < 3 && (
               <button class="chip" onClick={() => setSheet('emotion')}>
@@ -181,11 +195,11 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
             )}
           </div>
           {draft.emotions.length > 0 && (
-            <div class="details-intensity">
+            <Late class="details-intensity">
               <IntensityPicker value={draft.intensity} onChange={(n) => update({ intensity: n })} cores={draft.emotions.map((e) => coreOf(e).id)} title={t('Intensity')} />
-            </div>
+            </Late>
           )}
-          {only?.depth === 2 && <p class="definition">{only.def}</p>}
+          {only?.depth === 2 && <Late tag="p" class="definition">{only.def}</Late>}
         </section>
 
         <section class="details-section">
@@ -207,14 +221,14 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
         <section class="details-section">
           <h2 class="eyebrow">{t('Where')}</h2>
           {draft.place ? (
-            <div class="meta-row place-row">
+            <Late class="meta-row place-row">
               <span class="row gap-s grow"><Icon name="map-pin" size={16} /> <span class="place-name">{placeLabel(draft.place)}</span></span>
               <span class="row">
                 <button class="btn btn-quiet btn-s" onClick={() => setSheet('place')}>{t('Change')}</button>
                 <button class="btn btn-quiet btn-s" onClick={() => { navigateAfterSheet('map?focus=' + draft.id); onClose(); }}>{t('Map')}</button>
                 <button class="icon-btn small" onClick={() => update({ place: null })} aria-label={t('Remove the place')} title={t('Remove the place')}><Icon name="trash" size={16} /></button>
               </span>
-            </div>
+            </Late>
           ) : (
             <div class="meta">
               <button class="chip" onClick={addHere} disabled={locating}>
@@ -232,13 +246,13 @@ export function NoteDetails({ open, onClose, draft, update, uploadCover, uploadi
           <h2 class="eyebrow">{t('Cover')}</h2>
           <p class="details-hint">{t('Shown faintly behind the note in your journal.')}</p>
           {draft.cover && (
-            <div class="cover-preview">
+            <Late class="cover-preview">
               <button class="cover-open" onClick={() => setSheet('cover-crop')} aria-label={t('Adjust the cover')}><CoverImg cover={draft.cover} /></button>
               <div class="cover-tools">
                 <button class="glass glass-btn cover-adjust" onClick={() => setSheet('cover-crop')}><Icon name="crop" size={18} /> {t('Adjust')}</button>
                 <button class="glass glass-btn round cover-remove" onClick={() => update({ cover: null })} aria-label={t('Remove cover')}><Icon name="trash" size={18} /></button>
               </div>
-            </div>
+            </Late>
           )}
           <div class="cover-picks">
             <button class="cover-pick" onClick={() => fileRef.current?.click()} disabled={uploadingCover}>

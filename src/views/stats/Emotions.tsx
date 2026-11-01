@@ -49,11 +49,11 @@ export function Emotions({ s, range }: { s: S; range: RangeKey }) {
             </button>
           ))}
         </div>
-        <div class="brain-detail">
+        <div class="brain-detail" key={world}>
           <div class="brain-detail-head"><Sprite core={world} size={18} idle /> <b>{ZONES[world].name}</b></div>
           <p class="brain-role">{ZONES[world].role}</p>
           <p class="brain-line">{regionLine(region, brain.span)}</p>
-          {shiftLine(region, brain.span) && <p class="brain-shift muted small">{shiftLine(region, brain.span)}</p>}
+          {shiftLine(region, brain.span) && <p class="brain-shift muted small fade-arrive-soft">{shiftLine(region, brain.span)}</p>}
         </div>
       </section>
 
@@ -78,7 +78,7 @@ export function Emotions({ s, range }: { s: S; range: RangeKey }) {
             </p>
           </div>
         ) : (
-          <p class="hint center">{t('Inner ring: worlds · middle: zones · outer: specific feelings')}</p>
+          <p class="hint center fade-arrive-soft">{t('Inner ring: worlds · middle: zones · outer: specific feelings')}</p>
         )}
       </ChartCard>
 

@@ -83,10 +83,10 @@ export function ImageSearchSheet({ open, onClose, onAdd, single, action }: { ope
             ))}
           </div>
         )}
-        {busy && <p class="hint center">{t('Searching…')}</p>}
-        {error && <p class="error">{error}</p>}
-        {!busy && next !== undefined && <button class="btn btn-quiet block" onClick={() => load(searched, next)}>{t('More images')}</button>}
-        {!busy && !error && searched && !items.length && <p class="hint center">{t('No images found. Try other words.')}</p>}
+        {busy && <p class="hint center fade-arrive-soft">{t('Searching…')}</p>}
+        {error && <p class="error fade-arrive-soft">{error}</p>}
+        {!busy && next !== undefined && <button class="btn btn-quiet block fade-arrive-soft" onClick={() => load(searched, next)}>{t('More images')}</button>}
+        {!busy && !error && searched && !items.length && <p class="hint center fade-arrive-soft">{t('No images found. Try other words.')}</p>}
         {!searched && <p class="hint center">{t('Search for a picture that fits this moment.')}</p>}
       </div>
       <p class="attribution">{t('Openly licensed images from Openverse')}</p>

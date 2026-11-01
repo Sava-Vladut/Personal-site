@@ -64,7 +64,7 @@ export function Countdown() {
         <RevealStack>
           {live.map((c) => <Running key={c.id} c={c} solo={live.length === 1} onEdit={() => edit(c)} />)}
           {over.length > 0 && (
-            <section class="section cd-over">
+            <section class="section cd-over fade-arrive-soft">
               <h2 class="section-title">{t('Over')}</h2>
               <div class="card list">
                 {over.map((c) => (
@@ -137,7 +137,7 @@ function Running({ c, solo, onEdit }: { c: C; solo: boolean; onEdit: () => void 
           <span><b>{total.n}</b> {unitWord(total.n, total.unit)} {t('in all')}</span>
         </div>
         {!solo && <p class="muted small cd-dates">{t('From {start} to {end}', { start: short.format(c.start), end: short.format(c.end) })}</p>}
-        {done && <button class="btn btn-quiet" onClick={onEdit}><Icon name="pencil" size={18} /> {t('Set new dates')}</button>}
+        {done && <button class="btn btn-quiet fade-arrive-soft" onClick={onEdit}><Icon name="pencil" size={18} /> {t('Set new dates')}</button>}
       </section>
 
       {solo && (

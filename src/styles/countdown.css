@@ -112,3 +112,8 @@
   .cd-sweep { transition: none; }
   .cd-wave, .cd-burst { display: none; }
 }
+
+/* the button beside the wheel comes in when a countdown starts (it's only there while one runs) */
+.icon-btn.cd-trigger { animation: cd-trigger-in var(--dur-2) var(--spring) backwards; }
+@keyframes cd-trigger-in { from { opacity: 0; scale: 0.7; } }
+@media (prefers-reduced-motion: reduce) { .icon-btn.cd-trigger { animation: none; } }

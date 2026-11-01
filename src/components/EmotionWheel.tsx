@@ -410,6 +410,10 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
   anchors.current = anchorMap;
   const info = hot ? EMOTION[hot] : zoomed ? CORE[focus] : null;
   const core = focus ? CORE[focus] : null;
+  // the buttons stay mounted so they can slide away as well as in; this keeps their label while they do
+  const shown = useRef(core);
+  if (core) shown.current = core;
+  const btnCore = shown.current;
 
   return (
     <div class={`ew${tip?.live ? ' holding' : ''}`} onClick={outside} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
@@ -449,25 +453,27 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
 
       <div class="ew-caption">
         {info ? (
-          <>
+          <div class="ew-cap" key={info.id}>
             <div class="ew-cap-head">
               <Sprite core={info.core} size={16} />
               <span class="ew-cap-name">{info.depth === 0 ? info.name.split(' / ')[0] : info.name}</span>
               {info.depth > 0 && <span class="ew-cap-path">{trail(info.id)}</span>}
             </div>
             <p class="world-def">{info.def}</p>
-          </>
+          </div>
         ) : (
-          <p class="world-def">{t('Start from the world that feels closest — there are no wrong answers.')}</p>
+          <p class="world-def ew-cap" key="hint">{t('Start from the world that feels closest — there are no wrong answers.')}</p>
         )}
       </div>
 
-      {core && (
-        <div class="row gap-s ew-actions">
-          <button class="btn btn-quiet" onClick={() => onFocus(null)}><Icon name="chevron-left" size={18} /> {t('All worlds')}</button>
-          <button class="btn btn-quiet grow" aria-pressed={selected.includes(core.id)} onClick={() => onPick(core.id)}>
-            {t('Just “{world}”', { world: core.name.split(' / ')[0] })}
-          </button>
+      {btnCore && (
+        <div class="ew-actions-wrap" data-open={core ? '' : undefined} inert={!core}>
+          <div class="row gap-s ew-actions">
+            <button class="btn btn-quiet" onClick={() => onFocus(null)}><Icon name="chevron-left" size={18} /> {t('All worlds')}</button>
+            <button class="btn btn-quiet grow" aria-pressed={selected.includes(btnCore.id)} onClick={() => onPick(btnCore.id)}>
+              {t('Just “{world}”', { world: btnCore.name.split(' / ')[0] })}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -8,6 +8,8 @@
 .mx { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; animation: fade-in var(--dur-2) var(--ease); }
 .mx-now { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; min-width: 0; }
 .mx-list { min-width: 0; scroll-margin-top: 18px; }
+/* the line under the title changes with the tab: it settles in rather than swapping */
+.media-sub { display: block; }
 
 /* today's song sits on the page here, not on a sky */
 .mx-now > .sotd { margin: 0; background: var(--surface); }
