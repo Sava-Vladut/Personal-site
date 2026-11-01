@@ -175,6 +175,8 @@ export interface Period {
   text: string;             // what that time was like
   emotions: string[];       // how it felt, first one is the main feeling
   songs: string[];          // the records in it (Song ids)
+  start: number | null;     // the stretch it was picked from on the wave (ms), when it was
+  end: number | null;
   created: number;
   updated: number;
 }
@@ -457,7 +459,7 @@ export const getPeriods = periods.list$.get;
 
 export function blankPeriod(patch: Partial<Period> = {}): Period {
   const now = Date.now();
-  return { id: uid(), name: '', text: '', emotions: [], songs: [], created: now, updated: now, ...patch };
+  return { id: uid(), name: '', text: '', emotions: [], songs: [], start: null, end: null, created: now, updated: now, ...patch };
 }
 export const savePeriod = periods.save;
 /** Forgets a period. Its songs stay in your records. */
@@ -727,6 +729,7 @@ function normalizePeriod(raw: any): Period | null {
     text: typeof raw.text === 'string' ? raw.text.slice(0, 20_000) : '',
     emotions: normalizeEmotions(raw.emotions, MAX_PERSON_EMOTIONS),
     songs: Array.isArray(raw.songs) ? [...new Set(raw.songs.filter((x: unknown) => typeof x === 'string' && x.length <= 40) as string[])].slice(0, MAX_PERIOD_SONGS) : [],
+    ...(Number.isFinite(raw.start) && Number.isFinite(raw.end) && raw.start <= raw.end ? { start: raw.start, end: raw.end } : { start: null, end: null }),
     created: Number.isFinite(raw.created) ? raw.created : now,
     updated: Number.isFinite(raw.updated) ? raw.updated : now,
   };

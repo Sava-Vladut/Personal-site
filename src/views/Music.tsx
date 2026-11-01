@@ -124,18 +124,22 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
     else next.add(s.id);
     last.current = at;
     setSel(next);
+    setStretch(null);
   };
   const onPick = useMemo(() => (s: Song, shift: boolean) => pick.current(s, shift), []);
-  const pickSpan = useMemo(() => (sel?.size ? spanOf({ songs: [...sel] }, byId) : null), [sel, byId]);
-  // a stretch dragged on the wave: every song that joined in it
+  // a stretch dragged on the wave: every song that joined in it. It stays as dragged (shown on the wave, kept with the
+  // period) until songs are picked or unpicked by hand.
+  const [stretch, setStretch] = useState<{ start: number; end: number } | null>(null);
+  const pickSpan = useMemo(() => (sel?.size ? spanOf({ songs: [...sel], ...stretch }, byId) : null), [sel, byId, stretch]);
   const pickStretch = (from: number, to: number) => {
     const ids = songs.filter((s) => addedAt(s) >= from && addedAt(s) <= to).map((s) => s.id);
     if (!ids.length) return toast(t('No songs joined then.'));
     setSel(new Set(ids));
+    setStretch({ start: from, end: to });
     last.current = null;
   };
-  const stopPicking = () => { setSel(null); last.current = null; };
-  const makePeriod = () => sel?.size && setPeriod(blankPeriod({ songs: [...sel] }));
+  const stopPicking = () => { setSel(null); setStretch(null); last.current = null; };
+  const makePeriod = () => sel?.size && setPeriod(blankPeriod({ songs: [...sel], ...stretch }));
   useEffect(() => { if (only && !showing) setOnly(null); }, [only, showing]);
 
   const keep = async (m: Music) => {
@@ -272,7 +276,7 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
               <b>{countOf(sel.size, 'song', 'songs')}</b>
               <span>{pickSpan ? spanLabel(pickSpan) : t('Tap songs, or drag across the wave')}</span>
             </span>
-            {sel.size > 0 && <button class="btn btn-quiet btn-s" onClick={() => setSel(new Set())}>{t('Clear selection')}</button>}
+            {sel.size > 0 && <button class="btn btn-quiet btn-s" onClick={() => { setSel(new Set()); setStretch(null); }}>{t('Clear selection')}</button>}
             <button class="btn btn-primary btn-s" onClick={makePeriod} disabled={!sel.size}><Icon name="sparkles" size={16} /> {t('Make a period')}</button>
             <button class="icon-btn" onClick={stopPicking} aria-label={t('Stop selecting')}><Icon name="x" size={18} /></button>
           </div>

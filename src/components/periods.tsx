@@ -38,9 +38,12 @@ export function duration(ms?: number) {
 /* ---------- a period's span and colour ---------- */
 
 export interface Span { start: number; end: number; n: number }
-/** When a period's songs joined, first to last, and how many of them are still in your records. */
-export function spanOf(p: Pick<Period, 'songs'>, byId: Map<string, Song>): Span | null {
-  let start = Infinity, end = -Infinity, n = 0;
+/**
+ * When a period's songs joined, first to last, and how many of them are still in your records. Picked as a stretch of
+ * the wave, it spans at least that stretch: from the day you dragged from, not from its first song.
+ */
+export function spanOf(p: Pick<Period, 'songs'> & Partial<Pick<Period, 'start' | 'end'>>, byId: Map<string, Song>): Span | null {
+  let start = p.start ?? Infinity, end = p.end ?? -Infinity, n = 0;
   for (const id of p.songs) {
     const s = byId.get(id);
     if (!s) continue;
@@ -99,7 +102,10 @@ export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
   onOpen?: (p: Period) => void;
 }) {
   const plot = useRef<HTMLDivElement>(null);
+  // where the drag began and is now (0–1 across), drawn from `drag`; `dragging` holds the same at once, as events come
+  // in faster than the wave redraws
   const [drag, setDrag] = useState<[number, number] | null>(null);
+  const dragging = useRef<[number, number] | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const byId = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
 
@@ -139,17 +145,23 @@ export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
     if (!onPick || e.button !== 0) return;
     plot.current!.setPointerCapture(e.pointerId);
     const f = frac(e);
+    dragging.current = [f, f];
     setDrag([f, f]);
   };
   const move = (e: PointerEvent) => {
     const f = frac(e);
-    if (drag) setDrag([drag[0], f]);
+    if (dragging.current) setDrag((dragging.current = [dragging.current[0], f]));
     setHover(Math.min(wave.n - 1, Math.max(0, Math.floor(f * wave.n))));
   };
-  const up = () => {
-    if (!drag || !onPick) return;
-    const [a, b] = [Math.min(...drag), Math.max(...drag)];
+  const up = (e: PointerEvent) => {
+    const d = dragging.current;
+    dragging.current = null;
     setDrag(null);
+    if (!d || !onPick) return;
+    // the end is where the pointer let go, not where the wave last drew it
+    const f = Math.min(1, Math.max(0, frac(e)));
+    const a0 = Math.min(1, Math.max(0, d[0]));
+    const [a, b] = [Math.min(a0, f), Math.max(a0, f)];
     if (b - a < 0.01) {
       // a tap: the period under it, else that week
       const t0 = at(a);
@@ -176,7 +188,7 @@ export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
-        onPointerCancel={() => setDrag(null)}
+        onPointerCancel={() => { dragging.current = null; setDrag(null); }}
         onPointerLeave={() => setHover(null)}
         role={onPick ? 'img' : undefined}
         aria-label={t('Songs added over time. Drag across it to pick a period.')}

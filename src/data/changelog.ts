@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.169.2',
+    date: '2026-11-01',
+    changes: [
+      'Music: dragging across the wave picks exactly the dates you dragged, even when you drag quickly or from right to left',
+      'Periods: a period made from the wave keeps the dates you dragged, instead of starting at its first song',
+    ],
+  },
+  {
     version: '1.169.1',
     date: '2026-11-01',
     changes: [
