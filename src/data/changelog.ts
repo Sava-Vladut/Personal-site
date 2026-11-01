@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.169.1',
+    date: '2026-11-01',
+    changes: [
+      'Music: the album, date added and length columns line up on every row, rated or not',
+      'Music: your rating is a small star badge with its number, warmer the higher it is; five stars glow',
+      'Music: on repeat is a small mark before the artists, and the star at the top of the list sorts by rating',
+    ],
+  },
+  {
     version: '1.169.0',
     date: '2026-11-01',
     changes: [

@@ -134,7 +134,7 @@
 .mx-list { container-type: inline-size; }
 .mx-table { display: grid; grid-template-columns: minmax(0, 1fr); }
 .mx-thead, .mx-tr {
-  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) 40px 38px; align-items: center; column-gap: 12px;
   padding-inline: 8px 12px;
 }
 .mx-thead {
@@ -156,9 +156,19 @@
 .mx-t-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--w-medium) var(--text-l)/1.3 var(--serif); color: var(--ink); }
 .mx-t-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-m); color: var(--ink-3); }
 .mx-album, .mx-date { display: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-m); color: var(--ink-3); }
-.mx-end { display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--ink-3); }
-.mx-dur { min-width: 34px; text-align: right; font-size: var(--text-m); font-variant-numeric: tabular-nums; }
-.mx-thead .mx-dur, .mx-thead .mx-end { justify-content: flex-end; }
+.mx-dur { display: flex; justify-content: flex-end; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* your rating: one star and its number in a small badge, warmer and fuller the higher it is */
+.mx-rate-cell, .mx-rate-h { display: flex; justify-content: center; }
+.mx-rate {
+  display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 7px 0 5px; border-radius: var(--r-pill);
+  font-size: var(--text-s); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; line-height: 1;
+  color: color-mix(in oklab, var(--emo-joy) calc(40% + var(--r) * 12%), var(--ink-3));
+  background: color-mix(in oklab, var(--emo-joy) calc(var(--r) * 5%), transparent);
+}
+.mx-rate svg g { fill: currentColor; }
+.mx-rate.r5 { color: var(--on-ink); background: var(--emo-joy); box-shadow: 0 0 10px color-mix(in oklab, var(--emo-joy) 45%, transparent); }
+/* on repeat: a small mark before the artists, where Spotify puts its badges */
+.mx-t-sub .mx-repeat { vertical-align: -1px; margin-right: 4px; }
 /* picking for a period: the number becomes a tick box */
 .mx-tick {
   display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px;
@@ -168,7 +178,7 @@
 
 /* wide enough: the album and date added get their own columns, as in Spotify */
 @container (min-width: 620px) {
-  .mx-thead, .mx-tr { grid-template-columns: 28px minmax(0, 4fr) minmax(0, 2.4fr) 118px minmax(64px, auto); }
+  .mx-thead, .mx-tr { grid-template-columns: 28px minmax(0, 4fr) minmax(0, 2.4fr) 112px 44px 44px; }
   .mx-album, .mx-date { display: block; }
   .mx-t-when { display: none; }
 }

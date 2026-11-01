@@ -2,7 +2,7 @@ import { memo } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { navigate } from '../lib/router';
 import { addedAt, blankPeriod, blankSong, findSong, getSongs, saveSong, toast, useEntries, usePeriods, useReady, useSongs, type Music, type Period, type Song } from '../lib/store';
-import { artIn, Stars } from '../components/books';
+import { artIn } from '../components/books';
 import { GhostRows, MediaHead, More, Rail, showList, SortChip } from '../components/collection';
 import { Icon } from '../components/icons';
 import { Mark } from '../components/Mark';
@@ -256,7 +256,8 @@ export function MusicTab({ q, onClearSearch, onAdd, picker }: { q: string; onCle
               <button class="mx-th" aria-pressed={sort === 'title'} onClick={() => setSort('title')} tabIndex={-1}>{t('Title')}</button>
               <span class="mx-album">{t('Album')}</span>
               <button class="mx-th mx-date" aria-pressed={sort === 'added'} onClick={() => setSort('added')} tabIndex={-1}>{t('Date added')}</button>
-              <span class="mx-end"><Icon name="clock" size={16} /></span>
+              <button class="mx-th mx-rate-h" aria-pressed={sort === 'rating'} onClick={() => setSort('rating')} tabIndex={-1} title={t('Top rated')}><Icon name="star" size={15} /></button>
+              <span class="mx-dur"><Icon name="clock" size={16} /></span>
             </div>
             {shown.slice(0, paged.n).map((s, i) => (
               <TrackRow key={s.id} s={s} n={i + 1} at={at} picking={!!sel} picked={!!sel?.has(s.id)} onPick={onPick} />
@@ -327,7 +328,8 @@ const sameRow = (a: RowProps, b: RowProps) =>
 
 /**
  * A song as Spotify lists it in a playlist: its number, cover, title and artists, album, date added and length (with
- * your stars and whether it's on repeat before the length). Narrow, the album and date fold under the title.
+ * your rating as a small badge and the length; on repeat is marked by the artists. Every column has a fixed width, so
+ * the rows line up whatever they hold. Narrow, the album and date fold under the title.
  * While picking songs for a period, the number is a tick box and a tap picks the song.
  */
 const TrackRow = memo(function TrackRow({ s, n, at, picking, picked, onPick }: RowProps) {
@@ -346,16 +348,16 @@ const TrackRow = memo(function TrackRow({ s, n, at, picking, picked, onPick }: R
         <span class={`mx-cover${isTape(m) ? ' is-tape' : ''}`}>{m.image && <img class="art-fade" src={smallArt(m.image)} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable={false} onLoad={artIn} />}</span>
         <span class="mx-t-text">
           <span class="mx-t-title">{m.title}</span>
-          <span class="mx-t-sub">{musicSub(m)}<span class="mx-t-when"> · {when}</span></span>
+          <span class="mx-t-sub">
+            {s.repeat && <span class="mx-repeat" title={t('On repeat')}><Icon name="repeat" size={12} stroke={2.25} /></span>}
+            {musicSub(m)}<span class="mx-t-when"> · {when}</span>
+          </span>
         </span>
       </span>
       <span class="mx-album">{m.album ?? ''}</span>
       <span class="mx-date">{when}</span>
-      <span class="mx-end">
-        {s.repeat && <span class="mx-repeat"><Icon name="repeat" size={14} stroke={2} /></span>}
-        {s.rating > 0 && <Stars value={s.rating} size={11} />}
-        <span class="mx-dur">{duration(m.ms)}</span>
-      </span>
+      <span class="mx-rate-cell">{s.rating > 0 && <span class={`mx-rate r${s.rating}`} style={{ '--r': s.rating }}><Icon name="star" size={11} stroke={2} />{s.rating}</span>}</span>
+      <span class="mx-dur">{duration(m.ms)}</span>
     </button>
   );
 }, sameRow);
