@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.174.2',
+    date: '2026-11-01',
+    changes: [
+      'Sidebar: a bigger app icon and “My Mind” title at the top',
+    ],
+  },
+  {
     version: '1.174.1',
     date: '2026-11-01',
     changes: [

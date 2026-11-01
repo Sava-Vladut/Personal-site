@@ -27,7 +27,7 @@
     -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
     border-right: 1px solid var(--line);
   }
-  .side-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px; font: var(--w-medium) var(--text-xl)/1.2 var(--serif); letter-spacing: -0.015em; color: var(--ink); text-decoration: none; }
+  .side-brand { display: flex; align-items: center; gap: 12px; padding: 2px 8px 6px; font: var(--w-medium) var(--text-2xl)/1.2 var(--serif); letter-spacing: -0.015em; color: var(--ink); text-decoration: none; }
   .side-add { position: relative; z-index: 3; }
   .side-add .nav-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: var(--h-m); border-radius: var(--r-m); }
   .side-add .nav-plus svg { width: 20px; height: 20px; }
