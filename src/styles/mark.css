@@ -21,6 +21,7 @@
 .mark { --k: 1; --d0: 0ms; --ps: 0.92; }
 .mark[width='64'] { --k: 1.2; }
 .mark[width='96'] { --k: 1.5; --ps: 0.88; }
+.mark[width='288'] { --k: 1.8; --ps: 0.88; }
 /* the opened entry's mark waits for its sheet to land */
 .lrn-d-head .mark { --d0: var(--dur-3); }
 

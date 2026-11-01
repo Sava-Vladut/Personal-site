@@ -176,7 +176,7 @@
    (40), so each reads as one chunk and the eye gets a rest between them; inside a chapter things sit closer (14) */
 .lrn-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; padding-bottom: 8px; animation: fade-in var(--dur-2) var(--ease); }
 .lrn-d-head { display: grid; justify-items: center; gap: 6px; padding-top: 4px; text-align: center; }
-.lrn-d-head > .mark { margin-bottom: 6px; }
+.lrn-d-head > .mark { justify-self: center; width: min(288px, 100%); height: auto; margin-bottom: 14px; }
 .lrn-d-head > .kicker { margin: 0; }
 .lrn-d-title { margin: 0; font: var(--w-medium) clamp(24px, 6.6vw, 28px)/1.12 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
 .lrn-d-line { margin: 2px 0 0; max-width: 38ch; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); text-wrap: balance; }
@@ -365,6 +365,7 @@
 
   /* the head reads from the left, not centred under a phone's title */
   .lrn-sheet .lrn-d-head { justify-items: start; text-align: left; padding-top: 0; }
+  .lrn-sheet .lrn-d-head > .mark { margin-bottom: 18px; }
   .lrn-sheet .lrn-d-title { font-size: 30px; line-height: 1.12; }
   .lrn-sheet .lrn-d-line { max-width: none; text-wrap: pretty; }
 

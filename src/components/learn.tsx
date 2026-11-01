@@ -299,7 +299,7 @@ export function Meter({ label, value, about }: { label: string; value: number; a
 }
 
 /**
- * The top of an opened entry: its mark (96px, still), a `kicker` (one small uppercase line), the `title` and its
+ * The top of an opened entry: its mark (big, centred), a `kicker` (one small uppercase line), the `title` and its
  * `line`. `children` go under the line (e.g. Traps' "also called").
  */
 export function DetailHead({ id, hue, kicker, title, line, children, onShare }: {
@@ -314,7 +314,7 @@ export function DetailHead({ id, hue, kicker, title, line, children, onShare }: 
 }) {
   return (
     <header class="lrn-d-head">
-      <Mark id={id} hue={hue} size={96} />
+      <Mark id={id} hue={hue} size={288} />
       <p class="kicker">{kicker}</p>
       <h2 class="lrn-d-title">{title}</h2>
       <p class="lrn-d-line">{line}</p>

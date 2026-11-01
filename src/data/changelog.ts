@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.169.3',
+    date: '2026-11-01',
+    changes: [
+      'On every Learn page (Friends, Traps, Laws, Seduction) an opened entry’s drawing is about three times larger and centred above its title instead of sitting small in the top-left corner',
+    ],
+  },
+  {
     version: '1.168.2',
     date: '2026-11-01',
     changes: [
