@@ -4,7 +4,7 @@
 import type { UiName } from '../components/icons';
 import { t } from '../lib/i18n';
 
-export type WidgetId = 'notices' | 'on-this-day' | 'coming-up' | 'reading' | 'song' | 'points';
+export type WidgetId = 'notices' | 'on-this-day' | 'coming-up' | 'reading' | 'song' | 'points' | 'glops';
 
 /** A setting of one widget: a few named choices, each a number. */
 export interface WidgetOption {
@@ -43,5 +43,9 @@ export const WIDGETS: WidgetDef[] = [
   {
     id: 'points', name: t('Channel points'), sub: t('Your Twitch total, a tap from its page'), icon: 'brand-twitch', hue: 'fear', zone: 'side',
     options: [{ key: 'graph', name: t('Last 30 days graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
+  },
+  {
+    id: 'glops', name: t('Global Ops'), sub: t('Who’s playing the browser game right now'), icon: 'device-gamepad-2', hue: 'hope-interest', zone: 'side',
+    options: [{ key: 'graph', name: t('Last 24 hours graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
   },
 ];

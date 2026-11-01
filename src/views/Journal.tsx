@@ -36,6 +36,7 @@ import { Icon, NoteIcon, Sprite } from '../components/icons';
 import '../styles/notes.css';
 import '../styles/widgets.css';
 import { usePoints } from '../lib/twitch';
+import { useGlops } from '../lib/glops';
 import { optionOf, shownIn, useWidgets, type WidgetLayout } from '../lib/widgets';
 import type { WidgetId } from '../data/widgets';
 import { count, LOCALE, t } from '../lib/i18n';
@@ -276,6 +277,7 @@ function Widget({ id, layout, entries, byDay, onOpenDay, picker, news }: {
     case 'reading': return <ReadingNow max={optionOf(layout, id, 'max')} />;
     case 'song': return <JournalSong picker={picker} />;
     case 'points': return <JournalPoints graph={!!optionOf(layout, id, 'graph')} />;
+    case 'glops': return <JournalGlops graph={!!optionOf(layout, id, 'graph')} />;
   }
 }
 
@@ -422,6 +424,33 @@ function JournalPoints({ graph }: { graph: boolean }) {
         </span>
       </span>
       {graph && known.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}
+      <Icon name="chevron-right" size={16} />
+    </button>
+  );
+}
+
+/** Desktop only: who has Global Ops open right now and the last day of it as a line, a tap from its page. */
+function JournalGlops({ graph }: { graph: boolean }) {
+  const wide = useWide();
+  const { data } = useGlops(wide);
+  if (!wide || !data) return null;
+  const { online, playing, visitors, series, seriesMs } = data;
+  const tail = series.slice(-Math.round(86_400_000 / seriesMs));
+  const hi = Math.max(1, ...tail.map((p) => p[1]));
+  const W = 120, H = 34;
+  const d = tail.map((p, i) => `${i ? 'L' : 'M'}${((i / (tail.length - 1 || 1)) * W).toFixed(1)},${(H - 2 - (p[1] / hi) * (H - 4)).toFixed(1)}`).join('');
+  return (
+    <button class="tw-mini gl-mini fade-arrive" onClick={() => navigate('glops')} aria-label={t('Global Ops')}>
+      <span class="tw-mini-ico"><Icon name="device-gamepad-2" size={18} /></span>
+      <span class="tw-mini-main">
+        <small>{t('Global Ops')}</small>
+        <b>{online ? t('{n} online', { n: online }) : t('Nobody on')}</b>
+        <span class="tw-mini-sub">
+          {playing > 0 && <span class="tw-live" aria-hidden="true" />}
+          {playing > 0 ? t('{n} in a match right now', { n: playing }) : t('{n} visitors so far', { n: visitors.toLocaleString(LOCALE) })}
+        </span>
+      </span>
+      {graph && tail.length > 1 && <svg class="tw-mini-spark" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><path d={d} /></svg>}
       <Icon name="chevron-right" size={16} />
     </button>
   );

@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.177.0',
+    date: '2026-11-01',
+    changes: ['Global Ops widget beside the feed: who’s online and in a match, with the last 24 hours as a line (Edit the feed to hide it or its graph)'],
+  },
+  {
     version: '1.176.1',
     date: '2026-11-01',
     changes: ['Tag cards: no more stray side and bottom scroll bars under Change and Remove'],
