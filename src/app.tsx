@@ -98,6 +98,7 @@ function SideNav({ active, here }: { active: RouteName; here: RouteName }) {
           if (here !== 'journal') navigate('');
         }}
       >
+        <img src="/icon.svg" width={28} height={28} alt="" />
         My Mind
       </a>
       <div class="side-add">
