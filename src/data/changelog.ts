@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.178.2',
+    date: '2026-11-01',
+    changes: [
+      'People: fixed the page flickering when the pointer sat over certain spots. Pointing at someone no longer changes the height of the line under the feel map, so nothing below it moves out from under the pointer.',
+    ],
+  },
+  {
     version: '1.178.1',
     date: '2026-11-01',
     changes: [

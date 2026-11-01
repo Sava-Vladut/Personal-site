@@ -306,18 +306,20 @@ function FeelMap({ reads, focus, onPick, onHover }: { reads: Read[]; focus: stri
           </div>
         )}
       </div>
-      {on ? (
-        <div class="pp-feel-who" key={on.p.id} style={{ '--c': colorOf(on.core) }}>
-          <div class="pp-feel-who-main">
-            <b>{on.p.name || t('Unnamed')}</b>
-            <span>{FEEL_LINE[on.feel]}</span>
-            {on.feelings.length > 0 && <span class="note-emos">{on.feelings.map((id) => <EmotionChip id={id} size="sm" />)}</span>}
+      {/* the reading and the person's card share one slot, so pointing at someone never moves what's below it */}
+      <div class="pp-feel-slot">
+        <p class="pp-feel-read" aria-hidden={on ? true : undefined}>{reading}</p>
+        {on && (
+          <div class="pp-feel-who" key={on.p.id} style={{ '--c': colorOf(on.core) }}>
+            <div class="pp-feel-who-main">
+              <b>{on.p.name || t('Unnamed')}</b>
+              <span>{FEEL_LINE[on.feel]}</span>
+              {on.feelings.length > 0 && <span class="note-emos">{on.feelings.map((id) => <EmotionChip id={id} size="sm" />)}</span>}
+            </div>
+            <button class="icon-btn" onClick={() => navigate('person/' + on.p.id)} aria-label={t('Open {name}', { name: on.p.name })} title={t('Open')}><Icon name="chevron-right" /></button>
           </div>
-          <button class="icon-btn" onClick={() => navigate('person/' + on.p.id)} aria-label={t('Open {name}', { name: on.p.name })} title={t('Open')}><Icon name="chevron-right" /></button>
-        </div>
-      ) : (
-        <p class="pp-feel-read">{reading}</p>
-      )}
+        )}
+      </div>
     </section>
   );
 }
