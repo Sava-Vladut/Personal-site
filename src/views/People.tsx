@@ -32,7 +32,7 @@ interface Read {
   moments: Entry[];
   warm: number;              // pleasant feelings felt with them (the ones you picked for them count for a few moments)
   hard: number;              // unpleasant ones
-  warmth: number | null;     // warm / (warm + hard); null before any feeling
+  warmth: number | null;     // warm / (warm + hard), eased toward the middle when there's little to go on; null until there are enough entries
   feel: Feel;
   core: string | null;       // their colour: the main feeling you picked, else the world you feel most with them
   mix: [string, number][];   // the worlds you feel with them, most first
@@ -44,6 +44,8 @@ interface Read {
 
 const HALF_LIFE = 45; // days: a moment a month and a half old counts half as much as one today
 const INNER = 5, CLOSE = 15; // the convoy's first rings hold about five people, then about fifteen
+const MIN_FELT = 3; // entries with feelings before someone is placed on the feel line
+const PRIOR = 3;    // weight of a neutral starting point: feelings must outweigh it before they pull someone off the middle
 
 function readPeople(people: Person[], moments: Map<string, Entry[]>, pages: Map<string, Page[]>, last: Map<string, number>): Read[] {
   const now = Date.now();
@@ -68,7 +70,10 @@ function readPeople(people: Person[], moments: Map<string, Entry[]>, pages: Map<
         felt.set(id, (felt.get(id) ?? 0) + w);
       });
     }
-    const warmth = warm + hard ? warm / (warm + hard) : null;
+    // a spot on the line needs a few entries behind it (picking how they make you feel counts as two), and the
+    // less there is, the more the spot is pulled toward the middle, so one hard day doesn't make someone "heavy"
+    const evidence = ms.filter((e) => e.emotions.length).length + (p.emotions.length ? 2 : 0);
+    const warmth = evidence >= MIN_FELT ? (warm + PRIOR / 2) / (warm + hard + PRIOR) : null;
     const mix = [...worlds].sort((a, b) => b[1] - a[1]);
     let near = ms.reduce((s, e) => s + fade(e.time), 0);
     for (const pg of pages.get(p.id) ?? []) near += fade(pg.item.updated) / 2;
@@ -99,14 +104,14 @@ const FEELS: [Feel, string, string][] = [
   ['lifts', t('Lift you up'), t('Mostly warm feelings: the people who give you energy back.')],
   ['mixed', t('Mixed feelings'), t('Warm and hard at once. Ties like these can take more out of you than you notice.')],
   ['weighs', t('Weigh on you'), t('Mostly hard feelings. Worth noticing what these ask of you.')],
-  ['unfelt', t('Not felt yet'), t('Nothing logged yet. Add how they make you feel on their page.')],
+  ['unfelt', t('Not enough yet'), t('Too few notes with feelings to place them. Log a few more, or add how they make you feel on their page.')],
 ];
 
 const FEEL_LINE: Record<Feel, string> = {
   lifts: t('mostly warm feelings'),
   mixed: t('warm and hard feelings at once'),
   weighs: t('mostly hard feelings'),
-  unfelt: t('no feelings logged yet'),
+  unfelt: t('not enough feelings logged to place them yet'),
 };
 
 const colorOf = (core: string | null) => (core ? `var(--emo-${core})` : 'var(--ink-3)');
@@ -254,7 +259,7 @@ function FeelMap({ reads, focus, onPick, onHover }: { reads: Read[]; focus: stri
 
   const most = (['lifts', 'mixed', 'weighs'] as Feel[]).sort((a, b) => n(b) - n(a))[0];
   const reading = !felt.length
-    ? t('Add how people make you feel, or log feelings in notes about them, and they’ll find their place on this line.')
+    ? t('Log feelings in a few notes about someone, or add how they make you feel, and they’ll find their place on this line.')
     : most === 'lifts'
       ? t('Most of the people you write about leave you warmer. Those ties are worth tending.')
       : most === 'mixed'
@@ -290,7 +295,7 @@ function FeelMap({ reads, focus, onPick, onHover }: { reads: Read[]; focus: stri
         </div>
         {unfelt.length > 0 && (
           <div class="pp-unfelt">
-            <span class="pp-unfelt-label">{t('Not felt yet')}</span>
+            <span class="pp-unfelt-label">{t('Not enough yet')}</span>
             <span class="pp-unfelt-faces">
               {unfelt.map((r) => (
                 <button class={focus === r.p.id ? 'on' : undefined} onClick={() => onPick(r.p.id)} onPointerEnter={(e) => e.pointerType === 'mouse' && onHover(r.p.id)} onPointerLeave={() => onHover(null)} aria-label={r.p.name} title={r.p.name}>

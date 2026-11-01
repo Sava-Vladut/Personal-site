@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.178.1',
+    date: '2026-11-01',
+    changes: [
+      'How they make you feel: people with fewer than three notes with feelings (picking how they make you feel counts as two) are no longer placed on the line; they wait under “Not enough yet”.',
+      'Where someone sits is now eased toward the middle when there’s little to go on, so a single hard day no longer makes someone “heavy”.',
+    ],
+  },
+  {
     version: '1.178.0',
     date: '2026-11-01',
     changes: [
