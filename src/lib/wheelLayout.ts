@@ -88,13 +88,15 @@ export function normalize(raw: Partial<WheelLayout> | null | undefined): WheelLa
 /**
  * Places that moved to a new group: a save from before the move lets go of what still sat where it came, so it lands
  * in its new group (what you moved yourself stays). Version 2: 1.106 split Insights. Version 3: Global Ops' player
- * stats moved from Extras to Insights (1.148). Version 4: Repos moved from Extras to Code (1.151).
+ * stats moved from Extras to Insights (1.148). Version 4: Repos moved from Extras to Code (1.151). Version 5: Channel
+ * points and Streamer stats moved from Extras to Twitch, and Repos from Code back to Extras (1.176).
  */
-const VERSION = 4;
+const VERSION = 5;
 const MOVED: Record<number, Record<string, string | null>> = {
   2: { traps: 'insights', laws: 'insights', twitch: 'insights', status: 'insights', countdown: 'insights', repos: null },
   3: { glops: 'extras' },
   4: { repos: 'extras' },
+  5: { twitch: 'extras', streamer: 'extras', repos: 'code' },
 };
 function migrate(raw: (Partial<WheelLayout> & { v?: number }) | null): Partial<WheelLayout> | null {
   if (!raw || (raw.v ?? 1) >= VERSION) return raw;

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.176.0',
+    date: '2026-11-01',
+    changes: [
+      'A new Twitch group on the wheel and in the sidebar holds Channel points and Streamer stats',
+      'Code is gone: Repos now sits in Extras, beside Public status and Countdowns',
+    ],
+  },
+  {
     version: '1.175.1',
     date: '2026-11-01',
     changes: [
