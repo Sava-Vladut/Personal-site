@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.173.1',
+    date: '2026-11-01',
+    changes: [
+      'Streamer stats: much lighter with years of streams: the viewers chart groups streams into at most about 120 bars, and each game’s timeline into at most 72 dots',
+      'Streamer stats: zooming and dragging the chart redraws once a frame, and works out each period in one pass',
+      'Streamer stats: while the history loads, the page redraws only when new streams arrive',
+    ],
+  },
+  {
     version: '1.173.0',
     date: '2026-11-01',
     changes: [

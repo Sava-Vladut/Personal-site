@@ -195,7 +195,8 @@ function Report({ d: report, rangeId, onRange, stale }: { d: Data; rangeId: stri
   const days = r[5];
   // the report with every stream SullyGnome has, so each card reads the whole career
   const h = useHistory(report.login, !!report.history);
-  const d = useMemo(() => withHistory(report, h.data), [report, h.data]);
+  // (worked out again only when new streams arrive, not on every poll)
+  const d = useMemo(() => withHistory(report, h.data), [report, h.data?.streams]);
   const a = useMemo(() => analyse(d, days), [d, days]);
   const c = useMemo(() => career(d), [d]);
   const colors = useMemo(() => gameColors(d.streams, d.clips ?? []), [d]);
@@ -504,7 +505,18 @@ const MIN_SPAN = 2 * DAY;
 function OverTime({ d, from, colorOf, colors }: { d: Data; from: number; colorOf: (g: string) => string; colors: Map<string, string> }) {
   const to = d.now;
   const [metric, setMetric] = useState<Metric>('hours');
-  const [view, setView] = useState<[number, number]>([from, to]);
+  const [view, setViewNow] = useState<[number, number]>([from, to]);
+  // a drag, pinch or wheel moves the view many times a frame: the last of them is drawn, once a frame
+  const pending = useRef<[number, number] | null>(null);
+  const frame = useRef(0);
+  const setView = (v: [number, number]) => {
+    pending.current = v;
+    frame.current ||= requestAnimationFrame(() => {
+      frame.current = 0;
+      if (pending.current) setViewNow(pending.current);
+    });
+  };
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
   const [a, b] = view;
   const unit = unitFor(b - a);
   const ps = useMemo(() => overTime(d, a, b, unit), [d, a, b, unit]);
@@ -876,7 +888,17 @@ function Games({ d, a, colorOf, range }: { d: Data; a: Analysis; colorOf: (g: st
   const counted = a.games.some((g) => g.recMs);
   const span = Math.max(1, d.now - a.from);
   const pos = (ms: number) => `${(((ms - a.from) / span) * 100).toFixed(2)}%`;
-  const longest = Math.max(1, ...a.games.flatMap((g) => g.hits.map((h) => h[1])));
+  // each game's plays gathered into at most BINS dots along the range, bigger for more hours, so years of streams stay light
+  const BINS = 72;
+  const dots = useMemo(() => new Map(a.games.map((g) => {
+    const bins = new Map<number, number>();
+    for (const [at, ms] of g.hits) {
+      const k = Math.min(BINS - 1, Math.floor(((at - a.from) / span) * BINS));
+      bins.set(k, (bins.get(k) ?? 0) + ms);
+    }
+    return [g.id, [...bins]] as const;
+  })), [a, span]);
+  const longest = Math.max(1, ...[...dots.values()].flatMap((b) => b.map((x) => x[1])));
   const right = (g: GameRow) => (by === 'ms' ? hours(g.ms) : by === 'watched' ? (g.recMs ? watchedH(g.watched) : '—') : avgOf(g) !== null ? num(Math.round(avgOf(g)!)) : '—');
   return (
     <section class="card tw-list sr-games wide">
@@ -902,7 +924,7 @@ function Games({ d, a, colorOf, range }: { d: Data; a: Analysis; colorOf: (g: st
                 <span class="sr-game-bar"><i /></span>
                 <span class="sr-track" aria-hidden="true">
                   <i class="sr-span" style={{ left: pos(g.first), width: `max(2px, calc(${pos(g.last)} - ${pos(g.first)}))` }} />
-                  {g.hits.map(([at, ms]) => <i class="sr-pip" style={{ left: pos(at), '--s': (0.35 + 0.65 * Math.sqrt(ms / longest)).toFixed(2) }} />)}
+                  {dots.get(g.id)!.map(([k, ms]) => <i class="sr-pip" style={{ left: `${(((k + 0.5) / BINS) * 100).toFixed(2)}%`, '--s': (0.35 + 0.65 * Math.sqrt(ms / longest)).toFixed(2) }} />)}
                 </span>
                 <small>
                   {[
@@ -1031,12 +1053,30 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 function ViewerBars({ streams, colorOf, named }: { streams: Stream[]; colorOf: (g: string) => string; named: (g: string) => string }) {
   const [ref, W] = useWidth();
   const H = 120, L = 38, R = 4, T = 8, B = 20;
-  const n = streams.length;
   const pw = Math.max(0, W - L - R), ph = H - T - B;
-  const max = Math.max(1, ...streams.map((s) => s.avg ?? 0));
+  // a bar a stream while they fit; past that, a few streams in a row share a bar, so the card stays light over years
+  const groups = useMemo(() => {
+    const per = Math.max(1, Math.ceil(streams.length / Math.max(30, Math.min(120, Math.floor(pw / 5) || 120))));
+    const out: { from: number; to: number; avg: number; peak: number; ms: number; n: number; main: string }[] = [];
+    for (let i = 0; i < streams.length; i += per) {
+      const part = streams.slice(i, i + per);
+      const ms = part.reduce((a, s) => a + (s.end - s.start), 0) || 1;
+      const games = new Map<string, number>();
+      for (const s of part) for (const [g, , len] of s.segs) games.set(g, (games.get(g) ?? 0) + len);
+      out.push({
+        from: part[0].start, to: part[part.length - 1].start, ms, n: part.length,
+        avg: Math.round(part.reduce((a, s) => a + s.avg! * (s.end - s.start), 0) / ms),
+        peak: Math.max(...part.map((s) => s.peak ?? s.avg!)),
+        main: [...games].sort((p, q) => q[1] - p[1])[0]?.[0] ?? '',
+      });
+    }
+    return out;
+  }, [streams, pw]);
+  const n = groups.length;
+  const max = Math.max(1, ...groups.map((g) => g.avg));
   const y = (v: number) => T + ph - (v / max) * ph;
-  const band = pw / n;
-  const bw = Math.max(2, Math.min(24, band - 2));
+  const band = pw / Math.max(1, n);
+  const bw = Math.max(1.5, Math.min(24, band - (band > 4 ? 2 : 0.5)));
   return (
     <div ref={ref} class="chart">
       {W > 0 && (
@@ -1047,21 +1087,21 @@ function ViewerBars({ streams, colorOf, named }: { streams: Stream[]; colorOf: (
               <text x={L - 6} y={y(v) + 4} class="tick" text-anchor="end">{compact(Math.round(v))}</text>
             </>
           ))}
-          {streams.map((s, i) => {
-            const x = L + i * band + (band - bw) / 2, top = y(s.avg!), r = Math.min(3, bw / 2, T + ph - top);
-            const main = [...s.segs].sort((p, q) => q[2] - p[2])[0]?.[0] ?? '';
+          {groups.map((g, i) => {
+            const x = L + i * band + (band - bw) / 2, top = y(g.avg), r = Math.min(3, bw / 2, T + ph - top);
+            const title = g.n > 1 ? `${day(g.from)} – ${day(g.to)}` : longDay(g.from);
             return (
-              <g class="sr-col" style={{ '--k': i }} {...tipProps(() => (
-                <Tip title={longDay(s.start)} rows={[[t('Average viewers'), num(s.avg!), true], [t('Peak viewers'), num(s.peak ?? 0)], [t('Hours streamed'), hours(s.end - s.start)]]}
-                  games={[[colorOf(main), named(main), '']]} />
-              ), `${day(s.start)}: ${num(s.avg!)}`)}>
+              <g class="sr-col" style={{ '--k': Math.min(i, 60) }} {...tipProps(() => (
+                <Tip title={title} rows={[[t('Average viewers'), num(g.avg), true], [t('Peak viewers'), num(g.peak)], [t('Hours streamed'), hours(g.ms)], g.n > 1 && [t('Streams'), num(g.n)]]}
+                  games={[[colorOf(g.main), named(g.main), '']]} />
+              ), `${title}: ${num(g.avg)}`)}>
                 <rect x={L + i * band} y={T} width={band} height={ph} fill="transparent" />
-                {T + ph - top > 0.75 && <path d={`M${x},${T + ph}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${T + ph}Z`} class="sr-vbar" style={{ fill: colorOf(main) }} />}
+                {T + ph - top > 0.75 && <path d={`M${x},${T + ph}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${T + ph}Z`} class="sr-vbar" style={{ fill: colorOf(g.main) }} />}
               </g>
             );
           })}
-          <text x={L} y={H - 4} class="tick" text-anchor="start">{day(streams[0].start)}</text>
-          <text x={L + pw} y={H - 4} class="tick" text-anchor="end">{day(streams[n - 1].start)}</text>
+          {n > 0 && <text x={L} y={H - 4} class="tick" text-anchor="start">{day(groups[0].from)}</text>}
+          {n > 0 && <text x={L + pw} y={H - 4} class="tick" text-anchor="end">{day(groups[n - 1].to)}</text>}
         </svg>
       )}
     </div>

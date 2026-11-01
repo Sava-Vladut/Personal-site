@@ -132,10 +132,14 @@ export function useHistory(login: string | null, on: boolean): { data: History |
     const had = histories.get(login);
     const ask = () =>
       get<History>(`/api/streamers/${encodeURIComponent(login)}/history`).then(
-        (data) => {
+        (fresh) => {
+          let data = fresh;
+          // while it's still reading, a poll that brought no new streams changes nothing (and redraws nothing)
+          const before = histories.get(login)?.data;
+          if (before && before.streams.length === data.streams.length && before.streams.at(-1)?.[0] === data.streams.at(-1)?.[0]) data = before.syncing === fresh.syncing ? before : { ...before, syncing: fresh.syncing, known: fresh.known };
           histories.set(login, { at: Date.now(), data });
           if (!alive) return;
-          setS({ login, data, loading: data.syncing });
+          setS((p) => (p.login === login && p.data === data ? p : { login, data, loading: data.syncing }));
           if (data.syncing) timer = window.setTimeout(ask, 4_000);
         },
         () => alive && setS({ login, data: histories.get(login)?.data ?? null, loading: false }),
@@ -343,7 +347,12 @@ export function analyse(data: Streamer, days: number | null) {
 
   // each weekday-hour as the share of its hours in the range they were live
   const slots = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
-  split(from, now, 'hour', (at, ms) => (slots[(at.getDay() + 6) % 7][at.getHours()] += ms));
+  // a day at a time (a whole day adds an hour to each of its hours), hour by hour only at the two ends
+  split(from, now, 'day', (at, ms) => {
+    const row = slots[(at.getDay() + 6) % 7];
+    if (at.getHours() === 0 && at.getMinutes() === 0 && ms >= 23 * HOUR) for (let h = 0; h < 24; h++) row[h] += HOUR;
+    else split(at.getTime(), at.getTime() + ms, 'hour', (x, m) => (slots[(x.getDay() + 6) % 7][x.getHours()] += m));
+  });
   const often = heat.map((row, d) => row.map((ms, h) => (slots[d][h] ? Math.min(1, ms / slots[d][h]) : 0)));
   const byWeekday = heat.map((row, d) => {
     const weeks = slots[d].reduce((a, b) => a + b, 0) / DAY;
@@ -525,11 +534,23 @@ export function overTime(d: Streamer, from: number, to: number, unit: Unit) {
     periods.push({ start, end: at.getTime(), ms: 0, games: new Map(), streams: 0, avg: null, peak: null, watched: null, views: null, followers: null, gained: null, rank: null });
   }
   if (!periods.length) return periods;
+  // one pass over the streams, each landing in the periods it touches (found by halving), not every period over every stream
+  const first = (ms: number) => {
+    let lo = 0, hi = periods.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (periods[mid].start <= ms) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  };
   const lo = periods[0].start;
-  const streams = d.streams.filter((s) => s.end > lo && s.start < to);
-  for (const p of periods) {
-    const end = Math.min(p.end, d.now);
-    for (const s of streams) {
+  const counted = periods.map(() => ({ ms: 0, sum: 0, fol: 0, fols: 0 }));
+  for (const s of d.streams) {
+    if (s.end <= lo || s.start >= to) continue;
+    for (let i = first(Math.max(s.start, lo)); i < periods.length && periods[i].start < s.end; i++) {
+      const p = periods[i];
+      const end = Math.min(p.end, d.now);
       for (const x of pieces(s, p.start, end)) {
         p.ms += x.b - x.a;
         p.games.set(x.game, (p.games.get(x.game) ?? 0) + x.b - x.a);
@@ -537,17 +558,23 @@ export function overTime(d: Streamer, from: number, to: number, unit: Unit) {
       const w = s.end > p.start && s.start < end ? watchedIn(s, p.start, end) : null;
       if (w !== null) p.watched = (p.watched ?? 0) + w / HOUR;
     }
-    if (p.watched !== null) p.watched = Math.round(p.watched);
-    const mine = streams.filter((s) => s.start >= p.start && s.start < p.end);
-    p.streams = mine.length;
-    const counted = mine.filter((s) => s.avg !== undefined);
-    if (counted.length) {
-      const ms = counted.reduce((a, s) => a + (s.end - s.start), 0) || 1;
-      p.avg = Math.round(counted.reduce((a, s) => a + s.avg! * (s.end - s.start), 0) / ms);
-      p.peak = Math.max(...counted.map((s) => s.peak ?? s.avg!));
+    if (s.start < lo) continue;
+    // what's counted by the period a stream starts in
+    const k = first(s.start);
+    const p = periods[k], c = counted[k];
+    p.streams++;
+    if (s.avg !== undefined) {
+      c.ms += s.end - s.start;
+      c.sum += s.avg * (s.end - s.start);
+      p.peak = Math.max(p.peak ?? 0, s.peak ?? s.avg);
     }
-    const viewed = mine.filter((s) => s.views !== undefined);
-    if (viewed.length) p.views = viewed.reduce((a, s) => a + s.views!, 0);
+    if (s.views !== undefined) p.views = (p.views ?? 0) + s.views;
+    if (s.fol !== undefined) (c.fol += s.fol), c.fols++;
+  }
+  periods.forEach((p, i) => {
+    const c = counted[i];
+    if (p.watched !== null) p.watched = Math.round(p.watched);
+    if (c.ms) p.avg = Math.round(c.sum / c.ms);
     const inside = d.followerDays.filter(([day]) => day >= p.start && day < p.end);
     if (inside.length) {
       p.followers = inside[inside.length - 1][1];
@@ -558,11 +585,8 @@ export function overTime(d: Streamer, from: number, to: number, unit: Unit) {
     const ranks = tracker.filter(([day, rank]) => day >= p.start && day < p.end && rank !== null);
     if (ranks.length) p.rank = ranks[ranks.length - 1][1];
     // before follower counts were kept here, SullyGnome's followers per stream
-    if (p.gained === null) {
-      const fol = mine.filter((s) => s.fol !== undefined);
-      if (fol.length) p.gained = fol.reduce((a, s) => a + s.fol!, 0);
-    }
-  }
+    if (p.gained === null && c.fols) p.gained = c.fol;
+  });
   return periods;
 }
 
