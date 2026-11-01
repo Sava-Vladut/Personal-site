@@ -153,14 +153,11 @@
 .lrn-opt.is-wrong .lrn-opt-key { background: var(--danger); color: var(--on-color); }
 .lrn-opt:is(.is-right, .is-wrong, .is-picked) { cursor: default; }
 
-/* what the answer means: always under the options. On its own it rises in; in a Verdict (components/learn.tsx) its
+/* what the answer means: always under the options. On its own it rises in; in a Verdict (components/learn.tsx, an Unfold) its
    box unfolds from nothing as well, so what's below it eases down instead of jumping. The clip div carries no padding,
    so it folds to nothing; the paragraph's 10px margin stays inside it */
 .lrn-verdict { margin: 10px 0 0; font-size: var(--text-base); line-height: 1.5; color: var(--ink-2); animation: arrive-soft var(--dur-2) var(--ease-emph) backwards; }
-.lrn-verdict-wrap { display: grid; grid-template-rows: 1fr; animation: lrn-unfold var(--dur-3) var(--ease-emph) backwards; }
-.lrn-verdict-wrap > div { min-height: 0; overflow: hidden; }
-.lrn-verdict-wrap .lrn-verdict { animation: none; }
-@keyframes lrn-unfold { from { grid-template-rows: 0fr; opacity: 0; translate: 0 6px; } }
+.unfold .lrn-verdict { animation: none; }
 .lrn-verdict b { font-weight: var(--w-bold); color: var(--ink); }
 .lrn-verdict .is-right { color: color-mix(in oklab, var(--emo-calm-safety) 75%, var(--ink)); }
 .lrn-verdict .is-wrong { color: var(--danger); }
@@ -390,7 +387,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lrn-detail, .lrn-verdict, .lrn-verdict-wrap, .lrn-meter-track > b, .lrn-group-head, .lrn-d-flow > .is-swapped,
+  .lrn-detail, .lrn-verdict, .lrn-meter-track > b, .lrn-group-head, .lrn-d-flow > .is-swapped,
   :is(.lrn-caption-title, .lrn-caption-sub, .lrn-caption-idle) { animation: none; }
   .lrn-lens-hint > span, :is(.lw-game-actions, .sd-game-actions) { transition: none; }
   :is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally), :is(.lrn-today, .lrn-row, .lrn-opt, .lrn-link, .lrn-tally):active:not(:disabled) { transition: background-color var(--dur-1), color var(--dur-1), opacity var(--dur-2); scale: 1; }

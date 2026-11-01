@@ -3,6 +3,7 @@ import { CORE, EMOTION, type EmotionDef, type FamilyDef } from '../data/emotions
 import { Icon, Sprite, useSpriteIdle } from './icons';
 import { haptic } from '../lib/haptics';
 import { trail } from './emotion';
+import { Unfold } from './Unfold';
 import { count, t } from '../lib/i18n';
 
 /*
@@ -410,10 +411,6 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
   anchors.current = anchorMap;
   const info = hot ? EMOTION[hot] : zoomed ? CORE[focus] : null;
   const core = focus ? CORE[focus] : null;
-  // the buttons stay mounted so they can slide away as well as in; this keeps their label while they do
-  const shown = useRef(core);
-  if (core) shown.current = core;
-  const btnCore = shown.current;
 
   return (
     <div class={`ew${tip?.live ? ' holding' : ''}`} onClick={outside} onKeyDown={(ev) => ev.key === 'Escape' && (tip ? setTip(null) : zoomed && onFocus(null))}>
@@ -466,16 +463,16 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
         )}
       </div>
 
-      {btnCore && (
-        <div class="ew-actions-wrap" data-open={core ? '' : undefined} inert={!core}>
+      <Unfold open={!!core}>
+        {core && (
           <div class="row gap-s ew-actions">
             <button class="btn btn-quiet" onClick={() => onFocus(null)}><Icon name="chevron-left" size={18} /> {t('All worlds')}</button>
-            <button class="btn btn-quiet grow" aria-pressed={selected.includes(btnCore.id)} onClick={() => onPick(btnCore.id)}>
-              {t('Just “{world}”', { world: btnCore.name.split(' / ')[0] })}
+            <button class="btn btn-quiet grow" aria-pressed={selected.includes(core.id)} onClick={() => onPick(core.id)}>
+              {t('Just “{world}”', { world: core.name.split(' / ')[0] })}
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </Unfold>
     </div>
   );
 }

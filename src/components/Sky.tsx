@@ -60,13 +60,28 @@ export function Sky({ world, worlds, letters, small, calm }: { world?: string | 
       relook(true);
     };
 
-    const resize = () => {
+    // Sizing a sky clears and redraws its canvases (and the worker answers a frame later), so a box that moves a frame
+    // at a time (a panel unfolding under it) would flicker it. While only the height changes, the canvases keep the
+    // height they were drawn for, pinned to the top, and are sized once the box has settled; the panel clips the rest.
+    let settle = 0;
+    const apply = () => {
       const r = host.getBoundingClientRect();
       if (!r.width || !r.height) return;
       rect = r;
       w = r.width; h = r.height; dpr = devicePixelRatio || 1;
       relook(false);
-      link.size(w, h, dpr);
+      link.size(w, h, dpr).then(() => canvases.forEach((c) => (c.style.height = '')));
+    };
+    const resize = () => {
+      const r = host.getBoundingClientRect();
+      if (w && r.width === w && r.height && r.height !== h) {
+        canvases.forEach((c) => (c.style.height = `${h}px`));
+        clearTimeout(settle);
+        settle = window.setTimeout(apply, 150);
+        return;
+      }
+      clearTimeout(settle);
+      apply();
     };
 
     const sync = () => {
@@ -127,6 +142,7 @@ export function Sky({ world, worlds, letters, small, calm }: { world?: string | 
     waker?.addEventListener('focusin', wake);
     waker?.addEventListener('focusout', rest);
     return () => {
+      clearTimeout(settle);
       link.close();
       ro.disconnect();
       io.disconnect();

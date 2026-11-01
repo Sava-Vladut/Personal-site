@@ -10,6 +10,7 @@ import { fillWeather, forgetFix, here, locationError } from '../lib/weather';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
 import { ConnectSetup } from '../components/ConnectSetup';
+import { Unfold } from '../components/Unfold';
 import { ExportSheet } from '../components/ExportSheet';
 import { Sheet } from '../components/Sheet';
 import { WheelEditor } from '../components/WheelEditor';
@@ -43,26 +44,10 @@ const copy = async (text: string) => {
   }
 };
 
-/**
- * Content that opens and closes in place: it stays mounted so the height, fade and slide can run both ways, and is
- * inert while closed. `row` is for a whole row of a list (it keeps the list's dividers; see styles/settings.css).
- * What it shows is held for the exit, then let go, so nothing private (a sync code) lingers in the page once gone.
- */
-function Reveal({ open, row, children }: { open: boolean; row?: boolean; children: ComponentChildren }) {
-  const held = useRef<ComponentChildren>(open ? children : null);
-  const [, redraw] = useState(0);
-  if (open) held.current = children;
-  useEffect(() => {
-    if (open) return;
-    const id = setTimeout(() => { held.current = null; redraw((n) => n + 1); }, 600);
-    return () => clearTimeout(id);
-  }, [open]);
-  return (
-    <div class={row ? 'xp list-row' : 'xp'} data-open={open ? '' : undefined} inert={!open}>
-      <div class="xp-in">{open ? children : held.current}</div>
-    </div>
-  );
-}
+/** Content that opens and closes in place (the shared Unfold). `row` is for a whole row of a list (see styles/settings.css). */
+const Reveal = ({ open, row, children }: { open: boolean; row?: boolean; children: ComponentChildren }) => (
+  <Unfold open={open} class={row ? 'list-row' : undefined}>{children}</Unfold>
+);
 
 function ago(time: number) {
   const m = Math.round((Date.now() - time) / 60_000);

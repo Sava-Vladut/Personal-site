@@ -1,15 +1,17 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import '../styles/unfold.css';
 
 /**
  * Something that opens and closes in place instead of popping in: it unfolds from a line (its height easing, fading and
  * sliding down a few px) and folds back before it's taken out of the page, so what's below it moves smoothly too. It
  * comes up already open, without the opening motion, when `open` starts true. While it folds it keeps showing what
- * it held when it was open. The styles are in notes.css.
+ * it held when it was open. `appear` plays the opening when it first shows already open (an answer that appears
+ * under a question). This is the site's one open/close/appear motion; the styles are in unfold.css.
  */
-export function Unfold({ open, children, class: cls }: { open: boolean; children: ComponentChildren; class?: string }) {
+export function Unfold({ open, appear, children, class: cls }: { open: boolean; appear?: boolean; children: ComponentChildren; class?: string }) {
   // in: opening; still: open and at rest (its edges free to show a focus ring); out: closing, then gone
-  const [phase, setPhase] = useState<'in' | 'still' | 'out' | null>(open ? 'still' : null);
+  const [phase, setPhase] = useState<'in' | 'still' | 'out' | null>(open ? (appear ? 'in' : 'still') : null);
   useEffect(() => {
     if (open) return void setPhase((p) => (p === 'still' ? p : 'in'));
     setPhase((p) => (p ? 'out' : p));

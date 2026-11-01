@@ -1,0 +1,14 @@
+/* ---------- Opening and closing in place (components/Unfold.tsx), the one way anything here opens, closes or appears in place ----------
+   The wrapper is a one-row grid whose row eases between 0fr and 1fr, so what's below moves smoothly, while the
+   content fades and slides down a few px. Clipped only while it moves, so a focus ring or shadow at its edge shows
+   once it's open. A gap before it in a flex or grid parent is taken back (`--unfold-gap`), so it doesn't jump. */
+.unfold { display: grid; grid-template-rows: 1fr; }
+.unfold > .unfold-in { min-height: 0; }
+.unfold:is(.is-in, .is-out) > .unfold-in { overflow: hidden; }
+.unfold.is-in { animation: unfold-in var(--dur-3) var(--ease-emph) backwards; }
+.unfold.is-out { animation: unfold-out var(--dur-2) var(--ease) forwards; pointer-events: none; }
+@keyframes unfold-in { from { grid-template-rows: 0fr; opacity: 0; translate: 0 -8px; } }
+@keyframes unfold-out { to { grid-template-rows: 0fr; opacity: 0; translate: 0 -8px; margin-bottom: calc(var(--unfold-gap, 0px) * -1); } }
+.coming-up > .unfold { --unfold-gap: 8px; }
+.sheet-foot-wrap { flex: none; }
+@media (prefers-reduced-motion: reduce) { .unfold.is-in, .unfold.is-out { animation-duration: 0.01ms; } }

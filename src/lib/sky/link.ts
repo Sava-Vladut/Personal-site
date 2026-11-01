@@ -7,7 +7,8 @@ import SkyWorker from './worker?worker';
 
 export interface SkyLink {
   look(look: Look): void;
-  size(w: number, h: number, dpr: number): void;
+  /** Resolves once the canvases have been resized and redrawn. */
+  size(w: number, h: number, dpr: number): Promise<void>;
   pointer(x: number, y: number, on: boolean): void;
   run(on: boolean): void;
   draw(): void;
@@ -20,11 +21,13 @@ const offscreen = typeof Worker === 'function' && typeof OffscreenCanvas === 'fu
 let worker: Worker | null = null;
 let ids = 0;
 const drawnBy = new Map<number, () => void>();
+const sizedBy = new Map<number, (() => void)[]>(); // the resizes a sky is waiting on, oldest first
 
 function startWorker() {
   if (worker) return worker;
   worker = new SkyWorker();
-  worker.onmessage = ({ data }: MessageEvent<{ type: 'drawn'; id: number }>) => {
+  worker.onmessage = ({ data }: MessageEvent<{ type: 'drawn' | 'sized'; id: number }>) => {
+    if (data.type === 'sized') return void sizedBy.get(data.id)?.shift()?.();
     drawnBy.get(data.id)?.();
     drawnBy.delete(data.id);
   };
@@ -55,13 +58,17 @@ function viaWorker(canvases: HTMLCanvasElement[], small: boolean, onDrawn: () =>
         send({ type: 'look', id, look: { ...look, layers } }, atlases);
       }).catch(() => {});
     },
-    size: (w, h, dpr) => send({ type: 'size', id, w, h, dpr }),
+    size: (w, h, dpr) => new Promise<void>((done) => {
+      sizedBy.set(id, [...(sizedBy.get(id) ?? []), done]);
+      send({ type: 'size', id, w, h, dpr });
+    }),
     pointer: (x, y, on) => send({ type: 'pointer', id, x, y, on }),
     run: (on) => send({ type: 'run', id, on }),
     draw: () => send({ type: 'draw', id }),
     close() {
       closed = true;
       drawnBy.delete(id);
+      sizedBy.delete(id);
       send({ type: 'remove', id });
     },
   };
@@ -80,7 +87,7 @@ function onPage(canvases: HTMLCanvasElement[], small: boolean, onDrawn: () => vo
   });
   return {
     look: (look) => call((s) => s.setLook(look)),
-    size: (w, h, dpr) => call((s) => s.setSize(w, h, dpr)),
+    size: (w, h, dpr) => new Promise<void>((done) => call((s) => { s.setSize(w, h, dpr); done(); })),
     pointer: (x, y, on) => call((s) => s.setPointer(x, y, on)),
     run: (on) => call((s) => s.run(on)),
     draw: () => call((s) => s.draw()),

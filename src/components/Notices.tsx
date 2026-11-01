@@ -16,6 +16,7 @@ import { lastExport, useBooks, usePeople, useSettings, useSongs, type Entry } fr
 import { useSync } from '../lib/sync';
 import { usePoints } from '../lib/twitch';
 import { Icon, type UiName } from './icons';
+import { Unfold } from './Unfold';
 import { streakOf, type DayPick } from './SongOfDay';
 
 /** How long without a check-in before the bar asks for one. */
@@ -349,7 +350,10 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
   const more = shown.length - FIRST;
   return (
     <div class="notices card fade-arrive">
-      {(all ? shown : shown.slice(0, FIRST)).map((r) => <Slot key={r.id} row={r} onHide={() => hide(r)} />)}
+      {shown.slice(0, FIRST).map((r) => <Slot key={r.id} row={r} onHide={() => hide(r)} />)}
+      <Unfold open={all}>
+        {shown.slice(FIRST).map((r) => <Slot key={r.id} row={r} onHide={() => hide(r)} />)}
+      </Unfold>
       {more > 0 && (
         <button class="notice-more" aria-expanded={all} onClick={() => setAll(!all)}>
           {all ? t('Show less') : t('{n} more', { n: more })}

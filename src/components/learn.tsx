@@ -7,6 +7,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { UiName } from './icons';
 import { Mark } from './Mark';
+import { Unfold } from './Unfold';
 import UI from '../data/ui-icons.json';
 import { svgInner } from '../lib/icons';
 import { t } from '../lib/i18n';
@@ -275,9 +276,7 @@ export function Option({ index, label, state, disabled, pressed, onClick }: {
  */
 export function Verdict({ children }: { children: ComponentChildren }) {
   return (
-    <div class="lrn-verdict-wrap">
-      <div><p class="lrn-verdict">{children}</p></div>
-    </div>
+    <Unfold open appear><p class="lrn-verdict">{children}</p></Unfold>
   );
 }
 

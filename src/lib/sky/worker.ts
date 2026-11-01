@@ -24,7 +24,10 @@ scope.onmessage = ({ data: m }) => {
   const sky = skies.get(m.id);
   if (!sky) return;
   if (m.type === 'look') sky.setLook(m.look);
-  else if (m.type === 'size') sky.setSize(m.w, m.h, m.dpr);
+  else if (m.type === 'size') {
+    sky.setSize(m.w, m.h, m.dpr);
+    scope.postMessage({ type: 'sized', id: m.id });
+  }
   else if (m.type === 'pointer') sky.setPointer(m.x, m.y, m.on);
   else if (m.type === 'run') sky.run(m.on);
   else if (m.type === 'draw') sky.draw();

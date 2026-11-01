@@ -6,6 +6,7 @@ import { AsciiBrain, DIVE_MS, type Word } from '../components/AsciiBrain';
 import { CloudTitle } from '../components/cloud';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
+import { Unfold } from '../components/Unfold';
 import { CORES, shortName } from '../data/emotions';
 import { introSeen, markIntroSeen } from '../lib/auth';
 import { ZONES } from '../lib/brainShape';
@@ -102,19 +103,16 @@ export function Intro({ onEnter }: IntroProps) {
           <button class="intro-about-toggle" aria-expanded={about} onClick={() => setAbout(!about)}>
             <Icon name="info-circle" size={16} /> {t('What is this?')}
           </button>
-          {/* always mounted: it unfolds and folds away again (height, fade, rise), out of reach while shut */}
-          <div class="intro-about-wrap" data-open={about ? '' : undefined} inert={!about}>
-            <div>
-              <ul class="intro-about">
-                <li><b>{t('Journal')}</b> {t('Notes and check-ins, day by day, with photos, places and the weather.')}</li>
-                <li><b>{t('Feelings')}</b> {t('Name what you feel from 48 feelings in eight worlds.')}</li>
-                <li><b>{t('People and media')}</b> {t('The people, books and music that fill your days.')}</li>
-                <li><b>{t('Repos')}</b> {t('Code you’ve written, rated and journaled.')}</li>
-                <li><b>{t('Stats and your brain')}</b> {t('The patterns between all of it, drawn as a brain like this one.')}</li>
-                <li class="muted">{t('Your journal stays in your browser unless you share it. Sync is end-to-end encrypted.')}</li>
-              </ul>
-            </div>
-          </div>
+          <Unfold open={about}>
+            <ul class="intro-about">
+              <li><b>{t('Journal')}</b> {t('Notes and check-ins, day by day, with photos, places and the weather.')}</li>
+              <li><b>{t('Feelings')}</b> {t('Name what you feel from 48 feelings in eight worlds.')}</li>
+              <li><b>{t('People and media')}</b> {t('The people, books and music that fill your days.')}</li>
+              <li><b>{t('Repos')}</b> {t('Code you’ve written, rated and journaled.')}</li>
+              <li><b>{t('Stats and your brain')}</b> {t('The patterns between all of it, drawn as a brain like this one.')}</li>
+              <li class="muted">{t('Your journal stays in your browser unless you share it. Sync is end-to-end encrypted.')}</li>
+            </ul>
+          </Unfold>
         </div>
       </div>
 

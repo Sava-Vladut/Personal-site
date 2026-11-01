@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.168.1',
+    date: '2026-11-01',
+    changes: [
+      'The cloud sky behind a panel no longer flickers when the panel changes height: it holds still while the panel moves, then settles once',
+      'The notices bar: “N more” and “Show less” now unfold and fold smoothly instead of jumping',
+      'One shared unfold motion now opens everything that opens in place: the feeling wheel’s buttons, Settings rows, Intro’s “What is this?”, quiz answers and the notices bar',
+    ],
+  },
+  {
     version: '1.168.0',
     date: '2026-11-01',
     changes: [
