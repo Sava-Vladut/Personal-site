@@ -68,7 +68,7 @@
   transform-origin: var(--tail) 0; animation: peek-in var(--dur-2) var(--ease-emph);
 }
 .peek.is-above { transform-origin: var(--tail) 100%; }
-.peek-content { display: grid; gap: 12px; max-height: max(0px, calc(var(--peek-height) - 30px)); overflow-y: auto; overscroll-behavior: contain; }
+.peek-content { display: grid; gap: 12px; max-height: max(0px, calc(var(--peek-height) - 30px)); overflow: hidden auto; overscroll-behavior: contain; }
 /* a wash of the feeling's colour, strongest where the tail is */
 .peek::before {
   content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
@@ -90,7 +90,7 @@
 .peek-feelings { display: flex; flex-wrap: wrap; gap: 6px; }
 .peek-actions { display: flex; gap: 8px; }
 /* while writing, under a hairline: the tag itself, changed or taken out. Quieter than what the card is about. */
-.peek-edit { display: flex; gap: 8px; margin: 0 -4px -4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.peek-edit { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .peek-edit .btn { color: var(--ink-2); }
 @media (hover: hover) { .peek-edit .btn:hover { background: var(--surface-2); color: var(--ink); } }
 /* a finger's height for the card's buttons on a phone */

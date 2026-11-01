@@ -11,6 +11,11 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.176.1',
+    date: '2026-11-01',
+    changes: ['Tag cards: no more stray side and bottom scroll bars under Change and Remove'],
+  },
+  {
     version: '1.176.0',
     date: '2026-11-01',
     changes: [
