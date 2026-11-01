@@ -269,8 +269,7 @@
 .md .md-table td:empty::after, .md .md-table th:empty::after { content: '\200b'; }
 /* cells selected together (a drag across them, Shift+arrows): washed in the accent colour, the words' own selection hidden */
 .note-editor .md-table .selectedCell { background: var(--word-wash); }
-.note-editor.ProseMirror-hideselection:has(.selectedCell) *::selection { background: transparent; }
-.note-editor.ProseMirror-hideselection:has(.selectedCell) { caret-color: transparent; }
+.note-editor.ProseMirror-hideselection:has(.selectedCell) { caret-color: transparent; --sel-hidden: transparent; }
 
 /* ---------- a note's words in Word's styles ----------
    The same while reading (here: the reading view, and a public note's page) and while writing (.note-editor, below).
@@ -321,7 +320,9 @@
 /* blank lines as tall as the editor draws them, on a public note's page too */
 .note-body .md .md-gap { height: 1.62em; }
 /* selected words, a picture: Word's blue, as a selected tag or divider already is */
-.note-body .md ::selection { background: color-mix(in oklab, var(--word-ink) 22%, transparent); }
+/* (hidden through --sel-hidden, set on the editor while a cell or node is selected: a `:has(…) *::selection` rule made Chrome restyle the whole page
+   on every text change anywhere, ~30ms a time, so dragging or hovering a chart stuttered) */
+.note-body .md ::selection { background: var(--sel-hidden, color-mix(in oklab, var(--word-ink) 22%, transparent)); }
 .note-editor .media.is-selected .media-pic { outline-color: var(--word-ink); }
 
 /* ---------- writing: the note's editor (src/editor/NoteBody.tsx) ----------
@@ -334,8 +335,7 @@
 /* a whole node selected (a tag, a divider): its outline shows, not the browser's selection. Only while it's still
    selected: ProseMirror can leave the class on after a finger drags a selection on from it, and a phone tints its
    selection (and the handles) with the caret's colour, so the selection would go invisible. */
-.note-editor.ProseMirror-hideselection:has(.ProseMirror-selectednode, .note-chip.is-selected) *::selection { background: transparent; }
-.note-editor.ProseMirror-hideselection:has(.ProseMirror-selectednode, .note-chip.is-selected) { caret-color: transparent; }
+.note-editor.ProseMirror-hideselection:has(.ProseMirror-selectednode, .note-chip.is-selected) { caret-color: transparent; --sel-hidden: transparent; }
 .note-editor p, .note-editor .md-li { min-height: 1.62em; }
 .note-editor pre { white-space: pre-wrap; }
 .note-editor pre code { white-space: inherit; }

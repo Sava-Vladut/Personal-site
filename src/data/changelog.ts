@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.175.1',
+    date: '2026-11-01',
+    changes: [
+      'Charts no longer stutter when you drag, zoom or hover them: a text-selection style was making the browser restyle the whole page on every change (about 30 ms a frame, now under 1 ms)',
+    ],
+  },
+  {
     version: '1.175.0',
     date: '2026-11-01',
     changes: [
