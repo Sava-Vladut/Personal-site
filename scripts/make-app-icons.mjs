@@ -35,14 +35,16 @@ const ART = [
 const svgArt = ART.map(([d, fill, stroke, w]) =>
   `<path d="${d}" fill="${fill}"${stroke ? ` stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"` : ''}/>`).join('');
 
-writeFileSync(
-  'public/icon.svg',
+const svg = (tile) =>
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs>' +
   '<filter id="w" filterUnits="userSpaceOnUse" x="-5" y="-5" width="110" height="110" color-interpolation-filters="sRGB">' +
   '<feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="137" result="n"/>' +
   '<feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter></defs>' +
-  `<rect width="100" height="100" rx="22" fill="${TILE}"/><g filter="url(#w)">${svgArt}</g></svg>\n`,
-);
+  tile + `<g filter="url(#w)">${svgArt}</g></svg>\n`;
+
+writeFileSync('public/icon.svg', svg(`<rect width="100" height="100" rx="22" fill="${TILE}"/>`));
+// no tile, for the sidebar's brand, so the head sits on the sidebar's own background
+writeFileSync('public/icon-mark.svg', svg(''));
 
 /** size: image px; scale: the art's size against the tile's; radius: corner radius fraction (0 = square) */
 function png(file, size, scale, radius) {

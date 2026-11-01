@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.174.3',
+    date: '2026-11-01',
+    changes: [
+      'Sidebar: the app icon drops its dark tile and sits on the sidebar’s own background, in both themes',
+    ],
+  },
+  {
     version: '1.174.2',
     date: '2026-11-01',
     changes: [
