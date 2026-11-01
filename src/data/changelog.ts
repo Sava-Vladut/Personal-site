@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.175.0',
+    date: '2026-11-01',
+    changes: [
+      'Music: short periods are widened on the Over time wave, so a few weeks stay visible across years, with finer detail inside',
+      'Music: period names under the wave are as wide as their name, stack in rows instead of colliding, and mark their period’s span',
+      'Music: each period’s feelings ride the wave as their emotion sprites, and pointing at a name lights its band and shows its dates',
+    ],
+  },
+  {
     version: '1.174.3',
     date: '2026-11-01',
     changes: [

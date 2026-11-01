@@ -1,14 +1,14 @@
 // Periods: stretches of your music, named as an era and given a feeling. The wave shows how many songs joined your
 // records over time (by Spotify's date added); dragging across it picks the songs of that stretch, and the periods
 // you made lie on it as coloured bands, named underneath.
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { coreOf } from '../data/emotions';
 import { formatDate, keyOf, rangeLabel } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { MAX_PERSON_EMOTIONS, addedAt, deletePeriod, getPeriods, savePeriod, toast, type Period, type Song } from '../lib/store';
 import { count, LOCALE, t } from '../lib/i18n';
 import { EmotionChip, EmotionPicker } from './emotion';
-import { Icon } from './icons';
+import { Icon, Sprite } from './icons';
 import { smallArt } from './music';
 import { Sheet } from './Sheet';
 
@@ -78,20 +78,98 @@ function smooth(pts: [number, number][]) {
   return d;
 }
 
-/** Periods placed in lanes under the wave so that ones that overlap don't cover each other. */
-function lanesOf(items: { p: Period; span: Span }[]) {
+/**
+ * Where time falls across the wave, as knots of a piecewise-linear map (time → 0–1). Each period's stretch is widened
+ * to at least `min` of the width, so a few weeks stay visible on a wave of years; the rest of time shares what's left,
+ * evenly. With no periods, it's a straight line.
+ */
+function warpOf(lo: number, hi: number, spans: Span[], min: number): [number, number][] {
+  const parts = spans.map((s): [number, number] => {
+    let a = Math.max(lo, s.start), b = Math.min(hi, s.end);
+    if (b - a < DAY) [a, b] = [Math.max(lo, (a + b) / 2 - DAY / 2), Math.min(hi, (a + b) / 2 + DAY / 2)];
+    return [a, b];
+  }).filter(([a, b]) => b > a).sort((p, q) => p[0] - q[0]);
+  // periods that overlap are widened as one
+  const joined: [number, number][] = [];
+  for (const [a, b] of parts) {
+    const last = joined[joined.length - 1];
+    if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+    else joined.push([a, b]);
+  }
+  if (!joined.length) return [[lo, 0], [hi, 1]];
+  min = Math.min(min, 0.6 / joined.length);
+  // widen the stretches too short for `min`; squeezing the rest can make more of them too short, so go again
+  const wide = new Set<number>();
+  let scale = 1 / (hi - lo);
+  for (let grew = true; grew;) {
+    grew = false;
+    const rest = hi - lo - [...wide].reduce((sum, i) => sum + joined[i][1] - joined[i][0], 0);
+    if (rest <= 0) return [[lo, 0], [hi, 1]];
+    scale = (1 - wide.size * min) / rest;
+    joined.forEach(([a, b], i) => {
+      if (!wide.has(i) && (b - a) * scale < min) { wide.add(i); grew = true; }
+    });
+  }
+  const knots: [number, number][] = [[lo, 0]];
+  let f = 0, t0 = lo;
+  joined.forEach(([a, b], i) => {
+    if (a > t0) knots.push([a, (f += (a - t0) * scale)]);
+    knots.push([b, (f += wide.has(i) ? min : (b - a) * scale)]);
+    t0 = b;
+  });
+  if (hi > t0) knots.push([hi, 1]);
+  knots[knots.length - 1][1] = 1;
+  return knots;
+}
+/** Along the knots from one side's value to the other's (`from` 0: time to across, 1: across to time). */
+function along(knots: [number, number][], v: number, from: 0 | 1) {
+  const to = 1 - from;
+  if (v <= knots[0][from]) return knots[0][to];
+  for (let i = 1; i < knots.length; i++) {
+    const [p, q] = [knots[i - 1], knots[i]];
+    if (v <= q[from]) return q[from] === p[from] ? q[to] : p[to] + ((v - p[from]) / (q[from] - p[from])) * (q[to] - p[to]);
+  }
+  return knots[knots.length - 1][to];
+}
+/** How many of the sorted times come before `at`. */
+function before(times: number[], at: number) {
+  let a = 0, b = times.length;
+  while (a < b) {
+    const m = (a + b) >> 1;
+    if (times[m] < at) a = m + 1;
+    else b = m;
+  }
+  return a;
+}
+
+/** A name's widest pill, the gap between pills and a lane's height. */
+const PILL = 180;
+const GAP = 4;
+const LANE = 22;
+/** The feelings of a period, a sprite each (its first two worlds). */
+const coresOf = (p: Period) => [...new Set(p.emotions.map((e) => coreOf(e)?.id).filter(Boolean))].slice(0, 2) as string[];
+
+/**
+ * Each period's name under the wave: as wide as its band or its name, whichever is wider, centred on the band and
+ * kept inside the wave, in the first lane where it clears the names before it, so names never cover each other.
+ */
+function pillsOf<T extends { a: number; b: number }>(items: T[], width: number, need: (x: T) => number) {
   const ends: number[] = [];
-  return [...items].sort((a, b) => a.span.start - b.span.start).map((x) => {
-    let lane = ends.findIndex((e) => e < x.span.start);
+  return items.map((x) => {
+    const w = Math.min(width, Math.max((x.b - x.a) * width, Math.min(PILL, need(x))));
+    return { ...x, w, left: Math.min(width - w, Math.max(0, ((x.a + x.b) / 2) * width - w / 2)) };
+  }).sort((m, n) => m.left - n.left).map((x) => {
+    let lane = ends.findIndex((e) => e + GAP <= x.left);
     if (lane < 0) lane = ends.length;
-    ends[lane] = x.span.end;
+    ends[lane] = x.left + x.w;
     return { ...x, lane };
   });
 }
 
 /**
  * Songs joining your records over time, as a wave. Drag across it to pick a stretch (`onPick` gets its first and last
- * moment); a tap picks the week under it. The periods lie on it as bands and are named underneath.
+ * moment); a tap picks the stretch under it. The periods lie on it as bands, widened when short so they stay readable
+ * on a wave of years, with their feelings riding the line, and are named underneath.
  */
 export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
   songs: Song[];
@@ -107,40 +185,80 @@ export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
   const [drag, setDrag] = useState<[number, number] | null>(null);
   const dragging = useRef<[number, number] | null>(null);
   const [hover, setHover] = useState<number | null>(null);
+  // the period whose name is pointed at or focused
+  const [lit, setLit] = useState<string | null>(null);
+  const [width, setWidth] = useState(0);
+  // each name's own width, measured once drawn (a guess until then)
+  const [textW, setTextW] = useState<Record<string, number>>({});
+  const names = useRef(new Map<string, HTMLSpanElement>());
   const byId = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
 
-  const wave = useMemo(() => {
-    const times = songs.map(addedAt);
-    const now = Date.now();
-    let lo = Math.min(...times);
-    const hi = Math.max(now, ...times);
+  useEffect(() => {
+    const el = plot.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const range = useMemo(() => {
+    const times = songs.map(addedAt).sort((a, b) => a - b);
+    let lo = times[0];
+    const hi = Math.max(Date.now(), times[times.length - 1]);
     if (hi - lo < 8 * WEEK) lo = hi - 8 * WEEK;
     const n = Math.min(120, Math.max(16, Math.ceil((hi - lo) / WEEK)));
-    const step = (hi - lo) / n;
-    const counts = new Array(n).fill(0);
-    for (const at of times) counts[Math.min(n - 1, Math.floor((at - lo) / step))]++;
-    const top = Math.max(1, ...counts);
+    return { times, lo, hi, n, step: (hi - lo) / n };
+  }, [songs]);
+  const spans = useMemo(() => periods.flatMap((p) => {
+    const span = spanOf(p, byId);
+    return span ? [{ p, span }] : [];
+  }), [periods, byId]);
+  // a short period gets at least 5% of the wave, and never less than a readable 44px
+  const knots = useMemo(() => warpOf(range.lo, range.hi, spans.map((x) => x.span), Math.max(0.05, 44 / (width || 900))), [range, spans, width]);
+  const across = (at: number) => along(knots, at, 0);
+  const at = (f: number) => along(knots, Math.min(1, Math.max(0, f)), 1);
+  const x = (ms: number) => across(ms) * 100;
+
+  const wave = useMemo(() => {
+    const { times, n, step, hi } = range;
+    // the wave is cut into even slices across; a widened stretch has shorter slices of time, so it shows finer detail
+    const from = Array.from({ length: n + 1 }, (_, i) => along(knots, i / n, 1));
+    const counts = from.slice(0, n).map((a, i) => before(times, i === n - 1 ? hi + 1 : from[i + 1]) - before(times, a));
+    // how fast songs joined around each slice (per even step), over at least a week, so short slices aren't spiky
+    const rates = from.slice(0, n).map((a, i) => {
+      const w = Math.max(from[i + 1] - a, Math.min(WEEK, step)), c = (a + from[i + 1]) / 2;
+      return ((before(times, c + w / 2) - before(times, c - w / 2)) / w) * step;
+    });
+    const top = Math.max(1, ...rates);
     // a square root: one big day of adding doesn't flatten the rest
-    const y = (c: number) => H - 6 - Math.sqrt(c / top) * (H - 18);
-    const pts: [number, number][] = counts.map((c, i) => [((i + 0.5) / n) * W, y(c)]);
+    const ys = rates.map((r) => H - 6 - Math.sqrt(r / top) * (H - 18));
+    const pts: [number, number][] = ys.map((y, i) => [((i + 0.5) / n) * W, y]);
     pts.unshift([0, pts[0][1]]);
     pts.push([W, pts[pts.length - 1][1]]);
     const line = smooth(pts);
-    return { lo, hi, n, step, counts, line, area: `${line} L${W},${H} L0,${H} Z` };
-  }, [songs]);
+    return { n, from, counts, ys, line, area: `${line} L${W},${H} L0,${H} Z` };
+  }, [range, knots]);
 
-  const x = (at: number) => ((at - wave.lo) / (wave.hi - wave.lo)) * 100;
-  const at = (f: number) => wave.lo + Math.min(1, Math.max(0, f)) * (wave.hi - wave.lo);
-  const placed = useMemo(() => lanesOf(periods.flatMap((p) => {
-    const span = spanOf(p, byId);
-    return span ? [{ p, span }] : [];
-  })), [periods, byId]);
-  const lanes = placed.reduce((n, x) => Math.max(n, x.lane + 1), 0);
+  // where each period lies across (0–1), and its name's pill under the wave
+  const bands = spans.map((s) => ({ ...s, a: across(s.span.start), b: across(s.span.end), cores: coresOf(s.p) }));
+  const pills = pillsOf(bands, width || 900, (x) => (textW[x.p.id] ?? periodName(x.p).length * 6.5) + 14 + x.cores.length * 15);
+  const lanes = pills.reduce((n, x) => Math.max(n, x.lane + 1), 0);
+  useLayoutEffect(() => {
+    const next: Record<string, number> = {};
+    let changed = false;
+    for (const [id, el] of names.current) {
+      next[id] = el.scrollWidth;
+      if (Math.abs((textW[id] ?? -1) - next[id]) > 0.5) changed = true;
+    }
+    if (changed) setTextW(next);
+  });
 
   const frac = (e: PointerEvent) => {
     const r = plot.current!.getBoundingClientRect();
     return (e.clientX - r.left) / r.width;
   };
+  // the period under a point across, with a little room either side for a thumb
+  const bandAt = (f: number) => bands.find((x) => f >= x.a - 0.006 && f <= x.b + 0.006);
   const down = (e: PointerEvent) => {
     if (!onPick || e.button !== 0) return;
     plot.current!.setPointerCapture(e.pointerId);
@@ -163,21 +281,25 @@ export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
     const a0 = Math.min(1, Math.max(0, d[0]));
     const [a, b] = [Math.min(a0, f), Math.max(a0, f)];
     if (b - a < 0.01) {
-      // a tap: the period under it, else that week
-      const t0 = at(a);
-      const hit = placed.find((x) => t0 >= x.span.start - (wave.step / 2) && t0 <= x.span.end + wave.step / 2);
+      // a tap: the period under it, else that slice of the wave
+      const hit = bandAt(a);
       if (hit && onOpen) return onOpen(hit.p);
       const i = Math.min(wave.n - 1, Math.floor(a * wave.n));
-      return onPick(wave.lo + i * wave.step, wave.lo + (i + 1) * wave.step);
+      return onPick(wave.from[i], wave.from[i + 1]);
     }
     onPick(at(a), at(b));
   };
 
   const ticks = [0, 1 / 3, 2 / 3].map((f) => at(f));
   const shown = drag ? { start: at(Math.min(...drag)), end: at(Math.max(...drag)) } : picked;
-  const readout = hover !== null && !drag
-    ? `${formatDate(wave.lo + hover * wave.step, { day: 'numeric', month: 'short', year: 'numeric' })} · ${count(wave.counts[hover], 'song', 'songs')}`
-    : shown ? spanLabel({ ...shown, n: 0 }) : '';
+  const under = hover !== null && !drag ? bandAt((hover + 0.5) / wave.n) : undefined;
+  const pointed = lit ? bands.find((x) => x.p.id === lit) : undefined;
+  const readout = pointed && !drag
+    ? `${periodName(pointed.p)} · ${spanLabel(pointed.span)}`
+    : hover !== null && !drag
+      ? [under && periodName(under.p), formatDate(wave.from[hover], { day: 'numeric', month: 'short', year: 'numeric' }), count(wave.counts[hover], 'song', 'songs')].filter(Boolean).join(' · ')
+      : shown ? spanLabel({ ...shown, n: 0 }) : '';
+  const isLit = (p: Period) => p.id === lit || p.id === under?.p.id;
 
   return (
     <div class="wave">
@@ -200,26 +322,46 @@ export function MusicWave({ songs, periods, picked, onPick, onOpen }: {
               <stop offset="1" stop-color="var(--wave)" stop-opacity="0.04" />
             </linearGradient>
           </defs>
-          {placed.map(({ p, span }) => (
-            <rect class="wave-band" x={(x(span.start) / 100) * W - 2} width={Math.max(4, ((x(span.end) - x(span.start)) / 100) * W + 4)} y="0" height={H} style={{ fill: periodColor(p) }} />
+          {bands.map(({ p, a, b }) => (
+            <rect class={`wave-band${isLit(p) ? ' is-lit' : ''}`} x={a * W} width={Math.max(4, (b - a) * W)} y="0" height={H} style={{ fill: periodColor(p) }} />
           ))}
           <path d={wave.area} fill="url(#wave-fill)" />
           <path d={wave.line} class="wave-line" />
           {shown && <rect class="wave-pick" x={(x(shown.start) / 100) * W} width={Math.max(3, ((x(shown.end) - x(shown.start)) / 100) * W)} y="0" height={H} />}
           {hover !== null && !drag && <line class="wave-hover" x1={((hover + 0.5) / wave.n) * W} x2={((hover + 0.5) / wave.n) * W} y1="0" y2={H} />}
         </svg>
+        {bands.map(({ p, a, b, cores }) => {
+          if (!cores.length) return null;
+          // its feelings ride the line, just above the wave at the band's middle
+          const y = wave.ys[Math.min(wave.n - 1, Math.floor(((a + b) / 2) * wave.n))];
+          return (
+            <span class={`wave-emo${isLit(p) ? ' is-lit' : ''}`} style={{ left: `${((a + b) / 2) * 100}%`, top: `max(4px, calc(${(y / H) * 100}% - 22px))` }} aria-hidden="true">
+              {cores.map((c, i) => <Sprite core={c} size={16} idle={isLit(p)} delay={i * 180} />)}
+            </span>
+          );
+        })}
       </div>
       {lanes > 0 && (
-        <div class="wave-lanes" style={{ height: `${lanes * 22}px` }}>
-          {placed.map(({ p, span, lane }) => (
+        <div class="wave-lanes" style={{ height: `${lanes * LANE}px` }}>
+          {pills.map(({ p, span, a, b, cores, left, w, lane }) => (
             <button
-              class="wave-period"
-              style={{ left: `${x(span.start)}%`, width: `max(10px, ${x(span.end) - x(span.start)}%)`, top: `${lane * 22}px`, '--c': periodColor(p), '--paint': periodPaint(p) }}
+              class={`wave-period${isLit(p) ? ' is-lit' : ''}`}
+              style={{
+                left: `${left}px`, width: `${w}px`, top: `${lane * LANE}px`, '--c': periodColor(p), '--paint': periodPaint(p),
+                // the band's own stretch, marked along the pill's foot when the name is wider than the band
+                '--from': `${a * (width || 900) - left}px`, '--span': `${Math.max(4, (b - a) * (width || 900))}px`,
+              }}
               onClick={() => onOpen?.(p)}
+              onPointerEnter={() => setLit(p.id)}
+              onPointerLeave={() => setLit(null)}
+              onFocus={() => setLit(p.id)}
+              onBlur={() => setLit(null)}
               disabled={!onOpen}
               title={`${periodName(p)} · ${spanLabel(span)}`}
+              aria-label={`${periodName(p)}, ${spanLabel(span)}`}
             >
-              <span>{periodName(p)}</span>
+              {cores.map((c) => <Sprite core={c} size={11} />)}
+              <span ref={(el) => { if (el) names.current.set(p.id, el); else names.current.delete(p.id); }}>{periodName(p)}</span>
             </button>
           ))}
         </div>
