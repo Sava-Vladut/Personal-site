@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.179.0',
+    date: '2026-11-02',
+    changes: [
+      'Countdowns: a new “Only on this page” switch keeps a countdown off the button next to the wheel, out of the notices and off your public status. It still ticks on its page under Insights, marked with a crossed-out eye.',
+      'Added two countdowns kept only on their page: New Year 2027 and AFT Sibiu sign-up.',
+    ],
+  },
+  {
     version: '1.178.2',
     date: '2026-11-01',
     changes: [

@@ -1,5 +1,5 @@
 import { navigate } from '../lib/router';
-import { biggest, biggestText, countdownName, progress, running, useCountdowns, useNow } from '../lib/countdown';
+import { biggest, biggestText, countdownName, progress, running, shown, useCountdowns, useNow } from '../lib/countdown';
 import { t } from '../lib/i18n';
 import { Icon } from './icons';
 
@@ -8,7 +8,7 @@ import { Icon } from './icons';
  * and what's left on it: the days, or under a day the hours, then the minutes (never "0").
  */
 export function CountdownButton() {
-  const list = useCountdowns();
+  const list = shown(useCountdowns());
   // ticks every second only in the last hour, where the minutes move; every minute before that
   const soonest = running(list)[0];
   const now = useNow(soonest && soonest.end - Date.now() < 3_600_000 ? 1000 : 60_000);

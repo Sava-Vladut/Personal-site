@@ -3013,4 +3013,7 @@ export const RO: Record<string, string> = {
   "Loading the history…": "Se încarcă istoricul…",
   "Live then": "Live atunci",
   "No earlier history was found for this channel.": "Nu s-a găsit niciun istoric mai vechi pentru acest canal.",
+  "Only on this page": "Doar pe această pagină",
+  "Not next to the wheel, in the notices or on your public status": "Nu lângă roată, în notificări sau pe statusul tău public",
+  "It counts down on every device you’re signed in on, only here.": "Numără invers pe fiecare dispozitiv pe care ești conectat, doar aici.",
 };

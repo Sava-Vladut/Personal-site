@@ -4,7 +4,7 @@ import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
 import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, recentTrail, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show, type TrailBy } from '../lib/status';
-import { running, useCountdowns } from '../lib/countdown';
+import { running, shown, useCountdowns } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
 import { ask } from './Confirm';
@@ -34,7 +34,7 @@ export function StatusPanel() {
   const status = useStatus();
   const loadError = useStatusError();
   const entries = useEntries();
-  const countdowns = running(useCountdowns());
+  const countdowns = running(shown(useCountdowns()));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [show, setShow] = useState<Show>(SHOW_NONE);

@@ -90,7 +90,7 @@ export function cleanCountdown(raw) {
   if (!raw || typeof raw !== 'object' || !ok(raw.start) || !ok(raw.end) || raw.end <= raw.start) throw new HttpError(400, 'The countdown has to end after it starts.');
   const id = typeof raw.id === 'string' && ENTRY_ID.test(raw.id) ? raw.id : crypto.randomBytes(9).toString('base64url');
   const name = typeof raw.name === 'string' ? raw.name.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
-  return { id, name, start: Math.round(raw.start), end: Math.round(raw.end) };
+  return { id, name, start: Math.round(raw.start), end: Math.round(raw.end), ...(raw.hidden === true && { hidden: true }) };
 }
 
 /** The countdowns as kept: an older file's one countdown becomes a list, and broken ones drop out. */
@@ -106,9 +106,9 @@ export function cleanCountdowns(file) {
   return out;
 }
 
-/** What anyone with the link gets: never the entry's id, the countdowns only if chosen and not over yet (soonest first), the trail only if chosen. */
+/** What anyone with the link gets: never the entry's id, the countdowns only if chosen, not hidden and not over yet (soonest first), the trail only if chosen. */
 const publicOf = (s, countdowns) => {
-  const running = (countdowns ?? []).filter((c) => c.end > Date.now()).sort((a, b) => a.end - b.end).map(({ id, ...rest }) => rest);
+  const running = (countdowns ?? []).filter((c) => !c.hidden && c.end > Date.now()).sort((a, b) => a.end - b.end).map(({ id, hidden, ...rest }) => rest);
   return {
   owner: s.owner || '', checkin: s.checkin && (({ id, ...rest }) => rest)(s.checkin), updated: s.updated,
   ...(s.show.countdown && running.length && { countdowns: running }),

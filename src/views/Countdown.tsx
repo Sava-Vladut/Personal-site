@@ -116,7 +116,7 @@ function Running({ c, solo, onEdit }: { c: C; solo: boolean; onEdit: () => void 
     <>
       <section class={`card hero cd-hero${phase}`}>
         <div class="cd-head">
-          <h2 class="cd-name">{name}</h2>
+          <h2 class="cd-name">{name}{c.hidden && <span class="cd-hidden-ico" title={t('Only on this page')}><Icon name="eye-off" size={16} /></span>}</h2>
           <button class="icon-btn" onClick={onEdit} aria-label={t('Change {name}', { name })} title={t('Change {name}', { name })}><Icon name="pencil" size={18} /></button>
         </div>
         <div class="tile-label">
@@ -156,6 +156,7 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
   const [name, setName] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -168,6 +169,7 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
     setName(value?.name ?? '');
     setStart(localInput(fresh ? now.getTime() : value.start));
     setEnd(localInput(fresh ? now.getTime() + 7 * 86_400_000 : value.end));
+    setHidden(!!value?.hidden);
     setError('');
   }, [open]);
 
@@ -186,16 +188,16 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
       setBusy(false);
     }
   };
-  const save = () => ok && run(() => saveCountdown({ ...(value && { id: value.id }), name: name.trim(), start: s, end: e }), value ? t('Countdown changed') : t('Countdown started'));
+  const save = () => ok && run(() => saveCountdown({ ...(value && { id: value.id }), name: name.trim(), start: s, end: e, hidden }), value ? t('Countdown changed') : t('Countdown started'));
   // gone at once, with Undo (as a book, a person or a song is): the same countdown comes back by its id
   const remove = async () => {
     if (!value) return;
-    const { id, name: was, start: from, end: to } = value;
+    const { id, name: was, start: from, end: to, hidden: hid } = value;
     setBusy(true);
     setError('');
     try {
       await removeCountdown(id);
-      toast(t('Countdown removed'), { label: t('Undo'), run: () => saveCountdown({ id, name: was, start: from, end: to }) });
+      toast(t('Countdown removed'), { label: t('Undo'), run: () => saveCountdown({ id, name: was, start: from, end: to, hidden: hid }) });
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -236,8 +238,15 @@ function CountdownSheet({ open, value, onClose }: { open: boolean; value: C | nu
             </button>
           ))}
         </div>
+        <label class="list-row cd-hide">
+          <span>
+            <span>{t('Only on this page')}</span>
+            <span class="muted small">{t('Not next to the wheel, in the notices or on your public status')}</span>
+          </span>
+          <button type="button" class="switch" role="switch" aria-checked={hidden} aria-label={t('Only on this page')} onClick={() => setHidden(!hidden)} />
+        </label>
         <p class={ok && !error ? 'muted small' : 'share-error'} role={error ? 'alert' : undefined}>
-          {error || (ok ? t('Lasts {span}.', { span: span(e - s) }) + ' ' + t('It counts down on every device you’re signed in on. The one ending soonest shows next to the wheel.') : t('The countdown has to end after it starts.'))}
+          {error || (ok ? t('Lasts {span}.', { span: span(e - s) }) + ' ' + (hidden ? t('It counts down on every device you’re signed in on, only here.') : t('It counts down on every device you’re signed in on. The one ending soonest shows next to the wheel.')) : t('The countdown has to end after it starts.'))}
         </p>
       </div>
     </Sheet>

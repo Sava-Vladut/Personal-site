@@ -6,7 +6,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { observable } from './store';
 import { noun, t } from './i18n';
 
-export interface Countdown { id: string; name: string; start: number; end: number }
+/** `hidden`: only on its page under Insights, never next to the wheel, in the notices or on the public status. */
+export interface Countdown { id: string; name: string; start: number; end: number; hidden?: boolean }
 /** One to save: a new one has no id yet, and the server gives it one. */
 type NewCountdown = Omit<Countdown, 'id'> & { id?: string };
 
@@ -67,6 +68,9 @@ export const removeCountdown = (id: string) => call('DELETE', { id });
 
 /** Whether it's still counting down: the wheel's button and the public status only show it until it ends. */
 export const isRunning = <T extends { end: number }>(c: T | null | undefined, now = Date.now()): c is T => !!c && now < c.end;
+
+/** The ones not hidden: those shown next to the wheel, in the notices and on the public status. */
+export const shown = <T extends { hidden?: boolean }>(list: T[]) => list.filter((c) => !c.hidden);
 
 /** The ones still counting down, ending soonest first. */
 export const running = <T extends { end: number }>(list: T[], now = Date.now()) => list.filter((c) => now < c.end).sort((a, b) => a.end - b.end);

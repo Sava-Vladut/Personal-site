@@ -5,7 +5,7 @@ import type { ComponentChildren, FunctionComponent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { LATEST } from '../data/latest';
 import { coreOf, EMOTION, shortName } from '../data/emotions';
-import { useCountdowns, useNow } from '../lib/countdown';
+import { shown as shownCountdowns, useCountdowns, useNow } from '../lib/countdown';
 import { addDays, DAY, diffDays, keyOf, shortDate, todayKey } from '../lib/dates';
 import { count, LOCALE, t } from '../lib/i18n';
 import { keptLesson, lessonOf, type Lesson } from '../lib/lesson';
@@ -161,7 +161,7 @@ export function Notices({ entries, picker, news }: { entries: Entry[]; picker: D
   const books = useBooks();
   const settings = useSettings();
   const sync = useSync();
-  const countdowns = useCountdowns();
+  const countdowns = shownCountdowns(useCountdowns());
   const { data: points } = usePoints();
   const missing = useLinks();
   const today = todayKey();
