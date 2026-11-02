@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.179.1',
+    date: '2026-11-02',
+    changes: [
+      'Mood: the main feeling of a check-in now counts fully and the others half, so a mixed check-in leans toward what you mainly felt instead of cancelling out to zero. This shows everywhere your mood is measured.',
+      'Mood over time: the line is now the average of the clouds you see, so a day with many check-ins no longer outweighs a quiet one.',
+    ],
+  },
+  {
     version: '1.179.0',
     date: '2026-11-02',
     changes: [

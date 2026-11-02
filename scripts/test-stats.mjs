@@ -51,7 +51,7 @@ test('emotion transitions retain timestamp ordering within a day', () => {
   assert.deepEqual(stats.transitions, [{ from: 'sadness', to: 'joy', count: 1 }]);
 });
 
-test('rolling moods weight individual entries and leave moodless windows empty', () => {
+test('rolling moods average the buckets, not the entries, and leave moodless windows empty', () => {
   for (const range of ['30d', '1y']) {
     const back = (days) => { const date = new Date(now); date.setDate(date.getDate() - days); return dateKey(date); };
     const entries = [
@@ -63,12 +63,27 @@ test('rolling moods weight individual entries and leave moodless windows empty',
     const stats = computeStats(entries, range, 1);
     const window = stats.step === 1 ? 7 : 4;
     stats.buckets.forEach((bucket, i) => {
-      const moods = stats.buckets.slice(Math.max(0, i - window + 1), i + 1)
-        .flatMap((b) => b.entries.filter((e) => e.emotions.length).map((e) => e.emotions[0] === 'joy' ? 3 : -3));
+      const moods = stats.buckets.slice(Math.max(0, i - window + 1), i + 1).map((b) => b.mood).filter((m) => m !== null);
       const expected = moods.length ? moods.reduce((a, b) => a + b, 0) / moods.length : null;
       assert.equal(bucket.rolling, expected, `${range}: ${bucket.key}`);
     });
   }
+});
+
+test('a check-in leans toward its main feeling: others count half', () => {
+  const stats = computeStats([{ ...entry(dateKey(now), now.getTime(), 'joy'), emotions: ['joy', 'sadness'], intensity: 5 }], '7d', 1);
+  assert.equal(stats.buckets.at(-1).mood, (0.5 / 1.5) * 5);
+});
+
+test('a busy day counts the same as a quiet one in the rolling line', () => {
+  const back = (days) => { const date = new Date(now); date.setDate(date.getDate() - days); return dateKey(date); };
+  const stats = computeStats([
+    entry(back(0), now.getTime(), 'joy'),
+    entry(back(1), now.getTime(), 'sadness'),
+    entry(back(1), now.getTime() + 1, 'sadness'),
+    entry(back(1), now.getTime() + 2, 'sadness'),
+  ], '7d', 1);
+  assert.equal(stats.buckets.at(-1).rolling, 0);
 });
 
 function findNode(node, predicate) {

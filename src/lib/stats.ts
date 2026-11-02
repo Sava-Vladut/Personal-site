@@ -12,11 +12,13 @@ export const RANGES: [RangeKey, string, number | null][] = [
   ['7d', t('7D'), 7], ['30d', t('30D'), 30], ['90d', t('90D'), 90], ['1y', t('1Y'), 365], ['all', t('All'), null],
 ];
 
-/** Mood of one entry: intensity × average valence of its emotions, from −5 (intensely unpleasant) to +5. */
+/** Mood of one entry: intensity × weighted valence of its emotions, from −5 (intensely unpleasant) to +5.
+ *  The main (first) feeling counts fully and the others half, as in dayMood, so mixed check-ins lean toward what you mainly felt. */
 export function moodOf(e: Entry): number | null {
   if (!e.emotions.length) return null;
-  const v = e.emotions.reduce((s, id) => s + valence(id), 0) / e.emotions.length;
-  return v * e.intensity;
+  let v = 0, w = 0;
+  e.emotions.forEach((id, i) => { const k = i ? 0.5 : 1; v += k * valence(id); w += k; });
+  return (v / w) * e.intensity;
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -111,20 +113,10 @@ export function computeStats(all: Entry[], range: RangeKey, weekStart: 0 | 1) {
     for (const id of e.emotions) b.cores[coreOf(id).id] = (b.cores[coreOf(id).id] ?? 0) + weightOf(e);
   }
   const win = step === 1 ? 7 : 4;
-  // Reuse each bucket's totals instead of rescanning its entries for every rolling window.
-  const totals = buckets.map((b) => {
-    const moods = counted(b.entries).map(moodOf).filter((m): m is number => m !== null);
-    const sum = moods.reduce((s, mood) => s + mood, 0);
-    b.mood = moods.length ? sum / moods.length : null;
-    return { sum, count: moods.length };
-  });
+  for (const b of buckets) b.mood = mean(counted(b.entries).map(moodOf).filter((m): m is number => m !== null));
+  // The line averages the days (or weeks) you see, not the entries, so a busy day counts the same as a quiet one.
   buckets.forEach((b, i) => {
-    let sum = 0, count = 0;
-    for (let j = Math.max(0, i - win + 1); j <= i; j++) {
-      sum += totals[j].sum;
-      count += totals[j].count;
-    }
-    b.rolling = count ? sum / count : null;
+    b.rolling = mean(buckets.slice(Math.max(0, i - win + 1), i + 1).map((x) => x.mood).filter((m): m is number => m !== null));
   });
 
   /* emotion counts: a feeling also counts toward its family and world */
