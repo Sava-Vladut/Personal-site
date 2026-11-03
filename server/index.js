@@ -19,6 +19,8 @@
 //    and lets the admin (ADMIN_PASSWORD) change which channels it watches (TWITCH_CHANNELS_FILE).
 //  • streamer stats: what a Twitch channel plays and for how long (server/streamers.js), from Twitch's public API,
 //    with the miner's channels (and any looked up lately) recorded every few minutes into STREAMERS_DIR.
+//  • chat logs: one Twitch user's chat in one channel (server/chatlogs.js), from the public log archives, plus the
+//    channels the admin has recorded here (CHATLOGS_DIR) by an anonymous chat connection.
 //  • Card Wars player stats: passed on from the game's PvP relay (CARDWARS_STATS_URL), which only the server can reach.
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -37,6 +39,7 @@ import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createStreamerHandler } from './streamers.js';
 import { createSullyGnome } from './sullygnome.js';
+import { createChatLogs } from './chatlogs.js';
 import { createTwitchHandler } from './twitch.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -56,6 +59,7 @@ const TWITCH_DIR = process.env.TWITCH_ANALYTICS_DIR || '';
 const TWITCH_CHANNELS = process.env.TWITCH_CHANNELS_FILE || '';
 // what the streamer stats recorder has seen, one file per channel
 const STREAMERS_DIR = process.env.STREAMERS_DIR || join(ROOT, 'data', 'streamers');
+const CHATLOGS_DIR = process.env.CHATLOGS_DIR || join(ROOT, 'data', 'chatlogs');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 // where repos are cloned on the server, and the numeric GitHub user id of the only account allowed to clone
 const CLONE_DIR = process.env.CLONE_DIR || '';
@@ -1002,6 +1006,9 @@ const twitch = createTwitchHandler({ directory: TWITCH_DIR, channelsFile: TWITCH
 const streamers = createStreamerHandler({ directory: STREAMERS_DIR, channelsFile: TWITCH_CHANNELS, sullyGnome: createSullyGnome() });
 // the recorder runs where the miner does; elsewhere (tests, a laptop) channels are only looked up when asked
 if (TWITCH_CHANNELS) streamers.start();
+// one user's chat in one channel: the public log archives, the last day of chat, and the channels recorded here
+const chatLogs = createChatLogs({ directory: CHATLOGS_DIR, isAdmin, record: !!TWITCH_CHANNELS });
+chatLogs.start().catch((e) => console.warn(`Chat logs: ${e.message}`));
 
 /* ---------------- Card Wars player stats ---------------- */
 
@@ -1049,6 +1056,7 @@ async function api(req, res, url) {
     if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
     if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p);
+    if (p.startsWith('/api/chatlogs/')) return await chatLogs.api(req, res, p, url);
     if (p === '/api/cardwars/stats') return await cardWarsStats(req, res);
     throw new HttpError(404, 'Not found');
   } finally {

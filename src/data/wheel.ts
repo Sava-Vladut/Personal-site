@@ -42,10 +42,11 @@ export const WHEEL: WheelNode[] = [
   },
   // Twitch: your points and the channels you watch
   {
-    id: 'stream', name: t('Twitch'), sub: t('Your channel points and what streamers play'), icon: 'brand-twitch', hue: 'fear',
+    id: 'stream', name: t('Twitch'), sub: t('Your channel points, what streamers play and who said what in chat'), icon: 'brand-twitch', hue: 'fear',
     kids: [
       { id: 'twitch', name: t('Channel points'), sub: t('Your Twitch points from the miner'), icon: 'brand-twitch', hue: 'fear', to: 'twitch' },
       { id: 'streamer', name: t('Streamer stats'), sub: t('What a Twitch channel plays, when and for how long'), icon: 'device-gamepad-2', hue: 'fear', to: 'streamer' },
+      { id: 'chatlogs', name: t('Chat logs'), sub: t('Everything someone wrote in a Twitch channel’s chat'), icon: 'messages', hue: 'fear', to: 'chatlogs' },
     ],
   },
   // your GitHub work, and small tools

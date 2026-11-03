@@ -1,0 +1,75 @@
+/* ============================================================
+   Chat logs (views/ChatLogs.tsx): one Twitch user's lines in one channel's chat, in Twitch's purple (--accent).
+   Builds on stats.css (chart cards, heat cells), twitch.css (the edit list) and streamer.css (the banner).
+   The page reads top down: who, the year in days (GitHub style), then the lines of a month, a day or a search.
+   ============================================================ */
+
+/* ---------- the header: a channel and a user ---------- */
+
+.cl-find { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; margin-top: 4px; }
+.cl-find .search { min-width: 0; margin: 0; background: color-mix(in oklab, var(--surface-2) 60%, var(--bg)); }
+@media (max-width: 559.98px) {
+  .cl-find { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cl-find .btn { grid-column: 1 / -1; }
+}
+.cl-intro p:first-child { color: var(--ink); }
+
+/* ---------- who, and where the logs come from ---------- */
+
+.cl-banned { color: var(--danger); }
+.cl-sources { display: flex; flex-wrap: wrap; gap: 6px; }
+.cl-sources .chip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-m); }
+.cl-sources .chip small { font-size: var(--text-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cl-foot { text-align: center; }
+
+/* ---------- the year in days ---------- */
+
+.cl-years { margin: 0 0 10px; }
+.cl-heat { overflow-x: auto; scrollbar-width: thin; padding-bottom: 4px; }
+.cl-heat-in {
+  --cell: 12px;
+  display: grid; grid-template-columns: auto repeat(var(--weeks), minmax(var(--cell), 18px));
+  gap: 3px; width: max-content; min-width: 100%; justify-content: space-between;
+}
+.cl-heat-month { font-size: var(--text-xs); color: var(--ink-3); white-space: nowrap; overflow: visible; width: 0; line-height: 1.4; }
+.cl-heat-day { font-size: var(--text-xs); padding-right: 4px; line-height: 1; align-self: center; }
+.cl-cell { display: block; aspect-ratio: 1; width: 100%; border: 0; padding: 0; border-radius: var(--r-xs); }
+.cl-cell.out { visibility: hidden; }
+.heat-cell.cl-cell { aspect-ratio: 1; }
+.heat-cell.cl-cell:disabled { cursor: default; }
+.heat-cell.cl-cell[aria-pressed='true'] { box-shadow: inset 0 0 0 2px var(--ink); }
+.cl-heat-wait .cl-cell { opacity: 0.5; }
+.cl-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: var(--text-m); color: var(--ink-2); }
+.cl-facts b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------- the lines ---------- */
+
+.cl-log-head { align-items: flex-start; }
+.cl-month-nav { display: flex; gap: 4px; flex: none; }
+.cl-search { margin-bottom: 10px; }
+.cl-search .search { margin: 0; }
+.cl-filters { margin: 0 0 10px; }
+.cl-filters .chip { display: inline-flex; align-items: center; gap: 6px; }
+.cl-ghosts { display: grid; gap: 10px; padding: 4px 0; }
+.cl-ghosts .ghost { height: 14px; }
+.cl-day + .cl-day { margin-top: 16px; }
+.cl-day-head {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2);
+}
+.cl-day-head small { font-size: var(--text-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cl-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cl-line { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; font-size: var(--text-base); line-height: 1.45; }
+.cl-line time { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.cl-text { overflow-wrap: anywhere; color: var(--ink); }
+.cl-line.k-ban .cl-text, .cl-line.k-sub .cl-text { color: var(--ink-3); }
+.cl-line.k-ban .cl-text { color: color-mix(in oklab, var(--danger) 70%, var(--ink-3)); }
+.cl-more { margin-top: 14px; width: 100%; }
+.cl-from { margin-top: 12px; }
+
+/* ---------- the recorded channels sheet ---------- */
+
+.cl-state { display: flex; align-items: center; gap: 8px; }
+.cl-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.cl-dot.on { background: var(--accent); }
+.cl-watched .tw-edit-name small { font-variant-numeric: tabular-nums; }

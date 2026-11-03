@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.180.0',
+    date: '2026-11-03',
+    changes: [
+      'Chat logs (Twitch): type a channel and a user to see everything they wrote in its chat, month by month, from every public Twitch log archive at once, plus the last 24 hours of any channel.',
+      'Chat logs: a GitHub-style activity grid shows each day of the year by how much they wrote. Tap a day to read it.',
+      'Chat logs: search everything someone wrote in a year.',
+      'Chat logs: the server can record channels that no archive covers, so small channels get logged from now on (admin password needed to add them).',
+    ],
+  },
+  {
     version: '1.179.2',
     date: '2026-11-03',
     changes: [
