@@ -560,7 +560,6 @@ function Pvp({ data }: { data: CardWarsStats }) {
         empty={t('No matches have finished yet.')}
       />
 
-      <Levels data={data} />
       <Picks title={t('Heroes')} sub={t('Most picked in My Deck matches, and how they did')} rows={v.leaders} hero />
       <Picks title={t('Cards')} sub={t('The cards most decks had in My Deck matches')} rows={v.cards} />
       <Board title={t('My Deck leaderboard')} rows={v.leaderboards.deck} />
@@ -645,37 +644,6 @@ function FirstSeat({ data }: { data: CardWarsStats }) {
         <p class="empty-note">{t('Shows once matches have a winner.')}</p>
       )}
     </section>
-  );
-}
-
-function Levels({ data }: { data: CardWarsStats }) {
-  const levels = [...data.pvp.levels].filter((l) => l.matches > 0).sort((a, b) => a.level - b.level);
-  const max = Math.max(1, ...levels.map((l) => l.matches));
-  return (
-    <ChartCard
-      title={t('Random Deck levels')}
-      sub={t('Matches at each hero level, and how often the first seat won')}
-      table={{ head: [t('Level'), t('Matches'), t('With a winner'), t('First seat won')], rows: levels.map((l) => [l.level, l.matches, l.decided, share(l.firstSeatWins, l.decided)]) }}
-    >
-      {levels.length ? (
-        <Ranked rows={levels.map((l) => ({
-          key: String(l.level),
-          label: t('Level {n}', { n: l.level }),
-          value: <><b>{num(l.matches)}</b> <small>{t('first seat {p}', { p: share(l.firstSeatWins, l.decided) })}</small></>,
-          w: l.matches / max,
-          tip: () => (
-            <>
-              <div class="tip-title">{t('Level {n}', { n: l.level })}</div>
-              <TipRow value={num(l.matches)} label={t('matches')} color="var(--accent)" />
-              <TipRow value={share(l.firstSeatWins, l.decided)} label={t('won by who went first')} />
-            </>
-          ),
-          aria: `${t('Level {n}', { n: l.level })}: ${l.matches}`,
-        }))} />
-      ) : (
-        <p class="empty-note">{t('No Random Deck matches yet.')}</p>
-      )}
-    </ChartCard>
   );
 }
 

@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.179.2',
+    date: '2026-11-03',
+    changes: [
+      'Card Wars stats: removed the Random Deck levels section to save space.',
+    ],
+  },
+  {
     version: '1.179.1',
     date: '2026-11-02',
     changes: [
