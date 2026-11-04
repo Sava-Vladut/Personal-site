@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.181.0',
+    date: '2026-11-04',
+    changes: [
+      'Chat logs: the activity grid loads much faster. A lookup no longer waits for the slowest log archive, the months of a year are read all at once, and the grid fills in month by month as each arrives.',
+      'Chat logs: finished months are remembered as counts, so a user you looked up before shows its whole year at once, even after the server restarts.',
+      'Chat logs: messages now show their emotes as pictures: Twitch’s own, plus 7TV, BetterTTV and FrankerFaceZ (global and the channel’s), including animated and stacked ones.',
+    ],
+  },
+  {
     version: '1.180.0',
     date: '2026-11-03',
     changes: [

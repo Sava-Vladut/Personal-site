@@ -3039,7 +3039,7 @@ export const RO: Record<string, string> = {
   "of {n} archives asked": "din {n} arhive întrebate",
   "Open in {name}": "Deschide în {name}",
   "Activity": "Activitate",
-  "Reading {year}…": "Se citește {year}…",
+  "Reading {year}… {done} of {n} months": "Se citește {year}… {done} din {n} luni",
   "{n} in {year}": "{n} în {year}",
   "none": "niciunul",
   "with messages": "cu mesaje",

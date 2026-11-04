@@ -1,6 +1,7 @@
 // Chat logs (views/ChatLogs.tsx): what one Twitch user wrote in one channel's chat, from server/chatlogs.js, which
 // reads the public log archives, the last day of chat, and the channels recorded on this server.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import type { Emotes } from './emotes';
 import { t } from './i18n';
 
 export interface TwitchUser { login: string; id: string; name: string; logo: string | null; banned: boolean; color: string | null }
@@ -19,10 +20,11 @@ export interface Lookup {
   /** every month with something in it, oldest first */
   months: string[];
 }
-/** One line: when (ms), user id, login, display name, colour, text, kind. */
-export interface Line { t: number; i: string; u: string; n: string; c: string; m: string; k: 'msg' | 'me' | 'ban' | 'sub' }
+/** One line: when (ms), user id, login, display name, colour, text, kind, and the Twitch emotes in it (name → code, see emotes.ts). */
+export interface Line { t: number; i: string; u: string; n: string; c: string; m: string; k: 'msg' | 'me' | 'ban' | 'sub'; e?: Record<string, string> }
 export interface Month { month: string; total: number; messages: Line[]; sources: string[] }
-export interface Activity { year: number; days: Record<string, number>; total: number }
+/** How many lines each day holds, for the days (YYYY-MM-DD) this UTC month's lines fall on in the viewer's time zone. */
+export interface Days { month: string; days: Record<string, number>; total: number }
 export interface Found { q: string; year: number; messages: Line[]; more: boolean }
 export interface Watched { login: string; id: string; name: string; since: number; days: number; bytes: number; today: number; last: number | null }
 export interface WatchList { watched: Watched[]; connected: boolean; admin: boolean; max: number }
@@ -46,13 +48,84 @@ async function call<T>(path: string, method = 'GET'): Promise<T> {
 const qs = (o: Record<string, string | number | undefined>) =>
   new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString();
 
-export const lookup = (channel: string, user: string, fresh = false) => call<Lookup>(`/api/chatlogs/lookup?${qs({ channel, user, fresh: fresh ? 1 : undefined })}`);
+export function lookup(channel: string, user: string, fresh = false) {
+  if (fresh) for (const k of dayCache.keys()) if (k.startsWith(`${channel}|${user}|`)) dayCache.delete(k);
+  return call<Lookup>(`/api/chatlogs/lookup?${qs({ channel, user, fresh: fresh ? 1 : undefined })}`);
+}
 export const loadMonth = (channel: string, user: string, month: string) => call<Month>(`/api/chatlogs/month?${qs({ channel, user, month })}`);
-export const loadActivity = (channel: string, user: string, year: number) => call<Activity>(`/api/chatlogs/activity?${qs({ channel, user, year, tz: TZ })}`);
 export const search = (channel: string, user: string, year: number, q: string) => call<Found>(`/api/chatlogs/search?${qs({ channel, user, year, q })}`);
 export const watchList = () => call<WatchList>('/api/chatlogs/watch');
 export const watch = (channel: string) => call<WatchList>(`/api/chatlogs/watch?${qs({ channel })}`, 'POST');
 export const unwatch = (channel: string, keep: boolean) => call<WatchList>(`/api/chatlogs/watch/${channel}?${qs({ keep: keep ? 1 : 0 })}`, 'DELETE');
+
+/** A month's days, kept a few minutes: a year switched away from and back to is there at once. */
+const dayCache = new Map<string, { at: number; p: Promise<Days> }>();
+export function loadDays(channel: string, user: string, month: string): Promise<Days> {
+  const key = `${channel}|${user}|${month}`;
+  const hit = dayCache.get(key);
+  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.p;
+  const p = call<Days>(`/api/chatlogs/days?${qs({ channel, user, month, tz: TZ })}`);
+  dayCache.set(key, { at: Date.now(), p });
+  p.catch(() => dayCache.delete(key));
+  if (dayCache.size > 400) dayCache.delete(dayCache.keys().next().value!);
+  return p;
+}
+
+/** A channel's 7TV, BetterTTV and FrankerFaceZ emotes (name → code). The server keeps them an hour, and so does the browser. */
+const emoteSets = new Map<string, Promise<Emotes>>();
+export function loadEmotes(channelId: string): Promise<Emotes> {
+  let p = emoteSets.get(channelId);
+  if (!p) {
+    p = call<{ emotes: Record<string, string> }>(`/api/chatlogs/emotes?${qs({ channel: channelId })}`).then((r) => new Map(Object.entries(r.emotes)));
+    emoteSets.set(channelId, p);
+    p.catch(() => emoteSets.delete(channelId));
+  }
+  return p;
+}
+
+export interface YearDays {
+  /** each day (YYYY-MM-DD) of the year with how many lines, from the months that have arrived so far */
+  days: Record<string, number>;
+  total: number;
+  /** months of the year still being read, as YYYY-MM */
+  waiting: Set<string>;
+  done: number;
+  of: number;
+  error: string | null;
+}
+
+/** A year in days. Its months are all asked at once, the newest first, and each fills in as it arrives. */
+export function useYearDays(channel: string, user: string, year: number, all: string[]): YearDays {
+  const want = useMemo(() => all.filter((m) => m.startsWith(`${year}-`)).reverse(), [all, year]);
+  const key = `${channel}|${user}|${year}|${want.join()}`;
+  const [got, setGot] = useState<{ key: string; by: Record<string, Days>; failed: string[]; error: string | null }>({ key, by: {}, failed: [], error: null });
+  useEffect(() => {
+    let live = true;
+    setGot({ key, by: {}, failed: [], error: null });
+    for (const m of want) {
+      loadDays(channel, user, m).then(
+        (d) => live && setGot((g) => (g.key === key ? { ...g, by: { ...g.by, [m]: d } } : g)),
+        (e: Error) => live && setGot((g) => (g.key === key ? { ...g, failed: [...g.failed, m], error: g.error ?? e.message } : g)),
+      );
+    }
+    return () => { live = false; };
+  }, [key]);
+  return useMemo(() => {
+    const here = got.key === key ? got : { by: {} as Record<string, Days>, failed: [] as string[], error: null };
+    const out: Record<string, number> = {};
+    let total = 0;
+    // a month's lines can fall on its neighbour's first or last day in the viewer's time zone, so the days add up
+    for (const d of Object.values(here.by)) {
+      for (const [k, n] of Object.entries(d.days)) {
+        if (!k.startsWith(`${year}-`)) continue;
+        out[k] = (out[k] ?? 0) + n;
+        total += n;
+      }
+    }
+    const waiting = new Set(want.filter((m) => !(m in here.by) && !here.failed.includes(m)));
+    return { days: out, total, waiting, done: want.length - waiting.size, of: want.length, error: here.error };
+  }, [got, key]);
+}
 
 export type Got<T> = { data: T | null; error: string | null; loading: boolean };
 

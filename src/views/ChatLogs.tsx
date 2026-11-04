@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { WEEKDAYS, addDays, formatDate, keyOf, monthLabel, parseKey, shortDate, startOfWeek, timeLabel, todayKey } from '../lib/dates';
-import { cleanLogin, loadActivity, loadMonth, lookup, recentPairs, rememberPair, search, sourceName, unwatch, useLoad, watch, watchList, type Line, type Lookup, type Pair, type WatchList } from '../lib/chatlogs';
+import { cleanLogin, loadEmotes, loadMonth, lookup, recentPairs, rememberPair, search, sourceName, unwatch, useLoad, useYearDays, watch, watchList, type Line, type Lookup, type Pair, type WatchList } from '../lib/chatlogs';
+import type { Emotes } from '../lib/emotes';
 import { signIn, signOut } from '../lib/auth';
 import { ChartCard, HeatLegend, RevealStack, TipRow, tipProps } from '../components/charts';
+import { ChatText } from '../components/ChatText';
 import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
 import { Sheet } from '../components/Sheet';
@@ -153,6 +155,8 @@ function Report({ d, query, onRecord, onRefresh, refreshing }: { d: Lookup; quer
     navigate(`chatlogs?${q}`, true);
   };
 
+  // the channel's emotes load beside everything else; lines show as words until they're there
+  const emotes = useLoad(d.channel.id, () => loadEmotes(d.channel.id)).data;
   const first = d.months[0];
   return (
     <RevealStack>
@@ -174,7 +178,7 @@ function Report({ d, query, onRecord, onRefresh, refreshing }: { d: Lookup; quer
       ) : (
         <>
           <Activity d={d} year={year} years={years} day={day} onYear={(y) => set({ year: y, day: null })} onDay={(k) => set({ month: k.slice(0, 7), day: k === day ? null : k })} />
-          <Messages key={`${month}|${day}`} d={d} month={month} day={day} year={year} onMonth={(m) => set({ year: Number(m.slice(0, 4)), month: m, day: null })} onAll={() => set({ day: null })} />
+          <Messages key={`${month}|${day}`} d={d} emotes={emotes} month={month} day={day} year={year} onMonth={(m) => set({ year: Number(m.slice(0, 4)), month: m, day: null })} onAll={() => set({ day: null })} />
           <p class="sr-small cl-foot">
             {t('Logged since {date}.', { date: monthName(first) })}{' '}
             {!d.recorded && <button class="link small" onClick={onRecord}>{t('Record this channel here too')}</button>}
@@ -226,25 +230,25 @@ function Banner({ d, onRefresh, refreshing }: { d: Lookup; onRefresh: () => void
 /* ---------- the year in days, GitHub style ---------- */
 
 function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: number; years: number[]; day: string | null; onYear: (y: number) => void; onDay: (k: string) => void }) {
-  const a = useLoad(`${d.channel.id}|${d.user.id}|${year}|${d.months.length}`, () => loadActivity(d.channel.login, d.user.login, year));
+  const a = useYearDays(d.channel.login, d.user.login, year, d.months);
   const scroller = useRef<HTMLDivElement>(null);
   const today = todayKey();
   const start = `${year}-01-01`;
   const end = year === new Date().getFullYear() ? today : `${year}-12-31`;
   const first = startOfWeek(start, 1);
   const weeks = Math.ceil((Math.round((parseKey(end).getTime() - parseKey(first).getTime()) / 864e5) + 1) / 7);
-  const days = a.data?.year === year ? a.data.days : null;
+  const days = a.days;
+  const reading = a.waiting.size > 0;
 
   // five shades by the days' own spread, so a quiet chatter's busy day still looks busy
   const cuts = useMemo(() => {
-    const v = Object.values(days ?? {}).filter((n) => n > 0).sort((x, y) => x - y);
+    const v = Object.values(days).filter((n) => n > 0).sort((x, y) => x - y);
     if (!v.length) return [1, 1, 1, 1];
     return [0.2, 0.4, 0.6, 0.8].map((q) => v[Math.min(v.length - 1, Math.floor(q * v.length))]);
   }, [days]);
   const level = (n: number) => (n <= 0 ? 0 : 1 + cuts.filter((c) => n > c).length);
 
   const stats = useMemo(() => {
-    if (!days) return null;
     const keys = Object.keys(days).filter((k) => days[k] > 0).sort();
     let best = 0, run = 0, prev = '';
     for (const k of keys) {
@@ -260,14 +264,13 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el) el.scrollLeft = el.scrollWidth;
-  }, [year, !!days]);
+  }, [year]);
 
-  const total = a.data?.year === year ? a.data.total : null;
   return (
     <ChartCard
       wide
       title={t('Activity')}
-      sub={total === null ? t('Reading {year}…', { year }) : t('{n} in {year}', { n: `${num(total)} ${noun(total, 'message', 'messages')}`, year })}
+      sub={reading ? t('Reading {year}… {done} of {n} months', { year, done: a.done, n: a.of }) : t('{n} in {year}', { n: `${num(a.total)} ${noun(a.total, 'message', 'messages')}`, year })}
       legend={<HeatLegend />}
     >
       {years.length > 1 && (
@@ -275,7 +278,7 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
           {years.map((y) => <button class="chip" aria-pressed={y === year} onClick={() => onYear(y)}>{y}</button>)}
         </div>
       )}
-      <div class={`cl-heat${days ? '' : ' cl-heat-wait'}`} ref={scroller}>
+      <div class="cl-heat" ref={scroller}>
         <div class="cl-heat-in" style={{ '--weeks': weeks }}>
           <span />
           {Array.from({ length: weeks }, (_, w) => {
@@ -290,10 +293,10 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
               {Array.from({ length: weeks }, (_, w) => {
                 const k = addDays(first, w * 7 + row);
                 if (k < start || k > end) return <span class="cl-cell out" />;
-                const n = days?.[k] ?? 0;
+                const n = days[k] ?? 0;
                 return (
                   <button
-                    class={`heat-cell cl-cell s${level(n)}`}
+                    class={`heat-cell cl-cell s${level(n)}${a.waiting.has(k.slice(0, 7)) ? ' wait' : ''}`}
                     style={{ '--t': (w / weeks).toFixed(3) }}
                     aria-pressed={k === day}
                     disabled={!n}
@@ -312,11 +315,11 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
         </div>
       </div>
       {a.error && <p class="hint danger">{a.error}</p>}
-      {stats && stats.active > 0 && (
+      {!reading && stats.active > 0 && (
         <div class="cl-facts">
           <span><b>{num(stats.active)}</b> {noun(stats.active, 'day', 'days')} {t('with messages')}</span>
           <span><b>{num(stats.best)}</b> {t('days in a row at most')}</span>
-          {stats.busiest && <span>{t('Busiest: {date}', { date: shortDate(stats.busiest) })} · <b>{num(days![stats.busiest])}</b></span>}
+          {stats.busiest && <span>{t('Busiest: {date}', { date: shortDate(stats.busiest) })} · <b>{num(days[stats.busiest])}</b></span>}
         </div>
       )}
     </ChartCard>
@@ -325,7 +328,7 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
 
 /* ---------- the lines ---------- */
 
-function Messages({ d, month, day, year, onMonth, onAll }: { d: Lookup; month: string; day: string | null; year: number; onMonth: (m: string) => void; onAll: () => void }) {
+function Messages({ d, emotes, month, day, year, onMonth, onAll }: { d: Lookup; emotes: Emotes | null; month: string; day: string | null; year: number; onMonth: (m: string) => void; onAll: () => void }) {
   const m = useLoad(month ? `${d.channel.id}|${d.user.id}|${month}` : null, () => loadMonth(d.channel.login, d.user.login, month));
   const [typed, setTyped] = useState('');
   const [asked, setAsked] = useState('');
@@ -414,7 +417,7 @@ function Messages({ d, month, day, year, onMonth, onAll }: { d: Lookup; month: s
                     {x.k === 'ban' ? (
                       <span class="cl-text">{x.m.startsWith('timed out') ? t('Timed out for {n}', { n: x.m.replace(/^timed out for /, '') }) : t('Banned')}</span>
                     ) : (
-                      <span class="cl-text">{x.k === 'me' || x.k === 'sub' ? <i>{x.m}</i> : x.m}</span>
+                      <span class="cl-text">{x.k === 'me' || x.k === 'sub' ? <i><ChatText text={x.m} own={x.e} emotes={emotes} /></i> : <ChatText text={x.m} own={x.e} emotes={emotes} />}</span>
                     )}
                   </li>
                 ))}

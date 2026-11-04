@@ -8,11 +8,15 @@
 //  • A recorder here: an anonymous chat connection (no Twitch account needed) that reads the channels the admin
 //    picks and keeps every line in `directory/<channel>/<YYYY-MM-DD>.ndjson`. That's how a small channel that no
 //    archive covers gets logged, from the moment it's added.
+// Reading a year is the slow part, so it's done at once, month by month, without waiting for the slowest archive, and a
+// finished month is kept on disk as counts per quarter hour. The emotes of 7TV, BetterTTV and FrankerFaceZ
+// come from chatlog-emotes.js; Twitch's own are in each line.
 import { appendFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import tls from 'node:tls';
 import { HttpError } from './http-error.js';
 import { json } from './http-response.js';
+import { createEmotes } from './chatlog-emotes.js';
 
 const UA = 'MyMind chat logs (savavlad.com)';
 const MIN = 60_000;
@@ -39,6 +43,17 @@ const CACHE_MESSAGES = 120_000; // messages kept in memory across all cached mon
 const MAX_WATCHED = 30;
 const MONTH_CAP = 50_000;       // messages returned for one month at most (the newest)
 const SEARCH_CAP = 500;
+const QUARTER = 15 * MIN;
+// One slow archive must not hold everyone up: a wait ends at the cap, or a little after the first archive that has
+// something has answered. Whatever hasn't answered by then keeps going and joins what's cached when it does.
+const LOOKUP_CAP = 2_500;
+const LOOKUP_GRACE = 700;
+const MONTH_CAP_WAIT = 30_000;
+const MONTH_GRACE = 1_000;
+const MONTHS_AT_ONCE = 6;       // months being read from the archives at the same time, server-wide
+const PARTIAL_FRESH = MIN;      // a month that no archive answered is asked again soon
+const COUNTS_FRESH = DAY;       // a finished month's saved counts are read again in the background after this
+const COUNTS_PAIRS = 500;       // users' saved counts kept on disk
 
 /* ---------- small helpers ---------- */
 
@@ -50,6 +65,42 @@ async function getJson(url, ms = 10_000) {
     return { status: r.status, body: null };
   }
   return { status: r.status, body: await r.json().catch(() => null) };
+}
+
+/**
+ * Waits for the promises (none may reject), but no longer than `cap` ms, and, once one has answered with something
+ * `useful`, no longer than `grace` ms more. Whatever is still out keeps running.
+ */
+function waitFor(tasks, { cap, grace, useful }) {
+  return new Promise((resolve) => {
+    const end = Date.now() + cap;
+    let left = tasks.length;
+    let timer = setTimeout(done, cap);
+    let graced = false;
+    function done() { clearTimeout(timer); resolve(); }
+    if (!left) return done();
+    for (const task of tasks) {
+      task.then((r) => {
+        if (!--left) return done();
+        if (!graced && useful(r)) {
+          graced = true;
+          clearTimeout(timer);
+          timer = setTimeout(done, Math.max(0, Math.min(grace, end - Date.now())));
+        }
+      });
+    }
+  });
+}
+
+/** At most `n` jobs run at once; the rest wait their turn. */
+function gate(n) {
+  let used = 0;
+  const queue = [];
+  return async (work) => {
+    if (used >= n) await new Promise((r) => queue.push(r));
+    used++;
+    try { return await work(); } finally { used--; queue.shift()?.(); }
+  };
 }
 
 /** A login, link or @name as a Twitch login; null when it isn't one. */
@@ -81,6 +132,25 @@ function dayKeyer(tz) {
 
 /* ---------- IRC lines (the recorder and recent-messages both speak it) ---------- */
 
+/**
+ * The emotes Twitch itself found in a line, as { name: code } (code: 't' and the emote's id), from the emotes tag
+ * ("25:0-4,6-10/1902:12-16") and the text its positions count in. Only names that really stand as words are kept.
+ */
+export function twitchEmotes(text, tag) {
+  if (!tag || !text) return undefined;
+  const chars = [...text];
+  const words = new Set(text.split(/\s+/));
+  const found = [];
+  for (const part of tag.split('/')) {
+    const colon = part.indexOf(':');
+    const [from, to] = part.slice(colon + 1).split(',')[0].split('-').map(Number);
+    if (colon < 1 || !(to >= from) || to >= chars.length) continue;
+    const name = chars.slice(from, to + 1).join('');
+    if (name && words.has(name)) found.push([name, `t${part.slice(0, colon)}`]);
+  }
+  return found.length ? Object.fromEntries(found) : undefined;
+}
+
 /** One raw Twitch IRC line → { tags, prefix, command, params, trailing }. */
 export function parseIrc(line) {
   let i = 0;
@@ -107,8 +177,9 @@ export function parseIrc(line) {
 }
 
 /**
- * A chat line as what's kept: { t: ms, i: user id, u: login, n: display name, c: colour, m: text, k: kind }.
- * Kinds: 'msg' (what they wrote), 'ban' (a timeout or ban, aimed at them), 'sub' (a sub, gift or raid notice).
+ * A chat line as what's kept: { t: ms, i: user id, u: login, n: display name, c: colour, m: text, k: kind, e? }.
+ * Kinds: 'msg' (what they wrote), 'me' (a /me), 'ban' (a timeout or ban, aimed at them), 'sub' (a sub, gift or raid
+ * notice). `e` holds the Twitch emotes in the text (twitchEmotes), when there are any.
  */
 export function slimIrc(p) {
   const t = Number(p.tags['tmi-sent-ts']) || Date.now();
@@ -117,7 +188,7 @@ export function slimIrc(p) {
     let m = p.trailing;
     const action = /^\u0001ACTION (.*)\u0001$/.exec(m);
     if (action) m = action[1];
-    return { t, i: p.tags['user-id'] || '', u: login, n: p.tags['display-name'] || login, c: p.tags.color || '', m, k: action ? 'me' : 'msg' };
+    return withEmotes({ t, i: p.tags['user-id'] || '', u: login, n: p.tags['display-name'] || login, c: p.tags.color || '', m, k: action ? 'me' : 'msg' }, twitchEmotes(m, p.tags.emotes));
   }
   if (p.command === 'CLEARCHAT' && p.trailing) {
     const secs = Number(p.tags['ban-duration']);
@@ -126,10 +197,12 @@ export function slimIrc(p) {
   if (p.command === 'USERNOTICE') {
     const login = p.tags.login || '';
     const sys = p.tags['system-msg'] || '';
-    return { t, i: p.tags['user-id'] || '', u: login, n: p.tags['display-name'] || login, c: p.tags.color || '', m: p.trailing ? `${sys} · ${p.trailing}` : sys, k: 'sub' };
+    return withEmotes({ t, i: p.tags['user-id'] || '', u: login, n: p.tags['display-name'] || login, c: p.tags.color || '', m: p.trailing ? `${sys} · ${p.trailing}` : sys, k: 'sub' }, twitchEmotes(p.trailing, p.tags.emotes));
   }
   return null;
 }
+
+const withEmotes = (line, e) => (e ? { ...line, e } : line);
 
 /** A justlog JSON message as what's kept (the same shape as the recorder's). */
 export function slimArchive(x) {
@@ -142,13 +215,15 @@ export function slimArchive(x) {
   }
   if (x.type === 4) { // USERNOTICE
     const sys = tags['system-msg'] || '';
-    return { t, i: tags['user-id'] || '', u: x.username || '', n: x.displayName || x.username || '', c: tags.color || '', m: x.text && x.text !== sys ? (sys ? `${sys} · ${x.text}` : x.text) : sys, k: 'sub' };
+    // an archive may keep the system message in front of what they wrote; Twitch's emote positions count in what they wrote
+    const said = sys && x.text?.startsWith(sys) ? x.text.slice(sys.length).trim() : x.text;
+    return withEmotes({ t, i: tags['user-id'] || '', u: x.username || '', n: x.displayName || x.username || '', c: tags.color || '', m: x.text && x.text !== sys ? (sys ? `${sys} · ${x.text}` : x.text) : sys, k: 'sub' }, twitchEmotes(said, tags.emotes));
   }
   if (x.type !== 1) return null; // joins, room states, whispers…
   let m = String(x.text ?? '');
   const action = /^\u0001ACTION (.*)\u0001$/.exec(m);
   if (action) m = action[1];
-  return { t, i: tags['user-id'] || '', u: x.username || '', n: x.displayName || x.username || '', c: tags.color || '', m, k: action ? 'me' : 'msg' };
+  return withEmotes({ t, i: tags['user-id'] || '', u: x.username || '', n: x.displayName || x.username || '', c: tags.color || '', m, k: action ? 'me' : 'msg' }, twitchEmotes(m, tags.emotes));
 }
 
 /** Two archives logging the same channel hold the same lines; Twitch's send time and the text tell them apart. */
@@ -308,6 +383,7 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
   const months = new Map();      // `${cid}|${uid}|${YYYY-MM}` → { at, list, sources }, oldest first
   let cachedMessages = 0;
   const inflight = new Map();
+  const emotes = createEmotes(getJson);
 
   const recorder = record ? createRecorder(directory, (channel, x) => {
     const c = counts.get(channel) ?? { today: '', n: 0, last: 0 };
@@ -430,33 +506,45 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
       const c = who.get(channel), u = who.get(user);
       if (!c) throw new HttpError(404, `There’s no Twitch channel called ${channel}.`);
       if (!u) throw new HttpError(404, `There’s no Twitch user called ${user}.`);
-      // the finder knows archives this list doesn't
-      const extra = await getJson(`${finder}/${c.id ? 'id:' + c.id : channel}/${u.id ? 'id:' + u.id : user}`, 8_000)
-        .then(({ body }) => (body?.userLogs?.instances ?? []).map((s) => String(s).replace(/^https?:\/\//, '').replace(/\/.*$/, '')))
-        .catch(() => []);
-      const hosts = [...new Set([...archives, ...extra.filter((h) => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(h))])];
-      const found = await Promise.all(hosts.map((h) => archiveMonths(h, c.id, u.id)));
-      const sources = found.filter((s) => s.months.length).map((s) => ({ host: s.host, months: s.months.sort() }));
-      const optedOut = found.some((s) => s.optedOut);
-      const days = await recordedDays(channel);
       const w = watched.find((x) => x.login === channel);
-      const all = new Set(sources.flatMap((s) => s.months));
-      for (const d of days) all.add(d.slice(0, 7));
-      // the last day is read on every month request for this month, so it counts as a source when it has lines
-      const late = await lately(channel, u.id);
-      if (late.length) all.add(monthOf(Date.now()));
-      const body = {
-        channel: c,
-        user: u,
-        sources,
-        optedOut: optedOut && !sources.length,
-        recorded: w ? { since: w.since } : null,
-        recordedDays: days.length,
-        lately: late.length,
-        months: [...all].sort(),
-        at: Date.now(),
+      const body = { channel: c, user: u, sources: [], optedOut: false, recorded: w ? { since: w.since } : null, recordedDays: 0, lately: 0, months: [], at: Date.now() };
+
+      // Everything is asked at once, and `body` is filled in as the answers come, so a slow archive can be left behind
+      // and still joins it later: the lookup is cached as `body`. Each task answers with how much it found.
+      const hosts = [...archives];
+      const found = new Map(); // host → { host, optedOut, months }
+      let days = [];
+      let lateCount = 0;
+      const assemble = () => {
+        const answered = hosts.map((h) => found.get(h)).filter(Boolean);
+        body.sources = answered.filter((s) => s.months.length).map((s) => ({ host: s.host, months: [...s.months].sort() }));
+        body.optedOut = answered.some((s) => s.optedOut) && !body.sources.length;
+        body.recordedDays = days.length;
+        body.lately = lateCount;
+        const all = new Set(body.sources.flatMap((s) => s.months));
+        for (const d of days) all.add(d.slice(0, 7));
+        // the last day is read on every month request for this month, so it counts as a source when it has lines
+        if (lateCount) all.add(monthOf(Date.now()));
+        body.months = [...all].sort();
       };
-      lookupCache.set(key, { at: Date.now(), body });
+      const ask = (h) => archiveMonths(h, c.id, u.id).then((s) => { found.set(h, s); assemble(); return s.months.length; });
+      const tasks = archives.map(ask);
+      // the finder knows archives this list doesn't
+      tasks.push(
+        getJson(`${finder}/${c.id ? 'id:' + c.id : channel}/${u.id ? 'id:' + u.id : user}`, 8_000)
+          .then(({ body: b }) => (b?.userLogs?.instances ?? []).map((x) => String(x).replace(/^https?:\/\//, '').replace(/\/.*$/, '')))
+          .catch(() => [])
+          .then((extra) => {
+            const more = [...new Set(extra.filter((h) => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(h) && !hosts.includes(h)))];
+            hosts.push(...more);
+            return Promise.all(more.map(ask)).then(() => 0);
+          }),
+        recordedDays(channel).then((d) => { days = d; assemble(); return d.length; }),
+        lately(channel, u.id).then((l) => { lateCount = l.length; assemble(); return l.length; }),
+      );
+      await waitFor(tasks, { cap: LOOKUP_CAP, grace: LOOKUP_GRACE, useful: (n) => n > 0 });
+      assemble();
+      lookupCache.set(`${channel}|${user}`, { at: Date.now(), body });
       if (lookupCache.size > 200) lookupCache.delete(lookupCache.keys().next().value);
       return body;
     });
@@ -464,60 +552,176 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
 
   /* one month of one user's lines, from every source that has it */
 
-  async function month(look, ym) {
+  const reading = gate(MONTHS_AT_ONCE);
+
+  async function month(look, ym, fresh = false) {
     const { channel: c, user: u } = look;
     const key = `${c.id}|${u.id}|${ym}`;
     const now = monthOf(Date.now());
     const hit = months.get(key);
-    if (hit && Date.now() - hit.at < (ym === now ? NOW_FRESH : PAST_FRESH)) {
+    if (!fresh && hit && Date.now() - hit.at < (ym === now ? NOW_FRESH : hit.partial ? PARTIAL_FRESH : PAST_FRESH)) {
       months.delete(key); // most recently used goes last
       months.set(key, hit);
       return hit;
     }
-    return once(`month:${key}`, async () => {
+    return once(`month:${key}`, () => reading(async () => {
       const [y, m] = ym.split('-');
       const from = look.sources.filter((s) => s.months.includes(ym));
-      const got = await Promise.all(from.map(async (s) => {
-        try {
-          const { body } = await getJson(`https://${s.host}/channelid/${c.id}/userid/${u.id}/${y}/${Number(m)}?json=1`, 30_000);
-          return { host: s.host, list: (Array.isArray(body?.messages) ? body.messages : []).map(slimArchive).filter(Boolean) };
-        } catch {
-          return { host: s.host, list: [] };
-        }
+      const sources = [
+        ...from.map(async (s) => {
+          try {
+            const { status, body } = await getJson(`https://${s.host}/channelid/${c.id}/userid/${u.id}/${y}/${Number(m)}?json=1`, MONTH_CAP_WAIT);
+            const ok = status === 200 && Array.isArray(body?.messages);
+            return { name: s.host, ok, list: ok ? body.messages.map(slimArchive).filter(Boolean) : [] };
+          } catch {
+            return { name: s.host, ok: false, list: [] };
+          }
+        }),
+        recorded(c.login, u.id, u.login, ym).then((list) => ({ name: 'here', ok: true, local: true, list })),
+        ...(ym === now ? [lately(c.login, u.id).then((list) => ({ name: 'lately', ok: true, local: true, list }))] : []),
+      ];
+      const got = new Array(sources.length);
+      const entry = { at: Date.now(), list: [], sources: [], partial: false };
+      let settled = false;
+      const build = () => {
+        const here = got.filter(Boolean);
+        entry.list = merge(here.map((g) => g.list)).filter((x) => monthOf(x.t) === ym);
+        entry.sources = here.filter((g) => g.list.length).map((g) => g.name);
+        // none of the archives holding this month answered: not worth remembering for long
+        entry.partial = from.length > 0 && !here.some((g) => g.ok && !g.local);
+      };
+      sources.forEach((p, i) => p.then((g) => {
+        got[i] = g;
+        if (!settled) return;
+        // it came in after the month was served: it's in what's cached from now on
+        const old = entry.list.length;
+        build();
+        if (months.get(key) === entry) cachedMessages += entry.list.length - old;
       }));
-      const mine = await recorded(c.login, u.id, u.login, ym);
-      const late = ym === now ? await lately(c.login, u.id) : [];
-      const lists = [...got.map((g) => g.list), mine, late];
-      const list = merge(lists).filter((x) => monthOf(x.t) === ym);
-      const sources = [...got.filter((g) => g.list.length).map((g) => g.host), ...(mine.length ? ['here'] : []), ...(late.length ? ['lately'] : [])];
-      const entry = { at: Date.now(), list, sources };
-      if (hit) { months.delete(key); cachedMessages -= hit.list.length; }
+      await waitFor(sources, { cap: MONTH_CAP_WAIT, grace: MONTH_GRACE, useful: (g) => g.list.length > 0 });
+      settled = true;
+      build();
+      entry.at = Date.now();
+      const old = months.get(key);
+      if (old) { months.delete(key); cachedMessages -= old.list.length; }
       months.set(key, entry);
-      cachedMessages += list.length;
+      cachedMessages += entry.list.length;
       while (cachedMessages > CACHE_MESSAGES && months.size > 1) {
-        const [k, old] = months.entries().next().value;
+        const [k, drop] = months.entries().next().value;
         months.delete(k);
-        cachedMessages -= old.list.length;
+        cachedMessages -= drop.list.length;
       }
       return entry;
-    });
+    }));
   }
 
-  /** A year in days (in the viewer's time zone): how many lines each day holds. Months are read three at a time. */
-  async function activity(look, year, tz) {
+  /* a finished month, as counts per quarter hour: all the activity grid needs, kept on disk */
+
+  const activityDir = join(directory, 'activity');
+  const savedFiles = new Map(); // `${cid}-${uid}` → Promise<{ [YYYY-MM]: { at, q: [[quarter, n], ...] } }>
+  const unsaved = new Map();    // key → that file, until it's written
+  let flushTimer = null;
+  let flushes = 0;
+
+  function savedOf(cid, uid) {
+    const key = `${cid}-${uid}`;
+    let p = savedFiles.get(key);
+    if (p) savedFiles.delete(key); // most recently used goes last
+    else p = readFile(join(activityDir, `${key}.json`), 'utf8').then((text) => { const f = JSON.parse(text); return f && typeof f === 'object' ? f : {}; }, () => ({})).catch(() => ({}));
+    savedFiles.set(key, p);
+    if (savedFiles.size > 100) savedFiles.delete(savedFiles.keys().next().value);
+    return p;
+  }
+
+  async function keep(cid, uid, ym, q) {
+    const file = await savedOf(cid, uid);
+    file[ym] = { at: Date.now(), q };
+    unsaved.set(`${cid}-${uid}`, file);
+    flushTimer ??= setTimeout(flush, 1000);
+    flushTimer.unref?.();
+  }
+
+  async function flush() {
+    flushTimer = null;
+    const batch = [...unsaved];
+    unsaved.clear();
+    try {
+      await mkdir(activityDir, { recursive: true });
+      for (const [key, file] of batch) {
+        const tmp = join(activityDir, `${key}.${process.pid}.tmp`);
+        await writeFile(tmp, JSON.stringify(file));
+        await rename(tmp, join(activityDir, `${key}.json`));
+      }
+      if (++flushes % 50 === 0) await prune();
+    } catch (e) {
+      console.warn(`Chat logs: saving counts: ${e.message}`);
+    }
+  }
+
+  /** The least recently written users' counts go when there are more than COUNTS_PAIRS. */
+  async function prune() {
+    const names = (await readdir(activityDir).catch(() => [])).filter((f) => f.endsWith('.json'));
+    if (names.length <= COUNTS_PAIRS) return;
+    const aged = await Promise.all(names.map(async (f) => [f, await stat(join(activityDir, f)).then((s) => s.mtimeMs, () => 0)]));
+    aged.sort((a, b) => a[1] - b[1]);
+    for (const [f] of aged.slice(0, names.length - COUNTS_PAIRS)) await rm(join(activityDir, f), { force: true });
+  }
+
+  const quartersOf = (list) => {
+    const q = new Map();
+    for (const x of list) {
+      const k = Math.floor(x.t / QUARTER);
+      q.set(k, (q.get(k) ?? 0) + 1);
+    }
+    return [...q];
+  };
+
+  /** How much they wrote in each quarter hour of a month. A finished month comes from disk when it's there. */
+  async function monthCounts(look, ym) {
+    const { channel: c, user: u } = look;
+    const finished = ym < monthOf(Date.now());
+    if (finished) {
+      const hit = (await savedOf(c.id, u.id))[ym];
+      if (hit && Array.isArray(hit.q)) {
+        if (Date.now() - hit.at > COUNTS_FRESH) {
+          // what's saved is served now, and read again from the archives for next time
+          once(`counts:${c.id}|${u.id}|${ym}`, async () => {
+            const e = await month(look, ym, true);
+            if (!e.partial) await keep(c.id, u.id, ym, quartersOf(e.list));
+          }).catch(() => {});
+        }
+        return hit.q;
+      }
+    }
+    const e = await month(look, ym);
+    const q = quartersOf(e.list);
+    if (finished && !e.partial) keep(c.id, u.id, ym, q).catch(() => {});
+    return q;
+  }
+
+  /** A month in days (in the viewer's time zone): how many lines each day holds. A day at the edge can be in the next month's too. */
+  async function monthDays(look, ym, tz) {
     const keyOf = dayKeyer(tz);
+    const days = {};
+    let total = 0;
+    for (const [quarter, n] of await monthCounts(look, ym)) {
+      const d = keyOf(quarter * QUARTER);
+      days[d] = (days[d] ?? 0) + n;
+      total += n;
+    }
+    return { month: ym, days, total };
+  }
+
+  /** A year in days: every month of it read at once (the server paces them), and the days added up. */
+  async function activity(look, year, tz) {
     const want = look.months.filter((m) => m.startsWith(`${year}-`));
     const days = {};
     let total = 0;
-    for (let i = 0; i < want.length; i += 3) {
-      const got = await Promise.all(want.slice(i, i + 3).map((m) => month(look, m)));
-      for (const g of got) {
-        for (const x of g.list) {
-          const d = keyOf(x.t);
-          if (!d.startsWith(`${year}-`)) continue; // the first or last hours of the year, across the time zone
-          days[d] = (days[d] ?? 0) + 1;
-          total++;
-        }
+    for (const got of await Promise.all(want.map((m) => monthDays(look, m, tz)))) {
+      for (const [d, n] of Object.entries(got.days)) {
+        if (!d.startsWith(`${year}-`)) continue; // the first or last hours of the year, across the time zone
+        days[d] = (days[d] ?? 0) + n;
+        total += n;
       }
     }
     return { year, days, total };
@@ -585,6 +789,11 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
     }
 
     if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed');
+    if (path === '/api/chatlogs/emotes') {
+      const id = q.get('channel') ?? '';
+      if (!/^\d{1,12}$/.test(id)) throw new HttpError(400, 'Pick a channel by its Twitch id.');
+      return json(res, 200, { emotes: await emotes.forChannel(id) }, { 'Cache-Control': 'public, max-age=3600' });
+    }
     const channel = cleanLogin(q.get('channel'));
     const user = cleanLogin(q.get('user'));
     if (!channel) throw new HttpError(400, 'Type a Twitch channel.');
@@ -598,6 +807,11 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
       if (!MONTH.test(ym)) throw new HttpError(400, 'Pick a month as YYYY-MM.');
       const { list, sources } = await month(look, ym);
       return json(res, 200, { month: ym, total: list.length, messages: list.length > MONTH_CAP ? list.slice(-MONTH_CAP) : list, sources });
+    }
+    if (path === '/api/chatlogs/days') {
+      const ym = q.get('month') ?? '';
+      if (!MONTH.test(ym)) throw new HttpError(400, 'Pick a month as YYYY-MM.');
+      return json(res, 200, await monthDays(look, ym, String(q.get('tz') || 'UTC').slice(0, 64)));
     }
     if (path === '/api/chatlogs/activity') {
       const year = Number(q.get('year')) || new Date().getUTCFullYear();
@@ -617,6 +831,8 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
     async start() {
       await loadWatched();
       recorder?.set(watched.map((w) => w.login));
+      prune().catch(() => {});
+      emotes.warm().catch(() => {});
     },
   };
 }
