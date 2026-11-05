@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -129,8 +129,17 @@ test('a wrong token, a bad check-in and a stopped status are refused', async () 
 
   assert.equal((await send('DELETE', '/api/status', { headers: admin })).status, 204);
   assert.equal((await send('GET', '/api/status/' + token)).status, 404);
+  // stopped: the page is down, nothing but the link is kept, and the admin sees it as off
+  assert.deepEqual(await (await send('GET', '/api/status', { headers: admin })).json(), { token: null });
+  assert.equal((await send('GET', '/status/' + token)).status, 404);
+  assert.deepEqual(JSON.parse(readFileSync(join(directory, 'status.json'), 'utf8')), { token, off: true });
   const fresh = await (await send('PUT', '/api/status', { headers: admin, body: { checkin: checkin() } })).json();
-  assert.notEqual(fresh.token, token); // sharing again makes a new link
+  assert.equal(fresh.token, token); // sharing again brings the same link back
+  assert.equal((await send('GET', '/api/status/' + token)).status, 200);
+  const renewed = await (await send('PUT', '/api/status', { headers: admin, body: { checkin: checkin(), reset: true } })).json();
+  assert.notEqual(renewed.token, token); // only an explicit reset makes a new one
+  assert.equal((await send('GET', '/api/status/' + token)).status, 404);
+  assert.equal((await send('GET', '/api/status/' + renewed.token)).status, 200);
 });
 
 test('a status saved before the other details existed keeps showing its note', async () => {

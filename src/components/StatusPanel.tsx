@@ -3,7 +3,7 @@ import { EMOTION, shortName } from '../data/emotions';
 import { fmtTemp, weatherName } from '../data/weather';
 import { timeLabel } from '../lib/dates';
 import { toast, useEntries } from '../lib/store';
-import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, recentTrail, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show, type TrailBy } from '../lib/status';
+import { SHOW_NONE, latestCheckin, loadStatus, publicCheckin, recentTrail, newStatusLink, shareStatus, statusUrl, stopStatus, useStatus, useStatusError, type Show, type TrailBy } from '../lib/status';
 import { running, shown, useCountdowns } from '../lib/countdown';
 import { INTENSITY } from './emotion';
 import { Icon, Sprite, type UiName } from './icons';
@@ -123,10 +123,17 @@ export function StatusPanel() {
     });
   };
   const stop = async () => {
-    if (!(await ask({ title: t('Stop sharing your status?'), text: t('Its link will stop working for everyone. Sharing it again makes a new link.'), ok: t('Stop sharing'), danger: true }))) return;
+    if (!(await ask({ title: t('Stop sharing your status?'), text: t('Its link will stop working for everyone until you share again, which brings the same link back.'), ok: t('Stop sharing'), danger: true }))) return;
     return run(async () => {
       await stopStatus();
       toast(t('Your status isn’t public anymore'));
+    });
+  };
+  const renew = async () => {
+    if (!(await ask({ title: t('Make a new link?'), text: t('The current link will stop working for everyone, and anyone who has it will need the new one.'), ok: t('New link'), danger: true }))) return;
+    return run(async () => {
+      await newStatusLink(show, owner, pageLang, trailBy);
+      toast(t('New link ready'));
     });
   };
   const copy = async () => {
@@ -226,7 +233,8 @@ export function StatusPanel() {
               {'share' in navigator && <button class="btn btn-quiet" onClick={send} aria-label={t('Share')}><Icon name="share" size={18} /></button>}
             </div>
             <a class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 1 }} href={url} target="_blank" rel="noopener"><Icon name="external-link" size={18} /> {t('Open the page')}</a>
-            <button class="btn btn-quiet share-stop danger fade-arrive" style={{ '--i': 2 }} onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
+            <button class="btn btn-quiet share-stop fade-arrive" style={{ '--i': 2 }} onClick={renew} disabled={busy}>{t('New link')}</button>
+            <button class="btn btn-quiet share-stop danger fade-arrive" style={{ '--i': 3 }} onClick={stop} disabled={busy}>{t('Stop sharing')}</button>
           </>
         ) : (
           <button class="btn btn-primary share-main fade-arrive" onClick={start} disabled={busy || (!status && !!loadError)}>

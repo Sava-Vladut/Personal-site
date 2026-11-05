@@ -3,7 +3,7 @@
 // people you were thinking of (by name), the place's name and the weather only when each is chosen (Status.show), and
 // your name above it if you gave one; the countdowns too, while they last, if chosen, and the recent trail (the last week's
 // check-ins as coloured dots: feeling, strength and time only) if chosen. While it's on, each device that's signed in sends the newest check-in it knows of
-// whenever that changes. Stopping deletes it from the server, and turning it on again makes a new link.
+// whenever that changes. Stopping takes the page down but the server keeps the link, so turning it on again brings the same one back; only newStatusLink() makes a new one.
 import { EMOTION, shortName } from '../data/emotions';
 import { getDeleted, getEntries, observable, onEntries, type Entry } from './store';
 import { detailsOf, plainTags, type PublicDetails } from './share';
@@ -111,11 +111,11 @@ export async function loadStatus() {
 /** What was last sent, so a check-in the server tidied up (a rounded temperature…) isn't sent again and again. */
 let lastSent = '';
 let lastTrail = '';
-const send = async (show: Show, owner: string, lang: Lang | '', trailBy: TrailBy) => {
+const send = async (show: Show, owner: string, lang: Lang | '', trailBy: TrailBy, reset = false) => {
   const latest = latestCheckin();
   const checkin = latest && publicCheckin(latest, show);
   const recent = recentTrail(show);
-  const s = await call('PUT', { show, owner, lang, checkin, trailBy, recent });
+  const s = await call('PUT', { show, owner, lang, checkin, trailBy, recent, ...(reset && { reset: true }) });
   lastSent = JSON.stringify(checkin);
   lastTrail = JSON.stringify(recent);
   status$.set(s);
@@ -125,7 +125,10 @@ const send = async (show: Show, owner: string, lang: Lang | '', trailBy: TrailBy
 /** Turns the status on, or changes what it shows, the name above it, its language or how the trail reads, with the newest check-in. */
 export const shareStatus = (show: Show, owner: string, lang: Lang | '', trailBy: TrailBy) => send(show, owner, lang, trailBy);
 
-/** Takes the status down: its link stops working at once. */
+/** Replaces the link with a new one: the old one stops working at once. */
+export const newStatusLink = (show: Show, owner: string, lang: Lang | '', trailBy: TrailBy) => send(show, owner, lang, trailBy, true);
+
+/** Takes the status down: its link stops working until it's turned on again, which brings the same link back. */
 export async function stopStatus() {
   status$.set(await call('DELETE'));
 }

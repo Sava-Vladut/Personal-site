@@ -8,9 +8,10 @@
 //                             'days' (the last 7 days) or 'checkins' (the last 5), from recent [{ emotion, intensity, time }]
 //   data/status/countdown.json { countdowns }: the app's countdowns ([{ id, name, start, end }], ms; an older file held one
 //                             { countdown }); the same on every device, so they live here. /api/countdown reads and changes them, admin-only.
-// The token is 192 random bits, so the link can't be guessed. Stopping deletes the file, and turning it on again makes a new link.
+// The token is 192 random bits, so the link can't be guessed. Stopping drops everything but the token ({ token, off: true }) and the link
+// answers 404; turning it on again brings the same link back. Only an explicit reset ({ reset: true } on PUT) makes a new one.
 import crypto from 'node:crypto';
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
@@ -129,10 +130,12 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
     return current;
   };
 
-  async function read() {
+  /** The status, or null when it's off (stopped, or never on). `withOff` also returns a stopped one, to bring its link back. */
+  async function read(withOff = false) {
     try {
       const s = JSON.parse(await readFile(file, 'utf8'));
       if (!s || !TOKEN.test(s.token)) return null;
+      if (s.off === true && !withOff) return null;
       const show = cleanShow(s.show ?? { note: s.note });
       return { ...s, show, owner: cleanOwner(s.owner), lang: cleanLang(s.lang), trailBy: cleanTrailBy(s.trailBy), recent: cleanRecent(s.recent, show) };
     } catch (error) {
@@ -212,17 +215,20 @@ export function createStatusHandler({ directory, indexFile, isAdmin, adminConfig
       // a device on an app from before the trail sends neither: what's kept stays
       const keep = body?.recent === undefined;
       const s = await locked(async () => {
-        const old = await read();
+        const old = await read(true);
         const trailBy = keep ? old?.trailBy ?? 'days' : cleanTrailBy(body?.trailBy);
         const recent = cleanRecent(keep ? old?.recent : body?.recent, show);
-        const next = { token: old?.token ?? crypto.randomBytes(24).toString('base64url'), show, owner, lang, checkin, trailBy, recent, updated: Date.now() };
+        const next = { token: (!body?.reset && old?.token) || crypto.randomBytes(24).toString('base64url'), show, owner, lang, checkin, trailBy, recent, updated: Date.now() };
         await write(next);
         return next;
       });
       return json(res, 200, own(s));
     }
     if (req.method === 'DELETE') {
-      await locked(() => rm(file, { force: true }));
+      await locked(async () => {
+        const old = await read(true);
+        if (old) await write({ token: old.token, off: true });
+      });
       res.writeHead(204, { 'Cache-Control': 'no-store' });
       return res.end();
     }

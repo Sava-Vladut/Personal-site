@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.182.0',
+    date: '2026-11-05',
+    changes: [
+      'Public status: the link now stays the same. Stopping sharing only takes the page down, and sharing again brings the same link back.',
+      'Public status: a new “New link” button replaces the link on purpose (the old one stops working), for when it has leaked.',
+    ],
+  },
+  {
     version: '1.181.4',
     date: '2026-11-05',
     changes: [
