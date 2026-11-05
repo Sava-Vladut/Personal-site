@@ -428,7 +428,9 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
 @keyframes sun-glow { 50% { opacity: 1; } }
 @keyframes rain-text { 50% { opacity: 0.7; transform: translateY(1px); } }
 @media (prefers-reduced-motion: reduce) { .day-label[data-weather] .day-mood, .day-label[data-weather] .day-mood::before { animation: none; } }
-.day-ribbon { position: absolute; left: 2px; right: 2px; bottom: 0; height: 2px; border-radius: var(--r-2xs); opacity: 0.7; }
+/* its own layer: the header repaints ~11 times a second for the ASCII cloud, and a 2px gradient on a fractional edge
+   re-rasterised with it flickered; on a layer of its own it is drawn once and only composited */
+.day-ribbon { position: absolute; left: 2px; right: 2px; bottom: 0; height: 2px; border-radius: var(--r-2xs); opacity: 0.7; will-change: transform; transform: translateZ(0); pointer-events: none; }
 
 .day.has-mood { position: relative; isolation: isolate; --aura: 15%; }
 .day.has-mood::before {
