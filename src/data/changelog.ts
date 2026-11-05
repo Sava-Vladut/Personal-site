@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.181.3',
+    date: '2026-11-05',
+    changes: [
+      'Game stats: servers that are offline no longer clutter the Servers list; only the ones that are up show.',
+    ],
+  },
+  {
     version: '1.181.2',
     date: '2026-11-05',
     changes: [

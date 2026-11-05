@@ -2703,7 +2703,7 @@ export const RO: Record<string, string> = {
   'Online means the game is open in a browser; in a match means playing on one of the servers. Players are told apart by a scrambled form of their address, never the address itself, and no names are kept.': 'Online înseamnă că jocul e deschis într-un browser; într-un meci înseamnă că joacă pe unul dintre servere. Jucătorii sunt deosebiți după o formă amestecată a adresei lor, niciodată adresa însăși, și nu se păstrează niciun nume.',
   'Servers': 'Servere',
   'most {n} at once · {time} played': 'maximum {n} deodată · {time} jucate',
-  'Offline': 'Offline',
+  'No server is up right now.': 'Niciun server nu e pornit acum.',
   '24 hours': '24 de ore',
   'Online': 'Online',
   'In a match': 'Într-un meci',

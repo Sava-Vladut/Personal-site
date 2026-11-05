@@ -137,14 +137,15 @@ function Tile({ icon, label, value, sub, k }: { icon: UiName; label: string; val
   );
 }
 
-/** The four servers: who is on each now (a meter of its slots), its record and the hours played there. */
+/** The servers that are up: who is on each now (a meter of its slots), its record and the hours played there. */
 function Servers({ data }: { data: GlopsStats }) {
   const live = new Map(data.servers.map((s) => [s.n, s]));
   return (
     <section class="card gl-list">
       <h3 class="chart-title">{t('Servers')}</h3>
+      {!SERVERS.some((s) => live.has(s.n)) && <p class="empty-note">{t('No server is up right now.')}</p>}
       <ul>
-        {SERVERS.map((s, i) => {
+        {SERVERS.filter((s) => live.has(s.n)).map((s, i) => {
           const on = live.get(s.n);
           const players = on?.players ?? 0;
           return (
@@ -155,8 +156,8 @@ function Servers({ data }: { data: GlopsStats }) {
                 <small>{t('most {n} at once · {time} played', { n: data.peak.servers[s.n]?.n ?? 0, time: hoursText(data.serverMin[s.n] ?? 0) })}</small>
               </span>
               <span class="gl-sv-now">
-                {on ? <b>{players}<small> / {s.size}</small></b> : <span class="badge">{t('Offline')}</span>}
-                {on && <span class="gl-meter" aria-hidden="true"><i /></span>}
+                <b>{players}<small> / {s.size}</small></b>
+                <span class="gl-meter" aria-hidden="true"><i /></span>
               </span>
             </li>
           );
