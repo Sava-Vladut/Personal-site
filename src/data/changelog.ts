@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.181.2',
+    date: '2026-11-05',
+    changes: [
+      'Channel points: the last fake “Spent” entries (a streak logged after its claim) are gone, and each bonus shows its true size.',
+    ],
+  },
+  {
     version: '1.181.1',
     date: '2026-11-05',
     changes: [

@@ -34,11 +34,18 @@ function summarise(name, data, now) {
   const series = (Array.isArray(data?.series) ? data.series : [])
     .filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y))
     .sort((a, b) => a.x - b.x);
-  // The miner sometimes logs a row with the balance from just before a bonus, a second after the
-  // bonus itself, and the next row is back above it. That dip never happened: leave the row out.
-  for (let i = series.length - 2; i > 0; i--) {
-    const prev = series[i - 1], p = series[i];
-    if (p.y < prev.y && p.x - prev.x <= 3000 && series[i + 1].y >= prev.y) series.splice(i, 1);
+  // The miner logs a bonus, its streak and the watch tick within a second or two, often out of order,
+  // so the balance seems to dip and climb back. When none of that burst is below where the balance
+  // was before it, nothing was spent: put the rows in balance order and keep each one's reason.
+  for (let i = 1; i < series.length; ) {
+    let j = i;
+    while (j + 1 < series.length && series[j + 1].x - series[j].x <= 3000) j++;
+    const burst = series.slice(i, j + 1);
+    if (burst.length > 1 && Math.min(...burst.map((p) => p.y)) >= series[i - 1].y) {
+      const times = burst.map((p) => p.x);
+      burst.sort((a, b) => a.y - b.y).forEach((p, k) => (series[i + k] = { ...p, x: times[k] }));
+    }
+    i = j + 1;
   }
   if (!series.length) return null;
   const last = series[series.length - 1];
