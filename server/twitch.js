@@ -34,6 +34,12 @@ function summarise(name, data, now) {
   const series = (Array.isArray(data?.series) ? data.series : [])
     .filter((p) => Number.isFinite(p?.x) && Number.isFinite(p?.y))
     .sort((a, b) => a.x - b.x);
+  // The miner sometimes logs a row with the balance from just before a bonus, a second after the
+  // bonus itself, and the next row is back above it. That dip never happened: leave the row out.
+  for (let i = series.length - 2; i > 0; i--) {
+    const prev = series[i - 1], p = series[i];
+    if (p.y < prev.y && p.x - prev.x <= 3000 && series[i + 1].y >= prev.y) series.splice(i, 1);
+  }
   if (!series.length) return null;
   const last = series[series.length - 1];
   const since = (ms) => {

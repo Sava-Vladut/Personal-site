@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.181.1',
+    date: '2026-11-05',
+    changes: [
+      'Channel points: a streak bonus no longer shows up as points “Spent” and a claim after it no longer looks too big.',
+    ],
+  },
+  {
     version: '1.181.0',
     date: '2026-11-04',
     changes: [
