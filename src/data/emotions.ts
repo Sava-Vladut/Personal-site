@@ -248,5 +248,8 @@ export const CHART_ORDER = ['sadness', 'hope-interest', 'calm-safety', 'joy', 'l
 
 /** "Love / Connection" → "Love" */
 export const shortName = (id: string) => (EMOTION[id]?.name ?? id).split(' / ')[0];
-export const coreOf = (id: string) => CORE[id.split('/')[0]];
+/** Each emotion's world, looked up once: stats and the journal ask this for every feeling of every entry, and splitting
+ * the id each time made a long journal's stats slow. Ids it doesn't know are worked out from the id, as before. */
+const CORE_OF = new Map(Object.values(EMOTION).map((e) => [e.id, CORE[e.id.split('/')[0]]]));
+export const coreOf = (id: string) => CORE_OF.get(id) ?? CORE[id.split('/')[0]];
 export const valence = (id: string) => (coreOf(id)?.valence === 'pleasant' ? 1 : -1);

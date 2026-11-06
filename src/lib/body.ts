@@ -98,12 +98,15 @@ export const mediaKey = (m: Media) => (m.kind === 'album' ? 'album:' + itemKey(m
 export const sameMedia = (a: Media, b: Media) => mediaKey(a) === mediaKey(b);
 
 export function parseBody(text: string): Body {
+  // most notes have no pictures in their text: then it's all one text, read without looking at each line
+  if (!text.includes('[[')) return { texts: [text], media: [] };
   const texts: string[] = [];
   const media: Media[] = [];
   let cur: string[] = [];
   for (const line of text.split('\n')) {
-    const m = line.match(MARKER);
-    const a = m ? null : line.match(ALBUM);
+    // (a picture's line starts with [[: any other line is words, without trying the patterns on it)
+    const m = line.startsWith('[[') ? line.match(MARKER) : null;
+    const a = m || !line.startsWith('[[') ? null : line.match(ALBUM);
     if (!m && !a) {
       cur.push(line);
       continue;
@@ -130,7 +133,10 @@ export function dropImageLinks(text: string, images: WebImage[]) {
 }
 
 /** The words only, for excerpts, search and counts. */
-export const plainText = (text: string) => parseBody(text).texts.filter((t) => t.trim()).join('\n\n');
+export const plainText = (text: string) => (text.includes('[[')
+  ? parseBody(text).texts.filter((t) => t.trim()).join('\n\n')
+  // no pictures: the text is its own words (or nothing, when it's only blank)
+  : text.trim() ? text : '');
 
 /** The pictures' captions and alt texts, for search. */
 export const pictureWords = (text: string) => (text.includes('|caption=') || text.includes('|alt=')
