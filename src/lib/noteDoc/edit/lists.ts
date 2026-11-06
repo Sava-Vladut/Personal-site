@@ -213,6 +213,8 @@ export function itemToParagraph(tr: Transaction, pos: number): Transaction {
  * the item splits, and the new one gets the same marker: a number counts on, a task starts unticked. The line break and
  * the new marker are two steps to undo, so undo leaves just the line. A selection is deleted first: one starting in an
  * item and running on into other lines leaves the rest of the last one in the item, so the list carries on as well.
+ * With a selection the item always splits where it was, as in Word: the selected words give way to a new item, even
+ * when they were all its words (that left no empty item to end the list on) or its first ones (no plain line above).
  */
 export const listEnter: Command = (state, dispatch, view) => {
   const sel = state.selection;
@@ -224,8 +226,8 @@ export const listEnter: Command = (state, dispatch, view) => {
   const item = $c.parent;
   const pos = $c.before();
   const attrs = item.attrs as ListItemAttrs;
-  const empty = !lineText(item).trim();
-  if ($c.parentOffset === 0 && !empty) {
+  const empty = sel.empty && !lineText(item).trim();
+  if (sel.empty && $c.parentOffset === 0 && !empty) {
     tr.insert(pos, state.schema.nodes.paragraph.create());
     dispatch?.(tr.scrollIntoView());
     return true;
