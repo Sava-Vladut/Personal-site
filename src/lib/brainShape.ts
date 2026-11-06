@@ -58,16 +58,21 @@ export function folds(x: number, y: number): number {
 
 const SYLVIAN: [number, number][] = [[0.4, 0.62], [0.58, 0.57], [0.82, 0.5], [1.06, 0.4]];
 const CENTRAL: [number, number][] = [[0.9, 0.13], [0.84, 0.25], [0.92, 0.35]];
-const segDist = (x: number, y: number, [ax, ay]: [number, number], [bx, by]: [number, number]) => {
-  const dx = bx - ax, dy = by - ay;
+const GROOVES = [SYLVIAN, CENTRAL];
+const segDist = (x: number, y: number, a: [number, number], b: [number, number]) => {
+  const ax = a[0], ay = a[1], dx = b[0] - ax, dy = b[1] - ay;
   const s = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
   return Math.hypot(x - (ax + dx * s), y - (ay + dy * s));
 };
 
-/** Distance to the two deepest grooves, the lateral fissure and the central sulcus: they split the lobes. */
+/** Distance to the two deepest grooves, the lateral fissure and the central sulcus: they split the lobes. (Asked for
+ * every point as the brains are built, so it makes no lists or pairs as it goes.) */
 export function grooveDist(x: number, y: number): number {
   let d = 1;
-  for (const line of [SYLVIAN, CENTRAL]) for (let i = 1; i < line.length; i++) d = Math.min(d, segDist(x, y, line[i - 1], line[i]));
+  for (let g = 0; g < GROOVES.length; g++) {
+    const line = GROOVES[g];
+    for (let i = 1; i < line.length; i++) d = Math.min(d, segDist(x, y, line[i - 1], line[i]));
+  }
   return d;
 }
 

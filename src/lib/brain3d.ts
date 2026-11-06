@@ -8,6 +8,10 @@ import { PATCHES, grooveDist, patchAt } from './brainShape';
 const CX = 0.76, CY = 0.48;
 /** A 3D point's spot in the side view (brainShape's coordinates), for the regions and their motion. */
 export const sideOf = (x: number, y: number): [number, number] => [x + CX, CY - y];
+/** The same, one coordinate at a time: for the drawing loops, which ask for thousands a frame and shouldn't make a pair
+ * (garbage) for each. */
+export const sideX = (x: number) => x + CX;
+export const sideY = (y: number) => CY - y;
 
 /** A rounded body: a superellipsoid, flatter below its centre than above. */
 interface Body { c: [number, number, number]; r: [number, number, number]; down: number; n: number; part: number }
@@ -86,7 +90,15 @@ const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 /** About `count` points spread evenly over the brain's surface. */
 export function buildBrain(count: number): BrainCloud {
   const rand = rng(17);
-  const pos: number[] = [], nrm: number[] = [], part: number[] = [], region: number[] = [], fold: number[] = [];
+  // each body's share of the points, by about how much surface it shows
+  const share = [0.33, 0.33, 0.08, 0.08, 0.06, 0.06];
+  // the stem: rings around its slanted axis
+  const rings = Math.max(8, Math.round(Math.sqrt(count * 0.03) * 1.4)), around = Math.max(10, Math.round((count * 0.03) / rings));
+  // room for every point that could be kept, written straight in (rather than lists growing point by point and copied
+  // at the end): this runs as the app opens, while the journal loads behind it
+  const room = share.reduce((sum, sh) => sum + Math.round(count * sh * 2.4), 0) + rings * around;
+  const pos = new Float32Array(room * 3), nrm = new Float32Array(room * 3), part = new Uint8Array(room), region = new Int8Array(room), fold = new Float32Array(room);
+  let n = 0;
 
   const keep = (x: number, y: number, z: number, nx: number, ny: number, nz: number, p: number) => {
     // squeeze the width toward the front; facing directions follow the stretch
@@ -95,7 +107,7 @@ export function buildBrain(count: number): BrainCloud {
     nz /= k;
     const nl = Math.hypot(nx, ny, nz) || 1;
     nx /= nl; ny /= nl; nz /= nl;
-    const [sx, sy] = sideOf(x, y);
+    const sx = sideX(x), sy = sideY(y);
     let f: number, r = -1;
     if (p === CORTEX) {
       r = patchAt(sx, sy);
@@ -105,11 +117,13 @@ export function buildBrain(count: number): BrainCloud {
       x += nx * d; y += ny * d; z += nz * d;
     } else if (p === CEREBELLUM) f = 0.5 + 0.5 * Math.sin(y * 150 + x * 25); // fine parallel folds
     else { f = 0.55; r = CALM; }
-    pos.push(x, y, z); nrm.push(nx, ny, nz); part.push(p); region.push(r); fold.push(f);
+    const o = n * 3;
+    pos[o] = x; pos[o + 1] = y; pos[o + 2] = z;
+    nrm[o] = nx; nrm[o + 1] = ny; nrm[o + 2] = nz;
+    part[n] = p; region[n] = r; fold[n] = f;
+    n++;
   };
 
-  // each body's share of the points, by about how much surface it shows
-  const share = [0.33, 0.33, 0.08, 0.08, 0.06, 0.06];
   BODIES.forEach((b, bi) => {
     const want = count * share[bi];
     const tries = Math.round(want * 2.4);
@@ -145,10 +159,8 @@ export function buildBrain(count: number): BrainCloud {
     }
   });
 
-  // the stem: rings around its slanted axis
   const dx = STEM_B[0] - STEM_A[0], dy = STEM_B[1] - STEM_A[1], len = Math.hypot(dx, dy);
   const ux = dy / len, uy = -dx / len; // across the axis, in the side view
-  const rings = Math.max(8, Math.round(Math.sqrt(count * 0.03) * 1.4)), around = Math.max(10, Math.round((count * 0.03) / rings));
   for (let i = 0; i < rings; i++) {
     const s = (i + 0.5) / rings, r = stemRadius(s);
     for (let j = 0; j < around; j++) {
@@ -160,11 +172,10 @@ export function buildBrain(count: number): BrainCloud {
     }
   }
 
-  const n = part.length;
   const out: BrainCloud = {
     n,
-    pos: Float32Array.from(pos), nrm: Float32Array.from(nrm), part: Uint8Array.from(part), region: Int8Array.from(region),
-    fold: Float32Array.from(fold), phase: new Float32Array(n), centres: new Float32Array(PATCHES.length * 3),
+    pos: pos.slice(0, n * 3), nrm: nrm.slice(0, n * 3), part: part.slice(0, n), region: region.slice(0, n),
+    fold: fold.slice(0, n), phase: new Float32Array(n), centres: new Float32Array(PATCHES.length * 3),
   };
   for (let i = 0; i < n; i++) out.phase[i] = rand();
   // the middle of each region's points on the +z side, pushed back out to the surface

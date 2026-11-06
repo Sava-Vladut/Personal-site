@@ -70,12 +70,23 @@ function flush() {
   // Reads first (positions, styles), then all the writes, so the layout is worked out once.
   const fold = innerHeight;
   const held = new Map<Element, boolean>();
+  const low = new Map<Element, boolean>();
   const picked = new Set<Element>();
   for (const el of found) {
     if (seen.has(el)) continue;
     seen.add(el);
     const page = el.closest('.page');
     if (!page || el.hasAttribute(ATTR) || el.closest(SKIP) || el.parentElement?.closest(`[${ATTR}]`)) continue;
+    // a unit inside one already picked rides along with it (below): no need to measure it at all
+    if (insidePicked(el, picked)) continue;
+    // A unit whose box (its parent) is wholly below the screen is too, so it isn't measured itself. That matters for
+    // the journal's days below the screen, which skip drawing (content-visibility, app.css): asking where something
+    // inside one is would make the browser lay the whole day out there and then, in the middle of a scroll.
+    const parent = el.parentElement;
+    if (parent && parent !== page && isLow(parent, fold, low)) {
+      if (!isHeld(parent, page, held)) picked.add(el);
+      continue;
+    }
     const r = el.getBoundingClientRect();
     // on screen or above it, or not drawn at all: leave it as it is
     if (r.top < fold || !r.height) continue;
@@ -104,6 +115,17 @@ function isHeld(el: Element | null, page: Element, held: Map<Element, boolean>):
     const s = getComputedStyle(el);
     v = s.position === 'fixed' || s.position === 'sticky' || /auto|scroll/.test(s.overflowX + s.overflowY) || isHeld(el.parentElement, page, held);
     held.set(el, v);
+  }
+  return v;
+}
+
+/** Whether `el` is drawn and starts below the screen (remembered for the pass: many units share a parent). */
+function isLow(el: Element, fold: number, low: Map<Element, boolean>) {
+  let v = low.get(el);
+  if (v === undefined) {
+    const r = el.getBoundingClientRect();
+    v = r.top >= fold && r.height > 0;
+    low.set(el, v);
   }
   return v;
 }

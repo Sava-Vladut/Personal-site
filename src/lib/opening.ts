@@ -5,7 +5,7 @@
 // grid, the nearest in each cell. A tap or a key hurries it along; it never goes in before the journal is ready behind it.
 import { CORES } from '../data/emotions';
 import { PATCHES, pulse } from './brainShape';
-import { CEREBELLUM, buildBrain, sideOf, type BrainCloud } from './brain3d';
+import { CEREBELLUM, buildBrain, sideX, sideY, type BrainCloud } from './brain3d';
 
 const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const RAMP = ' .,-~:;=!*#%@'; // dark to bright
@@ -62,7 +62,10 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
   let w = 0, h = 0, dpr = 1, cols = 0, rows = 0, cw = 8, ch = 15, unit = 100, fontPx = 12, far = 3;
   let depth = new Float32Array(0), who = new Int32Array(0), trail = new Uint8Array(0), trailA = new Float32Array(0), trailC = new Uint8Array(0);
   const atlas = document.createElement('canvas');
-  let tile = 0, glyphAt = new Map<string, number>();
+  // each letter's column in the atlas, looked up once rather than in a Map for every letter of every frame
+  let tile = 0, rampAt = new Int16Array(0), scrambleAt = new Int16Array(0), streakAt = new Int16Array(0);
+  // where toScreen() put the point: x, y and depth (numbers kept in an array, so a frame of thousands makes no garbage)
+  const at = new Float64Array(3);
 
   let s = 0, diveAt = -1, hurry = false, isReady = false, revealed = false, leaving = false, finished = false;
   let raf = 0, last = 0, frameMs = MIN_FRAME, slow = 0;
@@ -76,7 +79,8 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
     // the dark theme's colours, whatever the page's: they glow on black
     const palette = [ink, mix(ink, [120, 130, 160], 0.45), [255, 244, 214], ...PATCHES.map((p) => mix(hex(CORES.find((c) => c.id === p.world)?.color[1] ?? '#888888'), [255, 255, 255], 0.22))];
     const chars = [...new Set([...RAMP, ...SCRAMBLE, ...STREAK].filter((c) => c.trim()))];
-    glyphAt = new Map(chars.map((c, i) => [c, i]));
+    const column = (set: string) => Int16Array.from(set, (c) => chars.indexOf(c));
+    rampAt = column(RAMP); scrambleAt = column(SCRAMBLE); streakAt = column(STREAK);
     tile = Math.ceil(fontPx * dpr * 1.5);
     atlas.width = chars.length * tile;
     atlas.height = palette.length * tile;
@@ -128,15 +132,19 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
     who.fill(-1);
     trailA.fill(0);
 
-    // where a point lands on the screen: px, py, its depth, or null behind the eye
-    let px = 0, py = 0, pz = 0;
+    // where a point lands on the screen (into `at`: x, y, its depth), or false behind the eye
     const toScreen = (x: number, y: number, z: number, eye: number) => {
       const d = eye - z;
       if (d < 0.12) return false;
       const f = (CAM / d) * unit;
       const rx = x * cr - y * sr, ry = x * sr + y * cr;
-      px = ox + rx * f; py = oy - (ry + 0.03) * f; pz = z;
+      at[0] = ox + rx * f; at[1] = oy - (ry + 0.03) * f; at[2] = z;
       return true;
+    };
+    // a letter closing in from off the screen in a ring, turning as it comes, `k0` of the way there
+    const flyIn = (i: number, k0: number, x1: number, y2: number, z2: number) => {
+      const r = reach[i] * far * (1 - k0), a = spin[i] + SWIRL * (1 - k0) ** 2;
+      return toScreen(x1 * k0 + Math.cos(a) * r, y2 * k0 + Math.sin(a) * r, z2 * k0 + lift[i] * (1 - k0), cam);
     };
     // a streak from (x0, y0) to just before (x1, y1), fading toward its tail
     const streak = (x0: number, y0: number, x1: number, y1: number, alpha: number, color: number) => {
@@ -166,28 +174,23 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
       const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
       const flying = e < 1;
       if (flying) {
-        // closing in from off the screen in a ring, turning as it comes
-        const k = inOut3(e), at = (k0: number) => {
-          const r = reach[i] * far * (1 - k0), a = spin[i] + SWIRL * (1 - k0) ** 2;
-          return toScreen(x1 * k0 + Math.cos(a) * r, y2 * k0 + Math.sin(a) * r, z2 * k0 + lift[i] * (1 - k0), cam);
-        };
         let tx = NaN, ty = 0;
-        if (i % 3 === 0 && at(inOut3(Math.max(0, e - 0.07)))) { tx = px; ty = py; }
-        if (!at(k)) continue;
-        if (tx === tx) streak(tx, ty, px, py, (0.2 + 0.6 * e) * fade, region[i] >= 0 ? REGION + region[i] : BASE);
+        if (i % 3 === 0 && flyIn(i, inOut3(Math.max(0, e - 0.07)), x1, y2, z2)) { tx = at[0]; ty = at[1]; }
+        if (!flyIn(i, inOut3(e), x1, y2, z2)) continue;
+        if (tx === tx) streak(tx, ty, at[0], at[1], (0.2 + 0.6 * e) * fade, region[i] >= 0 ? REGION + region[i] : BASE);
       } else {
         // facing away: hidden behind the front anyway
         const nz = nrm[o + 1] * sp + (-nrm[o] * sy + nrm[o + 2] * cy) * cp;
         if (nz < -0.15 - u * 0.6) continue;
         let tx = NaN, ty = 0;
-        if (u > 0.05 && i % 3 === 0 && toScreen(x1, y2, z2, cam + 0.12 + 0.5 * u)) { tx = px; ty = py; }
+        if (u > 0.05 && i % 3 === 0 && toScreen(x1, y2, z2, cam + 0.12 + 0.5 * u)) { tx = at[0]; ty = at[1]; }
         if (!toScreen(x1, y2, z2, cam)) continue;
-        if (tx === tx) streak(tx, ty, px, py, (0.3 + 0.7 * u) * fade, region[i] >= 0 ? REGION + region[i] : BASE);
+        if (tx === tx) streak(tx, ty, at[0], at[1], (0.3 + 0.7 * u) * fade, region[i] >= 0 ? REGION + region[i] : BASE);
       }
-      const col = Math.floor(px / cw), row = Math.floor(py / ch);
+      const col = Math.floor(at[0] / cw), row = Math.floor(at[1] / ch);
       if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
       const c = row * cols + col;
-      if (pz > depth[c]) { depth[c] = pz; who[c] = i; }
+      if (at[2] > depth[c]) { depth[c] = at[2]; who[c] = i; }
     }
 
     // 2. close pinholes between neighbours at the same depth
@@ -202,9 +205,8 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
     ctx.clearRect(0, 0, el.width, el.height);
     ctx.imageSmoothingEnabled = false;
     const half = tile / 2;
-    const put = (glyph: string, color: number, c: number, alpha: number) => {
-      const g = glyphAt.get(glyph);
-      if (g === undefined || alpha <= 0.01) return;
+    const put = (g: number, color: number, c: number, alpha: number) => {
+      if (g < 0 || alpha <= 0.01) return;
       const col = c % cols, row = (c - col) / cols;
       ctx.globalAlpha = Math.min(1, alpha);
       ctx.drawImage(atlas, g * tile, color * tile, tile, tile, Math.round((col + 0.5) * cw * dpr - half), Math.round((row + 0.5) * ch * dpr - half), tile, tile);
@@ -215,7 +217,7 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
     for (let c = 0; c < who.length; c++) {
       const i = who[c];
       if (i < 0) {
-        if (trailA[c] > 0) put(STREAK[trail[c]], trailC[c], c, trailA[c]);
+        if (trailA[c] > 0) put(streakAt[trail[c]], trailC[c], c, trailA[c]);
         continue;
       }
       const o = i * 3;
@@ -223,7 +225,7 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
       const r = region[i];
       if (e < 1) {
         // still flying: a letter that hasn't decided what it is yet
-        put(SCRAMBLE[(i * 7 + Math.floor(s * 20)) % SCRAMBLE.length], r >= 0 && phase[i] < 0.6 ? REGION + r : BASE, c, (0.3 + 0.7 * e) * fade);
+        put(scrambleAt[(i * 7 + Math.floor(s * 20)) % SCRAMBLE.length], r >= 0 && phase[i] < 0.6 ? REGION + r : BASE, c, (0.3 + 0.7 * e) * fade);
         continue;
       }
       const nx = nrm[o], ny = nrm[o + 1], nz0 = nrm[o + 2];
@@ -238,15 +240,14 @@ export function playOpening(cover: HTMLElement, ready: Promise<unknown>, reveal:
       // the wave: white-hot where it is, the regions lit behind it
       const passed = wave - pos[o];
       if (r >= 0 && passed > 0) {
-        const [sx, sy2] = sideOf(pos[o], pos[o + 1]);
-        const glow = (LEVEL + (1 - LEVEL) * Math.exp(-passed * 2.4)) * (0.35 + 0.65 * pulse(PATCHES[r].world, s, phase[i], sx, sy2)) + u * 1.2;
+        const glow = (LEVEL + (1 - LEVEL) * Math.exp(-passed * 2.4)) * (0.35 + 0.65 * pulse(PATCHES[r].world, s, phase[i], sideX(pos[o]), sideY(pos[o + 1]))) + u * 1.2;
         if (glow > 0.2) { color = REGION + r; b = Math.max(b, 0.2) * (0.55 + 0.45 * diffuse) + glow * 0.55; }
       } else if (passed > 0) b += 0.3 * Math.exp(-passed * 5) + u * 0.4;
       if (Math.abs(passed) < 0.05) { color = HOT; b = Math.max(b, 0.9); }
       if (e < 1 + LAND / FLY) { color = HOT; b += 0.5; } // just landed: a flash
       if (cam - depth[c] < 0.9) { color = HOT; b = 1; } // rushing past the eye
       b = clamp(b, 0, 1);
-      put(RAMP[Math.max(1, Math.round(b * top))], color, c, (0.3 + 0.7 * b) * fade);
+      put(rampAt[Math.max(1, Math.round(b * top))], color, c, (0.3 + 0.7 * b) * fade);
     }
     ctx.globalAlpha = 1;
   };

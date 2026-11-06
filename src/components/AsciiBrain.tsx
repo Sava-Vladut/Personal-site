@@ -5,7 +5,7 @@
 // and away again when you go in. Drag to spin it; tap a region to light it.
 import { useEffect, useRef } from 'preact/hooks';
 import { PATCHES, pulse } from '../lib/brainShape';
-import { CEREBELLUM, buildBrain, sideOf, type BrainCloud } from '../lib/brain3d';
+import { CEREBELLUM, buildBrain, sideX, sideY, type BrainCloud } from '../lib/brain3d';
 import { watchView } from '../lib/inView';
 
 const FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -85,7 +85,12 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
     let depth = new Float32Array(0), who = new Int32Array(0), taken = new Uint8Array(0);
     let ringText: string[] = [], ringRow: number[] = [];
     const atlas = document.createElement('canvas');
-    let tile = 0, glyphAt = new Map<string, number>(), palette: RGB[] = [];
+    // each letter's column in the atlas, looked up once rather than in a Map for every letter of every frame
+    let tile = 0, palette: RGB[] = [];
+    let rampAt = new Int16Array(0), scrambleAt = new Int16Array(0), sparkAt = new Int16Array(0), ringAt = new Int16Array(0);
+    // the ring's letters in front of the eye this frame (which, where, how near), kept between frames so drawing it makes no garbage
+    let litJ = new Int32Array(0), litCell = new Int32Array(0), litZ = new Float64Array(0), litOrder = new Uint16Array(0);
+    const cell = new Float64Array(3); // project()'s answer: column, row, depth
 
     // motion
     let s = quick || reduced.matches ? ASSEMBLE + 1.2 : 0; // animation time, seconds
@@ -107,7 +112,10 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
       const ink: RGB = [214, 220, 236];
       palette = [ink, mix(ink, [120, 130, 160], 0.45), [255, 244, 214], ...PATCHES.map((p) => mix(hex(css.getPropertyValue(`--emo-${p.world}`)), [255, 255, 255], 0.22))];
       const chars = [...new Set([...RAMP, ...SCRAMBLE, ...SPARK, ...ringText].filter((c) => c.trim()))];
-      glyphAt = new Map(chars.map((c, i) => [c, i]));
+      const column = (set: Iterable<string>) => Int16Array.from(set, (c) => chars.indexOf(c));
+      rampAt = column(RAMP); scrambleAt = column(SCRAMBLE); sparkAt = column(SPARK); ringAt = column(ringText);
+      const n = ringText.length;
+      litJ = new Int32Array(n); litCell = new Int32Array(n); litZ = new Float64Array(n); litOrder = new Uint16Array(n);
       tile = Math.ceil(fontPx * dpr * 1.5);
       atlas.width = chars.length * tile;
       atlas.height = palette.length * tile;
@@ -261,20 +269,22 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
       ctx.clearRect(0, 0, el.width, el.height);
       ctx.imageSmoothingEnabled = false;
       const half = tile / 2;
-      const put = (glyph: string, color: number, col: number, row: number, alpha: number) => {
-        const g = glyphAt.get(glyph);
-        if (g === undefined || alpha <= 0.01) return;
+      const put = (g: number, color: number, col: number, row: number, alpha: number) => {
+        if (g < 0 || alpha <= 0.01) return;
         ctx.globalAlpha = Math.min(1, alpha);
         ctx.drawImage(atlas, g * tile, color * tile, tile, tile, Math.round((col + 0.5) * cw * dpr - half), Math.round((row + 0.5) * ch * dpr - half), tile, tile);
       };
-      const project = (x: number, y: number, z: number): [number, number, number] | null => {
+      /** Which cell a point lands in (into `cell`: column, row, depth), or false when it's off the grid or behind the eye. */
+      const project = (x: number, y: number, z: number) => {
         const x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
         const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
         const d = cam - z2;
-        if (d < 0.25) return null;
+        if (d < 0.25) return false;
         const f = (cam / d) * unit;
         const col = Math.floor((ox + x1 * f) / cw), row = Math.floor((oy - (y2 + 0.03) * f) / ch);
-        return col < 0 || col >= cols || row < 0 || row >= rows ? null : [col, row, z2];
+        if (col < 0 || col >= cols || row < 0 || row >= rows) return false;
+        cell[0] = col; cell[1] = row; cell[2] = z2;
+        return true;
       };
 
       // 3. the ring of words, tilted, turning on its own; letters behind the brain are hidden by it
@@ -282,13 +292,13 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
       if (ringIn > 0 && ringText.length) {
         const rr = RING * (1 + dive * 1.2), tilt = 0.4, ct = Math.cos(tilt), st = Math.sin(tilt), roll = 0.12;
         const cr = Math.cos(roll), sr = Math.sin(roll);
-        const lit: [number, number, number, number][] = [];
+        let m = 0;
         for (let j = 0; j < ringText.length; j++) {
           if (ringText[j] === ' ') continue;
           const a = ringTurn + (j / ringText.length) * Math.PI * 2;
           const px = Math.cos(a) * rr, pz = Math.sin(a) * rr;
-          let y = -pz * st, z = pz * ct, x = px;
-          [x, y] = [x * cr - y * sr, x * sr + y * cr];
+          const y0 = -pz * st, z = pz * ct;
+          const x = px * cr - y0 * sr, y = px * sr + y0 * cr;
           // the ring follows the brain's tilt but not its spin
           const y2 = y * cp - z * sp, z2 = y * sp + z * cp;
           const d = cam - z2;
@@ -296,14 +306,15 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
           const f = (cam / d) * unit;
           const col = Math.floor((ox + x * f) / cw), row = Math.floor((oy - (y2 + 0.03) * f) / ch);
           if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
-          lit.push([j, col, row, z2]);
+          litJ[m] = j; litCell[m] = row * cols + col; litZ[m] = z2; litOrder[m] = m; m++;
         }
-        lit.sort((p, q) => q[3] - p[3]);
-        for (const [j, col, row, z] of lit) {
-          const c = row * cols + col;
+        // nearest first (and in ring order where two are as near), so a letter in front takes the cell
+        litOrder.subarray(0, m).sort((p, q) => litZ[q] - litZ[p] || p - q);
+        for (let k = 0; k < m; k++) {
+          const q = litOrder[k], c = litCell[q], z = litZ[q], j = litJ[q];
           if (taken[c] || z < depth[c]) continue;
           taken[c] = 1;
-          put(ringText[j], ringRow[j], col, row, (0.28 + 0.6 * (z / RING * 0.5 + 0.5)) * ringIn);
+          put(ringAt[j], ringRow[j], c % cols, (c - (c % cols)) / cols, (0.28 + 0.6 * (z / RING * 0.5 + 0.5)) * ringIn);
         }
       }
 
@@ -324,7 +335,7 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
           const e = (s - delay[i]) / FLY;
           if (e < 1) {
             // still flying: a letter that hasn't decided what it is yet
-            put(SCRAMBLE[(i * 7 + Math.floor(s * 18)) % SCRAMBLE.length], BASE, col, row, (0.25 + 0.6 * e) * fade);
+            put(scrambleAt[(i * 7 + Math.floor(s * 18)) % SCRAMBLE.length], BASE, col, row, (0.25 + 0.6 * e) * fade);
             continue;
           }
           const nx = nrm[o], ny = nrm[o + 1], nz0 = nrm[o + 2];
@@ -338,8 +349,7 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
           let color = part[i] === CEREBELLUM ? SMALL : BASE;
           const r = region[i];
           if (r >= 0) {
-            const [sx2, sy2] = sideOf(pos[o], pos[o + 1]);
-            const glow = lvl[r] * (0.35 + 0.65 * pulse(PATCHES[r].world, s, phase[i], sx2, sy2)) + flare[r];
+            const glow = lvl[r] * (0.35 + 0.65 * pulse(PATCHES[r].world, s, phase[i], sideX(pos[o]), sideY(pos[o + 1]))) + flare[r];
             if (glow > 0.2) {
               color = REGION + r;
               b = Math.max(b, 0.2) * (0.55 + 0.45 * diffuse) + glow * 0.55;
@@ -352,8 +362,8 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
           }
           if (flinching && phase[i] < flinching) { color = REGION + ANGER; b += 0.3 * flinching; }
           b = clamp(b, 0, 1);
-          let glyph = RAMP[Math.max(1, Math.round(b * top))];
-          if (shift && phase[i] < 0.5) glyph = SCRAMBLE[(i + Math.floor(s * 30)) % SCRAMBLE.length];
+          let glyph = rampAt[Math.max(1, Math.round(b * top))];
+          if (shift && phase[i] < 0.5) glyph = scrambleAt[(i + Math.floor(s * 30)) % SCRAMBLE.length];
           const at = col + shift;
           if (at < 0 || at >= cols) continue;
           put(glyph, color, at, row, (0.3 + 0.7 * b) * fade);
@@ -369,14 +379,14 @@ export function AsciiBrain({ words, label, flinch = 0, diving, quick, onSpot, on
           const uk = u - k * 0.045;
           if (uk < 0) break;
           const lift = 1 + 0.25 * Math.sin(Math.PI * uk);
-          const p = project(
+          const on = project(
             (cs[A] + (cs[B] - cs[A]) * uk) * lift,
             (cs[A + 1] + (cs[B + 1] - cs[A + 1]) * uk) * lift,
             (cs[A + 2] + (cs[B + 2] - cs[A + 2]) * uk) * lift * spark.side,
           );
-          if (!p) continue;
-          const behind = depth[p[1] * cols + p[0]] > p[2] + 0.05;
-          put(SPARK[k], k < 2 ? HOT : REGION + spark.b, p[0], p[1], (1 - k * 0.17) * (behind ? 0.25 : 1) * fade);
+          if (!on) continue;
+          const behind = depth[cell[1] * cols + cell[0]] > cell[2] + 0.05;
+          put(sparkAt[k], k < 2 ? HOT : REGION + spark.b, cell[0], cell[1], (1 - k * 0.17) * (behind ? 0.25 : 1) * fade);
         }
         return true;
       });

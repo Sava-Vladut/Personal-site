@@ -443,10 +443,12 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   mask-image: linear-gradient(180deg, transparent, #000 18%, #000 55%, transparent);
   animation: aura-drift 26s ease-in-out 2 alternate both paused;
 }
+/* flat 2D moves (not translate3d), so a light that's resting, paused off screen or done drifting isn't kept on a layer of
+   its own (a 3D transform always is); it's lifted onto one only while it drifts */
 @keyframes aura-drift {
-  0% { transform: translate3d(-5%, 0, 0) scale(1); }
-  50% { transform: translate3d(3%, 4%, 0) scale(1.07); }
-  100% { transform: translate3d(6%, -3%, 0) scale(0.97); }
+  0% { transform: translate(-5%, 0) scale(1); }
+  50% { transform: translate(3%, 4%) scale(1.07); }
+  100% { transform: translate(6%, -3%) scale(0.97); }
 }
 
 .note.has-mood { position: relative; isolation: isolate; overflow: hidden; --glow: calc(5% + var(--k, 3) * 3%); }
@@ -460,9 +462,9 @@ textarea.input { padding: 11px 14px; resize: none; line-height: 1.5; }
   animation-delay: calc(var(--t, 0) * -10ms);
 }
 @keyframes glow-drift {
-  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  50% { transform: translate3d(-34px, 18px, 0) rotate(16deg) scale(1.08); }
-  100% { transform: translate3d(-12px, 30px, 0) rotate(-10deg) scale(0.96); }
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-34px, 18px) rotate(16deg) scale(1.08); }
+  100% { transform: translate(-12px, 30px) rotate(-10deg) scale(0.96); }
 }
 .day.has-mood[data-live]::before, .day[data-live] .note.has-mood::before { animation-play-state: running; }
 /* the lights drift out and back twice as a day comes into view, then rest (no loops at rest), and wait under a sheet or the wheel */
