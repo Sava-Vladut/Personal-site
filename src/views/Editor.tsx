@@ -1153,9 +1153,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const typing = mention;
   // the mind traps, laws of power and principles are fetched the first time a [[ link is typed
   const refs = useRefs(!!typing?.link);
-  const suggestions: (Suggestion | LinkSuggestion)[] = !typing ? []
+  // (read again when what's typed or what it can find changes, not each time the page draws)
+  const suggestions: (Suggestion | LinkSuggestion)[] = useMemo(() => !typing ? []
     : typing.link ? suggestLinks(typing.q, allEntries, shelf, draft.id, refs)
-    : suggest(typing.q, people, shelf, songs, allEntries);
+    : suggest(typing.q, people, shelf, songs, allEntries), [typing?.q, typing?.link, allEntries, shelf, people, songs, refs, draft.id]);
   const canAdd = !!typing && !typing.link && typing.q.trim().length > 1 && !people.some((p) => personNameKey(p.name) === personNameKey(typing.q));
   const choices = suggestions.length + (canAdd ? 1 : 0);
   const activeChoice = Math.min(pickAt, Math.max(0, choices - 1));

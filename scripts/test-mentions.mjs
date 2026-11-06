@@ -146,6 +146,12 @@ test('first-letter suggestions work across composed accents and iOS nonbreaking 
   assert.equal(env.suggest('e\u0301m', people, [], [], [])[0].item.id, 'em');
   assert.equal(env.suggest('ana\u00a0ma', people, [], [], [])[0].item.id, 'ana');
   assert.equal(env.suggest(' ana   ma ', people, [], [], [])[0].item.id, 'ana');
+  // names are read once and kept: asked again (each key), the same answers; a renamed person by their new name
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual([3, 2, 1, 0].map((n) => env.score(['ana', 'mar', 'ari', 'zz'][3 - n], 'Ana Maria')), [3, 2, 1, 0]);
+    assert.deepEqual(plain(env.suggest('ma', people, [], [], []).map((s) => s.item.id)), ['ana']);
+  }
+  assert.deepEqual(plain(env.suggest('ma', [person('ana', 'Ana Popa'), person('m', 'Mara')], [], [], []).map((s) => s.item.id)), ['m']);
 });
 
 test('mention tokens disambiguate canonical Unicode duplicates and highlights follow text order', () => {
