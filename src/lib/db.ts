@@ -109,8 +109,16 @@ async function update<T>(key: string, change: (current: T | undefined) => T): Pr
   }));
 }
 
+/**
+ * Which stored records a merge needs read in full. `plain` gives a stored record's id and edit time when normalize would
+ * keep them as they are (else null), and `wanted` says from those whether the record is needed: one the page already
+ * holds as new or newer isn't, so it's compared by id and time alone and left out of `entries`. Reading all of a long
+ * journal's notes in full again for every sync made the app catch.
+ */
+export interface Skim { plain: (raw: any) => { id: string; updated: number } | null; wanted: (id: string, updated: number) => boolean }
+
 /** Merge remote notes or a backup against durable records while holding one write transaction. */
-async function reconcileEntries<T extends { id: string; updated: number }>(incoming: T[], deleted: Record<string, number>, normalize: (raw: any) => T | null = (raw) => raw, restore = false) {
+async function reconcileEntries<T extends { id: string; updated: number }>(incoming: T[], deleted: Record<string, number>, normalize: (raw: any) => T | null = (raw) => raw, restore = false, skim?: Skim) {
   type Result = { entries: T[]; changed: T[]; removed: string[]; deleted: Record<string, number> };
   return transaction(['entries', 'kv'], 'readwrite', (tx) => new Promise<Result>((resolve, reject) => {
     const store = tx.objectStore('entries');
@@ -123,7 +131,20 @@ async function reconcileEntries<T extends { id: string; updated: number }>(incom
       if (!entriesReady || !deletedReady) return;
       try {
         const tombstones = combineDeleted(combineDeleted(Object.create(null), gone.result), deleted);
-        const current = new Map((req.result as unknown[]).map(normalize).filter((entry): entry is T => !!entry).map((entry) => [entry.id, entry]));
+        // id → the stored record, read in full, or just its id and time when it isn't needed (see Skim)
+        const current = new Map<string, { id: string; updated: number }>();
+        const skimmed = new WeakSet<object>();
+        for (const raw of req.result as unknown[]) {
+          const key = skim?.plain(raw);
+          if (key && !skim!.wanted(key.id, key.updated)) {
+            const bare = { id: key.id, updated: key.updated };
+            skimmed.add(bare);
+            current.set(bare.id, bare);
+          } else {
+            const entry = normalize(raw);
+            if (entry) current.set(entry.id, entry);
+          }
+        }
         const removed = restore ? [] : [...current.values()].filter((entry) => tombstones[entry.id] >= entry.updated).map((entry) => entry.id);
         for (const id of removed) { current.delete(id); store.delete(id); }
         const stamp = Date.now();
@@ -132,7 +153,7 @@ async function reconcileEntries<T extends { id: string; updated: number }>(incom
           .map((entry) => restore && tombstones[entry.id] >= entry.updated ? { ...entry, updated: Math.max(stamp, tombstones[entry.id] + 1) } : entry);
         for (const entry of changed) { current.set(entry.id, entry); store.put(entry); }
         kv.put(tombstones, 'deleted');
-        result = { entries: [...current.values()], changed, removed, deleted: tombstones };
+        result = { entries: [...current.values()].filter((entry): entry is T => !skimmed.has(entry)), changed, removed, deleted: tombstones };
       } catch (error) {
         tx.abort();
         reject(error);

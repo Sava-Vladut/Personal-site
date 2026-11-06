@@ -395,7 +395,10 @@ function collection<T extends { id: string; updated: number }>(key: string, norm
   return { key, list$, normalizeAll, write, save, saveMany, remove, merge, channel };
 }
 
-const byName = (a: Person, b: Person) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+/** Names in the reader's alphabet, case and accents aside: what localeCompare with these options does, with one collator
+ * made once instead of one for every comparison (sorting a collection on each save and load made thousands). */
+const byWords = new Intl.Collator(undefined, { sensitivity: 'base' }).compare;
+const byName = (a: Person, b: Person) => byWords(a.name, b.name);
 const people = collection<Person>('people', normalizePerson, byName);
 export const usePeople = people.list$.use;
 export const getPeople = people.list$.get;
@@ -408,7 +411,7 @@ export const savePerson = people.save;
 /** Deletes a person. Notes they were tagged in stay; the tag just stops showing. */
 export const deletePerson = people.remove;
 
-const byTitle = (a: Book, b: Book) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+const byTitle = (a: Book, b: Book) => byWords(a.title, b.title);
 const books = collection<Book>('books', normalizeBook, byTitle);
 export const useBooks = books.list$.use;
 export const getBooks = books.list$.get;
@@ -465,7 +468,7 @@ export const savePeriod = periods.save;
 /** Forgets a period. Its songs stay in your records. */
 export const deletePeriod = periods.remove;
 
-const byRepoName = (a: Repo, b: Repo) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+const byRepoName = (a: Repo, b: Repo) => byWords(a.name, b.name);
 const repos = collection<Repo>('repos', normalizeRepo, byRepoName);
 export const useRepos = repos.list$.use;
 export const getRepos = repos.list$.get;
@@ -603,6 +606,10 @@ function normalizeShare(raw: any): Share | null {
     ? { token: raw.token, hash: raw.hash, ...(Array.isArray(raw.parts) && { parts: SHARE_PARTS.filter((p) => raw.parts.includes(p)) }) }
     : null;
 }
+
+/** A stored note's id and edit time when normalize keeps both as they are (nearly always), else null. */
+const plainEntry = (raw: any): { id: string; updated: number } | null =>
+  raw && typeof raw === 'object' && typeof raw.id === 'string' && raw.id && raw.id.length <= 40 && Number.isFinite(raw.updated) && isDateKey(raw.date) ? raw : null;
 
 /** Coerces untrusted input (imports) into a valid Entry, or null. */
 function normalize(raw: any): Entry | null {
@@ -811,7 +818,11 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
   // Another tab may have committed newer notes since this tab last loaded. Compare and write atomically,
   // then retain optimistic edits made here while that transaction was running.
-  const { entries: durable, changed, removed, deleted: committedDeleted } = await db.reconcileEntries(incoming, nextDeleted, normalize);
+  // Stored notes this page already holds as new or newer are compared by id and time alone (db.ts, Skim): this page's
+  // copy wins over them below anyway.
+  const held = new Map(entries$.get().map((e) => [e.id, e.updated]));
+  const { entries: durable, changed, removed, deleted: committedDeleted } = await db.reconcileEntries(incoming, nextDeleted, normalize, false,
+    { plain: plainEntry, wanted: (id, updated) => !(held.get(id)! >= updated) });
   // Local deletions can happen while IndexedDB is busy; neither their tombstones nor their visible removal
   // may be replaced by the snapshot taken when this merge began.
   deleted = combineDeleted(deleted, committedDeleted);
