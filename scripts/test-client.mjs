@@ -1190,6 +1190,50 @@ test('one GitHub login check serves the screens opened one after another, unless
   assert.equal(calls, 7, 'a hiccup isn’t kept');
 });
 
+test('one Spotify connection check serves the screens that ask for a minute, unless Spotify refused or it was offline', async () => {
+  let calls = 0, answer = { configured: true, connected: true, user: { name: 'me' } };
+  const { spotifyStatus, disconnectSpotify } = await load('src/lib/spotify.ts', {
+    './retry': await load('src/lib/retry.ts'),
+    './lastLogin': { remember: (_service, s) => s, recall: (_service, fallback) => fallback },
+  }, {
+    AbortSignal,
+    fetch: async (url) => {
+      calls++;
+      return { ok: true, json: async () => (url === '/api/spotify/disconnect' ? {} : answer) };
+    },
+  });
+  await Promise.all([spotifyStatus(), spotifyStatus()]);
+  assert.equal(calls, 1);
+  await disconnectSpotify();
+  answer = { configured: true, connected: true, error: 'Spotify refused' };
+  await spotifyStatus();
+  await spotifyStatus();
+  assert.equal(calls, 4, 'disconnecting asks again, and a refusal isn’t kept');
+});
+
+test('a chat log lookup and the last two months read are kept a couple of minutes, and Refresh asks again', async () => {
+  const asked = [];
+  const { lookup, loadMonth } = await load('src/lib/chatlogs.ts', { 'preact/hooks': {} }, {
+    AbortSignal,
+    fetch: async (url) => {
+      asked.push(url);
+      return { ok: true, json: async () => ({ months: [] }) };
+    },
+  });
+  await Promise.all([lookup('chan', 'who'), lookup('chan', 'who')]);
+  await loadMonth('chan', 'who', '2025-01');
+  await loadMonth('chan', 'who', '2025-01');
+  assert.equal(asked.length, 2);
+  await loadMonth('chan', 'who', '2025-02');
+  await loadMonth('chan', 'who', '2025-03');
+  await loadMonth('chan', 'who', '2025-01');
+  assert.equal(asked.length, 5, 'only the last two months are kept');
+  await lookup('chan', 'who', true);
+  await loadMonth('chan', 'who', '2025-01');
+  assert.equal(asked.length, 7, 'Refresh asks for the lookup and its months again');
+  assert.match(asked[5], /fresh=1/);
+});
+
 test('a GitHub request that stalls gives up with a timeout, once, instead of spinning', async () => {
   let calls = 0, signal;
   const { getGhRepo } = await load('src/lib/github.ts', { './retry': await load('src/lib/retry.ts', {}, { navigator: { onLine: true }, setTimeout: (fn) => setImmediate(fn) }) }, {
