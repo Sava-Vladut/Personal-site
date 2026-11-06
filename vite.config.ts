@@ -1,33 +1,59 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type Rollup } from 'vite';
 import preact from '@preact/preset-vite';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
 import { CHANGELOG } from './src/data/changelog';
 
+/** A file's name as the build's own files are named (`-` and 8 characters of its content hash). */
+const fingerprint = (content: string | Buffer) => createHash('sha256').update(content).digest('base64url').slice(0, 8);
 /** Built files whose names change with their content (as public/sw.js and server/static.js tell them apart). */
 const FINGERPRINTED = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/;
 
 // Writes every built file into dist/sw.js, so the service worker caches the whole app on install
 // and one online visit is enough to work offline (Safari / iOS Home Screen included).
+// It also finishes theme.js: the first screen's files go into it (firstScreens below), and it gets a hashed name like
+// the app's own files. It runs before the first paint on every start, and with a hashed name the service worker can
+// answer it from its cache at once instead of asking the network first.
 function precache(): Plugin {
   let outDir = 'dist';
-  let romanian = '';
+  let root = '.';
+  let first: FirstScreens | Error | undefined;
   return {
     name: 'precache-sw',
     apply: 'build',
-    configResolved: (c) => void (outDir = c.build.outDir),
-    generateBundle(_options, bundle) {
-      for (const file of Object.values(bundle)) if (file.type === 'chunk' && file.facadeModuleId?.endsWith('/src/data/ro.ts')) romanian = file.fileName;
+    configResolved(c) {
+      root = c.root;
+      outDir = resolve(c.root, c.build.outDir);
+    },
+    // The bundle as it was written: CSS-only chunks are gone and every chunk's stylesheets are known. (An error thrown
+    // here doesn't stop the build, so it's kept and thrown below.)
+    writeBundle(_options, bundle) {
+      try { first = firstScreens(bundle, root, outDir); }
+      catch (e) { first = e as Error; }
     },
     closeBundle() {
-      // The Romanian dictionary only loads where it's read (lib/i18n.ts). theme.js runs first on every page, so it starts
-      // that download on a Romanian device while the app's own files are still coming in, instead of after them.
-      if (romanian) {
-        const theme = join(outDir, 'theme.js');
-        writeFileSync(theme, readFileSync(theme, 'utf8') +
-          `\ntry {\n  if (localStorage.getItem('mm-lang') === 'ro') {\n    var ro = document.createElement('link');\n    ro.rel = 'modulepreload'; ro.href = '/${romanian}';\n    document.head.appendChild(ro);\n  }\n} catch (e) {}\n`);
+      if (!first) return; // the build stopped before writing anything, and says why itself
+      if (first instanceof Error) throw first;
+      const placeholders: [string, string][] = [
+        ['var FILES = [];', `var FILES = ${JSON.stringify(first.files)};`],
+        ['var SCREENS = {};', `var SCREENS = ${JSON.stringify(first.screens)};`],
+        ['var ROMANIAN = [];', `var ROMANIAN = ${JSON.stringify(first.romanian)};`],
+      ];
+      let theme = readFileSync(join(outDir, 'theme.js'), 'utf8');
+      for (const [from, to] of placeholders) {
+        if (!theme.includes(from)) throw new Error(`public/theme.js no longer has \`${from}\``);
+        theme = theme.replace(from, () => to);
       }
+      const themeName = `assets/theme-${fingerprint(theme)}.js`;
+      writeFileSync(join(outDir, themeName), theme);
+      rmSync(join(outDir, 'theme.js'));
+      const indexFile = join(outDir, 'index.html');
+      const html = readFileSync(indexFile, 'utf8');
+      const tag = '<script src="/theme.js"></script>';
+      if (!html.includes(tag)) throw new Error(`index.html no longer loads theme.js with ${tag}`);
+      writeFileSync(indexFile, html.replace(tag, `<script src="/${themeName}"></script>`));
+
       const walk = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]));
       const files = walk(outDir)
@@ -54,6 +80,64 @@ function precache(): Plugin {
       );
     },
   };
+}
+
+interface FirstScreens {
+  /** Files under /assets/, each listed once. */
+  files: string[];
+  /** By screen (as lib/router.ts names them, plus main.tsx's public pages and the opening), the files it needs. */
+  screens: Record<string, number[]>;
+  /** The Romanian dictionary and the letters only Romanian uses (ă, ș, ț), for a device that reads Romanian. */
+  romanian: number[];
+}
+
+/**
+ * What each screen loads when it opens, beyond what index.html already has: its chunk, the chunks that one imports and
+ * their stylesheets (the same list Vite's own preload helper fetches for that import()). theme.js starts these for
+ * the screen being opened, alongside the app's own files, instead of after the app has started and asks for them.
+ */
+function firstScreens(bundle: Rollup.OutputBundle, root: string, outDir: string): FirstScreens {
+  const chunks = Object.values(bundle).filter((f): f is Rollup.OutputChunk => f.type === 'chunk');
+  const byName = new Map(chunks.map((c) => [c.fileName, c]));
+  const closure = (start: Rollup.OutputChunk) => {
+    const seen = new Set<string>();
+    const visit = (c: Rollup.OutputChunk | undefined) => {
+      if (!c || seen.has(c.fileName)) return;
+      seen.add(c.fileName);
+      for (const i of c.imports) visit(byName.get(i));
+    };
+    visit(start);
+    return [...seen];
+  };
+  const withCss = (names: string[]) => [...new Set(names.flatMap((n) => [n, ...(byName.get(n)?.viteMetadata?.importedCss ?? [])]))];
+  // index.html's script (src/main.tsx) and everything it imports, already linked from there
+  const entry = chunks.find((c) => c.isEntry && c.facadeModuleId?.endsWith('/index.html'));
+  if (!entry) throw new Error('first screens: no entry chunk for index.html');
+  const inIndex = new Set(withCss(closure(entry)));
+
+  // the screens lib/views.ts loads by route name, and the ones main.tsx opens itself
+  const views = readFileSync(join(root, 'src/lib/views.ts'), 'utf8');
+  const modules: Record<string, string> = { '/s': 'src/views/Shared.tsx', '/status': 'src/views/Status.tsx', opening: 'src/lib/opening.ts' };
+  for (const [, route, view] of views.matchAll(/(\w+): \(\) => import\('\.\.\/views\/(\w+)'\)/g)) modules[route] = `src/views/${view}.tsx`;
+  if (!modules.journal) throw new Error('first screens: lib/views.ts has no journal screen');
+
+  const files: string[] = [];
+  // only what's on disk, should a chunk have been merged away after the bundle was read
+  const written = (fileName: string) => existsSync(join(outDir, fileName));
+  const index = (fileName: string) => {
+    const name = fileName.replace(/^assets\//, '');
+    const i = files.indexOf(name);
+    return i >= 0 ? i : files.push(name) - 1;
+  };
+  const screens: Record<string, number[]> = {};
+  for (const [screen, module] of Object.entries(modules)) {
+    const chunk = chunks.find((c) => c.facadeModuleId?.endsWith('/' + module));
+    if (chunk) screens[screen] = withCss(closure(chunk)).filter((f) => !inIndex.has(f) && written(f)).map(index);
+  }
+  const ro = chunks.find((c) => c.facadeModuleId?.endsWith('/src/data/ro.ts'));
+  const letters = Object.keys(bundle).filter((f) => /(source-serif-4|instrument-sans)-latin-ext-wght-normal-[\w-]+\.woff2$/.test(f));
+  const romanian = [...(ro ? withCss(closure(ro)).filter((f) => !inIndex.has(f)) : []), ...letters].filter(written).map(index);
+  return { files, screens, romanian };
 }
 
 // The Latin files of the two typefaces nearly all text is set in, fetched alongside the stylesheet instead of after
