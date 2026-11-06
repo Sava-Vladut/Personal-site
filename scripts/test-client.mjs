@@ -852,6 +852,7 @@ test('the map heat draws feeling letters where entries gather, and one thread br
     './Sky': { RAMPS: { default: [' ', '.', ':', '+', '*', 'o', 'O', '#'], joy: [' ', '·', '.', '+', '*', 'o', 'O', '@'] } },
     'preact/jsx-runtime': { jsx: () => null, jsxs: () => null, Fragment: 'f' },
     '../lib/covered': { onCovered: () => () => {}, pageCovered: () => false },
+    '../lib/inView': { watchView: () => () => {} },
   }, {
     document: { createElement: () => canvas('atlas'), documentElement: { dataset: { theme: 'dark' } }, hidden: false, addEventListener() {}, removeEventListener() {} },
     getComputedStyle: () => ({ getPropertyValue: (n) => (n === '--emo-joy' ? '#eda100' : '#808080') }),
@@ -902,6 +903,67 @@ test('the map heat draws feeling letters where entries gather, and one thread br
   assert.equal(Math.round(tree[0].flow * 1000), Math.round(pts.reduce((s, p) => s + p.weight, 0) * 1000));
   assert.equal(tree.find((n) => n.wi === 5)?.parent, tree.findIndex((n) => Math.abs(n.y - (home.y - d)) < 1e-9), 'the far place hangs off the nearer one');
   assert.equal(spillTree([]).length, 0);
+});
+
+test('the map heat holds still while it is scrolled off screen, and picks up again when it comes back', async () => {
+  const quiet = () => new Proxy({}, { get: (_t, name) => (name === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
+  const canvas = () => ({ width: 0, height: 0, getContext: quiet });
+  const refs = [canvas(), canvas()];
+  let frame = null, seen = null;
+  const { MapHeat } = await load('src/components/MapHeat.tsx', {
+    'preact/hooks': { useRef: (v) => ({ current: refs.length ? refs.shift() : v }), useEffect: (fn) => fn() },
+    './Sky': { RAMPS: { default: [' ', '.', ':', '+'] } },
+    'preact/jsx-runtime': { jsx: () => null, jsxs: () => null, Fragment: 'f' },
+    '../lib/covered': { onCovered: () => () => {}, pageCovered: () => false },
+    '../lib/inView': { watchView: (_el, cb) => { seen = cb; return () => {}; } },
+  }, {
+    document: { createElement: canvas, documentElement: { dataset: {} }, hidden: false, addEventListener() {}, removeEventListener() {} },
+    getComputedStyle: () => ({ getPropertyValue: () => '#808080' }),
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    MutationObserver: class { observe() {} disconnect() {} },
+    requestAnimationFrame: (fn) => { frame = fn; return 1; }, cancelAnimationFrame: () => { frame = null; },
+    devicePixelRatio: 1,
+  });
+  MapHeat({ points: [{ x: 0.5, y: 0.5, core: null, weight: 1 }], view: { x: 0.5, y: 0.5, z: 12 }, w: 200, h: 200 });
+  assert.ok(frame, 'it moves while on screen');
+  seen(false);
+  assert.equal(frame, null, 'scrolled away: no more frames');
+  seen(true);
+  assert.ok(frame, 'back on screen: it moves again');
+});
+
+test('cards landing below the screen are hidden to drift in without measuring inside days that skip drawing', async () => {
+  const { JSDOM } = await import('jsdom');
+  const { window } = new JSDOM('<!doctype html><div id="app"><div class="page" data-settled></div></div>');
+  const frames = [];
+  let reads = 0, inside = 0;
+  // nothing is laid out in jsdom: everything sits below an 800px screen
+  window.Element.prototype.getBoundingClientRect = function () {
+    reads++;
+    if (this.parentElement?.closest('.entries')) inside++;
+    return { top: 2000, left: 0, width: 300, height: 80, bottom: 2080, right: 300 };
+  };
+  const watched = [];
+  const { startReveal } = await load('src/lib/reveal.ts', {}, {
+    document: window.document, Element: window.Element, MutationObserver: window.MutationObserver,
+    getComputedStyle: window.getComputedStyle.bind(window), innerHeight: 800, addEventListener() {},
+    matchMedia: () => ({ matches: false, addEventListener() {} }),
+    IntersectionObserver: class { observe(el) { watched.push(el); } unobserve() {} },
+    requestAnimationFrame: (fn) => frames.push(fn),
+  });
+  startReveal();
+  // a page of days, as the journal draws more: each entry a note in its swipe wrapper, and a run of check-ins
+  const page = window.document.querySelector('.page');
+  page.insertAdjacentHTML('beforeend', Array.from({ length: 6 }, () => '<section class="day"><h2 class="day-label">A day</h2><div class="entries">' +
+    '<div class="swipe"><div class="swipe-face"><button class="note">n</button></div></div>'.repeat(3) +
+    '<div class="checkin-run"><div class="swipe"><div class="swipe-face"><button class="checkin">c</button></div></div></div></div></section>').join(''));
+  await settle();
+  frames.splice(0).forEach((f) => f(0));
+  assert.equal(page.querySelectorAll('.entries > [data-reveal="wait"]').length, 24, 'every entry waits to drift in');
+  assert.equal(page.querySelectorAll('.entries > * [data-reveal]').length, 0, 'what is inside one moves with it');
+  assert.equal(watched.length, 24);
+  assert.equal(inside, 0, 'nothing inside a day was measured');
+  assert.equal(reads, 6, 'one measure per day');
 });
 
 test('writing again soon after uses the last location instead of asking the browser again', async () => {
