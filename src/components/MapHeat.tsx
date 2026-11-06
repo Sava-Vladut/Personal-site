@@ -6,6 +6,7 @@
 // glow seeping outward along it. It keeps the same width at every zoom.
 import { useEffect, useRef } from 'preact/hooks';
 import { onCovered, pageCovered } from '../lib/covered';
+import { watchView } from '../lib/inView';
 import { RAMPS } from './Sky';
 
 export interface HeatPoint {
@@ -369,7 +370,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       g.globalAlpha = 1;
     };
 
-    let raf = 0, last = 0;
+    let raf = 0, last = 0, visible = true;
     const frame = (now: number) => {
       raf = 0;
       if (!last || now - last >= MIN_FRAME) {
@@ -379,13 +380,16 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
       schedule();
     };
     const schedule = () => {
-      if (!raf && !document.hidden && !reduced.matches && !pageCovered()) raf = requestAnimationFrame(frame);
+      if (!raf && visible && !document.hidden && !reduced.matches && !pageCovered()) raf = requestAnimationFrame(frame);
     };
+    const halt = () => { cancelAnimationFrame(raf); raf = 0; };
     // holds still under a sheet or the wheel and while a page change slides (lib/covered.ts)
-    const unCover = onCovered(() => (pageCovered() ? (cancelAnimationFrame(raf), (raf = 0)) : schedule()));
+    const unCover = onCovered(() => (pageCovered() ? halt() : schedule()));
+    // and while it's scrolled away (the map on Stats › Weather sits in a long page): it picks up again as it comes back
+    const unwatch = watchView(glyphCv, (on) => { visible = on; on ? schedule() : halt(); });
     // without motion, it's drawn once for every change of the map instead
     poke.current = () => { if (reduced.matches) draw(0); };
-    const onVisibility = () => (document.hidden ? (cancelAnimationFrame(raf), (raf = 0)) : schedule());
+    const onVisibility = () => (document.hidden ? halt() : schedule());
     const onMotion = () => (reduced.matches ? draw(0) : schedule());
     const mo = new MutationObserver(() => w && palette());
     mo.observe(document.documentElement, { attributeFilter: ['data-theme'] });
@@ -395,6 +399,7 @@ export function MapHeat(props: { points: HeatPoint[]; view: { x: number; y: numb
     return () => {
       cancelAnimationFrame(raf);
       unCover();
+      unwatch();
       mo.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       reduced.removeEventListener('change', onMotion);
