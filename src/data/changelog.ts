@@ -11,6 +11,26 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.184.0',
+    date: '2026-11-06',
+    changes: [
+      'Notes: words in a checklist no longer get struck through on their own (a misspelled word like “Ceafa” could end up crossed out after the keyboard or spell checker touched it). An unticked task has no hidden line any more, and the editor never takes the browser’s own styling as formatting.',
+      'Notes: ticking a task with the mouse shows the tick, and tapping just under a task’s box no longer ticks the task below it.',
+      'Notes: Enter with words selected in a list replaces them with a new item instead of removing the list.',
+      'Ribbon on a phone: the row of buttons keeps its place when you switch tabs or select words, so a tap lands on the button you aimed at (Checklist no longer turns into Strikethrough). Selecting words on Insert or Review no longer jumps to Home.',
+      'Ribbon: menus of the folded ribbon (colours, numbering, styles, table) open where they belong, and the Quote button lights up inside a callout.',
+      'Clear formatting with nothing selected clears only the word at the cursor, not the whole sentence.',
+      'Bold, italic, colours and Clear formatting work on every selected table cell, not just the first.',
+      'The Format Painter only paints when you select words with the main button, never on a right-click or a drag from the ribbon.',
+      'On a Mac, Word’s shortcuts are on ⌘ only; Ctrl keeps the Mac’s own text keys.',
+      'Footnote, Divider and Page break keep the selected words and go after them; Code block and Callout take the selected words in.',
+      'Quote, moving lines (Alt+Shift+↑/↓), Tab in code, Delete before a callout and Backspace after a code block act on what you selected, without losing text.',
+      'Saving keeps italic right after bold text that ends in a space, Replace keeps links, comments and styles, and adding a row above a table’s header keeps its column alignment.',
+      'Pasting from Word or Google Docs no longer makes words bold or italic that weren’t, and keeps underline on struck-through text.',
+      'The link sheet’s Enter no longer presses Done while a word is still being typed on a phone keyboard.',
+    ],
+  },
+  {
     version: '1.183.0',
     date: '2026-11-06',
     changes: [

@@ -555,7 +555,7 @@ export function Ribbon(p: RibbonProps) {
     align('align-center', t('Center'), 'center', 'Ctrl+E'),
     align('align-right', t('Align right'), 'right', 'Ctrl+R'),
     align('align-justified', t('Justify'), 'justify', 'Ctrl+J'),
-    tool('blockquote', t('Quote'), () => cmds?.quote(), { on: !!lit?.quote && !lit.callout, off, k: 'Ctrl+Shift+.' }),
+    tool('blockquote', t('Quote'), () => cmds?.quote(), { on: !!lit?.quote, off, k: 'Ctrl+Shift+.' }),
   ], 'rb-rows rb-para', 5);
   const STYLES: [Style, string, string?][] = [
     ['normal', t('Normal'), 'Ctrl+Alt+0'],
