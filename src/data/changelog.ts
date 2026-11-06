@@ -11,6 +11,23 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.183.0',
+    date: '2026-11-06',
+    changes: [
+      'Opening the app no longer waits on the network for its start-up script, and the first screen loads together with the app instead of after it. On a stalled connection the saved copy opens after 4 seconds instead of staying blank.',
+      'Updates download less: icons and other files that didn’t change are kept from the previous version.',
+      'Typing in long notes is smoother: saving no longer redraws the whole note page, its pictures or its links, and the first pause after you start writing no longer stalls.',
+      'Suggestions after @ and [[ keep up as you type, even with a big journal, and notes open a little faster: the full-screen photo viewer loads only when you open a picture.',
+      'Stats open and switch ranges several times faster with a long journal; All time and the Emotions brain no longer pause.',
+      'Searching the journal: the first letter you type no longer waits while every note is read.',
+      'With sync on, writing in a long journal stays smooth: only the notes you changed are prepared to send, and merging another device’s changes does less work.',
+      'Journal: scrolling far down no longer stutters as more days load in, and the glow behind days and notes uses less graphics memory once it stops drifting.',
+      'The brain’s opening does about a third less work per frame, so slower phones keep it smooth more often, and the Weather map’s heat stops drawing while it’s out of view.',
+      'Streamer stats, game stats and chat logs load faster: answers come compressed, often a fifth of the size, and ones you looked at lately open at once and refresh themselves.',
+      'Settings, Repos and a repo’s page no longer each wait to check your GitHub and Spotify logins.',
+    ],
+  },
+  {
     version: '1.182.0',
     date: '2026-11-05',
     changes: [
