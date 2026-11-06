@@ -266,12 +266,14 @@ export function Ribbon(p: RibbonProps) {
     else if (now.current === 'view') setTab('home');
   }, [reading]);
 
-  // On a phone, selecting text brings Home up (the styles are what you'd want), and the tab before back after.
+  // On a phone, selecting text on View brings Home up (the styles are what you'd want), and View back after. Only from
+  // View, whose commands never act on the words: Review's New comment and Insert's Link are for the words selected, and
+  // the row swapped for Home's as they're selected put Bold or Italic where the finger was going.
   useLayoutEffect(() => {
     if (wide) return;
     const was = now.current;
     if (ranged) {
-      if (was === 'home' || was === 'context') return;
+      if (was !== 'view' || reading) return;
       auto.current = was;
       setTab('home');
     } else if (auto.current) {
@@ -280,10 +282,18 @@ export function Ribbon(p: RibbonProps) {
     }
   }, [ranged]);
 
-  // a new tab's row starts at its first command
+  // A tab's row is where it was left: at its first command the first time, then scrolled as far as it was when the tab
+  // comes back (picked, brought up by a selection, the phone's bar back after an @'s suggestions or Find, the folded
+  // ribbon dropped down again). Started over at its first command each time, a row scrolled to Checklist came back at
+  // Bold, Italic, Underline, Strikethrough, and a tap meant for Checklist, where it had just been, landed on Underline
+  // or Strikethrough.
+  const rowKey = shown === 'context' ? ctxKind ?? 'context' : shown;
+  const scrolls = useRef<Record<string, number>>({});
+  const hidden = wide ? collapsed && !peek : p.swapped || !!p.finding;
   useLayoutEffect(() => {
-    if (scroller.current) scroller.current.scrollLeft = 0;
-  }, [shown]);
+    if (scroller.current) scroller.current.scrollLeft = scrolls.current[rowKey] ?? 0;
+  }, [rowKey, hidden]);
+  const scrolled = (e: Event) => void (scrolls.current[rowKey] = (e.currentTarget as HTMLElement).scrollLeft);
 
   // The dropped-down ribbon goes up again on a click outside it, or Esc; so do the phone's list of tabs and a menu.
   useEffect(() => {
@@ -312,6 +322,10 @@ export function Ribbon(p: RibbonProps) {
   useEffect(() => {
     if (!collapsed) setPeek(false);
   }, [collapsed]);
+  // a menu goes with the folded ribbon's commands going up (Ctrl+F1 with it open): it would hang from a button that's gone
+  useLayoutEffect(() => {
+    if (collapsed && !peek) setPop(null);
+  }, [collapsed, peek]);
 
   /* ---------- the commands ---------- */
 
@@ -467,9 +481,14 @@ export function Ribbon(p: RibbonProps) {
       <Icon name="brush" size={18} />
     </button>
   );
+  /** Something picked from a button's menu: the menu goes, and the dropped-down ribbon with it, as a command does. */
+  const picked = () => {
+    setPop(null);
+    setPeek(false);
+  };
   /** A colour picked from a menu: put on, and the one its button puts on from now on. */
   const pickColor = (id: 'color' | 'highlight', c: string | null) => {
-    setPop(null);
+    picked();
     if (id === 'color') {
       if (c) last.color = c;
       cmds?.color(c);
@@ -602,7 +621,7 @@ export function Ribbon(p: RibbonProps) {
   const popLabel = { styles: t('More styles'), numbering: t('Numbering options'), color: t('Font colours'), highlight: t('Highlight colours'), table: t('Insert table') };
   /** Insert › Table: the table put in, and its tab brought up for it. */
   const putTable = (rows: number, cols: number) => {
-    setPop(null);
+    picked();
     toTable.current = true;
     if (!cmds?.insertTable(rows, cols)) toTable.current = false;
   };
@@ -610,16 +629,16 @@ export function Ribbon(p: RibbonProps) {
     <Pop at={pop.at} label={popLabel[pop.id]} onClose={() => setPop(null)}>
       {pop.id === 'table' ? <TableGrid onPick={putTable} /> : pop.id === 'color' || pop.id === 'highlight' ? swatches(pop.id) : pop.id === 'styles'
         ? MORE.map(([s, name, k]) => (
-          <button key={s} type="button" role="menuitemradio" aria-checked={style === s} class={`rb-pop-style is-${s}`} title={tip(name, k)} onClick={() => (setPop(null), apply(s))}>
+          <button key={s} type="button" role="menuitemradio" aria-checked={style === s} class={`rb-pop-style is-${s}`} title={tip(name, k)} onClick={() => (picked(), apply(s))}>
             {name}
             {style === s && <Icon name="check" size={16} />}
           </button>
         ))
         : [
-          <button key="restart" type="button" role="menuitem" disabled={!lit?.canRestart} onClick={() => (setPop(null), cmds?.numbering(true))}>
+          <button key="restart" type="button" role="menuitem" disabled={!lit?.canRestart} onClick={() => (picked(), cmds?.numbering(true))}>
             {t('Restart numbering')}
           </button>,
-          <button key="continue" type="button" role="menuitem" disabled={!lit?.canContinue} onClick={() => (setPop(null), cmds?.numbering(false))}>
+          <button key="continue" type="button" role="menuitem" disabled={!lit?.canContinue} onClick={() => (picked(), cmds?.numbering(false))}>
             {t('Continue numbering')}
           </button>,
         ]}
@@ -771,6 +790,13 @@ export function Ribbon(p: RibbonProps) {
           role="toolbar"
           aria-label={name}
           {...hold}
+          onPointerDown={(e) => {
+            (hold as Partial<typeof keepFocus>).onPointerDown?.(e);
+            // a press in the row (a command, or scrolling to one) keeps the tab a selection brought up: the selection
+            // going mid-press (a phone can clear it as the bar is touched) or after the command mustn't swap the row
+            // under the finger for the tab before's, the tap landing on whatever of that tab is there
+            if ((e.target as Element).closest?.('.format-scroll')) auto.current = null;
+          }}
           onFocusIn={roving.onFocusIn}
           onKeyDown={(e) => (roving.onKeyDown(e), escape(e))}
         >
@@ -801,7 +827,7 @@ export function Ribbon(p: RibbonProps) {
               </div>
             )}
           </div>
-          <div key={shown} ref={scroller} class="format-scroll" role="group" aria-label={name}>
+          <div key={shown} ref={scroller} class="format-scroll" role="group" aria-label={name} onScroll={scrolled}>
             {panel}
           </div>
           {p.done}
@@ -830,8 +856,9 @@ export function Ribbon(p: RibbonProps) {
     <div
       class={`rb-body${peek ? ' is-peek' : ''}`}
       {...hold}
-      // a command from the dropped-down ribbon puts it up again, as in Word
-      onClick={peek ? (e) => (e.target as Element).closest('button:not(.rb-fold)') && setPeek(false) : undefined}
+      // a command from the dropped-down ribbon puts it up again, as in Word; a button's menu (Highlight's, Numbering's,
+      // More styles, Insert › Table) keeps it down, the menu hanging from its button, until something's picked from it
+      onClick={peek ? (e) => (e.target as Element).closest('button:not(.rb-fold):not([aria-haspopup])') && setPeek(false) : undefined}
     >
       <div class="rb-tabpanel" role="tabpanel" id="rb-panel" aria-labelledby={'rb-tab-' + shown}>
         <div
@@ -840,6 +867,7 @@ export function Ribbon(p: RibbonProps) {
           role="toolbar"
           aria-label={name}
           ref={(el) => void (scroller.current = roving.ref.current = el)}
+          onScroll={scrolled}
           onFocusIn={roving.onFocusIn}
           onKeyDown={roving.onKeyDown}
         >

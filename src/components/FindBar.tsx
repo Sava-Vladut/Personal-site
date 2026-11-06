@@ -106,7 +106,7 @@ export function FindBar({ note, replace, reading, focus, onReplace, onClose }: {
             type="button"
             class="format-btn find-more"
             aria-label={t('Replace')}
-            title={keys('Ctrl+H')}
+            title={`${t('Replace')} (${keys('Ctrl+H')})`}
             aria-expanded={withReplace}
             onClick={() => onReplace(!replace)}
           >

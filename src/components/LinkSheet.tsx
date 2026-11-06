@@ -25,7 +25,8 @@ export function LinkSheet({ open, onClose, text, href, onDone }: {
   }, [open]);
   const save = () => onDone(address.trim() ? { text: words, href: address } : null);
   const enter = (e: KeyboardEvent) => {
-    if (e.key !== 'Enter') return;
+    // (an Enter that ends a word being composed, a phone's or an IME's, is the word's, not Done)
+    if (e.key !== 'Enter' || e.isComposing) return;
     e.preventDefault();
     save();
   };

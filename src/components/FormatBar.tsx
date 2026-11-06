@@ -133,9 +133,10 @@ export function FormatBar({ swap, swapLabel = t('Picture'), ribbon, context, not
     };
   }, []);
 
-  // The strip's scroller starts at its first suggestion.
+  // The strip's scroller starts at its first suggestion (the strip's only: the ribbon's own row, the first one in
+  // `ref` with a ribbon, keeps where it was scrolled to, components/ribbon/Ribbon.tsx).
   useLayoutEffect(() => {
-    const scroll = ref.current?.querySelector('.format-scroll');
+    const scroll = ref.current?.querySelector('.is-strip .format-scroll');
     if (scroll) scroll.scrollLeft = 0;
   }, [!!swap, swapLabel]);
 
