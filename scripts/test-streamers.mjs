@@ -41,10 +41,12 @@ const twitch = {
   },
   failVideos: 0,
   failMoments: 0,
+  down: false,
   calls: [],
 };
 const fake = async (url, init) => {
   const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+  if (twitch.down) return { ok: false, status: 503, json: async () => ({}) };
   if (url.startsWith('https://twitchtracker.com/')) {
     twitch.calls.push('tracker');
     return ok(url.endsWith('/alpha') ? { rank: 9, minutes_streamed: 600, avg_viewers: 450, max_viewers: 900, hours_watched: 4500, followers: 20, followers_total: 1234 } : {});
@@ -84,6 +86,16 @@ const call = async (h, path, method = 'GET') => {
   }
   return out;
 };
+const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+/** Asks until the answer is no longer the old report sent while a new one is worked out. */
+async function settled(h, path) {
+  for (let i = 0; i < 100; i++) {
+    const out = await call(h, path);
+    if (!out.body.refreshing) return out;
+    await wait(20);
+  }
+  assert.fail('the report was never worked out again');
+}
 
 test('a report has the channel, its streams with their games, and TwitchTracker’s month', async () => {
   const h = make();
@@ -169,12 +181,45 @@ test('Twitch’s hiccups are asked again, and chapters that won’t come fall ba
   assert.equal(status, 200);
   assert.equal(body.vodsMissing, false);
   assert.deepEqual(body.streams[1].segs, [['2', 0, 4 * HOUR]]);
-  // the next report (after the cached one goes stale) fetches only what's still missing
+  // a report gone stale is answered at once, marked as being refreshed; the next one, worked out behind it, fetches
+  // only what's still missing
   clock += 10 * MIN;
   twitch.calls.length = 0;
-  const again = await call(h, '/api/streamers/alpha');
+  const stale = await call(h, '/api/streamers/alpha');
+  assert.equal(stale.body.refreshing, true);
+  assert.deepEqual(stale.body.streams[1].segs, [['2', 0, 4 * HOUR]], 'the report it had');
+  const again = await settled(h, '/api/streamers/alpha');
+  assert.equal(again.body.refreshing, undefined);
   assert.deepEqual(again.body.streams[1].segs, [['1', 0, HOUR], ['2', HOUR, 3 * HOUR]]);
   assert.equal(twitch.calls.filter((c) => c === 'moments').length, 1);
+  assert.equal(twitch.calls.filter((c) => c === 'channel').length, 1, 'one new report, however often it was asked for');
+});
+
+test('a report that can’t be worked out again leaves the last one standing; one too old is waited for', async () => {
+  clock = now + 2 * HOUR;
+  const h = make(join(root, 'stale'));
+  const first = await call(h, '/api/streamers/alpha');
+  assert.equal(first.status, 200);
+  assert.equal(first.body.refreshing, undefined);
+
+  // Twitch is down when it goes stale: the last report is still the answer, then and after the new one failed
+  clock += 5 * MIN;
+  twitch.down = true;
+  twitch.calls.length = 0;
+  assert.equal((await call(h, '/api/streamers/alpha')).body.refreshing, true);
+  await wait(1500); // three tries, 400 and 800 ms apart
+  twitch.down = false;
+  const kept = await call(h, '/api/streamers/alpha');
+  assert.equal(kept.status, 200);
+  assert.equal(kept.body.refreshing, true);
+  assert.equal(kept.body.now, first.body.now, 'the last report it had');
+  assert.equal((await settled(h, '/api/streamers/alpha')).body.now, clock);
+
+  // past half an hour, the old one isn't worth showing: the answer waits for a new one
+  clock += 31 * MIN;
+  const late = await call(h, '/api/streamers/alpha');
+  assert.equal(late.body.refreshing, undefined);
+  assert.equal(late.body.now, clock);
 });
 
 test('names are checked, unknown channels are said to be unknown, and only GET is answered', async () => {

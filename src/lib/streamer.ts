@@ -75,6 +75,8 @@ export interface Streamer {
   summary: Summary | null;
   /** whether the server can be asked for this channel's whole history */
   history?: boolean;
+  /** the report the server had, sent at once while it works out a new one */
+  refreshing?: boolean;
 }
 export interface Choice { login: string; name: string; live: { game: string | null; viewers: number } | null; mining: boolean }
 
@@ -108,15 +110,24 @@ export function useStreamer(login: string | null, again = 0): Got<Streamer> {
     const had = cache.get(login);
     if (had && Date.now() - had.at < FRESH) return setS({ data: had.data, error: null, loading: false });
     setS({ data: had?.data ?? null, error: null, loading: true });
-    let alive = true;
-    get<Streamer>(`/api/streamers/${encodeURIComponent(login)}`).then(
+    let alive = true, timer = 0, tries = 0;
+    const ask = () => get<Streamer>(`/api/streamers/${encodeURIComponent(login)}`).then(
       (data) => {
-        cache.set(login, { at: Date.now(), data });
-        if (alive) setS({ data, error: null, loading: false });
+        // the server answered at once with the report it had, while it works out a new one: it shows now, marked as
+        // being refreshed, and the new one is asked for in a moment
+        const old = !!data.refreshing && ++tries < 4;
+        cache.set(login, { at: old ? 0 : Date.now(), data });
+        if (!alive) return;
+        setS({ data, error: null, loading: old });
+        if (old) timer = window.setTimeout(ask, 2_500);
       },
-      (e: Error) => alive && setS({ data: had?.data ?? null, error: e.message, loading: false }),
+      (e: Error) => alive && setS((p) => ({ data: p.data ?? had?.data ?? null, error: e.message, loading: false })),
     );
-    return () => void (alive = false);
+    void ask();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
   }, [login, again]);
   return s;
 }
@@ -191,12 +202,18 @@ export function withHistory(d: Streamer, h: History | null): Streamer {
 }
 
 /** The channels to offer: the miner's, then the ones looked up lately. */
+// the last list, so coming back to the page shows its chips at once (and the first channel's report with them)
+// while it's asked for again
+let lastChoices: Choice[] | null = null;
 export function useChoices(again = 0): Got<Choice[]> {
-  const [s, setS] = useState<Got<Choice[]>>({ data: null, error: null, loading: true });
+  const [s, setS] = useState<Got<Choice[]>>({ data: lastChoices, error: null, loading: true });
   useEffect(() => {
     let alive = true;
     get<{ channels: Choice[] }>('/api/streamers').then(
-      (r) => alive && setS({ data: r.channels, error: null, loading: false }),
+      (r) => {
+        lastChoices = r.channels;
+        if (alive) setS({ data: r.channels, error: null, loading: false });
+      },
       (e: Error) => alive && setS((p) => ({ data: p.data, error: e.message, loading: false })),
     );
     return () => void (alive = false);

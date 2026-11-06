@@ -15,7 +15,7 @@ import { appendFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } fro
 import { join } from 'node:path';
 import tls from 'node:tls';
 import { HttpError } from './http-error.js';
-import { json } from './http-response.js';
+import { REVALIDATE, json } from './http-response.js';
 import { createEmotes } from './chatlog-emotes.js';
 
 const UA = 'MyMind chat logs (savavlad.com)';
@@ -37,6 +37,7 @@ const LOGIN = /^[a-z0-9_]{2,25}$/;
 const MONTH = /^(\d{4})-(\d{2})$/;
 const LOOKUPS_PER_MIN = 20;     // fresh lookups (each ~20 small calls) the whole server starts in a minute
 const LOOKUP_FRESH = 10 * MIN;
+const LOOKUP_STALE = HOUR;      // until then, the last lookup is answered while the next is made
 const PAST_FRESH = 12 * HOUR;   // a finished month hardly changes
 const NOW_FRESH = 2 * MIN;      // this month's is fetched again after this
 const CACHE_MESSAGES = 120_000; // messages kept in memory across all cached months
@@ -499,8 +500,9 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
   async function lookup(channel, user) {
     const key = `${channel}|${user}`;
     const hit = lookupCache.get(key);
-    if (hit && Date.now() - hit.at < LOOKUP_FRESH) return hit.body;
-    return once(`lookup:${key}`, async () => {
+    const age = hit ? Date.now() - hit.at : Infinity;
+    if (age < LOOKUP_FRESH) return hit.body;
+    const fresh = once(`lookup:${key}`, async () => {
       limit();
       const who = await users([...new Set([channel, user])]);
       const c = who.get(channel), u = who.get(user);
@@ -548,6 +550,13 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
       if (lookupCache.size > 200) lookupCache.delete(lookupCache.keys().next().value);
       return body;
     });
+    // Every month and day the page asks for goes through here: one a little older is answered at once, and the new one,
+    // worked out behind it, is there for the next request, so none of them waits the seconds a lookup takes.
+    if (age < LOOKUP_STALE) {
+      fresh.catch(() => {}); // too many lookups this minute, or the archives down: the old one will do
+      return hit.body;
+    }
+    return fresh;
   }
 
   /* one month of one user's lines, from every source that has it */
@@ -746,6 +755,9 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
 
   /* the API */
 
+  // What the archives hold is public, and the page asks for it again as months are flipped back and forth: the
+  // browser keeps each answer (REVALIDATE) and gets a 304 with no body while it's the same, instead of a month again.
+
   async function watchList(req) {
     const out = [];
     for (const w of watched) {
@@ -801,27 +813,27 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
     if (q.get('fresh') === '1') lookupCache.delete(`${channel}|${user}`);
     const look = await lookup(channel, user);
 
-    if (path === '/api/chatlogs/lookup') return json(res, 200, look);
+    if (path === '/api/chatlogs/lookup') return json(res, 200, look, REVALIDATE);
     if (path === '/api/chatlogs/month') {
       const ym = q.get('month') || look.months.at(-1) || monthOf(Date.now());
       if (!MONTH.test(ym)) throw new HttpError(400, 'Pick a month as YYYY-MM.');
       const { list, sources } = await month(look, ym);
-      return json(res, 200, { month: ym, total: list.length, messages: list.length > MONTH_CAP ? list.slice(-MONTH_CAP) : list, sources });
+      return json(res, 200, { month: ym, total: list.length, messages: list.length > MONTH_CAP ? list.slice(-MONTH_CAP) : list, sources }, REVALIDATE);
     }
     if (path === '/api/chatlogs/days') {
       const ym = q.get('month') ?? '';
       if (!MONTH.test(ym)) throw new HttpError(400, 'Pick a month as YYYY-MM.');
-      return json(res, 200, await monthDays(look, ym, String(q.get('tz') || 'UTC').slice(0, 64)));
+      return json(res, 200, await monthDays(look, ym, String(q.get('tz') || 'UTC').slice(0, 64)), REVALIDATE);
     }
     if (path === '/api/chatlogs/activity') {
       const year = Number(q.get('year')) || new Date().getUTCFullYear();
-      return json(res, 200, await activity(look, year, String(q.get('tz') || 'UTC').slice(0, 64)));
+      return json(res, 200, await activity(look, year, String(q.get('tz') || 'UTC').slice(0, 64)), REVALIDATE);
     }
     if (path === '/api/chatlogs/search') {
       const year = Number(q.get('year')) || new Date().getUTCFullYear();
       const text = String(q.get('q') ?? '').trim().slice(0, 100);
       if (!text) throw new HttpError(400, 'Type something to search for.');
-      return json(res, 200, await search(look, year, text));
+      return json(res, 200, await search(look, year, text), REVALIDATE);
     }
     throw new HttpError(404, 'Not found');
   }

@@ -48,11 +48,32 @@ async function call<T>(path: string, method = 'GET'): Promise<T> {
 const qs = (o: Record<string, string | number | undefined>) =>
   new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString();
 
-export function lookup(channel: string, user: string, fresh = false) {
-  if (fresh) for (const k of dayCache.keys()) if (k.startsWith(`${channel}|${user}|`)) dayCache.delete(k);
-  return call<Lookup>(`/api/chatlogs/lookup?${qs({ channel, user, fresh: fresh ? 1 : undefined })}`);
+/** Kept a couple of minutes (the server keeps this month that long too): going back to a pair, or to a month just read, shows it at once. */
+const KEEP_MS = 2 * 60_000;
+type Kept<T> = Map<string, { at: number; p: Promise<T> }>;
+function kept<T>(cache: Kept<T>, key: string, max: number, work: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < KEEP_MS) return hit.p;
+  const p = work();
+  cache.delete(key);
+  cache.set(key, { at: Date.now(), p });
+  p.catch(() => cache.get(key)?.p === p && cache.delete(key));
+  while (cache.size > max) cache.delete(cache.keys().next().value!);
+  return p;
 }
-export const loadMonth = (channel: string, user: string, month: string) => call<Month>(`/api/chatlogs/month?${qs({ channel, user, month })}`);
+const lookups: Kept<Lookup> = new Map();
+// a month can be tens of thousands of lines, so only the last two are kept
+const months: Kept<Month> = new Map();
+
+export function lookup(channel: string, user: string, fresh = false) {
+  const pair = `${channel}|${user}`;
+  if (fresh) {
+    for (const cache of [dayCache, months, lookups] as Map<string, unknown>[]) for (const k of cache.keys()) if (k === pair || k.startsWith(`${pair}|`)) cache.delete(k);
+  }
+  return kept(lookups, pair, 20, () => call<Lookup>(`/api/chatlogs/lookup?${qs({ channel, user, fresh: fresh ? 1 : undefined })}`));
+}
+export const loadMonth = (channel: string, user: string, month: string) =>
+  kept(months, `${channel}|${user}|${month}`, 2, () => call<Month>(`/api/chatlogs/month?${qs({ channel, user, month })}`));
 export const search = (channel: string, user: string, year: number, q: string) => call<Found>(`/api/chatlogs/search?${qs({ channel, user, year, q })}`);
 export const watchList = () => call<WatchList>('/api/chatlogs/watch');
 export const watch = (channel: string) => call<WatchList>(`/api/chatlogs/watch?${qs({ channel })}`, 'POST');

@@ -7,6 +7,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
+import zlib from 'node:zlib';
+import { encodingFor, sendJson } from '../server/http-response.js';
 
 // Exercise the real HTTP handler without opening a port or contacting Spotify.
 const originalCreateServer = http.createServer;
@@ -296,7 +298,10 @@ test('SIGTERM lets an in-flight API response finish before exiting', { timeout: 
       });
       return server;
     };
-    globalThis.fetch = async () => {
+    globalThis.fetch = async (url) => {
+      // only the Spotify search is held: what the server asks for on its own as it starts (the chat logs' emotes) is
+      // turned away, or its message could come before the port's
+      if (!String(url).startsWith('https://api.spotify.com/')) throw new TypeError('fetch failed');
       const release = once(process, 'message');
       process.send({ fetching: true });
       await release;
@@ -748,5 +753,109 @@ test('a GitHub cookie in use is written again before it can expire, and an unrea
     const broken = await raw('/api/github/status', cookie);
     assert.equal(broken.body.connected, false);
     assert.match(broken.headers['Set-Cookie'][0], /^mm_gh=; .*Max-Age=0/);
+  }
+});
+
+/* ---------- JSON over a real socket: compressed, and a 304 while it's the same ---------- */
+
+/** The app's handler (or another) on a free port, for what only a real socket shows. */
+async function listen(onRequest = handler) {
+  const server = originalCreateServer(onRequest);
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const stop = () => { server.closeAllConnections(); server.close(); };
+  return { stop, base: `http://127.0.0.1:${server.address().port}` };
+}
+function get(base, path, headers = {}, method = 'GET') {
+  return new Promise((resolve, reject) => {
+    http.request(base + path, { method, headers, agent: false }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    }).on('error', reject).end();
+  });
+}
+const unpack = (r) => String({ br: zlib.brotliDecompressSync, gzip: zlib.gunzipSync }[r.headers['content-encoding']]?.(r.body) ?? r.body);
+
+test('the browser’s pick of compression: brotli first, gzip when brotli is turned down, none when neither is taken', () => {
+  const pick = (h) => encodingFor({ headers: h === undefined ? {} : { 'accept-encoding': h } });
+  assert.equal(pick('gzip, deflate, br, zstd'), 'br');
+  assert.equal(pick('br;q=0, gzip'), 'gzip');
+  assert.equal(pick('gzip;q=0.5'), 'gzip');
+  assert.equal(pick('*'), 'br');
+  assert.equal(pick('identity'), null);
+  assert.equal(pick('br;q=0, gzip;q=0'), null);
+  assert.equal(pick(undefined), null);
+});
+
+test('Card Wars stats go out compressed, and polling them again while they’re the same is a 304 with no body', async () => {
+  const realNow = Date.now;
+  let now = realNow() + 3_600_000; // past whatever an earlier test left cached
+  Date.now = () => now;
+  const stats = { online: { total: 3 }, players: Array.from({ length: 300 }, (_, i) => ({ name: `player${i}`, rating: 1000 + i })) };
+  globalThis.fetch = async () => Response.json(stats);
+  const { stop, base } = await listen();
+  try {
+    const first = await get(base, '/api/cardwars/stats', { 'Accept-Encoding': 'gzip, deflate, br' });
+    assert.equal(first.status, 200);
+    assert.equal(first.headers['content-encoding'], 'br');
+    assert.equal(first.headers['cache-control'], 'private, no-cache');
+    assert.match(first.headers.vary, /Accept-Encoding/);
+    assert.ok(first.body.length < JSON.stringify(stats).length / 3, `compressed (${first.body.length} bytes)`);
+    assert.deepEqual(JSON.parse(unpack(first)), stats);
+    const etag = first.headers.etag;
+    assert.match(etag, /^W\/"[\w-]+"$/);
+
+    const again = await get(base, '/api/cardwars/stats', { 'Accept-Encoding': 'br', 'If-None-Match': etag });
+    assert.equal(again.status, 304);
+    assert.equal(again.body.length, 0);
+    assert.equal(again.headers.etag, etag);
+
+    // one ETag for the same JSON, however it's sent
+    const gzip = await get(base, '/api/cardwars/stats', { 'Accept-Encoding': 'gzip' });
+    assert.equal(gzip.headers['content-encoding'], 'gzip');
+    assert.equal(gzip.headers.etag, etag);
+    assert.deepEqual(JSON.parse(unpack(gzip)), stats);
+    const plain = await get(base, '/api/cardwars/stats');
+    assert.equal(plain.headers['content-encoding'], undefined);
+    assert.deepEqual(JSON.parse(plain.body), stats);
+
+    // new stats, a new answer
+    now += 15_000;
+    stats.online.total = 4;
+    const changed = await get(base, '/api/cardwars/stats', { 'Accept-Encoding': 'br', 'If-None-Match': etag });
+    assert.equal(changed.status, 200);
+    assert.notEqual(changed.headers.etag, etag);
+    assert.equal(JSON.parse(unpack(changed)).online.total, 4);
+  } finally {
+    Date.now = realNow;
+    stop();
+  }
+});
+
+test('big answers are compressed off the event loop, HEAD gets no body, and a no-store answer never gets an ETag', async () => {
+  const big = { items: Array.from({ length: 5000 }, (_, i) => ({ id: i, text: `line ${i} `.repeat(4) })) };
+  assert.ok(JSON.stringify(big).length > 64 * 1024);
+  const { stop, base } = await listen((req, res) => {
+    if (req.url === '/own') return sendJson(res, 200, JSON.stringify(big));
+    sendJson(res, 200, JSON.stringify(big), { 'Cache-Control': 'private, no-cache' });
+  });
+  try {
+    for (const encoding of ['br', 'gzip']) {
+      const r = await get(base, '/big', { 'Accept-Encoding': encoding });
+      assert.equal(r.headers['content-encoding'], encoding);
+      assert.deepEqual(JSON.parse(unpack(r)), big);
+    }
+    const head = await get(base, '/big', { 'Accept-Encoding': 'br' }, 'HEAD');
+    assert.equal(head.status, 200);
+    assert.equal(head.body.length, 0);
+    assert.ok(head.headers.etag);
+    const own = await get(base, '/own', { 'Accept-Encoding': 'gzip', 'If-None-Match': '*' });
+    assert.equal(own.status, 200, 'a no-store answer is never a 304');
+    assert.equal(own.headers.etag, undefined);
+    assert.equal(own.headers['cache-control'], 'no-store');
+    assert.deepEqual(JSON.parse(unpack(own)), big);
+  } finally {
+    stop();
   }
 });

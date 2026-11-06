@@ -37,11 +37,29 @@ async function once<T>(path: string): Promise<T> {
 
 const at = (offset?: number) => (offset ? `offset=${offset}` : '');
 
-export const spotifyStatus = () =>
-  get<SpotifyStatus>('/status').then(
-    (s) => remember('spotify', s),
-    () => recall('spotify', { configured: false, connected: false, offline: true } as SpotifyStatus),
+// The app start (Notices), Settings and the music picker each ask whether Spotify is connected, which the server asks
+// Spotify: one clear answer serves them all for a minute (not offline, nor one where Spotify refused). Disconnecting asks
+// again; connecting is a trip to Spotify and back, a fresh page.
+const STATUS_FRESH = 60_000;
+let lastStatus: { at: number; p: Promise<SpotifyStatus> } | null = null;
+
+export const spotifyStatus = (): Promise<SpotifyStatus> => {
+  if (lastStatus && Date.now() - lastStatus.at < STATUS_FRESH) return lastStatus.p;
+  const entry = { at: Date.now(), p: null as unknown as Promise<SpotifyStatus> };
+  const drop = () => { if (lastStatus === entry) lastStatus = null; };
+  entry.p = get<SpotifyStatus>('/status').then(
+    (s) => {
+      if (s.error) drop();
+      return remember('spotify', s);
+    },
+    () => {
+      drop();
+      return recall('spotify', { configured: false, connected: false, offline: true } as SpotifyStatus);
+    },
   );
+  lastStatus = entry;
+  return entry.p;
+};
 
 export const resolveSpotify = (url: string) => get<Music>('/resolve?url=' + encodeURIComponent(url.trim()));
 export const searchSpotify = (q: string, offset?: number) => get<Page<Music>>(`/search?q=${encodeURIComponent(q.trim())}&${at(offset)}`);
@@ -55,7 +73,10 @@ export const playlistInfo = (id: string) => get<{ id: string; name: string; cove
 export const connectSpotify = (back = location.hash) => {
   location.href = '/api/spotify/connect?back=' + encodeURIComponent(back.split('?')[0]);
 };
-export const disconnectSpotify = () => fetch('/api/spotify/disconnect', { method: 'POST' });
+export const disconnectSpotify = () => {
+  lastStatus = null;
+  return fetch('/api/spotify/disconnect', { method: 'POST' });
+};
 
 /** Spotify's own player. Signed in to Spotify in this browser → full songs, otherwise previews. */
 export const embedUrl = (m: Music) => `https://open.spotify.com/embed/${m.kind}/${m.id}?utm_source=generator`;

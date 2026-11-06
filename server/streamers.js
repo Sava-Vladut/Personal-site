@@ -14,7 +14,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { HttpError } from './http-error.js';
-import { json } from './http-response.js';
+import { REVALIDATE, json } from './http-response.js';
 
 const GQL = 'https://gql.twitch.tv/gql';
 const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
@@ -27,6 +27,7 @@ const LOOKED = 30 * DAY;       // a channel looked up on the page is recorded fo
 const MAX_TRACKED = 60;        // channels the recorder checks at most, the miner's first
 const MAX_FILES = 100;         // channels kept on disk besides the miner's; the least recently looked up go first
 const REPORT_MS = 3 * MIN;     // a channel's report is worked out again after this
+const STALE_MS = 30 * MIN;     // until then, the last one is answered at once while the next is worked out
 const TRACKER_MS = 60 * MIN;
 const LOOKUPS_PER_MIN = 30;    // fresh reports (each a few calls to Twitch) the whole server makes in a minute
 const SAME_STREAM = 20 * MIN;  // a VOD and a recorded stream that start this close are the same broadcast
@@ -222,7 +223,7 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
   const writing = new Map();  // login → the write in progress, so writes to one file never overlap
   const seenAt = new Map();   // login → when it was last looked up, for every channel kept on disk
   const live = new Map();     // login → what the recorder last saw it streaming
-  const reports = new Map();  // login → { at, promise }
+  const reports = new Map();  // login → { at, data: the last report, pending: the one being worked out }
   const tracker = new Map();  // login → { at, value }
   let lookups = [];           // when fresh reports were started, for the rate limit
   let timer = null;
@@ -485,18 +486,40 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
     };
   }
 
-  function report(login) {
-    const hit = reports.get(login);
-    if (hit && now() - hit.at < REPORT_MS) return hit.promise;
+  /** Starts working out a channel's report afresh (a few calls to Twitch, half a second or more). */
+  function rebuild(login) {
     const t = now();
     lookups = lookups.filter((at) => t - at < MIN);
     if (lookups.length >= LOOKUPS_PER_MIN) throw new HttpError(429, 'Too many channels looked up at once. Try again in a minute.');
     lookups.push(t);
-    const promise = build(login);
-    reports.set(login, { at: t, promise });
-    promise.catch(() => reports.get(login)?.promise === promise && reports.delete(login));
+    const entry = reports.get(login) ?? { at: 0, data: null, pending: null };
+    const pending = build(login).then((data) => Object.assign(entry, { at: t, data }).data);
+    entry.pending = pending;
+    // a report that couldn't be worked out again leaves the last one standing; a channel never reported is forgotten
+    pending.then(() => {}, () => !entry.data && reports.get(login) === entry && reports.delete(login)).finally(() => entry.pending === pending && (entry.pending = null));
+    reports.delete(login); // most recently asked for goes last
+    reports.set(login, entry);
     if (reports.size > 200) reports.delete(reports.keys().next().value);
-    return promise;
+    return pending;
+  }
+
+  /**
+   * A channel's report: worked out at most every REPORT_MS. One a little older (under STALE_MS) is answered at once,
+   * marked `refreshing`, while the next is worked out behind it, so opening a channel never waits on Twitch for one the
+   * page has seen lately; the page asks again a moment later for the new one (lib/streamer.ts).
+   */
+  async function report(login) {
+    const hit = reports.get(login);
+    const age = hit?.data ? now() - hit.at : Infinity;
+    if (age < REPORT_MS) return hit.data;
+    if (age < STALE_MS) {
+      if (!hit.pending) {
+        // too many lookups this minute: the one kept will do for now
+        try { rebuild(login); } catch {}
+      }
+      return { ...hit.data, refreshing: true };
+    }
+    return hit?.pending ?? rebuild(login);
   }
 
   /** The channels to offer on the page: the miner's, then the ones looked up lately, with who's live. */
@@ -520,9 +543,11 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
     return sullyGnome.history(store, login);
   }
 
+  // All of it is public and asked for again and again (the history every few seconds while it loads): the browser
+  // keeps a copy and an unchanged one costs a 304.
   async function api(req, res, path) {
     if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
-    if (path === '/api/streamers') return json(res, 200, await list());
+    if (path === '/api/streamers') return json(res, 200, await list(), REVALIDATE);
     const wantsHistory = path.endsWith('/history');
     if (wantsHistory) path = path.slice(0, -'/history'.length);
     let raw;
@@ -535,9 +560,9 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
     if (!LOGIN.test(login)) throw new HttpError(400, 'That isn’t a Twitch channel name.');
     if (wantsHistory) {
       if (!sullyGnome) throw new HttpError(404, 'No history here.');
-      return json(res, 200, await history(login));
+      return json(res, 200, await history(login), REVALIDATE);
     }
-    return json(res, 200, await report(login));
+    return json(res, 200, await report(login), REVALIDATE);
   }
 
   return { api, poll, start, stop };

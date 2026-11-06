@@ -237,6 +237,44 @@ test('a finished month is counted per day in the viewer’s time zone, and kept 
   });
 });
 
+test('a lookup a little old is answered at once while the next is made; an hour-old one is waited for', async () => {
+  let months = [{ year: '2025', month: '3' }];
+  let slow = 0;
+  await withFetch(async (url) => {
+    url = String(url);
+    if (url.startsWith('https://ivr.test')) return reply([{ login: 'chan', id: '1', displayName: 'Chan' }, { login: 'who', id: '2', displayName: 'Who' }]);
+    if (url.startsWith('https://finder.test')) return reply({});
+    if (url.startsWith('https://recent.test')) return reply({ messages: [] });
+    if (url === 'https://a.test/list?channelid=1&userid=2') { await wait(slow); return reply({ availableLogs: months }); }
+    return new Response('Not found', { status: 404 });
+  }, async (dir) => {
+    const realNow = Date.now;
+    let skew = 0;
+    Date.now = () => realNow() + skew;
+    try {
+      const h = createChatLogs({ directory: dir, isAdmin: () => false, archives: ['a.test'], finder: 'https://finder.test', recent: 'https://recent.test', ivr: 'https://ivr.test', record: false });
+      const look = async () => (await call(h)('/api/chatlogs/lookup', 'channel=chan&user=who')).body.months;
+      assert.deepEqual(await look(), ['2025-03']);
+      months = [...months, { year: '2025', month: '4' }];
+      slow = 300;
+      skew += 11 * 60_000;
+      let t0 = realNow();
+      assert.deepEqual(await look(), ['2025-03'], 'the lookup it had');
+      assert.ok(realNow() - t0 < 200, `answered at once (${realNow() - t0} ms)`);
+      await wait(450);
+      assert.deepEqual(await look(), ['2025-03', '2025-04'], 'the one made behind it');
+      // over an hour on, the old one isn't worth answering with
+      months = [...months, { year: '2025', month: '5' }];
+      skew += 61 * 60_000;
+      t0 = realNow();
+      assert.deepEqual(await look(), ['2025-03', '2025-04', '2025-05']);
+      assert.ok(realNow() - t0 >= 250, 'waited for the new one');
+    } finally {
+      Date.now = realNow;
+    }
+  });
+});
+
 /* ---------- emotes in the page (src/lib/emotes.ts) ---------- */
 
 const bundle = await rolldown({ input: new URL('../src/lib/emotes.ts', import.meta.url).pathname });
