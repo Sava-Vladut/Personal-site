@@ -71,7 +71,9 @@ export function CountUp({ value }: { value: string | number }) {
     shown.current = true;
     const [, pre, num, dec, post] = m as readonly string[];
     const to = parseFloat(num.replace(/,/g, '')), dp = dec?.length ?? 0, t0 = performance.now();
-    const fmt = (n: number) => (whole ? Math.round(n).toLocaleString(LOCALE) : num.includes(',') ? n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : n.toFixed(dp));
+    // one formatter for the whole count (the same text as toLocaleString, which can build a new one on every frame)
+    const local = whole ? new Intl.NumberFormat(LOCALE) : num.includes(',') ? new Intl.NumberFormat('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : null;
+    const fmt = (n: number) => (whole ? local!.format(Math.round(n)) : local ? local.format(n) : n.toFixed(dp));
     let raf = 0;
     const tick = (now: number) => {
       const p = Math.min(1, Math.max(0, (now - t0) / 900)); // a frame's time can be a touch before t0
