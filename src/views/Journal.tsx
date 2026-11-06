@@ -5,7 +5,7 @@ import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { keepOnLeave, kept, navigate } from '../lib/router';
 import { getEntries, useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
-import { booksIn } from '../lib/books';
+import { booksOf } from '../lib/books';
 import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
 import { bodyOf, itemsOf, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
@@ -651,7 +651,7 @@ const THUMBS = 5;
 export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const byId = usePeopleById();
   const shelf = useBooks();
-  const books = booksIn(e.text, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
+  const books = booksOf(e, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
   const { heading, preview, pictures } = cardOf(e);
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));

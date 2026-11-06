@@ -67,11 +67,21 @@ export function mentionOf(b: Book, books: Book[]) {
 export const booksIn = (text: string, books: Book[]) =>
   text.includes('[[') ? [...new Set([...text.matchAll(MENTION)].map((m) => resolveMention(m[1], m[2], books)?.id).filter(Boolean) as string[])] : [];
 
+/** The books a note mentions, read once per version of it (a saved note is a new object) and of the shelf: the shelf's
+ * page and every card in the journal ask, and reading each note's words again after every save made them catch. */
+const mentioned = new WeakMap<Entry, { books: Book[]; ids: string[] }>();
+export function booksOf(e: Entry, books: Book[]) {
+  if (!e.text.includes('[[')) return [];
+  let c = mentioned.get(e);
+  if (!c || c.books !== books) mentioned.set(e, (c = { books, ids: booksIn(e.text, books) }));
+  return c.ids;
+}
+
 /** book id → the notes mentioning it, newest first. */
 export function mentionsByBook(entries: Entry[], books: Book[]) {
   const m = new Map<string, Entry[]>();
   for (const e of entries)
-    for (const id of booksIn(e.text, books)) {
+    for (const id of booksOf(e, books)) {
       const list = m.get(id);
       if (list) list.push(e);
       else m.set(id, [e]);
