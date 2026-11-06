@@ -182,13 +182,34 @@ const alignColumns = (align: 'left' | 'center' | 'right'): Command => (state, di
 };
 
 /**
+ * Insert Row Above. Above the header row, the new row is the header now: its cells take the columns' alignment from
+ * the old header's, else every column would lose its alignment (a column is aligned as its header cell is,
+ * lib/noteDoc/normalize.ts, and the new cells have none).
+ */
+const rowAbove: Command = (state, dispatch) => {
+  if (!inTable(state)) return false;
+  const { top, table, tableStart } = selectedRect(state);
+  if (top > 0 || !dispatch) return addRowBefore(state, dispatch);
+  return addRowBefore(state, (tr) => {
+    const header = table.firstChild!;
+    let pos = tableStart + 1;
+    tr.doc.nodeAt(tableStart)!.forEach((cell, _, k) => {
+      const align = header.maybeChild(k)?.attrs.align ?? null;
+      if (cell.attrs.align !== align) tr.setNodeMarkup(pos, null, { ...cell.attrs, align });
+      pos += cell.nodeSize;
+    });
+    dispatch(tr);
+  });
+};
+
+/**
  * The Table tab's commands. Deleting every row (or every column) deletes the table, as Word does. The header row is
  * always the first: a row put in above it becomes the header, and when it's deleted the row under it becomes the header
  * (lib/noteDoc/normalize.ts).
  */
 export function tableCommand(action: TableAction): Command {
   switch (action) {
-    case 'rowAbove': return (s, d) => inTable(s) && addRowBefore(s, d);
+    case 'rowAbove': return rowAbove;
     case 'rowBelow': return (s, d) => inTable(s) && addRowAfter(s, d);
     case 'colLeft': return (s, d) => inTable(s) && addColumnBefore(s, d);
     case 'colRight': return (s, d) => inTable(s) && addColumnAfter(s, d);
