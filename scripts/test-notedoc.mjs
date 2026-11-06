@@ -971,6 +971,25 @@ test('an edited document writes the same text as a fresh copy of it (the lines k
   }
 });
 
+test('a note written ahead a few blocks at a time writes the same text as one written at once', () => {
+  const seed = Number(process.env.SEED ?? 1);
+  const random = generator(seed, { wild: true });
+  const COUNT = Number(process.env.COUNT ?? 1000);
+  for (let i = 0; i < COUNT; i++) {
+    const d = nd.normalizeDoc(random());
+    // three blocks each time it's let go on, as the editor does while the page is idle
+    let rounds = 0;
+    for (;;) {
+      let left = 3;
+      rounds++;
+      if (nd.warmNote(d, () => left-- > 0)) break;
+      assert.ok(rounds < 1000, 'it gets there');
+    }
+    assert.equal(nd.serializeNote(d), nd.serializeNote(S.nodeFromJSON(d.toJSON())), `document ${i} (SEED=${seed}):\n${d}`);
+  }
+  assert.equal(nd.warmNote(nd.parseNote('a\nb'), () => false), false, 'nothing written when there is no time');
+});
+
 test('the quick look agrees with putting in shape', () => {
   const seed = Number(process.env.SEED ?? 1);
   const COUNT = Number(process.env.COUNT ?? 1000);

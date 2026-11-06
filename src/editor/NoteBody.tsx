@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { EditorState, Plugin, Selection, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice } from '../lib/noteDoc';
+import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice, warmNote } from '../lib/noteDoc';
 import {
   canStep, clearFind, commentAt, commentsOf, commentsState, deleteComment, dropTargets, focusComment, saveComment, selectComment, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger, isCell,
   linkAt, litOf, mediaList, mergeMedia, moveItemInto, moveItemOut, moveMedia, parseClipboardText, removeItem, removeMedia, reorderItem, replaceAll,
@@ -210,6 +210,42 @@ function placeholder(): Plugin {
   });
 }
 
+/** Runs `fn` when the page is idle (soon after, where the browser can't say: Safari), with the time it can take. */
+function whenIdle(fn: (ms: number) => void): () => void {
+  if (typeof requestIdleCallback === 'function') {
+    const id = requestIdleCallback((d) => fn(d.timeRemaining()), { timeout: 1000 });
+    return () => cancelIdleCallback(id);
+  }
+  const id = setTimeout(() => fn(8), 60);
+  return () => clearTimeout(id);
+}
+
+/**
+ * Writes the note's text ahead (lib/noteDoc warmNote) once writing starts, a few blocks at a time while the page is
+ * idle: the first time a long note's words are written back (the first pause in typing) would otherwise write every
+ * block at once. Notes only read never do it.
+ */
+function warmer(): Plugin {
+  return new Plugin({
+    view(view) {
+      let done = false;
+      let stop: (() => void) | null = null;
+      const step = (view: EditorView) => (ms: number) => {
+        stop = null;
+        if (view.isDestroyed || done) return;
+        const until = performance.now() + Math.max(2, Math.min(8, ms));
+        if (warmNote(view.state.doc, () => performance.now() < until)) done = true;
+        else stop = whenIdle(step(view));
+      };
+      const update = (v: EditorView) => {
+        if (v.editable && !done && !stop) stop = whenIdle(step(v));
+      };
+      update(view);
+      return { update, destroy: () => stop?.() };
+    },
+  });
+}
+
 export function NoteBody(p: Props) {
   const host = useRef<HTMLDivElement>(null);
   const props = useRef(p);
@@ -324,6 +360,7 @@ export function NoteBody(p: Props) {
           }),
           placeholder(),
           dropPreviewPlugin(),
+          warmer(),
           new Plugin({ props: { handleDOMEvents: { focus: () => void (placed = true) } } }),
         ],
       }),

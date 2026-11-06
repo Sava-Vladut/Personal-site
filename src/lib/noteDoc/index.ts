@@ -12,7 +12,7 @@ export {
   type MediaAttrs, type AtomAttrs, type CodeMarkAttrs, type LinkAttrs, type ColorAttrs, type HighlightAttrs, type CellAttrs, type CommentAttrs,
 } from './schema';
 export { parseNote, parseBlocks, parseInline } from './parse';
-export { serializeNote, serializeBlocks, serializeInline, serializeSlice, writtenAttrs, docKey, sameDoc } from './serialize';
+export { serializeNote, serializeBlocks, serializeInline, serializeSlice, writtenAttrs, docKey, sameDoc, warmNote } from './serialize';
 export { normalizeDoc, normalizeTr, normalizeAfter, inShape, inShapeNear, changedRanges } from './normalize';
 export { replaceDoc } from './diff';
 export {

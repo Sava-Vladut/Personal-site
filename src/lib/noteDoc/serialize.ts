@@ -420,11 +420,15 @@ interface Before {
   head: number;
 }
 
-function blockLines(node: PMNode, where: Where, first: boolean, last: boolean, before: Before = { table: false, head: 0 }): string[] {
+function blockLines(node: PMNode, where: Where, first: boolean, last: boolean, before?: Before): string[];
+function blockLines(node: PMNode, where: Where, first: boolean, last: boolean, before: Before, more?: () => boolean): string[] | null;
+/** (`more`: asked before writing a block not kept yet; no, and it's left for later: null) */
+function blockLines(node: PMNode, where: Where, first: boolean, last: boolean, before: Before = { table: false, head: 0 }, more?: () => boolean): string[] | null {
   const key = (where.top ? 1 : 0) | (where.quote ? 2 : 0) | (first ? 4 : 0) | (last ? 8 : 0) | (before.table ? 16 : 0) | (before.head << 5);
   let byPlace = linesCache.get(node);
   const hit = byPlace?.get(key);
   if (hit) return hit;
+  if (more && !more()) return null;
   const lines = writeBlock(node, where, first, last, before);
   if (!byPlace) linesCache.set(node, (byPlace = new Map()));
   byPlace.set(key, lines);
@@ -540,21 +544,32 @@ function writeTable(node: PMNode, head: number): string[] {
   return [lines[0], '| ' + aligns.map(delimCell).join(' | ') + ' |', ...lines.slice(1)];
 }
 
-/** Blocks as lines of text, one stretch (no pictures in between). */
-export function serializeBlocks(nodes: readonly PMNode[] | Fragment, where: Where = { top: false, quote: false }): string {
+/**
+ * Blocks as lines of text, one stretch (no pictures in between). With `more`, asked before each block not written yet,
+ * it stops (null) when that says no: what was written by then is kept (blockLines), for warmNote.
+ */
+export function serializeBlocks(nodes: readonly PMNode[] | Fragment, where?: Where): string;
+export function serializeBlocks(nodes: readonly PMNode[] | Fragment, where: Where, more: () => boolean): string | null;
+export function serializeBlocks(nodes: readonly PMNode[] | Fragment, where: Where = { top: false, quote: false }, more?: () => boolean): string | null {
   const list = Array.isArray(nodes) ? nodes : childrenOf(nodes as Fragment);
   const out: string[] = [];
-  list.forEach((n, i) => {
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
     const table = i > 0 && list[i - 1].type.name === 'table';
     // only a plain line or a table can read as a table's delimiter row
     const head = !table && out.length && /^(paragraph|table)$/.test(n.type.name) ? headerCells(out[out.length - 1]) : 0;
-    for (const l of blockLines(n, where, i === 0, i === list.length - 1, { table, head })) out.push(l);
-  });
+    const lines = blockLines(n, where, i === 0, i === list.length - 1, { table, head }, more);
+    if (!lines) return null;
+    for (const l of lines) out.push(l);
+  }
   return out.join('\n');
 }
 
 /** Top-level blocks and pictures as a note's text: stretches of text joined by picture lines (as lib/body.ts does). */
-function serializeTop(nodes: readonly PMNode[]): string {
+function serializeTop(nodes: readonly PMNode[]): string;
+function serializeTop(nodes: readonly PMNode[], more: () => boolean): string | null;
+function serializeTop(nodes: readonly PMNode[], more?: () => boolean): string | null {
+  const top: Where = { top: true, quote: false };
   let out = '';
   let cur: PMNode[] = [];
   for (const n of nodes) {
@@ -562,14 +577,24 @@ function serializeTop(nodes: readonly PMNode[]): string {
       cur.push(n);
       continue;
     }
-    out += serializeBlocks(cur, { top: true, quote: false }) + '\n' + (n.attrs.media ? mediaMarker(n.attrs.media) : '') + '\n';
+    const stretch = more ? serializeBlocks(cur, top, more) : serializeBlocks(cur, top);
+    if (stretch === null) return null;
+    out += stretch + '\n' + (n.attrs.media ? mediaMarker(n.attrs.media) : '') + '\n';
     cur = [];
   }
-  return out + serializeBlocks(cur, { top: true, quote: false });
+  const last = more ? serializeBlocks(cur, top, more) : serializeBlocks(cur, top);
+  return last === null ? null : out + last;
 }
 
 /** The document as the note's text. */
 export const serializeNote = (doc: PMNode): string => serializeTop(childrenOf(doc));
+
+/**
+ * Writes the note ahead, a block at a time for as long as `more()` says yes (asked before each block not written
+ * yet), keeping each block's lines: true once every block is written. The first serializeNote of a long note writes all its blocks (each read back to check it,
+ * which is slow); written ahead while the page is idle, the first pause in typing doesn't wait for it.
+ */
+export const warmNote = (doc: PMNode, more: () => boolean): boolean => serializeTop(childrenOf(doc), more) !== null;
 
 /**
  * A copied slice as text: the words alone when it's part of one line, else its lines in Markdown, pictures and all.
