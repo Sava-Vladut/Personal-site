@@ -1159,6 +1159,37 @@ test('README requests share memory cache and forget it on refresh or disconnect'
   assert.equal(calls, 2);
 });
 
+test('one GitHub login check serves the screens opened one after another, unless it was unclear or the sign-in changed', async () => {
+  const answers = [{ configured: true, connected: true, user: { name: 'octo' } }, { configured: true, connected: true, error: 'GitHub is slow' }];
+  let calls = 0, admin = false;
+  const { githubStatus, disconnectGithub } = await load('src/lib/github.ts', {
+    './retry': await load('src/lib/retry.ts'),
+    './auth': { signedInHere: () => admin },
+    './lastLogin': { remember: (_service, s) => s, recall: (_service, fallback) => fallback },
+  }, {
+    AbortSignal,
+    fetch: async (url) => {
+      calls++;
+      if (url === '/api/github/disconnect') return { ok: true };
+      return { ok: true, json: async () => answers[0] };
+    },
+  });
+  await Promise.all([githubStatus(), githubStatus()]);
+  await githubStatus();
+  assert.equal(calls, 1, 'Settings, Repos and a repo share one check');
+  admin = true;
+  await githubStatus();
+  assert.equal(calls, 2, 'signing in to the site asks again (it decides canClone)');
+  await disconnectGithub();
+  await githubStatus();
+  assert.equal(calls, 4, 'disconnecting asks again');
+  answers.shift();
+  await disconnectGithub();
+  assert.equal((await githubStatus()).error, 'GitHub is slow');
+  await githubStatus();
+  assert.equal(calls, 7, 'a hiccup isn’t kept');
+});
+
 test('a GitHub request that stalls gives up with a timeout, once, instead of spinning', async () => {
   let calls = 0, signal;
   const { getGhRepo } = await load('src/lib/github.ts', { './retry': await load('src/lib/retry.ts', {}, { navigator: { onLine: true }, setTimeout: (fn) => setImmediate(fn) }) }, {

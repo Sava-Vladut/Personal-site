@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { signedInHere } from './auth';
 import { LOCALE, t } from './i18n';
 import { recall, remember } from './lastLogin';
 import { retry } from './retry';
@@ -38,7 +39,10 @@ export function relogin(s: GithubStatus, back: string) {
   connectGithub(back);
   return true;
 }
-export const disconnectGithub = () => fetch('/api/github/disconnect', { method: 'POST' });
+export const disconnectGithub = () => {
+  lastStatus = null;
+  return fetch('/api/github/disconnect', { method: 'POST' });
+};
 
 /* ---------- repos ---------- */
 
@@ -77,11 +81,30 @@ async function once<T>(path: string, method = 'GET'): Promise<T> {
   return body as T;
 }
 
-export const githubStatus = () =>
-  get<GithubStatus>('/status').then(
-    (s) => remember('github', s),
-    () => recall('github', { configured: false, connected: false, offline: true } as GithubStatus),
+// Settings, Repos and a repo's page each ask whether you're logged in, one after another as you go through them: one
+// answer serves them all for a minute. Only a clear one is kept (not offline, a hiccup or an ended login), and signing
+// in or out of the site (which decides canClone) or disconnecting asks again.
+const STATUS_FRESH = 60_000;
+let lastStatus: { at: number; admin: boolean; p: Promise<GithubStatus> } | null = null;
+
+export const githubStatus = (): Promise<GithubStatus> => {
+  const admin = signedInHere();
+  if (lastStatus && lastStatus.admin === admin && Date.now() - lastStatus.at < STATUS_FRESH) return lastStatus.p;
+  const entry = { at: Date.now(), admin, p: null as unknown as Promise<GithubStatus> };
+  const drop = () => { if (lastStatus === entry) lastStatus = null; };
+  entry.p = get<GithubStatus>('/status').then(
+    (s) => {
+      if (s.error || s.expired) drop();
+      return remember('github', s);
+    },
+    () => {
+      drop();
+      return recall('github', { configured: false, connected: false, offline: true } as GithubStatus);
+    },
   );
+  lastStatus = entry;
+  return entry.p;
+};
 
 export const repoFullName = (r: Pick<GhRepo, 'owner' | 'name'>) => `${r.owner}/${r.name}`;
 export const getGhRepo = (id: number | string) => get<GhRepo>(`/repos/${id}`);
