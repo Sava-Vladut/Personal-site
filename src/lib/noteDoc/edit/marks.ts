@@ -33,12 +33,23 @@ function runsOf(block: PMNode, start: number, type: MarkType, same?: (m: Mark) =
 }
 
 /**
+ * What the selection covers, as ranges: one, or (cells of a table selected together) one for each cell. The first
+ * range's from…to is only the first cell's, so the others would be left out.
+ */
+const selRanges = (state: EditorState): Range[] => state.selection.ranges.map((r) => ({ from: r.$from.pos, to: r.$to.pos }));
+
+/**
  * Where a style goes in each selected line: the words the selection covers, without spaces at either end (they stay
  * outside the style, as the old markers did). Code blocks take none. Other styles go around code, never inside it: a
  * piece of code the selection only partly covers is left out. Code itself never goes on a chip.
  */
-function styleRanges(state: EditorState, type: MarkType, { from, to }: Range = state.selection): Range[] {
+function styleRanges(state: EditorState, type: MarkType, over: Range | readonly Range[] = selRanges(state)): Range[] {
   const out: Range[] = [];
+  for (const r of 'from' in over ? [over] : over) styleRangesIn(state, type, r, out);
+  return out;
+}
+
+function styleRangesIn(state: EditorState, type: MarkType, { from, to }: Range, out: Range[]) {
   state.doc.nodesBetween(from, to, (node, pos) => {
     if (!node.isTextblock) return true;
     if (node.type.spec.code || !node.type.allowsMarkType(type)) return false;
@@ -66,7 +77,6 @@ function styleRanges(state: EditorState, type: MarkType, { from, to }: Range = s
     }
     return false;
   });
-  return out;
 }
 
 /** Whether a set of marks has the style: `type` (in any colour), or exactly `mark` when one is given. */
@@ -256,30 +266,32 @@ export function markLit(state: EditorState, name: MarkName): boolean {
 /**
  * Clear formatting, as in Word: bold, italic, underline, strike, superscript, subscript, highlight, colour and code
  * come off the selected words, the whole of
- * each styled run the selection touches; with nothing selected, off the word at the caret (and off what's typed next).
- * Links stay links. False when there was nothing to clear.
+ * each styled run the selection touches (in each cell of a table's selected cells); with nothing selected, off the word
+ * the caret is in (or at the start of a styled one, as a style's button does: toggleMarkSmart), and off what's typed
+ * next. A caret anywhere else (the end of a word, after a full stop) leaves the words be: the styled run around it
+ * cleared whole there took a whole bold sentence back to plain. Links stay links. False when there was nothing to clear.
  */
 export const clearFormatting: Command = (state, dispatch) => {
   const sel = state.selection;
-  let { from, to } = sel;
-  if (sel.empty) ({ from, to } = wordAround(state));
-  const tr = state.tr;
   const types = CLEARED.map((n) => state.schema.marks[n]);
-  const blocks: { node: PMNode; pos: number }[] = [];
-  if (from === to) {
-    const $p = state.doc.resolve(from);
-    if ($p.parent.isTextblock) blocks.push({ node: $p.parent, pos: $p.before() });
-  } else {
+  let ranges: Range[] = selRanges(state);
+  if (sel.empty) {
+    const $c = sel.$from;
+    const text = $c.parent.isTextblock ? lineText($c.parent) : '';
+    const off = $c.parentOffset;
+    const styled = !!$c.nodeAfter?.marks.some((m) => types.includes(m.type));
+    ranges = isWordChar(text[off]) && (isWordChar(text[off - 1]) || styled) ? [wordAround(state)] : [];
+  }
+  const tr = state.tr;
+  for (const { from, to } of ranges) {
+    const blocks: { node: PMNode; pos: number }[] = [];
     state.doc.nodesBetween(from, to, (node, pos) => {
       if (node.isTextblock) blocks.push({ node, pos });
       return !node.isTextblock;
     });
-  }
-  for (const { node, pos } of blocks) {
-    for (const type of types) {
-      for (const r of runsOf(node, pos + 1, type)) {
-        const hit = from === to ? r.from <= from && from <= r.to : r.from < to && r.to > from;
-        if (hit) tr.removeMark(r.from, r.to, type);
+    for (const { node, pos } of blocks) {
+      for (const type of types) {
+        for (const r of runsOf(node, pos + 1, type)) if (r.from < to && r.to > from) tr.removeMark(r.from, r.to, type);
       }
     }
   }

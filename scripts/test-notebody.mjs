@@ -61,6 +61,8 @@ await bundle.close();
 const PHONES = {
   android: { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36', vendor: 'Google Inc.' },
   ios: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', vendor: 'Apple Computer, Inc.' },
+  // (not a phone: a Mac's keyboard)
+  mac: { platform: 'MacIntel' },
 };
 
 /** A page with the editor's code loaded (as on a phone, with `phone`). */
@@ -254,6 +256,21 @@ test('the ribbon’s commands and Word’s shortcuts style the words and light u
   n.cmds.undo();
   assert.equal(n.text(), 'make this **loud**');
   assert.equal(press('Mod-k'), true);
+});
+
+test('on a Mac the shortcuts are ⌘’s, and Ctrl is the Mac’s own (Ctrl+B moves the caret back, never bold)', () => {
+  const { n, view, window, seen } = mount('make this loud', { phone: 'mac' });
+  const TextSelection = view.state.selection.constructor;
+  const at = view.state.doc.textContent.indexOf('loud') + 1;
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at, at + 4)));
+  const key = (o) => !!view.someProp('handleKeyDown', (f) => f(view, new window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...o })));
+  // (Ctrl+H and Ctrl+E are ProseMirror's own Mac keys: Backspace, the line's end)
+  for (const k of ['b', 'i', 'p', 'k']) assert.equal(key({ key: k, code: 'Key' + k.toUpperCase(), ctrlKey: true }), false, 'Ctrl+' + k);
+  assert.equal(key({ key: 'X', code: 'KeyX', ctrlKey: true, shiftKey: true }), false);
+  assert.equal(n.text(), 'make this loud');
+  assert.equal(seen.link, undefined, 'no link sheet');
+  assert.equal(key({ key: 'b', code: 'KeyB', metaKey: true }), true);
+  assert.equal(n.text(), 'make this **loud**');
 });
 
 test('a task’s box ticks it, writing or reading, and the caret stays put', () => {
@@ -739,8 +756,18 @@ test('Ctrl+U underlines, Ctrl++ and Ctrl+= raise and lower, and the colours and 
   assert.equal((await lit()).painter, 'once');
   assert.ok(view.dom.classList.contains('is-painting'), 'the pointer shows it');
   select('that');
-  view.dom.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 5));
+  const mouse = async (type, o = {}, at = view.dom) => {
+    at.dispatchEvent(new window.MouseEvent(type, { bubbles: true, ...o }));
+    await new Promise((r) => setTimeout(r, 5));
+  };
+  // a right-click for the menu, or a press that began off the words (on the ribbon), paints nothing
+  await mouse('mousedown', { button: 2 });
+  await mouse('mouseup', { button: 2 });
+  await mouse('mouseup');
+  assert.equal(n.text(), 'make this <span style="color:blue"><mark style="background:lightgreen">loud</mark></span> and that');
+  assert.equal((await lit()).painter, 'once', 'still on');
+  await mouse('mousedown');
+  await mouse('mouseup');
   assert.equal(n.text(), 'make this <span style="color:blue"><mark style="background:lightgreen">loud</mark></span> and <span style="color:blue"><mark style="background:lightgreen">that</mark></span>');
   assert.equal((await lit()).painter, null);
   assert.ok(!view.dom.classList.contains('is-painting'));
