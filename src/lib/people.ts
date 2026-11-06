@@ -78,12 +78,24 @@ export function pagesByPerson(people: Person[], books: Book[], songs: Song[]) {
   return out;
 }
 
+/** Who an entry's words tag, read once per version of it (a saved entry is a new object) and of the people: saving one
+ * note no longer reads every other note's words again to find who they tag. */
+const taggedIn = new WeakMap<Entry, { people: Person[]; ids: string[] }>();
+function peopleTagged(e: Entry, people: Person[]) {
+  if (!e.text.includes('@[')) return [];
+  let c = taggedIn.get(e);
+  if (!c || c.people !== people) taggedIn.set(e, (c = { people, ids: peopleIn(e.text, people) }));
+  return c.ids;
+}
+
 /** person id → the notes and check-ins they're tagged in, under "Thinking of" or in the words, newest first. */
 export function momentsByPerson(entries: Entry[], people: Person[]) {
   const m = new Map<string, Entry[]>();
   for (const e of entries) {
+    const inText = peopleTagged(e, people);
+    if (!e.people.length && !inText.length) continue;
     const ids = new Set(e.people);
-    for (const id of peopleIn(e.text, people)) ids.add(id);
+    for (const id of inText) ids.add(id);
     for (const id of ids) {
       const list = m.get(id);
       if (list) list.push(e);

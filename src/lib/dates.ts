@@ -16,23 +16,67 @@ export const parseKey = (k: string) => {
   date.setHours(0, 0, 0, 0);
   return date;
 };
+/* Stats, the brain and the journal ask for days apart, weekdays and the day after thousands of times; making a Date for
+   each was most of their work on a long journal. A key written 'YYYY-MM-DD' is counted with plain calendar arithmetic
+   instead (no time zone in it, as there's none in a key); anything else still goes through a Date, as before. */
+
+/** The number at k[from, to), or NaN when it isn't all digits. */
+function digits(k: string, from: number, to: number) {
+  let n = 0;
+  for (let i = from; i < to; i++) {
+    const c = k.charCodeAt(i) - 48;
+    if (c < 0 || c > 9) return NaN;
+    n = n * 10 + c;
+  }
+  return n;
+}
+/** Days from 1970-01-01 to the key's day (Howard Hinnant's days_from_civil), or NaN when it isn't 'YYYY-MM-DD' with a
+ * month of 1–12 and a day of 1–31. A day past its month's end runs on into the next one, as a Date does. */
+function dayNumber(k: string) {
+  if (k.length !== 10 || k.charCodeAt(4) !== 45 || k.charCodeAt(7) !== 45) return NaN;
+  const y = digits(k, 0, 4), m = digits(k, 5, 7), d = digits(k, 8, 10);
+  if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31) || y !== y) return NaN;
+  const yy = m <= 2 ? y - 1 : y;
+  const era = Math.floor(yy / 400), yoe = yy - era * 400;
+  const doy = Math.floor((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5) + d - 1;
+  return era * 146097 + yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy - 719468;
+}
+/** The key of day number z (civil_from_days), written as keyOf writes it. */
+function keyOfDay(z: number) {
+  z += 719468;
+  const era = Math.floor(z / 146097), doe = z - era * 146097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const d = doy - Math.floor((153 * mp + 2) / 5) + 1, m = mp < 10 ? mp + 3 : mp - 9;
+  return `${yoe + era * 400 + (m <= 2 ? 1 : 0)}-${pad(m)}-${pad(d)}`;
+}
+const daysIn = (y: number, m: number) => (m === 2 ? ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28) : m === 4 || m === 6 || m === 9 || m === 11 ? 30 : 31);
+
 /** A real calendar day, including leap-year checks; malformed backup dates never enter the journal. */
 export const isDateKey = (v: unknown): v is string => {
   if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
-  const [year, month, day] = v.split('-').map(Number);
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  const y = digits(v, 0, 4), m = digits(v, 5, 7), d = digits(v, 8, 10);
+  return m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m);
 };
 export const addDays = (k: string, n: number) => {
+  const z = dayNumber(k);
+  if (z === z && Number.isInteger(n)) return keyOfDay(z + n);
   const d = parseKey(k);
   d.setDate(d.getDate() + n);
   return keyOf(d);
 };
 /** Whole days from a to b (b - a). */
-export const diffDays = (a: string, b: string) => Math.round((parseKey(b).getTime() - parseKey(a).getTime()) / DAY);
+export const diffDays = (a: string, b: string) => {
+  const x = dayNumber(a), y = dayNumber(b);
+  return x === x && y === y ? y - x : Math.round((parseKey(b).getTime() - parseKey(a).getTime()) / DAY);
+};
 /** Monday = 0 … Sunday = 6 */
-export const weekday = (k: string) => (parseKey(k).getDay() + 6) % 7;
+export const weekday = (k: string) => {
+  const z = dayNumber(k);
+  // 1970-01-01 was a Thursday
+  return z === z ? (((z + 3) % 7) + 7) % 7 : (parseKey(k).getDay() + 6) % 7;
+};
 export const startOfWeek = (k: string, weekStart: 0 | 1 = 1) => {
   const dow = parseKey(k).getDay();
   return addDays(k, -((dow - weekStart + 7) % 7));

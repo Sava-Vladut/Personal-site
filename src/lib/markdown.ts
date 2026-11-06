@@ -4,8 +4,7 @@
 // (lib/inline.ts, lib/palette.ts, lib/noteDoc/syntax.ts), and GFM's pipe tables.
 // This file has the plain words for excerpts on cards. Reading it formatted is components/Markdown.tsx; editing it is
 // the note editor's (src/editor, on the document of lib/noteDoc).
-import { plainInline } from './inline';
-import { mapTables } from './noteDoc/syntax';
+import { plainInline, tablesIn } from './inline';
 
 const cut = (s: string, max: number) => {
   const chars = Array.from(s);
@@ -48,7 +47,7 @@ const rowWords = (cells: string[]) => cells.map((c) => c.trim()).filter(Boolean)
 
 /** The words without the Markdown around them, for excerpts on cards. A table's rows are its cells' words, a line each. */
 export function stripMarkdown(text: string) {
-  return mapTables(text, rowWords)
+  return tablesIn(text, rowWords)
     .split('\n')
     .filter((l) => !/^\s*(```|~~~)/.test(l) && !/^\s*([-*_])([ \t]*\1){2,}\s*$/.test(l) && !/^<div style="page-break-after: ?always;?"><\/div>$/.test(l))
     .map((l) =>

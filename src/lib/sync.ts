@@ -215,6 +215,32 @@ async function fetchPhotos(s: State, id: string, key: CryptoKey) {
   s.sent = [...new Set([...s.sent, ...got.map((p) => p.id)])];
 }
 
+/** Gives the page a moment between two long pieces of work: scheduler.yield where there is one (it comes back first in
+ * line), else a timer. */
+const breathe = (): Promise<void> => {
+  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  return s?.yield ? s.yield() : new Promise((done) => setTimeout(done, 0));
+};
+
+/** Each record's JSON, kept per version of it (a saved record is a new object, never changed in place). */
+const recordJSON = new WeakMap<object, string>();
+const jsonOf = (x: object) => {
+  let s = recordJSON.get(x);
+  if (s === undefined) recordJSON.set(x, (s = JSON.stringify(x) ?? 'null'));
+  return s;
+};
+const listJSON = (xs: object[]) => '[' + xs.map(jsonOf).join(',') + ']';
+
+/**
+ * The journal as it's sent: letter for letter what JSON.stringify gives for it, but each note is only written out again
+ * when it changed. Writing out the whole journal for every send (a few seconds after each pause in writing) made a
+ * long journal's typing catch.
+ */
+export function docJSON() {
+  return `{"app":"my-mind","version":1,"entries":${listJSON(getEntries())},"people":${listJSON(getPeople())},"books":${listJSON(getBooks())}`
+    + `,"songs":${listJSON(getSongs())},"repos":${listJSON(getRepos())},"periods":${listJSON(getPeriods())},"deleted":${JSON.stringify(getDeleted())}}`;
+}
+
 /** One round: fetch the server's copy if it changed, merge it in, and send ours back if we have anything new. */
 async function pass(s: State) {
   const { id, key } = await keys(s.code);
@@ -229,6 +255,10 @@ async function pass(s: State) {
       return;
     }
     if (doc) {
+      // the copy was just decrypted and read in one go: on screen, let a frame and any tap through before merging it in
+      // (not while the app is going away, when a phone may stop it at any moment)
+      if (globalThis.document?.visibilityState === 'visible') await breathe();
+      if (state !== s) return;
       const r = await mergeSynced(doc);
       if (state !== s) return;
       r.icons.forEach((i) => resolveIcon(i).catch(() => {}));
@@ -244,7 +274,7 @@ async function pass(s: State) {
       try {
         await sendPhotos(s, id, key);
         if (state !== s) return;
-        const body = await encrypt(key, enc.encode(JSON.stringify({ app: 'my-mind', version: 1, entries: getEntries(), people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), periods: getPeriods(), deleted: getDeleted() })));
+        const body = await encrypt(key, enc.encode(docJSON()));
         if (state !== s) return;
         const res = await call(id, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'X-Sync-Rev': rev ?? 'new' }, body });
         if (res.status === 409) {

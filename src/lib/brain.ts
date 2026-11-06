@@ -2,11 +2,9 @@
 // felt (recent days count more, the way memories fade), and a few findings from psychology are checked against what was written.
 import { EMOTION, coreOf, shortName, valence } from '../data/emotions';
 import { addDays, diffDays, keyOf, shortDate, todayKey } from './dates';
-import { plainText } from './body';
-import { dropComments } from './comments';
 import { count, listOf, t } from './i18n';
 import { ZONES } from './brainShape';
-import { dex, moodOf, pct, streaks } from './stats';
+import { dex, moodOf, pct, streaks, wordsOf } from './stats';
 import { counted, weightOf } from './mood';
 import type { Entry } from './store';
 
@@ -75,7 +73,6 @@ export interface BrainState {
 }
 
 const label = (id: string) => (EMOTION[id].depth === 0 ? shortName(id) : EMOTION[id].name);
-const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 function levelWord(share: number) {
@@ -170,7 +167,7 @@ export function readBrain(all: Entry[], span = SPAN, end = todayKey(), compare =
     span, start, end,
     entries: list.length, activeDays, longestRun: streaks(list).longest,
     named: new Set(felt.flatMap((e) => e.emotions).filter((id) => EMOTION[id].depth === 2)).size,
-    words: list.reduce((s, e) => s + wordCount(dropComments(plainText(e.text))), 0),
+    words: list.reduce((s, e) => s + wordsOf(e), 0),
     lead, regions, alive, force,
     title: lead ? TITLE[lead] : list.length ? t('Quiet') : t('Asleep'),
     sub, days, arc,
@@ -187,7 +184,7 @@ function notesFor(all: Entry[], list: Entry[], felt: Entry[], start: string, spa
   /* affect labelling: putting a feeling into words calms the amygdala */
   const heavy = felt.filter((e) => (moodOf(e) ?? 0) < 0);
   if (heavy.length >= 2) {
-    const spoken = heavy.filter((e) => wordCount(dropComments(plainText(e.text))) >= 8).length;
+    const spoken = heavy.filter((e) => wordsOf(e) >= 8).length;
     add('label', 85, t('Naming it tames it'),
       spoken
         ? t('{a} of your {b} heavy entries came with words. Putting a feeling into words calms the amygdala, a finding called affect labelling (Lieberman, 2007).', { a: spoken, b: heavy.length })

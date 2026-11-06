@@ -22,7 +22,27 @@ export function moodOf(e: Entry): number | null {
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
-const words = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
+
+/** Whether a UTF-16 unit is one of the spaces \s matches (and trim() takes off). */
+const isSpace = (c: number) => c === 32 || (c >= 9 && c <= 13) || (c > 127 && (c === 0xa0 || c === 0x1680 || (c >= 0x2000 && c <= 0x200a)
+  || c === 0x2028 || c === 0x2029 || c === 0x202f || c === 0x205f || c === 0x3000 || c === 0xfeff));
+/** How many words a text has, as splitting it at its spaces counts them, without making the list of them. */
+export function countWords(s: string) {
+  let n = 0, inWord = false;
+  for (let i = 0; i < s.length; i++) {
+    if (isSpace(s.charCodeAt(i))) inWord = false;
+    else if (!inWord) { inWord = true; n++; }
+  }
+  return n;
+}
+/** The words an entry has written (its comments left out), counted once per version of it (a saved entry is a new
+ * object): the stats and the brain count them for every entry in a range, and again for every range and tab. */
+const wordCounts = new WeakMap<Entry, number>();
+export function wordsOf(e: Entry) {
+  let n = wordCounts.get(e);
+  if (n === undefined) wordCounts.set(e, (n = e.text ? countWords(dropComments(plainText(e.text))) : 0));
+  return n;
+}
 const inc = <K>(m: Map<K, number>, k: K, by = 1) => m.set(k, (m.get(k) ?? 0) + by);
 /** Adds an entry's mood to a list, twice for a highlighted note. */
 const addMood = (xs: number[], m: number, e: Entry) => { for (let k = weightOf(e); k--; ) xs.push(m); };
@@ -65,7 +85,7 @@ function kpis(list: Entry[]) {
     pleasantShare: total ? pleasant / total : null,
     feelings: new Set(occ.filter((id) => EMOTION[id]?.depth === 2)).size,
     diversity: total > 1 && leaves.size > 1 ? (entropy / Math.log(Math.min(total, 48 + 24 + 8))) * 100 : null,
-    words: list.reduce((s, e) => s + words(dropComments(plainText(e.text))), 0),
+    words: list.reduce((s, e) => s + wordsOf(e), 0),
   };
 }
 export type Kpis = ReturnType<typeof kpis>;

@@ -131,4 +131,27 @@ const TAGS = new RegExp(
  * a table's delimiter row (its rows stay as written) and without comments (their passages stay); Markdown left as it
  * is (search, exports).
  */
-export const dropTags = (text: string) => mapTables(dropComments(text), (_, line) => line).replace(TAGS, '');
+export const dropTags = (text: string) => {
+  const t = tablesIn(dropComments(text), (_, line) => line);
+  // (every tag starts with <)
+  return t.includes('<') ? t.replace(TAGS, '') : t;
+};
+
+/**
+ * A table's delimiter row (`| --- | :-: |`, in a quote too) is a line of only pipes, dashes, colons, spaces and >, with
+ * a pipe and a dash. Most notes have no such line: then they hold no table, and reading every line for one (the way
+ * mapTables does) is skipped. That made search and the excerpts of a long journal slow.
+ */
+const DELIM_LINE = /^[\s>|:-]*-[\s>|:-]*$/;
+function mayHoldTable(text: string) {
+  // only the lines with a pipe are looked at (in most notes, just those with a tag in them)
+  for (let i = text.indexOf('|'); i >= 0; ) {
+    let end = text.indexOf('\n', i);
+    if (end < 0) end = text.length;
+    if (DELIM_LINE.test(text.slice(text.lastIndexOf('\n', i) + 1, end))) return true;
+    i = text.indexOf('|', end);
+  }
+  return false;
+}
+/** mapTables, without reading the lines of a text that can't hold a table (it's given back as it is, as mapTables would). */
+export const tablesIn = (text: string, row: (cells: string[], line: string) => string) => (mayHoldTable(text) ? mapTables(text, row) : text);

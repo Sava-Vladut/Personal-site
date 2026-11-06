@@ -5,14 +5,13 @@ import { EMOTION, coreOf, shortName } from '../data/emotions';
 import { dayLabel, formatDate, keyOf, longToday, rangeLabel, shortDate, timeLabel, todayKey } from '../lib/dates';
 import { keepOnLeave, kept, navigate } from '../lib/router';
 import { getEntries, useBooks, useEntries, usePeople, useReady, useSettings, useSongs, type Entry, type WebImage } from '../lib/store';
-import { booksIn } from '../lib/books';
+import { booksOf } from '../lib/books';
 import { upcoming, whatsComing, whenLabel, type Upcoming } from '../lib/people';
-import { bodyOf, itemsOf, pictureWords, plainText } from '../lib/body';
+import { bodyOf, itemsOf, plainText } from '../lib/body';
 import { imageSrc } from '../lib/images';
 import type { Photo } from '../lib/photos';
 import { previewOf, stripMarkdown } from '../lib/markdown';
-import { dropTags } from '../lib/inline';
-import { commentWords } from '../lib/comments';
+import { haystack, warmSearch } from '../lib/search';
 import { dayMood } from '../lib/mood';
 import { watchView } from '../lib/inView';
 import { BookChip, BookCover } from '../components/books';
@@ -46,21 +45,6 @@ import { Notices, useNews, type News } from '../components/Notices';
 /** How many days of the feed are drawn at first; scrolling near the end draws this many more. */
 const DAYS_PAGE = 20;
 
-/** The id part of a tag or link (`note:<id>|`), which search shouldn't match. */
-const TAG_ID = /(\[\[|@\[|♪\[)(?:note|book|person|song|trap|law):[^\]|\n]+\|/g;
-
-/** What search looks through in a note (what your comments on it say too: your own words), worked out once per version
- * of it (a saved note is a new object), so typing a search doesn't re-read every note's text on every key. */
-const searchText = new WeakMap<Entry, string>();
-function haystack(e: Entry) {
-  let s = searchText.get(e);
-  if (s === undefined) {
-    s = `${e.title} ${dropTags(plainText(e.text)).replace(TAG_ID, '$1')} ${commentWords(e.text).join(' ')} ${pictureWords(e.text)} ${e.emotions.map((id) => EMOTION[id]?.name).join(' ')} ${e.music.map((m) => `${m.title} ${m.sub ?? ''}`).join(' ')} ${e.place?.name ?? ''}`.toLowerCase();
-    searchText.set(e, s);
-  }
-  return s;
-}
-
 export function Journal() {
   const entries = useEntries();
   const people = usePeople();
@@ -87,6 +71,8 @@ export function Journal() {
     return m;
   }, [entries]);
 
+  // the notes are read for search while its bar unfolds, so the first key typed doesn't wait for all of them
+  useEffect(() => (searching ? warmSearch(entries) : undefined), [searching, entries]);
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const names = new Map(people.map((p) => [p.id, p.name.toLowerCase()]));
@@ -665,7 +651,7 @@ const THUMBS = 5;
 export function NoteCard({ e, dated }: { e: Entry; dated?: boolean }) {
   const byId = usePeopleById();
   const shelf = useBooks();
-  const books = booksIn(e.text, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
+  const books = booksOf(e, shelf).map((id) => shelf.find((b) => b.id === id)!).filter(Boolean);
   const { heading, preview, pictures } = cardOf(e);
   const people = e.people.map((id) => byId.get(id)!).filter(Boolean);
   const hold = useHold(e, () => navigate('note/' + e.id));
