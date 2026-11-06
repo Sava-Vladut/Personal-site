@@ -14,7 +14,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { HttpError } from './http-error.js';
-import { json } from './http-response.js';
+import { REVALIDATE, json } from './http-response.js';
 
 const GQL = 'https://gql.twitch.tv/gql';
 const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
@@ -520,9 +520,11 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
     return sullyGnome.history(store, login);
   }
 
+  // All of it is public and asked for again and again (the history every few seconds while it loads): the browser
+  // keeps a copy and an unchanged one costs a 304.
   async function api(req, res, path) {
     if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
-    if (path === '/api/streamers') return json(res, 200, await list());
+    if (path === '/api/streamers') return json(res, 200, await list(), REVALIDATE);
     const wantsHistory = path.endsWith('/history');
     if (wantsHistory) path = path.slice(0, -'/history'.length);
     let raw;
@@ -535,9 +537,9 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
     if (!LOGIN.test(login)) throw new HttpError(400, 'That isn’t a Twitch channel name.');
     if (wantsHistory) {
       if (!sullyGnome) throw new HttpError(404, 'No history here.');
-      return json(res, 200, await history(login));
+      return json(res, 200, await history(login), REVALIDATE);
     }
-    return json(res, 200, await report(login));
+    return json(res, 200, await report(login), REVALIDATE);
   }
 
   return { api, poll, start, stop };

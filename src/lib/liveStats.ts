@@ -22,7 +22,8 @@ export function liveStats<T>(url: string, tidy: (raw: unknown) => T = (raw) => r
   function load(force = false) {
     if (pending || (!force && Date.now() - fetchedAt < FRESH && state.data)) return pending;
     set({ loading: true });
-    pending = fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
+    // always asked again, but with the copy the browser kept: unchanged stats come back as a 304 with no body
+    pending = fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(15_000) })
       .then(async (r) => {
         if (!r.ok) throw new Error(unavailable());
         let data: T;

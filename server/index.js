@@ -31,7 +31,7 @@ import { createAccountStore } from './accounts.js';
 import { createCloner } from './clone.js';
 import { HttpError } from './http-error.js';
 import { readJson } from './http-request.js';
-import { json } from './http-response.js';
+import { REVALIDATE, json, sendJson } from './http-response.js';
 import { createShareHandler } from './share.js';
 import { createStatusHandler } from './status.js';
 import { createLearnHandler } from './learn.js';
@@ -1036,8 +1036,8 @@ async function cardWarsStats(req, res) {
       return json(res, 502, { error: 'The Card Wars server can’t be reached right now.' });
     }
   }
-  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-  res.end(cardWars.body);
+  // the page polls it every 30 seconds: while it's the same answer, that's a 304 with no body
+  return sendJson(res, 200, cardWars.body, REVALIDATE);
 }
 
 async function api(req, res, url) {
