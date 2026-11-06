@@ -1200,7 +1200,8 @@ test('Insert › Footnote: a reference at the caret, its text at the end of the 
   assert.equal(after('one[^1]| two\n\n[^1]: first', E.insertFootnote), 'one[^1][^2] two\n\n[^1]: first\n[^2]: |');
   assert.equal(after('x|\n', E.insertFootnote), 'x[^1]\n\n[^1]: |', 'an empty last line is the blank line before it');
   assert.equal(after('x|\n\n', E.insertFootnote), 'x[^1]\n\n[^1]: |');
-  assert.equal(after('a «word» b', E.insertFootnote), 'a [^1] b\n\n[^1]: |', 'the selection is typed over');
+  assert.equal(after('a «word» b', E.insertFootnote), 'a word[^1] b\n\n[^1]: |', 'with a selection, just after it: its words are kept');
+  assert.equal(after('«Ceafa» de porc', E.insertFootnote), 'Ceafa[^1] de porc\n\n[^1]: |');
   assert.equal(after('**bo|ld**', E.insertFootnote), '**bo[^1]ld**\n\n[^1]: |', 'it takes the words\' styles');
   assert.equal(after('a[^note] b[^7]|\n\n[^note]: n\n[^7]: s', E.insertFootnote), 'a[^note] b[^7][^8]\n\n[^note]: n\n[^7]: s\n[^8]: |', 'one past the highest number');
   assert.equal(after('- item|', E.insertFootnote), '- item[^1]\n\n[^1]: |');
@@ -1671,4 +1672,73 @@ test('comments: Delete, Previous and Next, over lines, in a table, beside other 
   assert.equal(sel(run(t, E.stepComment(-1))), 'a');
   assert.equal(sel(run(t.replace('|', '').replace(/c<\/span>/, 'c</span>') + '|', E.stepComment(1))), 'a', 'past the last: round to the first');
   assert.equal(run('no comments |here', E.stepComment(1))[1], false);
+});
+
+/* ---------- the selected lines, and nothing else ---------- */
+
+test('Quote on a selection ending at the start of the next line leaves that line out, as every style does', () => {
+  assert.equal(after('«a\n»b', E.toggleQuote), '> «a\n»b');
+  assert.equal(after('x\n«a\n»b', E.setStyle('quote')), 'x\n> «a\n»b');
+  assert.equal(after('«a\n»- b', E.toggleQuote), '> «a\n- »b');
+});
+
+test('Alt+Shift+Up and Down with whole lines selected: the selection moves with them, never takes in the block passed', () => {
+  assert.equal(after('x\n«a\n»b', E.moveBlocks(-1)), '«a»\nx\nb');
+  assert.equal(after('x\n«a\n»b', E.moveBlocks(1)), 'x\nb\n«a»');
+  assert.equal(after('«a\n»b\nc', E.moveBlocks(1)), 'b\n«a»\nc');
+  assert.equal(after('x\n«a\nb»\nc', E.moveBlocks(1)), 'x\nc\n«a\nb»', 'a selection inside the lines maps along as it is');
+});
+
+test('Tab and Shift+Tab on lines of code selected move each line, never typing a tab over them', () => {
+  assert.equal(after('```\n«a\nb»\n```', E.tab(false)), '```\n\t«a\n\tb»\n```');
+  assert.equal(after('```\nx«a\nb\n»c\n```', E.tab(false)), '```\n\tx«a\n\tb\n»c\n```', 'a line the selection only ends at the start of stays');
+  assert.equal(after('```\n\t«a\n  b\nc»\n```', E.tab(true)), '```\n«a\nb\nc»\n```');
+  assert.equal(after('```\nx«a»b\n```', E.tab(false)), '```\nx\t|b\n```', 'within one line, the tab is typed over the selection');
+  assert.equal(after('```\n\ta\n\t|b\n```', E.tab(true)), '```\n\ta\n|b\n```', 'Shift+Tab with a caret: its line only');
+});
+
+test('Delete at the end of the line before a callout undoes the callout, as Backspace at its title does (never selects it whole)', () => {
+  for (const [from, to] of [['a|\n> [!note] T\n> b', 'a|\nT\n> b'], ['# a|\n> [!note] T', '# a|\nT'], ['```\nx|\n```\n> [!note] T\n> b', '```\nx|\n```\nT\n> b']]) {
+    const [text, ok, s] = run(from, Delete);
+    assert.equal(ok, true, from);
+    assert.equal(text, to, from);
+    assert.equal(s.selection.empty, true, from);
+  }
+});
+
+test('a footnote’s text keeps out of code above it on Backspace, and keeps its place when a block goes in on it', () => {
+  assert.equal(after('x[^1]\n```\nc\n```\n[^1]: |a', Backspace), 'x[^1]\n```\nc|\n```\n[^1]: a');
+  assert.equal(after('x[^1]\n\n[^1]: |', E.insertBlock('hr')), 'x[^1]\n\n[^1]: \n---\n|');
+});
+
+test('a code block or callout put in on a selection takes the selected words in, never deletes them', () => {
+  assert.equal(after('a«bc»', E.insertBlock('code')), 'a\n```\nbc|\n```');
+  assert.equal(after('x\n«a\nb\n»c', E.insertBlock('code')), 'x\n```\na\nb|\n```\nc', 'the line it ends at the start of stays out');
+  assert.equal(after('x«a\n- b\n# c»d', E.insertBlock('code')), 'x\n```\na\nb\nc|\n```\nd');
+  assert.equal(after('«a\nb»', E.insertBlock('callout')), '> [!note] |\n> a\n> b', 'the caret in the title, the lines its body');
+  assert.equal(after('a «**b**» c', E.insertBlock('callout')), 'a \n> [!note] |\n> **b**\n c', 'with their styles');
+  assert.equal(after('> «a\n> b»', E.insertBlock('callout')), '> > [!note] |\n> > a\n> > b');
+  // what can't go in (a picture): the block goes in empty after the selection, nothing deleted
+  assert.equal(after('«a\n[[photo:p1]]\nb»', E.insertBlock('callout')), 'a\n[[photo:p1]]\nb\n> [!note] |');
+  assert.equal(after('«a\n[[photo:p1]]\nb»', E.insertBlock('code')), 'a\n[[photo:p1]]\nb\n```\n|\n```');
+  // a divider or page break goes after the selected lines, their words kept
+  assert.equal(after('«Ceafa» de porc', E.insertBlock('hr')), 'Ceafa de porc\n---\n|');
+  assert.equal(after('«a\nb»\nc', E.insertBlock('hr')), 'a\nb\n---\n|c');
+  assert.equal(after('«a\n»b', E.insertBlock('pagebreak')), 'a\n<div style="page-break-after: always"></div>\n|b', 'not the line it only ends at the start of');
+  // in a callout's title, the title's words after the caret go on below the block, reading in the order they did
+  assert.equal(after('> [!note] Ti|tle\n> b', E.insertBlock('hr')), '> [!note] Ti\n> ---\n> |tle\n> b');
+  assert.equal(after('> [!note] Title|\n> b', E.insertBlock('hr')), '> [!note] Title\n> ---\n> |b');
+});
+
+test('a selection from a quote into a callout’s body is taken out by Backspace, Enter or a block put in (not left, nor doubled)', () => {
+  const shaped = { plugins: [new nd.pmState.Plugin({ appendTransaction: (trs, _old, state) => nd.normalizeTr(state) })] };
+  const text = '> q«1\n> q2\n\n> [!note] T\n> b»ody\n> - li';
+  assert.equal(show(run(stateFrom(text, shaped), E.backspace)[2]), '> q|\n\n> [!note] \n> ody\n> - li');
+  assert.equal(show(run(stateFrom(text, shaped), E.enter)[2]), '> q\n> |\n\n> [!note] \n> ody\n> - li');
+  assert.equal(show(run(stateFrom(text, shaped), E.insertBlock('code'))[2]), '> q\n> ```\n> 1\n> q2\n> \n> T\n> b|\n> ```\n\n> [!note] \n> ody\n> - li');
+});
+
+test('Enter and Shift+Enter on a selection from a callout’s title into its body: the selection goes, the rest starts the body', () => {
+  assert.equal(after('> [!note] T«i\n> b»c', E.newLine), '> [!note] T\n> |c');
+  assert.equal(after('> [!note] T«i\n> b»c', E.enter), '> [!note] T\n> |c');
 });

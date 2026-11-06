@@ -126,10 +126,13 @@ export const headingEnter: Command = (state, dispatch) => {
   return splitPlain(state, dispatch);
 };
 
-/** Enter in a callout's title: what's after the caret becomes the first line of its body, the caret going with it. */
+/**
+ * Enter in a callout's title: what's after the caret becomes the first line of its body, the caret going with it. A
+ * selection running on from the title (into its body, say) is taken out first, as anywhere else.
+ */
 export const titleEnter: Command = (state, dispatch) => {
-  const { $from, $to } = state.selection;
-  if ($from.parent.type.name !== 'calloutTitle' || $from.parent !== $to.parent) return false;
+  const { $from } = state.selection;
+  if ($from.parent.type.name !== 'calloutTitle') return false;
   const tr = state.tr;
   // before the title's words, with no line above the callout: a plain line opens above it
   if (state.selection.empty && $from.parentOffset === 0 && $from.parent.content.size && !lineBefore($from, $from.depth - 1)) {
@@ -137,7 +140,8 @@ export const titleEnter: Command = (state, dispatch) => {
     return true;
   }
   if (!state.selection.empty) deleteSelectionSafe(tr);
-  tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph }]);
+  // (where a selection out of the callout couldn't be taken out, the caret is left at its start, and nothing splits)
+  if (tr.selection.$from.parent.type.name === 'calloutTitle') tr.split(tr.selection.from, 1, [{ type: state.schema.nodes.paragraph }]);
   dispatch?.(tr.scrollIntoView());
   return true;
 };
@@ -247,14 +251,15 @@ export const backspace: Command = (state, dispatch) => {
     else if (prev?.isTextblock) caret(pos - 1);
     return true;
   }
-  if (prev?.type.spec.code && tb.type.name === 'paragraph') {
-    if (!tb.content.size) tr.delete(pos, pos + tb.nodeSize);
+  // (a footnote's text as well as a plain line: its words would go into the code, its label lost)
+  if (prev?.type.spec.code) {
+    if (!tb.content.size && tb.type.name === 'paragraph') tr.delete(pos, pos + tb.nodeSize);
     caret(pos - 1);
     return true;
   }
   // nor into a table's last cell: the caret goes to its end (an empty line goes)
-  if (prev?.type.name === 'table' && tb.type.name === 'paragraph') {
-    if (!tb.content.size) tr.delete(pos, pos + tb.nodeSize);
+  if (prev?.type.name === 'table') {
+    if (!tb.content.size && tb.type.name === 'paragraph') tr.delete(pos, pos + tb.nodeSize);
     caret(pos - 3);
     return true;
   }
@@ -315,6 +320,14 @@ export const deleteForward: Command = (state, dispatch) => {
     }
     return true;
   }
+  // a line just before a callout: the callout comes undone, as Backspace at its title's start does it (the title a
+  // plain line, the body a quote; a line before a quote takes its first line out of it the same way). ProseMirror's
+  // own would select the whole callout, for the next Delete to take it out.
+  if (next?.type.name === 'callout') {
+    const tr = state.tr;
+    if (dispatch && unCallout(tr, $c.after())) dispatch(tr.scrollIntoView());
+    return true;
+  }
   const top = topEdge($c, true);
   const after = top === null ? null : state.doc.maybeChild(top + 1);
   if (top !== null && isQuote(state.doc.child(top)) && after?.isTextblock) {
@@ -341,13 +354,22 @@ export const tab = (out: boolean): Command => (state, dispatch, view) => {
   const { $from, $to, from, to, empty } = state.selection;
   const tr = state.tr;
   if ($from.parent.type.spec.code) {
-    if (!out) replaceSelectionText(tr, '\t');
+    const text = $from.parent.textContent;
+    // a selection over several lines of the code moves each of them, as in a code editor (never typed over by the
+    // tab); else Tab types one, and Shift+Tab takes one off the caret's line
+    const lines = $from.parent === $to.parent && text.slice($from.parentOffset, $to.parentOffset).includes('\n');
+    if (!out && !lines) replaceSelectionText(tr, '\t');
     else {
-      // the code line the caret is on
-      const text = $from.parent.textContent;
-      const start = text.lastIndexOf('\n', $from.parentOffset - 1) + 1;
-      const m = text.slice(start).match(OUTDENT);
-      if (m) tr.delete($from.start() + start, $from.start() + start + m[0].length);
+      // the starts of the code lines the selection is on (one ending at the very start of a line leaves it out)
+      const starts: number[] = [];
+      for (let s = text.lastIndexOf('\n', $from.parentOffset - 1) + 1; s >= 0 && (s < $to.parentOffset || !starts.length); s = text.indexOf('\n', s) + 1 || -1) starts.push(s);
+      for (const s of starts.reverse()) {
+        if (!out) tr.insertText('\t', $from.start() + s);
+        else {
+          const m = text.slice(s).match(OUTDENT);
+          if (m) tr.delete($from.start() + s, $from.start() + s + m[0].length);
+        }
+      }
     }
   } else {
     const blocks = selectedBlocks(state).filter((b) => b.node.type.name === 'paragraph');
@@ -390,7 +412,11 @@ const allQuoted = (state: EditorState) => {
 
 /** Puts the selected blocks in a quote (pictures can't go in one: the blocks around them get one each). */
 function wrapQuote(state: EditorState, tr: Transaction): boolean {
-  const { $from, $to } = state.selection;
+  const { $from } = state.selection;
+  // to the end of the last selected line: a selection ending at the very start of the next leaves that one out, as
+  // with every other style (selectedBlocks)
+  const blocks = selectedBlocks(state), last = blocks[blocks.length - 1];
+  const $to = last ? state.doc.resolve(last.pos + last.node.nodeSize - 1) : state.selection.$to;
   let range = $from.blockRange($to);
   // a callout's title can't go in a quote on its own: the whole callout does
   while (range && range.parent.type.name === 'callout' && range.startIndex === 0 && range.depth > 0) {
@@ -503,19 +529,73 @@ export type BlockKind = 'hr' | 'code' | 'callout' | 'pagebreak';
 /**
  * Puts a divider, page break, code block or callout in at the caret: in place of an empty line, or before or after the
  * line at its start or end, or splitting it (the words after go on a plain line below). A divider or page break leaves
- * the caret on the line after it; a code block or callout takes the caret inside. Not in code, nor in a table's cell.
+ * the caret on the line after it (with a selection, it goes after the selected lines, their words kept); a code block
+ * or callout takes the caret inside, and what's selected with it: into the code as its text (the caret at its end),
+ * into the callout as its body (the caret in its title), never deleted. Not in code, nor in a table's cell.
  */
 export const insertBlock = (kind: BlockKind): Command => (state, dispatch) => {
   const n = state.schema.nodes;
-  const node = kind === 'hr' ? n.horizontalRule.create()
-    : kind === 'pagebreak' ? n.pageBreak.create()
-    : kind === 'code' ? n.codeBlock.create({ open: '```', close: '```' })
-    : n.callout.create({ kind: 'note', fold: '', sep: ' ' }, n.calloutTitle.create());
+  const sel = state.selection;
+  // (from code or a table's cell, nothing: as placeBlock says)
+  const $s = sel.$from;
+  if (!$s.parent.isTextblock || $s.parent.type.spec.code || $s.parent.type.spec.tableRole) return false;
+  let slice = sel.empty || kind === 'hr' || kind === 'pagebreak' ? null : state.doc.slice(sel.from, sel.to);
+  // an empty line at either end of it is only the selection starting at a line's end, or ending at a line's start
+  const lines: PMNode[] = [];
+  // (a callout cut open at the selection's start has lost its title: what's left of it is a quote)
+  const whole = (node: PMNode): PMNode => {
+    if (node.isTextblock || node.isLeaf) return node;
+    const kids: PMNode[] = [];
+    node.forEach((c) => kids.push(whole(c)));
+    return node.type === n.callout && kids[0]?.type !== n.calloutTitle ? n.blockquote.create(null, kids) : node.type.create(node.attrs, kids, node.marks);
+  };
+  if (slice?.content.firstChild?.isInline) lines.push(n.paragraph.create(null, slice.content));
+  else slice?.content.forEach((c) => lines.push(whole(c)));
+  if (slice?.openEnd && lines.length > 1 && lines[lines.length - 1].isTextblock && !lines[lines.length - 1].content.size) lines.pop();
+  if (slice?.openStart && lines.length > 1 && lines[0].isTextblock && !lines[0].content.size) lines.shift();
+  // code takes only words (a picture, a divider or a table would be lost in it), a callout what can go in one (not a
+  // picture): else the block goes in empty at the selection's end, the selection kept
+  let words = true;
+  for (const l of lines) l.descendants((c) => (words &&= !(c.isLeaf && c.isBlock) && c.type.name !== 'table'));
+  if (lines.some((l) => (l.isLeaf && l.isBlock) || l.type.name === 'table')) words = false;
+  const make = (taking: boolean): PMNode | null => {
+    if (kind === 'hr') return n.horizontalRule.create();
+    if (kind === 'pagebreak') return n.pageBreak.create();
+    if (kind === 'code') {
+      if (taking && !words) return null;
+      // the selected lines' words (not the line its start ends, nor the one its end only starts)
+      const apart = sel.$from.parent !== sel.$to.parent;
+      let text = taking ? state.doc.textBetween(sel.from, sel.to, '\n') : '';
+      if (apart && sel.$from.parentOffset === sel.$from.parent.content.size) text = text.replace(/^\n/, '');
+      if (apart && sel.$to.parentOffset === 0) text = text.replace(/\n$/, '');
+      return n.codeBlock.create({ open: '```', close: '```' }, text ? state.schema.text(text) : null);
+    }
+    const title = n.calloutTitle.create(), attrs = { kind: 'note', fold: '', sep: ' ' };
+    try {
+      const node = n.callout.create(attrs, taking ? [title, ...lines] : [title]);
+      node.check();
+      return node;
+    } catch {
+      return null;
+    }
+  };
   const tr = state.tr;
+  // a divider or page break on a selection goes after the selected lines, their words kept (never typed over them)
+  const lastLine = selectedBlocks(state).pop();
+  if (!sel.empty && (kind === 'hr' || kind === 'pagebreak') && lastLine) tr.setSelection(TextSelection.create(tr.doc, lastLine.pos + lastLine.node.nodeSize - 1));
+  let node = make(!!slice);
+  if (!node) {
+    slice = null;
+    node = make(false)!;
+    tr.setSelection(Selection.near(sel.$to, -1));
+  }
+  // the selection is taken out before the block goes in with its words (if it couldn't be, they'd be there twice)
+  if (slice && !deleteSelectionSafe(tr).docChanged) node = make(false)!;
   const at = placeBlock(tr, node);
   if (at === null) return false;
   if (!dispatch) return true;
-  if (kind === 'code' || kind === 'callout') tr.setSelection(TextSelection.create(tr.doc, at + (kind === 'callout' ? 2 : 1)));
+  if (kind === 'code') tr.setSelection(TextSelection.create(tr.doc, at + node.nodeSize - 1));
+  else if (kind === 'callout') tr.setSelection(TextSelection.create(tr.doc, at + 2));
   else {
     const next = tr.doc.resolve(at + node.nodeSize).nodeAfter;
     if (!next?.isTextblock) tr.insert(at + node.nodeSize, n.paragraph.create());
@@ -565,6 +645,15 @@ export const moveBlocks = (dir: -1 | 1): Command => (state, dispatch) => {
     tr.delete(at, start).insert(end - other.nodeSize, other);
   } else {
     tr.delete(end, end + other.nodeSize).insert(start, other);
+  }
+  // Not so a selection ending at the very start of the line after them (whole lines selected, that one left out):
+  // that line stays, so the selection's end would stay with it, the selection then taking in the block moved past
+  // them. It ends at the end of their last line instead, moving with them.
+  const sel = state.selection, lastEnd = last.pos + last.node.nodeSize - 1;
+  if (sel.to > lastEnd) {
+    const shift = dir < 0 ? -other.nodeSize : other.nodeSize;
+    const keep = (p: number) => Math.min(p, lastEnd) + shift;
+    tr.setSelection(TextSelection.create(tr.doc, keep(sel.anchor), keep(sel.head)));
   }
   dispatch(closeHistory(tr).scrollIntoView());
   return true;

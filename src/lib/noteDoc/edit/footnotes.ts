@@ -4,7 +4,6 @@
 // components/Markdown.tsx footnotesOf). A text nothing refers to any more is drawn faded, so it isn't left behind unseen.
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { TextSelection, type Command } from '@tiptap/pm/state';
-import { deleteSelectionSafe } from './util';
 
 export interface Footnotes {
   /** each label's number, by where it's first referred to */
@@ -50,21 +49,20 @@ export function nextLabel(doc: PMNode): string {
 }
 
 /**
- * Insert › Footnote (Ctrl+Alt+F): a reference at the caret (the selection is typed over), and its text at the end of
- * the note, after the footnotes there (after a blank line when there are none yet), the caret in it. Not in code, nor
- * in a footnote's own text.
+ * Insert › Footnote (Ctrl+Alt+F): a reference at the caret (with a selection, just after it: the words it notes are
+ * kept, as in Word), and its text at the end of the note, after the footnotes there (after a blank line when there are
+ * none yet), the caret in it. Not in code, nor in a footnote's own text.
  */
 export const insertFootnote: Command = (state, dispatch) => {
-  const { $from } = state.selection;
-  const p = $from.parent;
-  if (!p.inlineContent || p.type.spec.code || p.type.name === 'footnote' || $from.marks().some((m) => m.type.name === 'code')) return false;
+  const $at = state.selection.$to;
+  const p = $at.parent;
+  if (!p.inlineContent || p.type.spec.code || p.type.name === 'footnote' || $at.marks().some((m) => m.type.name === 'code')) return false;
   if (!dispatch) return true;
   const { footnoteRef, footnote, paragraph } = state.schema.nodes;
   const label = nextLabel(state.doc);
   const tr = state.tr;
-  if (!state.selection.empty) deleteSelectionSafe(tr);
-  const marks = (state.storedMarks ?? tr.selection.$from.marks()).filter((m) => footnoteRef.allowsMarkType(m.type));
-  tr.insert(tr.selection.from, footnoteRef.create({ label }, null, marks));
+  const marks = ((state.selection.empty && state.storedMarks) || $at.marks()).filter((m) => footnoteRef.allowsMarkType(m.type));
+  tr.insert($at.pos, footnoteRef.create({ label }, null, marks));
   const doc = tr.doc;
   const last = doc.lastChild!;
   const def = footnote.create({ label, sep: ' ' });
