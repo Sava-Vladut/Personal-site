@@ -187,8 +187,8 @@ test("tables are found exactly where mapTables finds them, and texts that can't 
   }
   for (const s of samples) {
     assert.equal(lib.tablesIn(s, row), lib.mapTables(s, row), JSON.stringify(s));
-    assert.equal(lib.stripMarkdown(s), lib.stripMarkdown(s));
   }
+  assert.equal(lib.stripMarkdown('| a | b |\n| --- | --- |\n| 1 | 2 |\nafter @[person:p1|Ana]'), 'a · b\n1 · 2\nafter Ana');
   // dropTags as it was: mapTables over the text without comments, then the tags taken out
   const tagged = '<u>under</u> <span style="color:red">red</span> x <!-- align:center -->\n| a |\n| --- |\n<div style="page-break-after: always;"></div>\nend';
   assert.equal(lib.dropTags(tagged), 'under red x\n| a |\nend');
