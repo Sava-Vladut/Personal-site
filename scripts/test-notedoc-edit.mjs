@@ -247,6 +247,14 @@ test('Enter on a selection that starts in a list item carries the list on', () =
   assert.equal(after('1. a«b\n2. »c\n3. d', E.enter), '1. a\n2. |c\n3. d');
   assert.equal(after('- a«a\nb»b', E.enter), '- a\n- |b', 'into a plain line: it joins the item');
   assert.equal(after('x«x\n- b»b', E.enter), 'x\n|b', 'from a plain line, a plain line');
+  // the selected words give way to a new item, as in Word: never the list ended (the item emptied by the selection
+  // going was no empty item) nor a plain line opened above
+  assert.equal(after('- [ ] «Ceafa de porc»', E.enter), '- [ ] \n- [ ] |', 'all an item’s words');
+  assert.equal(after('- [ ] «Ceafa» de porc', E.enter), '- [ ] \n- [ ] | de porc', 'its first words');
+  assert.equal(after('1. «a»\n2. b', E.enter), '1. \n2. |\n3. b');
+  assert.equal(after('\t- «a»', E.enter), '\t- \n\t- |', 'a nested one stays where it is');
+  assert.equal(after('- «a\n- b»\n- c', E.enter), '- \n- |\n- c', 'whole items');
+  assert.equal(after('- [x] «done»', E.enter), '- [x] \n- [ ] |');
 });
 
 test('Delete at the end of a quote: the line after runs on from it, never into the quote as a line of its own', () => {

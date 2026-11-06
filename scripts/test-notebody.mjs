@@ -263,12 +263,30 @@ test('a task’s box ticks it, writing or reading, and the caret stays put', () 
   boxes[1].dispatchEvent(new host.ownerDocument.defaultView.MouseEvent('click', { bubbles: true, cancelable: true }));
   assert.equal(n.text(), '- [ ] milk\n- [x] eggs');
   assert.deepEqual({ ...n.selection() }, { ...before });
+  // the box shows it ticked once the click is done (a click's default prevented, the browser put it back unticked)
+  const shown = () => [...host.querySelectorAll('.md-task')].map((li) => [li.classList.contains('is-done'), li.querySelector('input').checked]);
+  assert.deepEqual(shown(), [[false, false], [true, true]]);
+  boxes[1].dispatchEvent(new host.ownerDocument.defaultView.MouseEvent('click', { bubbles: true, cancelable: true }));
+  assert.equal(n.text(), '- [ ] milk\n- [ ] eggs');
+  assert.deepEqual(shown(), [[false, false], [false, false]]);
+  boxes[1].dispatchEvent(new host.ownerDocument.defaultView.MouseEvent('click', { bubbles: true, cancelable: true }));
   // reading: the words can't change, but a task still ticks
   n.setEditable(false);
   assert.equal(host.querySelector('.note-editor').getAttribute('contenteditable'), 'false');
   host.querySelectorAll('.md-task input')[0].dispatchEvent(new host.ownerDocument.defaultView.MouseEvent('click', { bubbles: true, cancelable: true }));
   assert.equal(n.text(), '- [x] milk\n- [x] eggs');
   assert.ok(seen.changes >= 2);
+});
+
+test('a task’s line through and its box’s target, as the stylesheet draws them', () => {
+  const css = readFileSync(root + 'src/styles/notes.css', 'utf8');
+  const rule = (sel) => new RegExp(`^${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`, 'm').exec(css)?.[1] ?? '';
+  // unticked, no line through its words at all (a see-through one showed on a selected or misspelt word)
+  assert.doesNotMatch(rule('.md .md-task .md-li-text'), /line-through/);
+  assert.match(rule('.md .md-task.is-done .md-li-text'), /line-through/);
+  // the box's wider target stays within its own line (1.62em), never over the box of the task above or below
+  assert.match(rule('.note-editor .md-task input::before'), /inset: calc\(\(100% - 1\.62em\) \/ 2\) -10px/);
+  assert.match(css, /^\.note-body \.md \{[^}]*line-height: 1\.62;/m);
 });
 
 test('an @ brings up suggestions, and picking one puts the tag in as a chip with a space after', () => {

@@ -241,9 +241,12 @@
 .md .md-task input::after { content: ''; width: 9px; height: 5px; border: solid var(--on-ink); border-width: 0 0 2px 2px; rotate: -45deg; translate: 0 -1px; scale: 0; transition: scale var(--dur-3) var(--spring-bouncy); }
 .md .md-task input:checked { background: var(--ink); border-color: var(--ink); }
 .md .md-task input:checked::after { scale: 1; }
-/* ticked, the words fade and a line runs through them (eased, not snapped) */
-.md .md-task .md-li-text { text-decoration: line-through transparent; transition: color var(--dur-2), text-decoration-color var(--dur-2); }
-.md .md-task.is-done .md-li-text { color: var(--ink-3); text-decoration-color: var(--line-2); }
+/* ticked, the words fade and a line runs through them (eased in from no colour, not snapped). An unticked task has no
+   line at all, not a see-through one: a browser can paint a selected or misspelt word over again in the word's own
+   colour, the line through it included, which would show one word of an unticked task (Ceafa, without its ă) struck
+   through alone. */
+.md .md-task .md-li-text { text-decoration-color: transparent; transition: color var(--dur-2), text-decoration-color var(--dur-2); }
+.md .md-task.is-done .md-li-text { color: var(--ink-3); text-decoration: line-through var(--line-2); }
 
 .md blockquote { margin: 0.3em 0; padding: 0 0 0 14px; border-left: 3px solid var(--line-2); color: var(--ink-2); }
 .md .md-callout { --tone: var(--emo-sadness); margin: 0.4em 0; padding: 10px 14px; border-radius: var(--r-m); background: color-mix(in oklab, var(--tone) 10%, var(--surface)); border-left: 3px solid var(--tone); }
@@ -340,9 +343,11 @@
 .note-editor pre { white-space: pre-wrap; }
 .note-editor pre code { white-space: inherit; }
 .note-editor .md-li-text { white-space: pre-wrap; }
-/* a task's box: an easy target, a finger's width */
+/* a task's box: an easy target, a finger's width across, and as tall as its line (1.62em, .note-body .md): reaching
+   10px up and down too, a box's target ran over the bottom of the one above it (drawn later, it's on top), so a tap
+   there ticked the task below */
 .note-editor .md-task input { touch-action: manipulation; }
-.note-editor .md-task input::before { content: ''; position: absolute; inset: -10px; }
+.note-editor .md-task input::before { content: ''; position: absolute; inset: calc((100% - 1.62em) / 2) -10px; }
 .note-editor .md-callout-title::before { content: var(--icon); margin-right: 8px; -webkit-user-select: none; user-select: none; }
 /* ProseMirror's stand-in after a tag that ends a line (so Safari and Chrome can put the caret after it), and the one at
    the caret while a word is composed after a link or a style picked with nothing selected: a picture of nothing, in the

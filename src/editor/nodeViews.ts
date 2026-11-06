@@ -62,9 +62,12 @@ class ListItemView implements NodeView {
       e.preventDefault();
       this.tick();
     });
-    box.addEventListener('click', (e) => {
-      e.preventDefault(); // drawn from the document, not the browser's own state
+    // A click's own tick is left be and the box drawn from the document after: a click whose default is prevented has
+    // the browser put the box back as it was once the click is done, after the document drew it, so a task ticked
+    // with the mouse showed an empty box beside its struck-through words.
+    box.addEventListener('click', () => {
       this.tick();
+      this.draw();
     });
     return box;
   }
