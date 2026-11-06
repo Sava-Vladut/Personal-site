@@ -45,6 +45,21 @@ export function defaultLayout(): WheelLayout {
 const isGroup = (l: WheelLayout, id: string) => builtIn.has(id) || id in l.groups;
 const strings = (x: unknown) => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : []);
 
+/**
+ * Where a place or group missing from a save goes on the ring: just after the nearest one before it on the wheel as
+ * shipped that's on the ring, so it keeps its neighbour however the ring was rearranged (and Settings stays last).
+ * One of your own groups, which the wheel as shipped doesn't have, goes at the end.
+ */
+function slot(top: string[], id: string) {
+  const at = WHEEL.findIndex((n) => n.id === id);
+  if (at < 0) return top.length;
+  for (let i = at - 1; i >= 0; i--) {
+    const k = top.indexOf(WHEEL[i].id);
+    if (k >= 0) return k + 1;
+  }
+  return 0;
+}
+
 /** Every place exactly once and every group on the ring, whatever was saved. */
 export function normalize(raw: Partial<WheelLayout> | null | undefined): WheelLayout {
   const groups: Record<string, Group> = {};
@@ -67,8 +82,7 @@ export function normalize(raw: Partial<WheelLayout> | null | undefined): WheelLa
   // groups that weren't saved (new, or a broken save) come back where they belong
   for (const id of [...builtIn.keys(), ...Object.keys(groups)]) {
     if (seen.has(id)) continue;
-    const at = WHEEL.findIndex((n) => n.id === id);
-    l.top.splice(at < 0 ? l.top.length : Math.min(at, l.top.length), 0, id);
+    l.top.splice(slot(l.top, id), 0, id);
     l.kids[id] = [];
   }
   // places that weren't saved: in their own group, else on the ring where they'd be
@@ -76,10 +90,7 @@ export function normalize(raw: Partial<WheelLayout> | null | undefined): WheelLa
     if (placed.has(id)) continue;
     const parent = home.get(id);
     if (parent) l.kids[parent].push(id);
-    else {
-      const at = WHEEL.findIndex((n) => n.id === id);
-      l.top.splice(Math.min(at, l.top.length), 0, id);
-    }
+    else l.top.splice(slot(l.top, id), 0, id);
   }
   l.hidden = strings(raw?.hidden).filter((id) => places.has(id) || isGroup(l, id));
   return l;

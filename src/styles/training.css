@@ -1,0 +1,215 @@
+/* ============================================================
+   Workouts, under Insights (views/Training.tsx, views/training/*). Built on Stats' look (stats.css): the sky with
+   three figures and the tabs, chart cards, tiles and ranked rows. The page wears hope's colour (--accent, set on the
+   root); weeks whose every target was met are its deep shade (--pos-a), the rest its pale tint.
+   ============================================================ */
+
+/* on the root, so the tooltips (drawn outside the page) see it too */
+:root { --tr-pale: color-mix(in oklab, var(--accent) 40%, var(--surface-2)); }
+
+/* ---------- the header ---------- */
+
+.tr-top-figures .tr-bolt { align-self: center; flex: none; color: var(--accent); }
+.tr-tabs button > svg { flex: none; }
+.tr-tabs button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* five tabs on a phone: the icon over a small name, so every name still fits */
+@media (max-width: 560px) {
+  .stats-top .seg.tabs.tr-tabs button { flex-direction: column; gap: 2px; height: var(--h-m); font-size: var(--text-xs); line-height: 1; letter-spacing: 0; }
+}
+
+/* ---------- small pieces ---------- */
+
+/* a workout's or an exercise's icon, on a tile of the page's colour */
+.tr-ico {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-s);
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+}
+.tr-ico.small { width: 24px; height: 24px; }
+.tr-thumb { flex: none; display: block; width: 40px; height: 40px; border-radius: var(--r-s); object-fit: cover; background: var(--surface-2); }
+.tr-thumb.tr-ico { display: grid; background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); }
+.tr-count { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-target {
+  display: inline-flex; align-items: center; gap: 2px; font-size: var(--text-xs); font-weight: var(--w-bold); color: var(--ink-3);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.tr-target.met { color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
+.tr-best { font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-best small { font-size: var(--text-xs); color: var(--ink-3); letter-spacing: 0.02em; }
+.tr-feel { flex: none; display: inline-flex; color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.tr-big { font-size: var(--text-l); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- charts ---------- */
+
+.chart .tr-avg-line { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; animation: fade-in var(--dur-3) ease var(--dur-3) backwards; }
+.chart .dot.tr-hollow { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.5; }
+.tr-spark { display: block; flex: none; overflow: visible; }
+.tr-spark-line { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; animation: draw-line var(--dur-5) var(--ease-emph) 0.1s backwards; }
+.tr-spark-dot { fill: var(--accent); animation: fade-in var(--dur-2) ease var(--dur-4) backwards; }
+
+/* the days trained, shaded by ⚡ */
+.px.tr-s1 { background: color-mix(in oklab, var(--accent) 22%, var(--surface-2)); }
+.px.tr-s2 { background: color-mix(in oklab, var(--accent) 40%, var(--surface-2)); }
+.px.tr-s3 { background: color-mix(in oklab, var(--accent) 58%, var(--surface-2)); }
+.px.tr-s4 { background: color-mix(in oklab, var(--accent) 78%, var(--surface-2)); }
+.px.tr-s5 { background: var(--accent); }
+.px.tr-swatch { display: inline-block; width: 12px; height: 12px; aspect-ratio: auto; animation: none; }
+/* up to four months: a column for each week, the weekdays down the side */
+.tr-cal {
+  display: grid; grid-template-columns: 22px repeat(var(--weeks), minmax(0, 1fr)); gap: 3px; align-items: center;
+  max-width: calc(22px + var(--weeks) * 28px); margin-top: 12px;
+}
+.tr-cal .px { border-radius: var(--r-2xs); }
+.tr-cal-month { text-align: left; white-space: nowrap; min-width: 0; overflow: visible; }
+
+/* a whole in parts: one bar, then each part with its icon */
+.tr-split .split-bar { height: 12px; margin-top: 12px; }
+.tr-split .split-bar i { outline: none; transform-origin: left; animation: grow-x var(--dur-5) var(--ease-emph) calc(0.1s + var(--k, 0) * 60ms) backwards; transition: opacity var(--dur-1); }
+@media (hover: hover) { .tr-split .split-bar:hover i:not(:hover) { opacity: 0.55; } }
+.tr-parts { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+.tr-parts li {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: center;
+  animation: rise-in var(--dur-3) var(--ease-emph) calc(0.08s + var(--k, 0) * 20ms) backwards;
+}
+.tr-part-ico {
+  grid-row: span 2; display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-s);
+  background: color-mix(in oklab, var(--c) 22%, var(--surface-2)); color: color-mix(in oklab, var(--c) 70%, var(--ink));
+}
+.tr-part-name { font-size: var(--text-m); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-parts b { font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.tr-parts small { grid-column: 2 / -1; font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-parts li.none { opacity: 0.45; }
+
+/* ---------- overview ---------- */
+
+.tr-facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .tr-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tr-facts li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; row-gap: 2px; align-items: center; min-width: 0;
+  padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2);
+  animation: rise-in var(--dur-3) var(--ease-emph) calc(0.08s + var(--k, 0) * 20ms) backwards;
+}
+.tr-facts .tile-ico { grid-row: span 2; }
+.tr-fact-value { font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-fact-label { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-fact-label .delta { color: var(--ink-3); }
+.tr-fact-value .tr-feel { vertical-align: -4px; }
+
+/* ---------- muscles ---------- */
+
+.tr-map { display: flex; justify-content: center; margin-top: 12px; }
+.tr-ranked li { padding: 0; }
+.tr-rank-btn { display: grid; gap: 6px; width: 100%; min-height: var(--h-m); padding: 8px 2px; border-radius: var(--r-s); text-align: left; }
+.tr-rank-btn .rk-top > svg { flex: none; }
+.tr-rank-btn .rk-n { display: inline-flex; align-items: baseline; gap: 4px; }
+.tr-rank-btn .rk-n .power { align-self: center; margin-left: 4px; color: var(--ink-2); font-size: var(--text-s); }
+.tr-muscle-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tr-muscle-head > svg { flex: none; }
+.tr-rested { list-style: none; margin: 8px 0 0; padding: 0; }
+.tr-rested li { border-bottom: 1px solid var(--line); animation: rise-in var(--dur-3) var(--ease-emph) calc(0.08s + var(--k, 0) * 20ms) backwards; }
+.tr-rested li:last-child { border-bottom: 0; }
+.tr-rest-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--h-m); padding: 6px 2px; text-align: left; border-radius: var(--r-s); }
+.tr-rest-btn > svg { flex: none; }
+.tr-rest-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); }
+.tr-rest-days { font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (hover: hover) { .tr-rest-btn:hover { background: var(--surface-2); } }
+.tr-never { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
+.tr-never > svg { flex: none; margin-top: 2px; }
+
+/* ---------- rows: exercises, workouts, bests ---------- */
+
+.list-row:is(.tr-row, .tr-ex, .tr-rec, .tr-recent) { justify-content: flex-start; }
+.tr-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.tr-row-name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--text-base); font-weight: var(--w-medium); color: var(--ink); }
+.tr-row-name, .tr-row-meta > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a workout is yours: its name in the serif, as notes' and countdowns' are */
+.tr-row .tr-row-name { font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em; }
+.tr-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-row-muscles { flex: none; display: inline-flex; gap: 2px; }
+.tr-row-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.tr-row-end > svg { color: var(--ink-3); }
+.tr-pr { flex: none; display: inline-flex; color: color-mix(in oklab, var(--accent) 75%, var(--ink)); }
+.tr-live { margin-bottom: 18px; }
+.tr-live-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.tr-history > :first-child, .tr-exercises > :first-child { margin-top: 0; }
+.tr-search { margin-bottom: 0; }
+.tr-more { display: flex; justify-content: center; margin-top: 18px; }
+.tr-more .muted { font-variant-numeric: tabular-nums; }
+
+.tr-rec-ico {
+  flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-s);
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+}
+.tr-rec-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.tr-rec-label { font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-rec-when { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-rec-value { flex: none; font-size: var(--text-base); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-wall .list { margin: 8px -16px -14px; border-top: 1px solid var(--line); border-radius: 0 0 calc(var(--r-l) - 1px) calc(var(--r-l) - 1px); }
+
+/* the trophies: the best workout across, the best week and the longest streak under it (three across from 560px) */
+.tr-trophies > :first-child { grid-column: 1 / -1; }
+@media (min-width: 560px) { .tr-trophies > :first-child { grid-column: auto; } }
+.tr-trophies .tile-ico { background: color-mix(in oklab, var(--accent) 26%, var(--surface-2)); }
+
+/* ---------- the sheets: a workout, an exercise ---------- */
+
+.tr-sheet { display: grid; gap: 18px; }
+.tr-sheet-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tr-sheet-title .tr-ico { width: 34px; height: 34px; }
+.tr-sheet .section-title { margin-bottom: 10px; }
+.tr-when { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-goal { padding: 12px 14px; border-radius: var(--r-m); background: color-mix(in oklab, var(--accent) 10%, var(--surface-2)); }
+.tr-goal-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.tr-goal-n .power-n { font-size: var(--text-2xl); letter-spacing: -0.02em; }
+.tr-goal-of { font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-goal .tr-target { margin-left: auto; align-self: center; }
+.tr-meter { margin-top: 10px; background: color-mix(in oklab, var(--accent) 14%, var(--surface)); }
+.tr-meter i { background: var(--accent); }
+.tr-figures { --sky: var(--accent); margin: 0; }
+.tr-prs { display: flex; align-items: center; gap: 6px; font-size: var(--text-m); color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
+.tr-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tr-item { border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); overflow: hidden; }
+.tr-item-head { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--h-m); padding: 8px 12px; text-align: left; transition: background-color var(--dur-1); }
+@media (hover: hover) { .tr-item-head:hover { background: var(--surface-2); } }
+.tr-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); font-weight: var(--w-medium); }
+.tr-sets { list-style: none; margin: 0; padding: 0 12px 10px; display: grid; gap: 4px; }
+.tr-sets li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: var(--text-m); font-variant-numeric: tabular-nums; }
+.tr-sets li.skipped { color: var(--ink-3); }
+.tr-sets li.skipped .tr-set-text { text-decoration: line-through; }
+.tr-mark {
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-style: normal;
+  font-size: var(--text-xs); font-weight: var(--w-bold); line-height: 1; background: var(--surface-2); color: var(--ink-2);
+}
+.tr-mark.warm { background: color-mix(in oklab, var(--accent) 22%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
+.tr-mark:is(.drop, .fail) { background: var(--surface-3); color: var(--ink); }
+.tr-set-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-set-p { font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; }
+.tr-note-text { white-space: pre-wrap; line-height: 1.45; color: var(--ink-2); }
+.tr-note { margin-top: 10px; }
+
+.tr-ex-head { display: flex; align-items: flex-start; gap: 12px; }
+.tr-tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.tr-tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink-2); font-size: var(--text-m); font-weight: var(--w-medium);
+}
+.tr-tag > svg { flex: none; color: var(--ink-3); }
+.tr-recent { gap: 10px; }
+.tr-recent-day { flex: none; min-width: 52px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tr-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.tr-set { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--text-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-set i { font-style: normal; font-weight: var(--w-bold); color: var(--ink-3); }
+.tr-set.warm { color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-spark-line, .tr-spark-dot, .chart .tr-avg-line, .tr-split .split-bar i, .tr-parts li, .tr-facts li, .tr-rested li { animation: none; }
+}
+
+/* ---------- desktop: the lists in two columns, the cards in Stats' two (desktop.css) ---------- */
+
+@media (min-width: 1024px) {
+  .tr-history, .tr-exercises { column-count: 2; column-gap: 12px; }
+  :is(.tr-history, .tr-exercises) > * { break-inside: avoid; }
+  :is(.tr-history, .tr-exercises) > .section { margin: 0 0 18px; }
+  .tr-history > :is(.tr-live, .tr-more), .tr-exercises > :is(.tr-search, .empty-note) { column-span: all; }
+  .tr-exercises > .tr-search { max-width: 640px; margin-bottom: 18px; }
+}

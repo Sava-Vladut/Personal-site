@@ -5,6 +5,7 @@ import { dropImageLinks, plainText } from './body';
 import { isDateKey, todayKey } from './dates';
 import { EMOTION } from '../data/emotions';
 import { PHOTO_ID, clearPhotos, exportPhotos, importPhotos, prunePhotos, type Photo } from './photos';
+import { normalizeMyMove, normalizeRoutine, normalizeWeighIn, normalizeWorkout, type MyMove, type Routine, type WeighIn, type Workout } from './fitness';
 
 /** An image from the web: found through Openverse, or saved from Pinterest by older versions. */
 export interface WebImage {
@@ -481,8 +482,41 @@ export const saveRepo = repos.save;
 /** Takes a repo out of your journal. The repo itself on GitHub is untouched. */
 export const deleteRepo = repos.remove;
 
+/* ---------- workouts (lib/fitness.ts): plans, the workouts you did, weigh-ins and exercises of your own ---------- */
+
+const byRoutineName = (a: Routine, b: Routine) => byWords(a.name, b.name) || a.created - b.created;
+const routines = collection<Routine>('routines', normalizeRoutine, byRoutineName);
+export const useRoutines = routines.list$.use;
+export const getRoutines = routines.list$.get;
+export const saveRoutine = routines.save;
+/** Forgets a plan. The workouts done from it stay. */
+export const deleteRoutine = routines.remove;
+
+const byStarted = (a: Workout, b: Workout) => b.start - a.start;
+const workouts = collection<Workout>('workouts', normalizeWorkout, byStarted);
+export const useWorkouts = workouts.list$.use;
+export const getWorkouts = workouts.list$.get;
+export const saveWorkout = workouts.save;
+export const deleteWorkout = workouts.remove;
+
+const byDay = (a: WeighIn, b: WeighIn) => (a.day === b.day ? b.updated - a.updated : a.day < b.day ? 1 : -1);
+const weighins = collection<WeighIn>('weighins', normalizeWeighIn, byDay);
+export const useWeighIns = weighins.list$.use;
+export const getWeighIns = weighins.list$.get;
+export const saveWeighIn = weighins.save;
+export const deleteWeighIn = weighins.remove;
+
+const byMoveName = (a: MyMove, b: MyMove) => byWords(a.name, b.name);
+const moves = collection<MyMove>('moves', normalizeMyMove, byMoveName);
+export const useMyMoves = moves.list$.use;
+export const getMyMoves = moves.list$.get;
+export const saveMyMove = moves.save;
+/** Forgets an exercise you made. Plans and workouts that have it keep it. */
+export const deleteMyMove = moves.remove;
+
 type Collection = ReturnType<typeof collection<any>>;
-const COLLECTIONS: Collection[] = [people, books, songs, repos, periods];
+const COLLECTIONS: Collection[] = [people, books, songs, repos, periods, routines, workouts, weighins, moves];
+type CollectionKey = 'people' | 'books' | 'songs' | 'repos' | 'periods' | 'routines' | 'workouts' | 'weighins' | 'moves';
 let clearRevision = 0;
 let lastClearAt = 0;
 const freshSinceClear = new Set<string>();
@@ -771,7 +805,8 @@ export async function exportJSON() {
   const entries = entries$.get();
   try { localStorage.setItem(LAST_EXPORT, String(Date.now())); } catch {}
   const photos = await exportPhotos(new Set(entries.flatMap((e) => photosOf(e).map((p) => p.id))));
-  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), periods: getPeriods(), photos }, null, 1);
+  return JSON.stringify({ app: 'my-mind', version: 1, exported: new Date().toISOString(), entries, people: getPeople(), books: getBooks(), songs: getSongs(), repos: getRepos(), periods: getPeriods(),
+    routines: getRoutines(), workouts: getWorkouts(), weighins: getWeighIns(), moves: getMyMoves(), photos }, null, 1);
 }
 
 /** Merges a backup: newer copies win, nothing is deleted. Returns number of entries added or updated. */
@@ -799,7 +834,7 @@ export async function importJSON(text: string) {
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()])) return interrupted();
   const [pChanged, bChanged, sChanged, rChanged] = merged;
 
-  if (changed.length || pChanged.length || bChanged.length || sChanged.length || rChanged.length || merged[4].length || restoredPhotos) changeHandler();
+  if (changed.length || merged.some((m) => m.length) || restoredPhotos) changeHandler();
   return {
     changed: changed.length, people: pChanged.length, books: bChanged.length, songs: sChanged.length, repos: rChanged.length, photos: restoredPhotos, total: incoming.length,
     icons: iconsOf([...changed, ...pChanged]),
@@ -812,7 +847,7 @@ const iconsOf = (list: { icon: string | null }[]) => [...new Set(list.map((e) =>
  * Merges another device's copy: the newest edit of each entry wins, and a deletion wins over edits made before it.
  * Returns the entries that were added or updated here (their photos may still need fetching) and how many were removed.
  */
-export async function mergeSynced(raw: { entries?: unknown; people?: unknown; books?: unknown; songs?: unknown; repos?: unknown; periods?: unknown; deleted?: unknown }) {
+export async function mergeSynced(raw: { entries?: unknown; deleted?: unknown } & Partial<Record<CollectionKey, unknown>>) {
   const revision = clearRevision;
   const incoming = newestById((Array.isArray(raw.entries) ? raw.entries : []).map(normalize).filter(Boolean) as Entry[]);
   const nextDeleted = combineDeleted(deleted, raw.deleted as Record<string, number>);
@@ -826,7 +861,7 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   // Local deletions can happen while IndexedDB is busy; neither their tombstones nor their visible removal
   // may be replaced by the snapshot taken when this merge began.
   deleted = combineDeleted(deleted, committedDeleted);
-  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as 'people' | 'books' | 'songs' | 'repos' | 'periods']));
+  const incomingCollections = () => COLLECTIONS.flatMap((c) => c.normalizeAll(raw[c.key as CollectionKey]));
   if (revision !== clearRevision && await discardClearedRecords(revision, [...incoming, ...durable, ...incomingCollections()]))
     return { changed: [] as Entry[], removed: removed.length, icons: [] as string[] };
   const current = new Map(newestById([
@@ -834,7 +869,7 @@ export async function mergeSynced(raw: { entries?: unknown; people?: unknown; bo
   ]).filter((e) => !(deleted[e.id] >= e.updated)).map((e) => [e.id, e]));
 
   // People, books, songs and repos follow the same rules. Older app versions don't send them: then nothing changes here.
-  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as 'people' | 'books' | 'songs' | 'repos' | 'periods'], deleted, false) }));
+  const merged = COLLECTIONS.map((c) => ({ c, ...c.merge(raw[c.key as CollectionKey], deleted, false) }));
 
   const visible = entries$.get();
   if (visible.length !== current.size || visible.some((e) => current.get(e.id) !== e)) entries$.set([...current.values()].sort(byNewest));

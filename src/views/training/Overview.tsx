@@ -1,0 +1,115 @@
+import type { ComponentChildren } from 'preact';
+import { useMemo } from 'preact/hooks';
+import { shortDate } from '../../lib/dates';
+import { DEFAULT_BW, fmtPower, type WeighIn } from '../../lib/fitness';
+import { averages, byDay, daysBetween, kindPower, streaks, totals, weekMet, weeks, weightSeries, whenHeat, within, type Done, type Range } from '../../lib/trainingStats';
+import { ChartCard, HeatLegend, LegendItem, RevealStack, RhythmHeatmap } from '../../components/charts';
+import { KIND_ICON, KIND_NAME, Power } from '../../components/fitness';
+import { Icon, type UiName } from '../../components/icons';
+import { Tile } from '../stats/parts';
+import { LOCALE, t } from '../../lib/i18n';
+import { MET, PowerCalendar, PowerLegend, Split, TrendLine, UNMET, WeekBars } from './charts';
+import { Delta, Feel, fmtKg, fmtMins, powerText } from './parts';
+
+/** The range at a glance: the power week by week, the days trained, the streaks, a typical workout, when and on what. */
+export function Overview({ all, list, range, weighIns, weekStart, today }: {
+  all: Done[]; list: Done[]; range: Range; weighIns: WeighIn[]; weekStart: 0 | 1; today: string;
+}) {
+  const wk = useMemo(() => weeks(list, range, weekStart), [list, range, weekStart]);
+  const st = useMemo(() => streaks(all, today, weekStart), [all, today, weekStart]);
+  const days = useMemo(() => byDay(list), [list]);
+  const when = useMemo(() => whenHeat(list), [list]);
+  const kinds = useMemo(() => kindPower(list), [list]);
+  const avg = useMemo(() => averages(totals(list)), [list]);
+  const was = useMemo(() => (range.prev ? averages(totals(within(all, range.prev))) : null), [all, range]);
+  const bw = useMemo(() => weightSeries(weighIns, all, range), [weighIns, all, range]);
+  // a line of the default weight nobody gave says nothing
+  const showBw = bw.length > 1 && bw.some((p) => p.logged || p.kg !== DEFAULT_BW);
+  const metWeeks = wk.filter(weekMet).length;
+  const trained = wk.filter((w) => w.workouts > 0).length;
+
+  return (
+    <RevealStack>
+      <ChartCard
+        wide
+        title={t('Power per week')}
+        sub={metWeeks
+          ? t('Each bar is a week’s ⚡, deep when every target that week was met ({n} of {all} weeks). The dashed line is your average week.', { n: metWeeks, all: trained })
+          : t('Each bar is a week’s ⚡. The dashed line is your average week.')}
+        legend={<><LegendItem color={MET} label={t('Every target met')} /><LegendItem color={UNMET} label={t('Other weeks')} /></>}
+        table={{ head: [t('Week'), t('Power'), t('Workouts'), t('Targets met')], rows: wk.filter((w) => w.workouts).map((w) => [shortDate(w.key), fmtPower(w.power), w.workouts, w.targeted ? `${w.met}/${w.targeted}` : '—']) }}
+      >
+        <WeekBars weeks={wk} />
+      </ChartCard>
+
+      <div class="tiles">
+        <Tile k={0} icon="flame" label={t('Weeks in a row')} value={st.weeks} sub={t('longest {n}', { n: st.bestWeeks })} pips={st.lastWeeks} />
+        <Tile k={1} icon="target" label={t('Targets in a row')} value={st.targets} sub={t('longest {n}', { n: st.bestTargets })} pips={st.lastTargets.length ? st.lastTargets : undefined} />
+      </div>
+
+      {avg && (
+        <section class="card chart-card tr-typical">
+          <header class="chart-head"><h3 class="chart-title">{t('A typical workout')}</h3></header>
+          <ul class="tr-facts">
+            <Fact k={0} icon="clock" value={fmtMins(avg.mins)} label={t('duration')} cur={avg.mins} prev={was?.mins} rel />
+            <Fact k={1} icon="bolt" value={<Power value={avg.power} size={16} />} label={t('per workout')} cur={avg.power} prev={was?.power} rel />
+            <Fact k={2} icon="activity" value={<Power value={avg.perMin} size={16} />} label={t('per minute')} cur={avg.perMin} prev={was?.perMin} rel />
+            <Fact k={3} icon="list-details" value={avg.sets.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} label={t('sets')} cur={avg.sets} prev={was?.sets} />
+            {avg.feel !== null && <Fact k={4} icon="mood-smile" value={<><Feel value={avg.feel} size={20} /> {avg.feel.toLocaleString(LOCALE, { maximumFractionDigits: 1 })}</>} label={t('feel, of 5')} />}
+          </ul>
+        </section>
+      )}
+
+      <ChartCard
+        title={t('Days you trained')}
+        sub={t('{n} of {all} days, shaded by their ⚡', { n: days.size, all: daysBetween(range.start, range.end) + 1 })}
+        legend={<PowerLegend />}
+      >
+        <PowerCalendar days={days} start={range.start} end={range.end} weekStart={weekStart} />
+      </ChartCard>
+
+      <ChartCard title={t('When you train')} sub={t('The day and the hour your workouts start')} legend={<HeatLegend />}>
+        <RhythmHeatmap heat={when.heat} max={Math.max(1, when.max)} />
+      </ChartCard>
+
+      <ChartCard
+        title={t('Where the power came from')}
+        table={{ head: [t('Kind'), t('Power')], rows: (['weight', 'body', 'time', 'cardio'] as const).map((k) => [KIND_NAME[k], fmtPower(kinds[k])]) }}
+      >
+        <Split
+          label={t('Power by kind of exercise')}
+          empty={t('No power in this range yet.')}
+          parts={(['weight', 'body', 'time', 'cardio'] as const).map((k, i) => ({
+            key: k, name: KIND_NAME[k], icon: KIND_ICON[k], n: kinds[k], text: powerText(kinds[k]), color: ['var(--pos-a)', 'var(--accent)', 'var(--tr-pale)', 'var(--ink-3)'][i],
+          }))}
+        />
+      </ChartCard>
+
+      {showBw && (
+        <ChartCard
+          title={t('Body weight')}
+          sub={bw.every((p) => p.logged)
+            ? t('From {a} to {b}', { a: fmtKg(bw[0].kg), b: fmtKg(bw[bw.length - 1].kg) })
+            : t('Weigh in on the Workout page for a truer line. Hollow dots are the weight a workout was done at.')}
+          table={{ head: [t('Day'), t('Weight')], rows: bw.map((p) => [shortDate(p.day), fmtKg(p.kg)]) }}
+        >
+          <TrendLine points={bw.map((p) => ({ day: p.day, value: p.kg, hollow: !p.logged }))} format={fmtKg} label={t('Body weight')} unit={t('body weight')} />
+        </ChartCard>
+      )}
+    </RevealStack>
+  );
+}
+
+/** One figure of a typical workout: an icon, the figure, what it is, and how it changed since the range before. */
+function Fact({ icon, value, label, cur, prev, rel, k }: {
+  icon: UiName; value: ComponentChildren; label: string; cur?: number; prev?: number; rel?: boolean; k: number;
+}) {
+  const change = cur !== undefined && prev !== undefined && (!rel || prev > 0);
+  return (
+    <li style={{ '--k': k }}>
+      <span class="tile-ico"><Icon name={icon} size={14} stroke={2} /></span>
+      <b class="tr-fact-value">{value}</b>
+      <span class="tr-fact-label">{label}{change && <> · <Delta cur={cur} prev={prev} rel={rel} /></>}</span>
+    </li>
+  );
+}

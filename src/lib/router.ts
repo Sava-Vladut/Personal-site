@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'streamer' | 'repos' | 'repo' | 'traps' | 'laws' | 'friends' | 'seduction' | 'status' | 'countdown' | 'glops' | 'cardwars' | 'chatlogs' | 'intro';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'streamer' | 'repos' | 'repo' | 'traps' | 'laws' | 'friends' | 'seduction' | 'status' | 'countdown' | 'glops' | 'cardwars' | 'chatlogs' | 'workout' | 'training' | 'intro';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -21,7 +21,7 @@ function parse(visit = ++visits): Route {
   if (head === 'books') return { name: 'media', query, visit }; // where the shelf used to live
   if (head === 'people' && id === 'mind') return { name: 'mind', query, visit };
   if (head === 'intro') return { name: 'intro', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'streamer' || head === 'repos' || head === 'traps' || head === 'laws' || head === 'friends' || head === 'seduction' || head === 'status' || head === 'countdown' || head === 'glops' || head === 'cardwars' || head === 'chatlogs') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'streamer' || head === 'repos' || head === 'traps' || head === 'laws' || head === 'friends' || head === 'seduction' || head === 'status' || head === 'countdown' || head === 'glops' || head === 'cardwars' || head === 'chatlogs' || head === 'workout' || head === 'training') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 
@@ -33,7 +33,7 @@ function parse(visit = ++visits): Route {
 export type Motion = 'push' | 'pop' | 'tab-left' | 'tab-right' | 'fade' | 'wheel';
 /** The move the next navigation asked for, instead of the one its pages would pick. */
 let asked: Motion | null = null;
-const TABS: RouteName[] = ['journal', 'tracker', 'people', 'media', 'repos'];
+const TABS: RouteName[] = ['journal', 'tracker', 'people', 'media', 'workout', 'repos'];
 const depth = (n: RouteName) => (n === 'note' ? 2 : TABS.includes(n) ? 0 : 1);
 
 function motionFor(a: Route, b: Route): Motion | null {

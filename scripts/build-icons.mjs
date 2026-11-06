@@ -136,7 +136,14 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   replace abc accessible text-caption layout-sidebar
   row-insert-top row-insert-bottom column-insert-left column-insert-right row-remove column-remove table-minus
   message message-plus message-x message-up message-down messages messages-off
-  file-type-docx photo-edit cards swords brand-windows diamond browser medal`.split(/\s+/);
+  file-type-docx photo-edit cards swords brand-windows diamond browser medal
+  barbell dumbbell weight run bike swimming treadmill jump-rope yoga stretching stretching-2 karate gymnastics walk stairs-up
+  heartbeat activity bolt target stopwatch scale body-scan massage footsteps route ruler-measure stack-2 wave-sine
+  ball-bowling ball-volleyball cylinder history calendar-stats chart-line chart-histogram chart-area-line arrow-big-up-lines
+  circle-plus circle-minus list-details rotate-clockwise flag flag-check bed adjustments-horizontal filter arrows-sort
+  percentage timeline calendar-week calendar-month award confetti progress-check playlist-add hand-grab arrows-up-down
+  square-check checkbox chart-radar bolt-off sum infinity layers-subtract arrows-split player-skip-forward alarm clock-play
+  mood-cry mood-sad mood-neutral mood-happy mood-crazy-happy`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

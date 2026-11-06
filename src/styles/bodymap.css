@@ -1,0 +1,35 @@
+/* The body map and the muscle icons (components/BodyMap.tsx, drawing in data/bodymap.ts). */
+
+.bm { --bm-c: var(--accent, var(--emo-hope-interest)); display: flex; justify-content: center; gap: 24px; }
+.bm-side { display: grid; justify-items: center; gap: 6px; }
+.bm-fig { display: block; }
+.bm-cap { font-size: var(--text-s); line-height: 1; color: var(--ink-3); }
+
+.bm-body { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+/* A muscle (its path, or the button around it). The stroke in the body's colour is what keeps neighbours apart, so the
+   gaps scale with the drawing. Heat in five steps: a quiet grey, then the accent at 30, 55, 80 and 100% */
+.bm-m { fill: var(--bm-f); stroke: var(--surface-2); stroke-width: 1; stroke-linejoin: round; transition: fill var(--dur-2) var(--ease); }
+.bm-h0 { --bm-f: color-mix(in oklab, var(--ink) 9%, var(--surface-2)); }
+.bm-h1 { --bm-f: color-mix(in oklab, var(--bm-c) 30%, var(--surface-2)); }
+.bm-h2 { --bm-f: color-mix(in oklab, var(--bm-c) 55%, var(--surface-2)); }
+.bm-h3 { --bm-f: color-mix(in oklab, var(--bm-c) 80%, var(--surface-2)); }
+.bm-h4 { --bm-f: var(--bm-c); }
+
+/* worked muscles fade in once, as the map arrives (or as a muscle first gets worked); a change of step is a colour
+   change, not another entrance */
+.bm-h1, .bm-h2, .bm-h3, .bm-h4 { animation: bm-in var(--dur-3) var(--ease-emph) backwards; }
+@keyframes bm-in { from { opacity: 0; } }
+
+/* tappable muscles: the global focus outline would box both halves of the body, so focus inks the muscle's edge instead */
+.bm-pick .bm-m { cursor: pointer; }
+.bm-pick .bm-m:focus-visible { outline: none; stroke: var(--ink); }
+@media (hover: hover) {
+  .bm-pick .bm-m:hover { fill: color-mix(in oklab, var(--bm-f) 65%, var(--surface)); }
+}
+.bm-ring { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; pointer-events: none; }
+
+/* the icon: the body faint, the muscle in the text's colour; a hairline stroke fattens small muscles just enough to read */
+.bm-icon { flex: none; }
+.bm-icon-body { fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-opacity: 0.5; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bm-icon-m { fill: currentColor; stroke: currentColor; stroke-width: 0.8; stroke-linejoin: round; vector-effect: non-scaling-stroke; }

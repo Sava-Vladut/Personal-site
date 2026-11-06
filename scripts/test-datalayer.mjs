@@ -245,13 +245,13 @@ test('the synced copy is written exactly as JSON.stringify writes it, also after
   const sync = await load(`export { docJSON } from '${src('lib/sync.ts')}';`, {
     './store': `
       const s = globalThis.state;
-      export const getEntries = () => s.entries, getPeople = () => s.people, getBooks = () => [], getSongs = () => [{ id: 's', music: { kind: 'track', title: 'x"y' }, days: [] }], getRepos = () => [], getPeriods = () => [];
+      export const getEntries = () => s.entries, getPeople = () => s.people, getBooks = () => [], getSongs = () => [{ id: 's', music: { kind: 'track', title: 'x"y' }, days: [] }], getRepos = () => [], getPeriods = () => [], getRoutines = () => [], getWorkouts = () => [], getWeighIns = () => [], getMyMoves = () => [];
       export const getDeleted = () => s.deleted, mergeSynced = async () => ({ icons: [] }), photosOf = (e) => e.photos, onLocalChange = () => {}, toast = () => {};
       export const observable = (value) => ({ get: () => value, set: (next) => { value = next; }, use: () => value });`,
     './photos': 'export const photoIds = async () => new Set(), photoBlob = async () => null, storePhotos = async () => {};',
     './icons': 'export const resolveIcon = () => {};',
   }, { state });
-  const plain = () => JSON.stringify({ app: 'my-mind', version: 1, entries: state.entries, people: state.people, books: [], songs: [{ id: 's', music: { kind: 'track', title: 'x"y' }, days: [] }], repos: [], periods: [], deleted: state.deleted });
+  const plain = () => JSON.stringify({ app: 'my-mind', version: 1, entries: state.entries, people: state.people, books: [], songs: [{ id: 's', music: { kind: 'track', title: 'x"y' }, days: [] }], repos: [], periods: [], routines: [], workouts: [], weighins: [], moves: [], deleted: state.deleted });
   assert.equal(sync.docJSON(), plain());
   state.entries = Array.from({ length: 50 }, (_, i) => ({ id: 'e' + i, title: `“${i}”\n `, text: words(6), weather: i % 2 ? null : { day: '2024-01-01', temp: -1.5 }, place: undefined, photos: [] }));
   state.people = [{ id: 'p', name: 'Ana', dates: [] }];

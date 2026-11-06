@@ -21,11 +21,13 @@ export const WHEEL: WheelNode[] = [
   { id: 'journal', name: t('Journal'), sub: t('Your notes and check-ins, day by day'), icon: 'notebook', hue: 'joy', to: '' },
   { id: 'people', name: t('People'), sub: t('The people in your life'), icon: 'users', hue: 'love-connection', to: 'people' },
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
+  { id: 'workout', name: t('Workout'), sub: t('Train for power: your workouts, the exercises in them and your body weight'), icon: 'barbell', hue: 'hope-interest', to: 'workout' },
   // everything that's numbers about you, in one place
   {
-    id: 'insights', name: t('Insights'), sub: t('Your patterns and places, and who plays the games'), icon: 'chart-dots', hue: 'hope-interest',
+    id: 'insights', name: t('Insights'), sub: t('Your patterns, places and workouts, and who plays the games'), icon: 'chart-dots', hue: 'hope-interest',
     kids: [
       { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to, and where'), icon: 'chart-bar', to: 'stats' },
+      { id: 'training', name: t('Workouts'), sub: t('Every workout you’ve done: power, muscles, records and progress'), icon: 'activity', to: 'training' },
       { id: 'glops', name: t('Global Ops'), sub: t('Who plays the game in the browser: online now and all-time highs'), icon: 'device-gamepad-2', to: 'glops' },
       { id: 'cardwars', name: t('Card Wars'), sub: t('Who plays Card Wars, how far they got and how PvP goes'), icon: 'cards', hue: 'joy', to: 'cardwars' },
     ],

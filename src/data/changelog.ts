@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.185.0',
+    date: '2026-11-06',
+    changes: [
+      'Workout: a new place on the wheel to train with power (⚡). Make workouts from about 900 exercises (pictures and how-to steps from the free exercise database), or start from Push day, Pull day, Leg day or Body only.',
+      'Power: 10 kg lifted once is 1 ⚡, the same for everyone. Body moves count the share of your body they lift at your weight (a push-up lifts about 64% of you), holds count a rep every 3 seconds, cardio counts effort over time, and warm-ups count half.',
+      'Every workout asks for a power you set (with a suggestion from its sets and from last time), and a meter fills as you tick off sets.',
+      'Logging: last time’s numbers in every set, warm-up, drop and failure sets, a rest timer after each set, swap or reorder exercises, and Undo for anything removed. Finishing shows your power, new records and how it felt, and can update the plan with today’s weights.',
+      'Your weight: weigh in from the Workout page; each workout keeps the weight it was done at.',
+      'Make your own exercises, with how much of your body they lift.',
+      'Insights › Workouts: every workout you’ve done, power per week, streaks, when you train, body weight, a body map of the muscles you worked, every exercise’s progress and estimated 1RM, and your bests.',
+      'The wheel: places added in an update land next to their neighbours on a wheel you arranged yourself.',
+      'Chart points can be reached with the keyboard again.',
+    ],
+  },
+  {
     version: '1.184.0',
     date: '2026-11-06',
     changes: [

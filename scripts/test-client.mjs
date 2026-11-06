@@ -1492,11 +1492,11 @@ test('the wheel keeps your order, hidden places and groups, and new places still
     hidden: ['repos', 'gone'],
     groups: { gwork: { name: 'Work', icon: 'folder', hue: 'fear' }, 'bad id': { name: 'x' } },
   });
-  assert.deepEqual(plain(saved.kids.insights), ['stats', 'twitch', 'glops', 'cardwars'], 'your own grouping stays as you left it, new places join their group and gone ones drop out');
+  assert.deepEqual(plain(saved.kids.insights), ['stats', 'twitch', 'training', 'glops', 'cardwars'], 'your own grouping stays as you left it, new places join their group and gone ones drop out');
   assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends', 'seduction'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['insights', ['stats', 'twitch', 'glops', 'cardwars']], ['learn', ['traps', 'laws', 'friends', 'seduction']], ['stream', ['streamer', 'chatlogs']], ['extras', ['status', 'countdown']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', 'workout', ['insights', ['stats', 'twitch', 'training', 'glops', 'cardwars']], ['learn', ['traps', 'laws', 'friends', 'seduction']], ['stream', ['streamer', 'chatlogs']], ['extras', ['status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['glops'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 
@@ -1507,7 +1507,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.equal(all.length, wheel.WHEEL.reduce((n, x) => n + (x.kids?.length ?? 1), 0));
 
   // a group with everything in it hidden leaves the wheel; saving the default forgets the save
-  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'twitch', 'traps', 'glops', 'cardwars'] });
+  const empty = mod.normalize({ ...mod.defaultLayout(), hidden: ['stats', 'twitch', 'traps', 'glops', 'cardwars', 'training'] });
   assert.ok(!mod.treeOf(empty).some((n) => n.id === 'insights'));
   mod.saveLayout(saved);
   assert.ok(store.has('mm-wheel-layout'));
@@ -1522,7 +1522,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
     return again.useWheelLayout();
   };
   const moved = await reload(old({ insights: ['stats', 'map'], extras: ['repos', 'twitch', 'streamer', 'status', 'countdown', 'glops'] }));
-  assert.deepEqual(plain(moved.kids.insights), ['stats', 'glops', 'cardwars']);
+  assert.deepEqual(plain(moved.kids.insights), ['stats', 'training', 'glops', 'cardwars']);
   assert.ok(!moved.kids.extras.includes('glops'));
   const mine = await reload(old({ insights: ['stats', 'map'], learn: ['traps', 'laws', 'friends', 'glops'] }));
   assert.ok(mine.kids.learn.includes('glops') && !mine.kids.insights.includes('glops'), 'Global Ops stays where you put it');

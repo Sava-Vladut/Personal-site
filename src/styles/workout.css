@@ -1,0 +1,375 @@
+/* The Workout page (views/Workout.tsx, components/workout/*). Power's bolt and the shared bits are in fitness.css; the
+   page sets --accent to its world's colour, so bolts, rings, meters and tiles wear it. */
+
+/* ---------- pieces used all over ---------- */
+
+/* an icon on a tint of the page's colour: a plan's icon, a rule, a moment */
+.wo-tile {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-m);
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+}
+.wo-tile.big { width: 54px; height: 54px; border-radius: var(--r-l); }
+.wo-tile.small { width: 28px; height: 28px; border-radius: var(--r-s); }
+
+/* an exercise's picture: a square slot that's there before it loads, its kind's icon under it */
+.wo-thumb {
+  position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden;
+  border-radius: var(--r-s); background: var(--surface-2); color: var(--ink-3);
+}
+.wo-thumb.big { width: 56px; height: 56px; border-radius: var(--r-m); }
+.wo-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wo-thumb-check {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: color-mix(in oklab, var(--ink) 72%, transparent); color: var(--on-ink); animation: fade-in var(--dur-1) ease-out;
+}
+.wo-thumb-check svg { animation: pop var(--dur-3) var(--spring-bouncy); }
+
+.wo-wide { width: 100%; }
+.wo-count { font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.wo-of { font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wo-label {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
+}
+/* a line of small marks under a name: power, muscles, counts, when */
+.wo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--text-s); color: var(--ink-3); line-height: 1; }
+.wo-meta-text { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wo-meta .power { color: var(--ink-2); }
+.wo-per { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; color: var(--ink-2); font-size: var(--text-s); }
+.wo-sheet-note { display: flex; align-items: baseline; gap: 6px; margin-top: 12px; line-height: 1.45; }
+.wo-sheet-note svg { flex: none; translate: 0 2px; }
+
+.wo-ghost-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.wo-ghost-thumb { width: 40px; height: 40px; border-radius: var(--r-m); flex: none; }
+.wo-ghost-lines { flex: 1; display: grid; gap: 8px; }
+.wo-ghost-lines .ghost { height: 12px; width: 70%; }
+.wo-ghost-lines .ghost:nth-child(2) { width: 45%; }
+.wo-ghost-lines .ghost:nth-child(3) { width: 60%; }
+
+/* ---------- home ---------- */
+
+.wo-bw { padding: 0 14px 0 12px; gap: 6px; font-variant-numeric: tabular-nums; margin-right: 4px; }
+
+.wo-nudge { display: flex; align-items: center; gap: 8px; padding-right: 8px; margin-bottom: 18px; }
+.wo-nudge-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0 12px 14px; text-align: left; font-weight: var(--w-medium); line-height: 1.45; }
+
+.wo-hero {
+  display: grid; gap: 12px; padding: 14px 16px 16px;
+  background: linear-gradient(120deg, color-mix(in oklab, var(--accent) 12%, var(--surface)), var(--surface) 70%);
+}
+.wo-hero-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -8px -4px 0; }
+.wo-hero-head .wo-label { margin: 0; }
+.wo-hero-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.wo-hero-n { font-size: var(--text-2xl); letter-spacing: -0.02em; gap: 4px; }
+.wo-week { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.wo-day { display: grid; justify-items: center; gap: 6px; }
+.wo-dot { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2); color: var(--on-color); }
+.wo-day.is-on .wo-dot { background: var(--accent); animation: pop var(--dur-4) var(--spring-bouncy) backwards; }
+.wo-day.is-today .wo-dot { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wo-day.is-ahead .wo-dot { background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
+.wo-day-name { font-size: var(--text-2xs); font-weight: var(--w-medium); color: var(--ink-3); line-height: 1; }
+.wo-day.is-today .wo-day-name { color: var(--ink); font-weight: var(--w-bold); }
+
+.wo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.wo-head .section-title { margin: 0; }
+.wo-more { display: inline-flex; align-items: center; gap: 4px; min-height: var(--h-s); padding: 0 8px; border-radius: var(--r-pill); font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); }
+
+/* a plan, a starter or a past workout: a tinted icon, a serif name and a line of marks */
+.wo-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; transition: background-color var(--dur-1); }
+.wo-list > .wo-row + .wo-row, .wo-list > .wo-ghost-row + .wo-ghost-row { border-top: 1px solid var(--line); }
+.wo-list > div.wo-row { padding-right: 16px; }
+.wo-list > div.wo-row:not(:has(> .wo-row-main)) { padding: 12px 16px; }
+.wo-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0 12px 16px; text-align: left; }
+.wo-starter { padding-right: 16px; }
+.wo-row-text { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.wo-row-name { font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-play {
+  flex: none; display: grid; place-items: center; width: var(--h-m); height: var(--h-m); border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+  transition: background-color var(--dur-1), scale var(--dur-3) var(--spring);
+}
+.wo-add-ico { flex: none; display: grid; place-items: center; width: var(--h-s); height: var(--h-s); border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+.wo-starters { display: grid; gap: 12px; }
+.wo-done-p { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-m); }
+.wo-done-p.is-met > svg { color: var(--accent); }
+
+/* ---------- the target ---------- */
+
+.wo-card { display: grid; gap: 12px; padding: 14px 16px; }
+.wo-target { display: grid; gap: 12px; }
+.wo-stepper { display: flex; align-items: center; gap: 8px; }
+.wo-step {
+  flex: none; min-width: 48px; height: var(--h-m); padding: 0 10px; border-radius: var(--r-pill); background: var(--surface-2);
+  font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+.wo-target-n {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; height: var(--h-m); padding: 0 8px;
+  border: 1px solid var(--line-2); border-radius: var(--r-m); background: var(--surface); color: var(--accent);
+  transition: border-color var(--dur-1), box-shadow var(--dur-1);
+}
+.wo-target-n:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ink) 10%, transparent); }
+.wo-target-input {
+  width: 100%; min-width: 0; border: 0; background: none; outline: none; padding: 0; color: var(--ink); text-align: center;
+  font: var(--w-bold) var(--text-xl)/1 var(--sans); letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+}
+.wo-target-input::placeholder { color: var(--ink-3); opacity: 0.6; }
+.wo-target-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.wo-target-foot .chip { padding-left: 12px; }
+.wo-target-foot .chip[aria-pressed='true'] .power svg { color: inherit; }
+.wo-full { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-m); color: var(--ink-2); }
+.wo-meter i { background: var(--accent); }
+
+/* ---------- a plan ---------- */
+
+.wo-icons { margin-block: 12px 0; gap: 8px; }
+.wo-icons .icon-btn { background: var(--surface-2); }
+.wo-icons .icon-btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
+.wo-add, .wo-start { margin-top: 12px; }
+.wo-start { margin-top: 24px; }
+
+/* an exercise in a plan or a workout */
+.wo-item { padding: 14px 16px; }
+.wo-item.is-done { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.wo-item-head { display: flex; align-items: center; gap: 12px; }
+.wo-item-title { flex: 1; min-width: 0; display: grid; gap: 6px; text-align: left; }
+.wo-item-name {
+  font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wo-item-name svg { display: inline; vertical-align: -2px; margin-left: 4px; color: var(--ink-3); transition: rotate var(--dur-2) var(--ease); }
+.wo-item-title[aria-expanded='true'] .wo-item-name svg { rotate: 180deg; }
+.wo-item-sets { display: flex; flex-wrap: wrap; gap: 4px; }
+.wo-set-chip { padding: 2px 6px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wo-item-head > .power { font-size: var(--text-m); }
+.wo-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.wo-tools .icon-btn { background: var(--surface-2); }
+.wo-tools-n { min-width: 20px; text-align: center; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.wo-item-sets-edit { margin-top: 12px; padding-top: 2px; border-top: 1px solid var(--line); }
+.wo-pair { padding: 2px 6px; border-radius: var(--r-xs); font-size: var(--text-xs); font-weight: var(--w-bold); background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.wo-note { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; font-size: var(--text-m); color: var(--ink-2); line-height: 1.45; white-space: pre-line; }
+.wo-note svg { flex: none; color: var(--ink-3); }
+.wo-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.wo-item-foot .btn-s { padding-left: 12px; }
+.wo-item-sum { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.wo-item-sum .power { color: var(--ink); margin-left: 4px; }
+
+/* ---------- sets ---------- */
+
+.wo-sets { display: grid; gap: 6px; margin-top: 10px; }
+.wo-set { display: flex; align-items: center; gap: 6px; touch-action: pan-y; transition: transform var(--dur-2) var(--ease); }
+.wo-set-head { color: var(--ink-3); font-size: var(--text-xs); font-weight: var(--w-bold); }
+.wo-h { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; line-height: 1; }
+.wo-h-mark, .wo-mark { flex: none; width: 40px; }
+.wo-h-p, .wo-set-p { flex: none; width: 48px; }
+.wo-h-tick, .wo-tick { flex: none; width: var(--h-m); }
+.wo-h-x, .wo-set-x { flex: none; width: var(--h-s); }
+.wo-sign { min-height: var(--h-s); border-radius: var(--r-pill); color: var(--ink-2); font-variant-numeric: tabular-nums; transition: background-color var(--dur-1); }
+.wo-sign[aria-pressed='true'] { background: var(--surface-2); color: var(--ink); }
+.wo-mark {
+  height: var(--h-m); border-radius: var(--r-s); background: var(--surface-2); color: var(--ink-2);
+  font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+}
+.wo-mark.is-tag { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+input.wo-num {
+  flex: 1 1 0; min-width: 0; height: var(--h-m); padding: 0 4px; border: 1px solid transparent; border-radius: var(--r-s);
+  background: var(--surface-2); color: var(--ink); text-align: center; font-size: 16px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+  outline: none; transition: border-color var(--dur-1), background-color var(--dur-1), box-shadow var(--dur-1);
+}
+.wo-num::placeholder { color: var(--ink-3); opacity: 0.55; font-weight: var(--w-medium); }
+.wo-num:focus { background: var(--surface); border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ink) 10%, transparent); }
+.wo-set-p { display: flex; justify-content: flex-end; font-size: var(--text-s); }
+.wo-set-p.is-maybe { opacity: 0.45; }
+.wo-tick {
+  display: grid; place-items: center; height: var(--h-m); border-radius: var(--r-s); background: var(--surface-2); color: var(--ink-3);
+  transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-3) var(--spring);
+}
+.wo-tick[aria-pressed='true'] { background: var(--accent); color: var(--on-color); }
+.wo-tick[aria-pressed='true'] svg { animation: pop var(--dur-3) var(--spring-bouncy); }
+.wo-set.is-done .wo-num, .wo-set.is-done .wo-mark:not(.is-tag) { background: color-mix(in oklab, var(--accent) 10%, var(--surface)); }
+.wo-set-x { display: grid; place-items: center; height: var(--h-m); border-radius: var(--r-pill); color: var(--ink-3); }
+/* in a workout a phone swipes a set away; a wider screen has room for its × */
+.wo-sets.live :is(.wo-set-x, .wo-h-x) { display: none; }
+@media (min-width: 560px) {
+  .wo-sets.live .wo-set-x { display: grid; }
+  .wo-sets.live .wo-h-x { display: inline-flex; }
+}
+
+/* ---------- a workout going on ---------- */
+
+/* the bar stays at the top, solid, with the safe area above it filled in too */
+.wo-bar {
+  position: sticky; top: var(--safe-t); z-index: 5; display: flex; align-items: center; gap: 12px;
+  margin: 0 calc(-1 * var(--gutter)) 12px; padding: 8px var(--gutter); background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.wo-bar::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: var(--safe-t); background: inherit; }
+.wo-power { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 2px; border-radius: var(--r-m); text-align: left; }
+.wo-ring { position: relative; flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--accent); }
+.wo-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -90deg; }
+.wo-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 5; }
+.wo-ring-fill { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset var(--dur-5) var(--ease-emph); }
+.wo-power.is-met .wo-ring { background: var(--accent); color: var(--on-color); }
+.wo-ring.is-pop { animation: pop var(--dur-4) var(--spring-bouncy); }
+.wo-power-text { min-width: 0; display: grid; gap: 2px; }
+.wo-power-n { display: flex; align-items: baseline; gap: 4px; }
+.wo-power-n b { font-size: var(--text-xl); font-weight: var(--w-bold); letter-spacing: -0.01em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wo-power-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-power.is-met .wo-power-sub { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-bold); }
+.wo-clock { flex: none; display: inline-flex; align-items: center; gap: 4px; min-width: 56px; font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.wo-finish { flex: none; padding-left: 12px; gap: 6px; }
+.wo-live-end { display: grid; gap: 12px; margin-top: 18px; }
+.wo-live-page:has(.wo-rest) .wo-live-end { padding-bottom: 64px; }
+.wo-live-empty { padding-block: 28px; }
+
+/* the rest between sets floats above the tab bar, and steps up out of a toast's way */
+.wo-rest.glass {
+  position: fixed; z-index: 40; left: calc(50% + var(--side-w, 0px) / 2); bottom: calc(var(--nav-h) + var(--safe-b) + 12px);
+  translate: -50% 0; display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 16px; overflow: hidden;
+  border-radius: var(--r-pill); background: var(--glass-fill-strong); --glass-blur: 24px;
+  animation: toast-in var(--dur-4) var(--spring); transition: translate var(--dur-3) var(--ease-emph), background-color var(--dur-2);
+}
+:root:has(.toast) .wo-rest.glass { translate: -50% -62px; }
+.wo-rest > svg { color: var(--accent); margin-right: 4px; }
+.wo-rest-n { min-width: 52px; font-size: var(--text-l); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.wo-rest-btn { font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.wo-rest-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.wo-rest-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 1s linear; }
+.wo-rest.glass.is-over { background: var(--accent); color: var(--on-color); }
+.wo-rest.is-over > svg, .wo-rest.is-over .icon-btn { color: inherit; }
+
+/* ---------- the picker ---------- */
+
+.wo-chips { margin-block: 8px 0; }
+.wo-pick-found { margin-top: 6px; }
+.wo-pick-part { margin-top: 18px; }
+.wo-pick-list { display: grid; }
+.wo-pick-row { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
+.wo-pick-row:last-child { border-bottom: 0; }
+.wo-pick-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 0; text-align: left; border-radius: var(--r-m); }
+.wo-pick-text { min-width: 0; display: grid; gap: 6px; }
+.wo-pick-name { font-weight: var(--w-medium); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-pick-main[aria-pressed='true'] .wo-pick-name { font-weight: var(--w-bold); }
+.wo-make-btn { margin-top: 18px; }
+
+/* ---------- an exercise up close ---------- */
+
+.wo-info { display: grid; gap: 18px; }
+.wo-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.wo-shot { margin: 0; aspect-ratio: 3 / 2; overflow: hidden; border-radius: var(--r-m); background: var(--surface-2); }
+.wo-shot img { width: 100%; height: 100%; object-fit: cover; }
+.wo-facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.wo-fact {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--h-s); padding: 0 14px 0 12px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink-2); font-size: var(--text-m); font-weight: var(--w-medium);
+}
+.wo-info-power {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--r-m); line-height: 1.45;
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface)); color: var(--ink-2);
+}
+.wo-info-part .section-title { margin-bottom: 10px; }
+.wo-body { display: flex; align-items: center; gap: 16px; }
+.wo-muscles { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wo-muscles li { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
+.wo-muscles i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: color-mix(in oklab, var(--accent) 45%, var(--surface-2)); }
+.wo-muscles .is-main { color: var(--ink); font-weight: var(--w-medium); }
+.wo-muscles .is-main i { background: var(--accent); }
+.wo-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); }
+.wo-steps li::marker { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* ---------- making an exercise ---------- */
+
+.wo-make { display: grid; gap: 18px; }
+.wo-field { display: grid; gap: 8px; }
+.wo-field .chips { margin: 0; }
+.wo-kinds button { font-size: var(--text-m); }
+.wo-readout { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-m); color: var(--ink-2); }
+.wo-readout b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.wo-readout svg { color: var(--accent); }
+.wo-range { -webkit-appearance: none; appearance: none; width: 100%; height: var(--h-m); margin: 0; background: none; touch-action: none; cursor: pointer; }
+.wo-range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--accent) var(--v, 0%), var(--surface-3) 0);
+}
+.wo-range::-moz-range-track { height: 4px; border-radius: var(--r-pill); background: var(--surface-3); }
+.wo-range::-moz-range-progress { height: 4px; border-radius: var(--r-pill); background: var(--accent); }
+.wo-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%; border: 0;
+  background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / 0.3), 0 0 0 0.5px rgb(0 0 0 / 0.08); transition: scale var(--dur-1);
+}
+.wo-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / 0.3); }
+.wo-range:active::-webkit-slider-thumb { scale: 1.15; }
+
+/* ---------- your weight ---------- */
+
+.wo-weigh { display: grid; gap: 12px; }
+.wo-weigh-dial { display: flex; align-items: center; gap: 8px; }
+.wo-weigh-n {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 64px; padding: 0 10px;
+  border: 1px solid var(--line-2); border-radius: var(--r-l); background: var(--surface); color: var(--accent);
+  transition: border-color var(--dur-1), box-shadow var(--dur-1);
+}
+.wo-weigh-n:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ink) 10%, transparent); }
+.wo-weigh-input {
+  flex: 1; min-width: 0; width: 100%; padding: 0; border: 0; background: none; outline: none; color: var(--ink); text-align: center;
+  font: var(--w-bold) var(--text-2xl)/1 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+.wo-weigh-unit { font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-3); }
+.wo-weigh-row { min-height: var(--h-m); padding-block: 10px; }
+.wo-weigh-row b { font-variant-numeric: tabular-nums; }
+
+/* ---------- how power works ---------- */
+
+.wo-rules { list-style: none; margin: 0; padding: 4px 0 8px; display: grid; gap: 12px; }
+.wo-rules li { display: flex; align-items: center; gap: 12px; line-height: 1.45; }
+
+/* ---------- finishing ---------- */
+
+.wo-sum { display: grid; gap: 18px; }
+.wo-met { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-m); background: color-mix(in oklab, var(--accent) 14%, var(--surface)); }
+.wo-met > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.wo-met > svg { flex: none; color: var(--accent); }
+.wo-met .wo-tile { background: var(--accent); color: var(--on-color); animation: pop var(--dur-4) var(--spring-bouncy) 0.1s backwards; }
+.wo-met.is-short { background: var(--surface-2); }
+.wo-met.is-short .wo-tile { background: var(--surface); color: var(--ink-2); animation: none; }
+.wo-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wo-stat { min-width: 0; display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); }
+.wo-stat-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
+.wo-stat-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; font-size: var(--text-l); font-weight: var(--w-bold); line-height: 1.25; font-variant-numeric: tabular-nums; }
+.wo-sum-part { display: grid; gap: 10px; }
+.wo-sum-part .section-title { margin: 0; }
+.wo-record-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-record-v { flex: none; display: grid; justify-items: end; gap: 2px; font-variant-numeric: tabular-nums; }
+.wo-record-v .muted.small { margin: 0; }
+.wo-feel { display: flex; align-items: center; gap: 4px; }
+.wo-feel button { display: grid; place-items: center; width: var(--h-m); height: var(--h-m); border-radius: 50%; color: var(--ink-3); transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-3) var(--spring); }
+.wo-feel button[aria-checked='true'] { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.wo-feel button[aria-checked='true'] svg { animation: pop var(--dur-3) var(--spring-bouncy); }
+.wo-feel-label { margin-left: 8px; font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); }
+.wo-to-plan { gap: 12px; }
+
+/* ---------- the item menu ---------- */
+
+.wo-menu { display: grid; gap: 18px; }
+.wo-menu-part { display: grid; gap: 10px; }
+.wo-menu-part .chips { margin: 0; }
+
+/* ---------- hover (press feedback is app.css's, "press feedback") ---------- */
+
+@media (hover: hover) {
+  .wo-row:has(> .wo-row-main:hover), button.wo-row:hover { background: var(--surface-2); }
+  .wo-play:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 26%, var(--surface-2)); }
+  :is(.wo-step, .wo-mark:not(.is-tag), .wo-tick[aria-pressed='false'], .wo-sign, .wo-set-x, .wo-more, .wo-feel button[aria-checked='false']):hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
+  .wo-pick-main:hover .wo-pick-name, .wo-item-title:hover .wo-item-name { text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+  .wo-power:hover { background: var(--surface-2); }
+  .wo-icons .icon-btn:not([aria-pressed='true']):hover, .wo-tools .icon-btn:hover:not(:disabled) { background: var(--surface-3); }
+}
+
+/* ---------- wide screens ---------- */
+
+@media (min-width: 1024px) {
+  .wo-page { max-width: 1040px; }
+  .wo-page:is(.wo-live-page, .wo-plan-page) { max-width: 760px; }
+  .wo-home { display: grid; grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .wo-home > .wo-hero { grid-column: 1; grid-row: 1; }
+  .wo-home > .wo-recent { grid-column: 1; grid-row: 2; }
+  .wo-home > .wo-plans { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+}

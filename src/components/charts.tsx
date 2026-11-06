@@ -123,7 +123,8 @@ const moveTip = (x: number, y: number, content: () => ComponentChildren) => {
 /** Spread onto any mark: tooltip on hover, tap and keyboard focus. */
 export function tipProps(content: () => ComponentChildren, label?: string) {
   return {
-    tabIndex: 0,
+    // lowercase: on an SVG mark Preact sets the attribute as written, and only `tabindex` makes it focusable
+    tabindex: 0,
     'aria-label': label,
     onPointerMove: (e: PointerEvent) => moveTip(e.clientX, e.clientY, content),
     onPointerDown: (e: PointerEvent) => showTip(e.clientX, e.clientY, content()),

@@ -2,7 +2,7 @@
 // browser, with a key derived from that code, and the server keeps only the ciphertext, filed under an id that is
 // also derived from the code. So the server can't read the journal, and anyone with the code can.
 // Each device merges what's on the server with what it has (newest edit wins, deletions stick) and sends the result back.
-import { getBooks, getDeleted, getEntries, getPeople, getPeriods, getRepos, getSongs, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
+import { getBooks, getDeleted, getEntries, getMyMoves, getPeople, getPeriods, getRepos, getRoutines, getSongs, getWeighIns, getWorkouts, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
 import { photoBlob, photoIds, storePhotos, type Photo } from './photos';
 import { resolveIcon } from './icons';
 import { t } from './i18n';
@@ -136,6 +136,10 @@ interface Doc {
   songs?: { id?: unknown; updated?: unknown }[];
   repos?: { id?: unknown; updated?: unknown }[];
   periods?: { id?: unknown; updated?: unknown }[];
+  routines?: { id?: unknown; updated?: unknown }[];
+  workouts?: { id?: unknown; updated?: unknown }[];
+  weighins?: { id?: unknown; updated?: unknown }[];
+  moves?: { id?: unknown; updated?: unknown }[];
   deleted?: Record<string, number>;
 }
 
@@ -161,9 +165,10 @@ async function download(id: string, key: CryptoKey, rev: string | null) {
 /** Whether this device has something the server's copy lacks. */
 function aheadOf(doc: Doc) {
   const list = (x: unknown) => (Array.isArray(x) ? (x as { id?: unknown; updated?: unknown }[]) : []);
-  const there = new Map([...list(doc.entries), ...list(doc.people), ...list(doc.books), ...list(doc.songs), ...list(doc.repos), ...list(doc.periods)].map((e) => [e?.id, Number(e?.updated)]));
+  const there = new Map([...list(doc.entries), ...list(doc.people), ...list(doc.books), ...list(doc.songs), ...list(doc.repos), ...list(doc.periods),
+    ...list(doc.routines), ...list(doc.workouts), ...list(doc.weighins), ...list(doc.moves)].map((e) => [e?.id, Number(e?.updated)]));
   const gone = doc.deleted ?? {};
-  return [...getEntries(), ...getPeople(), ...getBooks(), ...getSongs(), ...getRepos(), ...getPeriods()].some((e) => !(there.get(e.id)! >= e.updated)) || Object.entries(getDeleted()).some(([id, t]) => !(gone[id] >= t));
+  return [...getEntries(), ...getPeople(), ...getBooks(), ...getSongs(), ...getRepos(), ...getPeriods(), ...getRoutines(), ...getWorkouts(), ...getWeighIns(), ...getMyMoves()].some((e) => !(there.get(e.id)! >= e.updated)) || Object.entries(getDeleted()).some(([id, t]) => !(gone[id] >= t));
 }
 
 const photosInUse = () => {
@@ -238,7 +243,8 @@ const listJSON = (xs: object[]) => '[' + xs.map(jsonOf).join(',') + ']';
  */
 export function docJSON() {
   return `{"app":"my-mind","version":1,"entries":${listJSON(getEntries())},"people":${listJSON(getPeople())},"books":${listJSON(getBooks())}`
-    + `,"songs":${listJSON(getSongs())},"repos":${listJSON(getRepos())},"periods":${listJSON(getPeriods())},"deleted":${JSON.stringify(getDeleted())}}`;
+    + `,"songs":${listJSON(getSongs())},"repos":${listJSON(getRepos())},"periods":${listJSON(getPeriods())}`
+    + `,"routines":${listJSON(getRoutines())},"workouts":${listJSON(getWorkouts())},"weighins":${listJSON(getWeighIns())},"moves":${listJSON(getMyMoves())},"deleted":${JSON.stringify(getDeleted())}}`;
 }
 
 /** One round: fetch the server's copy if it changed, merge it in, and send ours back if we have anything new. */
