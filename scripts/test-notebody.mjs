@@ -587,6 +587,27 @@ test('a line copied by the browser reads back as the same kind of item (several 
   assert.match(n.text(), /^1\. milk one\n2\. two\n- \[x\] done$/);
 });
 
+test('a browser wrapping a word in a styled span to keep its look leaves it as it was; pasted styles still count', () => {
+  const { n, host, view, window } = mount('- [ ] Ceafa de porc', { phone: 'android' });
+  n.focus(1);
+  // as Chrome does after its own edit: the word kept looking as its line was drawn (an unticked task's see-through
+  // line through, before 1.184.0), in a span of inline styles. Read as a style, it was ~~Ceafa~~ for good
+  const text = host.querySelector('.md-task .md-li-text').firstChild;
+  const rest = text.splitText(5);
+  const span = window.document.createElement('span');
+  span.setAttribute('style', 'text-decoration-line: line-through');
+  text.replaceWith(span);
+  span.append(text);
+  rest.before(span);
+  view.domObserver.flush();
+  assert.equal(n.text(), '- [ ] Ceafa de porc');
+  // pasted from another app, a struck-through span is still struck through
+  const p = mount('x|');
+  p.end();
+  p.view.pasteHTML('<span style="text-decoration: line-through">gone</span>');
+  assert.match(p.n.text(), /~~gone~~/);
+});
+
 test('a phone’s Backspace that takes a task’s box out: the box comes back and the task stays', () => {
   for (const phone of ['android', 'ios']) {
     const { n, host, view } = mount('- [ ] milk', { phone });

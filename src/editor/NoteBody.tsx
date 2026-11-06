@@ -5,7 +5,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { EditorState, Plugin, Selection, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { EditorView, Decoration, DecorationSet } from '@tiptap/pm/view';
-import type { Node as PMNode } from '@tiptap/pm/model';
+import { DOMParser as PMDOMParser, type Node as PMNode } from '@tiptap/pm/model';
 import { normalizeDoc, noteSchema, parseNote, replaceDoc, serializeNote, serializeSlice, warmNote } from '../lib/noteDoc';
 import {
   canStep, clearFind, commentAt, commentsOf, commentsState, deleteComment, dropTargets, focusComment, saveComment, selectComment, findMedia, findOf, findStep, goToFootnote, goToReference, headingAt, headingsOf, insertAtom, insertMediaAt, insertTrigger, isCell,
@@ -257,6 +257,8 @@ export function NoteBody(p: Props) {
   useLayoutEffect(() => {
     const el = host.current!;
     const schema = noteSchema();
+    const pastedParser = PMDOMParser.fromSchema(schema);
+    const typedParser = new PMDOMParser(schema, pastedParser.rules.filter((r) => !('style' in r)));
     let version = 0;
     let placed = false; // the caret's been put in the words (before that, it's only at the start by default)
     let frame = 0;
@@ -377,6 +379,12 @@ export function NoteBody(p: Props) {
       },
       scrollMargin: margin,
       scrollThreshold: margin,
+      // What the browser wrote in the page itself (a phone keyboard's Enter or autocorrect, a spelling put right) is
+      // read back by the tags the editor draws, never by inline styles: a browser keeps a word looking as it did by
+      // wrapping it in <span style="text-decoration-line: line-through">, which read as a style turned a word struck
+      // through for good (Ceafa, in an unticked task). Pasted and dropped HTML still has the style rules (Word, Google Docs).
+      domParser: typedParser,
+      clipboardParser: pastedParser,
       // as plain text (for other apps) comments are left out: they're private. Copied from one note to another they
       // come along, in the HTML (the comment mark's data-comment)
       clipboardTextSerializer: (slice) => dropComments(serializeSlice(slice)),
