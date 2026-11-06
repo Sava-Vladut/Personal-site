@@ -8,6 +8,10 @@ import { PATCHES, grooveDist, patchAt } from './brainShape';
 const CX = 0.76, CY = 0.48;
 /** A 3D point's spot in the side view (brainShape's coordinates), for the regions and their motion. */
 export const sideOf = (x: number, y: number): [number, number] => [x + CX, CY - y];
+/** The same, one coordinate at a time: for the drawing loops, which ask for thousands a frame and shouldn't make a pair
+ * (garbage) for each. */
+export const sideX = (x: number) => x + CX;
+export const sideY = (y: number) => CY - y;
 
 /** A rounded body: a superellipsoid, flatter below its centre than above. */
 interface Body { c: [number, number, number]; r: [number, number, number]; down: number; n: number; part: number }
