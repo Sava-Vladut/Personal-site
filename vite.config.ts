@@ -5,6 +5,9 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { CHANGELOG } from './src/data/changelog';
 
+/** Built files whose names change with their content (as public/sw.js and server/static.js tell them apart). */
+const FINGERPRINTED = /^\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[^/]+$/;
+
 // Writes every built file into dist/sw.js, so the service worker caches the whole app on install
 // and one online visit is enough to work offline (Safari / iOS Home Screen included).
 function precache(): Plugin {
@@ -32,14 +35,22 @@ function precache(): Plugin {
         .filter((f) => f !== '/sw.js' && f !== '/index.html')
         .sort();
       const urls = ['/', ...files];
+      const read = (u: string) => readFileSync(join(outDir, u === '/' ? 'index.html' : u.slice(1)));
       const hash = createHash('sha256');
-      for (const u of urls) hash.update(u === '/' ? readFileSync(join(outDir, 'index.html')) : readFileSync(join(outDir, u.slice(1))));
+      for (const u of urls) hash.update(read(u));
+      // The files without a hashed name (icons, the manifest, the full icon set) carry their content's hash instead,
+      // so an update can tell the unchanged ones apart and keep them, like it keeps unchanged hashed files.
+      // The page itself is left out: it's always fetched fresh.
+      const revisions = Object.fromEntries(
+        files.filter((u) => !FINGERPRINTED.test(u)).map((u) => [u, createHash('sha256').update(read(u)).digest('hex').slice(0, 12)]),
+      );
       const sw = join(outDir, 'sw.js');
       writeFileSync(
         sw,
         readFileSync(sw, 'utf8')
           .replace("const VERSION = 'dev';", `const VERSION = '${hash.digest('hex').slice(0, 12)}';`)
-          .replace('const PRECACHE = [];', `const PRECACHE = ${JSON.stringify(urls)};`),
+          .replace('const PRECACHE = [];', `const PRECACHE = ${JSON.stringify(urls)};`)
+          .replace('const REVISIONS = {};', `const REVISIONS = ${JSON.stringify(revisions)};`),
       );
     },
   };
