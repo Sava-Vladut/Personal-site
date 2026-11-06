@@ -12,6 +12,7 @@ const nd = await loadNoteDoc({
     `export * as body from '${root}src/lib/body.ts';`,
     `export * as pmHistory from '@tiptap/pm/history';`,
     `export * as pmCommands from '@tiptap/pm/commands';`,
+    `export * as pmTables from '@tiptap/pm/tables';`,
   ],
   // lib/mentions.ts and lib/links.ts reach the store (and the browser) through lib/books.ts
   stubs: { '/src/lib/store.ts': 'export const getBooks = () => [];' },
@@ -449,6 +450,18 @@ test('Clear formatting takes the styles off the selection, or off the word at th
   assert.equal(after('«[**site**](https://x.y)»', E.clearFormatting), '«[site](https://x.y)»');
   const [, , s] = styled('a |', 'bold');
   assert.equal(run(s, E.clearFormatting)[1], true, 'and off what’s typed next');
+});
+
+test('Clear formatting with the caret off a word leaves the words be, as a style’s button does', () => {
+  // (after a full stop at the end of a bold sentence it took the whole sentence back to plain)
+  for (const text of ['**Hello world.**|', '**bold|** x', '**a ,| b**', '- [ ] ~~Ceafa~~| de porc']) {
+    const [, ok, s] = run(text, E.clearFormatting);
+    assert.equal(nd.serializeNote(s.doc), strip(text), text);
+    assert.equal(ok, true, 'it’s off what’s typed next: ' + text);
+    assert.deepEqual(type(s, 'x').selection.$from.nodeBefore.marks, [], 'typed on plain: ' + text);
+  }
+  assert.equal(after('**|bold** x', E.clearFormatting), '|bold x', 'at the start of a styled word, the word');
+  assert.equal(run('plain |word', E.clearFormatting)[1], false);
 });
 
 test('Link with nothing selected links the word, or puts in one with its words', () => {
@@ -1442,6 +1455,28 @@ test('the Table tab: rows and columns in and out, the table out, a column aligne
   for (const a of ['rowAbove', 'rowBelow', 'colLeft', 'colRight', 'deleteRow', 'deleteColumn', 'deleteTable', 'left', 'center', 'right']) {
     assert.equal(tRun('a‸\n| b |\n| --- |', cmd(a))[1], false, a);
   }
+});
+
+test('cells selected together: a style, a colour, Clear formatting and the Format Painter go on every one of them', () => {
+  // (they went on the first cell only: the selection's from…to is that cell's)
+  const plain = '| a | b |\n| --- | --- |\n| c | d |\n| e | f |\n\nx';
+  const table = plain + '‸';
+  const column = (text) => {
+    const s = T(text);
+    const cells = [];
+    s.doc.descendants((n, pos) => void (n.type.spec.tableRole?.endsWith('cell') && cells.push(pos)));
+    return s.apply(s.tr.setSelection(nd.pmTables.CellSelection.create(s.doc, cells[1], cells[5])));
+  };
+  const text = (s) => nd.serializeNote(s.doc);
+  let [, ok, s] = run(column(table), E.toggleMarkSmart('bold'));
+  assert.equal(ok, true);
+  assert.equal(text(s), '| a | **b** |\n| --- | --- |\n| c | **d** |\n| e | **f** |\n\nx');
+  assert.equal(E.litOf(s).bold, true);
+  assert.equal(text(run(s, E.toggleMarkSmart('bold'))[2]), plain, 'and off again');
+  assert.equal(E.litOf(column('| a | **b** |\n| --- | --- |\n| c | d |\n| e | **f** |\n\nx‸')).bold, false, 'lit only when every cell has it');
+  assert.equal(text(run(column(table), E.noteCommands.color('blue'))[2]).match(/color:blue/g).length, 3);
+  assert.equal(text(run(column('| a | **b** |\n| --- | --- |\n| c | ~~d~~ |\n| e | *f* |\n\nx‸'), E.clearFormatting)[2]), plain);
+  assert.equal(text(run(column(table), E.paintMarks([s.schema.marks.strike.create()]))[2]), '| a | ~~b~~ |\n| --- | --- |\n| c | ~~d~~ |\n| e | ~~f~~ |\n\nx');
 });
 
 test('in a cell: styles, AutoCorrect, Find and pasting work; lists, headings, quotes, alignment and blocks don\'t', () => {

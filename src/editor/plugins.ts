@@ -115,9 +115,15 @@ export interface KeyOptions {
   find?: (mode: 'find' | 'replace') => void;
 }
 
-/** Word's shortcuts. AltGr is Ctrl+Alt to the browser and types characters on many keyboards: never a style. */
+const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform ?? '');
+
+/**
+ * Word's shortcuts. AltGr is Ctrl+Alt to the browser and types characters on many keyboards: never a style. On a Mac
+ * they're ⌘'s (as the ribbon's tips say), and Ctrl is left to the Mac's own keys in text: Ctrl+B, F, P and N move the
+ * caret, Ctrl+H deletes, Ctrl+K cuts to the line's end, Ctrl+E goes there, never bold, Find, print or the link sheet.
+ */
 function shortcut(view: EditorView, e: KeyboardEvent, opts: KeyOptions): boolean {
-  const mod = e.ctrlKey || e.metaKey;
+  const mod = MAC ? e.metaKey : e.ctrlKey || e.metaKey;
   // F3 and Shift+F3: the next and the previous match while the find bar is open, as in Word
   if (e.key === 'F3' && !mod && !e.altKey && findOf(view.state)) return findStep(e.shiftKey ? -1 : 1)(view.state, view.dispatch);
   if (!mod) return false;
@@ -405,6 +411,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     'Alt-Shift-ArrowDown': moveBlocks(1),
     'Mod-a': selectAll,
   });
+  // a press of the mouse's main button on the words, which the Format Painter paints on letting go
+  let painting = false;
   return [
     // the suggestions go first: while they're up, Enter picks one
     new Plugin({
@@ -425,9 +433,17 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
         },
         handleDOMEvents: {
           // the Format Painter paints what's selected when the mouse lets go (once ProseMirror has the selection),
-          // or when Shift does after selecting with the keys
-          mouseup(view) {
-            if (painterOf(view.state)) setTimeout(() => painterOf(view.state) && paint(view.state, view.dispatch));
+          // or when Shift does after selecting with the keys. Only after a press of the main button on the words: a
+          // right-click (or a Mac's Ctrl+click) for the menu, a press on a tag or a picture, or one that began off
+          // the text (on the ribbon) and let go over it paints nothing.
+          mousedown(_view, e) {
+            painting = e.button === 0 && !(MAC && e.ctrlKey) && !(e.target as Element | null)?.closest?.('[contenteditable="false"]');
+            return false;
+          },
+          mouseup(view, e) {
+            const press = painting;
+            painting = false;
+            if (press && e.button === 0 && painterOf(view.state)) setTimeout(() => painterOf(view.state) && paint(view.state, view.dispatch));
             return false;
           },
           keyup(view, e) {

@@ -61,18 +61,19 @@ export interface Lit {
   canContinue: boolean;
 }
 
-/** Whether all the text and chips of the selection carry `type`. */
+/** Whether all the text and chips of the selection (of each of a table's selected cells) carry `type`. */
 function allHave(state: EditorState, type: MarkType): boolean {
-  const { from, to } = state.selection;
   let any = false, all = true;
-  state.doc.nodesBetween(from, to, (node) => {
-    if (!all) return false;
-    if (node.isInline) {
-      any = true;
-      if (!type.isInSet(node.marks)) all = false;
-    }
-    return true;
-  });
+  for (const { $from, $to } of state.selection.ranges) {
+    state.doc.nodesBetween($from.pos, $to.pos, (node) => {
+      if (!all) return false;
+      if (node.isInline) {
+        any = true;
+        if (!type.isInSet(node.marks)) all = false;
+      }
+      return true;
+    });
+  }
   return any && all;
 }
 
