@@ -17,12 +17,15 @@ const bundle = await rolldown({
     name: 'notebody-entry',
     resolveId(id, importer) {
       if (id === 'review:notebody') return '\0' + id;
+      // stylesheets are the page's (rolldown no longer reads CSS): nothing to load here
+      if (id.endsWith('.css')) return '\0css';
       // the app's chips read the store; here they're just their names
       if (id.endsWith('/components/mentions') || (id === './mentions' && importer?.endsWith('/components/Markdown.tsx'))) return '\0mentions';
       // the traps, laws and principles aren't read here (their Romanian text arrives by top-level await, which this IIFE bundle can't hold)
       if (/\/data\/(traps|laws|principles)$/.test(id)) return '\0learn-data';
     },
     load(id) {
+      if (id === '\0css') return '';
       // English only: the Romanian dictionary arrives by top-level await too
       if (id.endsWith('/src/lib/i18n.ts')) return readFileSync(id, 'utf8').replace("await import('../data/ro')", 'null');
       if (id === '\0review:notebody') return `
@@ -37,11 +40,13 @@ const bundle = await rolldown({
         export { act } from 'preact/test-utils';
       `;
       if (id === '\0learn-data') return 'export const TRAPS = [], LAWS = [], PRINCIPLES = [], FAMILIES = {}, REALMS = {}, PARTS = {};';
+      // (focusable while reading, as the app's chips are: Tab reaches them)
       if (id === '\0mentions') return `
         import { createContext, h } from 'preact';
-        const chip = (cls) => ({ text }) => h('span', { role: 'button', class: 'mention ' + cls }, text);
-        export const PersonMention = chip('is-person'), SongMention = chip('is-song'), WikiLink = chip('is-wiki');
+        import { useContext } from 'preact/hooks';
         export const InText = createContext(false);
+        const chip = (cls) => ({ text }) => h('span', { role: 'button', class: 'mention ' + cls, tabIndex: useContext(InText)?.focusable ? 0 : undefined }, text);
+        export const PersonMention = chip('is-person'), SongMention = chip('is-song'), WikiLink = chip('is-wiki');
       `;
     },
   }],

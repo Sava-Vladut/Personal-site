@@ -8,14 +8,15 @@ const bundle = await rolldown({ input: 'src/components/mentions.tsx', external: 
 const code = (await bundle.generate({ format: 'cjs' })).output[0].code;
 await bundle.close();
 
-function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height: 844 }, target = null, reduced = false } = {}) {
+function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height: 844 }, target = null, reduced = false, notes = [] } = {}) {
   const slots = [], layouts = [], effects = [], appended = [], timers = [];
-  let cursor = 0;
+  const heard = new Set(); // who listens to the store's notes (onEntries)
+  let cursor = 0, sets = 0;
   const hooks = {
     useRef(initial) { return slots[cursor++] ??= { current: initial }; },
     useState(initial) {
       const slot = slots[cursor++] ??= { value: typeof initial === 'function' ? initial() : initial };
-      return [slot.value, (value) => { slot.value = typeof value === 'function' ? value(slot.value) : value; }];
+      return [slot.value, (value) => { sets++; slot.value = typeof value === 'function' ? value(slot.value) : value; }];
     },
     useLayoutEffect(fn) { layouts.push(fn); },
     useEffect(fn) { effects.push(fn); },
@@ -33,7 +34,10 @@ function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height:
         observable: () => ({ get: () => target, set: (value) => { target = value; }, use: () => target }),
         usePeople: () => [{ id: 'person', name: 'Person', emotions: [] }],
         useBooks: () => [], useSongs: () => [], useEntries: () => [],
+        getEntries: () => notes, onEntries: (f) => (heard.add(f), () => heard.delete(f)),
       },
+      '../lib/links': { resolveNote: (target, _text, list) => list.find((e) => 'note:' + e.id === target), noteLabel: (e) => e.title },
+      '../lib/books': { resolveMention: () => undefined },
       '../lib/refs': { useRefs: () => null, findRef: () => undefined, refTarget: () => null },
     }[id] ?? (id.endsWith('/i18n') ? i18n : {})),
     window: { visualViewport: viewport }, innerWidth: 390, innerHeight: 844,
@@ -50,6 +54,10 @@ function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height:
   });
   return {
     ...module.exports, appended,
+    get sets() { return sets; },
+    /** the store's notes are now `list` (a save): each listener hears of it */
+    save(list) { notes = list; heard.forEach((f) => f()); },
+    effects: () => effects.splice(0).forEach((fn) => fn()),
     cleanup: () => timers.forEach(fn => fn()),
     render(component, props, node) {
       cursor = 0;
@@ -63,6 +71,29 @@ function harness({ viewport = { offsetLeft: 0, offsetTop: 0, width: 390, height:
 }
 
 const person = (id) => ({ kind: 'person', item: { id, name: id, relation: '', emotions: [] } });
+
+test('a link to a note is drawn again only when what it shows of the note changes, not on every save of a note', () => {
+  const trip = { id: 'n1', kind: 'note', title: 'Trip', icon: null, emotions: [] };
+  const other = { id: 'n2', kind: 'note', title: 'Other', icon: null, emotions: [] };
+  const h = harness({ notes: [trip, other] });
+  const link = h.render(h.WikiLink, { target: 'note:n1', text: 'Trip' });
+  const draw = () => h.render(link.type, link.props);
+  let chip = draw();
+  h.effects();
+  assert.equal(chip.props.kind, 'note');
+  // another note saved (or this one's words): a new list, the link's note the same to look at
+  h.save([trip, { ...other, title: 'Other, retitled' }]);
+  h.save([{ ...trip, text: 'new words' }, other]);
+  assert.equal(h.sets, 0, 'nothing to draw');
+  // renamed, or gone: drawn again
+  h.save([{ ...trip, title: 'Trip to Cluj' }, other]);
+  assert.equal(h.sets, 1);
+  chip = draw();
+  assert.equal(chip.props.children.at(-1).props.children, 'Trip to Cluj');
+  h.save([other]);
+  assert.equal(h.sets, 2);
+  assert.equal(draw().props.class, 'mention is-missing');
+});
 const buttons = (tree) => tree.props.children.flat(Infinity).filter((child) => child?.type === 'button');
 const event = (patch = {}) => ({ pointerType: 'touch', pointerId: 7, clientX: 10, clientY: 10, preventDefault() {}, ...patch });
 

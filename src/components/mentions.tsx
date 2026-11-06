@@ -12,7 +12,7 @@ import { resolvePerson, resolveSong, songsIn, type MentionKind, type Suggestion 
 import { findRef, refTarget, useRefs, type Ref } from '../lib/refs';
 import { navigate } from '../lib/router';
 import { swallowLiftClick } from '../lib/taps';
-import { observable, useBooks, useEntries, usePeople, useSongs, type Person } from '../lib/store';
+import { getEntries, observable, onEntries, useBooks, useEntries, usePeople, useSongs, type Entry, type Person } from '../lib/store';
 import { BookCover, Stars } from './books';
 import { EmotionChip } from './emotion';
 import { Icon, NoteIcon } from './icons';
@@ -122,13 +122,33 @@ function RefLink({ kind, id, text }: { kind: Ref['kind']; id: string; text: stri
   );
 }
 
+/** What a link to a note shows of it: which note, its icon, its colour and its name ('' for none). */
+const linkLook = (n: Entry | undefined) => (n ? `${n.id}\n${n.icon ?? ''}\n${n.emotions[0] ?? ''}\n${noteLabel(n)}` : '');
+
+/**
+ * The note a link points to, drawn again only when what the link shows of it changes. Every save of any note hands
+ * over a new list of notes (each pause while writing): a long note's links would otherwise all be drawn again each time.
+ */
+function useLinkedNote(target: string | undefined, text: string, books: ReturnType<typeof useBooks>) {
+  const find = (entries: Entry[]) => resolveNote(target, text, entries, books);
+  const n = find(getEntries());
+  const now = useRef({ find, look: linkLook(n) });
+  now.current = { find, look: linkLook(n) };
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const check = () => linkLook(now.current.find(getEntries())) !== now.current.look && redraw((k) => k + 1);
+    check(); // a change between drawing and now
+    return onEntries(check);
+  }, []);
+  return n;
+}
+
 function ShelfLink({ target, text }: { target?: string; text: string }) {
   const books = useBooks();
-  const entries = useEntries();
   const isNote = !!target?.startsWith('note:');
   const b = isNote ? undefined : resolveMention(target, text, books);
+  const n = useLinkedNote(target, text, books);
   if (b) return <Chip kind="book" id={b.id} c={tint(b.emotions)}><BookCover b={b} width={13} /><span>{text}</span></Chip>;
-  const n = resolveNote(target, text, entries, books);
   if (n) return <Chip kind="note" id={n.id} c={tint(n.emotions)}>{n.icon ? <NoteIcon id={n.icon} size={14} /> : <Icon name="notebook" size={14} />}<span>{noteLabel(n)}</span></Chip>;
   return isNote ? <span class="mention is-missing" title={t('This note was deleted')}>{text}</span> : <span class="md-wiki">{text}</span>;
 }

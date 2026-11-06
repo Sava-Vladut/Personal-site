@@ -146,6 +146,12 @@ test('first-letter suggestions work across composed accents and iOS nonbreaking 
   assert.equal(env.suggest('e\u0301m', people, [], [], [])[0].item.id, 'em');
   assert.equal(env.suggest('ana\u00a0ma', people, [], [], [])[0].item.id, 'ana');
   assert.equal(env.suggest(' ana   ma ', people, [], [], [])[0].item.id, 'ana');
+  // names are read once and kept: asked again (each key), the same answers; a renamed person by their new name
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual([3, 2, 1, 0].map((n) => env.score(['ana', 'mar', 'ari', 'zz'][3 - n], 'Ana Maria')), [3, 2, 1, 0]);
+    assert.deepEqual(plain(env.suggest('ma', people, [], [], []).map((s) => s.item.id)), ['ana']);
+  }
+  assert.deepEqual(plain(env.suggest('ma', [person('ana', 'Ana Popa'), person('m', 'Mara')], [], [], []).map((s) => s.item.id)), ['m']);
 });
 
 test('mention tokens disambiguate canonical Unicode duplicates and highlights follow text order', () => {
@@ -189,6 +195,15 @@ test('note links point at the note, so renaming it keeps them, and books keep [[
   assert.equal(env.resolveNote(undefined, 'Dune', [...entries, note('n4', 'Dune')], books), undefined);
   assert.equal(env.resolveNote('book:b1', 'Dune', entries, books), undefined);
   assert.equal(env.resolveNote(undefined, 'photo:p1', entries, books), undefined);
+  // looked up by id once per list (the store hands over a new list on each save): the first note with the id, as
+  // find gave, and a new list's own notes
+  const renamed = { ...trip, title: 'Trip to Cluj, renamed' };
+  assert.equal(env.resolveNote('note:n1', 'x', [trip, renamed], books), trip);
+  assert.equal(env.resolveNote('note:n1', 'x', [renamed, untitled], books), renamed);
+  assert.equal(env.resolveNote('note:n2', 'x', [renamed], books), undefined);
+  // an untitled note's name is its own copy's first line
+  assert.equal(env.noteLabel({ ...untitled, text: 'Another first line' }), 'Another first line');
+  assert.equal(env.noteLabel(untitled), 'First line here');
 });
 
 test('Linked from lists the notes linking here, with the line the link is on', () => {

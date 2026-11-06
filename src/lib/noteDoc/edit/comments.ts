@@ -17,11 +17,21 @@ export interface Comment extends Range {
   ranges: Range[];
 }
 
+/**
+ * The comments of each document read so far. Documents never change (an edit makes a new one), and the ribbon, the
+ * comments' pane and the lit comment all ask after every key and caret move: read once per document, not each time.
+ * Callers only read the list.
+ */
+const commentsCache = new WeakMap<PMNode, Comment[]>();
+
 /** The comments in the document, in order. The pane knows each by where it starts (`from`). */
 export function commentsOf(doc: PMNode): Comment[] {
   const type = doc.type.schema.marks.comment;
+  if (!hasComments(doc)) return [];
+  const known = commentsCache.get(doc);
+  if (known) return known;
   const out: Comment[] = [];
-  if (!doc.rangeHasMark(0, doc.content.size, type)) return out;
+  commentsCache.set(doc, out);
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
     if (node.type.spec.code) return false;
@@ -228,5 +238,20 @@ export const stepComment = (dir: 1 | -1): Command => (state, dispatch) => {
   return selectComment(c.from)(state, dispatch);
 };
 
+/**
+ * Whether each block holds a comment, kept by block: an edit keeps every block it didn't touch, so after a key only the
+ * block typed in is read again, not the whole note.
+ */
+const blockHasComment = new WeakMap<PMNode, boolean>();
+
 /** Whether the note holds any comment. */
-export const hasComments = (doc: PMNode) => doc.rangeHasMark(0, doc.content.size, doc.type.schema.marks.comment);
+export function hasComments(doc: PMNode): boolean {
+  const type = doc.type.schema.marks.comment;
+  for (let i = 0; i < doc.childCount; i++) {
+    const block = doc.child(i);
+    let has = blockHasComment.get(block);
+    if (has === undefined) blockHasComment.set(block, (has = block.rangeHasMark(0, block.content.size, type)));
+    if (has) return true;
+  }
+  return false;
+}

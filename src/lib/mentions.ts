@@ -101,14 +101,30 @@ export type Suggestion =
   | { kind: 'book'; item: Book }
   | { kind: 'song'; item: Song };
 
+/**
+ * Each name's search key and its words, kept: the suggestions read every person's, book's, song's and note's name
+ * again on each key typed after an @ or a [[. (Let go of all at once if it ever holds very many.)
+ */
+const searchable = new Map<string, { key: string; words: string[] }>();
+function searchableOf(t: string) {
+  let s = searchable.get(t);
+  if (!s) {
+    if (searchable.size >= 20_000) searchable.clear();
+    const key = searchKey(t);
+    s = { key, words: key.split(/[\s\-–—,.'’()]+/) };
+    searchable.set(t, s);
+  }
+  return s;
+}
+
 /** How well `q` matches some words: 3 for the start of the whole, 2 for the start of a word, 1 anywhere, 0 not at all. */
 export function score(q: string, ...texts: string[]) {
   let best = 0;
   for (const t of texts) {
-    const s = searchKey(t);
+    const { key: s, words } = searchableOf(t);
     if (!s) continue;
     if (s.startsWith(q)) return 3;
-    if (s.split(/[\s\-–—,.'’()]+/).some((w) => w.startsWith(q))) best = Math.max(best, 2);
+    if (words.some((w) => w.startsWith(q))) best = Math.max(best, 2);
     else if (s.includes(q)) best = Math.max(best, 1);
   }
   return best;

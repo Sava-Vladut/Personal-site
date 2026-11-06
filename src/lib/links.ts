@@ -15,21 +15,46 @@ const clean = (t: string) => t.replace(/[\]|\n]/g, ' ').trim().slice(0, 120) || 
 const cut = (s: string, max: number) => (Array.from(s).length > max ? Array.from(s).slice(0, max - 1).join('').trimEnd() + '…' : s);
 const PICTURE = /^\s*\[\[(?:photo|image|album):/;
 
+/**
+ * Untitled notes' names, kept by note: a note never changes (an edit makes a new one), and every link to it, the
+ * suggestions and what links here ask again on each save.
+ */
+const labels = new WeakMap<object, string>();
+
 /** What a note is called: its title, or its first line when it has none. */
 export function noteLabel(e: Pick<Entry, 'title' | 'text'>) {
   const title = e.title.trim();
   if (title) return title;
+  const known = labels.get(e);
+  if (known !== undefined) return known;
+  let label = t('Untitled');
   for (const l of e.text.split('\n')) {
     if (!l.trim() || PICTURE.test(l)) continue;
     const s = stripMarkdown(l).trim();
-    if (s) return cut(s, 70);
+    if (s) {
+      label = cut(s, 70);
+      break;
+    }
   }
-  return t('Untitled');
+  labels.set(e, label);
+  return label;
+}
+
+/** Each list of notes by id (the first with an id, as find gives), made once per list: links look notes up by id. */
+const byId = new WeakMap<Entry[], Map<string, Entry>>();
+function entryById(entries: Entry[], id: string) {
+  let index = byId.get(entries);
+  if (!index) {
+    index = new Map();
+    for (const e of entries) if (!index.has(e.id)) index.set(e.id, e);
+    byId.set(entries, index);
+  }
+  return index.get(id);
 }
 
 /** The note a [[target|text]] link points to, if it's still there. */
 export function resolveNote(target: string | undefined, text: string, entries: Entry[], books: Book[]) {
-  if (target !== undefined) return target.startsWith(NOTE) ? entries.find((e) => e.id === target.slice(NOTE.length)) : undefined;
+  if (target !== undefined) return target.startsWith(NOTE) ? entryById(entries, target.slice(NOTE.length)) : undefined;
   if (PICTURE.test('[[' + text) || resolveMention(undefined, text, books)) return undefined;
   const k = key(text);
   return entries.find((e) => e.kind === 'note' && key(e.title) === k);

@@ -115,7 +115,11 @@ function useRoving() {
     if (!el) return;
     const all = stops(el);
     const at = current && all.includes(current) ? current : last.current && all.includes(last.current) ? last.current : all[0];
-    for (const b of all) b.tabIndex = b === at ? 0 : -1;
+    // (only where it changes: this runs after every render of the ribbon, each caret move that lights another button)
+    for (const b of all) {
+      const tab = b === at ? 0 : -1;
+      if (b.tabIndex !== tab) b.tabIndex = tab;
+    }
   };
   // after every render: the commands change with the tab, the caret and the selection
   useLayoutEffect(() => settle());

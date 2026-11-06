@@ -12,7 +12,7 @@ import { history, redo, undo } from '@tiptap/pm/history';
 import { gapCursor } from '@tiptap/pm/gapcursor';
 import { tableEditing } from '@tiptap/pm/tables';
 import { dropCursor } from '@tiptap/pm/dropcursor';
-import { normalizeTr, parseInline, BARE } from '../lib/noteDoc';
+import { normalizeAfter, parseInline, BARE } from '../lib/noteDoc';
 import {
   AUTOCORRECT, BLOCK_RULES, backspace, commentsPlugin, deleteForward, enter, exitCode, findOf, findPlugin, findStep, footnotesOf, hasFootnotes, moveBlocks, newLine, noteCommands, paint, painterOf,
   painterPlugin, renumberChanged, stepOverChip, stopPainter, tab, tidyAfterTag, typedAt, type BlockRule, type Typed,
@@ -311,7 +311,9 @@ const CHIP = /^(person|song|wiki)$/;
 const chipsInRange = new Plugin({
   // and while reading, Tab goes from tag to tag; while writing, a press on one mustn't take the focus from the words
   view(view) {
-    let was: boolean | null = null;
+    // the tags are made with it right (nodeViews.ts draws them focusable while reading): only a switch between reading
+    // and writing changes it for the tags already there, not opening the note (every tag of a long one gone through)
+    let was: boolean | null = view.editable;
     const sync = () => {
       if (was === view.editable) return;
       was = view.editable;
@@ -450,10 +452,8 @@ export function notePlugins(opts: PluginOptions): Plugin[] {
     keys,
     keymap(baseKeymap),
     history({ depth: 300, newGroupDelay: 1000 }),
-    // the document is always one its text can say (lib/noteDoc/normalize.ts)
-    new Plugin({
-      appendTransaction: (trs, _old, state) => (trs.some((tr) => tr.docChanged) ? normalizeTr(state) : null),
-    }),
+    // the document is always one its text can say (lib/noteDoc/normalize.ts), looked at around each change only
+    new Plugin({ appendTransaction: (trs, _old, state) => normalizeAfter(trs, state) }),
     // numbered lists count again wherever a change touched their lines (deleting a selection, joining, pasting, a drag)
     new Plugin({ appendTransaction: (trs, _old, state) => renumberChanged(trs, state) }),
     tags,

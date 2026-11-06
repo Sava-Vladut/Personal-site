@@ -971,6 +971,25 @@ test('an edited document writes the same text as a fresh copy of it (the lines k
   }
 });
 
+test('a note written ahead a few blocks at a time writes the same text as one written at once', () => {
+  const seed = Number(process.env.SEED ?? 1);
+  const random = generator(seed, { wild: true });
+  const COUNT = Number(process.env.COUNT ?? 1000);
+  for (let i = 0; i < COUNT; i++) {
+    const d = nd.normalizeDoc(random());
+    // three blocks each time it's let go on, as the editor does while the page is idle
+    let rounds = 0;
+    for (;;) {
+      let left = 3;
+      rounds++;
+      if (nd.warmNote(d, () => left-- > 0)) break;
+      assert.ok(rounds < 1000, 'it gets there');
+    }
+    assert.equal(nd.serializeNote(d), nd.serializeNote(S.nodeFromJSON(d.toJSON())), `document ${i} (SEED=${seed}):\n${d}`);
+  }
+  assert.equal(nd.warmNote(nd.parseNote('a\nb'), () => false), false, 'nothing written when there is no time');
+});
+
 test('the quick look agrees with putting in shape', () => {
   const seed = Number(process.env.SEED ?? 1);
   const COUNT = Number(process.env.COUNT ?? 1000);
@@ -984,6 +1003,55 @@ test('the quick look agrees with putting in shape', () => {
     }
   }
   for (const [name, d] of EDITED) assert.equal(nd.inShape(d), nd.normalizeTr(EditorState.create({ doc: d }), false) === null, name);
+});
+
+test('the look around a change agrees with the look at the whole note (the editor checks only around each change)', () => {
+  const seed = Number(process.env.SEED ?? 1);
+  const COUNT = Number(process.env.COUNT ?? 1000);
+  const r = rng(seed + 11);
+  const int = (n) => Math.floor(r() * n);
+  const pick = (xs) => xs[int(xs.length)];
+  const others = generator(seed + 5, { wild: true });
+  let out = 0;
+  /** A random change, as typing, deleting, styling, retyping a line or pasting would make (null when it can't be made). */
+  const edit = (d) => {
+    const tr = EditorState.create({ doc: d }).tr;
+    const size = d.content.size;
+    const spots = [];
+    d.descendants((n, pos) => (n.isTextblock ? (spots.push([pos, n]), false) : true));
+    const [bpos, block] = spots.length ? pick(spots) : [0, null];
+    const inBlock = block ? bpos + 1 + int(block.content.size + 1) : 0;
+    switch (int(9)) {
+      case 0: if (block) tr.insertText(pick(['\n', ' ', 'x', '>', '`', '#', '  ', '- ', '[!note]']), inBlock); break;
+      case 1: { const a = int(size + 1), b = int(size + 1); tr.delete(Math.min(a, b), Math.max(a, b)); break; }
+      case 2: if (block) tr.delete(Math.max(bpos, inBlock - 2), inBlock); break;
+      case 3: { const a = int(size + 1), b = int(size + 1); tr[r() < 0.5 ? 'addMark' : 'removeMark'](Math.min(a, b), Math.max(a, b), S.marks[pick(['code', 'link', 'bold', 'comment'])].create(pick([{}, { href: 'u' }, { text: 'c' }]))); break; }
+      case 4: if (block) tr.setNodeMarkup(bpos, pick([S.nodes.codeBlock, S.nodes.paragraph, S.nodes.heading]), pick([{ open: '```', close: null }, null, { level: 2 }])); break;
+      case 5: if (block && block.type.name === 'codeBlock') tr.setNodeAttribute(bpos, 'close', null); else if (block) tr.split(inBlock); break;
+      case 6: { const at = int(size + 1); if (nd.pmTransform.canJoin(tr.doc, at)) tr.join(at); break; }
+      case 7: { const extra = others(); const at = pick([0, size, ...d.content.content.map((_, i) => d.content.content.slice(0, i).reduce((n, c) => n + c.nodeSize, 0))]); tr.insert(at, extra.child(int(extra.childCount))); break; }
+      default: if (block) tr.replaceWith(inBlock, inBlock, S.nodes.paragraph.create()); break;
+    }
+    return tr.docChanged ? tr : null;
+  };
+  for (let i = 0; i < COUNT; i++) {
+    let d = nd.normalizeDoc(others());
+    for (let k = 0; k < 4; k++) {
+      let tr = null;
+      try { tr = edit(d); } catch { continue; } // (a random change the schema can't take)
+      if (!tr) continue;
+      const ranges = nd.changedRanges([tr]);
+      const whole = nd.inShape(tr.doc);
+      if (!whole) out++;
+      assert.equal(ranges ? nd.inShapeNear(tr.doc, ranges) : whole, whole, `document ${i}, change ${k} (SEED=${seed}):\n${d}\n→ ${tr.doc}`);
+      const fix = nd.normalizeAfter([tr], EditorState.create({ doc: tr.doc }));
+      assert.equal(fix === null, whole, `fixed only when out of shape: ${i}, ${k}`);
+      d = fix ? fix.doc : tr.doc;
+      assert.ok(nd.inShape(d), `in shape after: ${i}, ${k}`);
+    }
+  }
+  // the changes put documents out of shape often enough for the look to be tried both ways
+  assert.ok(out > COUNT / 10, `changes that put a document out of shape: ${out}`);
 });
 
 /* ---------- putting in shape ---------- */
