@@ -7,8 +7,12 @@ const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8
 const origin = 'https://example.test';
 const key = (request) => new URL(typeof request === 'string' ? request : request.url, origin).href;
 
-function worker({ fetch = async () => new Response('network'), entries = {}, failRead = false, failWrite = false, precache = [] } = {}) {
+function worker({ fetch = async () => new Response('network'), entries = {}, failRead = false, failWrite = false, precache = [], revisions = {} } = {}) {
   const listeners = {};
+  // the worker's timers, run by the test when it wants (fire())
+  const timers = new Map();
+  let timerId = 0;
+  const waiting = [];
   const stores = new Map(Object.entries(entries).map(([name, responses]) => [name, new Map(Object.entries(responses).map(([path, body]) => [key(path), new Response(body)]))]));
   let claimed = false;
   const caches = {
@@ -24,7 +28,7 @@ function worker({ fetch = async () => new Response('network'), entries = {}, fai
           if (failWrite) throw new Error('Quota exceeded');
           store.set(key(request), response);
         },
-        addAll: async (urls) => { for (const url of urls) store.set(key(url), await fetch({ url: key(url) })); },
+        addAll: async (urls) => { for (const url of urls) store.set(key(url), await fetch({ url: key(url), priority: url.priority })); },
       };
     },
     // Matching across caches reproduces the browser's oldest-cache-first behavior.
@@ -32,17 +36,42 @@ function worker({ fetch = async () => new Response('network'), entries = {}, fai
       for (const store of stores.values()) if (store.has(key(request))) return store.get(key(request)).clone();
     },
   };
-  runInNewContext(source.replace('const PRECACHE = [];', `const PRECACHE = ${JSON.stringify(precache)};`), {
+  runInNewContext(source.replace('const PRECACHE = [];', `const PRECACHE = ${JSON.stringify(precache)};`).replace('const REVISIONS = {};', `const REVISIONS = ${JSON.stringify(revisions)};`), {
     self: { addEventListener: (type, handler) => { listeners[type] = handler; }, skipWaiting() {}, clients: { claim: async () => { claimed = true; } } },
+    // Node's Request drops `priority`; this one keeps what the worker asked for
     caches, fetch, URL, Response, location: { origin },
+    Request: class { constructor(url, init = {}) { this.url = key(url); this.priority = init.priority; } },
+    setTimeout: (fn, ms) => { timers.set(++timerId, { fn, ms }); return timerId; },
+    clearTimeout: (id) => void timers.delete(id),
   });
   return {
     stores,
     claimed: () => claimed,
+    /** Runs the timers that are due, as if that much time had passed. */
+    fire: () => { for (const [id, { fn }] of timers) { timers.delete(id); fn(); } },
+    timers,
+    /** Everything the worker asked to be kept alive for. */
+    settled: () => Promise.allSettled(waiting),
     request: async (path, mode = 'cors', method = 'GET', preloadResponse) => {
       let response;
-      listeners.fetch({ request: { url: key(path), method, mode }, preloadResponse, respondWith: (promise) => { response = promise; } });
+      listeners.fetch({
+        request: { url: key(path), method, mode },
+        preloadResponse,
+        respondWith: (promise) => { response = promise; },
+        waitUntil: (promise) => { waiting.push(promise); },
+      });
       return await response;
+    },
+    /** Starts a request without waiting for its answer. */
+    start: (path, mode = 'cors', preloadResponse) => {
+      let response;
+      listeners.fetch({
+        request: { url: key(path), method: 'GET', mode },
+        preloadResponse,
+        respondWith: (promise) => { response = promise; },
+        waitUntil: (promise) => { waiting.push(promise); },
+      });
+      return response;
     },
     install: async () => {
       let completion;
@@ -189,4 +218,59 @@ test('navigations use the preloaded response instead of fetching again', async (
   assert.equal(await (await app.request('/journal', 'navigate', 'GET', Promise.resolve(new Response('preloaded', html)))).text(), 'preloaded');
   assert.equal(await (await app.request('/journal', 'navigate', 'GET', Promise.resolve(undefined))).text(), 'fetched');
   assert.equal(calls, 1);
+});
+
+test('a page the network is too slow to bring opens from the saved copy, and the late answer refreshes it', async () => {
+  const html = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
+  let answer;
+  const app = worker({ entries: { 'mm-app-dev': { '/': 'saved shell' } }, fetch: () => new Promise((resolve) => { answer = resolve; }) });
+  const page = app.start('/journal', 'navigate');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(app.timers.size, 1, 'the wait is timed');
+  app.fire();
+  assert.equal(await (await page).text(), 'saved shell');
+  answer(new Response('fresh shell', html));
+  await app.settled();
+  assert.equal(await app.stores.get('mm-app-dev').get(key('/')).text(), 'fresh shell');
+});
+
+test('a slow page with nothing saved yet keeps waiting for the network, and a quick one cancels the timer', async () => {
+  const html = { headers: { 'Content-Type': 'text/html; charset=utf-8' } };
+  let answer;
+  const app = worker({ fetch: () => new Promise((resolve) => { answer = resolve; }) });
+  const page = app.start('/journal', 'navigate');
+  await new Promise((resolve) => setImmediate(resolve));
+  app.fire();
+  answer(new Response('first visit', html));
+  assert.equal(await (await page).text(), 'first visit');
+  const quick = worker({ fetch: async () => new Response('fresh', html) });
+  assert.equal(await (await quick.request('/journal', 'navigate')).text(), 'fresh');
+  assert.equal(quick.timers.size, 0);
+});
+
+test('an update keeps the unchanged files without a hashed name, fetches the rest at low priority and notes the new revisions', async () => {
+  const fetched = [];
+  const app = worker({
+    precache: ['/', '/icons/all.json', '/icon.svg', '/assets/Journal-abcdefgh.js'],
+    revisions: { '/icons/all.json': 'same', '/icon.svg': 'new' },
+    entries: { 'mm-app-old': { '/icons/all.json': 'kept icons', '/icon.svg': 'old icon', '/__revisions': JSON.stringify({ '/icons/all.json': 'same', '/icon.svg': 'old' }) } },
+    fetch: async (req) => { fetched.push([new URL(req.url).pathname, req.priority]); return new Response('downloaded'); },
+  });
+  await app.install();
+  assert.deepEqual(fetched.sort(), [['/', 'low'], ['/assets/Journal-abcdefgh.js', 'low'], ['/icon.svg', 'low']]);
+  const cache = app.stores.get('mm-app-dev');
+  assert.equal(await cache.get(key('/icons/all.json')).text(), 'kept icons');
+  assert.deepEqual(JSON.parse(await cache.get(key('/__revisions')).text()), { '/icons/all.json': 'same', '/icon.svg': 'new' });
+});
+
+test('an update from a build that kept no revisions downloads the files without a hashed name again', async () => {
+  const fetched = [];
+  const app = worker({
+    precache: ['/icons/all.json'],
+    revisions: { '/icons/all.json': 'same' },
+    entries: { 'mm-app-old': { '/icons/all.json': 'old icons' } },
+    fetch: async (req) => { fetched.push(new URL(req.url).pathname); return new Response('downloaded'); },
+  });
+  await app.install();
+  assert.deepEqual(fetched, ['/icons/all.json']);
 });

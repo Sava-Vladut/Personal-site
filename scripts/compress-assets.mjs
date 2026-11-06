@@ -19,8 +19,9 @@ await Promise.all(Array.from({ length: 2 }, async () => {
     const file = files.pop();
     const raw = await readFile(file);
     if (raw.length <= 1024) continue;
+    // Brotli's best (11): about 2% smaller than 10 over the whole build, for a few seconds more once per build
     for (const [suffix, data] of [
-      ['br', await brotli(raw, { params: { [constants.BROTLI_PARAM_QUALITY]: 10 } })],
+      ['br', await brotli(raw, { params: { [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_SIZE_HINT]: raw.length } })],
       ['gz', await gz(raw, { level: 9 })],
     ]) {
       const temp = `${file}.${suffix}.tmp`;
