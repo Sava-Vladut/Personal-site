@@ -298,7 +298,10 @@ test('SIGTERM lets an in-flight API response finish before exiting', { timeout: 
       });
       return server;
     };
-    globalThis.fetch = async () => {
+    globalThis.fetch = async (url) => {
+      // only the Spotify search is held: what the server asks for on its own as it starts (the chat logs' emotes) is
+      // turned away, or its message could come before the port's
+      if (!String(url).startsWith('https://api.spotify.com/')) throw new TypeError('fetch failed');
       const release = once(process, 'message');
       process.send({ fetching: true });
       await release;
