@@ -189,6 +189,15 @@ test('note links point at the note, so renaming it keeps them, and books keep [[
   assert.equal(env.resolveNote(undefined, 'Dune', [...entries, note('n4', 'Dune')], books), undefined);
   assert.equal(env.resolveNote('book:b1', 'Dune', entries, books), undefined);
   assert.equal(env.resolveNote(undefined, 'photo:p1', entries, books), undefined);
+  // looked up by id once per list (the store hands over a new list on each save): the first note with the id, as
+  // find gave, and a new list's own notes
+  const renamed = { ...trip, title: 'Trip to Cluj, renamed' };
+  assert.equal(env.resolveNote('note:n1', 'x', [trip, renamed], books), trip);
+  assert.equal(env.resolveNote('note:n1', 'x', [renamed, untitled], books), renamed);
+  assert.equal(env.resolveNote('note:n2', 'x', [renamed], books), undefined);
+  // an untitled note's name is its own copy's first line
+  assert.equal(env.noteLabel({ ...untitled, text: 'Another first line' }), 'Another first line');
+  assert.equal(env.noteLabel(untitled), 'First line here');
 });
 
 test('Linked from lists the notes linking here, with the line the link is on', () => {
