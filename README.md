@@ -100,7 +100,9 @@ Streamer stats reads each channel's streams back to 2015 from SullyGnome, with i
 Any host that runs Node 20 (20.19+) or Node 22.12+: `npm ci && npm run build && npm start`, behind HTTPS. Set `PUBLIC_URL` to the public address
 (the OAuth redirects use it) and `SESSION_SECRET` to a long random string. The server has no dependencies, serves
 compressed, cache-busted assets, and sends a strict Content-Security-Policy. The build writes Brotli and gzip sidecars
-for static hosting after generating the offline cache, so compression never blocks live requests.
+for static hosting after generating the offline cache, so compression never blocks live requests. API answers are
+compressed by the server as they go out (Brotli, else gzip; big ones off the event loop), and the public ones pages ask
+for again and again carry an ETag, so an unchanged one comes back as a 304 with no body.
 
 Run one server process per sync data directory: document conflict checks are serialized within that process.
 Sync uploads and downloads stream to/from disk. Fingerprinted static assets use a bounded 16 MiB cache.
