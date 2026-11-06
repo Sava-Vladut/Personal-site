@@ -16,7 +16,6 @@ import {
 } from '../lib/store';
 import { mentionOfPerson, mentionOfSong, suggest, type Suggestion } from '../lib/mentions';
 import { coreOf } from '../data/emotions';
-import { openViewer } from '../lib/viewer';
 import { contextNow, fillWeather, needsWeather } from '../lib/weather';
 import { BookSheet } from '../components/books';
 import { RefSheet } from '../components/RefSheet';
@@ -51,6 +50,8 @@ type Open = null | 'icon' | 'images' | 'spotify' | 'book' | 'share' | 'more' | '
 const personNameKey = (name: string) => name.trim().normalize('NFC').toLowerCase();
 
 const MAX_PHOTOS = 20;
+/** The full-screen picture viewer, loaded the first time it's asked for (it's a large part of the editor's code). */
+const loadViewer = () => import('../lib/viewer');
 /** Writing on without a pause still saves this often (ms): each change otherwise waits for the next pause. */
 const MAX_WAIT = 2000;
 const isImageFile = (f: File) => f.type.startsWith('image/') || /\.(heic|heif|avif|webp)$/i.test(f.name);
@@ -563,6 +564,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // the notes changed (a save from here, or sync): a newer copy of this one is taken up when nothing here waits
   useEffect(catchUp, [allEntries]);
 
+  // a note with pictures: the full-screen viewer loads once the note has opened, so the first tap on one opens at once
+  const pictured = slots.length > 0;
+  useEffect(() => {
+    if (!pictured) return;
+    const wait = setTimeout(() => void loadViewer().catch(() => {}), 1500);
+    return () => clearTimeout(wait);
+  }, [pictured]);
+
   if (!draft)
     return (
       <div class="page">
@@ -981,10 +990,14 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   };
 
 
-  /** Opens the note's pictures full screen — every picture, rows opened out — at picture `k` of the one named `key`. */
+  /**
+   * Opens the note's pictures full screen — every picture, rows opened out — at picture `k` of the one named `key`. The
+   * viewer (lib/viewer.ts, PhotoSwipe) loads the first time it's needed, not with the editor.
+   */
   const view = async (key: string, k = 0, el?: HTMLElement | null) => {
     const d = latest.current;
     if (!d) return;
+    const viewer = loadViewer();
     const b = bodyOf({ ...d, text: textNow() });
     const i = b.media.findIndex((m) => mediaKey(m) === key);
     const blocks = bodyRef.current ? [...bodyRef.current.querySelectorAll<HTMLElement>('.media-node > .media')] : [];
@@ -1006,7 +1019,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
         };
       }),
     );
+    // (offline before the app's files were all kept, it can fail to come)
+    const loaded = await viewer.catch(() => null);
     if (!alive.current || removing.current) return;
+    if (!loaded) return toast(t('Couldn’t load the app. Check your connection and try again.'));
+    const { openViewer } = loaded;
     const shown = items.filter((x) => x.src);
     const start = items[flat.findIndex((f) => f.mi === i && f.j === k)];
     openViewer(shown, Math.max(0, shown.indexOf(start)), reading ? {} : {

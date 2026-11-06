@@ -18,7 +18,8 @@ async function compile(input) {
     }] : [],
   });
   try {
-    return (await bundle.generate({ format: 'cjs' })).output[0].code;
+    // (what the code loads when it's needed, through require too: the harness hands every module over)
+    return (await bundle.generate({ format: 'cjs', dynamicImportInCjs: false })).output[0].code;
   } finally {
     await bundle.close();
   }
