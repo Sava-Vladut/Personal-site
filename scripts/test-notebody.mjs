@@ -1170,6 +1170,106 @@ test('the ribbon: Insert › Table\'s grid puts a table in, the Table tab comes 
   assert.ok(bar.querySelector('.format-bar').classList.contains('is-context'));
 });
 
+test('the phone\'s bar never swaps its row under the finger: a tab\'s row stays scrolled, a selection only brings Home up from View', () => {
+  const window = page();
+  // (nothing is laid out here: each row keeps the scroll it's given, and says so as a browser does)
+  const at = new WeakMap();
+  Object.defineProperty(window.HTMLElement.prototype, 'scrollLeft', {
+    configurable: true,
+    get() { return at.get(this) ?? 0; },
+    set(x) { at.set(this, x); },
+  });
+  const { Ribbon, h, render: draw, act } = window.NB;
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  const calls = [];
+  const cmds = new Proxy({}, { get: (_, k) => (...args) => (calls.push([k, ...args]), true) });
+  const actions = new Proxy({ reading: false, title: 'T', busy: false, canAddPhotos: true, shared: false }, { get: (o, k) => (k in o ? o[k] : () => {}) });
+  let props = { actions, cmds, lit: { block: 'p', ranged: false }, swapped: false, away: false, done: null, toText() {} };
+  const show = (p) => act(() => draw(h(Ribbon, (props = { ...props, ...p })), host));
+  const click = (el) => act(() => void el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 })));
+  const tab = () => host.querySelector('.rb-pick-btn').textContent;
+  const go = (name) => {
+    click(host.querySelector('.rb-pick-btn'));
+    click([...host.querySelectorAll('.rb-menu button')].find((b) => b.textContent === name));
+  };
+  const row = () => host.querySelector('.format-scroll');
+  const scroll = (x) => {
+    row().scrollLeft = x;
+    act(() => void row().dispatchEvent(new window.Event('scroll')));
+  };
+  const select = (ranged) => show({ lit: { ...props.lit, ranged } });
+
+  // Home scrolled along to Checklist, then Insert and back: Checklist is where it was, not Strikethrough
+  show({});
+  scroll(530);
+  go('Insert');
+  assert.equal(row().scrollLeft, 0, 'a tab first shown starts at its first command');
+  go('Home');
+  assert.equal(row().scrollLeft, 530);
+  // the bar back after an @'s suggestions
+  show({ swapped: true });
+  assert.equal(row(), null);
+  show({ swapped: false });
+  assert.equal(row().scrollLeft, 530);
+
+  // words selected on Review (to comment on) or Insert (to link): the tab stays, New comment and Link where they were
+  go('Review');
+  select(true);
+  assert.equal(tab(), 'Review');
+  select(false);
+  go('Insert');
+  select(true);
+  assert.equal(tab(), 'Insert');
+  select(false);
+  // on View, whose commands never act on words, Home comes up, scrolled as it was left, and View comes back after
+  go('View');
+  select(true);
+  assert.equal(tab(), 'Home');
+  assert.equal(row().scrollLeft, 530);
+  select(false);
+  assert.equal(tab(), 'View');
+  // …unless the row was pressed meanwhile: the selection going as the bar is touched, or after the command, mustn't put
+  // View's commands under the finger
+  select(true);
+  act(() => void [...row().querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Checklist').dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, cancelable: true })));
+  select(false);
+  assert.equal(tab(), 'Home');
+  click([...row().querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Checklist'));
+  assert.deepEqual(calls.pop(), ['list', 'task']);
+});
+
+test('the folded ribbon: a button\'s menu keeps it dropped down, its menu on a button that\'s there; a pick puts both away', () => {
+  const window = page();
+  window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
+  const { Ribbon, h, render: draw, act, setDocView } = window.NB;
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  const calls = [];
+  const cmds = new Proxy({}, { get: (_, k) => (...args) => (calls.push([k, ...args]), true) });
+  const actions = new Proxy({ reading: false, title: 'T', busy: false, canAddPhotos: true, shared: false }, { get: (o, k) => (k in o ? o[k] : () => {}) });
+  const click = (el) => act(() => void el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 })));
+  act(() => setDocView({ ribbon: 'collapsed' }));
+  act(() => draw(h(Ribbon, { actions, cmds, lit: { block: 'ol', canRestart: true }, swapped: false, away: false, done: null, toText() {} }), host));
+  try {
+    for (const [arrow, item, want] of [['Highlight colours', 'Green', ['highlight', 'lightgreen']], ['Numbering options', 'Restart numbering', ['numbering', true]], ['More styles', 'Heading 4', ['style', 'h4']]]) {
+      click(host.querySelector('#rb-tab-home'));
+      assert.ok(host.querySelector('.rb-body.is-peek'), 'a tab drops the folded ribbon down');
+      const button = host.querySelector(`[aria-label="${arrow}"]`);
+      click(button);
+      assert.ok(host.querySelector('.rb-body.is-peek'), `${arrow}: the ribbon stays down`);
+      assert.ok(button.isConnected, `${arrow}: the menu hangs from its button`);
+      assert.equal(button.getAttribute('aria-expanded'), 'true');
+      click([...window.document.querySelectorAll('.rb-pop button')].find((b) => b.textContent === item));
+      assert.deepEqual(calls.pop(), want);
+      assert.equal(window.document.querySelector('.rb-pop'), null);
+      assert.equal(host.querySelector('.rb-body'), null, `${item}: picked, the ribbon goes up as after a command`);
+    }
+  } finally {
+    act(() => setDocView({ ribbon: 'open' }));
+  }
+});
+
 /* ---------- comments ---------- */
 
 test('comments: Ctrl+Alt+M makes a draft, its box in the margin is written in and saved, edited, deleted; a click selects its words', async () => {
