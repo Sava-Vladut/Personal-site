@@ -46,6 +46,7 @@ function harness(code, initial = {}) {
   const messages = [];
   const delays = []; // what each timer was set to wait (the harness runs them when asked, whatever they say)
   const navigations = [];
+  const stateLog = []; // every value a component's state was set to, in order
   const listeners = new Map();
   const documentListeners = new Map();
   // like the store, every change to the notes is heard by whoever listens (onEntries)
@@ -70,7 +71,7 @@ function harness(code, initial = {}) {
       const i = cursor++;
       if (!(i in slots)) slots[i] = typeof value === 'function' ? value() : value;
       return [slots[i], (next) => {
-        if (mounted) slots[i] = typeof next === 'function' ? next(slots[i]) : next;
+        if (mounted) stateLog.push(slots[i] = typeof next === 'function' ? next(slots[i]) : next);
       }];
     },
     useRef(value) {
@@ -106,6 +107,11 @@ function harness(code, initial = {}) {
     toast: (message) => messages.push(message), isEmpty: initial.isEmpty ?? (() => false),
     usePeople: () => [...people.values()], useEntries: () => initial.entries ?? [], onEntries: (f) => { entrySubs.add(f); return () => entrySubs.delete(f); }, useBooks: () => [...books.values()], useSongs: () => [...songs.values()],
     useSettings: () => ({ picker: 'grid' }),
+    // as the store's: a value whose listeners hear of each change (here `use` only reads it: the harness draws again by hand)
+    observable(value) {
+      const subs = new Set();
+      return { get: () => value, set(next) { value = next; subs.forEach((f) => f()); }, sub(f) { subs.add(f); return () => subs.delete(f); }, use: () => value };
+    },
     BOOK_STATUSES: ['want', 'reading', 'read', 'dnf'], MAX_PERSON_EMOTIONS: 3,
   };
   const context = {
@@ -113,7 +119,7 @@ function harness(code, initial = {}) {
     require(id) {
       if (id === 'preact/hooks') return hooks;
       if (id.endsWith('/i18n')) return i18n;
-      if (id === 'preact/compat') return { flushSync(fn) { fn(); initial.onFlush?.(); }, createPortal: (node) => node };
+      if (id === 'preact/compat') return { flushSync(fn) { fn(); initial.onFlush?.(); }, createPortal: (node) => node, memo: (component) => component };
       if (id === 'preact/jsx-runtime') return { jsx: vnode, jsxs: vnode, Fragment: 'fragment' };
       const override = Object.entries(initial.modules ?? {}).find(([suffix]) => id.endsWith(suffix));
       if (override) return override[1];
@@ -146,7 +152,7 @@ function harness(code, initial = {}) {
   vm.runInNewContext(code, context);
   function vnode(type, props) { return { type, props }; }
   return {
-    entries, people, books, songs, messages, delays, navigations, listeners, documentListeners, document: context.document, resolveImport, rejectImport,
+    entries, people, books, songs, messages, delays, navigations, stateLog, listeners, documentListeners, document: context.document, resolveImport, rejectImport,
     render(name = 'Editor', props = { id: entry.id, query: new URLSearchParams() }) {
       cursor = 0;
       const tree = context.exports[name](props);
@@ -928,6 +934,36 @@ test('sync: a newer copy goes into the words as no step to undo', async () => {
   assert.deepEqual(calls, [false]);
 });
 
+test('writing: words typed reach the status bar and are saved without the page drawn for them, and it draws the newest next', async () => {
+  const { h, note, props } = openNote();
+  let tree = h.render('Editor', props);
+  find(tree, (n) => n.props?.class === 'read-tail').props.onClick(); // a tap under the words: writing, at the end
+  tree = h.render('Editor', props);
+  const notes = (from) => h.stateLog.slice(from).filter((v) => v && typeof v === 'object' && 'text' in v && 'kind' in v);
+  const before = h.stateLog.length;
+  note.setText('Existing words, and new ones');
+  h.timers();
+  await settle();
+  assert.equal(h.entries.get('note-1').text, 'Existing words, and new ones');
+  const live = find(tree, (n) => n.type.name === 'LiveStatus').props.status;
+  assert.equal(live.text.get(), 'Existing words, and new ones', 'the status bar counts the newest words');
+  assert.equal(live.save.get(), 'saved');
+  assert.deepEqual(notes(before), [], 'the page isn\'t drawn again for words alone');
+  // drawn for anything else, the page shows the note as it is now
+  tree = h.render('Editor', props);
+  assert.equal(find(tree, (n) => n.type.name === 'ShareSheet').props.entry.text, 'Existing words, and new ones');
+  // with a sheet open, the page follows the words (a public copy's state is shown from them)
+  find(tree, (n) => n.type.name === 'FormatBar').props.ribbon.share();
+  tree = h.render('Editor', props);
+  const open = h.stateLog.length;
+  note.setText('Existing words, and new ones, and more');
+  h.timers();
+  assert.deepEqual(notes(open).map((e) => e.text), ['Existing words, and new ones, and more']);
+  // and the title is the page's own: drawn again for it
+  find(tree, (n) => n.type === 'textarea' && n.props['aria-label'] === 'Title').props.onInput({ currentTarget: { value: 'Retitled' } });
+  assert.equal(notes(open).at(-1).title, 'Retitled');
+});
+
 test('saving: Ctrl+S saves at once; a failed save is tried again on a click on "Not saved" and when back online', async () => {
   let fail = true;
   let h;
@@ -939,7 +975,11 @@ test('saving: Ctrl+S saves at once; a failed save is tried again on a click on "
   find(tree, (n) => n.type.name === 'NoteBody').props.onSave();
   await settle();
   tree = h.render('Editor', props);
-  const status = () => find(tree, (n) => n.type.name === 'NoteStatus').props;
+  // (the status bar hears of saving on its own: the page isn't drawn again for it)
+  const status = () => {
+    const { status: live, ...props } = find(tree, (n) => n.type.name === 'LiveStatus').props;
+    return { ...props, save: live.save.get(), text: live.text.get() };
+  };
   assert.equal(status().save, 'error');
   status().onRetry();
   await settle();

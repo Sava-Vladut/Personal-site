@@ -1,6 +1,6 @@
 import { Fragment } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { createPortal, flushSync } from 'preact/compat';
+import { createPortal, flushSync, memo } from 'preact/compat';
 import { rangeLabel, timeLabel } from '../lib/dates';
 import { goBack, navigate } from '../lib/router';
 import { bodyOf, canStep, findItem, insertMedia, itemKey, itemOf, itemRatio, itemsOf, layoutPart, mediaKey, parseBody, plainText, removeItem, removeMedia, sameMedia, serializeBody, stepMedia, takeOut, ungroup, type Body, type Item, type Media } from '../lib/body';
@@ -11,7 +11,7 @@ import { linkedFrom, linkOf, noteLabel, suggestLinks, type LinkSuggestion } from
 import { findRef, refOf, useRefs, type Ref } from '../lib/refs';
 import { connectSpotify } from '../lib/spotify';
 import {
-  blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, onEntries, saveEntry, savePerson, toast, useBooks, usePeople, useSongs,
+  blankEntry, blankPerson, deleteEntry, getBooks, getEntries, getPeople, getSongs, isEmpty, observable, onEntries, saveEntry, savePerson, toast, useBooks, usePeople, useSongs,
   type Book, type Entry, type Person,
 } from '../lib/store';
 import { mentionOfPerson, mentionOfSong, suggest, type Suggestion } from '../lib/mentions';
@@ -95,6 +95,33 @@ function useNotesAround(id: string | undefined, changed: () => void): Entry[] {
   return list;
 }
 
+/**
+ * A picture in the note, drawn again only when what it shows changes, not each time the page is (each key with an @'s
+ * suggestions up, a sheet opening, a picture dragged over another). Its handlers aren't compared: each one the page
+ * gives acts through the page's refs, or on what is compared here (the picture itself, writing or reading), so the one
+ * it was drawn with does what a new one would.
+ */
+const Picture = memo(MediaBlock, (a, b) =>
+  a.m === b.m && a.draft.photos === b.draft.photos && a.draft.images === b.draft.images && a.editing === b.editing && a.selected === b.selected
+  && a.dragging === b.dragging && a.merging === b.merging && a.lifted === b.lifted);
+
+/** What the status bar is told: how saving goes and the words it counts (each a store's observable). */
+interface Status {
+  save: ReturnType<typeof observable<SaveState>>;
+  text: ReturnType<typeof observable<string>>;
+}
+
+/**
+ * The status bar, drawn again on its own as saving goes on and the words change, not with the whole page. Only on a
+ * computer (`wide`): a phone has no status bar (styles/document.css), so it isn't drawn there at all, nor are the
+ * note's words counted after each pause.
+ */
+function LiveStatus({ status, wide, ...props }: { status: Status; wide: boolean } & Omit<Parameters<typeof NoteStatus>[0], 'text' | 'save'>) {
+  const text = status.text.use();
+  const save = status.save.use();
+  return wide ? <NoteStatus {...props} text={text} save={save} /> : null;
+}
+
 /** Keeps the title box as tall as its text, again when the window is resized. */
 function useAutosize(value: string) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -114,7 +141,10 @@ function useAutosize(value: string) {
 }
 
 export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
-  const [draft, setDraft] = useState<Entry | null>(() => {
+  // The note being written is `latest.current`, the page drawn from it: setDraft draws the page again. A change only
+  // to the words while writing doesn't (see update): the editor shows them already, and the page draws nothing else
+  // from them but the status bar's count, which hears of them on its own.
+  const [drawn, setDraft] = useState<Entry | null>(() => {
     if (id !== 'new') return getEntries().find((e) => e.id === id) ?? null;
     // "Write about …" from a person's page starts the note already tagged with them; from a book's, mentioning it;
     // from a song's, with the song in it.
@@ -126,7 +156,11 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
       music: song ? [song.music] : [],
     };
   });
+  const latest = useRef(drawn);
+  const draft = latest.current;
   const [open, setOpen] = useState<Open>(null);
+  const openNow = useRef(open);
+  openNow.current = open;
   const [adding, setAdding] = useState(0);
   const [coverAdding, setCoverAdding] = useState(false);
   const [dropping, setDropping] = useState(false);
@@ -139,6 +173,8 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   const replaceRef = useRef<HTMLInputElement>(null);
   const picKey = useRef<((e: KeyboardEvent) => boolean) | null>(null); // the selected picture's keys (set each render)
   const [details, setDetails] = useState(false); // the Feelings page
+  const detailsNow = useRef(details);
+  detailsNow.current = details;
   // an @tag (or [[ link) being typed: where its @ is and what follows it; and which suggestion is picked
   const [mention, setMentionState] = useState<Typed | null>(null);
   const [pickAt, setPickAt] = useState(0);
@@ -165,15 +201,16 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
   // a save that failed is tried again by itself, a little later each time (after leaving the note too)
   const retryTimer = useRef<ReturnType<typeof setTimeout>>();
   const retries = useRef(0);
-  const latest = useRef(draft);
-  latest.current = draft;
   // the note as this page last saw it stored (as it opened, or as saved from here): a newer copy in the store came
   // from somewhere else (another device, through sync)
   const base = useRef<Entry | null>(id !== 'new' ? draft : null);
   // when the oldest change not saved yet was made (0: none waiting)
   const changedAt = useRef(0);
-  // what the status bar says about saving: only shown, never consulted, so saving works exactly as without it
-  const [saveState, setSaveState] = useState<SaveState>(id !== 'new' ? 'saved' : 'idle');
+  // What the status bar says about saving (only shown, never consulted, so saving works exactly as without it) and the
+  // words it counts: kept apart from the page's state, so that each key (saving…) and each pause (the words written
+  // back) draws the status bar alone, not the whole page with its pictures, ribbon and sheets.
+  const [status] = useState(() => ({ save: observable<SaveState>(id !== 'new' ? 'saved' : 'idle'), text: observable(draft?.text ?? '') }));
+  const setSaveState = (s: SaveState) => void (status.save.get() !== s && status.save.set(s));
   const [savedNow, setSavedNow] = useState(0); // saved by Ctrl+S: the status bar says so once more
   // the notes that link here, shown at the bottom. Saving while writing hands over a new list of entries, but unless
   // another note changed (or this one's title, which links can point at) what links here can't have, so the scan of
@@ -369,6 +406,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
     base.current = now;
     latest.current = now;
     setDraft(now);
+    status.text.set(now.text);
     // not a step to undo: undo never takes the words back to this device's older copy
     noteRef.current?.setText(serializeBody(bodyOf(now)), false);
   };
@@ -394,13 +432,24 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
 
   const update = (patch: Partial<Entry>) => {
     if (!alive.current || removing.current || !latest.current) return;
-    latest.current = { ...latest.current, ...patch };
-    setDraft(latest.current);
+    const before = latest.current;
+    latest.current = { ...before, ...patch };
+    if (patch.text !== undefined && patch.text !== before.text) status.text.set(patch.text);
+    if (!wordsOnly(before, patch)) setDraft(latest.current);
     dirty.current = true;
     setSaveState('saving');
     clearTimeout(timer.current);
     timer.current = setTimeout(() => flush(), soon(500));
   };
+
+  /**
+   * Whether a change is to the words alone while writing, with nothing the page draws from them changing: the page
+   * isn't drawn again for it. Reading, the page shows whether there are words; a sheet or the Feelings page open shows
+   * the note as it is (the public copy's state); and an empty note has no Make public.
+   */
+  const wordsOnly = (before: Entry, patch: Partial<Entry>) =>
+    Object.keys(patch).every((k) => k === 'text') && !readingNow.current && openNow.current === null && !detailsNow.current
+    && isEmpty(before) === isEmpty(latest.current!);
 
   /**
    * A note started here and left with nothing in it isn't kept, as one never saved isn't: saved while it was being
@@ -1336,7 +1385,7 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
             const key = mediaKey(m);
             // each picture into its own slot in the document, keyed so it stays itself when pictures move
             return <Fragment key={key}>{createPortal(
-              <MediaBlock
+              <Picture
                 m={m}
                 draft={draft}
                 editing={!reading}
@@ -1384,10 +1433,10 @@ export function Editor({ id, query }: { id: string; query?: URLSearchParams }) {
           </section>
         )}
       </article>
-      <NoteStatus
-        text={draft.text}
+      <LiveStatus
+        status={status}
+        wide={wide}
         note={note}
-        save={saveState}
         savedNow={savedNow}
         onRetry={saveNow}
         reading={reading}
