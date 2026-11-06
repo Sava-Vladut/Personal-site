@@ -507,6 +507,9 @@ const EDITED = [
   ['a comment keeps the spaces a heading starts with', doc(node('heading', { level: 1, sep: ' ' }, txt('  x', cm('c')))), '# <span class="comment">  x</span><!-- comment: c -->'],
   ['plain comment syntax is escaped', doc(p(txt('<span class="comment">a</span><!-- comment: x -->'))), '\\<span class\\="comment">a\\</span>\\<!-- comment: x -->'],
   ['a comment in a cell, what it says holding |', doc(table([[[txt('a', cm('x | y'))]]])), '| <span class="comment">a</span><!-- comment: x %7C y --> |\n| --- |'],
+  // **Ceafa ***de porc* would read as bold alone (the italic was lost on saving): the space goes outside the bold
+  ['bold ending in a space, then italic', doc(node('listItem', { kind: 'task', check: ' ' }, txt('Ceafa ', 'bold'), txt('de porc', 'italic'))), '- [ ] **Ceafa** *de porc*'],
+  ['bold and italic ending in a space, then italic', doc(p(txt('ăâ ', 'bold', 'italic'), txt('șț', 'italic'))), '***ăâ*** *șț*'],
 ];
 
 test('edited content is written so it reads back the same, keeping every character', () => {

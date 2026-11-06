@@ -200,6 +200,14 @@ function emit(u: Unit[], from: number, to: number, ctx: Ctx): string {
       }
     }
     const name = pick.type.name;
+    if (name === 'bold' && end < to && u[end].marks.some((m) => m.type.name === 'italic' && !ctx.open.includes(m.type))) {
+      // bold running straight into italic can't be written (**a ***b*: the bold's ** would run on into the italic's
+      // *, and the italic is lost): spaces the bold ends with go outside it, as the ones it starts with do (**a** *b*)
+      let k = end;
+      while (k > i + 1 && isSpace(u[k - 1])) k--;
+      for (let j = k; j < end; j++) without(u[j], pick.type);
+      end = k;
+    }
     if (styled(pick) && isSpace(u[i])) {
       // a style starts at a letter: its leading spaces go outside it
       for (let k = i; k < end && isSpace(u[k]); k++) without(u[k], pick.type);

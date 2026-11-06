@@ -152,6 +152,20 @@ export const findStep = (dir: 1 | -1): Command => (state, dispatch) => {
 };
 
 /**
+ * A match replaced by `text` in the styles of its first letter, as Word does: a link or a comment (which don't run on
+ * past their words' end) only when the match ends inside it too, and never an escape (it's the letter's own). Not
+ * ProseMirror's insertText: that takes a style switched on at the caret (stored) over the match's own, and drops a
+ * link or comment the match ends at the end of (replacing a link's whole text took the link off).
+ */
+function replaceMatch(tr: Transaction, m: Match, text: string): Transaction {
+  if (!text) return tr.delete(m.from, m.to);
+  const first = tr.doc.nodeAt(m.from)?.marks ?? [];
+  const last = tr.doc.nodeAt(m.to - 1)?.marks ?? [];
+  const marks = first.filter((x) => x.type.name !== 'escaped' && (x.type.spec.inclusive !== false || x.isInSet(last)));
+  return tr.replaceWith(m.from, m.to, tr.doc.type.schema.text(text, marks));
+}
+
+/**
  * Replace: the current match becomes `text` (keeping the styles it had), and the next one is selected. The first press
  * on a match not selected yet only selects it, as Word does. False when nothing's found.
  */
@@ -161,9 +175,7 @@ export const replaceCurrent = (text: string): Command => (state, dispatch) => {
   const m = f.current >= 0 ? f.matches[f.current] : null;
   if (!m || state.selection.from !== m.from || state.selection.to !== m.to) return findStep(1)(state, dispatch);
   if (!dispatch) return true;
-  const tr = state.tr;
-  if (text) tr.insertText(text, m.from, m.to);
-  else tr.delete(m.from, m.to);
+  const tr = replaceMatch(state.tr, m, text);
   // the next match is the first after what was put in (as the plugin will find them again over the changed note)
   const end = m.from + text.length;
   const after = findMatches(tr.doc, f.query);
@@ -183,11 +195,7 @@ export function replaceAll(state: EditorState, dispatch: ((tr: Transaction) => v
   if (!dispatch) return f.matches.length;
   const tr = state.tr;
   // from the end back, so the places before stay where they were
-  for (let i = f.matches.length - 1; i >= 0; i--) {
-    const m = f.matches[i];
-    if (text) tr.insertText(text, m.from, m.to);
-    else tr.delete(m.from, m.to);
-  }
+  for (let i = f.matches.length - 1; i >= 0; i--) replaceMatch(tr, f.matches[i], text);
   dispatch(closeHistory(tr).scrollIntoView());
   return f.matches.length;
 }

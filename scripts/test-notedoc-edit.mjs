@@ -1319,6 +1319,19 @@ test('Replace: the current match (once selected), then the next; Replace All in 
   E.replaceAll(next, (tr) => (next = next.apply(tr)), '');
   assert.equal(nd.serializeNote(next.doc), 'abc');
   assert.equal(E.replaceAll(findState('x|'), () => {}, 'y'), 0, 'no search: nothing replaced');
+  // a link's or a comment's whole words replaced stay a link, a comment; one the match runs out of doesn't go on
+  const cmt = (w) => `<span class="comment">${w}</span><!-- comment: why? -->`;
+  next = apply(findState(`[Ceafa](https://a.b) ${cmt('Ceafa')} [Ceafa de](https://a.b) porc|`), E.setFind({ text: 'Ceafa' }));
+  E.replaceAll(next, (tr) => (next = next.apply(tr)), 'Pulpa');
+  assert.equal(nd.serializeNote(next.doc), `[Pulpa](https://a.b) ${cmt('Pulpa')} [Pulpa de](https://a.b) porc`);
+  next = apply(findState('[Ceafa de](https://a.b) porc|'), E.setFind({ text: 'de porc' }));
+  E.replaceAll(next, (tr) => (next = next.apply(tr)), 'x');
+  assert.equal(nd.serializeNote(next.doc), '[Ceafa ](https://a.b)x');
+  // a style switched on at the caret before Replace All goes on nothing replaced (each keeps its own)
+  next = apply(findState('a | x **Ceafa** y ~~Ceafa~~'), E.toggleMarkSmart('italic'));
+  next = apply(next, E.setFind({ text: 'Ceafa' }));
+  E.replaceAll(next, (tr) => (next = next.apply(tr)), 'Pulpa');
+  assert.equal(nd.serializeNote(next.doc), 'a  x **Pulpa** y ~~Pulpa~~');
 });
 
 test('Find keeps up with the note: the matches move with each change, and found again where it changed', () => {
@@ -1442,6 +1455,8 @@ test('the Table tab: rows and columns in and out, the table out, a column aligne
   assert.equal(tAfter(at('c'), cmd('rowAbove')), '| a | b |\n| --- | --- |\n|  |  |\n| c‸ | d |');
   assert.equal(tAfter(at('a'), cmd('rowBelow')), '| a‸ | b |\n| --- | --- |\n|  |  |\n| c | d |');
   assert.equal(tAfter(at('a'), cmd('rowAbove')), '|  |  |\n| --- | --- |\n| a‸ | b |\n| c | d |', 'above the header row: the new row is the header');
+  assert.equal(tAfter('| a‸ | b | c |\n| :---: | ---: | --- |\n| d | e | f |', cmd('rowAbove')), '|  |  |  |\n| :---: | ---: | --- |\n| a‸ | b | c |\n| d | e | f |',
+    'the columns keep their alignment');
   assert.equal(tAfter(at('b'), cmd('colLeft')), '| a |  | b‸ |\n| --- | --- | --- |\n| c |  | d |');
   assert.equal(tAfter(at('b'), cmd('colRight')), '| a | b‸ |  |\n| --- | --- | --- |\n| c | d |  |');
   assert.equal(tAfter(at('c'), cmd('deleteRow')), '| a | b‸ |\n| --- | --- |');

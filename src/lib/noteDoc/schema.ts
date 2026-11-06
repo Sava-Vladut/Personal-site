@@ -559,8 +559,9 @@ const marks: Record<string, MarkSpec> = {
   strike: mark({
     parse: [
       { tag: 's' }, { tag: 'del' }, { tag: 'strike' },
-      { style: 'text-decoration', getAttrs: (v: string) => v.includes('line-through') && null },
-      { style: 'text-decoration-line', getAttrs: (v: string) => v.includes('line-through') && null },
+      // (not consuming: `text-decoration: underline line-through` is underlined too, underline's rule reads it after)
+      { style: 'text-decoration', consuming: false, getAttrs: (v: string) => v.includes('line-through') && null },
+      { style: 'text-decoration-line', consuming: false, getAttrs: (v: string) => v.includes('line-through') && null },
     ],
     render: () => ['s', 0],
   }),
@@ -594,6 +595,8 @@ const marks: Record<string, MarkSpec> = {
       // Google Docs wraps everything in <b style="font-weight:normal">
       { tag: 'b', getAttrs: (el: HTMLElement) => el.style.fontWeight !== 'normal' && null },
       { style: 'font-weight', getAttrs: (v: string) => /^(bold(er)?|[6-9]\d{2,})$/.test(v) && null },
+      // words set back to normal inside bold ones (<b>a <span style="font-weight:normal">b</span></b>) show plain
+      { style: 'font-weight', clearMark: (m) => m.type.name === 'bold', getAttrs: (v: string) => /^(normal|lighter|[1-5]\d{2})$/.test(v) && null },
     ],
     render: () => ['strong', 0],
   }),
@@ -603,6 +606,7 @@ const marks: Record<string, MarkSpec> = {
       { tag: 'em' },
       { tag: 'i', getAttrs: (el: HTMLElement) => el.style.fontStyle !== 'normal' && null },
       { style: 'font-style=italic' },
+      { style: 'font-style=normal', clearMark: (m) => m.type.name === 'italic' },
     ],
     render: () => ['em', 0],
   }),

@@ -477,6 +477,12 @@ test('pasting from Word or a web page keeps lists, styles and line breaks, and l
   end();
   view.pasteHTML(word);
   assert.equal(n.text(), '1. First\n\t- Inner');
+  // words set back to normal inside bold or italic ones come in as the page showed them; underlined and struck, both
+  n.setText('');
+  end();
+  view.pasteHTML('<p><b>Ceafa <span style="font-weight:400">de</span> porc</b> <em>șnițel <span style="font-style:normal">și</span> țuică</em>'
+    + ' <span style="text-decoration: underline line-through">ăâ</span></p>');
+  assert.equal(n.text(), '**Ceafa **de **porc** *șnițel *și *țuică* ~~<u>ăâ</u>~~');
 });
 
 test('pasted plain text is read as Markdown (Shift+paste as it is), and copying writes Markdown', () => {
