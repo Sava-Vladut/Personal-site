@@ -179,9 +179,17 @@ export function deleteSelectionSafe(tr: Transaction): Transaction {
   const { from, to, $from, $to } = sel;
   const apart = (t: Transaction) => {
     if (!$from.parent.isTextblock || !$to.parent.isTextblock) throw new Error('not in text');
-    t.delete($to.start(), to);
-    if ($from.after() < $to.before()) t.deleteRange($from.after(), t.mapping.map($to.before()));
-    t.delete(from, $from.end());
+    // each block wholly selected goes (of a callout's title, only its words: a callout keeps its title), and the
+    // selected words of the first and last lines; last first, so the positions before hold. (Deleting the range
+    // between the two lines in one go fails as soon as it runs out of a quote into a callout's body.)
+    const cut: [number, number][] = [[from, $from.end()], [$to.start(), to]];
+    t.doc.nodesBetween($from.end(), $to.start(), (node, pos) => {
+      const end = pos + node.nodeSize;
+      if (pos < $from.end() || end > $to.start()) return true;
+      cut.push(node.type.name === 'calloutTitle' ? [pos + 1, end - 1] : [pos, end]);
+      return false;
+    });
+    for (const [a, b] of cut.sort((x, y) => y[0] - x[0])) if (b > a) t.delete(a, b);
     t.setSelection(TextSelection.create(t.doc, from));
   };
   if (works(tr, apart)) apart(tr);
@@ -198,8 +206,8 @@ export function replaceSelectionText(tr: Transaction, text: string): Transaction
 /**
  * Puts a block in at the selection (deleted first, safely): in place of an empty line, or before or after the line at
  * its start or end, or splitting it (the words after go on a plain line below, aligned as it was); in a callout's
- * title, as the first block of its body. The position just before it, or null where a block can't go (code, a table's
- * cell), `tr` then left as it was.
+ * title, as the first block of its body (the title's words after the caret going on the line after it, so they read
+ * in the order they did). The position just before it, or null where a block can't go (code, a table's cell).
  */
 export function placeBlock(tr: Transaction, node: PMNode): number | null {
   const $s = tr.selection.$from;
@@ -210,10 +218,14 @@ export function placeBlock(tr: Transaction, node: PMNode): number | null {
   if (!tb.isTextblock || tb.type.spec.code || tb.type.spec.tableRole) return null;
   const p = tr.doc.type.schema.nodes.paragraph;
   let at: number;
-  if (!tb.content.size && tb.type.name !== 'calloutTitle') tr.replaceWith((at = $c.before()), $c.after(), node);
+  // (an empty footnote's text keeps its place, its label with it: the block goes after it)
+  if (!tb.content.size && tb.type.name !== 'calloutTitle' && tb.type.name !== 'footnote') tr.replaceWith((at = $c.before()), $c.after(), node);
   else {
-    if (tb.type.name === 'calloutTitle') at = $c.after(); // the first thing in the callout's body
-    else if ($c.parentOffset === 0) at = $c.before();
+    if (tb.type.name === 'calloutTitle') {
+      // the first thing in the callout's body
+      if ($c.parentOffset < tb.content.size) tr.split($c.pos, 1, [{ type: p }]);
+      at = $c.pos + 1;
+    } else if ($c.parentOffset === 0 && tb.content.size) at = $c.before();
     else if ($c.parentOffset === tb.content.size) at = $c.after();
     else {
       const align = tb.type.name === 'paragraph' || tb.type.name === 'heading' ? tb.attrs.align ?? null : null;
