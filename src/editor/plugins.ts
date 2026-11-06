@@ -311,7 +311,9 @@ const CHIP = /^(person|song|wiki)$/;
 const chipsInRange = new Plugin({
   // and while reading, Tab goes from tag to tag; while writing, a press on one mustn't take the focus from the words
   view(view) {
-    let was: boolean | null = null;
+    // the tags are made with it right (nodeViews.ts draws them focusable while reading): only a switch between reading
+    // and writing changes it for the tags already there, not opening the note (every tag of a long one gone through)
+    let was: boolean | null = view.editable;
     const sync = () => {
       if (was === view.editable) return;
       was = view.editable;
