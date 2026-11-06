@@ -37,6 +37,7 @@ const LOGIN = /^[a-z0-9_]{2,25}$/;
 const MONTH = /^(\d{4})-(\d{2})$/;
 const LOOKUPS_PER_MIN = 20;     // fresh lookups (each ~20 small calls) the whole server starts in a minute
 const LOOKUP_FRESH = 10 * MIN;
+const LOOKUP_STALE = HOUR;      // until then, the last lookup is answered while the next is made
 const PAST_FRESH = 12 * HOUR;   // a finished month hardly changes
 const NOW_FRESH = 2 * MIN;      // this month's is fetched again after this
 const CACHE_MESSAGES = 120_000; // messages kept in memory across all cached months
@@ -499,8 +500,9 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
   async function lookup(channel, user) {
     const key = `${channel}|${user}`;
     const hit = lookupCache.get(key);
-    if (hit && Date.now() - hit.at < LOOKUP_FRESH) return hit.body;
-    return once(`lookup:${key}`, async () => {
+    const age = hit ? Date.now() - hit.at : Infinity;
+    if (age < LOOKUP_FRESH) return hit.body;
+    const fresh = once(`lookup:${key}`, async () => {
       limit();
       const who = await users([...new Set([channel, user])]);
       const c = who.get(channel), u = who.get(user);
@@ -548,6 +550,13 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
       if (lookupCache.size > 200) lookupCache.delete(lookupCache.keys().next().value);
       return body;
     });
+    // Every month and day the page asks for goes through here: one a little older is answered at once, and the new one,
+    // worked out behind it, is there for the next request, so none of them waits the seconds a lookup takes.
+    if (age < LOOKUP_STALE) {
+      fresh.catch(() => {}); // too many lookups this minute, or the archives down: the old one will do
+      return hit.body;
+    }
+    return fresh;
   }
 
   /* one month of one user's lines, from every source that has it */
