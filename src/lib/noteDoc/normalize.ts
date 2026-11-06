@@ -208,33 +208,106 @@ function hasBreak(n: PMNode): boolean {
   return false;
 }
 
+const isMedia = (n: PMNode | null | undefined) => n?.type.name === 'media';
+
+/** Whether `parent`'s child `i` sits well beside the one before it (the first child always does). */
+function pairInShape(doc: PMNode, parent: PMNode, i: number): boolean {
+  if (i === 0) return true;
+  const a = parent.child(i - 1), b = parent.child(i);
+  if (isQuote(a) && isQuote(b)) return false;
+  if ((isCallout(a) && (isQuote(b) || isCallout(b))) || (isQuote(a) && isCallout(b))) return false;
+  if (isTable(a) && isTable(b)) return false;
+  if (parent === doc && isMedia(a) && isMedia(b)) return false;
+  return true;
+}
+
+/** Whether `parent`'s child `i` is in shape itself (and all it holds), as far as the block after it goes too. */
+function childInShape(doc: PMNode, parent: PMNode, i: number): boolean {
+  const b = parent.child(i);
+  if (b.type.name === 'codeBlock' && b.attrs.close === null && i < parent.childCount - 1 && !isMedia(parent.child(i + 1))) return false;
+  if (isTable(b) && !tableInShape(b)) return false;
+  if (b.isTextblock) {
+    if (!b.type.spec.code && hasBreak(b)) return false;
+    if (/^(heading|listItem|calloutTitle|footnote)$/.test(b.type.name) && leadsWithSpace(b)) return false;
+  } else if (!b.isLeaf && !childrenInShape(doc, b)) return false;
+  return true;
+}
+
+function childrenInShape(doc: PMNode, parent: PMNode): boolean {
+  for (let i = 0; i < parent.childCount; i++) if (!pairInShape(doc, parent, i) || !childInShape(doc, parent, i)) return false;
+  return true;
+}
+
 /**
  * Whether the document is in shape already: the fixes' own tests in one walk, without collecting anything. The editor
  * asks after every change, and nearly always it is.
  */
 export function inShape(doc: PMNode): boolean {
-  const media = (n: PMNode | null | undefined) => n?.type.name === 'media';
-  if (media(doc.firstChild) || media(doc.lastChild)) return false;
-  const walk = (parent: PMNode): boolean => {
-    for (let i = 0; i < parent.childCount; i++) {
-      const b = parent.child(i);
-      if (i > 0) {
-        const a = parent.child(i - 1);
-        if (isQuote(a) && isQuote(b)) return false;
-        if ((isCallout(a) && (isQuote(b) || isCallout(b))) || (isQuote(a) && isCallout(b))) return false;
-        if (isTable(a) && isTable(b)) return false;
-        if (parent === doc && media(a) && media(b)) return false;
-      }
-      if (b.type.name === 'codeBlock' && b.attrs.close === null && i < parent.childCount - 1 && !media(parent.child(i + 1))) return false;
-      if (isTable(b) && !tableInShape(b)) return false;
-      if (b.isTextblock) {
-        if (!b.type.spec.code && hasBreak(b)) return false;
-        if (/^(heading|listItem|calloutTitle|footnote)$/.test(b.type.name) && leadsWithSpace(b)) return false;
-      } else if (!b.isLeaf && !walk(b)) return false;
+  if (isMedia(doc.firstChild) || isMedia(doc.lastChild)) return false;
+  return childrenInShape(doc, doc);
+}
+
+/**
+ * Where `trs` (one after another) changed the document, as ranges in the last one's: every step's place, mapped on
+ * through the steps after it. Null when a step's place can't be told (a change to the whole document's attributes).
+ */
+export function changedRanges(trs: readonly Transaction[]): [number, number][] | null {
+  const out: [number, number][] = [];
+  for (const tr of trs) {
+    for (let k = 0; k < tr.steps.length; k++) {
+      const map = tr.mapping.maps[k];
+      for (const r of out) (r[0] = map.map(r[0], -1)), (r[1] = map.map(r[1], 1));
+      // replacing (words typed, a block changed) and styles have a from and to; a node's attribute or style, a pos
+      const s = tr.steps[k] as unknown as { from?: unknown; to?: unknown; pos?: unknown };
+      let from: number, to: number;
+      if (typeof s.from === 'number' && typeof s.to === 'number') (from = s.from), (to = s.to);
+      else if (typeof s.pos === 'number') (from = s.pos), (to = s.pos + 1);
+      else return null;
+      out.push([map.map(from, -1), map.map(to, 1)]);
     }
-    return true;
-  };
-  return walk(doc);
+  }
+  return out;
+}
+
+/**
+ * Whether the document is in shape, looking only around where it changed (`ranges`, in its positions): the top-level
+ * blocks there and the one on either side. That's all a change can put out of shape when the document was in shape
+ * before it, as the editor's always is (it's put in shape after every change): each rule is about a block, what it
+ * holds, and the blocks beside it (and the note's first and last block). The whole note isn't read again on each key.
+ */
+export function inShapeNear(doc: PMNode, ranges: readonly [number, number][]): boolean {
+  if (isMedia(doc.firstChild) || isMedia(doc.lastChild)) return false;
+  for (const [a, b] of ranges) {
+    // the top-level blocks the range touches (one ending or starting at its edge counts)
+    let lo = -1, hi = -1;
+    let pos = 0;
+    for (let i = 0; i < doc.childCount; i++) {
+      const end = pos + doc.child(i).nodeSize;
+      if (end >= a && pos <= b) {
+        if (lo < 0) lo = i;
+        hi = i;
+      } else if (pos > b) break;
+      pos = end;
+    }
+    if (lo < 0) continue;
+    lo = Math.max(0, lo - 1);
+    hi = Math.min(doc.childCount - 1, hi + 1);
+    for (let i = lo; i <= hi; i++) {
+      if ((i > lo && !pairInShape(doc, doc, i)) || !childInShape(doc, doc, i)) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * The changes that put the state's document in shape after `trs` changed it (the editor's appendTransaction), or null
+ * when it's in shape: looked at only around the changes (inShapeNear), the whole note when they can't be placed.
+ */
+export function normalizeAfter(trs: readonly Transaction[], state: EditorState): Transaction | null {
+  if (!trs.some((tr) => tr.docChanged)) return null;
+  const ranges = changedRanges(trs);
+  if (ranges ? inShapeNear(state.doc, ranges) : inShape(state.doc)) return null;
+  return normalizeTr(state, false);
 }
 
 /**
