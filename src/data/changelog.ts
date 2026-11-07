@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.185.2',
+    date: '2026-11-07',
+    changes: [
+      'Power: body moves now count 15% of the weight they lift, so they stay below real lifting: 20 push-ups are about 14 ⚡ at 75 kg, less than 10 hammer curls with 10 kg in each hand (20 ⚡). Holds follow the same rule, and past workouts are counted again the new way.',
+      'Workout: body moves and holds no longer have a +kg column; their sets are just reps or seconds.',
+    ],
+  },
+  {
     version: '1.185.1',
     date: '2026-11-07',
     changes: [

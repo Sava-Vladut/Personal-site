@@ -11,7 +11,7 @@ const PUSHUP = 0.64;
 export function PowerInfo({ open, onClose, bw }: { open: boolean; onClose: () => void; bw: number }) {
   const rows: [UiName, string][] = [
     ['barbell', t('10 kg lifted once = 1 ⚡, the same for everyone')],
-    ['body-scan', t('Body moves lift a share of your weight: at {kg} kg a push-up is {p} ⚡', { kg: num(bw), p: fmtPower(repPower({ kind: 'body', share: PUSHUP }, { kg: 0 }, bw)) })],
+    ['body-scan', t('Body moves count 15% of the weight they lift: at {kg} kg a push-up is {p} ⚡', { kg: num(bw), p: fmtPower(repPower({ kind: 'body', share: PUSHUP }, { kg: 0 }, bw)) })],
     ['stopwatch', t('Holds: 3 seconds = 1 rep')],
     ['run', t('Cardio: effort × weight × minutes')],
     ['flame', t('Warm-ups count half')],

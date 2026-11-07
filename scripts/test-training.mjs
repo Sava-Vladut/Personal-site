@@ -114,10 +114,10 @@ test('muscles: the main ones count a whole set, the helping ones half, and share
   assert.equal(load.lats.sets, 0);
   assert.equal(load.lats.last, null);
   assert.equal(load.chest.last, '2026-11-02');
-  // bench is 100 ⚡: half to chest, a quarter each to shoulders and triceps; push-ups (40 ⚡) split between chest and triceps
-  assert.equal(load.chest.power, 70);
+  // bench is 100 ⚡: half to chest, a quarter each to shoulders and triceps; push-ups (6 ⚡: body moves count 15%) split between chest and triceps
+  assert.equal(Math.round(load.chest.power * 100) / 100, 53);
   assert.equal(load.shoulders.power, 25);
-  assert.equal(load.triceps.power, 45);
+  assert.equal(Math.round(load.triceps.power * 100) / 100, 28);
   const total = Object.values(load).reduce((a, x) => a + x.power, 0);
   assert.equal(total, list[0].power);
   const heat = s.muscleHeat(load);

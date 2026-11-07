@@ -24,18 +24,26 @@ test('a weighted rep is worth a point for every 10 kg, whatever you weigh', () =
   assert.equal(f.setPower(move({ equip: 'dumbbell' }), set({ kg: 20, reps: 10 }), 75, true), 40);
 });
 
-test('a body move is worth the share of your body it lifts, plus what is added or minus help', () => {
+test('a body move counts 15% of the share of your body it lifts, and stays below real lifting', () => {
   const pushup = move({ kind: 'body', equip: 'body', share: 0.64 });
-  assert.equal(Math.round(f.repPower(pushup, set({}), 75) * 10) / 10, 4.8);
+  assert.equal(Math.round(f.repPower(pushup, set({}), 75) * 100) / 100, 0.72);
   assert.ok(f.setPower(pushup, set({ reps: 10 }), 60) < f.setPower(pushup, set({ reps: 10 }), 90));
+  // 20 push-ups are worth less than 10 hammer curls with 10 kg in each hand (20 ⚡), up to about 100 kg of you
+  const curls = f.setPower(move({ equip: 'dumbbell' }), set({ kg: 10, reps: 10 }), 75, true);
+  assert.equal(curls, 20);
+  assert.ok(f.setPower(pushup, set({ reps: 20 }), 75) < curls);
+  assert.ok(f.setPower(pushup, set({ reps: 20 }), 100) < curls);
+  // weight added on older sets no longer counts: the column is gone
   const pullup = move({ kind: 'body', share: 1 });
-  assert.equal(f.setPower(pullup, set({ kg: 10, reps: 5 }), 80), 45);
-  assert.equal(f.setPower(pullup, set({ kg: -30, reps: 5 }), 80), 25);
+  assert.equal(f.setPower(pullup, set({ kg: 10, reps: 5 }), 80), f.setPower(pullup, set({ reps: 5 }), 80));
+  assert.equal(Math.round(f.setPower(pullup, set({ reps: 5 }), 80) * 10) / 10, 6);
+  // the volume a set moved is still the real weight
+  assert.equal(f.setVolume(pullup, set({ reps: 5 }), 80), 400);
 });
 
 test('holds count a rep every 3 seconds, cardio counts effort over time', () => {
   const plank = move({ kind: 'time', share: 0.6 });
-  assert.equal(f.setPower(plank, set({ secs: 60 }), 75), 90);
+  assert.equal(Math.round(f.setPower(plank, set({ secs: 60 }), 75) * 10) / 10, 13.5);
   const run = move({ kind: 'cardio', met: 9.8, foot: true });
   assert.equal(Math.round(f.setPower(run, set({ secs: 1800 }), 75)), 735);
   // 5 km in 25 minutes is 200 m/min: (3.5 + 40) / 3.5 METs

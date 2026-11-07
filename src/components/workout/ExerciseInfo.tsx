@@ -20,7 +20,7 @@ function powerText(m: Move, bw: number) {
   if (m.kind === 'weight') return m.pair
     ? t('It counts the weight you lift: 10 kg lifted once is 1 ⚡, for anyone. One in each hand, both count.')
     : t('It counts the weight you lift: 10 kg lifted once is 1 ⚡, for anyone.');
-  if (m.kind === 'body') return t('It lifts about {pct}% of your body: at {kg} kg, one rep is {p} ⚡.', { pct, kg, p: fmtPower(repPower(m, { kg: 0 }, bw)) });
+  if (m.kind === 'body') return t('It lifts about {pct}% of your body, and 15% of that counts: at {kg} kg, one rep is {p} ⚡.', { pct, kg, p: fmtPower(repPower(m, { kg: 0 }, bw)) });
   const minute = perUnit(m, bw)?.p ?? 0;
   if (m.kind === 'time' && m.share) return t('A hold: every 3 seconds counts as a rep lifting {pct}% of your body, so a minute is {p} ⚡ at {kg} kg.', { pct, kg, p: fmtPower(minute) });
   const effort = t('It counts effort over time ({met} METs): ten minutes is {p} ⚡ at {kg} kg.', { met: num(m.met), kg, p: fmtPower(minute * 10) });

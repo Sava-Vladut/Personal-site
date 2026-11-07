@@ -1,7 +1,7 @@
 // One exercise's sets as rows to fill in: in a plan, what you mean to do; in a workout, what you do, each ticked off as
-// it's done. What a row asks for depends on the exercise: weight and reps; reps and any weight added (or help, on an
-// assisted machine); seconds held; or minutes and distance.
-import { useRef, useState } from 'preact/hooks';
+// it's done. What a row asks for depends on the exercise: weight and reps; reps of a body move; seconds held; or minutes
+// and distance.
+import { useRef } from 'preact/hooks';
 import { setPower, TAGS, type Item, type WSet } from '../../lib/fitness';
 import { haptic } from '../../lib/haptics';
 import { toast } from '../../lib/store';
@@ -15,13 +15,12 @@ interface Col { f: Field; icon: UiName; unit: string; label: string; need: boole
 
 /** The numbers a set of this exercise asks for, and which of them it can't be ticked off without. */
 function columnsOf(it: Item): Col[] {
-  const added: Col = { f: 'kg', icon: 'weight', unit: t('kg'), label: t('Weight added, or help (kg)'), need: false, decimal: true, max: 500 };
   const reps: Col = { f: 'reps', icon: 'repeat', unit: t('reps'), label: t('Reps'), need: true, max: 10_000 };
   const secs: Col = { f: 'secs', icon: 'stopwatch', unit: t('sec'), label: t('Seconds'), need: true, max: 86_400 };
   switch (it.move.kind) {
     case 'weight': return [{ f: 'kg', icon: 'weight', unit: t('kg'), label: it.pair ? t('Kilograms, each hand') : t('Kilograms'), need: true, decimal: true, max: 1000 }, reps];
-    case 'body': return [added, reps];
-    case 'time': return it.move.share ? [added, secs] : [secs];
+    case 'body': return [reps];
+    case 'time': return [secs];
     case 'cardio': return [
       { f: 'mins', icon: 'clock', unit: t('min'), label: t('Minutes'), need: true, decimal: true, max: 1440 },
       { f: 'km', icon: 'route', unit: t('km'), label: t('Kilometres'), need: false, decimal: true, max: 1000 },
@@ -31,15 +30,15 @@ function columnsOf(it: Item): Col[] {
 
 /** Where each field lives in a set (minutes are kept as seconds). */
 const KEY = { kg: 'kg', reps: 'reps', secs: 'secs', mins: 'secs', km: 'km' } as const;
-/** A field's number as the row shows it: added weight without its sign (the column says which), minutes from seconds. */
+/** A field's number as the row shows it: minutes from seconds. */
 function get(s: WSet, f: Field) {
   const v = s[KEY[f]];
   if (v === null) return null;
-  return f === 'mins' ? Math.round((v / 60) * 100) / 100 : f === 'kg' ? Math.abs(v) : v;
+  return f === 'mins' ? Math.round((v / 60) * 100) / 100 : v;
 }
-function put(s: WSet, f: Field, n: number | null, minus: boolean): WSet {
+function put(s: WSet, f: Field, n: number | null): WSet {
   if (n === null) return { ...s, [KEY[f]]: null };
-  return { ...s, [KEY[f]]: f === 'mins' ? Math.round(n * 60) : f === 'kg' && minus ? -n : n };
+  return { ...s, [KEY[f]]: f === 'mins' ? Math.round(n * 60) : n };
 }
 
 /**
@@ -56,28 +55,13 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
   onDone?: (i: number) => void;
 }) {
   const cols = columnsOf(item);
-  const signed = item.move.kind === 'body' || item.move.kind === 'time';
-  // help (an assisted machine, a band) is weight taken off: the column says which, so the numbers stay positive
-  const [minus, setMinus] = useState(() => item.sets.some((s) => (s.kg ?? 0) < 0));
-  const flip = () => {
-    setMinus(!minus);
-    onSets(item.sets.map((s) => (s.kg ? { ...s, kg: -s.kg } : s)));
-  };
   const set = (i: number, s: WSet) => onSets(item.sets.map((x, j) => (j === i ? s : x)));
   let n = 0;
   return (
     <div class={`wo-sets${live ? ' live' : ''}`} role="group" aria-label={t('Sets')}>
       <div class="wo-set wo-set-head">
         <span class="wo-h wo-h-mark" title={t('Set')}>#</span>
-        {cols.map((c) =>
-          c.f === 'kg' && signed ? (
-            <button key={c.f} class="wo-h wo-sign" onClick={flip} aria-pressed={minus} title={minus ? t('Help taken off (an assisted machine, a band). Tap for weight added') : t('Weight added (a vest, a belt). Tap for help taken off')}>
-              {minus ? '−' : '+'}{c.unit}
-            </button>
-          ) : (
-            <span key={c.f} class="wo-h" title={c.label}><Icon name={c.icon} size={14} />{c.unit}</span>
-          ),
-        )}
+        {cols.map((c) => <span key={c.f} class="wo-h" title={c.label}><Icon name={c.icon} size={14} />{c.unit}</span>)}
         <span class="wo-h wo-h-p" title={t('Power')}><Icon name="bolt" size={14} /></span>
         {live && <span class="wo-h wo-h-tick" title={t('Done')}><Icon name="check" size={14} /></span>}
         <span class="wo-h wo-h-x" />
@@ -91,7 +75,6 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
             s={s}
             n={n}
             cols={cols}
-            minus={minus}
             item={item}
             bw={bw}
             live={live}
@@ -106,11 +89,10 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
   );
 }
 
-function SetRow({ s, n, cols, minus, item, bw, live, ghost, onSet, onRemove, onDone }: {
+function SetRow({ s, n, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
   s: WSet;
   n: number;
   cols: Col[];
-  minus: boolean;
   item: Item;
   bw: number;
   live?: boolean;
@@ -155,7 +137,7 @@ function SetRow({ s, n, cols, minus, item, bw, live, ghost, onSet, onRemove, onD
             key={c.f}
             field={c.f}
             value={get(s, c.f)}
-            onValue={(v) => onSet(put(s, c.f, v, minus))}
+            onValue={(v) => onSet(put(s, c.f, v))}
             label={c.label}
             ghost={g === null || g === undefined ? '–' : c.decimal ? num(g) : String(g)}
             decimal={c.decimal}

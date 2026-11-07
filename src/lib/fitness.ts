@@ -5,10 +5,12 @@
 // Power (⚡) is what a set is worth: one point for every 10 kg lifted once.
 // - Weights (barbell, dumbbells, machines, cables, kettlebells…): the weight on it, set in stone. A 20 kg rep is 2 ⚡ for
 //   anyone. Dumbbells used in pairs count both.
-// - Body moves: the share of your own body the move lifts, at your body weight, plus anything added (a vest, a belt) or
-//   minus any help (an assisted machine, a band). At 75 kg a push-up lifts about 64% of you, 48 kg: 4.8 ⚡ a rep. The same
-//   push-up is worth less to someone lighter, as it should be, since it is less work for them.
-// - Holds (a plank, a wall sit, a hang): a rep for every 3 seconds held.
+// - Body moves: 15% of the share of your own body the move lifts, at your body weight. At 75 kg a push-up lifts about
+//   64% of you, 48 kg, and counts as 7.2 kg: 0.72 ⚡ a rep, so 20 push-ups (14 ⚡) stay below 10 curls with a 10 kg
+//   dumbbell in each hand (20 ⚡), up to about 100 kg of you. Your body is always there and takes no loading, so its reps come much easier and many
+//   more of them; counted whole, a few push-ups outscored real lifting. The same push-up is still worth less to someone
+//   lighter, as it should be.
+// - Holds (a plank, a wall sit, a hang): counted like body moves, a rep for every 3 seconds held.
 // - Cardio and stretching: by effort over time, METs × body weight × minutes ÷ 30, so half an hour's run at 75 kg
 //   (about 9.8 METs) is about 735 ⚡, about what a solid hour of lifting comes to.
 // Warm-up sets count half. A workout keeps the body weight it was done at, so weighing in later never changes the past.
@@ -64,7 +66,7 @@ export type Tag = (typeof TAGS)[number];
 
 /** One set. Which numbers it uses depends on the exercise's kind. */
 export interface WSet {
-  kg: number | null;     // weight: the weight (each dumbbell, when a pair); body and holds: added (+) or help (−)
+  kg: number | null;     // weight: the weight (each dumbbell, when a pair); body and holds: not used (older sets may hold added weight, now ignored)
   reps: number | null;   // weight and body
   secs: number | null;   // holds: how long held; cardio: how long
   km: number | null;     // cardio: how far
@@ -122,6 +124,8 @@ export const ROUTINE_ICONS = [
 export const KG_PER_POWER = 10;
 /** Seconds held that count as one rep. */
 export const HOLD_SECS = 3;
+/** The part of what a body move lifts that counts toward power (see the top of this file). */
+export const BODY_COUNTS = 0.15;
 /** Body weight used until you weigh in. */
 export const DEFAULT_BW = 75;
 export const MIN_BW = 25;
@@ -129,21 +133,24 @@ export const MAX_BW = 350;
 
 /* ---------- power ---------- */
 
-/** What one rep of a set lifts, kg (before reps): the weight, or the share of your body plus or minus what's added. */
+/** What one rep of a set really lifts, kg (before reps): the weight, or the share of your body. */
 export function repLoad(m: Pick<Snap, 'kind' | 'share'>, s: Pick<WSet, 'kg'>, bw: number, pair = false) {
-  const kg = s.kg ?? 0;
-  if (m.kind === 'weight') return Math.max(0, kg) * (pair ? 2 : 1);
-  if (m.kind === 'body' || m.kind === 'time') return Math.max(0, bw * m.share + kg);
+  if (m.kind === 'weight') return Math.max(0, s.kg ?? 0) * (pair ? 2 : 1);
+  if (m.kind === 'body' || m.kind === 'time') return Math.max(0, bw * m.share);
   return 0;
 }
+
+/** What one rep counts as toward power, kg: all of a weight, 15% of what a body move lifts. */
+const powerLoad = (m: Pick<Snap, 'kind' | 'share'>, s: Pick<WSet, 'kg'>, bw: number, pair = false) =>
+  repLoad(m, s, bw, pair) * (m.kind === 'weight' ? 1 : BODY_COUNTS);
 
 /** The power of one set, ⚡ (unrounded). Warm-ups count half. */
 export function setPower(m: Pick<Snap, 'kind' | 'share' | 'met' | 'foot'>, s: WSet, bw: number, pair = false) {
   let p = 0;
-  if (m.kind === 'weight' || m.kind === 'body') p = (repLoad(m, s, bw, pair) * Math.max(0, s.reps ?? 0)) / KG_PER_POWER;
+  if (m.kind === 'weight' || m.kind === 'body') p = (powerLoad(m, s, bw, pair) * Math.max(0, s.reps ?? 0)) / KG_PER_POWER;
   else if (m.kind === 'time') p = m.met && !m.share
     ? cardioPower(m.met, bw, s.secs ?? 0)
-    : (repLoad(m, s, bw) * Math.max(0, s.secs ?? 0)) / HOLD_SECS / KG_PER_POWER;
+    : (powerLoad(m, s, bw) * Math.max(0, s.secs ?? 0)) / HOLD_SECS / KG_PER_POWER;
   else p = cardioPower(m.foot ? cardioMet(m.met, s) : m.met, bw, s.secs ?? 0);
   return s.tag === 'warm' ? p / 2 : p;
 }
@@ -164,7 +171,7 @@ export function cardioMet(met: number, s: Pick<WSet, 'km' | 'secs'>) {
 }
 
 /** The power of one rep (body and weight moves), ⚡: what the page shows beside an exercise. */
-export const repPower = (m: Pick<Snap, 'kind' | 'share'>, s: Pick<WSet, 'kg'>, bw: number, pair = false) => repLoad(m, s, bw, pair) / KG_PER_POWER;
+export const repPower = (m: Pick<Snap, 'kind' | 'share'>, s: Pick<WSet, 'kg'>, bw: number, pair = false) => powerLoad(m, s, bw, pair) / KG_PER_POWER;
 
 /** An exercise's power in a workout: its done sets (or, for a plan, all its sets). */
 export const itemPower = (it: Item, bw: number, all = false) =>
