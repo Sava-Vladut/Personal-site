@@ -29,10 +29,33 @@ const FRAME_MS = 55;
 let audio: AudioContext | null = null;
 
 /**
- * Called from the tap that opens the counter: phones only let a page speak or play sound once a tap has asked for it,
- * and the counter starts talking much later, when the first rep comes.
+ * Asks the phone to mix this page's sound with other apps' instead of taking over, so music playing in Spotify (or
+ * anywhere) keeps going while the camera is on and the counts are spoken. Safari only, so far; elsewhere it's a no-op.
  */
-export function unlockSound() {
+function mixWithOtherAudio() {
+  try {
+    const session = (navigator as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = 'ambient';
+  } catch { /* not supported: the browser decides */ }
+}
+
+/** Whether counting out loud is on (the speaker button in the counter; on until you turn it off). */
+const soundOn = () => {
+  try {
+    return localStorage.getItem('mm-pref-wo-pu-sound') !== 'false';
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Called from the tap that opens the counter: phones only let a page speak or play sound once a tap has asked for it,
+ * and the counter starts talking much later, when the first rep comes. With counting out loud off it makes no sound
+ * at all, so nothing playing in another app is interrupted.
+ */
+export function unlockSound(on = soundOn()) {
+  mixWithOtherAudio();
+  if (!on) return;
   try {
     audio ??= new AudioContext();
     void audio.resume();
@@ -175,6 +198,7 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+        mixWithOtherAudio();
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
@@ -306,7 +330,7 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
           <Icon name="x" size={22} />
         </button>
         <span class="pu-title">{t('Push-up counter')}</span>
-        <button class="icon-btn pu-btn" aria-pressed={sound} onClick={() => (unlockSound(), setSound(!sound))}
+        <button class="icon-btn pu-btn" aria-pressed={sound} onClick={() => (unlockSound(!sound), setSound(!sound))}
           aria-label={sound ? t('Turn off counting out loud') : t('Count out loud')} title={sound ? t('Turn off counting out loud') : t('Count out loud')}>
           <Icon name={sound ? 'volume' : 'volume-off'} size={22} />
         </button>

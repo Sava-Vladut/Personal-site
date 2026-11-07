@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.192.2',
+    date: '2026-11-07',
+    changes: [
+      'The push-up counter asks your phone to mix its sound with other apps, so music playing in Spotify shouldn’t pause when the camera starts.',
+      'With counting out loud off, the push-up counter makes no sound at all, so nothing else playing is interrupted.',
+    ],
+  },
+  {
     version: '1.192.1',
     date: '2026-11-07',
     changes: [
