@@ -3366,6 +3366,7 @@ export const RO: Record<string, string> = {
   "Set a target": "Stabilește o țintă",
   "Set removed": "Serie scoasă",
   "Set your weight so body moves count fairly": "Setează-ți greutatea ca exercițiile cu corpul să se calculeze corect",
+  "Your workouts stay on this device. Turn on sync in Settings to have them on your others": "Antrenamentele rămân doar pe acest dispozitiv. Pornește sincronizarea din Setări ca să le ai și pe celelalte",
   "Set {n}": "Seria {n}",
   "Share of your body weight it lifts": "Partea din greutatea corpului pe care o ridică",
   "Skip the rest": "Sari peste pauză",

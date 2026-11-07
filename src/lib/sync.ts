@@ -5,7 +5,7 @@
 import { getBooks, getDeleted, getEntries, getMyMoves, getPeople, getPeriods, getRepos, getRoutines, getSongs, getWeighIns, getWorkouts, mergeSynced, observable, photosOf, onLocalChange, toast } from './store';
 import { photoBlob, photoIds, storePhotos, type Photo } from './photos';
 import { resolveIcon } from './icons';
-import { t } from './i18n';
+import { adoptLang, langChoice, t } from './i18n';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I to mix up; 12 characters = 60 random bits
 const CODE_LEN = 12;
@@ -18,6 +18,7 @@ interface State {
   dirty: boolean;     // changed here since then
   last: number;       // last successful sync
   sent: string[];     // photos already on the server
+  langAt: number;     // the newest language pick this device has sent or taken on
 }
 
 export interface SyncStatus {
@@ -38,6 +39,7 @@ function loadState(): State | null {
       dirty: s.dirty === true,
       last: Number.isFinite(s.last) && s.last >= 0 ? s.last : 0,
       sent: Array.isArray(s.sent) ? s.sent.filter((id: unknown) => typeof id === 'string' && /^p[a-z0-9]{6,40}$/.test(id)) : [],
+      langAt: Number.isFinite(s.langAt) && s.langAt > 0 ? s.langAt : 0,
     } : null;
   } catch {
     return null;
@@ -141,6 +143,7 @@ interface Doc {
   weighins?: { id?: unknown; updated?: unknown }[];
   moves?: { id?: unknown; updated?: unknown }[];
   deleted?: Record<string, number>;
+  prefs?: { lang?: unknown; langAt?: unknown };
 }
 
 async function download(id: string, key: CryptoKey, rev: string | null) {
@@ -162,12 +165,15 @@ async function download(id: string, key: CryptoKey, rev: string | null) {
   return { rev: res.headers.get('X-Sync-Rev'), doc };
 }
 
+const langAtOf = (doc: Doc) => (typeof doc.prefs?.langAt === 'number' && Number.isFinite(doc.prefs.langAt) ? doc.prefs.langAt : 0);
+
 /** Whether this device has something the server's copy lacks. */
 function aheadOf(doc: Doc) {
   const list = (x: unknown) => (Array.isArray(x) ? (x as { id?: unknown; updated?: unknown }[]) : []);
   const there = new Map([...list(doc.entries), ...list(doc.people), ...list(doc.books), ...list(doc.songs), ...list(doc.repos), ...list(doc.periods),
     ...list(doc.routines), ...list(doc.workouts), ...list(doc.weighins), ...list(doc.moves)].map((e) => [e?.id, Number(e?.updated)]));
   const gone = doc.deleted ?? {};
+  if (langChoice().at > langAtOf(doc)) return true;
   return [...getEntries(), ...getPeople(), ...getBooks(), ...getSongs(), ...getRepos(), ...getPeriods(), ...getRoutines(), ...getWorkouts(), ...getWeighIns(), ...getMyMoves()].some((e) => !(there.get(e.id)! >= e.updated)) || Object.entries(getDeleted()).some(([id, t]) => !(gone[id] >= t));
 }
 
@@ -244,7 +250,13 @@ const listJSON = (xs: object[]) => '[' + xs.map(jsonOf).join(',') + ']';
 export function docJSON() {
   return `{"app":"my-mind","version":1,"entries":${listJSON(getEntries())},"people":${listJSON(getPeople())},"books":${listJSON(getBooks())}`
     + `,"songs":${listJSON(getSongs())},"repos":${listJSON(getRepos())},"periods":${listJSON(getPeriods())}`
-    + `,"routines":${listJSON(getRoutines())},"workouts":${listJSON(getWorkouts())},"weighins":${listJSON(getWeighIns())},"moves":${listJSON(getMyMoves())},"deleted":${JSON.stringify(getDeleted())}}`;
+    + `,"routines":${listJSON(getRoutines())},"workouts":${listJSON(getWorkouts())},"weighins":${listJSON(getWeighIns())},"moves":${listJSON(getMyMoves())},"deleted":${JSON.stringify(getDeleted())}${prefsJSON()}}`;
+}
+
+/** Settings that follow you across devices: for now the language, once it has been picked. */
+function prefsJSON() {
+  const { lang, at } = langChoice();
+  return at ? `,"prefs":${JSON.stringify({ lang, langAt: at })}` : '';
 }
 
 /** One round: fetch the server's copy if it changed, merge it in, and send ours back if we have anything new. */
@@ -268,11 +280,14 @@ async function pass(s: State) {
       const r = await mergeSynced(doc);
       if (state !== s) return;
       r.icons.forEach((i) => resolveIcon(i).catch(() => {}));
+      // a language picked later on another device: taken on here, shown after this round (the page reloads)
+      if (adoptLang(doc.prefs?.lang, doc.prefs?.langAt)) langChanged = true;
+      s.langAt = Math.max(s.langAt, langAtOf(doc));
     }
     // Photos may have failed on an earlier pass even when the document is unchanged.
     await fetchPhotos(s, id, key);
     if (state !== s) return;
-    if (!(rev ? (doc ? aheadOf(doc) : s.dirty) : true)) {
+    if (!(rev ? (doc ? aheadOf(doc) : s.dirty || langChoice().at > s.langAt) : true)) {
       s.rev = rev;
       s.dirty = false;
     } else {
@@ -290,6 +305,7 @@ async function pass(s: State) {
         }
         if (!res.ok) throw await failure(res);
         s.rev = (await res.json()).rev;
+        s.langAt = Math.max(s.langAt, langChoice().at);
       } catch (e) {
         s.dirty = true;
         throw e;
@@ -306,6 +322,7 @@ async function pass(s: State) {
 
 let running: Promise<void> | null = null;
 let again = false;
+let langChanged = false;
 
 export function syncNow(): Promise<void> {
   if (!state) return Promise.resolve();
@@ -333,6 +350,7 @@ export function syncNow(): Promise<void> {
       publish({ busy: false, error: (e as Error).message });
     } finally {
       running = null;
+      if (langChanged) location.reload();
     }
   })();
   return running;
@@ -342,7 +360,7 @@ export function syncNow(): Promise<void> {
 
 /** Starts syncing with a new code: everything on this device is uploaded. */
 export function startSync() {
-  state = { code: newCode(), rev: null, dirty: true, last: 0, sent: [] };
+  state = { code: newCode(), rev: null, dirty: true, last: 0, sent: [], langAt: 0 };
   saveState();
   publish({ on: true, code: state.code, last: 0, error: undefined });
   return syncNow();
@@ -356,7 +374,7 @@ export async function joinSync(input: string) {
   const { rev } = await download(id, key, null);
   if (!rev) throw new Error(t('Nothing is saved under that code. Check it on the other device.'));
   const before = new Set(getEntries().map((e) => e.id));
-  state = { code, rev: null, dirty: true, last: 0, sent: [] };
+  state = { code, rev: null, dirty: true, last: 0, sent: [], langAt: 0 };
   saveState();
   publish({ on: true, code, last: 0, error: undefined });
   await syncNow();

@@ -35,12 +35,40 @@ export const LOCALE = lang === 'ro' ? 'ro-RO' : 'en-GB';
 
 if (typeof document !== 'undefined' && document.documentElement) document.documentElement.lang = lang;
 
+// When the language was last picked, here or on a synced device: sync carries the newest pick to the others.
+const AT_KEY = 'mm-lang-at';
+
 export function setLang(next: Lang) {
   if (next === lang) return;
   try {
     localStorage.setItem(KEY, next);
+    localStorage.setItem(AT_KEY, String(Date.now()));
   } catch {}
   location.reload();
+}
+
+/** The language this device keeps and when it was picked (0: never picked since language sync came in). */
+export function langChoice(): { lang: Lang; at: number } {
+  try {
+    const at = Number(localStorage.getItem(AT_KEY));
+    return { lang: localStorage.getItem(KEY) === 'ro' ? 'ro' : 'en', at: Number.isFinite(at) && at > 0 ? at : 0 };
+  } catch {
+    return { lang, at: 0 };
+  }
+}
+
+/** Takes on a language picked later on another device. True when the language changed (the page reloads to show it). */
+export function adoptLang(next: unknown, at: unknown): boolean {
+  if ((next !== 'en' && next !== 'ro') || typeof at !== 'number' || !Number.isFinite(at)) return false;
+  const mine = langChoice();
+  if (at <= mine.at) return false;
+  try {
+    localStorage.setItem(KEY, next);
+    localStorage.setItem(AT_KEY, String(at));
+  } catch {
+    return false;
+  }
+  return next !== mine.lang;
 }
 
 /** The text in the app's language, with `{name}` placeholders filled in from `vars`. */

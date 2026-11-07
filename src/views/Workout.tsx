@@ -8,6 +8,7 @@ import { navigate } from '../lib/router';
 import { dayOf, fmtPower, metTarget, workoutPower, type Muscle, type Routine, type Workout as Done } from '../lib/fitness';
 import { saveRoutine, toast, uid, useReady, useRoutines, useSettings, useWeighIns, useWorkouts } from '../lib/store';
 import { usePref } from '../lib/prefs';
+import { useSync } from '../lib/sync';
 import { count, listOf, t } from '../lib/i18n';
 import { MuscleIcon } from '../components/BodyMap';
 import { MUSCLE_NAME, Power } from '../components/fitness';
@@ -69,6 +70,8 @@ function Home({ workouts }: { workouts: Done[] }) {
   const { weekStart } = useSettings();
   const [sheet, setSheet] = useState<'weight' | 'power' | null>(null);
   const [nudged, setNudged] = usePref<boolean>('wo-weight-nudged', false);
+  const sync = useSync();
+  const [syncNudged, setSyncNudged] = usePref<boolean>('wo-sync-nudged', false);
   const done = useMemo(() => workouts.filter((w) => w.end !== null), [workouts]);
   // the last time each plan was done
   const lastOf = useMemo(() => {
@@ -105,6 +108,18 @@ function Home({ workouts }: { workouts: Done[] }) {
             <span>{t('Set your weight so body moves count fairly')}</span>
           </button>
           <button class="icon-btn small" onClick={() => setNudged(true)} aria-label={t('Not now')} title={t('Not now')}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      )}
+
+      {!sync.on && !syncNudged && (plans.length > 0 || workouts.length > 0 || weighins.length > 0) && (
+        <div class="card wo-nudge fade-arrive-soft">
+          <button class="wo-nudge-main" onClick={() => navigate('settings')}>
+            <span class="wo-tile"><Icon name="refresh" size={20} /></span>
+            <span>{t('Your workouts stay on this device. Turn on sync in Settings to have them on your others')}</span>
+          </button>
+          <button class="icon-btn small" onClick={() => setSyncNudged(true)} aria-label={t('Not now')} title={t('Not now')}>
             <Icon name="x" size={16} />
           </button>
         </div>

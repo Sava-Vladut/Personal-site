@@ -155,7 +155,8 @@
 
 /* ---------- sets ---------- */
 
-.wo-sets { display: grid; gap: 6px; margin-top: 10px; }
+/* one column that may shrink: a number field's own width (about 150 px) would otherwise push the row past the card on a phone */
+.wo-sets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 10px; }
 .wo-set { display: flex; align-items: center; gap: 6px; touch-action: pan-y; transition: transform var(--dur-2) var(--ease); }
 .wo-set-head { color: var(--ink-3); font-size: var(--text-xs); font-weight: var(--w-bold); }
 .wo-h { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; line-height: 1; }
@@ -171,7 +172,7 @@
 }
 .wo-mark.is-tag { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
 input.wo-num {
-  flex: 1 1 0; min-width: 0; height: var(--h-m); padding: 0 4px; border: 1px solid transparent; border-radius: var(--r-s);
+  flex: 1 1 0; width: 0; min-width: 0; height: var(--h-m); padding: 0 4px; border: 1px solid transparent; border-radius: var(--r-s);
   background: var(--surface-2); color: var(--ink); text-align: center; font-size: 16px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
   outline: none; transition: border-color var(--dur-1), background-color var(--dur-1), box-shadow var(--dur-1);
 }

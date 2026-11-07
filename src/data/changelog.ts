@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.185.1',
+    date: '2026-11-07',
+    changes: [
+      'Language syncs: pick English or Română on one synced device and the others switch to it too.',
+      'Workout: sets no longer run off the side of the card on a phone; the reps column and the tick fit again.',
+    ],
+  },
+  {
     version: '1.185.0',
     date: '2026-11-06',
     changes: [

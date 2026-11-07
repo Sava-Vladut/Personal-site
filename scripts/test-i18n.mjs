@@ -92,3 +92,18 @@ test('a public status page marked with its language opens in it, whatever the de
   assert.equal((await load('src/lib/i18n.ts', { ...storage('ro'), ...page('en') })).lang, 'en');
   assert.equal((await load('src/lib/i18n.ts', { ...storage('ro'), ...page(undefined) })).lang, 'ro');
 });
+
+test('a language picked later on a synced device is taken on; an older or unknown one is not', async () => {
+  const store = new Map();
+  const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) };
+  const i18n = await load('src/lib/i18n.ts', { localStorage });
+  assert.deepEqual({ ...i18n.langChoice() }, { lang: 'en', at: 0 });
+  assert.equal(i18n.adoptLang('ro', 1000), true);       // never picked here: the other device's pick wins
+  assert.deepEqual({ ...i18n.langChoice() }, { lang: 'ro', at: 1000 });
+  assert.equal(i18n.adoptLang('en', 900), false);       // older than this device's
+  assert.equal(i18n.adoptLang('ro', 2000), false);      // newer, same language: nothing to reload
+  assert.equal(i18n.langChoice().at, 2000);
+  assert.equal(i18n.adoptLang('fr', 3000), false);
+  assert.equal(i18n.adoptLang('en', '4000'), false);
+  assert.equal(i18n.langChoice().lang, 'ro');
+});
