@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.185.3',
+    date: '2026-11-07',
+    changes: [
+      'Workout: the button for a new plan at the top is now a filled “+ New” button, easy to find once you have plans.',
+    ],
+  },
+  {
     version: '1.185.2',
     date: '2026-11-07',
     changes: [

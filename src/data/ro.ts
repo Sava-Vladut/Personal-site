@@ -3333,6 +3333,7 @@ export const RO: Record<string, string> = {
   "Name it: Push, Legs…": "Dă-i un nume: Împins, Picioare…",
   "New exercise": "Exercițiu nou",
   "New workout": "Antrenament nou",
+  "New": "Nou",
   "New workout plan": "Plan de antrenament nou",
   "Night workout": "Antrenament de noapte",
   "No exercise matches that.": "Niciun exercițiu nu se potrivește.",

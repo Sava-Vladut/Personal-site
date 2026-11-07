@@ -49,6 +49,8 @@
 /* ---------- home ---------- */
 
 .wo-bw { padding: 0 14px 0 12px; gap: 6px; font-variant-numeric: tabular-nums; margin-right: 4px; }
+/* making a plan, filled so it's found once the starters (and their "make your own") are gone */
+.wo-new { padding: 0 14px 0 10px; gap: 4px; }
 
 .wo-nudge { display: flex; align-items: center; gap: 8px; padding-right: 8px; margin-bottom: 18px; }
 .wo-nudge-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0 12px 14px; text-align: left; font-weight: var(--w-medium); line-height: 1.45; }

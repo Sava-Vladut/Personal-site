@@ -94,8 +94,9 @@ function Home({ workouts }: { workouts: Done[] }) {
               <Icon name="scale" size={16} />
               {kgText(bw)}
             </button>
-            <button class="icon-btn" onClick={newPlan} aria-label={t('New workout plan')} title={t('New workout plan')}>
-              <Icon name="plus" />
+            <button class="btn btn-primary btn-s wo-new" onClick={newPlan} aria-label={t('New workout plan')} title={t('New workout plan')}>
+              <Icon name="plus" size={18} stroke={2.5} />
+              {t('New')}
             </button>
           </>
         }
