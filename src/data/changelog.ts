@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.191.0',
+    date: '2026-11-07',
+    changes: [
+      'My Mind for Windows: a small app that opens My Mind in its own window, offline too. It’s one small file with no installer. Download it from Settings → Windows app.',
+      'The app keeps its own copy of your journal, so bring it over with a sync code or a backup.',
+      'Inside the app, Settings shows which version you have, and offers the new one when it’s out.',
+    ],
+  },
+  {
     version: '1.190.0',
     date: '2026-11-07',
     changes: [

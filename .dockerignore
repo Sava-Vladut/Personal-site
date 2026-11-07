@@ -12,3 +12,5 @@ data
 docs
 # Claude Code worktrees and settings
 .claude
+# the Windows app (desktop/), built by GitHub Actions, not part of the site
+desktop

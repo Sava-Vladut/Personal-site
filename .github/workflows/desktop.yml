@@ -1,0 +1,61 @@
+# Builds the Windows app in desktop/ (MyMind.exe) on a Windows runner. Pushing a tag desktop-vX.Y.Z also publishes it
+# as the latest GitHub Release, which the website links to:
+#   https://github.com/Sava-Vladut/Personal-site/releases/latest/download/MyMind.exe
+name: Desktop app
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Version from the tag
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/desktop-v* ]]; then v="${GITHUB_REF_NAME#desktop-v}"; else v="0.0.0-dev"; fi
+          re='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
+          if [[ ! "$v" =~ $re ]]; then echo "::error::$GITHUB_REF_NAME isn't desktop-vX.Y.Z"; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        shell: cmd
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: call desktop\build.cmd %VERSION%
+
+      - name: Size
+        shell: bash
+        run: ls -l desktop/MyMind.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyMind-${{ steps.version.outputs.version }}
+          path: desktop/MyMind.exe
+          if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" desktop/MyMind.exe \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "My Mind for Windows $VERSION" \
+            --notes "Download MyMind.exe and run it, no installer needed. It isn't signed, so the first time Windows SmartScreen may say it protected your PC: choose More info, then Run anyway. It needs the Microsoft Edge WebView2 Runtime, which Windows 10 and 11 already have." \
+            --latest

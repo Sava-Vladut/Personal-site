@@ -22,6 +22,7 @@ import { LOCALE, LANGS, count, lang, listOf, rich, setLang, t } from '../lib/i18
 import { signOut, signedInHere } from '../lib/auth';
 import { listShared, shareUrl, takeDown, unpublish, type SharedItem } from '../lib/share';
 import { ask } from '../components/Confirm';
+import { compareVersions, desktopApp, desktopOffer, DESKTOP_DOWNLOAD, DESKTOP_VERSION } from '../lib/desktop';
 import '../styles/shared.css';
 import '../styles/settings.css';
 
@@ -77,6 +78,10 @@ export function Settings({ query }: { query: URLSearchParams }) {
   const file = useRef<HTMLInputElement>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  // the Windows app: what's running it here, or whether to offer it
+  const desktop = desktopApp();
+  const offer = desktopOffer();
+  const outdated = !!desktop && compareVersions(desktop.version, DESKTOP_VERSION) < 0;
 
   useEffect(() => {
     let opening = true;
@@ -462,7 +467,8 @@ export function Settings({ query }: { query: URLSearchParams }) {
         </div>
       </section>
 
-      {!standalone && (
+      {/* the home-screen install doesn't apply inside the Windows app */}
+      {!standalone && !desktop && (
         <section class="section">
           <h2 class="section-title">{t('Install')}</h2>
           <div class="card list">
@@ -471,6 +477,38 @@ export function Settings({ query }: { query: URLSearchParams }) {
                 {ios ? t('In Safari, tap Share → Add to Home Screen to use My Mind like an app, offline too.') : t('Add My Mind to your home screen to open it like an app, offline too.')}
               </div>
               {installEvent && <button class="btn btn-primary" onClick={() => installEvent?.prompt()}>{t('Install')}</button>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {(desktop || offer) && (
+        <section class="section">
+          <h2 class="section-title">{t('Windows app')}</h2>
+          <div class="card list">
+            <div class="list-row">
+              <div>
+                <div class="row gap-s"><Icon name="brand-windows" size={18} /> {t('My Mind for Windows')}</div>
+                {desktop ? (
+                  <>
+                    <div class="muted small">{t('You’re using the Windows app, version {v}.', { v: desktop.version })}</div>
+                    {outdated && <div class="muted small">{t('Version {v} is out.', { v: DESKTOP_VERSION })}</div>}
+                  </>
+                ) : (
+                  <div class="muted small">{t('A small Windows app that opens My Mind in its own window, offline too.')}</div>
+                )}
+                <div class="muted small">{t('It keeps its own copy of your journal — bring it over with a sync code or a backup.')}</div>
+                {!desktop && (
+                  <div class="muted small">
+                    {offer === 'windows' ? t('Windows may warn the first time: choose More info → Run anyway.') : t('For Windows 10 and 11: open this page on your Windows PC to get it.')}
+                  </div>
+                )}
+              </div>
+              {(!desktop || outdated) && (
+                <a class={offer === 'other' && !desktop ? 'btn btn-quiet' : 'btn btn-primary'} href={DESKTOP_DOWNLOAD} download>
+                  <Icon name="download" size={18} /> {desktop ? t('Download') : t('Download for Windows')}
+                </a>
+              )}
             </div>
           </div>
         </section>
