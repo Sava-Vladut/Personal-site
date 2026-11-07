@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.190.0',
+    date: '2026-11-07',
+    changes: [
+      'Push-up counter: getting up between sets no longer counts as push-ups. The moment you leave the plank (standing up, dropping to your knees, sitting back, lying down on the floor) counting pauses, and a rest timer runs until you get back into a plank.',
+      'Each run of push-ups between rests is its own set: the big number counts the set you’re on from one, with your sets so far under it, and they’re saved as separate sets.',
+      'In a workout, the counted sets fill in the exercise’s sets one by one.',
+      'From the front, standing up or moving closer to the phone now pauses counting too.',
+    ],
+  },
+  {
     version: '1.189.0',
     date: '2026-11-07',
     changes: [

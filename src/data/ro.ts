@@ -3424,7 +3424,6 @@ export const RO: Record<string, string> = {
   // ── push-up counter
   "This exercise has as many sets as it can hold.": "Exercițiul ăsta are deja câte serii poate avea.",
   "{count} saved": "Salvat: {count}",
-  "Save as a set": "Salvează ca serie",
   "Count push-ups with the camera": "Numără flotările cu camera",
   "Camera": "Cameră",
   "The camera only works on a secure (https) page.": "Camera merge doar pe o pagină securizată (https).",
@@ -3459,11 +3458,14 @@ export const RO: Record<string, string> = {
   "Stand the phone on the floor 1–2 m away, beside you or at an angle. On its side, it fits all of you in.": "Pune telefonul pe podea la 1–2 m, lângă tine sau în diagonală. Culcat pe o parte, te cuprinde în întregime.",
   "Get into a plank with your arms straight: counting starts once it sees you holding it.": "Intră în plank cu brațele întinse: numărătoarea începe când te vede ținând poziția.",
   "Go down until your elbows bend to about 90°, then push back up. It says each number out loud.": "Coboară până când coatele se îndoaie la aproximativ 90°, apoi împinge înapoi în sus. Spune fiecare număr cu voce tare.",
-  "New best: {count}!": "Record nou: {count}!",
   "Your push-ups": "Flotările tale",
   "Start counting": "Începe numărătoarea",
   "How it works": "Cum funcționează",
   "The video stays on your phone: it’s never saved or sent anywhere.": "Video-ul rămâne pe telefon: nu e salvat și nu e trimis nicăieri.",
   "Your best set": "Cea mai bună serie a ta",
   "Your push-ups show here once you’ve counted some.": "Flotările tale apar aici după ce numeri câteva.",
+  "Add to the workout": "Adaugă la antrenament",
+  "New best set: {count}!": "Cea mai bună serie nouă: {count}!",
+  "Resting {time}. Get back into a plank to start set {n}.": "Pauză {time}. Intră din nou în plank ca să începi seria {n}.",
+  "Get up or drop to your knees to rest: counting pauses, and your next plank starts a new set.": "Ridică-te sau lasă-te pe genunchi ca să iei o pauză: numărătoarea se oprește, iar următorul plank începe o serie nouă.",
 };

@@ -36,6 +36,9 @@
 }
 .pu-num.is-new { animation: pop var(--dur-3) var(--spring-bouncy); }
 .pu-unit { font-size: var(--text-l); font-weight: var(--w-medium); line-height: 1; }
+.pu-sets { font-size: var(--text-m); font-weight: var(--w-medium); line-height: 1; font-variant-numeric: tabular-nums; }
+/* resting: the set just done stays up, quieter, until the next one starts */
+.pu-count.is-resting .pu-num { opacity: 0.55; }
 .pu-best {
   margin-top: 6px; padding: 0 12px; height: 26px; display: inline-flex; align-items: center; border-radius: var(--r-pill);
   font-size: var(--text-m); font-weight: var(--w-medium); background: rgb(0 0 0 / 0.38); text-shadow: none;

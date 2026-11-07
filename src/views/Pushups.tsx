@@ -1,6 +1,7 @@
 // The push-up counter's own page, in the Workout group beside Workouts: what you've done (your best set, this week, all
 // time), the way to start the camera, how to set the phone up, and your last sessions. Push-ups counted here are kept as
-// a short workout of one set, so they show in Insights too; ones counted inside a workout are part of that workout.
+// a short workout, a set for each run between rests, so they show in Insights too; ones counted inside a workout are part
+// of that workout.
 import { useMemo, useState } from 'preact/hooks';
 import { addDays, dayLabel, startOfWeek, todayKey } from '../lib/dates';
 import { blankSet, dayOf, type Workout as Done } from '../lib/fitness';
@@ -20,6 +21,7 @@ const STEPS: { icon: UiName; text: () => string }[] = [
   { icon: 'ruler-measure', text: () => t('Stand the phone on the floor 1–2 m away, beside you or at an angle. On its side, it fits all of you in.') },
   { icon: 'body-scan', text: () => t('Get into a plank with your arms straight: counting starts once it sees you holding it.') },
   { icon: 'volume', text: () => t('Go down until your elbows bend to about 90°, then push back up. It says each number out loud.') },
+  { icon: 'player-pause', text: () => t('Get up or drop to your knees to rest: counting pauses, and your next plank starts a new set.') },
 ];
 
 export function Pushups(_: { id: string; query: URLSearchParams }) {
@@ -45,21 +47,23 @@ export function Pushups(_: { id: string; query: URLSearchParams }) {
   const week = sessions.filter((s) => { const d = dayOf(s.w.start); return d >= from && d <= to; }).reduce((n, s) => n + s.total, 0);
   const total = sessions.reduce((n, s) => n + s.total, 0);
 
-  const save = async (reps: number, start: number) => {
+  const save = async (counted: number[], start: number) => {
+    const reps = counted.reduce((a, b) => a + b, 0);
     try {
       const move = findExercise(await loadExercises(), 'Pushups');
       if (!move) throw new Error('no push-ups in the exercise list');
       const now = Date.now();
       await saveWorkout({
         id: uid(), plan: null, name: t('Push-ups'), icon: 'gymnastics', target: 0, bw, start, end: now,
-        items: [{ ...itemOf(move, undefined, true), sets: [{ ...blankSet(move.kind), reps, done: true }] }],
+        items: [{ ...itemOf(move, undefined, true), sets: counted.map((n) => ({ ...blankSet(move.kind), reps: n, done: true })) }],
         feel: 0, note: '', created: now, updated: now,
       });
     } catch {
       return toast(t('Couldn’t save the push-ups. Try again.'));
     }
     setCounting(false);
-    toast(reps > best && best > 0 ? t('New best: {count}!', { count: count(reps, 'push-up', 'push-ups') }) : t('{count} saved', { count: count(reps, 'push-up', 'push-ups') }));
+    const top = Math.max(...counted);
+    toast(top > best && best > 0 ? t('New best set: {count}!', { count: count(top, 'push-up', 'push-ups') }) : t('{count} saved', { count: count(reps, 'push-up', 'push-ups') }));
   };
 
   if (!ready) return <div class="page wo-page pp-page"><PageHead title={t('Push-up counter')} wheel world={WORKOUT_WORLD} /></div>;

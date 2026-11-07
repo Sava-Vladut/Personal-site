@@ -13,6 +13,7 @@ import { useWorkouts } from '../../lib/store';
 import { haptic } from '../../lib/haptics';
 import { count as countOf, LOCALE, noun, t } from '../../lib/i18n';
 import { Icon } from '../icons';
+import { clock, useClock } from './shared';
 import '../../styles/pushups.css';
 
 type Facing = 'user' | 'environment';
@@ -94,10 +95,10 @@ function useBest() {
 }
 
 /**
- * Full screen over the page. `onSave` gets the reps and when counting began; it's up to the page where they go (a set
- * of the workout going on, or a workout of their own).
+ * Full screen over the page. `onSave` gets the reps of each set and when counting began; it's up to the page where they
+ * go (the sets of the workout going on, or a workout of their own).
  */
-export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => void; onSave: (reps: number, start: number) => void; saveLabel?: string }) {
+export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => void; onSave: (sets: number[], start: number) => void; saveLabel?: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const meter = useRef<HTMLSpanElement>(null);
@@ -112,7 +113,9 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
   const [camError, setCamError] = useState<string | null>(null);
   const [model, setModel] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [modelKey, setModelKey] = useState(0);
-  const [reps, setReps] = useState(0);
+  // the reps of each set (the last is the one going on), and when the rest between sets began
+  const [sets, setSets] = useState<readonly number[]>([]);
+  const [restSince, setRestSince] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>('unseen');
   const [flash, setFlash] = useState<Cue>(null);
   const [leaving, setLeaving] = useState(false);
@@ -122,6 +125,8 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
 
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const reps = sets.reduce((a, b) => a + b, 0);
+  const current = sets[sets.length - 1] ?? 0;
   const repsRef = useRef(0);
   repsRef.current = reps;
 
@@ -216,7 +221,7 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
     let lastFrame = -1;
     let lastTime = 0;
     let flashTimer = 0;
-    let shown: { phase: Phase; reps: number } = { phase: 'unseen', reps: 0 };
+    let shown: { phase: Phase; sets: readonly number[] } = { phase: 'unseen', sets: [] };
     const style = getComputedStyle(document.documentElement);
     const accent = style.getPropertyValue('--accent').trim() || style.getPropertyValue('--ink').trim();
     const line = style.getPropertyValue('--on-color').trim() || 'white';
@@ -238,15 +243,19 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
       const out = counter.current.step(marks, v.videoWidth, v.videoHeight, now);
       if (meter.current) meter.current.style.setProperty('--d', String(Math.min(1, out.depth)));
       meter.current?.classList.toggle('is-deep', out.depth >= 1);
-      if (out.phase !== shown.phase || out.count !== shown.reps) {
-        shown = { phase: out.phase, reps: out.count };
+      if (out.phase !== shown.phase || out.sets !== shown.sets) {
+        shown = { phase: out.phase, sets: out.sets };
         setPhase(out.phase);
-        setReps(out.count);
+        setSets(out.sets);
+        setRestSince(out.restSince);
       }
       if (out.cue) {
         if (out.cue === 'rep') {
+          // each set counts from one
           haptic(10);
-          if (soundRef.current) say(String(out.count), true);
+          if (soundRef.current) say(String(out.sets[out.sets.length - 1]), true);
+        } else if (out.cue === 'rest') {
+          if (soundRef.current) say(t('Rest'), false);
         } else {
           if (soundRef.current) say(out.cue === 'shallow' ? t('Lower') : t('Body straight'), false);
           setFlash(out.cue);
@@ -266,19 +275,21 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
   const reset = () => {
     counter.current.reset();
     started.current = Date.now();
-    setReps(0);
+    setSets([]);
+    setRestSince(null);
     setLeaving(false);
   };
   const save = () => {
     if (!reps) return;
     haptic(10);
-    onSave(reps, started.current);
+    onSave([...sets], started.current);
   };
 
   const status = camError ?? (model === 'failed' ? t('Couldn’t load the pose model. Check your connection and try again.')
     : model === 'loading' ? t('Getting the pose model ready. The first time it downloads about 9 MB.')
     : flash === 'shallow' ? t('Go lower: bend your elbows to about 90°')
     : flash === 'hips' ? t('Keep your body in a straight line')
+    : phase === 'rest' ? <RestTimer since={restSince} next={sets.length + 1} />
     : MESSAGES[phase]());
   const failed = !!camError || model === 'failed';
   const mirror = facing === 'user';
@@ -306,10 +317,12 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
         )}
       </div>
 
-      <div class="pu-count" aria-live="polite">
-        <span key={reps} class={`pu-num${reps ? ' is-new' : ''}`}>{reps}</span>
-        <span class="pu-unit">{noun(reps, 'push-up', 'push-ups')}</span>
-        {best > 0 && <span class="pu-best">{reps > best ? t('New best!') : t('Best: {n}', { n: best })}</span>}
+      {/* the set going on, big (the one just done, while resting), and the sets so far under it */}
+      <div class={`pu-count${phase === 'rest' ? ' is-resting' : ''}`} aria-live="polite">
+        <span key={`${sets.length}-${current}`} class={`pu-num${current ? ' is-new' : ''}`}>{current}</span>
+        <span class="pu-unit">{noun(current, 'push-up', 'push-ups')}</span>
+        {sets.length > 1 && <span class="pu-sets">{sets.join(' · ')} = {countOf(reps, 'push-up', 'push-ups')}</span>}
+        {best > 0 && <span class="pu-best">{current > best ? t('New best!') : t('Best: {n}', { n: best })}</span>}
       </div>
 
       <div class={`pu-meter${phase === 'up' || phase === 'down' ? ' is-on' : ''}`} aria-hidden="true">
@@ -352,7 +365,14 @@ export function PushupCounter({ onClose, onSave, saveLabel }: { onClose: () => v
   );
 }
 
-const MESSAGES: Record<Phase, () => string> = {
+/** How long you've rested, ticking, and what starts the next set. */
+function RestTimer({ since, next }: { since: number | null; next: number }) {
+  useClock();
+  const time = clock(since === null ? 0 : performance.now() - since);
+  return <>{t('Resting {time}. Get back into a plank to start set {n}.', { time, n: next })}</>;
+}
+
+const MESSAGES: Record<Exclude<Phase, 'rest'>, () => string> = {
   unseen: () => t('Stand the phone on the floor 1–2 m away, to your side or at an angle, so it sees all of you'),
   partial: () => t('Move back so your arms and hips are in view'),
   ready: () => t('Get into a plank with your arms straight'),

@@ -65,16 +65,21 @@ export function Live({ workout }: { workout: Workout }) {
     scrollTo({ top: 0 });
   };
 
-  // the camera's count goes into the next set not done yet (or a new one), which then counts as done and starts the rest
-  const logReps = (i: number, reps: number) => {
+  // each set the camera counted goes into the next set not done yet (or a new one), which then counts as done; the
+  // rest timer starts after the last
+  const logReps = (i: number, counted: number[]) => {
     const it = w.items[i];
     if (!it) return;
-    const k = it.sets.findIndex((s) => !s.done);
-    if (k < 0 && it.sets.length >= MAX_SETS) return toast(t('This exercise has as many sets as it can hold.'));
-    const sets = k >= 0 ? it.sets.map((s, j) => (j === k ? { ...s, reps, done: true } : s)) : [...it.sets, { ...blankSet(it.move.kind), reps, done: true }];
+    const sets = [...it.sets];
+    for (const reps of counted) {
+      const k = sets.findIndex((s) => !s.done);
+      if (k >= 0) sets[k] = { ...sets[k], reps, done: true };
+      else if (sets.length < MAX_SETS) sets.push({ ...blankSet(it.move.kind), reps, done: true });
+      else return toast(t('This exercise has as many sets as it can hold.'));
+    }
     act.setItem(i, { ...it, sets });
     if (it.rest > 0) setRest({ end: Date.now() + it.rest * 1000, total: it.rest });
-    toast(t('{count} saved', { count: count(reps, 'push-up', 'push-ups') }));
+    toast(t('{count} saved', { count: count(counted.reduce((a, b) => a + b, 0), 'push-up', 'push-ups') }));
   };
 
   // adding and discarding: under the exercises on a phone, in the side panel on a wide screen
@@ -164,7 +169,7 @@ export function Live({ workout }: { workout: Workout }) {
       </Sheet>
       {counting !== null && (
         <PushupCounter
-          saveLabel={t('Save as a set')}
+          saveLabel={t('Add to the workout')}
           onClose={() => setCounting(null)}
           onSave={(reps) => {
             logReps(counting, reps);
