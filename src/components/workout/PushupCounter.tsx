@@ -6,7 +6,7 @@ import { createPortal } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { PoseLandmarker } from '@mediapipe/tasks-vision';
 import { loadPose } from '../../lib/pose';
-import { createCounter, countsPushups, type Cue, type Mark, type Phase } from '../../lib/pushups';
+import { createCounter, pushupReps, type Cue, type Mark, type Phase } from '../../lib/pushups';
 import { pushBack } from '../../lib/router';
 import { usePref } from '../../lib/prefs';
 import { useWorkouts } from '../../lib/store';
@@ -88,10 +88,7 @@ function useBest() {
   const workouts = useWorkouts();
   return useMemo(() => {
     let best = 0;
-    for (const w of workouts) {
-      if (w.end === null) continue;
-      for (const it of w.items) if (countsPushups(it.move)) for (const s of it.sets) if (s.done && s.reps) best = Math.max(best, s.reps);
-    }
+    for (const w of workouts) if (w.end !== null) best = Math.max(best, ...pushupReps(w));
     return best;
   }, [workouts]);
 }

@@ -100,14 +100,16 @@ export function normalize(raw: Partial<WheelLayout> | null | undefined): WheelLa
  * Places that moved to a new group: a save from before the move lets go of what still sat where it came, so it lands
  * in its new group (what you moved yourself stays). Version 2: 1.106 split Insights. Version 3: Global Ops' player
  * stats moved from Extras to Insights (1.148). Version 4: Repos moved from Extras to Code (1.151). Version 5: Channel
- * points and Streamer stats moved from Extras to Twitch, and Repos from Code back to Extras (1.176).
+ * points and Streamer stats moved from Extras to Twitch, and Repos from Code back to Extras (1.176). Version 6: Workout
+ * became a group of its own, holding Workouts and the push-up counter (1.189).
  */
-const VERSION = 5;
+const VERSION = 6;
 const MOVED: Record<number, Record<string, string | null>> = {
   2: { traps: 'insights', laws: 'insights', twitch: 'insights', status: 'insights', countdown: 'insights', repos: null },
   3: { glops: 'extras' },
   4: { repos: 'extras' },
   5: { twitch: 'extras', streamer: 'extras', repos: 'code' },
+  6: { workout: null },
 };
 function migrate(raw: (Partial<WheelLayout> & { v?: number }) | null): Partial<WheelLayout> | null {
   if (!raw || (raw.v ?? 1) >= VERSION) return raw;
@@ -116,7 +118,11 @@ function migrate(raw: (Partial<WheelLayout> & { v?: number }) | null): Partial<W
   for (const [v, moved] of Object.entries(MOVED)) {
     if ((raw.v ?? 1) >= Number(v)) continue;
     for (const [id, was] of Object.entries(moved)) {
-      if (was == null) { if (top.includes(id)) top.splice(top.indexOf(id), 1); }
+      if (was == null) {
+        // off the ring: when its new group isn't on the ring yet, the group takes its spot (Workout became one)
+        const at = top.indexOf(id), group = home.get(id);
+        if (at >= 0) top.splice(at, 1, ...(group && !top.includes(group) ? [group] : []));
+      }
       else if (kids[was]?.includes(id)) kids[was] = kids[was].filter((k) => k !== id);
     }
   }

@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.189.0',
+    date: '2026-11-07',
+    changes: [
+      'Workout is now a group on the wheel and in the sidebar, like Learn and Twitch: Workouts (your plans and workouts, as before) and the Push-up counter.',
+      'The push-up counter has a page of its own: your best set, this week’s and all-time push-ups, how to set the phone up, and your recent sessions.',
+      'The counter card is gone from the Workout page. In a workout, push-up exercises still have their Camera button.',
+      'If you rearranged your wheel, the Workout group takes Workout’s old spot.',
+    ],
+  },
+  {
     version: '1.188.0',
     date: '2026-11-07',
     changes: [

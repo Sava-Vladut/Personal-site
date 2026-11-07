@@ -1,7 +1,7 @@
 // What the Workout page's parts share: the exercises by id (for their pictures), saving as you go, a clock that ticks
 // while the page is in view, how sets and numbers are written, and starting a workout.
 import { createContext, type ComponentChildren } from 'preact';
-import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { imageOf, useExercises } from '../../lib/exercises';
 import {
   blankSet, MAX_ITEMS, MAX_SETS, repPower, setPower, snapOf, weightOn,
@@ -27,6 +27,18 @@ export function MovesProvider({ children }: { children: ComponentChildren }) {
   return <MovesCtx.Provider value={value}>{children}</MovesCtx.Provider>;
 }
 export const useMoves = () => useContext(MovesCtx);
+
+/** The Workout pages' emotion world. */
+export const WORKOUT_WORLD = 'hope-interest';
+
+/** A Workout page wears its world's colour: power's bolts, the rings and the meters read the accent from the root. */
+export function useWorkoutAccent() {
+  useLayoutEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--accent', `var(--emo-${WORKOUT_WORLD})`);
+    return () => root.removeProperty('--accent');
+  }, []);
+}
 
 /** Your body weight today: the last weigh-in, or the default until there is one. */
 export function useBodyWeight() {

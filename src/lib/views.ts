@@ -29,6 +29,7 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   cardwars: () => import('../views/CardWars').then((m) => m.CardWars),
   chatlogs: () => import('../views/ChatLogs').then((m) => m.ChatLogs),
   workout: () => import('../views/Workout').then((m) => m.Workout),
+  pushups: () => import('../views/Pushups').then((m) => m.Pushups),
   training: () => import('../views/Training').then((m) => m.Training),
   intro: () => import('../views/Intro').then((m) => m.Intro),
 };

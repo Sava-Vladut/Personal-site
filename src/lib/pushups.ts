@@ -264,6 +264,11 @@ export function createCounter() {
 
 export type Counter = ReturnType<typeof createCounter>;
 
+/** The reps of each push-up set done in a workout. */
+export function pushupReps(w: { items: { move: { id: string; name: string; kind: string }; sets: { reps: number | null; done: boolean }[] }[] }) {
+  return w.items.flatMap((it) => (countsPushups(it.move) ? it.sets.flatMap((s) => (s.done && s.reps ? [s.reps] : [])) : []));
+}
+
 /** The exercises the camera can count: push-ups of any kind, from the database or your own (not upside down ones). */
 export function countsPushups(m: { id: string; name: string; kind: string }) {
   const words = `${m.id} ${m.name}`.replace(/_/g, ' ');

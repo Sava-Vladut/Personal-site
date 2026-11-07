@@ -1496,7 +1496,7 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.deepEqual(plain(saved.kids.learn), ['traps', 'laws', 'friends', 'seduction'], 'new places land in their usual group, which turns up too');
   assert.deepEqual(plain(saved.hidden), ['repos']);
   assert.deepEqual(plain(Object.keys(saved.groups)), ['gwork']);
-  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', 'workout', ['insights', ['stats', 'twitch', 'training', 'glops', 'cardwars']], ['learn', ['traps', 'laws', 'friends', 'seduction']], ['stream', ['streamer', 'chatlogs']], ['extras', ['status', 'countdown']], 'settings']);
+  assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['fitness', ['workout', 'pushups']], ['insights', ['stats', 'twitch', 'training', 'glops', 'cardwars']], ['learn', ['traps', 'laws', 'friends', 'seduction']], ['stream', ['streamer', 'chatlogs']], ['extras', ['status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['glops'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
 
@@ -1526,6 +1526,16 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.ok(!moved.kids.extras.includes('glops'));
   const mine = await reload(old({ insights: ['stats', 'map'], learn: ['traps', 'laws', 'friends', 'glops'] }));
   assert.ok(mine.kids.learn.includes('glops') && !mine.kids.insights.includes('glops'), 'Global Ops stays where you put it');
+
+  // a save from before Workout became a group (1.189): the group takes Workout's spot on your ring, with the push-up counter in it
+  const before = (layout) => new Map([['mm-wheel-layout', JSON.stringify({ hidden: [], groups: {}, ...layout, v: 5 })]]);
+  const regrouped = await reload(before({ top: ['journal', 'people', 'workout', 'media', 'insights', 'settings'], kids: { insights: ['stats', 'training'] } }));
+  assert.ok(!regrouped.top.includes('workout'));
+  assert.equal(regrouped.top.indexOf('fitness'), 2);
+  assert.deepEqual(plain(regrouped.kids.fitness), ['workout', 'pushups']);
+  const kept = await reload(before({ top: ['journal', 'gme', 'insights', 'settings'], kids: { gme: ['workout', 'people'] }, groups: { gme: { name: 'Me', icon: 'star', hue: 'joy' } } }));
+  assert.deepEqual(plain(kept.kids.gme), ['workout', 'people'], 'Workout stays in a group you put it in');
+  assert.deepEqual(plain(kept.kids.fitness), ['pushups']);
 });
 
 test('book and picture searches give up on a stalled request with a readable message', async () => {

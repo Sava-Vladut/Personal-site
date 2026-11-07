@@ -21,7 +21,14 @@ export const WHEEL: WheelNode[] = [
   { id: 'journal', name: t('Journal'), sub: t('Your notes and check-ins, day by day'), icon: 'notebook', hue: 'joy', to: '' },
   { id: 'people', name: t('People'), sub: t('The people in your life'), icon: 'users', hue: 'love-connection', to: 'people' },
   { id: 'media', name: t('Media'), sub: t('Your records and your shelf'), icon: 'library', hue: 'anger', to: 'media' },
-  { id: 'workout', name: t('Workout'), sub: t('Train for power: your workouts, the exercises in them and your body weight'), icon: 'barbell', hue: 'hope-interest', to: 'workout' },
+  // training: your workouts, and the camera that counts push-ups
+  {
+    id: 'fitness', name: t('Workout'), sub: t('Your workouts, and a camera that counts your push-ups'), icon: 'barbell', hue: 'hope-interest',
+    kids: [
+      { id: 'workout', name: t('Workouts'), sub: t('Train for power: your workouts, the exercises in them and your body weight'), icon: 'barbell', to: 'workout' },
+      { id: 'pushups', name: t('Push-up counter'), sub: t('Your camera counts your push-ups as you do them'), icon: 'camera', to: 'pushups' },
+    ],
+  },
   // everything that's numbers about you, in one place
   {
     id: 'insights', name: t('Insights'), sub: t('Your patterns, places and workouts, and who plays the games'), icon: 'chart-dots', hue: 'hope-interest',

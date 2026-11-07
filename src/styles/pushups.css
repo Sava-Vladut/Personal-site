@@ -77,3 +77,28 @@
 @media (prefers-reduced-motion: reduce) {
   .pu, .pu-num.is-new { animation: none; }
 }
+
+/* ---------- the counter's page (views/Pushups.tsx): built from the Workout page's parts ---------- */
+
+.pp-hero .wo-label { margin: 0; }
+.pp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pp-stat { display: grid; gap: 4px; min-width: 0; }
+.pp-stat-n { font: var(--w-bold) var(--text-2xl)/1 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.pp-stat-label { font-size: var(--text-s); font-weight: var(--w-medium); color: var(--ink-3); }
+
+.pp-steps { list-style: none; margin: 0; padding: 0; }
+.pp-step { display: flex; align-items: center; gap: 12px; padding: 13px 16px; min-height: 56px; line-height: 1.45; }
+.pp-step + .pp-step { border-top: 1px solid var(--line); }
+.pp-note { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.pp-note svg { flex: none; }
+
+.pp-best { display: inline-flex; color: var(--accent); }
+.pp-empty { padding: 28px 16px; }
+
+/* a wide screen: what you've done and how it works on the left, your sessions in a panel at the right */
+@media (min-width: 1024px) {
+  .pp-home { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; column-gap: 32px; align-items: start; }
+  .pp-home > .pp-hero { grid-column: 1; grid-row: 1; }
+  .pp-home > .pp-how { grid-column: 1; grid-row: 2; }
+  .pp-home > .pp-recent { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+}
