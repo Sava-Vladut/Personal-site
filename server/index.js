@@ -22,6 +22,7 @@
 //  • chat logs: one Twitch user's chat in one channel (server/chatlogs.js), from the public log archives, plus the
 //    channels the admin has recorded here (CHATLOGS_DIR) by an anonymous chat connection.
 //  • Card Wars player stats: passed on from the game's PvP relay (CARDWARS_STATS_URL), which only the server can reach.
+//  • push-up counter: hands out MediaPipe's pose model and its WebAssembly runtime, fetched once and kept in data/pose (server/pose.js).
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
@@ -35,6 +36,7 @@ import { REVALIDATE, json, sendJson } from './http-response.js';
 import { createShareHandler } from './share.js';
 import { createStatusHandler } from './status.js';
 import { createLearnHandler } from './learn.js';
+import { createPoseHandler, isPosePath } from './pose.js';
 import { createSyncHandler } from './sync.js';
 import { createStaticHandler } from './static.js';
 import { createStreamerHandler } from './streamers.js';
@@ -51,6 +53,7 @@ const APP_URL = (process.env.APP_URL || PUBLIC_URL).replace(/\/+$/, ''); // wher
 const SECURE = PUBLIC_URL.startsWith('https://');
 const DIST = join(ROOT, 'dist');
 const SYNC_DIR = join(ROOT, 'data', 'sync');
+const POSE_DIR = join(ROOT, 'data', 'pose');
 const SHARE_DIR = process.env.SHARE_DIR || join(ROOT, 'data', 'shared');
 const STATUS_DIR = process.env.STATUS_DIR || join(ROOT, 'data', 'status');
 // the miner's analytics folder (the one holding a folder per account)
@@ -111,10 +114,10 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'same-origin',
   'X-Frame-Options': 'DENY',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
+  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(self)',
   'Content-Security-Policy':
     "default-src 'self'; img-src 'self' data: blob: https:; " +
-    "style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; manifest-src 'self'; " +
+    "style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; manifest-src 'self'; " +
     "connect-src 'self' https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
     'https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; ' +
     "worker-src 'self'; frame-src 'self' https://open.spotify.com; " +
@@ -1068,6 +1071,7 @@ async function api(req, res, url) {
 /* ---------------- static files ---------------- */
 
 const serveStatic = createStaticHandler(DIST);
+const servePose = createPoseHandler({ directory: POSE_DIR });
 
 /* ---------------- server ---------------- */
 
@@ -1081,6 +1085,7 @@ const server = http.createServer(async (req, res) => {
         throw new HttpError(400, 'Bad request URL');
       }
       if (url.pathname.startsWith('/api/')) return await api(req, res, url);
+      if (isPosePath(url.pathname)) return await servePose(req, res, url.pathname);
       if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
       if (url.pathname.startsWith('/s/')) return await share.page(req, res, url.pathname);
       if (url.pathname.startsWith('/status/')) return await status.page(req, res, url.pathname);

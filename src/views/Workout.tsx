@@ -5,8 +5,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { addDays, dayLabel, startOfWeek, todayKey, weekday, WEEKDAYS } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { dayOf, fmtPower, metTarget, workoutPower, type Muscle, type Routine, type Workout as Done } from '../lib/fitness';
-import { saveRoutine, toast, uid, useReady, useRoutines, useSettings, useWeighIns, useWorkouts } from '../lib/store';
+import { blankSet, dayOf, fmtPower, metTarget, workoutPower, type Muscle, type Routine, type Workout as Done } from '../lib/fitness';
+import { saveRoutine, saveWorkout, toast, uid, useReady, useRoutines, useSettings, useWeighIns, useWorkouts } from '../lib/store';
 import { usePref } from '../lib/prefs';
 import { useSync } from '../lib/sync';
 import { count, listOf, t } from '../lib/i18n';
@@ -17,9 +17,10 @@ import { PageHead } from '../components/PageHead';
 import { Live } from '../components/workout/Live';
 import { PlanEditor } from '../components/workout/PlanEditor';
 import { PowerInfo } from '../components/workout/PowerInfo';
+import { PushupCounter, unlockSound } from '../components/workout/PushupCounter';
 import { starterPlans } from '../components/workout/Starters';
 import { WeighInSheet } from '../components/workout/WeighIn';
-import { kgText, MovesProvider, planName, span, startWorkout, useBodyWeight, useMoves } from '../components/workout/shared';
+import { itemOf, kgText, MovesProvider, planName, span, startWorkout, useBodyWeight, useMoves } from '../components/workout/shared';
 import '../styles/workout.css';
 
 const WORLD = 'hope-interest';
@@ -69,6 +70,8 @@ function Home({ workouts }: { workouts: Done[] }) {
   const bw = useBodyWeight();
   const { weekStart } = useSettings();
   const [sheet, setSheet] = useState<'weight' | 'power' | null>(null);
+  const [counting, setCounting] = useState(false);
+  const { byId } = useMoves();
   const [nudged, setNudged] = usePref<boolean>('wo-weight-nudged', false);
   const sync = useSync();
   const [syncNudged, setSyncNudged] = usePref<boolean>('wo-sync-nudged', false);
@@ -81,6 +84,23 @@ function Home({ workouts }: { workouts: Done[] }) {
   }, [done]);
   const start = (r: Routine | null) => startWorkout(r, bw).then((ok) => ok && scrollTo({ top: 0 }));
   const newPlan = () => navigate('workout?plan=' + uid());
+  // push-ups counted on their own are kept as a short workout of one set, so they show in the week and in Insights
+  const savePushups = async (reps: number, from: number) => {
+    const move = byId.get('Pushups');
+    if (!move) return toast(t('Couldn’t save the push-ups. Try again.'));
+    const now = Date.now();
+    const item = itemOf(move, undefined, true);
+    try {
+      await saveWorkout({
+        id: uid(), plan: null, name: t('Push-ups'), icon: 'gymnastics', target: 0, bw, start: from, end: now,
+        items: [{ ...item, sets: [{ ...blankSet(move.kind), reps, done: true }] }], feel: 0, note: '', created: now, updated: now,
+      });
+    } catch {
+      return toast(t('Couldn’t save the push-ups. Try again.'));
+    }
+    setCounting(false);
+    toast(t('{count} saved', { count: count(reps, 'push-up', 'push-ups') }));
+  };
 
   return (
     <div class="page wo-page">
@@ -128,6 +148,14 @@ function Home({ workouts }: { workouts: Done[] }) {
 
       <div class="wo-home">
         <Week done={done} weekStart={weekStart} onStart={() => start(null)} onInfo={() => setSheet('power')} />
+        <button class="card wo-cam" onClick={() => (unlockSound(), setCounting(true))}>
+          <span class="wo-tile"><Icon name="camera" size={20} /></span>
+          <span class="wo-cam-text">
+            <span class="wo-cam-name">{t('Push-up counter')}</span>
+            <span class="muted small">{t('Your camera counts the reps for you')}</span>
+          </span>
+          <Icon name="chevron-right" size={18} />
+        </button>
         <section class="section wo-plans">
           <h2 class="section-title">
             <Icon name="list-details" size={16} />
@@ -147,6 +175,7 @@ function Home({ workouts }: { workouts: Done[] }) {
 
       <WeighInSheet open={sheet === 'weight'} onClose={() => setSheet(null)} />
       <PowerInfo open={sheet === 'power'} onClose={() => setSheet(null)} bw={bw} />
+      {counting && <PushupCounter onClose={() => setCounting(false)} onSave={savePushups} />}
     </div>
   );
 }

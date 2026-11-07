@@ -91,6 +91,30 @@ test('malformed request URLs return 400 and the next health request succeeds', a
   assert.deepEqual(await request('/api/health'), { status: 200, body: { ok: true } });
 });
 
+test('pose files outside the allowlist are refused without contacting anyone, and the page may use the camera', async () => {
+  let fetched = 0;
+  globalThis.fetch = async () => { fetched++; throw new Error('not expected'); };
+  for (const path of [
+    '/pose/1.1.0/vision_wasm_internal.wasm', // a runtime release we haven't pinned
+    '/pose/0.10.22/vision_wasm_internal.js',
+    '/pose/1.1.1/vision_wasm_module_internal.wasm',
+    '/pose/1.1.1/vision_wasm_internal.wasm.br',
+    '/pose/1.1.1/..%2F..%2Fserver%2Findex.js',
+    '/pose/1.1.1/sub/vision_wasm_internal.wasm',
+    '/pose/models/other.task',
+    '/pose/models/..%2Fpose_landmarker_lite.task',
+    '/pose/models/pose_landmarker_heavy.task',
+    '/pose/',
+  ]) {
+    const headers = {};
+    const response = await request(path, undefined, headers);
+    assert.equal(response.status, 404, path);
+    assert.match(headers['Permissions-Policy'], /camera=\(self\)/);
+    assert.match(headers['Content-Security-Policy'], /script-src 'self' 'wasm-unsafe-eval'/);
+  }
+  assert.equal(fetched, 0);
+});
+
 test('Card Wars stats come from the relay as they are, shared for 15 seconds, and a 502 when it can’t be reached', async () => {
   const realNow = Date.now;
   let now = realNow(), calls = 0;

@@ -55,6 +55,12 @@
 .wo-nudge { display: flex; align-items: center; gap: 8px; padding-right: 8px; margin-bottom: 18px; }
 .wo-nudge-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0 12px 14px; text-align: left; font-weight: var(--w-medium); line-height: 1.45; }
 
+/* the push-up counter, under this week */
+.wo-cam { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-top: 12px; text-align: left; color: var(--ink-3); }
+.wo-cam-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.wo-cam-name { font-weight: var(--w-medium); color: var(--ink); }
+@media (hover: hover) { .wo-cam:hover { border-color: var(--line-2); } }
+
 .wo-hero {
   display: grid; gap: 12px; padding: 14px 16px 16px;
   background: linear-gradient(120deg, color-mix(in oklab, var(--accent) 12%, var(--surface)), var(--surface) 70%);
@@ -157,6 +163,7 @@
 .wo-note svg { flex: none; color: var(--ink-3); }
 .wo-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .wo-item-foot .btn-s { padding-left: 12px; }
+.wo-item-acts { display: flex; gap: 8px; }
 .wo-item-sum { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .wo-item-sum .power { color: var(--ink); margin-left: 4px; }
 
@@ -380,10 +387,11 @@ input.wo-num {
   .wo-row-moves { display: block; font-size: var(--text-m); color: var(--ink-2); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* home: the plans as cards across the page; this week and the recent ones in a panel at the right */
-  .wo-home { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; column-gap: 32px; align-items: start; }
-  .wo-home > .wo-plans { grid-column: 1; grid-row: 1 / span 2; margin-top: 0; }
+  .wo-home { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto auto 1fr; column-gap: 32px; align-items: start; }
+  .wo-home > .wo-plans { grid-column: 1; grid-row: 1 / span 3; margin-top: 0; }
   .wo-home > .wo-hero { grid-column: 2; grid-row: 1; }
-  .wo-home > .wo-recent { grid-column: 2; grid-row: 2; }
+  .wo-home > .wo-cam { grid-column: 2; grid-row: 2; }
+  .wo-home > .wo-recent { grid-column: 2; grid-row: 3; }
   .wo-plans .wo-list.card {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
     background: none; border: 0; border-radius: 0; overflow: visible;

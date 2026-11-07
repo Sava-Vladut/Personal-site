@@ -175,6 +175,33 @@ test('caches left by the removed voice typing are deleted on activation', async 
   assert.deepEqual([...app.stores.keys()], ['mm-app-dev']);
 });
 
+test('push-up counter: the pose files are cached first in their own cache, failures aren’t kept, and updates keep the cache', async () => {
+  let calls = 0;
+  let status = 200;
+  const app = worker({
+    entries: { 'mm-app-older': {}, 'mm-app-old': {}, 'mm-app-dev': {}, 'mm-pose-v1': {} },
+    fetch: async () => { calls++; return new Response(status === 200 ? 'pose' : 'upstream down', { status }); },
+  });
+  for (const path of ['/pose/1.1.1/vision_wasm_internal.wasm', '/pose/1.1.1/vision_wasm_internal.js', '/pose/models/pose_landmarker_lite.task']) {
+    assert.equal(await (await app.request(path)).text(), 'pose');
+    assert.equal(await (await app.request(path)).text(), 'pose');
+  }
+  assert.equal(calls, 3);
+  assert.equal(app.stores.get('mm-pose-v1').size, 3);
+  assert.equal(app.stores.get('mm-app-dev').size, 0, 'never in the app cache that every update replaces');
+
+  // a 502 while the server fetches the model isn't kept: the next try goes to the network again
+  status = 502;
+  assert.equal((await app.request('/pose/models/pose_landmarker_full.task')).status, 502);
+  status = 200;
+  assert.equal(await (await app.request('/pose/models/pose_landmarker_full.task')).text(), 'pose');
+  assert.equal(calls, 5);
+
+  await app.activate();
+  assert.deepEqual([...app.stores.keys()], ['mm-app-old', 'mm-app-dev', 'mm-pose-v1']);
+  assert.equal(app.stores.get('mm-pose-v1').size, 4);
+});
+
 test('open tabs can import a preceding build screen offline without using its shell or mutable icons', async () => {
   const app = worker({
     entries: {

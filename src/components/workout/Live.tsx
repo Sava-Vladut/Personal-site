@@ -2,10 +2,11 @@
 // finish; each exercise is a card of sets to tick off; and after each set a rest timer floats at the bottom. Everything
 // is saved as you go, so leaving the page (or closing the app) and coming back finds it as it was.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { fmtPower, itemPower, MAX_SETS, metTarget, planPower, suggestTarget, workoutPower, type Item, type Routine, type WSet, type Workout } from '../../lib/fitness';
+import { blankSet, fmtPower, itemPower, MAX_SETS, metTarget, planPower, suggestTarget, workoutPower, type Item, type Routine, type WSet, type Workout } from '../../lib/fitness';
 import { deleteWorkout, saveRoutine, saveWorkout, toast, useWorkouts } from '../../lib/store';
 import { haptic } from '../../lib/haptics';
 import { count, t } from '../../lib/i18n';
+import { countsPushups } from '../../lib/pushups';
 import { ask } from '../Confirm';
 import { Power } from '../fitness';
 import { Icon } from '../icons';
@@ -15,6 +16,7 @@ import { ExerciseInfo } from './ExerciseInfo';
 import { FinishSheet } from './Finish';
 import { ItemMenu } from './ItemMenu';
 import { Picker } from './Picker';
+import { PushupCounter, unlockSound } from './PushupCounter';
 import { SetRows } from './SetRows';
 import { clock, itemActions, lastPlanWorkout, lastSets, PerUnit, restText, TargetStepper, Thumb, useClock, useDraft } from './shared';
 
@@ -38,6 +40,8 @@ export function Live({ workout }: { workout: Workout }) {
   const [info, setInfo] = useState<Item | null>(null);
   const [aiming, setAiming] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  // the exercise whose push-ups the camera is counting
+  const [counting, setCounting] = useState<number | null>(null);
 
   const discard = async () => {
     const yes = await ask({ title: t('Discard this workout?'), text: t('None of its sets will be kept.'), ok: t('Discard'), danger: true });
@@ -59,6 +63,18 @@ export function Live({ workout }: { workout: Workout }) {
     setRest(null);
     toast(metTarget(done) ? t('Workout saved. Target met!') : t('Workout saved'));
     scrollTo({ top: 0 });
+  };
+
+  // the camera's count goes into the next set not done yet (or a new one), which then counts as done and starts the rest
+  const logReps = (i: number, reps: number) => {
+    const it = w.items[i];
+    if (!it) return;
+    const k = it.sets.findIndex((s) => !s.done);
+    if (k < 0 && it.sets.length >= MAX_SETS) return toast(t('This exercise has as many sets as it can hold.'));
+    const sets = k >= 0 ? it.sets.map((s, j) => (j === k ? { ...s, reps, done: true } : s)) : [...it.sets, { ...blankSet(it.move.kind), reps, done: true }];
+    act.setItem(i, { ...it, sets });
+    if (it.rest > 0) setRest({ end: Date.now() + it.rest * 1000, total: it.rest });
+    toast(t('{count} saved', { count: count(reps, 'push-up', 'push-ups') }));
   };
 
   // adding and discarding: under the exercises on a phone, in the side panel on a wide screen
@@ -100,6 +116,7 @@ export function Live({ workout }: { workout: Workout }) {
               onDone={() => it.rest > 0 && setRest({ end: Date.now() + it.rest * 1000, total: it.rest })}
               onMenu={() => setMenu(i)}
               onInfo={() => setInfo(it)}
+              onCount={countsPushups(it.move) ? () => (unlockSound(), setCounting(i)) : undefined}
             />
           ))}
         </div>
@@ -145,6 +162,16 @@ export function Live({ workout }: { workout: Workout }) {
         />
         <p class="muted small wo-sheet-note">{t('Only the sets you tick off count toward it.')}</p>
       </Sheet>
+      {counting !== null && (
+        <PushupCounter
+          saveLabel={t('Save as a set')}
+          onClose={() => setCounting(null)}
+          onSave={(reps) => {
+            logReps(counting, reps);
+            setCounting(null);
+          }}
+        />
+      )}
       <FinishSheet open={finishing} w={w} onClose={() => setFinishing(false)} onSave={save} onDiscard={discard} />
     </div>
   );
@@ -235,7 +262,7 @@ function Elapsed({ start }: { start: number }) {
   );
 }
 
-function LiveItem({ id, it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo }: {
+function LiveItem({ id, it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo, onCount }: {
   id: string;
   it: Item;
   bw: number;
@@ -246,6 +273,8 @@ function LiveItem({ id, it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, o
   onDone: () => void;
   onMenu: () => void;
   onInfo: () => void;
+  /** Push-ups: count a set with the camera. */
+  onCount?: () => void;
 }) {
   const done = it.sets.filter((s) => s.done).length;
   return (
@@ -269,10 +298,18 @@ function LiveItem({ id, it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, o
       {it.note && <p class="wo-note"><Icon name="pencil" size={12} />{it.note}</p>}
       <SetRows item={it} bw={bw} live ghosts={ghosts} onSets={onSets} onRemove={onRemoveSet} onDone={onDone} />
       <div class="wo-item-foot">
-        <button class="btn btn-quiet btn-s" onClick={onAddSet} disabled={it.sets.length >= MAX_SETS}>
-          <Icon name="plus" size={16} />
-          {t('Set')}
-        </button>
+        <span class="wo-item-acts">
+          <button class="btn btn-quiet btn-s" onClick={onAddSet} disabled={it.sets.length >= MAX_SETS}>
+            <Icon name="plus" size={16} />
+            {t('Set')}
+          </button>
+          {onCount && (
+            <button class="btn btn-quiet btn-s" onClick={onCount} aria-label={t('Count push-ups with the camera')} title={t('Count push-ups with the camera')}>
+              <Icon name="camera" size={16} />
+              {t('Camera')}
+            </button>
+          )}
+        </span>
         <span class="wo-item-sum" title={count(done, 'set done', 'sets done')}>
           <Icon name="check" size={14} />
           {done}/{it.sets.length}

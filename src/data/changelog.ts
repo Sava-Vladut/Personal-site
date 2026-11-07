@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.188.0',
+    date: '2026-11-07',
+    changes: [
+      'Push-up counter: open it from Workout, stand your phone on the floor beside you, and the camera counts your push-ups as you do them.',
+      'It says each number out loud, tells you when a rep wasn’t low enough or your hips sagged (those don’t count), and keeps the screen on.',
+      'In a workout, push-up exercises get a Camera button: the count fills in your next set and starts the rest timer.',
+      'Counted on their own, push-ups are saved as a short workout, so they show in your week and in Insights. Your best set is shown as you go.',
+      'Everything runs on your phone: the video is never saved or sent anywhere. The first time, it downloads a pose model (about 9 MB).',
+    ],
+  },
+  {
     version: '1.187.0',
     date: '2026-11-07',
     changes: [

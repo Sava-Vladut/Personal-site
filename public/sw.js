@@ -1,6 +1,8 @@
 // Offline support. The whole build is cached on install. Pages: network first, cached copy when offline (or when the
 // network is too slow to answer). Hashed assets: cache first. Web images (Openverse thumbnails, older Pinterest images):
-// cache first, so notes keep their pictures offline.
+// cache first, so notes keep their pictures offline. The push-up counter's pose model and its WebAssembly (/pose/) are
+// cached first the first time they are used, in a cache of their own that updates never clear: their names carry their
+// version, so they never change, and the 13 MB runtime isn't downloaded again with every update.
 // VERSION, PRECACHE and REVISIONS are filled in by the build (see vite.config.ts).
 const VERSION = 'dev';
 const PRECACHE = [];
@@ -8,6 +10,8 @@ const PRECACHE = [];
 const REVISIONS = {};
 const APP = 'mm-app-' + VERSION;
 const IMG = 'mm-img-v1';
+// not mm-app-* or mm-img-*, so activation keeps it
+const POSE = 'mm-pose-v1';
 // caches of the removed voice typing, cleared from devices that still have them
 const RETIRED = ['mm-voice-v1', 'transformers-cache'];
 // where a build's cache keeps its REVISIONS, for the next update to compare with (never a real address)
@@ -118,6 +122,7 @@ self.addEventListener('fetch', (e) => {
     // /game, /glops (the Global Ops port and its stats) and /cardwars (the Card Wars port) are separate sites served by
     // Caddy: never cache them, and never let their pages replace the app shell.
     if (/^\/(?:game|glops|cardwars)(?:\/|$)/.test(url.pathname)) return;
+    if (url.pathname.startsWith('/pose/')) return e.respondWith(cacheFirst(req, POSE));
     // A public note's, status's or shared Learn page carries its title in its head: never keep it as the app's own offline page.
     if (req.mode === 'navigate' && (url.pathname.startsWith('/s/') || url.pathname.startsWith('/status/') || /^\/learn(?:\/|$)/.test(url.pathname))) return e.respondWith(Promise.resolve(e.preloadResponse).then((res) => res || fetch(req)).catch(async () => (await cached('/', APP)) || Response.error()));
     if (req.mode === 'navigate') return e.respondWith(networkFirst(req, '/', e.preloadResponse, e.waitUntil?.bind(e)));
