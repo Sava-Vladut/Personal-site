@@ -67,6 +67,14 @@ export function PlanEditor({ id }: { id: string }) {
     if (await startWorkout(r, bw)) back();
   };
 
+  // under the exercises on a phone, under the target in the side panel on a wide screen
+  const startBtn = (
+    <button class="btn btn-primary wo-wide wo-start" onClick={start} disabled={!r.items.length}>
+      <Icon name="player-play" size={18} />
+      {t('Start this workout')}
+    </button>
+  );
+
   return (
     <div class="page wo-page wo-plan-page fade-arrive-soft">
       <div class="editor-bar">
@@ -115,7 +123,9 @@ export function PlanEditor({ id }: { id: string }) {
         </div>
       )}
 
-      <section class="section">
+      <div class="wo-plan-body">
+      <aside class="wo-side">
+      <section class="section wo-side-target">
         <h2 class="section-title"><Icon name="target" size={16} />{t('Target power')}</h2>
         <div class="card wo-card">
           <TargetStepper value={r.target} onValue={(target) => update((x) => ({ ...x, target }))} suggested={suggested} full={full} />
@@ -130,14 +140,17 @@ export function PlanEditor({ id }: { id: string }) {
         </div>
       </section>
 
-      <section class="section">
+      <div class="wo-side-end">{startBtn}</div>
+      </aside>
+
+      <section class="section wo-plan-items">
         <h2 class="section-title">
           <Icon name="list-details" size={16} />
           {t('Exercises')}
           {r.items.length > 0 && <span class="wo-count">{r.items.length}</span>}
         </h2>
         {r.items.length ? (
-          <div class="stack-l">
+          <div class="stack-l wo-plan-list">
             {r.items.map((it, i) => (
               <article key={i} class="card wo-item">
                 <div class="wo-item-head">
@@ -180,10 +193,9 @@ export function PlanEditor({ id }: { id: string }) {
         </button>
       </section>
 
-      <button class="btn btn-primary wo-wide wo-start" onClick={start} disabled={!r.items.length}>
-        <Icon name="player-play" size={18} />
-        {t('Start this workout')}
-      </button>
+      </div>
+
+      <div class="wo-plan-end">{startBtn}</div>
 
       <Picker open={!!picking} single={picking?.swap != null} onClose={() => setPicking(null)} onPick={(moves) => act.add(moves, picking?.swap ?? null)} />
       <ItemMenu

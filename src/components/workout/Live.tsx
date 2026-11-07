@@ -61,16 +61,36 @@ export function Live({ workout }: { workout: Workout }) {
     scrollTo({ top: 0 });
   };
 
+  // adding and discarding: under the exercises on a phone, in the side panel on a wide screen
+  const ends = (
+    <>
+      <button class={`btn wo-wide ${w.items.length ? 'btn-quiet' : 'btn-primary'}`} onClick={() => setPicking({ swap: null })}>
+        <Icon name="circle-plus" size={18} />
+        {t('Add exercises')}
+      </button>
+      <button class="btn btn-quiet danger wo-wide" onClick={discard}>
+        <Icon name="trash" size={18} />
+        {t('Discard workout')}
+      </button>
+    </>
+  );
+
   return (
     <div class="page wo-page wo-live-page">
       <PageHead title={w.name} wheel world="hope-interest" />
-      <LiveBar w={w} power={power} onTarget={() => setAiming(true)} onFinish={() => (flush(), setFinishing(true))} />
+      {/* on a phone its parts are just the bar at the top; on a wide screen it's a panel beside the exercises */}
+      <aside class="wo-side">
+        <LiveBar w={w} power={power} onTarget={() => setAiming(true)} onFinish={() => (flush(), setFinishing(true))} />
+        {w.items.length > 0 && <Outline items={w.items} bw={w.bw} />}
+        <div class="wo-side-end">{ends}</div>
+      </aside>
 
       {w.items.length ? (
         <div class="stack-l wo-live-list">
           {w.items.map((it, i) => (
             <LiveItem
               key={i}
+              id={`wo-item-${i}`}
               it={it}
               bw={w.bw}
               ghosts={ghosts.get(it.move.id)}
@@ -90,16 +110,7 @@ export function Live({ workout }: { workout: Workout }) {
         </div>
       )}
 
-      <div class="wo-live-end">
-        <button class={`btn wo-wide ${w.items.length ? 'btn-quiet' : 'btn-primary'}`} onClick={() => setPicking({ swap: null })}>
-          <Icon name="circle-plus" size={18} />
-          {t('Add exercises')}
-        </button>
-        <button class="btn btn-quiet danger wo-wide" onClick={discard}>
-          <Icon name="trash" size={18} />
-          {t('Discard workout')}
-        </button>
-      </div>
+      <div class="wo-live-end">{ends}</div>
 
       {rest && <RestPill rest={rest} onRest={setRest} />}
 
@@ -185,6 +196,34 @@ function LiveBar({ w, power, onTarget, onFinish }: { w: Workout; power: number; 
   );
 }
 
+/**
+ * The exercises at a glance, in the side panel on a wide screen: how many sets of each are ticked off and the power they
+ * came to. A tap scrolls to the exercise.
+ */
+function Outline({ items, bw }: { items: Item[]; bw: number }) {
+  const go = (i: number) => document.getElementById(`wo-item-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return (
+    <nav class="card list wo-outline" aria-label={t('Exercises')}>
+      {items.map((it, i) => {
+        const done = it.sets.filter((s) => s.done).length;
+        const all = done > 0 && done === it.sets.length;
+        return (
+          <button key={i} class={`wo-outline-row${all ? ' is-done' : ''}`} onClick={() => go(i)}>
+            <Thumb move={it.move} on={all} />
+            <span class="wo-outline-text">
+              <span class="wo-outline-name">{it.move.name}</span>
+              <span class="wo-meta">
+                <span class="wo-meta-text" title={t('Sets done')}><Icon name="check" size={12} />{done}/{it.sets.length}</span>
+                {done > 0 && <Power value={itemPower(it, bw)} size={12} />}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 /** The time since the workout started, ticking on its own so the rest of the page doesn't redraw every second. */
 function Elapsed({ start }: { start: number }) {
   const now = useClock();
@@ -196,7 +235,8 @@ function Elapsed({ start }: { start: number }) {
   );
 }
 
-function LiveItem({ it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo }: {
+function LiveItem({ id, it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo }: {
+  id: string;
   it: Item;
   bw: number;
   ghosts?: WSet[];
@@ -209,7 +249,7 @@ function LiveItem({ it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMen
 }) {
   const done = it.sets.filter((s) => s.done).length;
   return (
-    <article class={`card wo-item${done && done === it.sets.length ? ' is-done' : ''}`}>
+    <article id={id} class={`card wo-item${done && done === it.sets.length ? ' is-done' : ''}`}>
       <div class="wo-item-head">
         <button class="wo-thumb-btn" onClick={onInfo} aria-label={t('About {name}', { name: it.move.name })} title={t('About {name}', { name: it.move.name })}>
           <Thumb move={it.move} />

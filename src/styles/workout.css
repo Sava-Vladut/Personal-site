@@ -363,13 +363,90 @@ input.wo-num {
   .wo-icons .icon-btn:not([aria-pressed='true']):hover, .wo-tools .icon-btn:hover:not(:disabled) { background: var(--surface-3); }
 }
 
+/* ---------- the side panel (desktop) ----------
+   A workout going on and a plan keep their running numbers in a panel beside the exercises on a wide screen, as the
+   journal keeps its sky. On a phone the panel adds no box: its bar stays at the top, and what only makes sense beside
+   the exercises (the outline, a second copy of the actions) stays hidden. */
+
+.wo-side, .wo-plan-body { display: contents; }
+.wo-outline, .wo-side-end, .wo-row-moves { display: none; }
+
 /* ---------- wide screens ---------- */
 
 @media (min-width: 1024px) {
-  .wo-page { max-width: 1040px; }
-  .wo-page:is(.wo-live-page, .wo-plan-page) { max-width: 760px; }
-  .wo-home { display: grid; grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); column-gap: 28px; align-items: start; }
-  .wo-home > .wo-hero { grid-column: 1; grid-row: 1; }
-  .wo-home > .wo-recent { grid-column: 1; grid-row: 2; }
-  .wo-home > .wo-plans { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+  .wo-page { max-width: 1320px; }
+
+  /* the exercises a plan is made of, under its name */
+  .wo-row-moves { display: block; font-size: var(--text-m); color: var(--ink-2); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* home: the plans as cards across the page; this week and the recent ones in a panel at the right */
+  .wo-home { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; column-gap: 32px; align-items: start; }
+  .wo-home > .wo-plans { grid-column: 1; grid-row: 1 / span 2; margin-top: 0; }
+  .wo-home > .wo-hero { grid-column: 2; grid-row: 1; }
+  .wo-home > .wo-recent { grid-column: 2; grid-row: 2; }
+  .wo-plans .wo-list.card {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
+    background: none; border: 0; border-radius: 0; overflow: visible;
+  }
+  .wo-plans .wo-list.card > :is(.wo-row, .wo-ghost-row) {
+    min-height: 96px; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); overflow: hidden;
+  }
+  .wo-plans .wo-list.card > .wo-row + .wo-row, .wo-plans .wo-list.card > .wo-ghost-row + .wo-ghost-row { border-top: 1px solid var(--line); }
+  .wo-plans .wo-row-main { align-self: stretch; padding-block: 16px; }
+  .wo-plans .wo-starter { padding-block: 16px; }
+  .wo-plans .wo-tile { width: 48px; height: 48px; }
+  .wo-starters > .wo-wide { width: auto; justify-self: start; padding-inline: 18px; }
+  @media (hover: hover) {
+    .wo-plans .wo-list.card > .wo-row:has(> .wo-row-main:hover), .wo-plans .wo-list.card > button.wo-row:hover { border-color: var(--line-2); }
+  }
+
+  /* a workout going on, and a plan: the exercises in the main column, the panel at the right, staying in view */
+  :is(.wo-live-page, .wo-plan-body) {
+    display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 32px; align-items: start;
+  }
+  .wo-live-page > .page-head { grid-column: 1 / -1; }
+  .wo-live-page > :is(.wo-live-list, .wo-live-empty) { grid-column: 1; grid-row: 2; }
+  .wo-live-page > .wo-live-end, .wo-plan-end { display: none; }
+  .wo-side {
+    grid-column: 2; display: grid; align-content: start; gap: 12px;
+    position: sticky; top: 18px; max-height: calc(100dvh - 36px); overflow-y: auto; scrollbar-width: none;
+  }
+  .wo-live-page > .wo-side { grid-row: 2; }
+  .wo-plan-body > .wo-side { grid-row: 1; }
+  .wo-plan-body > .wo-plan-items { grid-column: 1; grid-row: 1; margin-top: 26px; }
+  .wo-side > .section { margin-top: 26px; }
+  .wo-side-end { display: grid; gap: 8px; }
+  .wo-side-end .wo-start { margin-top: 0; }
+
+  /* the bar becomes the panel's first card: the ring and the numbers, then the time and Finish */
+  .wo-side > .wo-bar {
+    position: static; flex-wrap: wrap; gap: 14px; margin: 0; padding: 16px;
+    border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface);
+  }
+  .wo-side > .wo-bar::before { content: none; }
+  .wo-side .wo-power { flex: 1 1 100%; gap: 14px; }
+  .wo-side .wo-ring { width: 64px; height: 64px; }
+  .wo-side .wo-ring > svg:not(:first-child) { width: 22px; height: 22px; }
+  .wo-side .wo-power-n b { font-size: var(--text-2xl); }
+  .wo-side .wo-clock { flex: 1; font-size: var(--text-base); }
+  .wo-side .wo-finish { height: var(--h-m); padding-inline: 16px 18px; }
+
+  /* the exercises at a glance */
+  .wo-outline { display: grid; }
+  .wo-outline-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; text-align: left; transition: background-color var(--dur-1); }
+  .wo-outline-row + .wo-outline-row { border-top: 1px solid var(--line); }
+  .wo-outline-row .wo-thumb { width: 36px; height: 36px; }
+  .wo-outline-text { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .wo-outline-name { font-weight: var(--w-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wo-outline-row.is-done .wo-outline-name { color: var(--ink-2); }
+  @media (hover: hover) { .wo-outline-row:hover { background: var(--surface-2); } }
+
+  /* an exercise card scrolled to stops clear of the top */
+  .wo-live-list > .wo-item { scroll-margin-top: 18px; }
+}
+
+/* with room for two, the exercises sit side by side */
+@media (min-width: 1440px) {
+  :is(.wo-live-list, .wo-plan-list) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  :is(.wo-live-list, .wo-plan-list) > * { margin: 0; }
 }

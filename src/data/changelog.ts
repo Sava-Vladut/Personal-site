@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.187.0',
+    date: '2026-11-07',
+    changes: [
+      'Workout on a computer: your plans are cards across the page, each naming its exercises, with this week and your recent workouts in a panel at the right.',
+      'A workout going on, on a computer: the exercises fill the page (two side by side on a wide screen), and a panel at the right stays in view with your power ring, the time, Finish, every exercise with its sets done (click one to jump to it), Add exercises and Discard.',
+      'A plan on a computer: its exercises on the left, the target power and Start this workout in a panel at the right.',
+      'Phones look the same as before.',
+    ],
+  },
+  {
     version: '1.186.0',
     date: '2026-11-07',
     changes: [

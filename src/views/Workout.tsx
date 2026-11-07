@@ -224,6 +224,14 @@ function PlanMeta({ r }: { r: Routine }) {
   );
 }
 
+/** The exercises a plan is made of, in a line: only shown where there's room for it (desktop.css-sized screens). */
+function MovesLine({ r }: { r: Pick<Routine, 'items'> }) {
+  if (!r.items.length) return null;
+  const names = r.items.slice(0, 4).map((it) => it.move.name);
+  const more = r.items.length - names.length;
+  return <span class="wo-row-moves">{names.join(' · ')}{more > 0 && ` · +${more}`}</span>;
+}
+
 function PlanRow({ r, last, onStart }: { r: Routine; last?: Done; onStart: () => void }) {
   const name = planName(r);
   return (
@@ -232,6 +240,7 @@ function PlanRow({ r, last, onStart }: { r: Routine; last?: Done; onStart: () =>
         <span class="wo-tile"><Icon name={r.icon as UiName} size={20} /></span>
         <span class="wo-row-text">
           <span class="wo-row-name">{name}</span>
+          <MovesLine r={r} />
           <span class="wo-meta">
             <PlanMeta r={r} />
             {last && (
@@ -268,6 +277,7 @@ function Starters({ bw, onNew }: { bw: number; onNew: () => void }) {
               <span class="wo-tile"><Icon name={r.icon as UiName} size={20} /></span>
               <span class="wo-row-text">
                 <span class="wo-row-name">{r.name}</span>
+                <MovesLine r={r} />
                 <span class="wo-meta">
                   <PlanMeta r={r} />
                   <span class="wo-meta-text">{listOf(mainMuscles(r, 4).map((m) => MUSCLE_NAME[m]))}</span>

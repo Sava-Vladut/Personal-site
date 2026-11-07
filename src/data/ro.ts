@@ -3281,6 +3281,7 @@ export const RO: Record<string, string> = {
   "Body only": "Doar cu corpul",
   "Cardio: effort × weight × minutes": "Cardio: efort × greutate × minute",
   "Change the sets": "Schimbă seriile",
+  "Sets done": "Serii făcute",
   "Couldn’t save the exercise. Try again.": "Exercițiul nu s-a putut salva. Încearcă din nou.",
   "Couldn’t save the workout. Try again.": "Antrenamentul nu s-a putut salva. Încearcă din nou.",
   "Couldn’t save your weight. Try again.": "Greutatea nu s-a putut salva. Încearcă din nou.",
