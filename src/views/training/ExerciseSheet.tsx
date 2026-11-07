@@ -9,7 +9,7 @@ import { MuscleIcon } from '../../components/BodyMap';
 import { Icon, type UiName } from '../../components/icons';
 import { t } from '../../lib/i18n';
 import { TrendLine } from './charts';
-import { MoveThumb, usePictures } from './Exercises';
+import { MoveThumb } from './Exercises';
 import { fmtKg, fmtKm, fmtSecs, powerText, RecordRow, setMark, setText } from './parts';
 
 /** One exercise: how it's going, its records and the last few times you did it. */
@@ -26,7 +26,6 @@ export function ExerciseSheet({ m, onClose, onWorkout }: { m: MoveStats | null; 
 }
 
 function Body({ m, onWorkout }: { m: MoveStats; onWorkout: (id: string) => void }) {
-  const pictures = usePictures();
   const { move } = m;
   const trend = trendOf(m);
   const by1rm = trend === m.oneRm;
@@ -43,7 +42,7 @@ function Body({ m, onWorkout }: { m: MoveStats; onWorkout: (id: string) => void 
   return (
     <div class="tr-sheet">
       <div class="tr-ex-head">
-        <MoveThumb id={move.id} kind={move.kind} pictures={pictures} />
+        <MoveThumb move={move} />
         <div class="tr-tags">
           <span class="tr-tag"><Icon name={KIND_ICON[move.kind]} size={14} /> {KIND_NAME[move.kind]}</span>
           <span class="tr-tag"><Icon name={EQUIP_ICON[move.equip]} size={14} /> {EQUIP_NAME[move.equip]}</span>

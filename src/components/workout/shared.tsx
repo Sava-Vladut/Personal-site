@@ -2,7 +2,7 @@
 // while the page is in view, how sets and numbers are written, and starting a workout.
 import { createContext, type ComponentChildren } from 'preact';
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { imageOf, useExercises } from '../../lib/exercises';
+import { useExercises } from '../../lib/exercises';
 import {
   blankSet, MAX_ITEMS, MAX_SETS, repPower, setPower, snapOf, weightOn,
   type Item, type Kind, type Move, type Routine, type Snap, type WSet, type Workout,
@@ -12,8 +12,9 @@ import { todayKey } from '../../lib/dates';
 import { haptic } from '../../lib/haptics';
 import { LOCALE, t } from '../../lib/i18n';
 import { ask } from '../Confirm';
-import { EQUIP_ICON, KIND_ICON, Power } from '../fitness';
+import { Power } from '../fitness';
 import { Icon } from '../icons';
+import { Figure } from './Figure';
 
 /* ---------- the exercises, once for the whole page ---------- */
 
@@ -210,19 +211,11 @@ export function PerUnit({ move, bw }: { move: Pick<Snap, 'kind' | 'share' | 'met
 
 /* ---------- pictures ---------- */
 
-/**
- * An exercise's picture, small and square, in a slot that's there before it loads; the icon of its kind or equipment
- * stays under it for the ones without (yours, a few of the database's) and when it can't load. `on` lays a tick over it.
- */
+/** An exercise's silhouette, small and square on a tint of the page's colour. `on` lays a tick over it. */
 export function Thumb({ move, on, big }: { move: Snap; on?: boolean; big?: boolean }) {
-  const { byId } = useMoves();
-  const full = byId.get(move.id);
-  const src = full ? imageOf(full, 0) : null;
-  const size = big ? 56 : 44;
   return (
     <span class={`wo-thumb${big ? ' big' : ''}${on ? ' is-on' : ''}`} aria-hidden="true">
-      <Icon name={move.kind === 'weight' ? EQUIP_ICON[move.equip] : KIND_ICON[move.kind]} size={20} />
-      {src && <img src={src} alt="" loading="lazy" decoding="async" width={size} height={size} onError={(e) => (e.currentTarget.hidden = true)} />}
+      <Figure move={move} />
       {on && <span class="wo-thumb-check"><Icon name="check" size={18} stroke={2.5} /></span>}
     </span>
   );

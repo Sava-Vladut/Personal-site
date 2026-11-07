@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { shortDate } from '../../lib/dates';
-import { KINDS, type Move } from '../../lib/fitness';
-import { imageOf, useExercises } from '../../lib/exercises';
+import { KINDS } from '../../lib/fitness';
+import { Figure } from '../../components/workout/Figure';
 import { trendOf, type MoveStats } from '../../lib/trainingStats';
 import { KIND_ICON, KIND_NAME, Power } from '../../components/fitness';
 import { Icon } from '../../components/icons';
@@ -12,20 +12,10 @@ import { fmtKg } from './parts';
 /** Lowercase, without accents or punctuation, for matching what's typed. */
 const fold = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
-/** The pictures the exercise database has, by id (your own exercises have none). */
-export function usePictures() {
-  const { list } = useExercises();
-  return useMemo(() => new Map<string, Move>(list.filter((m) => m.img > 0).map((m) => [m.id, m])), [list]);
-}
-
-/** An exercise's first picture, or the icon of its kind while there's none (or none yet). */
-export function MoveThumb({ id, kind, pictures }: { id: string; kind: MoveStats['move']['kind']; pictures: Map<string, Move> }) {
-  const m = pictures.get(id);
-  const src = m ? imageOf(m, 0) : null;
-  return src
-    ? <img class="tr-thumb" src={src} alt="" width={40} height={40} loading="lazy" decoding="async" />
-    : <span class="tr-thumb tr-ico" aria-hidden="true"><Icon name={KIND_ICON[kind]} size={16} /></span>;
-}
+/** An exercise's silhouette, small and square. */
+export const MoveThumb = ({ move }: { move: MoveStats['move'] }) => (
+  <span class="tr-thumb tr-ico" aria-hidden="true"><Figure move={move} /></span>
+);
 
 /** The figure an exercise is known by: its best estimated one-rep max, or its best set's ⚡. */
 export const BestOf = ({ m }: { m: MoveStats }) => (m.best1rm
@@ -35,7 +25,6 @@ export const BestOf = ({ m }: { m: MoveStats }) => (m.best1rm
 /** Every exercise you've done, by kind, the most done first, each with its best and how it's going. */
 export function Exercises({ moves, onOpen }: { moves: MoveStats[]; onOpen: (id: string) => void }) {
   const [q, setQ] = useState('');
-  const pictures = usePictures();
   const found = useMemo(() => {
     const terms = fold(q).split(' ').filter(Boolean);
     return terms.length ? moves.filter((m) => { const w = fold(m.move.name); return terms.every((x) => w.includes(x)); }) : moves;
@@ -63,7 +52,7 @@ export function Exercises({ moves, onOpen }: { moves: MoveStats[]; onOpen: (id: 
               const trend = trendOf(m).slice(-12).map((p) => p.value);
               return (
                 <button class="list-row action tr-ex" key={m.move.id} onClick={() => onOpen(m.move.id)}>
-                  <MoveThumb id={m.move.id} kind={m.move.kind} pictures={pictures} />
+                  <MoveThumb move={m.move} />
                   <span class="tr-row-main">
                     <span class="tr-row-name">{m.move.name}</span>
                     <span class="tr-row-meta">{count(m.times, 'time', 'times')} · {shortDate(m.last)}</span>

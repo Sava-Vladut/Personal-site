@@ -7,7 +7,7 @@ import { Power } from '../../components/fitness';
 import { Icon } from '../../components/icons';
 import { count, t } from '../../lib/i18n';
 import { Tile } from '../stats/parts';
-import { BestOf, MoveThumb, usePictures } from './Exercises';
+import { BestOf, MoveThumb } from './Exercises';
 import { fmtKg, fmtMins, RecordRow } from './parts';
 
 /** Your personal bests of all time: the three that matter most up top, the rest in a list, then your strongest lifts. */
@@ -16,7 +16,6 @@ export function Bests({ all, moves, weekStart, today, onWorkout, onMove }: {
 }) {
   const w = useMemo(() => wall(all, moves, weekStart), [all, moves, weekStart]);
   const st = useMemo(() => streaks(all, today, weekStart), [all, today, weekStart]);
-  const pictures = usePictures();
   const others = moves.filter((m) => !m.best1rm && m.bestSet).slice(0, 5);
   const named = (d: Done) => `${d.w.name || t('Workout')} · ${shortDate(d.day)}`;
 
@@ -50,7 +49,7 @@ export function Bests({ all, moves, weekStart, today, onWorkout, onMove }: {
           <div class="list">
             {w.lifts.map((m) => (
               <button class="list-row action tr-ex" onClick={() => onMove(m.move.id)}>
-                <MoveThumb id={m.move.id} kind={m.move.kind} pictures={pictures} />
+                <MoveThumb move={m.move} />
                 <span class="tr-row-main">
                   <span class="tr-row-name">{m.move.name}</span>
                   <span class="tr-row-meta">{shortDate(m.best1rm!.day)}{m.heaviest && <> · {t('heaviest {kg}', { kg: fmtKg(m.heaviest.value) })}</>}</span>
@@ -73,7 +72,7 @@ export function Bests({ all, moves, weekStart, today, onWorkout, onMove }: {
           <div class="list">
             {others.map((m) => (
               <button class="list-row action tr-ex" onClick={() => onMove(m.move.id)}>
-                <MoveThumb id={m.move.id} kind={m.move.kind} pictures={pictures} />
+                <MoveThumb move={m.move} />
                 <span class="tr-row-main">
                   <span class="tr-row-name">{m.move.name}</span>
                   <span class="tr-row-meta">{shortDate(m.bestSet!.day)}</span>

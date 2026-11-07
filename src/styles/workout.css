@@ -11,13 +11,14 @@
 .wo-tile.big { width: 54px; height: 54px; border-radius: var(--r-l); }
 .wo-tile.small { width: 28px; height: 28px; border-radius: var(--r-s); }
 
-/* an exercise's picture: a square slot that's there before it loads, its kind's icon under it */
+/* an exercise's silhouette (Figure.tsx) on a tint of the page's colour */
 .wo-thumb {
   position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden;
-  border-radius: var(--r-s); background: var(--surface-2); color: var(--ink-3);
+  border-radius: var(--r-s); background: color-mix(in oklab, var(--accent) 12%, var(--surface-2));
+  color: color-mix(in oklab, var(--accent) 45%, var(--ink));
 }
 .wo-thumb.big { width: 56px; height: 56px; border-radius: var(--r-m); }
-.wo-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wo-thumb .figure { width: 88%; height: 88%; }
 .wo-thumb-check {
   position: absolute; inset: 0; display: grid; place-items: center;
   background: color-mix(in oklab, var(--ink) 72%, transparent); color: var(--on-ink); animation: fade-in var(--dur-1) ease-out;
@@ -240,8 +241,15 @@ input.wo-num {
 /* ---------- the picker ---------- */
 
 .wo-chips { margin-block: 8px 0; }
+/* the muscle and equipment dropdowns: chips with the native list over them, unseen */
+.wo-pick-filters { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.wo-drop { position: relative; min-width: 0; gap: 6px; padding: 0 10px 0 12px; cursor: pointer; }
+.wo-drop-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-drop select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; background: var(--surface); color: var(--ink); }
+.wo-drop:has(select:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+.wo-pick-tabs { margin-top: 14px; }
 .wo-pick-found { margin-top: 6px; }
-.wo-pick-part { margin-top: 18px; }
+.wo-pick-part { margin-top: 10px; }
 .wo-pick-list { display: grid; }
 .wo-pick-row { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
 .wo-pick-row:last-child { border-bottom: 0; }
@@ -254,9 +262,11 @@ input.wo-num {
 /* ---------- an exercise up close ---------- */
 
 .wo-info { display: grid; gap: 18px; }
-.wo-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.wo-shot { margin: 0; aspect-ratio: 3 / 2; overflow: hidden; border-radius: var(--r-m); background: var(--surface-2); }
-.wo-shot img { width: 100%; height: 100%; object-fit: cover; }
+.wo-figure {
+  display: grid; place-items: center; height: 180px; border-radius: var(--r-l);
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 40%, var(--ink));
+}
+.wo-figure .figure { width: 160px; height: 160px; }
 .wo-facts { display: flex; flex-wrap: wrap; gap: 8px; }
 .wo-fact {
   display: inline-flex; align-items: center; gap: 6px; height: var(--h-s); padding: 0 14px 0 12px; border-radius: var(--r-pill);

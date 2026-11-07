@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.192.0',
+    date: '2026-11-07',
+    changes: [
+      'Exercises are drawn as clean silhouettes in the pose of their move (a push-up, a squat, a row…), holding what they’re done with, instead of gym photos.',
+      'Add exercises is tidier: muscle and equipment are two dropdowns instead of rows of chips.',
+      'Add exercises opens on tabs: Yours (the ones you do most), Popular (the staples most workouts are built from) and All.',
+    ],
+  },
+  {
     version: '1.191.0',
     date: '2026-11-07',
     changes: [
