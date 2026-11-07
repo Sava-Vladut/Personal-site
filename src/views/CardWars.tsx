@@ -60,7 +60,7 @@ function useAccent() {
   }, []);
 }
 
-export function CardWars({ query }: { query: URLSearchParams }) {
+export function CardWars({ query, switcher }: { query: URLSearchParams; switcher?: ComponentChildren }) {
   useAccent();
   const { data, error, loading } = useCardWars();
   const tab = TABS.find(([id]) => id === query.get('tab'))?.[0] ?? 'players';
@@ -70,7 +70,7 @@ export function CardWars({ query }: { query: URLSearchParams }) {
       <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-joy)' }}>
         <Sky world="joy" />
         <PageHead
-          title={t('Card Wars')}
+          title={switcher ? t('Game statistics') : t('Card Wars')}
           back={() => goBack()}
           actions={
             <a class="icon-btn" href={GAME} target="_blank" rel="noopener" aria-label={t('Play Card Wars')} title={t('Play Card Wars')}>
@@ -79,6 +79,7 @@ export function CardWars({ query }: { query: URLSearchParams }) {
           }
           subtitle={t('Who plays Card Wars, in a browser or on Windows')}
         />
+        {switcher}
 
         {data && (
           <div class="media-stats stats-figures cw-figures">
@@ -99,7 +100,7 @@ export function CardWars({ query }: { query: URLSearchParams }) {
 
         <div class="seg tabs" role="tablist" style={{ '--at': TABS.findIndex(([id]) => id === tab), '--tabs': TABS.length }}>
           {TABS.map(([id, name]) => (
-            <button role="tab" aria-selected={tab === id} onClick={() => navigate(id === 'players' ? 'cardwars' : 'cardwars?tab=' + id, true)}>{name}</button>
+            <button role="tab" aria-selected={tab === id} onClick={() => navigate(id === 'players' ? 'games?game=cardwars' : 'games?game=cardwars&tab=' + id, true)}>{name}</button>
           ))}
         </div>
       </div>

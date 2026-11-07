@@ -2754,6 +2754,9 @@ export const RO: Record<string, string> = {
   // ── Card Wars ──
   "Card Wars": "Card Wars",
   "Who plays Card Wars, how far they got and how PvP goes": "Cine joacă Card Wars, cât de departe au ajuns și cum merge PvP-ul",
+  'Game statistics': 'Statistici jocuri',
+  'Game': 'Joc',
+  'Who plays Global Ops and Card Wars: online now, all-time highs, progress and PvP': 'Cine joacă Global Ops și Card Wars: online acum, recorduri, progres și PvP',
   "Who’s playing Card Wars right now": "Cine joacă Card Wars chiar acum",
   "{n} players so far": "{n} jucători până acum",
   "Progress": "Progres",

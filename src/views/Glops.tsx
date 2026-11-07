@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useLayoutEffect } from 'preact/hooks';
 import { goBack } from '../lib/router';
 import { keyOf, shortDate } from '../lib/dates';
@@ -33,7 +34,7 @@ function useAccent() {
   }, []);
 }
 
-export function Glops() {
+export function Glops({ switcher }: { switcher?: ComponentChildren }) {
   useAccent();
   const { data, error, loading } = useGlops();
 
@@ -42,7 +43,7 @@ export function Glops() {
       <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-hope-interest)' }}>
         <Sky world="hope-interest" />
         <PageHead
-          title={t('Global Ops')}
+          title={switcher ? t('Game statistics') : t('Global Ops')}
           back={() => goBack()}
           actions={
             <a class="icon-btn" href={GAME} target="_blank" rel="noopener" aria-label={t('Play Global Ops')} title={t('Play Global Ops')}>
@@ -55,6 +56,7 @@ export function Glops() {
             t('Counting since {date}', { date: dateOf(data.since) })
           )}
         />
+        {switcher}
       </div>
 
       {!data ? (

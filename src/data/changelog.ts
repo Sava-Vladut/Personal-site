@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.193.0',
+    date: '2026-11-07',
+    changes: [
+      'Global Ops and Card Wars share one page under Insights, Game statistics, with a toggle at the top to switch between the two games.',
+      'Game statistics opens on the game you looked at last; old Global Ops and Card Wars links still lead there.',
+    ],
+  },
+  {
     version: '1.192.2',
     date: '2026-11-07',
     changes: [
