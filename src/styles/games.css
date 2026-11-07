@@ -1,21 +1,15 @@
-/* Game statistics: a banner per game to pick which one the page shows. */
-.gs-banners { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 8px; }
+/* Game statistics: a small button per game, with its whole cover, to pick which one the page shows. */
+.gs-banners { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
 .gs-banner {
-  position: relative; display: block; padding: 0; border: 0; overflow: hidden; cursor: pointer;
-  aspect-ratio: 16 / 9; border-radius: var(--r-l); background: var(--surface-2);
-  box-shadow: 0 0 0 0.5px var(--line-2), var(--shadow-1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; cursor: pointer;
+  border: 0; border-radius: var(--r-m); background: var(--surface-2); color: var(--ink-2);
+  font: inherit; font-weight: 600; font-size: 14px;
+  box-shadow: 0 0 0 0.5px var(--line-2);
+  transition: box-shadow 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
-.gs-banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
-.gs-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgb(0 0 0 / 0.75), rgb(0 0 0 / 0) 55%); }
-.gs-banner span {
-  position: absolute; left: 12px; right: 12px; bottom: 9px; z-index: 1; text-align: left;
-  color: #fff; font-weight: 600; font-size: 15px; text-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
-}
-.gs-banner[aria-selected='false'] { filter: grayscale(0.85) brightness(0.6); }
-.gs-banner[aria-selected='false']:hover { filter: grayscale(0.3) brightness(0.85); }
-.gs-banner[aria-selected='true'] { box-shadow: 0 0 0 2px var(--accent), var(--shadow-1); }
-.gs-banner:hover img { transform: scale(1.04); }
-.gs-banner:active { transform: scale(0.98); }
+.gs-banner img { display: block; height: 40px; width: auto; border-radius: 6px; }
+.gs-banner[aria-selected='false'] { opacity: 0.6; }
+.gs-banner[aria-selected='false']:hover { opacity: 0.9; }
+.gs-banner[aria-selected='true'] { color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-1); }
+.gs-banner:active { transform: scale(0.97); }
 .gs-banner:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .gs-banner, .gs-banner img { transition: none; } .gs-banner:hover img { transform: none; } }

@@ -18,7 +18,7 @@ export function Games({ query }: { id: string; query: URLSearchParams }) {
     <div class="gs-banners" role="tablist" aria-label={t('Game')}>
       {GAMES.map(([id, name]) => (
         <button role="tab" class="gs-banner" aria-selected={game === id} onClick={() => id !== game && navigate('games?game=' + id, true)}>
-          <img src={`/games/${id}.webp`} alt="" width={640} height={400} decoding="async" />
+          <img src={`/games/${id}.webp`} alt="" height={40} decoding="async" />
           <span>{name}</span>
         </button>
       ))}

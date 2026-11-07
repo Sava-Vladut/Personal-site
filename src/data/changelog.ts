@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.193.2',
+    date: '2026-11-07',
+    changes: [
+      'Game statistics’ game picker is two small buttons again, each with the game’s whole cover, not a big cropped banner.',
+    ],
+  },
+  {
     version: '1.193.1',
     date: '2026-11-07',
     changes: [
