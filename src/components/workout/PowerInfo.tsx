@@ -1,4 +1,4 @@
-// How power (⚡) is counted, in five lines, with the examples worked out at your own weight (lib/fitness.ts has the maths).
+// How power (⚡) is counted, in a few lines, with the examples worked out at your own weight (lib/fitness.ts has the maths).
 import { fmtPower, repPower } from '../../lib/fitness';
 import { t } from '../../lib/i18n';
 import { Icon, type UiName } from '../icons';
@@ -14,7 +14,6 @@ export function PowerInfo({ open, onClose, bw }: { open: boolean; onClose: () =>
     ['body-scan', t('Body moves count 15% of the weight they lift: at {kg} kg a push-up is {p} ⚡', { kg: num(bw), p: fmtPower(repPower({ kind: 'body', share: PUSHUP }, { kg: 0 }, bw)) })],
     ['stopwatch', t('Holds: 3 seconds = 1 rep')],
     ['run', t('Cardio: effort × weight × minutes')],
-    ['flame', t('Warm-ups count half')],
     ['target', t('Each workout asks for a power you set. Only the sets you tick off count toward it.')],
   ];
   return (

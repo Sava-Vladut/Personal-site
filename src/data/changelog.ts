@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.186.0',
+    date: '2026-11-07',
+    changes: [
+      'Workout plans: tap the plan’s icon at the top left to change it; the row of icons only shows then.',
+      'Sets no longer have a number or a warm-up, drop or failure mark: just the numbers, the power and the tick. Every set you tick counts in full, and older marked sets count as normal ones.',
+      'Tap an exercise’s name or picture to open its page with pictures and how to do it. In a plan, tap its sets to change them.',
+    ],
+  },
+  {
     version: '1.185.3',
     date: '2026-11-07',
     changes: [

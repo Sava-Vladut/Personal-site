@@ -13,7 +13,7 @@
 // - Holds (a plank, a wall sit, a hang): counted like body moves, a rep for every 3 seconds held.
 // - Cardio and stretching: by effort over time, METs × body weight × minutes ÷ 30, so half an hour's run at 75 kg
 //   (about 9.8 METs) is about 735 ⚡, about what a solid hour of lifting comes to.
-// Warm-up sets count half. A workout keeps the body weight it was done at, so weighing in later never changes the past.
+// Every set ticked off counts in full. A workout keeps the body weight it was done at, so weighing in later never changes the past.
 
 /** The muscles the exercise database names, front to back, top to bottom. */
 export const MUSCLES = [
@@ -144,7 +144,7 @@ export function repLoad(m: Pick<Snap, 'kind' | 'share'>, s: Pick<WSet, 'kg'>, bw
 const powerLoad = (m: Pick<Snap, 'kind' | 'share'>, s: Pick<WSet, 'kg'>, bw: number, pair = false) =>
   repLoad(m, s, bw, pair) * (m.kind === 'weight' ? 1 : BODY_COUNTS);
 
-/** The power of one set, ⚡ (unrounded). Warm-ups count half. */
+/** The power of one set, ⚡ (unrounded). */
 export function setPower(m: Pick<Snap, 'kind' | 'share' | 'met' | 'foot'>, s: WSet, bw: number, pair = false) {
   let p = 0;
   if (m.kind === 'weight' || m.kind === 'body') p = (powerLoad(m, s, bw, pair) * Math.max(0, s.reps ?? 0)) / KG_PER_POWER;
@@ -152,7 +152,7 @@ export function setPower(m: Pick<Snap, 'kind' | 'share' | 'met' | 'foot'>, s: WS
     ? cardioPower(m.met, bw, s.secs ?? 0)
     : (powerLoad(m, s, bw) * Math.max(0, s.secs ?? 0)) / HOLD_SECS / KG_PER_POWER;
   else p = cardioPower(m.foot ? cardioMet(m.met, s) : m.met, bw, s.secs ?? 0);
-  return s.tag === 'warm' ? p / 2 : p;
+  return p;
 }
 
 /** Power from effort over time: METs × kg × minutes ÷ 30. */
@@ -271,7 +271,7 @@ function normalizeSet(raw: any): WSet | null {
     reps: numOr(raw.reps, 0, 10_000),
     secs: numOr(raw.secs, 0, 86_400),
     km: numOr(raw.km, 0, 1000),
-    tag: oneOf(TAGS, raw.tag, ''),
+    tag: '', // set kinds (warm-up, drop, to failure) are retired: older ones read as normal sets
     done: raw.done === true,
   };
 }

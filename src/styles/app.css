@@ -1167,14 +1167,14 @@ label.list-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick, .mx-item, .mx-row, .mx-reading,
     .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .emo-x, .toast-action, .tr-rank-btn, .tr-rest-btn, .tr-item-head,
-    .wo-row-main, .wo-play, .wo-mark, .wo-tick, .wo-step, .wo-pick-main, .wo-power, .wo-nudge-main, .wo-item-title, .wo-sign, .wo-set-x, .wo-feel button, .wo-more) {
+    .wo-row-main, .wo-play, .wo-thumb-btn, .wo-icon-pick, .wo-tick, .wo-step, .wo-pick-main, .wo-power, .wo-nudge-main, .wo-item-name, .wo-item-sets, .wo-set-x, .wo-feel button, .wo-more) {
   transition: border-color var(--dur-1), background-color var(--dur-1), color var(--dur-1), box-shadow var(--dur-1), scale var(--dur-3) var(--spring);
 }
 :is(.note, .checkin, .person-card, .dex-link, .track, .list-row.action, .img-pick, .mx-item, .mx-row, .mx-reading,
-    .wo-row-main, .wo-pick-main, .wo-nudge-main, .wo-item-title, .wo-power) { --press: 0.98; }
+    .wo-row-main, .wo-pick-main, .wo-nudge-main, .wo-item-name, .wo-item-sets, .wo-power) { --press: 0.98; }
 :is(.note, .checkin, .person-card, .dex-link, .track, .feeling, .zone-head, .person-pick, .list-row.action, .img-pick, .mx-item, .mx-row, .mx-reading,
     .chip, .icon-btn, .cal-day, .icon-cell, .icon-pick, .emo-x, .toast-action, .tr-rank-btn, .tr-rest-btn, .tr-item-head,
-    .wo-row-main, .wo-play, .wo-mark, .wo-tick, .wo-step, .wo-pick-main, .wo-power, .wo-nudge-main, .wo-item-title, .wo-sign, .wo-set-x, .wo-feel button, .wo-more):active:not(:disabled) {
+    .wo-row-main, .wo-play, .wo-thumb-btn, .wo-icon-pick, .wo-tick, .wo-step, .wo-pick-main, .wo-power, .wo-nudge-main, .wo-item-name, .wo-item-sets, .wo-set-x, .wo-feel button, .wo-more):active:not(:disabled) {
   scale: var(--press, 0.93);
   transition-duration: var(--dur-1), var(--dur-1), var(--dur-1), var(--dur-1), var(--dur-0);
 }

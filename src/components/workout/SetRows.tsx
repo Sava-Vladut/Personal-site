@@ -2,11 +2,10 @@
 // it's done. What a row asks for depends on the exercise: weight and reps; reps of a body move; seconds held; or minutes
 // and distance.
 import { useRef } from 'preact/hooks';
-import { setPower, TAGS, type Item, type WSet } from '../../lib/fitness';
+import { setPower, type Item, type WSet } from '../../lib/fitness';
 import { haptic } from '../../lib/haptics';
-import { toast } from '../../lib/store';
 import { t } from '../../lib/i18n';
-import { Power, TAG_MARK, TAG_NAME } from '../fitness';
+import { Power } from '../fitness';
 import { Icon, type UiName } from '../icons';
 import { NumInput, num } from './shared';
 
@@ -56,24 +55,20 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
 }) {
   const cols = columnsOf(item);
   const set = (i: number, s: WSet) => onSets(item.sets.map((x, j) => (j === i ? s : x)));
-  let n = 0;
   return (
     <div class={`wo-sets${live ? ' live' : ''}`} role="group" aria-label={t('Sets')}>
       <div class="wo-set wo-set-head">
-        <span class="wo-h wo-h-mark" title={t('Set')}>#</span>
         {cols.map((c) => <span key={c.f} class="wo-h" title={c.label}><Icon name={c.icon} size={14} />{c.unit}</span>)}
         <span class="wo-h wo-h-p" title={t('Power')}><Icon name="bolt" size={14} /></span>
         {live && <span class="wo-h wo-h-tick" title={t('Done')}><Icon name="check" size={14} /></span>}
         <span class="wo-h wo-h-x" />
       </div>
       {item.sets.map((s, i) => {
-        if (s.tag !== 'warm') n++;
         const ghost = ghosts?.[i] ?? ghosts?.[ghosts.length - 1];
         return (
           <SetRow
             key={i}
             s={s}
-            n={n}
             cols={cols}
             item={item}
             bw={bw}
@@ -89,9 +84,8 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
   );
 }
 
-function SetRow({ s, n, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
+function SetRow({ s, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
   s: WSet;
-  n: number;
   cols: Col[];
   item: Item;
   bw: number;
@@ -110,11 +104,6 @@ function SetRow({ s, n, cols, item, bw, live, ghost, onSet, onRemove, onDone }: 
     return x;
   };
   const p = setPower(item.move, live && !s.done ? filled() : s, bw, item.pair);
-  const cycle = () => {
-    const tag = TAGS[(TAGS.indexOf(s.tag) + 1) % TAGS.length];
-    onSet({ ...s, tag });
-    toast(TAG_NAME[tag]);
-  };
   const tick = () => {
     if (s.done) return onSet({ ...s, done: false });
     const x = filled();
@@ -124,12 +113,8 @@ function SetRow({ s, n, cols, item, bw, live, ghost, onSet, onRemove, onDone }: 
     onSet({ ...x, done: true });
     onDone();
   };
-  const mark = s.tag ? TAG_MARK[s.tag] : String(n);
   return (
     <div ref={row} class={`wo-set${s.done ? ' is-done' : ''}`} {...swipe}>
-      <button class={`wo-mark${s.tag ? ' is-tag' : ''}`} onClick={cycle} aria-label={`${t('Set {n}', { n: mark })}: ${TAG_NAME[s.tag]}`} title={TAG_NAME[s.tag]}>
-        {mark}
-      </button>
       {cols.map((c) => {
         const g = ghost && get(ghost, c.f);
         return (

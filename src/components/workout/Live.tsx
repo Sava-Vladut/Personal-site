@@ -79,6 +79,7 @@ export function Live({ workout }: { workout: Workout }) {
               onAddSet={() => act.addSet(i)}
               onDone={() => it.rest > 0 && setRest({ end: Date.now() + it.rest * 1000, total: it.rest })}
               onMenu={() => setMenu(i)}
+              onInfo={() => setInfo(it)}
             />
           ))}
         </div>
@@ -195,7 +196,7 @@ function Elapsed({ start }: { start: number }) {
   );
 }
 
-function LiveItem({ it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMenu }: {
+function LiveItem({ it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo }: {
   it: Item;
   bw: number;
   ghosts?: WSet[];
@@ -204,14 +205,17 @@ function LiveItem({ it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, onMen
   onAddSet: () => void;
   onDone: () => void;
   onMenu: () => void;
+  onInfo: () => void;
 }) {
   const done = it.sets.filter((s) => s.done).length;
   return (
     <article class={`card wo-item${done && done === it.sets.length ? ' is-done' : ''}`}>
       <div class="wo-item-head">
-        <Thumb move={it.move} />
+        <button class="wo-thumb-btn" onClick={onInfo} aria-label={t('About {name}', { name: it.move.name })} title={t('About {name}', { name: it.move.name })}>
+          <Thumb move={it.move} />
+        </button>
         <div class="wo-item-title">
-          <span class="wo-item-name">{it.move.name}</span>
+          <button class="wo-item-name" onClick={onInfo} title={t('About {name}', { name: it.move.name })}>{it.move.name}</button>
           <span class="wo-meta">
             {it.pair && <span class="wo-pair" title={t('One in each hand (counts ×2)')}>×2</span>}
             <PerUnit move={it.move} bw={bw} />

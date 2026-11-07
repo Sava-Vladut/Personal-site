@@ -143,22 +143,22 @@ test('rested longest: the muscles worked longest ago first, the never-worked apa
   assert.ok(!r.never.includes('chest'));
 });
 
-test('exercise records: heaviest, best one-rep max, most reps, best set and best workout, warm-ups aside', () => {
+test('exercise records: heaviest, best one-rep max, most reps, best set and best workout', () => {
   const list = s.finished([
     workout('2026-10-01', [item({}, [{ kg: 60, reps: 10 }, { kg: 70, reps: 5 }])]),
-    workout('2026-10-08', [item({}, [{ kg: 120, reps: 3, tag: 'warm' }, { kg: 80, reps: 3 }, { kg: 50, reps: 15 }])]),
+    workout('2026-10-08', [item({}, [{ kg: 80, reps: 3 }, { kg: 50, reps: 15 }])]),
     workout('2026-10-15', [item({}, [{ kg: 75, reps: 6 }]), item({}, [{ kg: 75, reps: 6 }])]), // done twice in one workout
   ]);
   const [bench] = s.moveStats(list);
   assert.equal(bench.times, 3);
-  assert.equal(bench.sets, 7);
+  assert.equal(bench.sets, 6);
   assert.equal(bench.heaviest.value, 80);
   assert.equal(bench.heaviest.day, '2026-10-08');
   assert.equal(Math.round(bench.best1rm.value * 10) / 10, 90); // 75 × (1 + 6/30)
   assert.equal(bench.best1rm.day, '2026-10-15');
   assert.equal(bench.mostReps.value, 15);
   assert.equal(bench.bestSet.value, 75);    // 50 kg × 15
-  assert.equal(bench.bestDay.value, 117);   // the 8th: the warm-up's 36 counts half, then 24 and 75
+  assert.equal(bench.bestDay.value, 99);    // the 8th: 24 and 75
   assert.equal(bench.bestDay.day, '2026-10-08');
   assert.equal(bench.oneRm.length, 3);
   assert.deepEqual(bench.recent.map((r) => r.day), ['2026-10-15', '2026-10-08', '2026-10-01']);
@@ -174,7 +174,7 @@ test('a workout breaks a record when it beats every workout before it, never on 
     workout('2026-10-01', [item({}, [{ kg: 60, reps: 5 }]), item({ id: 'row', muscles: ['lats'] }, [{ kg: 50, reps: 8 }])]),
     workout('2026-10-08', [item({}, [{ kg: 55, reps: 5 }])]),                                   // nothing beaten
     workout('2026-10-15', [item({}, [{ kg: 65, reps: 5 }]), item({ id: 'row', muscles: ['lats'] }, [{ kg: 50, reps: 10 }])]), // both beaten
-    workout('2026-10-22', [item({}, [{ kg: 90, reps: 5, tag: 'warm' }])]),                      // a warm-up never counts
+    workout('2026-10-22', [item({}, [{ kg: 50, reps: 5 }])]),                                   // nothing beaten
     workout('2026-10-29', [item({ id: 'curl', muscles: ['biceps'] }, [{ kg: 20, reps: 10 }])]), // a first time
   ]);
   const broke = s.recordBreaks(list);

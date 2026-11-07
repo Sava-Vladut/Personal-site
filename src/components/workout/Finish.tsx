@@ -19,13 +19,13 @@ interface Record { id: string; name: string; lift: boolean; now: number; was: nu
 /**
  * What beat your best: for a lift, the heaviest single it points to (estimated from weight and reps); for anything else,
  * the strongest set in power. Only against workouts you've finished before, so a first time isn't a record yet, and
- * warm-ups don't count.
+ * only sets ticked off count.
  */
 function recordsOf(w: Workout, all: Workout[]) {
   const best = new Map<string, Record>();
   const value = (it: Item, s: Item['sets'][number], bw: number) => (it.move.kind === 'weight' ? oneRepMax(s.kg ?? 0, s.reps ?? 0) : setPower(it.move, s, bw, it.pair));
   for (const it of w.items) for (const s of it.sets) {
-    if (!s.done || s.tag === 'warm') continue;
+    if (!s.done) continue;
     const v = value(it, s, w.bw), b = best.get(it.move.id);
     if (!b || v > b.now) best.set(it.move.id, { id: it.move.id, name: it.move.name, lift: it.move.kind === 'weight', now: v, was: 0 });
   }
@@ -33,7 +33,7 @@ function recordsOf(w: Workout, all: Workout[]) {
     if (p.id === w.id || p.end === null) continue;
     for (const it of p.items) {
       const b = best.get(it.move.id);
-      if (b) for (const s of it.sets) if (s.done && s.tag !== 'warm') b.was = Math.max(b.was, value(it, s, p.bw));
+      if (b) for (const s of it.sets) if (s.done) b.was = Math.max(b.was, value(it, s, p.bw));
     }
   }
   return [...best.values()].filter((b) => b.was > 0 && b.now > b.was * 1.001);

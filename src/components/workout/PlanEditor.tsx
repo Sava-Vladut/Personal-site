@@ -27,6 +27,8 @@ export function PlanEditor({ id }: { id: string }) {
   // adding exercises, or swapping the one at an index for another
   const [picking, setPicking] = useState<{ swap: number | null } | null>(null);
   const [info, setInfo] = useState<Item | null>(null);
+  // the icons to choose from, shown when the plan's own icon is tapped
+  const [icons, setIcons] = useState(false);
 
   const ghosts = useMemo(() => lastSets(workouts), [workouts]);
   const last = useMemo(() => lastPlanWorkout(workouts, id), [workouts, id]);
@@ -75,7 +77,9 @@ export function PlanEditor({ id }: { id: string }) {
       </div>
 
       <div class="editor-top">
-        <span class="wo-tile big" aria-hidden="true"><Icon name={r.icon as UiName} size={24} /></span>
+        <button class="wo-tile big wo-icon-pick" onClick={() => setIcons(!icons)} aria-expanded={icons} aria-label={t('Change the icon')} title={t('Change the icon')}>
+          <Icon name={r.icon as UiName} size={24} />
+        </button>
         <input
           ref={name}
           class="title-input"
@@ -91,13 +95,25 @@ export function PlanEditor({ id }: { id: string }) {
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         />
       </div>
-      <div class="chips scroll-x wo-icons" role="group" aria-label={t('Icon')}>
-        {ROUTINE_ICONS.map((name) => (
-          <button key={name} class="icon-btn small" aria-pressed={r.icon === name} onClick={() => update((x) => ({ ...x, icon: name }))} aria-label={t('Icon: {name}', { name })} title={name}>
-            <Icon name={name} size={16} />
-          </button>
-        ))}
-      </div>
+      {icons && (
+        <div class="chips wo-icons fade-arrive-soft" role="group" aria-label={t('Icon')}>
+          {ROUTINE_ICONS.map((name) => (
+            <button
+              key={name}
+              class="icon-btn small"
+              aria-pressed={r.icon === name}
+              onClick={() => {
+                update((x) => ({ ...x, icon: name }));
+                setIcons(false);
+              }}
+              aria-label={t('Icon: {name}', { name })}
+              title={name}
+            >
+              <Icon name={name} size={16} />
+            </button>
+          ))}
+        </div>
+      )}
 
       <section class="section">
         <h2 class="section-title"><Icon name="target" size={16} />{t('Target power')}</h2>
@@ -125,11 +141,16 @@ export function PlanEditor({ id }: { id: string }) {
             {r.items.map((it, i) => (
               <article key={i} class="card wo-item">
                 <div class="wo-item-head">
-                  <Thumb move={it.move} />
-                  <button class="wo-item-title" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} title={t('Change the sets')}>
-                    <span class="wo-item-name">{it.move.name}<Icon name="chevron-down" size={14} /></span>
-                    <span class="wo-item-sets">{setsLine(it).map((s) => <span key={s} class="wo-set-chip">{s}</span>)}</span>
+                  <button class="wo-thumb-btn" onClick={() => setInfo(it)} aria-label={t('About {name}', { name: it.move.name })} title={t('About {name}', { name: it.move.name })}>
+                    <Thumb move={it.move} />
                   </button>
+                  <div class="wo-item-title">
+                    <button class="wo-item-name" onClick={() => setInfo(it)} title={t('About {name}', { name: it.move.name })}>{it.move.name}</button>
+                    <button class="wo-item-sets" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} title={t('Change the sets')} aria-label={t('Change the sets')}>
+                      {setsLine(it).map((s) => <span key={s} class="wo-set-chip">{s}</span>)}
+                      <Icon name="chevron-down" size={14} />
+                    </button>
+                  </div>
                   <Power value={itemPower(it, bw, true)} />
                 </div>
                 <div class="wo-tools">

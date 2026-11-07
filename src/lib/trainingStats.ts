@@ -1,7 +1,7 @@
 // The numbers under Insights › Workouts (views/Training.tsx): what the workouts you finished add up to, week by week,
 // muscle by muscle and exercise by exercise, and the records in them. Plain maths over lib/fitness.ts's types, with no
 // preact and no words in it, so scripts/test-training.mjs runs it as it is. Only finished workouts count, and in them
-// only the sets that were ticked off; warm-ups count for power (half, as everywhere) but never set a record.
+// only the sets that were ticked off.
 
 import { KINDS, MUSCLES, dayOf, itemPower, metTarget, oneRepMax, setPower, workoutPower, type Item, type Kind, type Muscle, type Snap, type WeighIn, type Workout, type WSet } from './fitness';
 
@@ -338,7 +338,6 @@ export function moveStats(list: Done[]): MoveStats[] {
       x.bestDay = better(x.bestDay, p, d);
       let e1 = 0, sp = 0;
       for (const { s, it } of done) {
-        if (s.tag === 'warm') continue;
         const k = it.move.kind;
         const pw = setPower(it.move, s, d.w.bw, it.pair);
         sp = Math.max(sp, pw);
@@ -380,7 +379,7 @@ export function recordBreaks(list: Done[]): Map<string, number> {
       const v = [0, 0, 0, 0, 0]; // set ⚡, one-rep max, weight, reps, seconds
       let any = false;
       for (const it of items) for (const s of it.sets) {
-        if (!s.done || s.tag === 'warm') continue;
+        if (!s.done) continue;
         any = true;
         const k = it.move.kind;
         v[0] = Math.max(v[0], setPower(it.move, s, d.w.bw, it.pair));

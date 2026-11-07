@@ -641,6 +641,7 @@ export const RO: Record<string, string> = {
   'Couldn’t load icons. Check your connection and try again.': 'Iconițele nu s-au putut încărca. Verifică-ți conexiunea și încearcă din nou.',
   'Couldn’t load the full icon set. Check your connection and try again.': 'Setul complet de iconițe nu s-a putut încărca. Verifică-ți conexiunea și încearcă din nou.',
   'Icon': 'Iconiță',
+  'Change the icon': 'Schimbă iconița',
   'Remove icon': 'Elimină iconița',
   'Search all icons': 'Caută în toate iconițele (în engleză)',
   'Search icons — try “tired” or “rain”': 'Caută iconițe în engleză — încearcă „tired” sau „rain”',

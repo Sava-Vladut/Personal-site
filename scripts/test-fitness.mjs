@@ -55,11 +55,11 @@ test('holds count a rep every 3 seconds, cardio counts effort over time', () => 
   assert.equal(Math.round(f.setPower(stretch, set({ secs: 300 }), 75) * 10) / 10, 28.8);
 });
 
-test('warm-ups count half and only done sets count in a workout', () => {
-  const it = { move: move({}), sets: [set({ kg: 40, reps: 10, tag: 'warm' }), set({ kg: 60, reps: 10 }), set({ kg: 60, reps: 10, done: false })], pair: false, rest: 90, note: '' };
-  assert.equal(f.workoutPower({ items: [it], bw: 75 }), 80);
-  assert.equal(f.planPower({ items: [it] }, 75), 140);
-  assert.equal(f.suggestTarget({ items: [it] }, 75), 140);
+test('every done set counts in full (set kinds are retired) and only done sets count in a workout', () => {
+  const it = { move: move({}), sets: [set({ kg: 40, reps: 10 }), set({ kg: 60, reps: 10 }), set({ kg: 60, reps: 10, done: false })], pair: false, rest: 90, note: '' };
+  assert.equal(f.workoutPower({ items: [it], bw: 75 }), 100);
+  assert.equal(f.planPower({ items: [it] }, 75), 160);
+  assert.equal(f.suggestTarget({ items: [it] }, 75), 160);
   assert.equal(f.suggestTarget({ items: [it] }, 75, 200), 210);
 });
 
@@ -87,6 +87,8 @@ test('untrusted workouts are cleaned up or dropped', () => {
   assert.equal(w.items.length, 1);
   assert.equal(w.items[0].move.share, 0);
   assert.equal(w.items[0].sets[0].tag, '');
+  // an older warm-up, drop or failure set reads as a normal one
+  assert.equal(f.normalizeWorkout({ id: 'b', start: 1, items: [{ move: { id: 'Bench', name: 'Bench' }, sets: [{ kg: 50, reps: 5, tag: 'warm', done: true }] }] }).items[0].sets[0].tag, '');
   assert.equal(f.normalizeMyMove({ id: 'Pushups', name: 'x' }), null);
   assert.ok(f.normalizeMyMove({ id: 'myabc123', name: 'Mine', kind: 'body', share: 0.5 }));
   assert.equal(f.normalizeWeighIn({ id: 'w', day: '2026-01-01', kg: 10 }), null);
