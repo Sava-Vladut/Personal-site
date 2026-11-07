@@ -36,11 +36,17 @@ export function compareVersions(a: string, b: string) {
  * has a touch screen, and Android's desktop mode says Linux but has no mouse, so both count as tablets.
  */
 export function desktopOffer(): 'windows' | 'other' | null {
-  if (typeof navigator === 'undefined') return null;
+  if (typeof navigator === 'undefined' || typeof matchMedia === 'undefined') return null;
   const ua = navigator.userAgent;
   if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return null;
   // any Windows 10 or 11 machine runs it, a touchscreen one too
   if (/Windows NT/.test(ua)) return 'windows';
   if (matchMedia('(hover: none) and (pointer: coarse)').matches) return null;
   return /Macintosh|Linux|X11|CrOS/.test(ua) ? 'other' : null;
+}
+
+let computer: boolean | undefined;
+/** On a computer (or in the Windows app), not a phone or tablet: places that need a phone, like the push-up counter, stay away. */
+export function onComputer() {
+  return (computer ??= !!desktopApp() || desktopOffer() !== null);
 }

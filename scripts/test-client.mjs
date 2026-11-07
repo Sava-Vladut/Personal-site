@@ -1480,7 +1480,8 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   const store = new Map();
   const localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
   const observable = (value) => ({ get: () => value, set(v) { value = v; }, use: () => value });
-  const mod = await load('src/lib/wheelLayout.ts', { '../data/wheel': wheel, './store': { observable } }, { localStorage });
+  let computer = false;
+  const mod = await load('src/lib/wheelLayout.ts', { '../data/wheel': wheel, './store': { observable }, './desktop': { onComputer: () => computer } }, { localStorage });
   const ids = (tree) => plain(tree.map((n) => (n.kids ? [n.id, n.kids.map((k) => k.id)] : n.id)));
 
   assert.deepEqual(ids(mod.treeOf(mod.defaultLayout())), ids(wheel.WHEEL), 'untouched, it is the wheel as shipped');
@@ -1499,6 +1500,14 @@ test('the wheel keeps your order, hidden places and groups, and new places still
   assert.deepEqual(ids(mod.treeOf(saved)), ['journal', ['gwork', ['media']], 'people', ['fitness', ['workout', 'pushups']], ['insights', ['stats', 'twitch', 'training', 'glops', 'cardwars']], ['learn', ['traps', 'laws', 'friends', 'seduction']], ['stream', ['streamer', 'chatlogs']], ['extras', ['status', 'countdown']], 'settings']);
   const loose = mod.normalize({ ...mod.defaultLayout(), top: ['stats', ...mod.defaultLayout().top], kids: { insights: ['glops'] } });
   assert.equal(mod.treeOf(loose)[0].hue, 'hope-interest', 'a place taken out of its group keeps the group’s colour');
+
+  // on a computer the push-up counter is off the wheel, and Workout, with only Workouts left in it, is just Workouts
+  computer = true;
+  const desk = mod.treeOf(mod.defaultLayout());
+  assert.ok(!JSON.stringify(ids(desk)).includes('pushups'));
+  const fit = desk.find((n) => n.id === 'workout');
+  assert.ok(fit && !fit.kids && fit.to === 'workout' && fit.hue === 'hope-interest', 'Workouts takes the group’s spot and colour');
+  computer = false;
 
   // every place exactly once, even from a broken save
   const broken = mod.normalize({ top: ['journal', 'journal', 'insights'], kids: { insights: ['journal', 'stats', 'stats'] } });

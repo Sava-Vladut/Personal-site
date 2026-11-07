@@ -1,6 +1,7 @@
 import { useRef } from 'preact/hooks';
 import { useMinerShown } from '../lib/twitch';
-import { GROUP_ICONS, HUES, defaultLayout, groupOf, isDefault, isGroup, nodeOf, saveLayout, treeOf, useWheelLayout, type WheelLayout } from '../lib/wheelLayout';
+import { onComputer } from '../lib/desktop';
+import { GROUP_ICONS, HUES, PHONE_ONLY, defaultLayout, groupOf, isDefault, isGroup, nodeOf, saveLayout, treeOf, useWheelLayout, type WheelLayout } from '../lib/wheelLayout';
 import { toast } from '../lib/store';
 import { haptic } from '../lib/haptics';
 import { count, t } from '../lib/i18n';
@@ -74,7 +75,7 @@ export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => v
   const ring = treeOf(layout, miner);
 
   const row = (id: string, inGroup: string | null, list: string[]) => {
-    if (id === 'twitch' && !miner) return null;
+    if ((id === 'twitch' && !miner) || (PHONE_ONLY.includes(id) && onComputer())) return null;
     const n = nodeOf(layout, id);
     const group = isGroup(layout, id);
     const own = !!layout.groups[id];

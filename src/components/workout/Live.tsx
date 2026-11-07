@@ -7,6 +7,7 @@ import { deleteWorkout, saveRoutine, saveWorkout, toast, useWorkouts } from '../
 import { haptic } from '../../lib/haptics';
 import { count, t } from '../../lib/i18n';
 import { countsPushups } from '../../lib/pushups';
+import { onComputer } from '../../lib/desktop';
 import { ask } from '../Confirm';
 import { Power } from '../fitness';
 import { Icon } from '../icons';
@@ -121,7 +122,7 @@ export function Live({ workout }: { workout: Workout }) {
               onDone={() => it.rest > 0 && setRest({ end: Date.now() + it.rest * 1000, total: it.rest })}
               onMenu={() => setMenu(i)}
               onInfo={() => setInfo(it)}
-              onCount={countsPushups(it.move) ? () => (unlockSound(), setCounting(i)) : undefined}
+              onCount={countsPushups(it.move) && !onComputer() ? () => (unlockSound(), setCounting(i)) : undefined}
             />
           ))}
         </div>

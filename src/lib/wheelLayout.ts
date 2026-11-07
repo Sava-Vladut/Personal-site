@@ -6,6 +6,7 @@ import type { UiName } from '../components/icons';
 import { observable } from './store';
 import { t } from './i18n';
 import { useMinerShown } from './twitch';
+import { onComputer } from './desktop';
 
 export interface Group { name: string; icon: UiName; hue: string }
 
@@ -159,10 +160,18 @@ export function nodeOf(l: WheelLayout, id: string): WheelNode {
 export const groupOf = (l: WheelLayout, id: string) => l.top.find((g) => l.kids[g]?.includes(id)) ?? null;
 export { isGroup };
 
-/** The wheel as you've arranged it: hidden things left out (Channel points too, where the miner isn't shown), and groups with nothing left in them gone. */
+/** Places that need a phone (the push-up counter needs its camera on the floor), left off the wheel on a computer. */
+export const PHONE_ONLY = ['pushups'];
+
+/**
+ * The wheel as you've arranged it: hidden things left out (Channel points too, where the miner isn't shown, and the
+ * phone-only places on a computer), and groups with nothing left in them gone. A group a computer leaves one place in
+ * is just that place.
+ */
 export function treeOf(l: WheelLayout, miner = true): WheelNode[] {
   const hidden = new Set(l.hidden);
   if (!miner) hidden.add('twitch');
+  const away = new Set(onComputer() ? PHONE_ONLY : []);
   const out: WheelNode[] = [];
   for (const id of l.top) {
     if (hidden.has(id)) continue;
@@ -172,8 +181,13 @@ export function treeOf(l: WheelLayout, miner = true): WheelNode[] {
       out.push({ ...n, hue: n.hue ?? builtIn.get(home.get(id) ?? '')?.hue });
       continue;
     }
-    const kids = l.kids[id].filter((k) => !hidden.has(k)).map((k) => nodeOf(l, k));
+    const shown = l.kids[id].filter((k) => !hidden.has(k));
+    const kids = shown.filter((k) => !away.has(k)).map((k) => nodeOf(l, k));
     if (!kids.length) continue;
+    if (kids.length === 1 && shown.length > 1) {
+      out.push({ ...kids[0], hue: kids[0].hue ?? n.hue });
+      continue;
+    }
     const sub = l.groups[id] ? kids.map((k) => k.name).join(' · ') : n.sub;
     out.push({ ...n, sub, kids });
   }

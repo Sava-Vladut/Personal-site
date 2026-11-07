@@ -3477,6 +3477,7 @@ export const RO: Record<string, string> = {
   "Start counting": "Începe numărătoarea",
   "How it works": "Cum funcționează",
   "The video stays on your phone: it’s never saved or sent anywhere.": "Video-ul rămâne pe telefon: nu e salvat și nu e trimis nicăieri.",
+  "Counting needs your phone’s camera on the floor: open this page on your phone.": "Numărarea are nevoie de camera telefonului pusă pe podea: deschide pagina asta pe telefon.",
   "Your best set": "Cea mai bună serie a ta",
   "Your push-ups show here once you’ve counted some.": "Flotările tale apar aici după ce numeri câteva.",
   "Add to the workout": "Adaugă la antrenament",

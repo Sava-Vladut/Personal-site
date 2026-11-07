@@ -7,6 +7,7 @@ import { addDays, dayLabel, startOfWeek, todayKey } from '../lib/dates';
 import { blankSet, dayOf, type Workout as Done } from '../lib/fitness';
 import { findExercise, loadExercises } from '../lib/exercises';
 import { pushupReps } from '../lib/pushups';
+import { onComputer } from '../lib/desktop';
 import { saveWorkout, toast, uid, useReady, useSettings, useWorkouts } from '../lib/store';
 import { count, t } from '../lib/i18n';
 import { Icon, type UiName } from '../components/icons';
@@ -79,10 +80,17 @@ export function Pushups(_: { id: string; query: URLSearchParams }) {
             <Stat value={week} label={t('This week')} />
             <Stat value={total} label={t('All time')} />
           </div>
-          <button class="btn btn-primary wo-wide" onClick={() => (unlockSound(), setCounting(true))}>
-            <Icon name="camera" size={18} />
-            {t('Start counting')}
-          </button>
+          {onComputer() ? (
+            <p class="muted small pp-note">
+              <Icon name="devices" size={14} />
+              {t('Counting needs your phone’s camera on the floor: open this page on your phone.')}
+            </p>
+          ) : (
+            <button class="btn btn-primary wo-wide" onClick={() => (unlockSound(), setCounting(true))}>
+              <Icon name="camera" size={18} />
+              {t('Start counting')}
+            </button>
+          )}
         </section>
 
         <section class="section pp-how">
@@ -129,7 +137,7 @@ export function Pushups(_: { id: string; query: URLSearchParams }) {
         </section>
       </div>
 
-      {counting && <PushupCounter onClose={() => setCounting(false)} onSave={save} />}
+      {counting && !onComputer() && <PushupCounter onClose={() => setCounting(false)} onSave={save} />}
     </div>
   );
 }

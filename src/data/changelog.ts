@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.192.1',
+    date: '2026-11-07',
+    changes: [
+      'The push-up counter is phone-only: on a computer it’s off the wheel (Workout opens straight to your workouts) and workouts don’t offer the Camera button.',
+      'Opening the push-up counter on a computer still shows your push-ups, and says to count them on your phone.',
+    ],
+  },
+  {
     version: '1.192.0',
     date: '2026-11-07',
     changes: [
