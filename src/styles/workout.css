@@ -417,6 +417,10 @@ input.wo-num {
   .wo-side > .section { margin-top: 26px; }
   .wo-side-end { display: grid; gap: 8px; }
   .wo-side-end .wo-start { margin-top: 0; }
+  /* the panel's target: slimmer steps, so the number between them has room */
+  .wo-side .wo-stepper { gap: 6px; }
+  .wo-side .wo-step { min-width: 0; padding: 0 9px; }
+  .wo-side .wo-target-n { min-width: 72px; }
 
   /* the bar becomes the panel's first card: the ring and the numbers, then the time and Finish */
   .wo-side > .wo-bar {
