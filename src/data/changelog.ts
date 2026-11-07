@@ -15,6 +15,7 @@ export const CHANGELOG: Release[] = [
     date: '2026-11-07',
     changes: [
       'Game statistics picks its game with two banners, Global Ops’ box art and Card Wars’ Jake, instead of plain buttons; the one you’re not looking at sits dimmed.',
+      'The site serves WebP and JPEG images with their proper type.',
     ],
   },
   {
