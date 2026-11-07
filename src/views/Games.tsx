@@ -1,5 +1,6 @@
 import { navigate } from '../lib/router';
 import { t } from '../lib/i18n';
+import '../styles/games.css';
 import { Glops } from './Glops';
 import { CardWars } from './CardWars';
 
@@ -14,9 +15,12 @@ export function Games({ query }: { id: string; query: URLSearchParams }) {
   try { localStorage.setItem(KEY, game); } catch {}
 
   const switcher = (
-    <div class="seg tabs gs-switch" role="tablist" aria-label={t('Game')} style={{ '--at': GAMES.findIndex(([id]) => id === game), '--tabs': GAMES.length }}>
+    <div class="gs-banners" role="tablist" aria-label={t('Game')}>
       {GAMES.map(([id, name]) => (
-        <button role="tab" aria-selected={game === id} onClick={() => id !== game && navigate('games?game=' + id, true)}>{name}</button>
+        <button role="tab" class="gs-banner" aria-selected={game === id} onClick={() => id !== game && navigate('games?game=' + id, true)}>
+          <img src={`/games/${id}.webp`} alt="" width={640} height={400} decoding="async" />
+          <span>{name}</span>
+        </button>
       ))}
     </div>
   );

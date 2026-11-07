@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.193.1',
+    date: '2026-11-07',
+    changes: [
+      'Game statistics picks its game with two banners, Global Ops’ box art and Card Wars’ Jake, instead of plain buttons; the one you’re not looking at sits dimmed.',
+    ],
+  },
+  {
     version: '1.193.0',
     date: '2026-11-07',
     changes: [
