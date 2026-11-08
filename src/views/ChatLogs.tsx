@@ -339,7 +339,7 @@ function Messages({ d, emotes, month, day, year, onMonth, onAll }: { d: Lookup; 
   const next = i >= 0 && i < d.months.length - 1 ? d.months[i + 1] : null;
 
   const lines: Line[] | null = asked ? found.data?.messages ?? null : m.data?.messages ?? null;
-  // by day, newest day first, each day's lines in the order they were written
+  // by day, newest day first, each day's newest line on top
   const groups = useMemo(() => {
     const by = new Map<string, Line[]>();
     for (const x of lines ?? []) {
@@ -348,6 +348,7 @@ function Messages({ d, emotes, month, day, year, onMonth, onAll }: { d: Lookup; 
       if (!by.has(k)) by.set(k, []);
       by.get(k)!.push(x);
     }
+    for (const list of by.values()) list.sort((a, b) => b.t - a.t);
     return [...by].sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [lines, day, asked]);
 

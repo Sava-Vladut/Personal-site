@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.196.2',
+    date: '2026-11-08',
+    changes: [
+      'Chat logs list each day’s messages newest first, with the oldest at the bottom.',
+    ],
+  },
+  {
     version: '1.196.1',
     date: '2026-11-08',
     changes: [
