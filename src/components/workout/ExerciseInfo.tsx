@@ -1,8 +1,7 @@
-// An exercise up close: its silhouette, the muscles it works on the body, how to do it step by step, and
+// An exercise up close: how the move starts and ends, the muscles it works on the body, how to do it step by step, and
 // how its power is counted at your weight. One you made can be deleted here.
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { stepsOf } from '../../lib/exercises';
-import { Figure } from './Figure';
+import { imageOf, stepsOf } from '../../lib/exercises';
 import { fmtPower, repPower, type Move, type Muscle, type Snap } from '../../lib/fitness';
 import { deleteMyMove, getMyMoves, saveMyMove, toast } from '../../lib/store';
 import { t } from '../../lib/i18n';
@@ -65,6 +64,7 @@ export function ExerciseInfo({ move, onClose, action }: { move: Snap | null; onC
   const heat: Partial<Record<Muscle, number>> = {};
   m?.also.forEach((x) => (heat[x] = 0.5));
   m?.muscles.forEach((x) => (heat[x] = 1));
+  const shots = m ? [imageOf(m, 0), imageOf(m, 1)].filter((s): s is string => !!s) : [];
 
   return (
     <Sheet
@@ -81,7 +81,15 @@ export function ExerciseInfo({ move, onClose, action }: { move: Snap | null; onC
     >
       {m && (
         <div class="wo-info">
-          <div class="wo-figure"><Figure move={m} /></div>
+          {shots.length > 0 && (
+            <div class="wo-shots">
+              {shots.map((src, i) => (
+                <figure key={src} class="wo-shot">
+                  <img src={src} alt={i ? t('{name}: the end of the move', { name: m.name }) : t('{name}: the start of the move', { name: m.name })} loading="lazy" decoding="async" width={300} height={200} />
+                </figure>
+              ))}
+            </div>
+          )}
 
           <div class="wo-facts">
             <span class="wo-fact"><Icon name={KIND_ICON[m.kind]} size={16} />{KIND_NAME[m.kind]}</span>

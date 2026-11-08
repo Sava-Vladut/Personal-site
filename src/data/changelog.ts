@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.193.3',
+    date: '2026-11-08',
+    changes: [
+      'Workouts show each exercise’s photo again instead of the drawn silhouette, in lists, the picker and the exercise page.',
+    ],
+  },
+  {
     version: '1.193.2',
     date: '2026-11-07',
     changes: [

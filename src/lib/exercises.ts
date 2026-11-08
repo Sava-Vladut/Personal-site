@@ -1,7 +1,7 @@
 // The exercise database: about 870 exercises from free-exercise-db (github.com/yuhonas/free-exercise-db, public domain),
 // trimmed and given their power facts by scripts/build-exercises.mjs (src/data/exercises.json), plus the ones you made
 // (store.ts, "moves"). The database is its own chunk, loaded the first time the Workout page or the picker needs it; the
-// how-to steps are another, loaded only when an exercise's details are opened. Each is drawn as a silhouette (poses.ts).
+// how-to steps are another, loaded only when an exercise's details are opened. Pictures come from jsDelivr.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useMyMoves } from './store';
 import { MUSCLES, type Equip, type Move, type Muscle } from './fitness';
@@ -53,6 +53,10 @@ export async function stepsOf(id: string): Promise<string[]> {
   });
   return (await steps)[id] ?? [];
 }
+
+const CDN = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
+/** A picture of an exercise from the database: 0 is the start of the move, 1 the end. */
+export const imageOf = (m: Pick<Move, 'id' | 'img'>, n = 0) => (m.img > n ? `${CDN}${encodeURIComponent(m.id)}/${n}.jpg` : null);
 
 /** Lowercase, without accents or punctuation, for matching what's typed. */
 const fold = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
