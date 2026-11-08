@@ -40,15 +40,20 @@ function put(s: WSet, f: Field, n: number | null): WSet {
   return { ...s, [KEY[f]]: f === 'mins' ? Math.round(n * 60) : n };
 }
 
+/** Whether a set has any of its numbers filled in. */
+const hasNumbers = (s: WSet) => s.kg !== null || s.reps !== null || s.secs !== null || s.km !== null;
+
 /**
- * The rows. `live` adds the tick that marks a set done (and only done sets count); `ghosts` are last time's sets, shown
- * faintly in empty fields and taken as they are when a set is ticked off empty. A set goes with its ×, or a swipe left.
+ * The rows, numbered. `live` adds the tick that marks a set done (and only done sets count); `ghosts` are last time's
+ * sets, shown faintly in empty fields and taken as they are when a set is ticked off empty (with no last time, the set
+ * above stands in). `next` is the set to do now, picked out. A set goes with its ×, or a swipe left.
  */
-export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
+export function SetRows({ item, bw, live, ghosts, next, onSets, onRemove, onDone }: {
   item: Item;
   bw: number;
   live?: boolean;
   ghosts?: WSet[];
+  next?: number;
   onSets: (sets: WSet[]) => void;
   onRemove: (i: number) => void;
   onDone?: (i: number) => void;
@@ -58,16 +63,20 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
   return (
     <div class={`wo-sets${live ? ' live' : ''}`} role="group" aria-label={t('Sets')}>
       <div class="wo-set wo-set-head">
+        <span class="wo-h wo-h-n" title={t('Set')}>#</span>
         {cols.map((c) => <span key={c.f} class="wo-h" title={c.label}><Icon name={c.icon} size={14} />{c.unit}</span>)}
         <span class="wo-h wo-h-p" title={t('Power')}><Icon name="bolt" size={14} /></span>
         {live && <span class="wo-h wo-h-tick" title={t('Done')}><Icon name="check" size={14} /></span>}
         <span class="wo-h wo-h-x" />
       </div>
       {item.sets.map((s, i) => {
-        const ghost = ghosts?.[i] ?? ghosts?.[ghosts.length - 1];
+        const above = item.sets[i - 1];
+        const ghost = ghosts?.[i] ?? ghosts?.[ghosts.length - 1] ?? (above && hasNumbers(above) ? above : undefined);
         return (
           <SetRow
             key={i}
+            n={i + 1}
+            next={next === i}
             s={s}
             cols={cols}
             item={item}
@@ -84,7 +93,9 @@ export function SetRows({ item, bw, live, ghosts, onSets, onRemove, onDone }: {
   );
 }
 
-function SetRow({ s, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
+function SetRow({ n, next, s, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
+  n: number;
+  next: boolean;
   s: WSet;
   cols: Col[];
   item: Item;
@@ -114,7 +125,8 @@ function SetRow({ s, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
     onDone();
   };
   return (
-    <div ref={row} class={`wo-set${s.done ? ' is-done' : ''}`} {...swipe}>
+    <div ref={row} class={`wo-set${s.done ? ' is-done' : ''}${next ? ' is-next' : ''}`} {...swipe}>
+      <span class="wo-set-n" aria-label={t('Set {n}', { n })}>{n}</span>
       {cols.map((c) => {
         const g = ghost && get(ghost, c.f);
         return (

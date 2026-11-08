@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.196.0',
+    date: '2026-11-08',
+    changes: [
+      'Workout opens on Up next: the plan you’ve gone longest without, what it holds and about how long it takes, started in one tap (or an empty workout beside it).',
+      'Plans are cards with their exercises written out and a Start button; this week shows how many weeks in a row you’ve trained.',
+      'Recent workouts open in Insights with a tap, and a repeat button starts one again with the same exercises and sets.',
+      'During a workout only the exercise you’re on is open; the rest fold to one line saying their sets, and finishing one moves on to the next.',
+      'Sets are numbered and the one to do now is highlighted; ticking an empty set takes last time’s numbers, or the set above when there’s no last time.',
+      'The top bar is slimmer, with the time under the power, a line that fills as sets are done, and an options menu: rename, target, keep the screen on, discard.',
+      'The rest timer says what’s next (exercise and set), and an empty workout offers your usual exercises to add in a tap, with a Quick add row under the list.',
+      'A workout started empty can be kept as a plan when you finish it.',
+      'Plans show their exercises, sets, rough time and power at the top, the target opens in its own sheet, and Start stays in reach at the bottom as you scroll.',
+    ],
+  },
+  {
     version: '1.195.0',
     date: '2026-11-08',
     changes: [

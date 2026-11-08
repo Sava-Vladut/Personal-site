@@ -1,5 +1,5 @@
 /* The Workout page (views/Workout.tsx, components/workout/*). Power's bolt and the shared bits are in fitness.css; the
-   page sets --accent to its world's colour, so bolts, rings, meters and tiles wear it. */
+   page sets --accent to its world's colour, so bolts, rings, meters, tiles and "what to do now" wear it. */
 
 /* ---------- pieces used all over ---------- */
 
@@ -20,11 +20,12 @@
 .wo-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .wo-thumb-check {
   position: absolute; inset: 0; display: grid; place-items: center;
-  background: color-mix(in oklab, var(--ink) 72%, transparent); color: var(--on-ink); animation: fade-in var(--dur-1) ease-out;
+  background: color-mix(in oklab, var(--accent) 78%, transparent); color: var(--on-color); animation: fade-in var(--dur-1) ease-out;
 }
 .wo-thumb-check svg { animation: pop var(--dur-3) var(--spring-bouncy); }
 
 .wo-wide { width: 100%; }
+.wo-ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .wo-count { font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .wo-of { font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wo-label {
@@ -32,12 +33,22 @@
   font-size: var(--text-xs); font-weight: var(--w-bold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
 }
 /* a line of small marks under a name: power, muscles, counts, when */
-.wo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--text-s); color: var(--ink-3); line-height: 1; }
+.wo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--text-s); color: var(--ink-3); line-height: 1.2; }
 .wo-meta-text { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wo-meta .power { color: var(--ink-2); }
 .wo-per { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; color: var(--ink-2); font-size: var(--text-s); }
 .wo-sheet-note { display: flex; align-items: baseline; gap: 6px; margin-top: 12px; line-height: 1.45; }
 .wo-sheet-note svg { flex: none; translate: 0 2px; }
+.wo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.wo-head .section-title { margin: 0; }
+.wo-more { display: inline-flex; align-items: center; gap: 4px; min-height: var(--h-s); padding: 0 8px; border-radius: var(--r-pill); font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); }
+
+/* adding something to a list: a dashed outline where the next one goes */
+.wo-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: var(--h-m); padding: 0 16px;
+  border: 1.5px dashed var(--line-2); border-radius: var(--r-l); color: var(--ink-2); font-size: var(--text-base); font-weight: var(--w-bold);
+  transition: border-color var(--dur-1), color var(--dur-1), background-color var(--dur-1), scale var(--dur-3) var(--spring);
+}
 
 .wo-ghost-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
 .wo-ghost-thumb { width: 40px; height: 40px; border-radius: var(--r-m); flex: none; }
@@ -46,58 +57,106 @@
 .wo-ghost-lines .ghost:nth-child(2) { width: 45%; }
 .wo-ghost-lines .ghost:nth-child(3) { width: 60%; }
 
-/* ---------- home ---------- */
+/* a list of rows in a card: a past workout (here and on the push-up page) */
+.wo-row { display: flex; align-items: center; gap: 4px; width: 100%; text-align: left; transition: background-color var(--dur-1); }
+.wo-list > .wo-row + .wo-row, .wo-list > .wo-ghost-row + .wo-ghost-row { border-top: 1px solid var(--line); }
+.wo-list > div.wo-row { padding-right: 8px; }
+.wo-list > div.wo-row:not(:has(> .wo-row-main)) { gap: 12px; padding: 12px 16px; }
+.wo-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 6px 12px 14px; text-align: left; }
+.wo-row-text { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.wo-row-name { font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-done-p { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-m); }
+.wo-done-p.is-met > svg { color: var(--accent); }
+.wo-again { color: var(--ink-3); }
 
-.wo-bw { padding: 0 14px 0 12px; gap: 6px; font-variant-numeric: tabular-nums; margin-right: 4px; }
-/* making a plan, filled so it's found once the starters (and their "make your own") are gone */
-.wo-new { padding: 0 14px 0 10px; gap: 4px; }
-
-.wo-nudge { display: flex; align-items: center; gap: 8px; padding-right: 8px; margin-bottom: 18px; }
-.wo-nudge-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0 12px 14px; text-align: left; font-weight: var(--w-medium); line-height: 1.45; }
-
+/* a big card with a soft wash of the page's colour (the push-up page's top card) */
 .wo-hero {
   display: grid; gap: 12px; padding: 14px 16px 16px;
   background: linear-gradient(120deg, color-mix(in oklab, var(--accent) 12%, var(--surface)), var(--surface) 70%);
 }
-.wo-hero-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -8px -4px 0; }
-.wo-hero-head .wo-label { margin: 0; }
-.wo-hero-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
-.wo-hero-n { font-size: var(--text-2xl); letter-spacing: -0.02em; gap: 4px; }
+
+/* ---------- home ---------- */
+
+.wo-bw { padding: 0 14px 0 12px; gap: 6px; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.wo-new { padding: 0 14px 0 10px; gap: 4px; }
+
+.wo-nudge { display: flex; align-items: center; gap: 8px; padding-right: 8px; margin-bottom: 12px; }
+.wo-nudge-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 0 10px 12px; text-align: left; font-size: var(--text-m); font-weight: var(--w-medium); line-height: 1.4; }
+
+/* on a phone, one column: up next, the week, the plans, the recent ones */
+.wo-home { display: flex; flex-direction: column; gap: 14px; }
+.wo-home-main, .wo-home-side { display: contents; }
+.wo-home .wo-next { order: 1; }
+.wo-home .wo-week-card { order: 2; }
+.wo-home .wo-plans { order: 3; }
+.wo-home .wo-recent { order: 4; }
+.wo-home .section { margin-top: 10px; }
+
+/* up next: the plan to do now, what it holds, and Start */
+.wo-next {
+  display: grid; gap: 14px; padding: 16px;
+  border-color: color-mix(in oklab, var(--accent) 24%, var(--line));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 15%, var(--surface)), var(--surface) 78%);
+}
+.wo-next .wo-label { margin: 0; color: color-mix(in oklab, var(--accent) 72%, var(--ink)); }
+.wo-next-top { display: flex; align-items: center; gap: 14px; }
+.wo-next-top .wo-tile.big { background: var(--accent); color: var(--on-color); }
+.wo-next-text { min-width: 0; display: grid; gap: 4px; }
+.wo-next-name { font: var(--w-medium) var(--text-xl)/1.2 var(--serif); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.wo-next-moves { font-size: var(--text-m); color: var(--ink-2); line-height: 1.45; }
+.wo-chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.wo-chips-row .wo-fact {
+  height: 28px; padding: 0 10px; gap: 5px; font-size: var(--text-s); font-variant-numeric: tabular-nums;
+  background: color-mix(in oklab, var(--surface) 70%, transparent); box-shadow: inset 0 0 0 1px var(--line);
+}
+.wo-chips-row .wo-fact > svg { color: var(--ink-3); }
+.wo-next-acts { display: flex; gap: 8px; }
+.wo-next-go { flex: 1; min-width: 0; }
+.wo-next-go > svg, .wo-next-empty > svg { flex: none; }
+.wo-next-empty { flex: none; padding: 0 16px 0 12px; gap: 6px; }
+
+/* this week: the power so far, the weeks in a row and a dot a day */
+.wo-week-card { display: grid; gap: 10px; padding: 12px 14px 14px; }
+.wo-week-head { display: flex; align-items: center; gap: 8px; margin: -4px -6px -2px 0; }
+.wo-week-head .wo-label { flex: 1; margin: 0; }
+.wo-streak {
+  display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px 0 7px; border-radius: var(--r-pill); white-space: nowrap;
+  font-size: var(--text-s); font-weight: var(--w-bold); background: color-mix(in oklab, var(--accent) 14%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 72%, var(--ink));
+}
+.wo-week-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.wo-week-n { font-size: var(--text-xl); letter-spacing: -0.01em; gap: 4px; }
 .wo-week { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .wo-day { display: grid; justify-items: center; gap: 6px; }
-.wo-dot { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2); color: var(--on-color); }
+.wo-dot { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--surface-2); color: var(--on-color); }
 .wo-day.is-on .wo-dot { background: var(--accent); animation: pop var(--dur-4) var(--spring-bouncy) backwards; }
 .wo-day.is-today .wo-dot { outline: 2px solid var(--accent); outline-offset: 2px; }
 .wo-day.is-ahead .wo-dot { background: none; box-shadow: inset 0 0 0 1px var(--line-2); }
 .wo-day-name { font-size: var(--text-2xs); font-weight: var(--w-medium); color: var(--ink-3); line-height: 1; }
 .wo-day.is-today .wo-day-name { color: var(--ink); font-weight: var(--w-bold); }
 
-.wo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.wo-head .section-title { margin: 0; }
-.wo-more { display: inline-flex; align-items: center; gap: 4px; min-height: var(--h-s); padding: 0 8px; border-radius: var(--r-pill); font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); }
-
-/* a plan, a starter or a past workout: a tinted icon, a serif name and a line of marks */
-.wo-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; transition: background-color var(--dur-1); }
-.wo-list > .wo-row + .wo-row, .wo-list > .wo-ghost-row + .wo-ghost-row { border-top: 1px solid var(--line); }
-.wo-list > div.wo-row { padding-right: 16px; }
-.wo-list > div.wo-row:not(:has(> .wo-row-main)) { padding: 12px 16px; }
-.wo-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0 12px 16px; text-align: left; }
-.wo-starter { padding-right: 16px; }
-.wo-row-text { flex: 1; min-width: 0; display: grid; gap: 6px; }
-.wo-row-name { font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wo-play {
-  flex: none; display: grid; place-items: center; width: var(--h-m); height: var(--h-m); border-radius: 50%;
-  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
-  transition: background-color var(--dur-1), scale var(--dur-3) var(--spring);
+/* a plan: a tap opens it, Start starts it */
+.wo-plan-cards { display: grid; gap: 8px; }
+.wo-plan-card {
+  display: flex; align-items: center; gap: 4px; padding-right: 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); transition: border-color var(--dur-1);
 }
-.wo-add-ico { flex: none; display: grid; place-items: center; width: var(--h-s); height: var(--h-s); border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+.wo-plan-card.is-next { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.wo-plan-card.wo-ghost-row { padding: 14px; }
+.wo-plan-main { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; gap: 12px; padding: 12px 8px 12px 14px; text-align: left; border-radius: var(--r-l); }
+.wo-plan-moves { font-size: var(--text-m); color: var(--ink-2); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wo-go {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--h-s); padding: 0 14px 0 11px; border-radius: var(--r-pill);
+  font-size: var(--text-m); font-weight: var(--w-bold);
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 72%, var(--ink));
+  transition: background-color var(--dur-1), opacity var(--dur-1), scale var(--dur-3) var(--spring);
+}
+.wo-plan-card.is-next .wo-go { background: var(--accent); color: var(--on-color); }
+.wo-go.is-quiet { background: var(--surface-2); color: var(--ink); }
+.wo-go:disabled { opacity: 0.4; }
 .wo-starters { display: grid; gap: 12px; }
-.wo-done-p { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-m); }
-.wo-done-p.is-met > svg { color: var(--accent); }
 
 /* ---------- the target ---------- */
 
-.wo-card { display: grid; gap: 12px; padding: 14px 16px; }
 .wo-target { display: grid; gap: 12px; }
 .wo-stepper { display: flex; align-items: center; gap: 8px; }
 .wo-step {
@@ -126,13 +185,43 @@
 .wo-icons { margin-block: 12px 0; gap: 8px; flex-wrap: wrap; }
 .wo-icons .icon-btn { background: var(--surface-2); }
 .wo-icons .icon-btn[aria-pressed='true'] { background: var(--ink); color: var(--on-ink); }
-.wo-add, .wo-start { margin-top: 12px; }
-.wo-start { margin-top: 24px; }
+/* the plan's icon: tapped, it shows the others to pick from */
+.wo-icon-pick { color: inherit; transition: scale var(--dur-2) var(--spring); }
+.wo-icon-pick[aria-expanded='true'] { box-shadow: 0 0 0 2px var(--ink); }
 
-/* an exercise in a plan or a workout */
-.wo-item { padding: 14px 16px; }
-.wo-item.is-done { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
-.wo-item-head { display: flex; align-items: center; gap: 12px; }
+/* what it comes to, and the power it asks for */
+.wo-plan-sum { display: grid; gap: 12px; padding: 12px; margin-top: 16px; }
+.wo-plan-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.wo-fact-n {
+  min-width: 0; display: grid; justify-items: center; gap: 3px; padding: 9px 4px 8px; border-radius: var(--r-m);
+  background: var(--surface-2); font-size: var(--text-s); color: var(--ink-3); text-align: center;
+}
+.wo-fact-n > svg { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.wo-fact-n b { font-size: var(--text-l); line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.wo-target-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 4px; border-radius: var(--r-m); text-align: left; transition: background-color var(--dur-1), scale var(--dur-3) var(--spring); }
+.wo-target-row-text { flex: 1; min-width: 0; display: grid; gap: 2px; line-height: 1.35; }
+.wo-target-row-label { font-weight: var(--w-bold); }
+.wo-target-row-n { flex: none; font-size: var(--text-l); font-weight: var(--w-bold); }
+.wo-target-row > svg:last-child { flex: none; color: var(--ink-3); }
+.wo-meter { margin: -2px 4px 2px; height: 4px; }
+.wo-meter i { background: var(--accent); }
+
+.wo-plan-items { margin-top: 22px; }
+.wo-plan-list { display: grid; gap: 8px; }
+.wo-plan-items > :is(.wo-add-btn, .btn) { margin-top: 10px; }
+.wo-plan-empty { display: grid; justify-items: center; gap: 10px; padding: 18px 12px 6px; text-align: center; }
+/* Start stays in reach at the bottom of the screen, over the tab bar */
+.wo-plan-end { position: sticky; z-index: 6; bottom: calc(var(--nav-h) + var(--safe-b) + 12px); margin-top: 18px; }
+.wo-plan-end .wo-start { box-shadow: var(--shadow-2); }
+.wo-plan-page:has(.wo-plan-end) .wo-plan-items { padding-bottom: 6px; }
+
+/* ---------- an exercise in a plan or a workout ---------- */
+
+.wo-item { padding: 12px 12px 12px 14px; scroll-margin-top: calc(var(--safe-t) + 84px); transition: border-color var(--dur-2), box-shadow var(--dur-2); }
+.wo-item.is-now { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 10%, transparent); }
+.wo-item.is-open { border-color: var(--line-2); }
+.wo-item.is-done.is-folded .wo-item-name { color: var(--ink-2); }
+.wo-item-head { display: flex; align-items: center; gap: 10px; }
 .wo-item-title { flex: 1; min-width: 0; display: grid; gap: 6px; text-align: left; }
 .wo-item-name {
   font: var(--w-medium) var(--text-l)/1.25 var(--serif); letter-spacing: -0.005em; text-align: left; justify-self: start; max-width: 100%;
@@ -140,38 +229,50 @@
 }
 /* the picture and the name open the exercise's page; the set chips (in a plan) open its sets */
 .wo-thumb-btn { flex: none; display: grid; border-radius: var(--r-m); }
-.wo-item-sets { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; justify-self: start; text-align: left; }
+.wo-item-sets { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; justify-self: start; text-align: left; border-radius: var(--r-s); }
 .wo-item-sets > svg { color: var(--ink-3); transition: rotate var(--dur-2) var(--ease); }
 .wo-item-sets[aria-expanded='true'] > svg { rotate: 180deg; }
-/* the plan's icon: tapped, it shows the others to pick from */
-.wo-icon-pick { color: inherit; transition: scale var(--dur-2) var(--spring); }
-.wo-icon-pick[aria-expanded='true'] { box-shadow: 0 0 0 2px var(--ink); }
+.wo-item-sets .power { font-size: var(--text-s); color: var(--ink-2); }
 .wo-reps-total { color: var(--ink-3); font-size: var(--text-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wo-set-chip { padding: 2px 6px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.wo-item-head > .power { font-size: var(--text-m); }
-.wo-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.wo-tools .icon-btn { background: var(--surface-2); }
-.wo-tools-n { min-width: 20px; text-align: center; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
-.wo-item-sets-edit { margin-top: 12px; padding-top: 2px; border-top: 1px solid var(--line); }
 .wo-pair { padding: 2px 6px; border-radius: var(--r-xs); font-size: var(--text-xs); font-weight: var(--w-bold); background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.wo-sets-done.is-all { color: color-mix(in oklab, var(--accent) 72%, var(--ink)); font-weight: var(--w-bold); }
+.wo-done-line { white-space: normal; color: var(--ink-2); }
+.wo-rest-chip { height: 22px; padding: 0 8px 0 6px; margin-block: -2px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); }
+.wo-fold svg { transition: rotate var(--dur-2) var(--ease); }
+.wo-fold[aria-expanded='true'] svg { rotate: 180deg; }
+/* how many of its sets are done, along the card under its name */
+.wo-item-meter { display: block; height: 3px; margin-top: 10px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.wo-item-meter i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-4) var(--ease-emph); }
+.wo-item-body { margin-top: 4px; }
+.wo-item.is-open .wo-item-body { margin-top: 12px; padding-top: 2px; border-top: 1px solid var(--line); }
 .wo-note { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; font-size: var(--text-m); color: var(--ink-2); line-height: 1.45; white-space: pre-line; }
 .wo-note svg { flex: none; color: var(--ink-3); }
-.wo-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.wo-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.wo-add-set {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--h-s); padding: 0 14px 0 10px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink); font-size: var(--text-m); font-weight: var(--w-bold);
+}
+.wo-add-set:disabled { opacity: 0.4; }
 .wo-item-foot .btn-s { padding-left: 12px; }
-.wo-item-acts { display: flex; gap: 8px; }
-.wo-item-sum { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.wo-item-sum .power { color: var(--ink); margin-left: 4px; }
+.wo-item-tools { display: flex; align-items: center; gap: 2px; }
+.wo-item-tools .wo-rest-chip { margin-right: 4px; }
 
 /* ---------- sets ---------- */
 
 /* one column that may shrink: a number field's own width (about 150 px) would otherwise push the row past the card on a phone */
-.wo-sets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 10px; }
-.wo-set { display: flex; align-items: center; gap: 6px; touch-action: pan-y; transition: transform var(--dur-2) var(--ease); }
+.wo-sets { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 12px; }
+.wo-set { display: flex; align-items: center; gap: 6px; border-radius: var(--r-s); touch-action: pan-y; transition: transform var(--dur-2) var(--ease), background-color var(--dur-2), box-shadow var(--dur-2); }
 .wo-set-head { color: var(--ink-3); font-size: var(--text-xs); font-weight: var(--w-bold); }
 .wo-h { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; line-height: 1; }
-.wo-h-p, .wo-set-p { flex: none; width: 48px; }
+.wo-h-n, .wo-set-n { flex: none; width: 24px; }
+.wo-h-p, .wo-set-p { flex: none; width: 44px; }
 .wo-h-tick, .wo-tick { flex: none; width: var(--h-m); }
 .wo-h-x, .wo-set-x { flex: none; width: var(--h-s); }
+.wo-set-n {
+  display: grid; place-items: center; height: 24px; border-radius: 50%; font-size: var(--text-s); font-weight: var(--w-bold);
+  color: var(--ink-3); font-variant-numeric: tabular-nums; transition: background-color var(--dur-2), color var(--dur-2);
+}
 input.wo-num {
   flex: 1 1 0; width: 0; min-width: 0; height: var(--h-m); padding: 0 4px; border: 1px solid transparent; border-radius: var(--r-s);
   background: var(--surface-2); color: var(--ink); text-align: center; font-size: 16px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
@@ -183,11 +284,16 @@ input.wo-num {
 .wo-set-p.is-maybe { opacity: 0.45; }
 .wo-tick {
   display: grid; place-items: center; height: var(--h-m); border-radius: var(--r-s); background: var(--surface-2); color: var(--ink-3);
-  transition: background-color var(--dur-1), color var(--dur-1), scale var(--dur-3) var(--spring);
+  transition: background-color var(--dur-1), color var(--dur-1), box-shadow var(--dur-1), scale var(--dur-3) var(--spring);
 }
 .wo-tick[aria-pressed='true'] { background: var(--accent); color: var(--on-color); }
 .wo-tick[aria-pressed='true'] svg { animation: pop var(--dur-3) var(--spring-bouncy); }
 .wo-set.is-done .wo-num { background: color-mix(in oklab, var(--accent) 10%, var(--surface)); }
+.wo-set.is-done .wo-set-n { color: color-mix(in oklab, var(--accent) 72%, var(--ink)); }
+/* the set to do now: its number on the page's colour, a band around it and its tick waiting */
+.wo-set.is-next { background: color-mix(in oklab, var(--accent) 8%, transparent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 8%, transparent); }
+.wo-set.is-next .wo-set-n { background: var(--accent); color: var(--on-color); }
+.wo-set.is-next .wo-tick { background: var(--surface); color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
 .wo-set-x { display: grid; place-items: center; height: var(--h-m); border-radius: var(--r-pill); color: var(--ink-3); }
 /* in a workout a phone swipes a set away; a wider screen has room for its × */
 .wo-sets.live :is(.wo-set-x, .wo-h-x) { display: none; }
@@ -198,45 +304,84 @@ input.wo-num {
 
 /* ---------- a workout going on ---------- */
 
-/* the bar stays at the top, solid, with the safe area above it filled in too */
+/* the bar stays at the top, solid, with the safe area above it filled in too; a line along its foot fills with the sets done */
 .wo-bar {
-  position: sticky; top: var(--safe-t); z-index: 5; display: flex; align-items: center; gap: 12px;
-  margin: 0 calc(-1 * var(--gutter)) 12px; padding: 8px var(--gutter); background: var(--bg); border-bottom: 1px solid var(--line);
+  position: sticky; top: var(--safe-t); z-index: 5; display: flex; align-items: center; gap: 6px;
+  margin: 0 calc(-1 * var(--gutter)) 14px; padding: 8px var(--gutter); background: var(--bg); border-bottom: 1px solid var(--line);
 }
 .wo-bar::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: var(--safe-t); background: inherit; }
-.wo-power { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 2px; border-radius: var(--r-m); text-align: left; }
-.wo-ring { position: relative; flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--accent); }
+.wo-bar-line { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; }
+.wo-bar-line i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform var(--dur-4) var(--ease-emph); }
+.wo-power { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 2px 6px 2px 2px; border-radius: var(--r-m); text-align: left; }
+.wo-ring { position: relative; flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; color: var(--accent); }
 .wo-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -90deg; }
 .wo-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 5; }
 .wo-ring-fill { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset var(--dur-5) var(--ease-emph); }
 .wo-power.is-met .wo-ring { background: var(--accent); color: var(--on-color); }
 .wo-ring.is-pop { animation: pop var(--dur-4) var(--spring-bouncy); }
-.wo-power-text { min-width: 0; display: grid; gap: 2px; }
+.wo-power-text { min-width: 0; display: grid; gap: 3px; }
 .wo-power-n { display: flex; align-items: baseline; gap: 4px; }
 .wo-power-n b { font-size: var(--text-xl); font-weight: var(--w-bold); letter-spacing: -0.01em; line-height: 1; font-variant-numeric: tabular-nums; }
-.wo-power-sub { font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wo-power.is-met .wo-power-sub { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-bold); }
-.wo-clock { flex: none; display: inline-flex; align-items: center; gap: 4px; min-width: 56px; font-size: var(--text-m); font-weight: var(--w-bold); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.wo-finish { flex: none; padding-left: 12px; gap: 6px; }
-.wo-live-end { display: grid; gap: 12px; margin-top: 18px; }
-.wo-live-page:has(.wo-rest) .wo-live-end { padding-bottom: 64px; }
-.wo-live-empty { padding-block: 28px; }
+.wo-power-sub { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--text-s); color: var(--ink-3); white-space: nowrap; }
+.wo-power-goal { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wo-power.is-met .wo-power-goal { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); font-weight: var(--w-bold); }
+.wo-clock { flex: none; display: inline-flex; align-items: center; gap: 3px; font-weight: var(--w-bold); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.wo-bar-more { width: var(--h-s); height: var(--h-s); }
+.wo-finish { flex: none; padding: 0 14px 0 11px; gap: 6px; }
 
-/* the rest between sets floats above the tab bar, and steps up out of a toast's way */
+.wo-live-list { display: grid; gap: 10px; }
+.wo-live-end { display: grid; gap: 12px; margin-top: 6px; }
+.wo-live-page:has(.wo-rest) .wo-live-end { padding-bottom: 72px; }
+.wo-all-done {
+  display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px;
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line)); background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+}
+.wo-all-done .wo-tile { background: var(--accent); color: var(--on-color); }
+.wo-all-done-text { flex: 1; min-width: 0; display: grid; gap: 2px; line-height: 1.35; }
+
+/* nothing added yet */
+.wo-live-empty { display: grid; justify-items: center; gap: 12px; padding: 24px 16px 16px; text-align: center; }
+.wo-empty-title { font: var(--w-medium) var(--text-xl)/1.2 var(--serif); letter-spacing: -0.01em; }
+.wo-live-empty > p { max-width: 38ch; line-height: 1.45; }
+
+/* the exercises you do most, a tap from being added */
+.wo-usual { width: 100%; display: grid; gap: 8px; text-align: left; margin-top: 4px; }
+.wo-usual .wo-label { margin: 0; }
+.wo-usual-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.wo-usual-chip {
+  min-width: 0; display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: var(--r-m);
+  background: var(--surface-2); text-align: left; transition: background-color var(--dur-1), scale var(--dur-3) var(--spring);
+}
+.wo-usual-chip .wo-thumb { width: 34px; height: 34px; border-radius: var(--r-xs); background: var(--surface); }
+.wo-usual-name { flex: 1; min-width: 0; font-size: var(--text-m); font-weight: var(--w-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-usual-chip > svg { flex: none; color: var(--ink-3); }
+/* under the exercises: a row to scroll */
+.wo-usual.is-quick .wo-usual-list {
+  display: flex; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter);
+  scroll-padding-inline: var(--gutter); scroll-snap-type: x proximity;
+}
+.wo-usual.is-quick .wo-usual-list::-webkit-scrollbar { display: none; }
+.wo-usual.is-quick .wo-usual-chip { flex: none; max-width: 210px; scroll-snap-align: start; border: 1px solid var(--line); background: var(--surface); }
+.wo-usual.is-quick .wo-thumb { background: var(--surface-2); }
+
+/* the rest between sets floats above the tab bar, says what's next, and steps up out of a toast's way */
 .wo-rest.glass {
   position: fixed; z-index: 40; left: calc(50% + var(--side-w, 0px) / 2); bottom: calc(var(--nav-h) + var(--safe-b) + 12px);
+  width: min(440px, calc(100% - 2 * var(--gutter) - var(--side-w, 0px)));
   translate: -50% 0; display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 16px; overflow: hidden;
   border-radius: var(--r-pill); background: var(--glass-fill-strong); --glass-blur: 24px;
   animation: toast-in var(--dur-4) var(--spring); transition: translate var(--dur-3) var(--ease-emph), background-color var(--dur-2);
 }
 :root:has(.toast) .wo-rest.glass { translate: -50% -62px; }
-.wo-rest > svg { color: var(--accent); margin-right: 4px; }
-.wo-rest-n { min-width: 52px; font-size: var(--text-l); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
-.wo-rest-btn { font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.wo-rest > svg { flex: none; color: var(--accent); margin-right: 6px; }
+.wo-rest-text { flex: 1; min-width: 0; display: grid; gap: 1px; line-height: 1.15; }
+.wo-rest-n { font-size: var(--text-l); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+.wo-rest-next { font-size: var(--text-s); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-rest-btn { flex: none; font-size: var(--text-m); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
 .wo-rest-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
 .wo-rest-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 1s linear; }
 .wo-rest.glass.is-over { background: var(--accent); color: var(--on-color); }
-.wo-rest.is-over > svg, .wo-rest.is-over .icon-btn { color: inherit; }
+.wo-rest.is-over > svg, .wo-rest.is-over .icon-btn, .wo-rest.is-over .wo-rest-next { color: inherit; }
 
 /* ---------- the picker ---------- */
 
@@ -364,50 +509,50 @@ input.wo-num {
 /* ---------- hover (press feedback is app.css's, "press feedback") ---------- */
 
 @media (hover: hover) {
-  .wo-row:has(> .wo-row-main:hover), button.wo-row:hover { background: var(--surface-2); }
-  .wo-play:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 26%, var(--surface-2)); }
-  :is(.wo-step, .wo-tick[aria-pressed='false'], .wo-set-x, .wo-more, .wo-feel button[aria-checked='false']):hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
+  .wo-row:has(> .wo-row-main:hover), .wo-target-row:hover, .wo-usual.is-quick .wo-usual-chip:hover { background: var(--surface-2); }
+  .wo-usual:not(.is-quick) .wo-usual-chip:hover, .wo-add-set:hover:not(:disabled) { background: var(--surface-3); }
+  .wo-plan-card:has(> .wo-plan-main:hover) { border-color: var(--line-2); }
+  .wo-go:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 26%, var(--surface-2)); }
+  .wo-plan-card.is-next .wo-go:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 86%, var(--ink)); }
+  .wo-go.is-quiet:hover { background: var(--surface-3); }
+  .wo-add-btn:hover { border-color: var(--ink-3); color: var(--ink); }
+  :is(.wo-step, .wo-tick[aria-pressed='false'], .wo-set-x, .wo-more, .wo-rest-chip, .wo-feel button[aria-checked='false']):hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
+  .wo-set.is-next .wo-tick[aria-pressed='false']:hover { background: color-mix(in oklab, var(--accent) 14%, var(--surface)); color: var(--accent); }
   .wo-pick-main:hover .wo-pick-name, .wo-item-name:hover { text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
   .wo-power:hover { background: var(--surface-2); }
-  .wo-icons .icon-btn:not([aria-pressed='true']):hover, .wo-tools .icon-btn:hover:not(:disabled) { background: var(--surface-3); }
+  .wo-icons .icon-btn:not([aria-pressed='true']):hover { background: var(--surface-3); }
 }
 
 /* ---------- the side panel (desktop) ----------
    A workout going on and a plan keep their running numbers in a panel beside the exercises on a wide screen, as the
    journal keeps its sky. On a phone the panel adds no box: its bar stays at the top, and what only makes sense beside
-   the exercises (the outline, a second copy of the actions) stays hidden. */
+   the exercises (the outline, a second Start) stays hidden. */
 
 .wo-side, .wo-plan-body { display: contents; }
-.wo-outline, .wo-side-end, .wo-row-moves { display: none; }
+.wo-outline, .wo-side-end { display: none; }
 
 /* ---------- wide screens ---------- */
 
 @media (min-width: 1024px) {
   .wo-page { max-width: 1320px; }
 
-  /* the exercises a plan is made of, under its name */
-  .wo-row-moves { display: block; font-size: var(--text-m); color: var(--ink-2); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* home: the plans as cards across the page; this week and the recent ones in a panel at the right */
-  .wo-home { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; column-gap: 32px; align-items: start; }
-  .wo-home > .wo-plans { grid-column: 1; grid-row: 1 / span 2; margin-top: 0; }
-  .wo-home > .wo-hero { grid-column: 2; grid-row: 1; }
-  .wo-home > .wo-recent { grid-column: 2; grid-row: 2; }
-  .wo-plans .wo-list.card {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
-    background: none; border: 0; border-radius: 0; overflow: visible;
-  }
-  .wo-plans .wo-list.card > :is(.wo-row, .wo-ghost-row) {
-    min-height: 96px; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); overflow: hidden;
-  }
-  .wo-plans .wo-list.card > .wo-row + .wo-row, .wo-plans .wo-list.card > .wo-ghost-row + .wo-ghost-row { border-top: 1px solid var(--line); }
-  .wo-plans .wo-row-main { align-self: stretch; padding-block: 16px; }
-  .wo-plans .wo-starter { padding-block: 16px; }
-  .wo-plans .wo-tile { width: 48px; height: 48px; }
+  /* home: up next and the plans in the main column; the week and the recent ones in a panel at the right */
+  .wo-home { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 32px; align-items: start; }
+  .wo-home-main, .wo-home-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .wo-home-side { position: sticky; top: 18px; }
+  .wo-home .section { margin-top: 12px; }
+  .wo-next { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 24px; padding: 20px 22px; }
+  .wo-next > :not(.wo-next-acts) { grid-column: 1; }
+  .wo-next > .wo-next-acts { grid-column: 2; grid-row: 2 / span 2; flex-direction: column; align-self: end; min-width: 220px; }
+  .wo-next:not(:has(.wo-next-top)) { grid-template-columns: minmax(0, 1fr); }
+  .wo-next:not(:has(.wo-next-top)) > .btn { justify-self: start; width: auto; padding-inline: 22px; }
+  .wo-next-name { font-size: var(--text-2xl); }
+  .wo-next-top .wo-tile.big { width: 60px; height: 60px; }
+  .wo-plan-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .wo-plan-card { min-height: 104px; }
+  .wo-plan-main { padding-block: 16px; }
+  .wo-plan-card .wo-tile { width: 48px; height: 48px; }
   .wo-starters > .wo-wide { width: auto; justify-self: start; padding-inline: 18px; }
-  @media (hover: hover) {
-    .wo-plans .wo-list.card > .wo-row:has(> .wo-row-main:hover), .wo-plans .wo-list.card > button.wo-row:hover { border-color: var(--line-2); }
-  }
 
   /* a workout going on, and a plan: the exercises in the main column, the panel at the right, staying in view */
   :is(.wo-live-page, .wo-plan-body) {
@@ -415,25 +560,21 @@ input.wo-num {
   }
   .wo-live-page > .page-head { grid-column: 1 / -1; }
   .wo-live-page > :is(.wo-live-list, .wo-live-empty) { grid-column: 1; grid-row: 2; }
-  .wo-live-page > .wo-live-end, .wo-plan-end { display: none; }
+  .wo-plan-end { display: none; }
   .wo-side {
     grid-column: 2; display: grid; align-content: start; gap: 12px;
     position: sticky; top: 18px; max-height: calc(100dvh - 36px); overflow-y: auto; scrollbar-width: none;
   }
   .wo-live-page > .wo-side { grid-row: 2; }
-  .wo-plan-body > .wo-side { grid-row: 1; }
+  .wo-plan-body > .wo-side { grid-row: 1; margin-top: 16px; }
+  .wo-plan-body > .wo-side > .wo-plan-sum { margin-top: 0; }
   .wo-plan-body > .wo-plan-items { grid-column: 1; grid-row: 1; margin-top: 26px; }
-  .wo-side > .section { margin-top: 26px; }
   .wo-side-end { display: grid; gap: 8px; }
-  .wo-side-end .wo-start { margin-top: 0; }
-  /* the panel's target: slimmer steps, so the number between them has room */
-  .wo-side .wo-stepper { gap: 6px; }
-  .wo-side .wo-step { min-width: 0; padding: 0 9px; }
-  .wo-side .wo-target-n { min-width: 72px; }
+  .wo-plan-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  /* the bar becomes the panel's first card: the ring and the numbers, then the time and Finish */
+  /* the bar becomes the panel's first card: the ring and the numbers, then the options and Finish */
   .wo-side > .wo-bar {
-    position: static; flex-wrap: wrap; gap: 14px; margin: 0; padding: 16px;
+    position: relative; flex-wrap: wrap; gap: 14px 8px; margin: 0; padding: 16px; overflow: hidden;
     border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface);
   }
   .wo-side > .wo-bar::before { content: none; }
@@ -441,10 +582,12 @@ input.wo-num {
   .wo-side .wo-ring { width: 64px; height: 64px; }
   .wo-side .wo-ring > svg:not(:first-child) { width: 22px; height: 22px; }
   .wo-side .wo-power-n b { font-size: var(--text-2xl); }
-  .wo-side .wo-clock { flex: 1; font-size: var(--text-base); }
-  .wo-side .wo-finish { height: var(--h-m); padding-inline: 16px 18px; }
+  .wo-side .wo-power-sub { font-size: var(--text-m); }
+  .wo-side .wo-bar-more { order: 1; width: var(--h-m); height: var(--h-m); background: var(--surface-2); }
+  .wo-side .wo-finish { flex: 1; height: var(--h-m); }
+  .wo-side .wo-bar-line { height: 3px; bottom: 0; }
 
-  /* the exercises at a glance */
+  /* the exercises at a glance, the one you're on picked out */
   .wo-outline { display: grid; }
   .wo-outline-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; text-align: left; transition: background-color var(--dur-1); }
   .wo-outline-row + .wo-outline-row { border-top: 1px solid var(--line); }
@@ -452,14 +595,17 @@ input.wo-num {
   .wo-outline-text { flex: 1; min-width: 0; display: grid; gap: 4px; }
   .wo-outline-name { font-weight: var(--w-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wo-outline-row.is-done .wo-outline-name { color: var(--ink-2); }
+  .wo-outline-row.is-now { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+  .wo-now-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
   @media (hover: hover) { .wo-outline-row:hover { background: var(--surface-2); } }
 
   /* an exercise card scrolled to stops clear of the top */
-  .wo-live-list > .wo-item { scroll-margin-top: 18px; }
+  .wo-item { scroll-margin-top: 18px; }
+  .wo-live-page:has(.wo-rest) .wo-live-end { padding-bottom: 0; }
+  .wo-rest.glass { bottom: 22px; }
 }
 
-/* with room for two, the exercises sit side by side */
+/* with room for two, a plan's exercises sit side by side */
 @media (min-width: 1440px) {
-  :is(.wo-live-list, .wo-plan-list) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-  :is(.wo-live-list, .wo-plan-list) > * { margin: 0; }
+  .wo-plan-list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }

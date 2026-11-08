@@ -49,7 +49,8 @@ export function Training({ query }: { id: string; query: URLSearchParams }) {
   const { weekStart } = useSettings();
   const [lastTab, setLastTab] = usePref<Tab>('training-tab', 'overview', TAB_IDS);
   const [range, setRange] = usePref<RangeKey>('training-range', '3m', RANGE_KEYS);
-  const [openW, setOpenW] = useState<string | null>(null);
+  // a workout to open from the start: a tap on one of the Workout page's recent ones
+  const [openW, setOpenW] = useState<string | null>(() => query.get('w'));
   const [openM, setOpenM] = useState<string | null>(null);
   const tab = (TAB_IDS.includes(query.get('tab') as Tab) ? query.get('tab') : lastTab) as Tab;
   const today = todayKey();

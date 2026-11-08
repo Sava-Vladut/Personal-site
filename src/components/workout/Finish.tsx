@@ -1,9 +1,10 @@
 // Finishing a workout: what it came to (the time, the power against the target, the sets, any new records), how it went
-// and a note. Saving keeps only the sets that were done; a workout from a plan can hand today's numbers back to the plan.
+// and a note. Saving keeps only the sets that were done; a workout from a plan can hand today's numbers back to the plan,
+// and one made up as it went can become a plan of its own.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fmtPower, oneRepMax, setPower, workoutPower, type Item, type Routine, type Workout } from '../../lib/fitness';
-import { useRoutines, useWorkouts } from '../../lib/store';
+import { uid, useRoutines, useWorkouts } from '../../lib/store';
 import { count, t } from '../../lib/i18n';
 import { FEELS, Power } from '../fitness';
 import { Icon, type UiName } from '../icons';
@@ -39,6 +40,15 @@ function recordsOf(w: Workout, all: Workout[]) {
   return [...best.values()].filter((b) => b.was > 0 && b.now > b.was * 1.001);
 }
 
+/** A new plan from a workout: its done sets to aim for, asking for the power it came to, rounded up. */
+function planOf(w: Workout, items: Item[], power: number): Routine {
+  const now = Date.now();
+  return {
+    id: uid(), name: w.name, icon: w.icon, target: Math.ceil(power / 10) * 10, created: now, updated: now,
+    items: items.map((it) => ({ ...it, sets: it.sets.map((s) => ({ ...s, done: false })) })),
+  };
+}
+
 /** The plan with today's done sets in place of its own, exercise by exercise. */
 function withToday(plan: Routine, items: Item[]): Routine {
   const used = new Set<number>();
@@ -65,6 +75,7 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
   const [feel, setFeel] = useState(0);
   const [note, setNote] = useState('');
   const [toPlan, setToPlan] = useState(false);
+  const [asPlan, setAsPlan] = useState(false);
   // it ended when Finish was tapped, not when the note was done
   const [end, setEnd] = useState(Date.now);
   useEffect(() => {
@@ -72,6 +83,7 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
     setFeel(w.feel);
     setNote(w.note);
     setToPlan(false);
+    setAsPlan(false);
     setEnd(Date.now());
   }, [open]);
 
@@ -81,6 +93,14 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
   const sets = kept.reduce((n, it) => n + it.sets.length, 0);
   const met = w.target > 0 && power >= w.target;
   const fromPlan = !!plan && kept.some((it) => plan.items.some((pi) => pi.move.id === it.move.id));
+
+  const save = () => {
+    const done = { ...w, items: kept, end, feel, note: note.trim() };
+    if (plan) return onSave(done, toPlan ? withToday(plan, kept) : null);
+    // kept as a plan, the workout counts as done from it
+    const made = asPlan ? planOf(w, kept, power) : null;
+    onSave(made ? { ...done, plan: made.id } : done, made);
+  };
 
   const tiles: [UiName, string, ComponentChildren][] = [
     ['stopwatch', t('Time'), span(end - w.start)],
@@ -99,7 +119,7 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
           <button class="btn btn-quiet danger" onClick={onDiscard} aria-label={t('Discard workout')} title={t('Discard workout')}>
             <Icon name="trash" size={18} />
           </button>
-          <button class="btn btn-primary grow" disabled={!sets} onClick={() => onSave({ ...w, items: kept, end, feel, note: note.trim() }, toPlan && plan ? withToday(plan, kept) : null)}>
+          <button class="btn btn-primary grow" disabled={!sets} onClick={save}>
             <Icon name="check" size={18} />
             {t('Save workout')}
           </button>
@@ -171,6 +191,15 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
               <span class="muted small">{t('{name} starts from these weights and reps next time.', { name: plan.name.trim() || w.name })}</span>
             </span>
             <button type="button" class="switch" role="switch" aria-checked={toPlan} aria-label={t('Update the plan with today’s numbers')} onClick={() => setToPlan(!toPlan)} />
+          </label>
+        )}
+        {!plan && sets > 0 && (
+          <label class="list-row card wo-to-plan">
+            <span>
+              <span class="row gap-s"><Icon name="copy-plus" size={18} />{t('Keep it as a plan')}</span>
+              <span class="muted small">{t('Start it again from Your plans, with these exercises, weights and reps.')}</span>
+            </span>
+            <button type="button" class="switch" role="switch" aria-checked={asPlan} aria-label={t('Keep it as a plan')} onClick={() => setAsPlan(!asPlan)} />
           </label>
         )}
       </div>

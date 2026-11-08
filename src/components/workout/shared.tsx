@@ -260,11 +260,15 @@ function partOfDay(ms: number) {
   return h < 5 ? t('Night workout') : h < 12 ? t('Morning workout') : h < 17 ? t('Afternoon workout') : h < 22 ? t('Evening workout') : t('Night workout');
 }
 
+/** What a workout can start from: a plan, or a past workout done again (its plan's id, if it still has one). */
+export type Source = Pick<Routine, 'name' | 'icon' | 'target' | 'items'> & { id?: string | null };
+
 /**
- * Starts a workout, empty or from a plan (its exercises and sets to tick off, and the power it asks for), at today's body
- * weight. Only one goes at a time: if one is already going, it asks before throwing that one away. False if it didn't.
+ * Starts a workout, empty or from a plan or a past workout (its exercises and sets to tick off, and the power it asks
+ * for), at today's body weight. Only one goes at a time: if one is already going, it asks before throwing that one away.
+ * False if it didn't.
  */
-export async function startWorkout(plan: Routine | null, bw: number) {
+export async function startWorkout(plan: Source | null, bw: number) {
   const going = getWorkouts().find((w) => w.end === null);
   if (going) {
     const yes = await ask({ title: t('A workout is already going'), text: t('Starting a new one throws that one away, with its sets.'), ok: t('Discard it and start'), danger: true });
@@ -273,13 +277,76 @@ export async function startWorkout(plan: Routine | null, bw: number) {
   }
   const now = Date.now();
   await saveWorkout({
-    id: uid(), plan: plan?.id ?? null, name: plan ? planName(plan) : partOfDay(now), icon: plan?.icon ?? 'barbell',
+    id: uid(), plan: plan?.id || null, name: plan ? planName(plan) : partOfDay(now), icon: plan?.icon ?? 'barbell',
     target: plan?.target ?? 0, bw, start: now, end: null,
     items: plan ? plan.items.map((it) => ({ ...it, sets: it.sets.map((s) => ({ ...s, done: false })) })) : [],
     feel: 0, note: '', created: now, updated: now,
   });
   haptic(10);
   return true;
+}
+
+/** A past workout as something to start again: the sets it did (all of an exercise's, when none were), its plan if it's still there. */
+export function againOf(w: Workout, plans: Routine[]): Source {
+  return {
+    id: w.plan && plans.some((r) => r.id === w.plan) ? w.plan : null,
+    name: w.name, icon: w.icon, target: w.target,
+    items: w.items.map((it) => ({ ...it, sets: (it.sets.some((s) => s.done) ? it.sets.filter((s) => s.done) : it.sets).map((s) => ({ ...s, done: false })) })),
+  };
+}
+
+/**
+ * About how long a list of exercises takes, minutes, rounded to 5: each set's work (40 s for reps, its time for holds
+ * and cardio) and the rest after it, and a minute to get each exercise ready.
+ */
+export function minutesOf(items: Item[]) {
+  if (!items.length) return 0;
+  let s = 0;
+  for (const it of items) {
+    s += 60;
+    for (const x of it.sets) s += (it.move.kind === 'weight' || it.move.kind === 'body' ? 40 : x.secs ?? 30) + it.rest;
+  }
+  return Math.max(5, Math.round(s / 300) * 5);
+}
+
+/** How long a plan takes: as long as it took last time (when that was a real workout, not a quick try), or the estimate. */
+export function planMinutes(r: Pick<Routine, 'items'>, last?: Workout) {
+  const took = last?.end ? Math.round((last.end - last.start) / 60_000) : 0;
+  return took >= 5 ? took : minutesOf(r.items);
+}
+
+/**
+ * Where a workout is: the first exercise with a set still to do, and that set (null once every set is done). `from` is
+ * the exercise last worked on: you stay on it while it has sets left, then go on to the ones after it, and a set skipped
+ * earlier comes round again at the end.
+ */
+export function whereAt(items: Item[], from = 0) {
+  for (let j = 0; j < items.length; j++) {
+    const i = (from + j) % items.length;
+    const k = items[i].sets.findIndex((s) => !s.done);
+    if (k >= 0) return { i, k };
+  }
+  return null;
+}
+
+/** The screen stays on while `on` (a workout going on, the phone propped up between sets); taken again when the page comes back. */
+export function useWakeLock(on: boolean) {
+  useEffect(() => {
+    if (!on || !('wakeLock' in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let gone = false;
+    const take = () => {
+      if (document.visibilityState !== 'visible' || (lock && !lock.released)) return;
+      navigator.wakeLock.request('screen').then((l) => (gone ? void l.release().catch(() => {}) : (lock = l)), () => {});
+    };
+    take();
+    document.addEventListener('visibilitychange', take);
+    return () => {
+      gone = true;
+      document.removeEventListener('visibilitychange', take);
+      void lock?.release().catch(() => {});
+    };
+  }, [on]);
 }
 
 /* ---------- a number field that lets you type ---------- */
