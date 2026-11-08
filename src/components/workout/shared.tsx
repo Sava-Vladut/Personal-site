@@ -189,6 +189,12 @@ export function setsLine(it: Item) {
   return runs.map(([text, n]) => `${n} × ${text}`);
 }
 
+/** All the reps of an exercise's sets added up (only = done ones), or null for holds and cardio. */
+export function totalReps(it: Item, only?: boolean) {
+  if (it.move.kind !== 'weight' && it.move.kind !== 'body') return null;
+  return it.sets.reduce((n, s) => n + (only && !s.done ? 0 : s.reps ?? 0), 0);
+}
+
 /** What one rep (body moves) or one minute (holds, stretches, cardio) is worth at a body weight; weights have no such thing. */
 export function perUnit(m: Pick<Snap, 'kind' | 'share' | 'met' | 'foot'>, bw: number): { p: number; unit: 'rep' | 'min' } | null {
   if (m.kind === 'weight') return null;

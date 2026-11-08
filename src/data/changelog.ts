@@ -11,9 +11,10 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
-    version: '1.193.3',
+    version: '1.194.0',
     date: '2026-11-08',
     changes: [
+      'A plan’s sets show their total reps (4 × 15 = 60 reps), and a workout counts the reps done out of the total.',
       'Workouts show each exercise’s photo again instead of the drawn silhouette, in lists, the picker and the exercise page.',
     ],
   },

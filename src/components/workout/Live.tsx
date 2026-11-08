@@ -19,7 +19,7 @@ import { ItemMenu } from './ItemMenu';
 import { Picker } from './Picker';
 import { PushupCounter, unlockSound } from './PushupCounter';
 import { SetRows } from './SetRows';
-import { clock, itemActions, lastPlanWorkout, lastSets, PerUnit, restText, TargetStepper, Thumb, useClock, useDraft } from './shared';
+import { clock, itemActions, lastPlanWorkout, lastSets, PerUnit, restText, TargetStepper, totalReps, Thumb, useClock, useDraft } from './shared';
 
 interface Rest { end: number; total: number }
 /** The rest timer outlives the page being left for a moment (another tab, a look at a plan). */
@@ -319,6 +319,7 @@ function LiveItem({ id, it, bw, ghosts, onSets, onRemoveSet, onAddSet, onDone, o
         <span class="wo-item-sum" title={count(done, 'set done', 'sets done')}>
           <Icon name="check" size={14} />
           {done}/{it.sets.length}
+          {totalReps(it) ? <span class="wo-reps-total" title={t('Reps done')}>{totalReps(it, true)}/{count(totalReps(it)!, 'rep', 'reps')}</span> : null}
           <Power value={itemPower(it, bw)} />
         </span>
       </div>

@@ -146,6 +146,7 @@
 /* the plan's icon: tapped, it shows the others to pick from */
 .wo-icon-pick { color: inherit; transition: scale var(--dur-2) var(--spring); }
 .wo-icon-pick[aria-expanded='true'] { box-shadow: 0 0 0 2px var(--ink); }
+.wo-reps-total { color: var(--ink-3); font-size: var(--text-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wo-set-chip { padding: 2px 6px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--ink-2); font-size: var(--text-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wo-item-head > .power { font-size: var(--text-m); }
 .wo-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }

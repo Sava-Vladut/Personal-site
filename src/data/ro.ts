@@ -4,6 +4,7 @@
 /** English singular → Romanian [one, many], for count(). Twenty and up add "de" by themselves. */
 export const RO_PLURAL: Record<string, [string, string]> = {
   message: ['mesaj', 'mesaje'],
+  rep: ['repetare', 'repetări'],
   entry: ['intrare', 'intrări'],
   'countdown running': ['numărătoare în curs', 'numărători în curs'],
   word: ['cuvânt', 'cuvinte'],
@@ -3425,6 +3426,7 @@ export const RO: Record<string, string> = {
   "km": "km",
   "new record": "record nou",
   "reps": "repetări",
+  "Reps done": "Repetări făcute",
   "set done": "serie făcută",
   "suggested": "sugerat",
   "the main one first": "cel principal primul",

@@ -11,7 +11,7 @@ import { ExerciseInfo } from './ExerciseInfo';
 import { ItemMenu } from './ItemMenu';
 import { Picker } from './Picker';
 import { SetRows } from './SetRows';
-import { itemActions, lastPlanWorkout, lastSets, setsLine, startWorkout, TargetStepper, Thumb, useBodyWeight, useDraft } from './shared';
+import { itemActions, lastPlanWorkout, lastSets, setsLine, startWorkout, totalReps, TargetStepper, Thumb, useBodyWeight, useDraft } from './shared';
 
 const blank = (id: string): Routine => ({ id, name: '', icon: 'barbell', target: 0, items: [], created: Date.now(), updated: Date.now() });
 
@@ -161,6 +161,7 @@ export function PlanEditor({ id }: { id: string }) {
                     <button class="wo-item-name" onClick={() => setInfo(it)} title={t('About {name}', { name: it.move.name })}>{it.move.name}</button>
                     <button class="wo-item-sets" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} title={t('Change the sets')} aria-label={t('Change the sets')}>
                       {setsLine(it).map((s) => <span key={s} class="wo-set-chip">{s}</span>)}
+                      {totalReps(it) ? <span class="wo-reps-total">= {count(totalReps(it)!, 'rep', 'reps')}</span> : null}
                       <Icon name="chevron-down" size={14} />
                     </button>
                   </div>
