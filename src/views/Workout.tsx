@@ -195,10 +195,12 @@ function UpNext({ plan, last, onStart }: { plan: Routine | null; last?: Done; on
         <span class="wo-label"><Icon name="player-play" size={14} />{t('Ready when you are')}</span>
         <h2 class="wo-next-name">{t('Start a workout')}</h2>
         <p class="wo-next-moves">{t('Add exercises as you go and tick off each set. Make a plan below to start it in a tap next time.')}</p>
-        <button class="btn btn-primary wo-wide" onClick={() => onStart(null)}>
-          <Icon name="player-play" size={18} />
-          {t('Start empty workout')}
-        </button>
+        <div class="wo-next-acts">
+          <button class="wo-next-go" onClick={() => onStart(null)}>
+            <Icon name="player-play" size={18} stroke={2.25} />
+            {t('Start empty workout')}
+          </button>
+        </div>
       </section>
     );
   }
@@ -220,14 +222,15 @@ function UpNext({ plan, last, onStart }: { plan: Routine | null; last?: Done; on
         {plan.target > 0 && <span class="wo-fact"><Power value={plan.target} size={14} /></span>}
         <span class="wo-fact"><Icon name="history" size={14} />{last ? since(dayOf(last.start)) : t('Not done yet')}</span>
       </div>
+      {/* Start in the page's colour, like the plan's icon; an empty workout is the quiet way out under it */}
       <div class="wo-next-acts">
-        <button class="btn btn-primary wo-next-go" onClick={() => onStart(plan)}>
-          <Icon name="player-play" size={18} />
-          <span class="wo-ellipsis">{t('Start {name}', { name })}</span>
+        <button class="wo-next-go" onClick={() => onStart(plan)} aria-label={t('Start {name}', { name })}>
+          <Icon name="player-play" size={18} stroke={2.25} />
+          {t('Start workout')}
         </button>
-        <button class="btn btn-quiet wo-next-empty" onClick={() => onStart(null)} aria-label={t('Start empty workout')} title={t('Start empty workout')}>
-          <Icon name="plus" size={18} />
-          {t('Empty')}
+        <button class="wo-next-empty" onClick={() => onStart(null)} title={t('Start empty workout')}>
+          <Icon name="plus" size={16} />
+          {t('Empty workout')}
         </button>
       </div>
     </section>

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.196.1',
+    date: '2026-11-08',
+    changes: [
+      'Up next’s Start is a full-size button in the workout colour, no longer squashed thin on a wide screen.',
+      'Starting an empty workout from Up next is a quiet “Empty workout” link under Start instead of a big grey button.',
+    ],
+  },
+  {
     version: '1.196.0',
     date: '2026-11-08',
     changes: [

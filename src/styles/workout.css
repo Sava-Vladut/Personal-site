@@ -25,7 +25,6 @@
 .wo-thumb-check svg { animation: pop var(--dur-3) var(--spring-bouncy); }
 
 .wo-wide { width: 100%; }
-.wo-ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .wo-count { font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .wo-of { font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wo-label {
@@ -110,10 +109,19 @@
   background: color-mix(in oklab, var(--surface) 70%, transparent); box-shadow: inset 0 0 0 1px var(--line);
 }
 .wo-chips-row .wo-fact > svg { color: var(--ink-3); }
-.wo-next-acts { display: flex; gap: 8px; }
-.wo-next-go { flex: 1; min-width: 0; }
-.wo-next-go > svg, .wo-next-empty > svg { flex: none; }
-.wo-next-empty { flex: none; padding: 0 16px 0 12px; gap: 6px; }
+/* Start, solid in the page's colour, and under it the quiet way to an empty workout */
+.wo-next-acts { display: grid; gap: 2px; }
+.wo-next-go {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 26px 0 22px;
+  border-radius: var(--r-pill); background: var(--accent); color: var(--on-color); white-space: nowrap;
+  font-size: var(--text-base); font-weight: var(--w-bold); letter-spacing: 0.005em;
+  box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--accent) 90%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+.wo-next-go > svg { flex: none; }
+.wo-next-empty {
+  justify-self: center; display: inline-flex; align-items: center; gap: 6px; height: var(--h-s); padding: 0 12px; border-radius: var(--r-pill);
+  font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2);
+}
 
 /* this week: the power so far, the weeks in a row and a dot a day */
 .wo-week-card { display: grid; gap: 10px; padding: 12px 14px 14px; }
@@ -515,6 +523,8 @@ input.wo-num {
   .wo-go:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 26%, var(--surface-2)); }
   .wo-plan-card.is-next .wo-go:hover:not(:disabled) { background: color-mix(in oklab, var(--accent) 86%, var(--ink)); }
   .wo-go.is-quiet:hover { background: var(--surface-3); }
+  .wo-next-go:hover { background: color-mix(in oklab, var(--accent) 90%, black); }
+  .wo-next-empty:hover { background: color-mix(in oklab, var(--ink) 7%, transparent); color: var(--ink); }
   .wo-add-btn:hover { border-color: var(--ink-3); color: var(--ink); }
   :is(.wo-step, .wo-tick[aria-pressed='false'], .wo-set-x, .wo-more, .wo-rest-chip, .wo-feel button[aria-checked='false']):hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
   .wo-set.is-next .wo-tick[aria-pressed='false']:hover { background: color-mix(in oklab, var(--accent) 14%, var(--surface)); color: var(--accent); }
@@ -543,9 +553,9 @@ input.wo-num {
   .wo-home .section { margin-top: 12px; }
   .wo-next { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 24px; padding: 20px 22px; }
   .wo-next > :not(.wo-next-acts) { grid-column: 1; }
-  .wo-next > .wo-next-acts { grid-column: 2; grid-row: 2 / span 2; flex-direction: column; align-self: end; min-width: 220px; }
+  .wo-next > .wo-next-acts { grid-column: 2; grid-row: 1 / span 3; align-self: center; min-width: 200px; }
   .wo-next:not(:has(.wo-next-top)) { grid-template-columns: minmax(0, 1fr); }
-  .wo-next:not(:has(.wo-next-top)) > .btn { justify-self: start; width: auto; padding-inline: 22px; }
+  .wo-next:not(:has(.wo-next-top)) > .wo-next-acts { grid-column: 1; grid-row: auto; justify-items: start; }
   .wo-next-name { font-size: var(--text-2xl); }
   .wo-next-top .wo-tile.big { width: 60px; height: 60px; }
   .wo-plan-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
