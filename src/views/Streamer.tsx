@@ -2,9 +2,9 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { WEEKDAYS, formatDate, keyOf, shortDate, timeLabel } from '../lib/dates';
-import { PALETTE, age, analyse, career, clock, forget, gameColors, gameName, hours, knownFrom, overTime, sums, unitFor, useChoices, useHistory, useStreamer, watchedIn, withHistory, type Analysis, type Career, type Choice, type GameRow, type Period, type Stream, type Streamer as Data, type Unit } from '../lib/streamer';
+import { PALETTE, age, analyse, career, clock, forget, gameColors, gameName, hours, knownFrom, overTime, rememberLookup, sums, unitFor, useChoices, useHistory, useStreamer, watchedIn, withHistory, type Analysis, type Career, type Choice, type GameRow, type Period, type Stream, type Streamer as Data, type Unit } from '../lib/streamer';
 import { useArtColors } from '../lib/artColor';
-import { compact } from '../lib/twitch';
+import { compact, useMinerShown } from '../lib/twitch';
 import { ChartCard, CountUp, LegendItem, RevealStack, barPath, hideTip, tipProps, useWidth } from '../components/charts';
 import { PageHead } from '../components/PageHead';
 import { Icon, type UiName } from '../components/icons';
@@ -88,7 +88,7 @@ function useAccent() {
 export function Streamer({ query }: { query: URLSearchParams }) {
   useAccent();
   const [again, setAgain] = useState(0);
-  const choices = useChoices(again);
+  const choices = useChoices(again, !!useMinerShown());
   const picked = query.get('channel')?.toLowerCase() || null;
   const login = picked ?? choices.data?.[0]?.login ?? null;
   const { data, error, loading } = useStreamer(login, again);
@@ -118,6 +118,8 @@ export function Streamer({ query }: { query: URLSearchParams }) {
   const list: Choice[] = choices.data ?? [];
   const chips = login && !list.some((c) => c.login === login) ? [...list, { login, name: data?.login === login ? data.name : login, live: null, mining: false }] : list;
   const shown = data && data.login === login ? data : null;
+  // a channel that has stats joins this member's own list (on this device)
+  useEffect(() => { if (shown) rememberLookup(shown.login); }, [shown?.login]);
 
   return (
     <div class="page stats-page tw-page sr-page">

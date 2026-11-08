@@ -522,13 +522,17 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
     return hit?.pending ?? rebuild(login);
   }
 
-  /** The channels to offer on the page: the miner's, then the ones looked up lately, with who's live. */
-  async function list() {
+  /**
+   * The channels to offer on the page: the miner's, then the ones this member looked up (`also`, kept on their own
+   * device), with who's live. Others' lookups stay theirs: they're recorded, but never listed to anyone else.
+   */
+  async function list(also = []) {
+    await ready;
     const mined = await mining();
-    const logins = await tracked();
+    const logins = [...new Set([...mined, ...also])];
     const channels = [];
     for (const login of logins) {
-      const s = stores.has(login) ? await load(login) : null;
+      const s = stores.has(login) || seenAt.has(login) ? await load(login) : null;
       channels.push({ login, name: s?.name || login, live: live.get(login) ?? null, mining: mined.includes(login) });
     }
     return { channels };
@@ -545,9 +549,12 @@ export function createStreamerHandler({ directory, channelsFile, sullyGnome = nu
 
   // All of it is public and asked for again and again (the history every few seconds while it loads): the browser
   // keeps a copy and an unchanged one costs a 304.
-  async function api(req, res, path) {
+  async function api(req, res, path, url = null) {
     if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
-    if (path === '/api/streamers') return json(res, 200, await list(), REVALIDATE);
+    if (path === '/api/streamers') {
+      const also = (url?.searchParams.get('also') ?? '').toLowerCase().split(',').filter((l) => LOGIN.test(l)).slice(0, 20);
+      return json(res, 200, await list(also), REVALIDATE);
+    }
     const wantsHistory = path.endsWith('/history');
     if (wantsHistory) path = path.slice(0, -'/history'.length);
     let raw;

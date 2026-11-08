@@ -14,6 +14,7 @@ export interface GithubStatus {
   private?: number;          // private repos (only when GitHub lets us see them)
   privateVisible?: boolean;
   canClone?: boolean;        // the site's owner, signed in as admin: can clone repos onto the server
+  owner?: boolean;           // the GitHub connected here is the site's owner's: game statistics open
   expired?: boolean;         // GitHub ended this browser's login (its token is gone): relogin() logs in again
   error?: string;
   offline?: boolean;
@@ -175,4 +176,19 @@ export function useLoad<T>(load: () => Promise<T>, key: unknown, initial: T | nu
     return () => { live = false; };
   }, [key, again]);
   return { ...state, reload: () => setAgain((n) => n + 1) };
+}
+
+/** Whether the GitHub connected here is the site's owner's (undefined while it's asked): it opens game statistics. */
+let ownerKnown: boolean | undefined;
+export function useGithubOwner(): boolean | undefined {
+  const [owner, setOwner] = useState(ownerKnown);
+  useEffect(() => {
+    let alive = true;
+    void githubStatus().then((s) => {
+      ownerKnown = !!(s.connected && s.owner);
+      if (alive) setOwner(ownerKnown);
+    });
+    return () => void (alive = false);
+  }, []);
+  return owner;
 }

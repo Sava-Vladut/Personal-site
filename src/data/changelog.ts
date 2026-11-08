@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.195.0',
+    date: '2026-11-08',
+    changes: [
+      'Game statistics open only with the site owner’s GitHub connected; for everyone else they’re hidden from the wheel and locked.',
+      'Streamer stats show each member only their own looked-up channels, kept on their device, instead of everyone’s; the miner’s channels show only to its owner.',
+    ],
+  },
+  {
     version: '1.194.0',
     date: '2026-11-08',
     changes: [

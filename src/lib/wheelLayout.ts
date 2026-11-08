@@ -6,6 +6,7 @@ import type { UiName } from '../components/icons';
 import { observable } from './store';
 import { t } from './i18n';
 import { useMinerShown } from './twitch';
+import { useGithubOwner } from './github';
 import { onComputer } from './desktop';
 
 export interface Group { name: string; icon: UiName; hue: string }
@@ -164,13 +165,15 @@ export { isGroup };
 export const PHONE_ONLY = ['pushups'];
 
 /**
- * The wheel as you've arranged it: hidden things left out (Channel points too, where the miner isn't shown, and the
+ * The wheel as you've arranged it: hidden things left out (Channel points too, where the miner isn't shown, game statistics
+ * without the owner's GitHub connected, and the
  * phone-only places on a computer), and groups with nothing left in them gone. A group a computer leaves one place in
  * is just that place.
  */
-export function treeOf(l: WheelLayout, miner = true): WheelNode[] {
+export function treeOf(l: WheelLayout, miner = true, games = true): WheelNode[] {
   const hidden = new Set(l.hidden);
   if (!miner) hidden.add('twitch');
+  if (!games) hidden.add('games');
   const away = new Set(onComputer() ? PHONE_ONLY : []);
   const out: WheelNode[] = [];
   for (const id of l.top) {
@@ -194,11 +197,12 @@ export function treeOf(l: WheelLayout, miner = true): WheelNode[] {
   return out;
 }
 
-let cache: [WheelLayout, boolean, WheelNode[]] | null = null;
+let cache: [WheelLayout, boolean, boolean, WheelNode[]] | null = null;
 /** The places wheel, as arranged here; it follows the editor as you change it. */
 export function useWheel() {
   const l = useWheelLayout();
   const miner = !!useMinerShown();
-  if (cache?.[0] !== l || cache[1] !== miner) cache = [l, miner, treeOf(l, miner)];
-  return cache[2];
+  const games = !!useGithubOwner(); // game statistics: only with the site's owner's GitHub connected
+  if (cache?.[0] !== l || cache[1] !== miner || cache[2] !== games) cache = [l, miner, games, treeOf(l, miner, games)];
+  return cache[3];
 }

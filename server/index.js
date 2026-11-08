@@ -899,6 +899,8 @@ async function github(req, res, url, p, setCookies, out) {
       connected: true,
       user: { name: body.login },
       ...(cloner.isOwner(body.id) && isAdmin(req) ? { canClone: true } : {}),
+      // the site's owner's GitHub (CLONE_GITHUB_ID): game statistics open only for them
+      ...(CLONE_GITHUB_ID && String(body.id) === CLONE_GITHUB_ID ? { owner: true } : {}),
       public: repoCount(body.public_repos),
       private: priv,
       privateVisible: priv !== undefined,
@@ -1058,7 +1060,7 @@ async function api(req, res, url) {
     if (p === '/api/status' || p.startsWith('/api/status/')) return await status.api(req, res, p);
     if (p === '/api/countdown') return await status.countdownApi(req, res);
     if (p === '/api/twitch' || p.startsWith('/api/twitch/')) return await twitch(req, res, p);
-    if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p);
+    if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p, url);
     if (p.startsWith('/api/chatlogs/')) return await chatLogs.api(req, res, p, url);
     if (p === '/api/cardwars/stats') return await cardWarsStats(req, res);
     throw new HttpError(404, 'Not found');

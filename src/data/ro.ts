@@ -2700,6 +2700,9 @@ export const RO: Record<string, string> = {
   'The Anti-Seducer: insecure, self-absorbed, unable to read anyone. Worth knowing first, because everyone plays it sometimes.': 'Anti-seducătorul: nesigur, preocupat de sine, incapabil să-i citească pe ceilalți. Merită cunoscut primul, pentru că toată lumea îl joacă uneori.',
   // ── Global Ops ──
   'Global Ops': 'Global Ops',
+  'Game statistics are locked': 'Statisticile jocurilor sunt blocate',
+  'They open only with the site owner’s GitHub connected.': 'Se deschid doar cu GitHub-ul proprietarului site-ului conectat.',
+  'Connect GitHub': 'Conectează GitHub',
   'Who plays the game in the browser: online now and all-time highs': 'Cine joacă jocul în browser: cine e online acum și recordurile',
   'Server {n}': 'Serverul {n}',
   'Sri Lanka, 18 against 18': 'Sri Lanka, 18 contra 18',

@@ -1,5 +1,6 @@
 import { useRef } from 'preact/hooks';
 import { useMinerShown } from '../lib/twitch';
+import { useGithubOwner } from '../lib/github';
 import { onComputer } from '../lib/desktop';
 import { GROUP_ICONS, HUES, PHONE_ONLY, defaultLayout, groupOf, isDefault, isGroup, nodeOf, saveLayout, treeOf, useWheelLayout, type WheelLayout } from '../lib/wheelLayout';
 import { toast } from '../lib/store';
@@ -21,6 +22,7 @@ const listOf = (l: WheelLayout, id: string) => (l.top.includes(id) ? l.top : l.k
 export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const layout = useWheelLayout();
   const miner = !!useMinerShown();
+  const games = !!useGithubOwner();
   const fresh = useRef<string | null>(null); // a group just made, whose name gets the focus
 
   const change = (f: (l: WheelLayout) => void) => {
@@ -72,10 +74,10 @@ export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   const groups = layout.top.filter((id) => isGroup(layout, id));
-  const ring = treeOf(layout, miner);
+  const ring = treeOf(layout, miner, games);
 
   const row = (id: string, inGroup: string | null, list: string[]) => {
-    if ((id === 'twitch' && !miner) || (PHONE_ONLY.includes(id) && onComputer())) return null;
+    if ((id === 'twitch' && !miner) || (id === 'games' && !games) || (PHONE_ONLY.includes(id) && onComputer())) return null;
     const n = nodeOf(layout, id);
     const group = isGroup(layout, id);
     const own = !!layout.groups[id];

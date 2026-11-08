@@ -201,15 +201,38 @@ export function withHistory(d: Streamer, h: History | null): Streamer {
   return { ...d, games: { ...h.games, ...d.games }, streams: [...own, ...added].sort((a, b) => b.start - a.start) };
 }
 
-/** The channels to offer: the miner's, then the ones looked up lately. */
+/**
+ * The channels this member looked up, newest first. Kept on this device only, so each member's own list shows to
+ * them and nobody else's does.
+ */
+const MINE = 'mm-streamers-looked';
+const MAX_MINE = 12;
+export function lookedUp(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(MINE) || '[]');
+    return Array.isArray(v) ? v.filter((l): l is string => typeof l === 'string' && /^[a-z0-9_]{2,25}$/.test(l)).slice(0, MAX_MINE) : [];
+  } catch {
+    return [];
+  }
+}
+/** Remembers a channel this member looked up; true when it's new to their list. */
+export function rememberLookup(login: string): boolean {
+  const had = lookedUp();
+  if (had[0] === login) return false;
+  try { localStorage.setItem(MINE, JSON.stringify([login, ...had.filter((l) => l !== login)].slice(0, MAX_MINE))); } catch {}
+  return !had.includes(login);
+}
+
+/** The channels to offer: the miner's (only to whoever the miner is shown to), then the ones this member looked up. */
 // the last list, so coming back to the page shows its chips at once (and the first channel's report with them)
 // while it's asked for again
 let lastChoices: Choice[] | null = null;
-export function useChoices(again = 0): Got<Choice[]> {
+export function useChoices(again = 0, miner = false): Got<Choice[]> {
   const [s, setS] = useState<Got<Choice[]>>({ data: lastChoices, error: null, loading: true });
   useEffect(() => {
     let alive = true;
-    get<{ channels: Choice[] }>('/api/streamers').then(
+    const mine = lookedUp();
+    get<{ channels: Choice[] }>('/api/streamers' + (mine.length ? '?also=' + mine.join(',') : '')).then(
       (r) => {
         lastChoices = r.channels;
         if (alive) setS({ data: r.channels, error: null, loading: false });
@@ -218,7 +241,9 @@ export function useChoices(again = 0): Got<Choice[]> {
     );
     return () => void (alive = false);
   }, [again]);
-  return s;
+  // the miner's channels are its owner's: anyone else sees only their own
+  const data = s.data && (miner ? s.data : s.data.filter((c) => !c.mining || lookedUp().includes(c.login)));
+  return { ...s, data };
 }
 
 /* ---------- what it adds up to ---------- */
