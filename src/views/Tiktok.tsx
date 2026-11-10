@@ -24,7 +24,8 @@ async function check(): Promise<State> {
 /**
  * Saved TikToks: the favorites viewer and its download page (github.com/Sava-Vladut/tiktok-favorites-viewer), which
  * run in their own container on the server and download with yt-dlp there. Only for the signed-in admin; the server
- * passes /api/tiktok/ on to it, and the page shows it in a frame.
+ * passes /api/tiktok/ on to it. Once signed in, this page hands the whole window to the viewer (replacing itself in
+ * the history), so it fills the screen with nothing of My Mind around it.
  */
 export function Tiktok() {
   const [state, setState] = useState<State>('checking');
@@ -33,6 +34,7 @@ export function Tiktok() {
   const [error, setError] = useState('');
 
   useEffect(() => { void check().then(setState); }, []);
+  useEffect(() => { if (state === 'open') location.replace(VIEWER); }, [state]);
 
   const login = async (e: Event) => {
     e.preventDefault();
@@ -56,9 +58,7 @@ export function Tiktok() {
         <Sky world={WORLD} />
         <PageHead title={t('Saved TikToks')} back={() => goBack()} />
       </div>
-      {state === 'open' ? (
-        <iframe class="tt-frame card fade-arrive-soft" src={VIEWER} title={t('Saved TikToks')} allow="autoplay; fullscreen" />
-      ) : state === 'checking' ? (
+      {state === 'open' || state === 'checking' ? (
         <p class="empty-note center loading-note">{t('Loading…')}</p>
       ) : state === 'locked' ? (
         <div class="empty fade-arrive-soft">

@@ -1,7 +1,7 @@
 // Saved TikToks (github.com/Sava-Vladut/tiktok-favorites-viewer): the viewer, its download page and yt-dlp run in their
 // own container (the `tiktok` service in /root/deploy/compose.yml), only on the Docker network. Everything under
 // /api/tiktok/ is passed on to it as it is, streamed both ways (videos seek with Range requests), and only for the
-// signed-in admin: the videos are someone's favorites, never public. The page under #/tiktok shows it in a frame.
+// signed-in admin: the videos are someone's favorites, never public. The page under #/tiktok opens it full screen.
 import http from 'node:http';
 
 // what the viewer needs to know about a request, and what the browser needs back
@@ -37,9 +37,6 @@ export function createTiktokProxy({ target, isAdmin }) {
         for (const h of PASS_DOWN) if (back.headers[h] !== undefined) head[h] = back.headers[h];
         // only this browser keeps a copy
         if (head['cache-control'] && !/no-store/.test(head['cache-control'])) head['cache-control'] = 'private, ' + head['cache-control'];
-        // the My Mind page shows it in a frame (the site's own pages refuse to be framed)
-        res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-        res.setHeader('Content-Security-Policy', String(res.getHeader('Content-Security-Policy') || '').replace("frame-ancestors 'none'", "frame-ancestors 'self'"));
         res.writeHead(back.statusCode || 502, head);
         back.pipe(res);
         back.on('end', resolve);

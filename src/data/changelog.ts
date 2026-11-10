@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.197.1',
+    date: '2026-11-10',
+    changes: [
+      'Saved TikToks opens full screen, with nothing of My Mind around it, instead of in a box on the page.',
+    ],
+  },
+  {
     version: '1.197.0',
     date: '2026-11-10',
     changes: [
