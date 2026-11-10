@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'streamer' | 'repos' | 'repo' | 'traps' | 'laws' | 'friends' | 'seduction' | 'status' | 'countdown' | 'games' | 'chatlogs' | 'workout' | 'pushups' | 'training' | 'intro';
+export type RouteName = 'journal' | 'tracker' | 'people' | 'media' | 'stats' | 'settings' | 'note' | 'person' | 'book' | 'song' | 'mind' | 'map' | 'twitch' | 'streamer' | 'repos' | 'repo' | 'traps' | 'laws' | 'friends' | 'seduction' | 'status' | 'countdown' | 'games' | 'chatlogs' | 'tiktok' | 'workout' | 'pushups' | 'training' | 'intro';
 export interface Route {
   name: RouteName;
   id?: string;
@@ -26,7 +26,7 @@ function parse(visit = ++visits): Route {
     return { name: 'games', query, visit };
   }
   if (head === 'intro') return { name: 'intro', query, visit };
-  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'streamer' || head === 'repos' || head === 'traps' || head === 'laws' || head === 'friends' || head === 'seduction' || head === 'status' || head === 'countdown' || head === 'games' || head === 'chatlogs' || head === 'workout' || head === 'pushups' || head === 'training') return { name: head, query, visit };
+  if (head === 'tracker' || head === 'people' || head === 'media' || head === 'stats' || head === 'settings' || head === 'map' || head === 'twitch' || head === 'streamer' || head === 'repos' || head === 'traps' || head === 'laws' || head === 'friends' || head === 'seduction' || head === 'status' || head === 'countdown' || head === 'games' || head === 'chatlogs' || head === 'tiktok' || head === 'workout' || head === 'pushups' || head === 'training') return { name: head, query, visit };
   return { name: 'journal', query, visit };
 }
 

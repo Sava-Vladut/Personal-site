@@ -27,6 +27,7 @@ const loaders: Record<RouteName, () => Promise<View>> = {
   countdown: () => import('../views/Countdown').then((m) => m.Countdown),
   games: () => import('../views/Games').then((m) => m.Games),
   chatlogs: () => import('../views/ChatLogs').then((m) => m.ChatLogs),
+  tiktok: () => import('../views/Tiktok').then((m) => m.Tiktok),
   workout: () => import('../views/Workout').then((m) => m.Workout),
   pushups: () => import('../views/Pushups').then((m) => m.Pushups),
   training: () => import('../views/Training').then((m) => m.Training),

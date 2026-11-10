@@ -21,6 +21,7 @@
 //    with the miner's channels (and any looked up lately) recorded every few minutes into STREAMERS_DIR.
 //  • chat logs: one Twitch user's chat in one channel (server/chatlogs.js), from the public log archives, plus the
 //    channels the admin has recorded here (CHATLOGS_DIR) by an anonymous chat connection.
+//  • saved TikToks: /api/tiktok/* is passed on to the tiktok container (TIKTOK_URL), for the admin only (server/tiktok.js)
 //  • Card Wars player stats: passed on from the game's PvP relay (CARDWARS_STATS_URL), which only the server can reach.
 //  • push-up counter: hands out MediaPipe's pose model and its WebAssembly runtime, fetched once and kept in data/pose (server/pose.js).
 import http from 'node:http';
@@ -42,6 +43,7 @@ import { createStaticHandler } from './static.js';
 import { createStreamerHandler } from './streamers.js';
 import { createSullyGnome } from './sullygnome.js';
 import { createChatLogs } from './chatlogs.js';
+import { createTiktokProxy } from './tiktok.js';
 import { createTwitchHandler } from './twitch.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1014,6 +1016,8 @@ if (TWITCH_CHANNELS) streamers.start();
 // one user's chat in one channel: the public log archives, the last day of chat, and the channels recorded here
 const chatLogs = createChatLogs({ directory: CHATLOGS_DIR, isAdmin, record: !!TWITCH_CHANNELS });
 chatLogs.start().catch((e) => console.warn(`Chat logs: ${e.message}`));
+// Saved TikToks: the viewer and downloader in their own container, for the admin only
+const tiktok = createTiktokProxy({ target: process.env.TIKTOK_URL || 'http://tiktok:8777', isAdmin });
 
 /* ---------------- Card Wars player stats ---------------- */
 
@@ -1063,6 +1067,7 @@ async function api(req, res, url) {
     if (p === '/api/streamers' || p.startsWith('/api/streamers/')) return await streamers.api(req, res, p, url);
     if (p.startsWith('/api/chatlogs/')) return await chatLogs.api(req, res, p, url);
     if (p === '/api/cardwars/stats') return await cardWarsStats(req, res);
+    if (p === '/api/tiktok' || p.startsWith('/api/tiktok/')) return await tiktok(req, res, url);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

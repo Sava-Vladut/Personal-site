@@ -143,7 +143,7 @@ const UI = `notebook chart-bar plus settings search x chevron-left chevron-right
   circle-plus circle-minus list-details rotate-clockwise flag flag-check bed adjustments-horizontal filter arrows-sort
   percentage timeline calendar-week calendar-month award confetti progress-check playlist-add hand-grab arrows-up-down
   square-check checkbox chart-radar bolt-off sum infinity layers-subtract arrows-split player-skip-forward alarm clock-play
-  mood-cry mood-sad mood-neutral mood-happy mood-crazy-happy camera camera-rotate volume volume-off`.split(/\s+/);
+  mood-cry mood-sad mood-neutral mood-happy mood-crazy-happy camera camera-rotate volume volume-off brand-tiktok`.split(/\s+/);
 const ui = {};
 for (const name of UI) {
   const b = tablerBody(name);

@@ -59,11 +59,12 @@ export const WHEEL: WheelNode[] = [
   },
   // your GitHub work, and small tools
   {
-    id: 'extras', name: t('Extras'), sub: t('Your GitHub work, your public link and countdowns'), icon: 'layout-grid', hue: 'calm-safety',
+    id: 'extras', name: t('Extras'), sub: t('Your GitHub work, your public link, countdowns and saved TikToks'), icon: 'layout-grid', hue: 'calm-safety',
     kids: [
       { id: 'repos', name: t('Repos'), sub: t('Your GitHub work, rated and journaled'), icon: 'git-branch', hue: 'calm-safety', to: 'repos' },
       { id: 'status', name: t('Public status'), sub: t('One link that always shows your latest check-in'), icon: 'world', hue: 'joy', to: 'status' },
       { id: 'countdown', name: t('Countdowns'), sub: t('Count the days to something, and change when'), icon: 'hourglass', hue: 'calm-safety', to: 'countdown' },
+      { id: 'tiktok', name: t('Saved TikToks'), sub: t('Your favorite TikToks, downloaded onto the server and watched here'), icon: 'brand-tiktok', hue: 'love-connection', to: 'tiktok' },
     ],
   },
   { id: 'settings', name: t('Settings'), sub: t('Look, sync, privacy and more'), icon: 'settings', hue: 'sadness', to: 'settings' },

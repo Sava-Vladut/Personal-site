@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.197.0',
+    date: '2026-11-10',
+    changes: [
+      'Saved TikToks (Extras): your favorite TikToks, downloaded onto the server from your TikTok data export and watched here. Only when signed in.',
+    ],
+  },
+  {
     version: '1.196.2',
     date: '2026-11-08',
     changes: [

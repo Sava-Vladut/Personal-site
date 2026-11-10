@@ -1606,7 +1606,7 @@ export const RO: Record<string, string> = {
   'Learn': 'Învață',
   'How minds slip and how power plays': 'Cum greșește mintea și cum se joacă puterea',
   'Extras': 'Extra',
-  'Your GitHub work, your public link and countdowns': 'Munca ta pe GitHub, linkul tău public și numărători inverse',
+  'Your GitHub work, your public link, countdowns and saved TikToks': 'Munca ta pe GitHub, linkul tău public, numărători inverse și TikTok-urile salvate',
   'Twitch': 'Twitch',
   'Your channel points and what streamers play': 'Punctele tale de canal și ce joacă streamerii',
   'Your Twitch points from the miner': 'Punctele tale de Twitch, de la miner',
@@ -3530,4 +3530,11 @@ export const RO: Record<string, string> = {
   "None": "Fără",
   "Keep it as a plan": "Păstrează-l ca plan",
   "Start it again from Your plans, with these exercises, weights and reps.": "Reia-l din Planurile tale, cu aceste exerciții, greutăți și repetări.",
+  // ── Saved TikToks (views/Tiktok.tsx) ──
+  "Saved TikToks": "TikTok-uri salvate",
+  "Your favorite TikToks, downloaded onto the server and watched here": "TikTok-urile tale preferate, descărcate pe server și urmărite aici",
+  "Saved TikToks are private": "TikTok-urile salvate sunt private",
+  "Enter the admin password to see and download them. This device stays signed in.": "Introdu parola de admin ca să le vezi și să le descarci. Dispozitivul rămâne conectat.",
+  "The TikTok downloader isn’t running": "Programul de descărcare TikTok nu rulează",
+  "It runs in its own container on the server. Try again in a minute.": "Rulează în propriul container pe server. Încearcă din nou peste un minut.",
 };
