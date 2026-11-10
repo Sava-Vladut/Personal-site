@@ -448,6 +448,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
       {tip && <HoldTip tip={tip} width={width} zoomed={zoomed} selected={selected.includes(tip.id)} times={counts ? counts[tip.id] ?? 0 : undefined} />}
       </div>
 
+      <div class="ew-foot">
       <div class="ew-caption">
         {info ? (
           <div class="ew-cap" key={info.id}>
@@ -473,6 +474,7 @@ export function EmotionWheel({ focus, onFocus, onPick, selected = [], counts }: 
           </div>
         )}
       </Unfold>
+      </div>
     </div>
   );
 }

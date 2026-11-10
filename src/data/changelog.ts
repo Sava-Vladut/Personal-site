@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.197.2',
+    date: '2026-11-10',
+    changes: [
+      'The emotion wheel in a sheet fits without a scrollbar on wider screens.',
+      'Opening a world on the wheel no longer makes the sheet grow: the room for its buttons is there from the start.',
+    ],
+  },
+  {
     version: '1.197.1',
     date: '2026-11-10',
     changes: [

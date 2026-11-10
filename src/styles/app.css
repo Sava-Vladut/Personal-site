@@ -1457,6 +1457,10 @@ html[data-loading] { cursor: progress; }
 .sheet .ew { --sky: var(--ew-c, var(--ink-3)); padding-top: 6px; }
 .sheet .ew-stage { max-width: min(100%, max(240px, calc(100dvh - 380px))); }
 .sheet .ew-caption { margin-top: 18px; }
+/* room for the caption and the "All worlds" row from the start, so picking a world doesn't grow the sheet */
+.sheet .ew-foot { min-height: calc(18px + 66px + 12px + var(--h-m)); }
+/* on wider screens the sheet stops at 760px, so the wheel is sized from that, not the window */
+@media (min-width: 720px) { .sheet .ew-stage { max-width: min(100%, max(240px, calc(min(760px, 100dvh - 48px) - 260px))); } }
 :is(.journal-top, .sheet) .ew-stage::before {
   content: ''; position: absolute; inset: -1.5%; border-radius: 50%; pointer-events: none;
   background: radial-gradient(closest-side, var(--surface) 88%, color-mix(in oklab, var(--sky) 10%, transparent));
