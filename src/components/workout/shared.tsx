@@ -214,6 +214,55 @@ export function PerUnit({ move, bw }: { move: Pick<Snap, 'kind' | 'share' | 'met
   );
 }
 
+/* ---------- power, set by set ---------- */
+
+/** The numbers a set of each kind is made of (minutes are kept as seconds). */
+export type SetField = 'kg' | 'reps' | 'secs' | 'km';
+export const FIELDS: Record<Kind, SetField[]> = { weight: ['kg', 'reps'], body: ['reps'], time: ['secs'], cardio: ['secs', 'km'] };
+
+/** Whether a set has any of its numbers filled in. */
+export const hasNumbers = (s: WSet) => s.kg !== null || s.reps !== null || s.secs !== null || s.km !== null;
+
+/** A set with its empty numbers taken from last time's (`ghost`): what ticking it off empty would count as. */
+export function withGhost(s: WSet, ghost: WSet | undefined, fields: SetField[]): WSet {
+  if (!ghost) return s;
+  let x = s;
+  for (const f of fields) if (x[f] === null && ghost[f] !== null) x = { ...x, [f]: ghost[f] };
+  return x;
+}
+
+/** The set last time stands in for: the same set then, or its last one, or (with no last time) the set above when it has numbers. */
+export function ghostOf(it: Item, i: number, ghosts?: WSet[]) {
+  const above = it.sets[i - 1];
+  return ghosts?.[i] ?? ghosts?.[ghosts.length - 1] ?? (above && hasNumbers(above) ? above : undefined);
+}
+
+/** One part of a power strip: the power it's worth, and how much of that is done (0 to 1). */
+export interface PowerPart { p: number; fill: number }
+
+/**
+ * An exercise's sets as power: each set's worth (a done set's real power, one still to do counted at last time's numbers
+ * where it's empty) and whether it's done.
+ */
+export function setParts(it: Item, bw: number, ghosts?: WSet[]): PowerPart[] {
+  const fields = FIELDS[it.move.kind];
+  return it.sets.map((s, i) => ({
+    p: setPower(it.move, s.done ? s : withGhost(s, ghostOf(it, i, ghosts), fields), bw, it.pair),
+    fill: s.done ? 1 : 0,
+  }));
+}
+
+/** A workout's exercises as power: what each is worth with every set done, and how much of it is done so far. */
+export function itemParts(items: Item[], bw: number, ghosts?: Map<string, WSet[]>): PowerPart[] {
+  return items.map((it) => {
+    const parts = setParts(it, bw, ghosts?.get(it.move.id));
+    const planned = parts.reduce((a, x) => a + x.p, 0);
+    const done = parts.reduce((a, x) => a + x.p * x.fill, 0);
+    const all = it.sets.length > 0 && it.sets.every((s) => s.done);
+    return { p: planned, fill: planned > 0 ? Math.min(1, done / planned) : all ? 1 : 0 };
+  });
+}
+
 /* ---------- pictures ---------- */
 
 /**
@@ -355,7 +404,7 @@ export function useWakeLock(on: boolean) {
  * A number typed in place: it keeps what you're typing ("2.", "0,5") while you type, hands on the number, and shows the
  * stored value again once you leave it. Empty is null. `ghost` is shown faintly when it's empty (last time's number).
  */
-export function NumInput({ value, onValue, label, ghost, decimal, max, field, class: cls }: {
+export function NumInput({ value, onValue, label, ghost, decimal, max, field, class: cls, autoFocus, onBlur }: {
   value: number | null;
   onValue: (n: number | null) => void;
   label: string;
@@ -364,15 +413,24 @@ export function NumInput({ value, onValue, label, ghost, decimal, max, field, cl
   max: number;
   field?: string;
   class?: string;
+  /** Focused (and its number selected) as it appears: a scrubber tapped to type. */
+  autoFocus?: boolean;
+  /** Left: typing's done (Enter leaves too). */
+  onBlur?: () => void;
 }) {
   const shown = value === null ? '' : decimal ? num(value) : String(value);
   const [text, setText] = useState(shown);
   const typing = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!typing.current) setText(shown);
   }, [shown]);
+  useLayoutEffect(() => {
+    if (autoFocus) input.current?.focus({ preventScroll: true });
+  }, []);
   return (
     <input
+      ref={input}
       class={cls ?? 'wo-num'}
       inputMode={decimal ? 'decimal' : 'numeric'}
       enterkeyhint="done"
@@ -389,6 +447,7 @@ export function NumInput({ value, onValue, label, ghost, decimal, max, field, cl
       onBlur={() => {
         typing.current = false;
         setText(shown);
+        onBlur?.();
       }}
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       onInput={(e) => {

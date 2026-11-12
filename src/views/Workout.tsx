@@ -1,12 +1,15 @@
-// The Workout page, where you train for power (⚡; lib/fitness.ts says how it's counted). With no workout going it shows
-// what's up next (the plan you've gone longest without, a tap from starting) or a way to start, this week at a glance,
-// your plans (or a few to start from) and the last few workouts, each a tap from being done again; with one going, the
-// workout itself (components/workout/Live.tsx). A plan opens in place as ?plan=<id>. The numbers over time are under
-// Insights (views/Training.tsx).
+// The Workout page, where you train for power (⚡; lib/fitness.ts says how it's counted). With no workout going it opens
+// under a sky with this week as its hero (the power so far, a column a day, the weeks in a row), then what's up next
+// (the plan you've gone longest without, a tap from starting) or a way to start, your plans (or a few to start from)
+// and the last few workouts, each a tap from being done again; with one going, the workout itself
+// (components/workout/Live.tsx). A plan opens in place as ?plan=<id>. The numbers over time are under Insights
+// (views/Training.tsx).
+// the shared pieces first: the components below (and workout-home.css, last) build on them
+import '../styles/workout.css';
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { addDays, dayLabel, startOfWeek, todayKey, weekday, WEEKDAYS } from '../lib/dates';
 import { navigate } from '../lib/router';
-import { dayOf, fmtPower, metTarget, workoutPower, type Muscle, type Routine, type Workout as Done } from '../lib/fitness';
+import { dayOf, fmtPower, metTarget, planPower, workoutPower, type Item, type Muscle, type Routine, type Workout as Done } from '../lib/fitness';
 import { finished, streaks } from '../lib/trainingStats';
 import { saveRoutine, toast, uid, useReady, useRoutines, useSettings, useWeighIns, useWorkouts } from '../lib/store';
 import { usePref } from '../lib/prefs';
@@ -16,13 +19,15 @@ import { MuscleIcon } from '../components/BodyMap';
 import { FEELS, Power } from '../components/fitness';
 import { Icon, type UiName } from '../components/icons';
 import { PageHead } from '../components/PageHead';
+import { PowerBar, PowerGauge, Rolling } from '../components/power';
+import { Sky } from '../components/Sky';
 import { Live } from '../components/workout/Live';
 import { PlanEditor } from '../components/workout/PlanEditor';
 import { PowerInfo } from '../components/workout/PowerInfo';
 import { starterPlans } from '../components/workout/Starters';
 import { WeighInSheet } from '../components/workout/WeighIn';
-import { againOf, kgText, MovesProvider, planMinutes, planName, span, startWorkout, useBodyWeight, useMoves, useWorkoutAccent, WORKOUT_WORLD, type Source } from '../components/workout/shared';
-import '../styles/workout.css';
+import { againOf, kgText, MovesProvider, planMinutes, planName, span, startWorkout, Thumb, useBodyWeight, useMoves, useWorkoutAccent, WORKOUT_WORLD, type Source } from '../components/workout/shared';
+import '../styles/workout-home.css';
 
 const WORLD = WORKOUT_WORLD;
 
@@ -46,7 +51,10 @@ export function Workout({ query }: { id: string; query: URLSearchParams }) {
   const live = workouts.find((w) => w.end === null);
   const plan = query.get('plan');
   useScrollSwap(plan);
-  if (!ready) return <div class="page wo-page"><PageHead title={t('Workout')} wheel world={WORLD} /></div>;
+  if (!ready) {
+    const head = <PageHead title={t('Workout')} wheel world={WORLD} />;
+    return <div class="page wo-page">{plan ? head : <div class="journal-top stats-top wo-home-top"><Sky world={WORLD} />{head}</div>}</div>;
+  }
   return (
     <MovesProvider>
       {plan ? <PlanEditor key={plan} id={plan} /> : live ? <Live key={live.id} workout={live} /> : <Home workouts={workouts} />}
@@ -81,22 +89,11 @@ function Home({ workouts }: { workouts: Done[] }) {
   const next = useMemo(() => upNext(plans, lastOf), [plans, lastOf]);
   const start = (r: Source | null) => startWorkout(r, bw).then((ok) => ok && scrollTo({ top: 0 }));
   const newPlan = () => navigate('workout?plan=' + uid());
-
-  return (
-    <div class="page wo-page">
-      <PageHead
-        title={t('Workout')}
-        wheel
-        world={WORLD}
-        actions={
-          <button class="btn btn-quiet btn-s wo-bw" onClick={() => setSheet('weight')} aria-label={t('Your weight: {kg}. Tap to weigh in', { kg: kgText(bw) })} title={t('Your weight')}>
-            <Icon name="scale" size={16} />
-            {kgText(bw)}
-          </button>
-        }
-      />
-
-      {!weighins.length && !nudged && (
+  const weightNudge = !weighins.length && !nudged;
+  const syncNudge = !sync.on && !syncNudged && (plans.length > 0 || workouts.length > 0 || weighins.length > 0);
+  const nudges = (weightNudge || syncNudge) && (
+    <>
+      {weightNudge && (
         <div class="card wo-nudge fade-arrive-soft">
           <button class="wo-nudge-main" onClick={() => setSheet('weight')}>
             <span class="wo-tile small"><Icon name="scale" size={16} /></span>
@@ -107,8 +104,7 @@ function Home({ workouts }: { workouts: Done[] }) {
           </button>
         </div>
       )}
-
-      {!sync.on && !syncNudged && (plans.length > 0 || workouts.length > 0 || weighins.length > 0) && (
+      {syncNudge && (
         <div class="card wo-nudge fade-arrive-soft">
           <button class="wo-nudge-main" onClick={() => navigate('settings')}>
             <span class="wo-tile small"><Icon name="refresh" size={16} /></span>
@@ -119,11 +115,34 @@ function Home({ workouts }: { workouts: Done[] }) {
           </button>
         </div>
       )}
+    </>
+  );
+  const side = done.length > 0;
 
-      {/* on a phone one column: up next, the week, the plans, the recent ones; on a wide screen the week and the recent ones sit at the right */}
-      <div class="wo-home">
+  return (
+    <div class="page wo-page">
+      <div class="journal-top stats-top wo-home-top" style={{ '--sky': `var(--emo-${WORLD})` }}>
+        <Sky world={WORLD} />
+        <PageHead
+          title={t('Workout')}
+          wheel
+          world={WORLD}
+          actions={
+            <button class="btn btn-quiet btn-s wo-bw" onClick={() => setSheet('weight')} aria-label={t('Your weight: {kg}. Tap to weigh in', { kg: kgText(bw) })} title={t('Your weight')}>
+              <Icon name="scale" size={16} />
+              {kgText(bw)}
+            </button>
+          }
+        />
+        <Week done={done} weekStart={weekStart} onInfo={() => setSheet('power')} />
+      </div>
+
+      {/* on a phone one column: the nudges, up next, the plans, the recent ones; on a wide screen the recent ones (and
+          the nudges over them) sit in a panel at the right, and with none yet the page is one column */}
+      <div class={`wo-home${side ? '' : ' is-solo'}`}>
         <div class="wo-home-main">
-          <UpNext plan={next} last={next ? lastOf.get(next.id) : undefined} onStart={start} />
+          {!side && nudges}
+          <UpNext plan={next} last={next ? lastOf.get(next.id) : undefined} bw={bw} onStart={start} />
           <section class="section wo-plans">
             <header class="wo-head">
               <h2 class="section-title">
@@ -132,7 +151,7 @@ function Home({ workouts }: { workouts: Done[] }) {
                 {plans.length > 0 && <span class="wo-count">{plans.length}</span>}
               </h2>
               {plans.length > 0 && (
-                <button class="btn btn-primary btn-s wo-new" onClick={newPlan} aria-label={t('New workout plan')} title={t('New workout plan')}>
+                <button class="btn btn-quiet btn-s wo-new" onClick={newPlan} aria-label={t('New workout plan')} title={t('New workout plan')}>
                   <Icon name="plus" size={16} stroke={2.5} />
                   {t('New')}
                 </button>
@@ -140,17 +159,21 @@ function Home({ workouts }: { workouts: Done[] }) {
             </header>
             {plans.length ? (
               <div class="wo-plan-cards">
-                {plans.map((r) => <PlanCard key={r.id} r={r} last={lastOf.get(r.id)} next={r.id === next?.id} onStart={() => start(r)} />)}
+                {plans.map((r, i) => (
+                  <PlanCard key={r.id} r={r} i={i} bw={bw} last={lastOf.get(r.id)} next={r.id === next?.id} onStart={() => start(r)} />
+                ))}
               </div>
             ) : (
               <Starters bw={bw} onNew={newPlan} />
             )}
           </section>
         </div>
-        <div class="wo-home-side">
-          <Week done={done} weekStart={weekStart} onInfo={() => setSheet('power')} />
-          {done.length > 0 && <Recent done={done.slice(0, 4)} plans={plans} onAgain={start} />}
-        </div>
+        {side && (
+          <div class="wo-home-side">
+            {nudges}
+            <Recent done={done.slice(0, 4)} plans={plans} onAgain={start} />
+          </div>
+        )}
       </div>
 
       <WeighInSheet open={sheet === 'weight'} onClose={() => setSheet(null)} />
@@ -184,60 +207,20 @@ function since(day: string) {
   return days < 14 ? t('{n} days ago', { n: days }) : dayLabel(day);
 }
 
-/**
- * What to do now, at the top: the plan that's up next, what it holds and how long it takes, started in a tap (or an
- * empty workout instead). With no plans, just the way to start.
- */
-function UpNext({ plan, last, onStart }: { plan: Routine | null; last?: Done; onStart: (r: Source | null) => void }) {
-  if (!plan) {
-    return (
-      <section class="card wo-next">
-        <span class="wo-label"><Icon name="player-play" size={14} />{t('Ready when you are')}</span>
-        <h2 class="wo-next-name">{t('Start a workout')}</h2>
-        <p class="wo-next-moves">{t('Add exercises as you go and tick off each set. Make a plan below to start it in a tap next time.')}</p>
-        <div class="wo-next-acts">
-          <button class="wo-next-go" onClick={() => onStart(null)}>
-            <Icon name="player-play" size={18} stroke={2.25} />
-            {t('Start empty workout')}
-          </button>
-        </div>
-      </section>
-    );
-  }
-  const name = planName(plan);
-  const sets = plan.items.reduce((n, it) => n + it.sets.length, 0);
-  return (
-    <section class="card wo-next">
-      <span class="wo-label"><Icon name="sparkles" size={14} />{t('Up next')}</span>
-      <div class="wo-next-top">
-        <span class="wo-tile big"><Icon name={plan.icon as UiName} size={24} /></span>
-        <span class="wo-next-text">
-          <h2 class="wo-next-name">{name}</h2>
-          <span class="wo-next-moves">{movesLine(plan, 5)}</span>
-        </span>
-      </div>
-      <div class="wo-chips-row">
-        <span class="wo-fact"><Icon name="list-numbers" size={14} />{count(sets, 'set', 'sets')}</span>
-        <span class="wo-fact"><Icon name="stopwatch" size={14} />{t('~{n} min', { n: planMinutes(plan, last) })}</span>
-        {plan.target > 0 && <span class="wo-fact"><Power value={plan.target} size={14} /></span>}
-        <span class="wo-fact"><Icon name="history" size={14} />{last ? since(dayOf(last.start)) : t('Not done yet')}</span>
-      </div>
-      {/* Start in the page's colour, like the plan's icon; an empty workout is the quiet way out under it */}
-      <div class="wo-next-acts">
-        <button class="wo-next-go" onClick={() => onStart(plan)} aria-label={t('Start {name}', { name })}>
-          <Icon name="player-play" size={18} stroke={2.25} />
-          {t('Start workout')}
-        </button>
-        <button class="wo-next-empty" onClick={() => onStart(null)} title={t('Start empty workout')}>
-          <Icon name="plus" size={16} />
-          {t('Empty workout')}
-        </button>
-      </div>
-    </section>
-  );
+/** What a plan's power reads as aloud: last time (if it's been done), then what it aims for. */
+function powerLabel(last: number | null, target: number, planned: number) {
+  const then = last === null ? t('Not done yet') : t('Last time: {p} ⚡', { p: fmtPower(last) });
+  const aim = target > 0 ? t('Target: {p} ⚡', { p: fmtPower(target) }) : `${t('What every set adds up to')}: ${fmtPower(planned)} ⚡`;
+  return `${then}. ${aim}`;
 }
 
-/** This week at a glance: a dot a day (a bolt on the days you trained), the power it has come to, and the weeks in a row. */
+/* ---------- this week ---------- */
+
+/**
+ * This week, the hero under the sky: the power it has come to (counting up as the page opens), how many workouts, the
+ * weeks in a row, and a column a day as tall as that day's power, growing in one after another (a bolt on the days you
+ * trained, today ringed, the days to come hollow).
+ */
 function Week({ done, weekStart, onInfo }: { done: Done[]; weekStart: 0 | 1; onInfo: () => void }) {
   const today = todayKey();
   const from = startOfWeek(today, weekStart);
@@ -251,28 +234,44 @@ function Week({ done, weekStart, onInfo }: { done: Done[]; weekStart: 0 | 1; onI
     byDay.set(d, (byDay.get(d) ?? 0) + workoutPower(w));
   }
   const total = [...byDay.values()].reduce((a, b) => a + b, 0);
+  const top = Math.max(0, ...byDay.values());
   const run = useMemo(() => streaks(finished(done), today, weekStart).weeks, [done, today, weekStart]);
   return (
-    <section class="card wo-week-card">
-      <div class="wo-week-head">
+    <section class="wo-wk" aria-label={t('This week')}>
+      <div class="wo-wk-top">
         <span class="wo-label"><Icon name="calendar-week" size={14} />{t('This week')}</span>
-        {run >= 2 && <span class="wo-streak" title={t('Weeks in a row with a workout')}><Icon name="flame" size={14} />{count(run, 'week in a row', 'weeks in a row')}</span>}
-        <button class="icon-btn small" onClick={onInfo} aria-label={t('How power works')} title={t('How power works')}>
+        <button class="icon-btn small wo-wk-info" onClick={onInfo} aria-label={t('How power works')} title={t('How power works')}>
           <Icon name="info-circle" size={16} />
         </button>
       </div>
-      <div class="wo-week-row">
-        <Power value={total} size={20} class="wo-week-n" />
-        <span class="muted small">{n ? count(n, 'workout', 'workouts') : t('No workout yet this week')}</span>
+      <span class="wo-wk-n"><Icon name="bolt" size={24} /><Rolling value={total} from={0} ms={900} /></span>
+      <div class="wo-wk-line">
+        <span>{n ? count(n, 'workout', 'workouts') : t('No workout yet this week')}</span>
+        {run >= 2 && (
+          <span class="wo-wk-streak" title={t('Weeks in a row with a workout')}>
+            <span class="pw-flicker"><Icon name="flame" size={14} /></span>
+            {count(run, 'week in a row', 'weeks in a row')}
+          </span>
+        )}
       </div>
-      <ol class="wo-week">
-        {days.map((d) => {
+      <ol class="wo-wk-days">
+        {days.map((d, i) => {
           const p = byDay.get(d);
           const label = p === undefined ? dayLabel(d) : `${dayLabel(d)}: ${fmtPower(p)} ⚡`;
+          // as tall as the day's power against the week's biggest day; a trained day always shows enough for its bolt
+          const h = p === undefined ? 0 : top > 0 ? Math.max(0.3, p / top) : 0.3;
           return (
-            <li key={d} class={`wo-day${p !== undefined ? ' is-on' : ''}${d === today ? ' is-today' : ''}${d > today ? ' is-ahead' : ''}`} title={label} aria-label={label}>
-              <span class="wo-dot">{p !== undefined && <Icon name="bolt" size={13} />}</span>
-              <span class="wo-day-name" aria-hidden="true">{WEEKDAYS[weekday(d)]}</span>
+            <li
+              key={d}
+              class={`wo-wk-day${p !== undefined ? ' is-on' : ''}${d === today ? ' is-today' : ''}${d > today ? ' is-ahead' : ''}`}
+              style={{ '--i': Math.min(i, 4) }}
+              title={label}
+              aria-label={label}
+            >
+              <span class="wo-wk-col">
+                {p !== undefined && <i class="wo-wk-fill" style={{ '--h': h }}><Icon name="bolt" size={12} /></i>}
+              </span>
+              <span class="wo-wk-name" aria-hidden="true">{WEEKDAYS[weekday(d)]}</span>
             </li>
           );
         })}
@@ -281,36 +280,155 @@ function Week({ done, weekStart, onInfo }: { done: Done[]; weekStart: 0 | 1; onI
   );
 }
 
-/** A plan: a tap opens it to look at or change; Start starts it. */
-function PlanCard({ r, last, next, onStart }: { r: Routine; last?: Done; next: boolean; onStart: () => void }) {
-  const name = planName(r);
+/* ---------- up next ---------- */
+
+/** What the card shows with no plan to start: the kinds of things a workout can hold. */
+const BLANK_ICONS: UiName[] = ['barbell', 'run', 'gymnastics', 'stopwatch'];
+
+/** A plan's exercises as a 2×2 of their pictures (a "+N" in the last corner when there are more). */
+function Mosaic({ items }: { items: Item[] }) {
+  const more = items.length > 4 ? items.length - 3 : 0;
+  const shown = items.slice(0, more ? 3 : 4);
   return (
-    <article class={`wo-plan-card${next ? ' is-next' : ''}`}>
+    <span class="wo-up-mosaic" data-n={shown.length + (more ? 1 : 0)} aria-hidden="true">
+      {shown.map((it, i) => <Thumb key={it.move.id + i} move={it.move} />)}
+      {more > 0 && <span class="wo-up-more">+{more}</span>}
+    </span>
+  );
+}
+
+/**
+ * What to do now, at the top: the plan that's up next (its exercises' pictures, what it holds and how long it takes),
+ * a ring of how far last time got against what it asks for, and Start, the one big button on the page (or an empty
+ * workout instead). With no plans, an invitation to just start.
+ */
+function UpNext({ plan, last, bw, onStart }: { plan: Routine | null; last?: Done; bw: number; onStart: (r: Source | null) => void }) {
+  if (!plan) {
+    return (
+      <section class="card wo-up is-blank">
+        <span class="wo-label"><Icon name="player-play" size={14} />{t('Ready when you are')}</span>
+        <span class="wo-up-mosaic is-icons" aria-hidden="true">
+          {BLANK_ICONS.map((name, i) => <span key={name} class="wo-up-tile" style={{ '--i': i }}><Icon name={name} size={22} /></span>)}
+        </span>
+        <span class="wo-up-text">
+          <h2 class="wo-next-name">{t('Start a workout')}</h2>
+          <span class="wo-next-moves">{t('Add exercises as you go and tick off each set. Make a plan below to start it in a tap next time.')}</span>
+        </span>
+        <div class="wo-next-acts">
+          <button class="wo-next-go pw-sheen" onClick={() => onStart(null)}>
+            <Icon name="player-play" size={18} stroke={2.25} />
+            {t('Start empty workout')}
+          </button>
+        </div>
+      </section>
+    );
+  }
+  const name = planName(plan);
+  const sets = plan.items.reduce((n, it) => n + it.sets.length, 0);
+  const lastP = last ? workoutPower(last) : 0;
+  const planned = planPower(plan, bw);
+  return (
+    <section class="card wo-up">
+      <span class="wo-label"><Icon name="sparkles" size={14} />{t('Up next')}</span>
+      <Mosaic items={plan.items} />
+      <span class="wo-up-text">
+        <h2 class="wo-next-name">{name}</h2>
+        <span class="wo-next-moves">{movesLine(plan, 5)}</span>
+      </span>
+      <PowerGauge size="m" class="wo-up-gauge" value={lastP} target={plan.target} scale={planned} label={powerLabel(last ? lastP : null, plan.target, planned)}>
+        <b class="wo-up-mid"><Icon name="bolt" size={14} />{fmtPower(plan.target || planned)}</b>
+        <small class="wo-up-mid-label">{plan.target > 0 ? t('target') : t('planned')}</small>
+      </PowerGauge>
+      <div class="wo-up-facts">
+        <span class="wo-fact"><Icon name="list-numbers" size={14} />{count(sets, 'set', 'sets')}</span>
+        <span class="wo-fact"><Icon name="stopwatch" size={14} />{t('~{n} min', { n: planMinutes(plan, last) })}</span>
+        <span class="wo-fact" title={t('Last done')}>
+          <Icon name="history" size={14} />
+          {last ? since(dayOf(last.start)) : t('Not done yet')}
+          {last && <Power value={lastP} size={12} />}
+        </span>
+      </div>
+      {/* Start in the page's colour, with a light sweeping across it; an empty workout is the quiet way out under it */}
+      <div class="wo-next-acts">
+        <button class="wo-next-go pw-sheen" onClick={() => onStart(plan)} aria-label={t('Start {name}', { name })}>
+          <Icon name="player-play" size={18} stroke={2.25} />
+          {t('Start workout')}
+        </button>
+        <button class="wo-next-empty" onClick={() => onStart(null)} title={t('Start empty workout')}>
+          <Icon name="plus" size={16} />
+          {t('Empty workout')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- plans ---------- */
+
+/** A plan's first three exercises as a little stack of pictures, its icon on the corner (just the icon while it has none). */
+function Stack({ r }: { r: Pick<Routine, 'items' | 'icon'> }) {
+  if (!r.items.length) return <span class="wo-tile wo-plan-tile"><Icon name={r.icon as UiName} size={20} /></span>;
+  return (
+    <span class="wo-plan-stack" aria-hidden="true">
+      {r.items.slice(0, 3).map((it, i) => <Thumb key={it.move.id + i} move={it.move} />)}
+      <span class="wo-plan-icon"><Icon name={r.icon as UiName} size={12} /></span>
+    </span>
+  );
+}
+
+/**
+ * A plan as a card: its pictures, name, exercises and when it was last done (a tap opens it to look at or change), a bar
+ * of last time's power against its target (a notch where every set lands), and Start. Used for the starters too, with
+ * Add instead.
+ */
+function PlanCard({ r, i, bw, last, next, onStart }: { r: Routine; i: number; bw: number; last?: Done; next: boolean; onStart: () => void }) {
+  const name = planName(r);
+  const planned = planPower(r, bw);
+  const lastP = last ? workoutPower(last) : 0;
+  const met = !!last && r.target > 0 && lastP >= r.target;
+  return (
+    <article class={`wo-plan-card${next ? ' is-next' : ''}`} style={{ '--i': Math.min(i, 4) }}>
       <button class="wo-plan-main" onClick={() => navigate('workout?plan=' + r.id)} aria-label={t('Open {name}', { name })}>
-        <span class="wo-tile"><Icon name={r.icon as UiName} size={20} /></span>
+        <Stack r={r} />
         <span class="wo-row-text">
-          <span class="wo-row-name">{name}</span>
+          <span class="wo-plan-title">
+            <span class="wo-row-name">{name}</span>
+            {next && <span class="wo-plan-badge">{t('Up next')}</span>}
+          </span>
           <span class="wo-plan-moves">{r.items.length ? movesLine(r) : t('No exercises yet')}</span>
           <span class="wo-meta">
-            {r.target > 0 && <Power value={r.target} size={12} />}
             {mainMuscles(r).map((m) => <MuscleIcon key={m} muscle={m} size={14} />)}
             {r.items.length > 0 && <span class="wo-meta-text" title={t('About how long it takes')}><Icon name="stopwatch" size={12} />{t('~{n} min', { n: planMinutes(r, last) })}</span>}
             {last && <span class="wo-meta-text" title={t('Last done')}><Icon name="history" size={12} />{since(dayOf(last.start))}</span>}
           </span>
         </span>
       </button>
-      <button class="wo-go" onClick={onStart} disabled={!r.items.length} aria-label={t('Start {name}', { name })} title={t('Start {name}', { name })}>
-        <Icon name="player-play" size={16} />
-        <span>{t('Start')}</span>
-      </button>
+      <div class="wo-plan-foot">
+        <PowerBar value={lastP} target={r.target} ghost={planned} label={powerLabel(last ? lastP : null, r.target, planned)} />
+        {(last || r.target > 0 || planned > 0) && (
+          <span class={`wo-plan-p${met ? ' is-met' : ''}`}>
+            {met && <Icon name="circle-check" size={14} />}
+            {last ? <Power value={lastP} size={12} /> : <Power value={r.target || planned} size={12} class="is-quiet" />}
+            {last && r.target > 0 && <span class="wo-of">/ {fmtPower(r.target)}</span>}
+          </span>
+        )}
+        <button class="wo-go" onClick={onStart} disabled={!r.items.length} aria-label={t('Start {name}', { name })} title={t('Start {name}', { name })}>
+          <Icon name="player-play" size={16} />
+          <span>{t('Start')}</span>
+        </button>
+      </div>
     </article>
   );
 }
 
-/** With no plans yet: a few ready-made ones, each added in a tap, and the way to make your own. */
+/**
+ * With no plans yet: a few ready-made ones, each added in a tap, as cards like your plans' (their bars side by side
+ * show which asks the most), and the way to make your own.
+ */
 function Starters({ bw, onNew }: { bw: number; onNew: () => void }) {
   const { byId, ready } = useMoves();
   const plans = useMemo(() => (ready ? starterPlans(byId, bw) : []), [byId, ready, bw]);
+  const top = Math.max(0, ...plans.map((r) => planPower(r, bw)));
   const add = async (r: Routine) => {
     await saveRoutine(r);
     toast(t('{name} is in your workouts', { name: r.name }));
@@ -319,34 +437,40 @@ function Starters({ bw, onNew }: { bw: number; onNew: () => void }) {
     <div class="wo-starters">
       <p class="muted">{t('Start from one of these, or make your own.')}</p>
       {ready ? (
-        <div class="wo-plan-cards fade-arrive-soft">
-          {plans.map((r) => (
-            <article key={r.name} class="wo-plan-card">
-              <button class="wo-plan-main" onClick={() => add(r)} aria-label={t('Add {name}', { name: r.name })}>
-                <span class="wo-tile"><Icon name={r.icon as UiName} size={20} /></span>
-                <span class="wo-row-text">
-                  <span class="wo-row-name">{r.name}</span>
-                  <span class="wo-plan-moves">{movesLine(r)}</span>
-                  <span class="wo-meta">
-                    {r.target > 0 && <Power value={r.target} size={12} />}
-                    {mainMuscles(r).map((m) => <MuscleIcon key={m} muscle={m} size={14} />)}
-                    <span class="wo-meta-text"><Icon name="stopwatch" size={12} />{t('~{n} min', { n: planMinutes(r) })}</span>
+        <div class="wo-plan-cards">
+          {plans.map((r, i) => {
+            const planned = planPower(r, bw);
+            return (
+              <article key={r.name} class="wo-plan-card" style={{ '--i': Math.min(i, 4) }}>
+                <button class="wo-plan-main" onClick={() => add(r)} aria-label={t('Add {name}', { name: r.name })}>
+                  <Stack r={r} />
+                  <span class="wo-row-text">
+                    <span class="wo-plan-title"><span class="wo-row-name">{r.name}</span></span>
+                    <span class="wo-plan-moves">{movesLine(r)}</span>
+                    <span class="wo-meta">
+                      {mainMuscles(r).map((m) => <MuscleIcon key={m} muscle={m} size={14} />)}
+                      <span class="wo-meta-text"><Icon name="stopwatch" size={12} />{t('~{n} min', { n: planMinutes(r) })}</span>
+                    </span>
                   </span>
-                </span>
-              </button>
-              <button class="wo-go is-quiet" onClick={() => add(r)} aria-label={t('Add {name}', { name: r.name })} title={t('Add {name}', { name: r.name })}>
-                <Icon name="plus" size={16} />
-                <span>{t('Add')}</span>
-              </button>
-            </article>
-          ))}
+                </button>
+                <div class="wo-plan-foot">
+                  <PowerBar value={planned} target={0} ghost={top} label={`${t('What every set adds up to')}: ${fmtPower(planned)} ⚡`} />
+                  <span class="wo-plan-p"><Power value={planned} size={12} /></span>
+                  <button class="wo-go is-quiet" onClick={() => add(r)} aria-label={t('Add {name}', { name: r.name })} title={t('Add {name}', { name: r.name })}>
+                    <Icon name="plus" size={16} />
+                    <span>{t('Add')}</span>
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div class="wo-plan-cards" aria-hidden="true">
           {[0, 1, 2, 3].map((i) => (
             <span key={i} class="wo-plan-card wo-ghost-row">
               <span class="ghost wo-ghost-thumb" />
-              <span class="wo-ghost-lines"><span class="ghost" /><span class="ghost" /></span>
+              <span class="wo-ghost-lines"><span class="ghost" /><span class="ghost" /><span class="ghost" /></span>
             </span>
           ))}
         </div>
@@ -359,9 +483,11 @@ function Starters({ bw, onNew }: { bw: number; onNew: () => void }) {
   );
 }
 
+/* ---------- the last few ---------- */
+
 /**
- * The last few workouts: when, how long, how it went and their power against what they asked for. A tap opens one under
- * Insights; the arrow does it again.
+ * The last few workouts: when, how long, how it went and their power against what they asked for (a bar, ticked when
+ * met). A tap opens one under Insights; the arrow does it again.
  */
 function Recent({ done, plans, onAgain }: { done: Done[]; plans: Routine[]; onAgain: (r: Source) => void }) {
   return (
@@ -390,6 +516,7 @@ function Recent({ done, plans, onAgain }: { done: Done[]; plans: Routine[]; onAg
                     <span class="wo-meta-text"><Icon name="check" size={12} />{count(sets, 'set', 'sets')}</span>
                     {w.feel > 0 && <span class="wo-meta-text" title={FEELS[w.feel][1]}><Icon name={FEELS[w.feel][0]} size={14} /></span>}
                   </span>
+                  {w.target > 0 && <PowerBar class="wo-home-bar" value={p} target={w.target} />}
                 </span>
                 <span class={`wo-done-p${met ? ' is-met' : ''}`} title={met ? t('Target met') : undefined}>
                   {met && <Icon name="circle-check" size={16} />}

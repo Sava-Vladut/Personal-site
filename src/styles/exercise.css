@@ -1,0 +1,71 @@
+/* An exercise up close (components/workout/ExerciseInfo.tsx). Loaded after workout.css and power.css. */
+
+/* ---------- the sheet: solid, so nothing behind it (the picker's pictures) shows through ---------- */
+
+.sheet.glass.wo-info-sheet, .sheet.glass.wo-info-sheet.is-dragged {
+  background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+
+.wo-info { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.wo-info-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0; }
+.wo-info-part .section-title { margin-bottom: 10px; }
+
+/* ---------- the power card: "1 rep = 0.7 ⚡", rolling up as it opens ---------- */
+
+.wo-info-pw {
+  display: grid; gap: 8px; padding: 14px 16px 16px; border-radius: var(--r-l);
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, var(--surface)), color-mix(in oklab, var(--accent) 4%, var(--surface)) 70%);
+  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--line));
+}
+.wo-info-pw-sum { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0; }
+.wo-info-pw-unit { font-size: var(--text-l); font-weight: var(--w-medium); color: var(--ink-2); }
+.wo-info-pw-eq { font-size: var(--text-l); color: var(--ink-3); }
+.wo-info-pw-n {
+  display: inline-flex; align-items: center; gap: 4px; font: var(--w-bold) clamp(36px, 10vw, 44px)/1 var(--sans);
+  letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.wo-info-pw-bolt { display: inline-flex; color: var(--accent); animation: pop var(--dur-4) var(--spring-bouncy) 0.35s backwards; }
+.wo-info-pw-text { margin: 0; font-size: var(--text-m); line-height: 1.45; color: var(--ink-2); }
+
+/* ---------- muscles: the body, front and back, and the list beside it ---------- */
+
+.wo-info-body { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16px; }
+.wo-info-body .bm { gap: 12px; }
+.wo-info-muscles { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wo-info-muscles li {
+  display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-2);
+  animation: rise-in var(--dur-3) var(--ease-emph) calc(0.12s + var(--k, 0) * 20ms) backwards;
+}
+.wo-info-muscles i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: color-mix(in oklab, var(--accent) 45%, var(--surface-2)); }
+.wo-info-muscles .is-main { color: var(--ink); font-weight: var(--w-medium); }
+.wo-info-muscles .is-main i { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
+
+/* ---------- how to do it: a numbered timeline, the steps rising in one after another ---------- */
+
+.wo-info-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.wo-info-steps li {
+  position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding-bottom: 14px;
+  line-height: 1.45; color: var(--ink-2);
+  animation: rise-in var(--dur-3) var(--ease-emph) calc(var(--k, 0) * 20ms) backwards;
+}
+.wo-info-steps li:last-child { padding-bottom: 0; }
+/* the thread from one number to the next */
+.wo-info-steps li:not(:last-child)::before {
+  content: ''; position: absolute; left: 11px; top: 28px; bottom: 2px; width: 2px; border-radius: var(--r-pill);
+  background: color-mix(in oklab, var(--accent) 24%, var(--surface-2));
+}
+.wo-info-step-n {
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: var(--on-color); font-size: var(--text-s); font-weight: var(--w-bold); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.wo-info-steps li > span { padding-top: 1px; }
+
+/* ---------- desktop: a wide sheet in two columns, like Learn's reading panel ---------- */
+
+@media (min-width: 1024px) {
+  .sheet.tall.wo-info-sheet { max-width: min(960px, 100%); }
+  .wo-info-sheet .sheet-head { padding: 16px 16px 12px 28px; border-bottom: 1px solid var(--line); }
+  .wo-info-sheet .sheet-body { padding: 24px 28px 28px; }
+  .wo-info { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: 28px; align-items: start; }
+}

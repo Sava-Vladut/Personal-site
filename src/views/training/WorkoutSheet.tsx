@@ -6,9 +6,11 @@ import { navigate } from '../../lib/router';
 import { haptic } from '../../lib/haptics';
 import type { Done } from '../../lib/trainingStats';
 import { Sheet } from '../../components/Sheet';
+import { CountUp } from '../../components/charts';
 import { KIND_ICON, Power, TAG_NAME } from '../../components/fitness';
 import { Icon } from '../../components/icons';
-import { count, LOCALE, t } from '../../lib/i18n';
+import { PowerGauge, Rolling } from '../../components/power';
+import { count, t } from '../../lib/i18n';
 import { Feel, fmtKg, fmtMins, setMark, setText, whenOf, WorkoutIcon } from './parts';
 
 /** One workout, every exercise and set in it, and what can be done with it: keep it as a plan, or delete it (with Undo). */
@@ -22,11 +24,12 @@ export function WorkoutSheet({ d, records, onClose, onMove }: { d: Done | null; 
       open={!!d}
       onClose={onClose}
       tall
+      class="tr-w-sheet"
       title={shown ? <span class="tr-sheet-title"><WorkoutIcon icon={shown.w.icon} /> {shown.w.name || t('Workout')}</span> : ''}
       label={shown?.w.name || t('Workout')}
       footer={shown && <Actions d={shown} onClose={onClose} />}
     >
-      {shown && <Body d={shown} records={records} onMove={onMove} />}
+      {shown && <Body key={shown.w.id} d={shown} records={records} onMove={onMove} />}
     </Sheet>
   );
 }
@@ -34,27 +37,32 @@ export function WorkoutSheet({ d, records, onClose, onMove }: { d: Done | null; 
 function Body({ d, records, onMove }: { d: Done; records: number; onMove: (id: string) => void }) {
   const { w } = d;
   const volume = w.items.reduce((sum, it) => sum + it.sets.reduce((a, s) => a + (s.done ? setVolume(it.move, s, w.bw, it.pair) : 0), 0), 0);
-  const share = w.target > 0 ? Math.min(1, d.power / w.target) : null;
+  const of = w.target > 0 ? t('of {n}', { n: fmtPower(w.target) }) : '';
   return (
     <div class="tr-sheet">
       <p class="tr-when"><Icon name="calendar" size={14} /> {whenOf(w.start)}{w.end && <>–{timeLabel(w.end)}</>} · {fmtMins(d.mins)}</p>
 
-      <div class="tr-goal">
-        <div class="tr-goal-top">
-          <Power value={d.power} size={20} class="tr-goal-n" />
-          {w.target > 0 && <span class="tr-goal-of">{t('of {n}', { n: fmtPower(w.target) })}</span>}
+      {/* its ⚡ against what it asked for: the ring fills (and laps past the target) as the sheet opens */}
+      <div class={w.target > 0 ? 'tr-goal has-gauge' : 'tr-goal'}>
+        {w.target > 0 && (
+          <PowerGauge value={d.power} target={w.target} size="m" label={`${fmtPower(d.power)} ⚡ ${of}`}>
+            <b class="tr-goal-pct"><Rolling value={Math.round((d.power / w.target) * 100)} from={0} ms={900} format={(n) => `${Math.round(n)}%`} /></b>
+          </PowerGauge>
+        )}
+        <div class="tr-goal-text">
+          <span class="power tr-goal-n"><Icon name="bolt" size={20} /><Rolling value={d.power} from={0} ms={900} class="power-n" /></span>
+          {w.target > 0 && <span class="tr-goal-of">{of}</span>}
           {w.target > 0 && (
             <span class={d.met ? 'tr-target met' : 'tr-target'}>
               <Icon name={d.met ? 'check' : 'x'} size={12} /> {d.met ? t('Target met') : t('{n} short', { n: fmtPower(w.target - d.power) })}
             </span>
           )}
         </div>
-        {share !== null && <div class="meter tr-meter"><i style={{ width: `${share * 100}%` }} /></div>}
       </div>
 
       <div class="media-stats tr-figures">
-        <span class="stat" style={{ '--i': 0 }}><b>{d.sets}</b><small>{t('Sets')}</small></span>
-        <span class="stat" style={{ '--i': 1 }}><b>{volume > 0 ? `${Math.round(volume).toLocaleString(LOCALE)}` : '—'}</b><small>{t('kg moved')}</small></span>
+        <span class="stat" style={{ '--i': 0 }}><b><CountUp value={d.sets} /></b><small>{t('Sets')}</small></span>
+        <span class="stat" style={{ '--i': 1 }}><b>{volume > 0 ? <CountUp value={Math.round(volume)} /> : '—'}</b><small>{t('kg moved')}</small></span>
         <span class="stat" style={{ '--i': 2 }}><b>{fmtKg(w.bw)}</b><small>{t('Body weight')}</small></span>
         {w.feel > 0 && <span class="stat" style={{ '--i': 3 }}><b><Feel value={w.feel} size={20} /></b><small>{t('Felt')}</small></span>}
       </div>

@@ -2,11 +2,10 @@ import { useMemo } from 'preact/hooks';
 import { shortDate } from '../../lib/dates';
 import { fmtPower } from '../../lib/fitness';
 import { streaks, wall, type Done, type MoveStats } from '../../lib/trainingStats';
-import { RevealStack } from '../../components/charts';
+import { CountUp, RevealStack } from '../../components/charts';
 import { Power } from '../../components/fitness';
-import { Icon } from '../../components/icons';
+import { Icon, type UiName } from '../../components/icons';
 import { count, t } from '../../lib/i18n';
-import { Tile } from '../stats/parts';
 import { BestOf, MoveThumb, usePictures } from './Exercises';
 import { fmtKg, fmtMins, RecordRow } from './parts';
 
@@ -23,19 +22,19 @@ export function Bests({ all, moves, weekStart, today, onWorkout, onMove }: {
   return (
     <RevealStack>
       <div class="tiles tr-trophies">
-        <Tile k={0} icon="trophy" label={t('Most ⚡ in a workout')} value={w.mostPower ? fmtPower(w.mostPower.power) : '—'} sub={w.mostPower ? shortDate(w.mostPower.day) : ''} />
-        <Tile k={1} icon="medal" label={t('Biggest week')} value={w.bestWeek ? fmtPower(w.bestWeek.power) : '—'} sub={w.bestWeek ? t('Week of {date}', { date: shortDate(w.bestWeek.key) }) : ''} />
-        <Tile k={2} icon="flame" label={t('Longest streak')} value={st.bestWeeks} sub={count(st.bestWeeks, 'week in a row', 'weeks in a row')} />
+        <Trophy k={0} icon="trophy" label={t('Most ⚡ in a workout')} value={w.mostPower ? fmtPower(w.mostPower.power) : '—'} sub={w.mostPower ? shortDate(w.mostPower.day) : ''} />
+        <Trophy k={1} icon="medal" label={t('Biggest week')} value={w.bestWeek ? fmtPower(w.bestWeek.power) : '—'} sub={w.bestWeek ? t('Week of {date}', { date: shortDate(w.bestWeek.key) }) : ''} />
+        <Trophy k={2} icon="flame" label={t('Longest streak')} value={st.bestWeeks} sub={count(st.bestWeeks, 'week in a row', 'weeks in a row')} />
       </div>
 
       <section class="card chart-card tr-wall">
         <header class="chart-head"><h3 class="chart-title">{t('Workout bests')}</h3></header>
         <div class="list">
-          {w.mostPower && <RecordRow icon="bolt" label={t('Most ⚡ in a workout')} value={<Power value={w.mostPower.power} size={14} />} when={named(w.mostPower)} onClick={() => onWorkout(w.mostPower!.w.id)} />}
-          {w.longest && <RecordRow icon="clock" label={t('Longest workout')} value={fmtMins(w.longest.mins)} when={named(w.longest)} onClick={() => onWorkout(w.longest!.w.id)} />}
-          {w.mostSets && <RecordRow icon="list-details" label={t('Most sets')} value={w.mostSets.sets} when={named(w.mostSets)} onClick={() => onWorkout(w.mostSets!.w.id)} />}
-          {w.busiestWeek && <RecordRow icon="calendar-week" label={t('Busiest week')} value={count(w.busiestWeek.workouts, 'workout', 'workouts')} when={t('Week of {date}', { date: shortDate(w.busiestWeek.key) })} />}
-          <RecordRow icon="target" label={t('Most targets met in a row')} value={st.bestTargets} when={st.targets ? t('{n} in a row now', { n: st.targets }) : undefined} />
+          {w.mostPower && <RecordRow k={0} icon="bolt" label={t('Most ⚡ in a workout')} value={<Power value={w.mostPower.power} size={14} />} when={named(w.mostPower)} onClick={() => onWorkout(w.mostPower!.w.id)} />}
+          {w.longest && <RecordRow k={1} icon="clock" label={t('Longest workout')} value={fmtMins(w.longest.mins)} when={named(w.longest)} onClick={() => onWorkout(w.longest!.w.id)} />}
+          {w.mostSets && <RecordRow k={2} icon="list-details" label={t('Most sets')} value={w.mostSets.sets} when={named(w.mostSets)} onClick={() => onWorkout(w.mostSets!.w.id)} />}
+          {w.busiestWeek && <RecordRow k={3} icon="calendar-week" label={t('Busiest week')} value={count(w.busiestWeek.workouts, 'workout', 'workouts')} when={t('Week of {date}', { date: shortDate(w.busiestWeek.key) })} />}
+          <RecordRow k={4} icon="target" label={t('Most targets met in a row')} value={st.bestTargets} when={st.targets ? t('{n} in a row now', { n: st.targets }) : undefined} />
         </div>
       </section>
 
@@ -85,5 +84,17 @@ export function Bests({ all, moves, weekStart, today, onWorkout, onMove }: {
         </section>
       )}
     </RevealStack>
+  );
+}
+
+/** One of the three bests up top: its icon on a tile of the page's colour that pops in after the card, the figure counting up. */
+function Trophy({ icon, label, value, sub, k }: { icon: UiName; label: string; value: string | number; sub: string; k: number }) {
+  return (
+    <div class="tr-trophy" style={{ '--k': k }}>
+      <span class="tr-trophy-ico"><Icon name={icon} size={20} /></span>
+      <span class="tr-trophy-label">{label}</span>
+      <b class="tr-trophy-value"><CountUp value={value} /></b>
+      <span class="tr-trophy-sub">{sub}</span>
+    </div>
   );
 }

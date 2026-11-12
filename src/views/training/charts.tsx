@@ -283,6 +283,34 @@ export function Spark({ values }: { values: number[] }) {
   );
 }
 
+/* ---------- an exercise's last few workouts ---------- */
+
+export interface Session { id: string; day: string; p: number }
+
+/**
+ * An exercise's last few workouts, oldest first, each a bar of the ⚡ it got from it: they grow in one after another,
+ * the best in the page's full colour. A tap on one opens that workout.
+ */
+export function SessionBars({ sessions, onOpen }: { sessions: Session[]; onOpen: (id: string) => void }) {
+  const max = Math.max(0, ...sessions.map((s) => s.p));
+  // the latest of the best, when two tie
+  let best = -1;
+  sessions.forEach((s, i) => max > 0 && s.p === max && (best = i));
+  return (
+    <ol class="tr-sessions" aria-label={t('Power per workout')}>
+      {sessions.map((s, i) => (
+        <li key={s.id + i} class={i === best ? 'is-best' : undefined} style={{ '--k': Math.min(i, 4) }}>
+          <button class="tr-session" onClick={() => onOpen(s.id)} aria-label={`${shortDate(s.day)}: ${powerText(s.p)}`} title={powerText(s.p)}>
+            <span class="tr-session-n">{i === best && <Icon name="trophy" size={12} />}{fmtPower(s.p)}</span>
+            <span class="tr-session-track"><i style={{ height: `${max > 0 ? Math.max(4, (s.p / max) * 100) : 0}%` }} /></span>
+            <span class="tr-session-day">{shortDate(s.day)}</span>
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /* ---------- a whole in parts: the power by kind of exercise, the sets by part of the body ---------- */
 
 export interface Part { key: string; name: string; icon: UiName; n: number; color: string; text: string }

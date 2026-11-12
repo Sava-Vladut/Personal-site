@@ -2,12 +2,13 @@ import type { ComponentChildren } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { shortDate } from '../../lib/dates';
 import { DEFAULT_BW, fmtPower, type WeighIn } from '../../lib/fitness';
-import { averages, byDay, daysBetween, kindPower, streaks, totals, weekMet, weeks, weightSeries, whenHeat, within, type Done, type Range } from '../../lib/trainingStats';
+import { averages, byDay, daysBetween, kindPower, streaks, totals, weekMet, weeks, weightSeries, whenHeat, within, type Done, type Range, type Week } from '../../lib/trainingStats';
 import { ChartCard, HeatLegend, LegendItem, RevealStack, RhythmHeatmap } from '../../components/charts';
 import { KIND_ICON, KIND_NAME, Power } from '../../components/fitness';
 import { Icon, type UiName } from '../../components/icons';
+import { PowerGauge, Rolling, useMedia } from '../../components/power';
 import { Tile } from '../stats/parts';
-import { LOCALE, t } from '../../lib/i18n';
+import { count, LOCALE, rich, t } from '../../lib/i18n';
 import { MET, PowerCalendar, PowerLegend, Split, TrendLine, UNMET, WeekBars } from './charts';
 import { Delta, Feel, fmtKg, fmtMins, powerText } from './parts';
 
@@ -30,6 +31,8 @@ export function Overview({ all, list, range, weighIns, weekStart, today }: {
 
   return (
     <RevealStack>
+      {range.start <= today && today <= range.end && wk.length > 0 && <ThisWeek wk={wk} streak={st.weeks} />}
+
       <ChartCard
         wide
         title={t('Power per week')}
@@ -97,6 +100,54 @@ export function Overview({ all, list, range, weighIns, weekStart, today }: {
         </ChartCard>
       )}
     </RevealStack>
+  );
+}
+
+/**
+ * This week against your usual one, at the top while the range runs to today: a ring of this week's ⚡ that fills to
+ * your usual week (the average of the weeks you trained before it, in the range) and laps past it, a notch where last
+ * week came to, what's left to beat it, and the weeks in a row.
+ */
+function ThisWeek({ wk, streak }: { wk: Week[]; streak: number }) {
+  const big = useMedia('(min-width: 1024px)');
+  const now = wk[wk.length - 1];
+  const before = wk.slice(0, -1).filter((w) => w.workouts > 0);
+  const usual = before.length ? before.reduce((a, w) => a + w.power, 0) / before.length : 0;
+  const last = wk.length > 1 ? wk[wk.length - 2].power : 0;
+  const above = usual > 0 && now.power >= usual;
+  return (
+    <section class={`card wide tr-hero${above ? ' is-above' : ''}`}>
+      <PowerGauge
+        value={now.power}
+        target={usual}
+        scale={Math.max(now.power, 1)}
+        ghost={last}
+        size={big ? 'l' : 'm'}
+        label={`${t('This week')}: ${powerText(now.power)}${usual > 0 ? ` · ${t('Your usual week')}: ${powerText(usual)}` : ''}`}
+      >
+        <b class="tr-hero-n"><Rolling value={now.power} from={0} ms={900} /></b>
+        <Icon name="bolt" size={big ? 18 : 14} class="tr-hero-bolt" />
+      </PowerGauge>
+      <div class="tr-hero-text">
+        <p class="tr-hero-eyebrow">{t('This week')}</p>
+        {usual <= 0 ? (
+          <p class="tr-hero-line">{t('No usual week yet: keep going')}</p>
+        ) : above ? (
+          <p class="tr-hero-line is-above"><Icon name="trending-up" size={20} /><b class="tr-hero-head">{t('Above your usual')}</b></p>
+        ) : (
+          <p class="tr-hero-line">{rich('{p} ⚡ to beat your usual', { p: <b class="tr-hero-big"><Rolling value={usual - now.power} from={0} ms={900} /></b> })}</p>
+        )}
+        {(usual > 0 || last > 0) && (
+          <ul class="tr-hero-keys">
+            {usual > 0 && <li><i class="tr-key-usual" />{t('Your usual week')} <b>{powerText(usual)}</b></li>}
+            {last > 0 && <li><i class="tr-key-last" />{t('Last week')} <b>{powerText(last)}</b></li>}
+          </ul>
+        )}
+        {streak > 0 && (
+          <p class="tr-hero-streak"><span class="pw-flicker"><Icon name="flame" size={16} /></span>{count(streak, 'week in a row', 'weeks in a row')}</p>
+        )}
+      </div>
+    </section>
   );
 }
 

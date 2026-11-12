@@ -140,7 +140,7 @@ component, use 1–5 (and `isolation: isolate` on the component) for local stack
 | 70 | Context menus |
 | 75 | Mention popover |
 | 80 | Toasts |
-| 90 | Tooltips, mention bursts |
+| 90 | Tooltips, mention bursts, power sparks and flying power, the target-met moment (`components/power.tsx`) |
 | 1000 | Loading bar at the very top |
 | 1100 | The opening as the app starts (`opening.css`), over everything, even the loading bar |
 
@@ -383,6 +383,8 @@ Reuse these before writing new CSS (all in `app.css` unless noted):
 | `.stack-l`, `.row` | Layout helpers |
 | `.glass`, `.glass-btn` (`glass.css`) | Floating chrome |
 | `Sheet`, `Confirm`, `Toasts`, `PageHead` (components) | Bottom sheets, confirmations, toasts, list-screen headers |
+| `PowerGauge`, `PowerStrip`, `PowerBar`, `Rolling` (`components/power.tsx`, `power.css`) | Power (⚡) you can see: a ring that fills against a target (laps past it, a notch for last time, surges as it grows), a segmented strip a set per segment, one bar against a target, a number that rolls to each new value |
+| `burst`, `flyPower`, `Celebrate`, `Flipbook` (`components/power.tsx`) | One-shot rewards: sparks, a "+12 ⚡" chip flying to the gauge, the full-screen target-met moment; an exercise's start and end pictures played a few times |
 
 **States.**
 - Press: `.btn` scales to 0.98 over `--dur-0`. Other tappables (chips, icon buttons, cards, rows) share

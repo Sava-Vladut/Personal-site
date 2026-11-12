@@ -2,13 +2,16 @@ import type { ComponentChildren } from 'preact';
 import { useRef } from 'preact/hooks';
 import { shortDate } from '../../lib/dates';
 import { setPower } from '../../lib/fitness';
+import { imageOf } from '../../lib/exercises';
 import { trendOf, type MoveStats, type Rec } from '../../lib/trainingStats';
 import { Sheet } from '../../components/Sheet';
+import { CountUp } from '../../components/charts';
 import { EQUIP_ICON, EQUIP_NAME, KIND_ICON, KIND_NAME, MUSCLE_NAME, Power } from '../../components/fitness';
 import { MuscleIcon } from '../../components/BodyMap';
 import { Icon, type UiName } from '../../components/icons';
+import { Flipbook } from '../../components/power';
 import { t } from '../../lib/i18n';
-import { TrendLine } from './charts';
+import { SessionBars, TrendLine } from './charts';
 import { MoveThumb, usePictures } from './Exercises';
 import { fmtKg, fmtKm, fmtSecs, powerText, RecordRow, setMark, setText } from './parts';
 
@@ -19,8 +22,8 @@ export function ExerciseSheet({ m, onClose, onWorkout }: { m: MoveStats | null; 
   if (m) last.current = m;
   const shown = last.current;
   return (
-    <Sheet open={!!m} onClose={onClose} title={shown?.move.name ?? ''} tall>
-      {shown && <Body m={shown} onWorkout={onWorkout} />}
+    <Sheet open={!!m} onClose={onClose} title={shown?.move.name ?? ''} tall class="tr-ex-sheet">
+      {shown && <Body key={shown.move.id} m={shown} onWorkout={onWorkout} />}
     </Sheet>
   );
 }
@@ -40,10 +43,22 @@ function Body({ m, onWorkout }: { m: MoveStats; onWorkout: (id: string) => void 
   if (m.bestSet) records.push({ icon: 'bolt', label: t('Best set'), value: <Power value={m.bestSet.value} size={14} />, r: m.bestSet });
   if (m.bestDay) records.push({ icon: 'flame', label: t('Most ⚡ in one workout'), value: <Power value={m.bestDay.value} size={14} />, r: m.bestDay });
 
+  // each of the last few workouts and the ⚡ the exercise got in it, newest first as kept
+  const recent = m.recent.map((r) => ({ ...r, p: r.sets.reduce((a, s) => a + setPower(move, s, r.bw, r.pair), 0) }));
+  // the exercise's two pictures, played (yours have none: then its kind's icon, as in the lists)
+  const db = pictures.get(move.id);
+  const shots = db
+    ? [
+      [imageOf(db, 0), t('{name}: the start of the move', { name: move.name })],
+      [imageOf(db, 1), t('{name}: the end of the move', { name: move.name })],
+    ].filter((x): x is [string, string] => !!x[0])
+    : [];
+
   return (
     <div class="tr-sheet">
+      {shots.length > 0 && <Flipbook class="tr-ex-flip" frames={shots.map((x) => x[0])} alt={shots.map((x) => x[1])} />}
       <div class="tr-ex-head">
-        <MoveThumb id={move.id} kind={move.kind} pictures={pictures} />
+        {!shots.length && <MoveThumb id={move.id} kind={move.kind} pictures={pictures} />}
         <div class="tr-tags">
           <span class="tr-tag"><Icon name={KIND_ICON[move.kind]} size={14} /> {KIND_NAME[move.kind]}</span>
           <span class="tr-tag"><Icon name={EQUIP_ICON[move.equip]} size={14} /> {EQUIP_NAME[move.equip]}</span>
@@ -52,9 +67,9 @@ function Body({ m, onWorkout }: { m: MoveStats; onWorkout: (id: string) => void 
       </div>
 
       <div class="media-stats tr-figures">
-        <span class="stat" style={{ '--i': 0 }}><b>{m.times}</b><small>{t('Workouts')}</small></span>
-        <span class="stat" style={{ '--i': 1 }}><b>{m.sets}</b><small>{t('Sets')}</small></span>
-        <span class="stat" style={{ '--i': 2 }}><b><Power value={m.power} size={14} /></b><small>{t('All its power')}</small></span>
+        <span class="stat" style={{ '--i': 0 }}><b><CountUp value={m.times} /></b><small>{t('Workouts')}</small></span>
+        <span class="stat" style={{ '--i': 1 }}><b><CountUp value={m.sets} /></b><small>{t('Sets')}</small></span>
+        <span class="stat" style={{ '--i': 2 }}><b><Icon name="bolt" size={14} class="tr-bolt" /><CountUp value={Math.round(m.power)} /></b><small>{t('All its power')}</small></span>
       </div>
 
       {trend.length > 1 && (
@@ -73,15 +88,22 @@ function Body({ m, onWorkout }: { m: MoveStats; onWorkout: (id: string) => void 
         <section class="tr-sheet-part">
           <h3 class="section-title">{t('Personal bests')}</h3>
           <div class="card list">
-            {records.map((x) => <RecordRow icon={x.icon} label={x.label} value={x.value} when={when(x.r)} onClick={() => onWorkout(x.r.id)} />)}
+            {records.map((x, i) => <RecordRow k={i} icon={x.icon} label={x.label} value={x.value} when={when(x.r)} onClick={() => onWorkout(x.r.id)} />)}
           </div>
+        </section>
+      )}
+
+      {recent.length > 1 && (
+        <section class="tr-sheet-part">
+          <h3 class="section-title">{t('Recent sessions')}</h3>
+          <SessionBars sessions={recent.map((r) => ({ id: r.id, day: r.day, p: r.p })).reverse()} onOpen={onWorkout} />
         </section>
       )}
 
       <section class="tr-sheet-part">
         <h3 class="section-title">{t('Recent sets')}</h3>
         <div class="card list">
-          {m.recent.map((r) => (
+          {recent.map((r) => (
             <button class="list-row action tr-recent" onClick={() => onWorkout(r.id)}>
               <span class="tr-recent-day">{shortDate(r.day)}</span>
               <span class="tr-chips">
@@ -91,7 +113,7 @@ function Body({ m, onWorkout }: { m: MoveStats; onWorkout: (id: string) => void 
                   </span>
                 ))}
               </span>
-              <Power value={r.sets.reduce((a, s) => a + setPower(move, s, r.bw, r.pair), 0)} size={12} />
+              <Power value={r.p} size={12} />
             </button>
           ))}
         </div>

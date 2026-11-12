@@ -9,7 +9,7 @@
 
 /* ---------- the header ---------- */
 
-.tr-top-figures .tr-bolt { align-self: center; flex: none; color: var(--accent); }
+:is(.tr-top-figures, .tr-figures) .tr-bolt { align-self: center; flex: none; color: var(--accent); }
 .tr-tabs button > svg { flex: none; }
 .tr-tabs button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* five tabs on a phone: the icon over a small name, so every name still fits */
@@ -81,6 +81,37 @@
 
 /* ---------- overview ---------- */
 
+/* this week against your usual one: the ring, what's left to beat it, the keys to the ring and the streak */
+.card.tr-hero {
+  display: flex; align-items: center; gap: 16px; padding: 16px;
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in oklab, var(--accent) 14%, var(--surface)), var(--surface) 62%);
+}
+.tr-hero.is-above { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.tr-hero-n { font: var(--w-bold) var(--text-xl)/1 var(--sans); letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tr-hero .pw-gauge.is-l .tr-hero-n { font-size: clamp(36px, 3.4vw, 48px); letter-spacing: -0.03em; }
+.tr-hero-bolt { color: var(--accent); }
+.tr-hero-text { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.tr-hero-eyebrow { margin: 0; font-size: var(--text-s); font-weight: var(--w-bold); letter-spacing: 0.02em; color: var(--ink-3); }
+.tr-hero-line { margin: 0; font-size: var(--text-base); line-height: 1.25; color: var(--ink-2); }
+.tr-hero-big { font: var(--w-bold) clamp(28px, 8vw, 36px)/1 var(--sans); letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tr-hero-line.is-above { display: flex; align-items: center; gap: 8px; }
+.tr-hero-line.is-above > svg { flex: none; color: var(--accent); animation: pop var(--dur-4) var(--spring-bouncy) 0.3s backwards; }
+.tr-hero-head { font: var(--w-medium) var(--text-xl)/1.25 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
+.tr-hero-keys { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--text-s); color: var(--ink-3); }
+.tr-hero-keys li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tr-hero-keys b { color: var(--ink-2); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
+/* the keys drawn as the ring draws them: the full lap, and last week's notch */
+.tr-key-usual { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); }
+.tr-key-last { flex: none; width: 2px; height: 10px; border-radius: var(--r-pill); background: var(--ink-2); }
+.tr-hero-streak { margin: 2px 0 0; display: flex; align-items: center; gap: 6px; font-size: var(--text-m); font-weight: var(--w-medium); color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
+.tr-hero-streak .pw-flicker { color: var(--accent); }
+@media (min-width: 1024px) {
+  .card.tr-hero { gap: 28px; padding: 20px 24px; }
+  .tr-hero-text { gap: 10px; }
+  .tr-hero-big { font-size: clamp(36px, 3.4vw, 48px); }
+  .tr-hero-line { font-size: var(--text-l); }
+}
+
 .tr-facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 @media (min-width: 560px) { .tr-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tr-facts li {
@@ -129,7 +160,16 @@
 .tr-row-end > svg { color: var(--ink-3); }
 .tr-pr { flex: none; display: inline-flex; color: color-mix(in oklab, var(--accent) 75%, var(--ink)); }
 .tr-live { margin-bottom: 18px; }
-.tr-live-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.tr-live-dot { position: relative; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+/* a workout going on: its dot sends out a ring, over and over, while it's live (a state, so it may loop) */
+.tr-live-dot::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--accent);
+  animation: tr-live-pulse 1.6s var(--ease) infinite;
+}
+@keyframes tr-live-pulse { from { transform: scale(1); opacity: 0.55; } to { transform: scale(2.8); opacity: 0; } }
+/* a workout's ⚡ against its target, under its name */
+.tr-row .pw-bar { height: 4px; margin-top: 4px; }
+.tr-target.met svg { animation: pop var(--dur-4) var(--spring-bouncy) 0.3s backwards; }
 .tr-history > :first-child, .tr-exercises > :first-child { margin-top: 0; }
 .tr-search { margin-bottom: 0; }
 .tr-more { display: flex; justify-content: center; margin-top: 18px; }
@@ -138,6 +178,7 @@
 .tr-rec-ico {
   flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-s);
   background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink));
+  animation: pop var(--dur-4) var(--spring-bouncy) calc(0.1s + var(--k, 0) * 20ms) backwards;
 }
 .tr-rec-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .tr-rec-label { font-size: var(--text-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -145,25 +186,46 @@
 .tr-rec-value { flex: none; font-size: var(--text-base); font-weight: var(--w-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tr-wall .list { margin: 8px -16px -14px; border-top: 1px solid var(--line); border-radius: 0 0 calc(var(--r-l) - 1px) calc(var(--r-l) - 1px); }
 
-/* the trophies: the best workout across, the best week and the longest streak under it (three across from 560px) */
+/* the trophies: the best workout across, the best week and the longest streak under it (three across from 560px). Each
+   pops in a beat after the one before, its icon a beat after it */
 .tr-trophies > :first-child { grid-column: 1 / -1; }
 @media (min-width: 560px) { .tr-trophies > :first-child { grid-column: auto; } }
-.tr-trophies .tile-ico { background: color-mix(in oklab, var(--accent) 26%, var(--surface-2)); }
+.tr-trophy {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; row-gap: 2px; min-width: 0;
+  padding: 12px 14px 14px; border: 1px solid var(--line); border-radius: var(--r-m);
+  background: radial-gradient(90% 90% at 100% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%), var(--surface);
+  animation: pop-in var(--dur-3) var(--spring) calc(0.04s + var(--k, 0) * 20ms) backwards;
+}
+.tr-trophy-ico {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-s);
+  background: color-mix(in oklab, var(--accent) 24%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 75%, var(--ink));
+  animation: pop var(--dur-4) var(--spring-bouncy) calc(0.14s + var(--k, 0) * 20ms) backwards;
+}
+.tr-trophy-label { font-size: var(--text-s); font-weight: var(--w-medium); line-height: 1.25; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-trophy-value { grid-column: 1 / -1; margin-top: 6px; font-size: var(--text-2xl); font-weight: var(--w-bold); letter-spacing: -0.02em; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.tr-trophy-sub { grid-column: 1 / -1; font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- the sheets: a workout, an exercise ---------- */
+
+/* solid, so a sheet opened over another (an exercise from a workout, a workout from an exercise) doesn't show it through */
+.sheet.glass:is(.tr-ex-sheet, .tr-w-sheet), .sheet.glass.is-dragged:is(.tr-ex-sheet, .tr-w-sheet) {
+  background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none;
+}
 
 .tr-sheet { display: grid; gap: 18px; }
 .tr-sheet-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .tr-sheet-title .tr-ico { width: 34px; height: 34px; }
 .tr-sheet .section-title { margin-bottom: 10px; }
 .tr-when { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.tr-goal { padding: 12px 14px; border-radius: var(--r-m); background: color-mix(in oklab, var(--accent) 10%, var(--surface-2)); }
-.tr-goal-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.tr-goal { display: flex; align-items: center; gap: 16px; padding: 12px 14px; border-radius: var(--r-m); background: color-mix(in oklab, var(--accent) 10%, var(--surface-2)); }
+.tr-goal-text { flex: 1; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
 .tr-goal-n .power-n { font-size: var(--text-2xl); letter-spacing: -0.02em; }
 .tr-goal-of { font-size: var(--text-m); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tr-goal .tr-target { margin-left: auto; align-self: center; }
-.tr-meter { margin-top: 10px; background: color-mix(in oklab, var(--accent) 14%, var(--surface)); }
-.tr-meter i { background: var(--accent); }
+/* with a target: its ring on the left, the figure, what was asked and met or short stacked beside it */
+.tr-goal.has-gauge .tr-goal-text { flex-direction: column; align-items: flex-start; gap: 6px; }
+.tr-goal.has-gauge .tr-target { margin-left: 0; align-self: flex-start; }
+.tr-goal-pct { font-size: var(--text-l); font-weight: var(--w-bold); letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
 .tr-figures { --sky: var(--accent); margin: 0; }
 .tr-prs { display: flex; align-items: center; gap: 6px; font-size: var(--text-m); color: color-mix(in oklab, var(--accent) 60%, var(--ink)); }
 .tr-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -187,6 +249,22 @@
 .tr-note { margin-top: 10px; }
 
 .tr-ex-head { display: flex; align-items: flex-start; gap: 12px; }
+.tr-ex-flip { margin-bottom: -6px; }
+
+/* the last few workouts of an exercise as bars of their ⚡, growing in one after another; the best in full colour */
+.tr-sessions { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; border-bottom: 1px solid var(--line-2); }
+.tr-sessions li { flex: 1 1 0; min-width: 0; display: flex; }
+.tr-session { flex: 1; min-width: 0; display: grid; justify-items: center; gap: 6px; padding: 6px 2px 8px; border-radius: var(--r-s) var(--r-s) 0 0; }
+.tr-session-n { display: inline-flex; align-items: center; gap: 2px; font-size: var(--text-s); font-weight: var(--w-bold); line-height: 1; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-session-track { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 72px; }
+.tr-session-track i {
+  display: block; width: min(24px, 70%); border-radius: var(--r-xs) var(--r-xs) 0 0; background: var(--tr-pale); transform-origin: bottom;
+  animation: grow-y var(--dur-5) var(--ease-emph) calc(0.1s + var(--k, 0) * 20ms) backwards;
+}
+.tr-session-day { font-size: var(--text-xs); line-height: 1; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tr-sessions .is-best .tr-session-track i { background: var(--accent); }
+.tr-sessions .is-best .tr-session-n { color: color-mix(in oklab, var(--accent) 65%, var(--ink)); }
+@media (hover: hover) { .tr-session:hover { background: var(--surface-2); } }
 .tr-tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .tr-tag {
   display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: var(--r-pill);
@@ -202,6 +280,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tr-spark-line, .tr-spark-dot, .chart .tr-avg-line, .tr-split .split-bar i, .tr-parts li, .tr-facts li, .tr-rested li { animation: none; }
+  .tr-trophy, .tr-trophy-ico, .tr-rec-ico, .tr-session-track i, .tr-hero-line.is-above > svg, .tr-target.met svg { animation: none; }
+  .tr-live-dot::after { display: none; }
 }
 
 /* ---------- desktop: the lists in two columns, the cards in Stats' two (desktop.css) ---------- */

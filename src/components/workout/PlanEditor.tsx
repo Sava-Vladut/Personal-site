@@ -1,20 +1,23 @@
-// A plan: a workout you do again and again. Its name and icon, what it comes to (exercises, sets, about how long, the
-// power), the power it asks of you, and its exercises with the sets you mean to do; saved as you go. Each exercise is a
-// line saying its sets; a tap opens them to change. Start stays in reach at the bottom. Opened from the Workout page as
-// ?plan=<id> (a new id makes a new plan).
+// A plan: a workout you do again and again. Its name and icon, what it comes to (a ring of its power against the
+// target, with a notch where last time came to, and its exercises, sets and about how long), the power it asks of you,
+// and its exercises with the sets you mean to do; saved as you go. Each exercise is a line saying its sets, with a strip
+// of what each set is worth; a tap opens them to change. Start stays in reach at the bottom. Opened from the Workout
+// page as ?plan=<id> (a new id makes a new plan).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack } from '../../lib/router';
-import { fmtPower, itemPower, MAX_SETS, planPower, ROUTINE_ICONS, suggestTarget, workoutPower, type Item, type Routine } from '../../lib/fitness';
+import { fmtPower, itemPower, MAX_SETS, planPower, ROUTINE_ICONS, suggestTarget, workoutPower, type Item, type Routine, type WSet } from '../../lib/fitness';
 import { deleteRoutine, saveRoutine, toast, useRoutines, useWorkouts } from '../../lib/store';
 import { count, t } from '../../lib/i18n';
 import { Power } from '../fitness';
 import { Icon, type UiName } from '../icons';
+import { PowerGauge, PowerStrip } from '../power';
 import { Sheet } from '../Sheet';
 import { ExerciseInfo } from './ExerciseInfo';
 import { ItemMenu } from './ItemMenu';
 import { Picker } from './Picker';
 import { SetRows } from './SetRows';
-import { itemActions, lastPlanWorkout, lastSets, planMinutes, restText, setsLine, startWorkout, totalReps, TargetStepper, Thumb, useBodyWeight, useDraft } from './shared';
+import { itemActions, lastPlanWorkout, lastSets, planMinutes, restText, setParts, setsLine, startWorkout, totalReps, TargetStepper, Thumb, useBodyWeight, useDraft } from './shared';
+import '../../styles/workout-home.css';
 
 const blank = (id: string): Routine => ({ id, name: '', icon: 'barbell', target: 0, items: [], created: Date.now(), updated: Date.now() });
 
@@ -37,7 +40,8 @@ export function PlanEditor({ id }: { id: string }) {
   const ghosts = useMemo(() => lastSets(workouts), [workouts]);
   const last = useMemo(() => lastPlanWorkout(workouts, id), [workouts, id]);
   const full = planPower(r, bw);
-  const suggested = suggestTarget(r, bw, last && workoutPower(last));
+  const lastP = last ? workoutPower(last) : 0;
+  const suggested = suggestTarget(r, bw, lastP || undefined);
   const sets = r.items.reduce((n, it) => n + it.sets.length, 0);
 
   const act = itemActions<Routine>(r.items, update, ghosts, false);
@@ -74,7 +78,7 @@ export function PlanEditor({ id }: { id: string }) {
 
   // under the exercises on a phone (staying in reach as you scroll), under the summary in the side panel on a wide screen
   const startBtn = (
-    <button class="btn btn-primary wo-wide wo-start" onClick={start} disabled={!r.items.length}>
+    <button class="btn btn-primary wo-wide wo-start pw-sheen" onClick={start} disabled={!r.items.length}>
       <Icon name="player-play" size={18} />
       {t('Start this workout')}
     </button>
@@ -131,11 +135,25 @@ export function PlanEditor({ id }: { id: string }) {
       <div class="wo-plan-body">
         <aside class="wo-side">
           <div class="card wo-plan-sum">
-            <div class="wo-plan-facts">
-              <span class="wo-fact-n" title={count(r.items.length, 'exercise', 'exercises')}><Icon name="list-details" size={16} /><b>{r.items.length}</b>{t('exercises')}</span>
-              <span class="wo-fact-n" title={count(sets, 'set', 'sets')}><Icon name="list-numbers" size={16} /><b>{sets}</b>{t('sets')}</span>
-              <span class="wo-fact-n" title={last ? t('As long as it took last time') : t('About how long it takes')}><Icon name="stopwatch" size={16} /><b>{planMinutes(r, last) || '–'}</b>{t('min')}</span>
-              <span class="wo-fact-n" title={t('What every set adds up to')}><Icon name="bolt" size={16} /><b>{fmtPower(full)}</b>{t('power')}</span>
+            {/* the ring: what every set adds up to against the target (or, with none, against last time), a notch where last time came to */}
+            <div class="wo-plan-hero">
+              <PowerGauge
+                size="m"
+                class="wo-plan-gauge"
+                value={full}
+                target={r.target}
+                scale={Math.max(full, lastP)}
+                ghost={lastP || undefined}
+                label={`${t('What every set adds up to')}: ${fmtPower(full)} ⚡${r.target > 0 ? `. ${t('Target: {p} ⚡', { p: fmtPower(r.target) })}` : ''}${last ? `. ${t('Last time: {p} ⚡', { p: fmtPower(lastP) })}` : ''}`}
+              >
+                <b class="wo-plan-mid"><Icon name="bolt" size={14} />{fmtPower(full)}</b>
+                <small class="wo-plan-mid-label">{r.target > 0 ? t('of {p}', { p: fmtPower(r.target) }) : t('planned')}</small>
+              </PowerGauge>
+              <div class="wo-plan-facts">
+                <span class="wo-plan-fact" title={count(r.items.length, 'exercise', 'exercises')}><Icon name="list-details" size={16} /><b>{r.items.length}</b>{t('exercises')}</span>
+                <span class="wo-plan-fact" title={count(sets, 'set', 'sets')}><Icon name="list-numbers" size={16} /><b>{sets}</b>{t('sets')}</span>
+                <span class="wo-plan-fact" title={last ? t('As long as it took last time') : t('About how long it takes')}><Icon name="stopwatch" size={16} /><b>{planMinutes(r, last) || '–'}</b>{t('min')}</span>
+              </div>
             </div>
             <button class="wo-target-row" onClick={() => setAiming(true)} aria-label={t('Target power')}>
               <span class="wo-tile small"><Icon name="target" size={16} /></span>
@@ -148,11 +166,6 @@ export function PlanEditor({ id }: { id: string }) {
               {r.target > 0 ? <Power value={r.target} size={16} class="wo-target-row-n" /> : <span class="wo-target-row-n muted">{t('None')}</span>}
               <Icon name="chevron-right" size={16} />
             </button>
-            {r.target > 0 && (
-              <div class="meter wo-meter" aria-hidden="true">
-                <i style={{ width: `${Math.min(100, (full / r.target) * 100)}%` }} />
-              </div>
-            )}
           </div>
           <div class="wo-side-end">{startBtn}</div>
         </aside>
@@ -170,6 +183,7 @@ export function PlanEditor({ id }: { id: string }) {
                   key={i}
                   it={it}
                   bw={bw}
+                  ghosts={ghosts.get(it.move.id)}
                   open={open === i}
                   first={i === 0}
                   last={i === r.items.length - 1}
@@ -226,12 +240,14 @@ export function PlanEditor({ id }: { id: string }) {
 }
 
 /**
- * An exercise in a plan: its picture and name (a tap shows how it's done), its sets in a line with their power, and the
- * line's tap opens them to change, with ways to add a set, move it and take it out.
+ * An exercise in a plan: its picture and name (a tap shows how it's done), its sets in a line with their power and a
+ * strip of what each set is worth, and the line's tap opens them to change (last time's numbers marked on them), with
+ * ways to add a set, move it and take it out.
  */
-function PlanItem({ it, bw, open, first, last, onOpen, onInfo, onMenu, onSets, onRemoveSet, onAddSet, onMove, onRemove }: {
+function PlanItem({ it, bw, ghosts, open, first, last, onOpen, onInfo, onMenu, onSets, onRemoveSet, onAddSet, onMove, onRemove }: {
   it: Item;
   bw: number;
+  ghosts?: WSet[];
   open: boolean;
   first: boolean;
   last: boolean;
@@ -246,6 +262,8 @@ function PlanItem({ it, bw, open, first, last, onOpen, onInfo, onMenu, onSets, o
 }) {
   const about = t('About {name}', { name: it.move.name });
   const reps = totalReps(it);
+  // a plan's sets are all still to do: each segment is shown whole, as wide as what the set is worth
+  const parts = setParts(it, bw).map((x) => ({ ...x, fill: 1 }));
   return (
     <article class={`card wo-item${open ? ' is-open' : ''}`}>
       <div class="wo-item-head">
@@ -260,6 +278,7 @@ function PlanItem({ it, bw, open, first, last, onOpen, onInfo, onMenu, onSets, o
             <Power value={itemPower(it, bw, true)} size={12} />
             <Icon name="chevron-down" size={14} />
           </button>
+          {parts.length > 0 && <PowerStrip class="is-mini wo-plan-strip" parts={parts} />}
         </div>
         <button class="icon-btn small" onClick={onMenu} aria-label={t('Options for {name}', { name: it.move.name })} title={t('More')}>
           <Icon name="dots" size={16} />
@@ -268,7 +287,7 @@ function PlanItem({ it, bw, open, first, last, onOpen, onInfo, onMenu, onSets, o
       {open && (
         <div class="wo-item-body fade-arrive-soft">
           {it.note && <p class="wo-note"><Icon name="pencil" size={12} />{it.note}</p>}
-          <SetRows item={it} bw={bw} onSets={onSets} onRemove={onRemoveSet} />
+          <SetRows item={it} bw={bw} ghosts={ghosts} onSets={onSets} onRemove={onRemoveSet} />
           <div class="wo-item-foot">
             <button class="wo-add-set" onClick={onAddSet} disabled={it.sets.length >= MAX_SETS}>
               <Icon name="plus" size={16} />

@@ -1,16 +1,18 @@
-// Finishing a workout: what it came to (the time, the power against the target, the sets, any new records), how it went
-// and a note. Saving keeps only the sets that were done; a workout from a plan can hand today's numbers back to the plan,
+// Finishing a workout: what it came to (the power against the target as a gauge drawing itself in, the time, the sets,
+// any new records popping in), how it went and a note. Saving keeps only the sets that were done; a workout from a plan can hand today's numbers back to the plan,
 // and one made up as it went can become a plan of its own.
 import type { ComponentChildren } from 'preact';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fmtPower, oneRepMax, setPower, workoutPower, type Item, type Routine, type Workout } from '../../lib/fitness';
 import { uid, useRoutines, useWorkouts } from '../../lib/store';
 import { count, t } from '../../lib/i18n';
+import { CountUp } from '../charts';
 import { FEELS, Power } from '../fitness';
 import { Icon, type UiName } from '../icons';
+import { burst, PowerGauge, Rolling, still } from '../power';
 import { Sheet } from '../Sheet';
-import { kgText, span } from './shared';
-
+import { itemParts, kgText, lastPlanWorkout, lastSets, span } from './shared';
+import '../../styles/workout-live.css';
 
 /** The exercises with only their done sets, and without the ones left empty. */
 const keptItems = (items: Item[]) => items.map((it) => ({ ...it, sets: it.sets.filter((s) => s.done) })).filter((it) => it.sets.length);
@@ -93,6 +95,20 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
   const sets = kept.reduce((n, it) => n + it.sets.length, 0);
   const met = w.target > 0 && power >= w.target;
   const fromPlan = !!plan && kept.some((it) => plan.items.some((pi) => pi.move.id === it.move.id));
+  // the gauge: against the target, or (with none) what every set would have come to; a notch where last time on this plan did
+  const whole = useMemo(() => (open ? itemParts(w.items, w.bw, lastSets(all, w.id)).reduce((a, x) => a + x.p, 0) : 0), [open, w, all]);
+  const lastTime = useMemo(() => {
+    const l = open && w.plan ? lastPlanWorkout(all, w.plan) : undefined;
+    return l ? workoutPower(l) : 0;
+  }, [open, w.plan, all]);
+
+  // met: sparks fly off the gauge once it has drawn itself in
+  const gauge = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open || !met || still()) return;
+    const timer = setTimeout(() => gauge.current && burst(gauge.current, { big: true }), 900);
+    return () => clearTimeout(timer);
+  }, [open]);
 
   const save = () => {
     const done = { ...w, items: kept, end, feel, note: note.trim() };
@@ -103,10 +119,10 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
   };
 
   const tiles: [UiName, string, ComponentChildren][] = [
-    ['stopwatch', t('Time'), span(end - w.start)],
-    ['bolt', t('Power'), <><Power value={power} size={16} />{w.target > 0 && <span class="wo-of">/ {fmtPower(w.target)}</span>}</>],
-    ['check', t('Sets'), String(sets)],
+    ['stopwatch', t('Time'), <CountUp value={span(end - w.start)} />],
+    ['check', t('Sets'), <CountUp value={sets} />],
   ];
+  const of = w.target > 0 ? `/ ${fmtPower(w.target)} ⚡` : '⚡';
 
   return (
     <Sheet
@@ -127,6 +143,13 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
       }
     >
       <div class="wo-sum">
+        <div ref={gauge} class="wo-live-sum-gauge">
+          <PowerGauge value={power} target={w.target} scale={whole} ghost={lastTime} size="l" label={`${fmtPower(power)} ${of}`}>
+            {met && <Icon name="trophy" size={24} />}
+            <b class="wo-live-sum-n"><Rolling value={power} from={0} ms={900} /></b>
+            <span class="wo-of">{of}</span>
+          </PowerGauge>
+        </div>
         {met ? (
           <div class="wo-met fade-arrive-soft">
             <span class="wo-tile big"><Icon name="trophy" size={24} /></span>
@@ -154,8 +177,8 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
           <section class="wo-sum-part">
             <h3 class="section-title"><Icon name="medal" size={16} />{count(records.length, 'new record', 'new records')}</h3>
             <div class="card list">
-              {records.map((r) => (
-                <div key={r.id} class="list-row wo-record">
+              {records.map((r, i) => (
+                <div key={r.id} class="list-row wo-record" style={{ '--k': Math.min(i, 4) }}>
                   <span class="wo-record-name">{r.name}</span>
                   <span class="wo-record-v">
                     {r.lift ? <b title={t('Your heaviest single, estimated')}>{kgText(Math.round(r.now * 10) / 10)}</b> : <Power value={r.now} />}

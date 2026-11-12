@@ -66,11 +66,11 @@ export const WorkoutIcon = ({ icon, size = 16 }: { icon: string; size?: number }
 /** ⚡ and a number, for tooltips and table cells where the bolt can't be drawn. */
 export const powerText = (p: number) => `${fmtPower(p)} ⚡`;
 
-/** A row of a records list: an icon, what it is, the figure and when. */
-export function RecordRow({ icon, label, value, when, onClick }: { icon: UiName; label: string; value: ComponentChildren; when?: string; onClick?: () => void }) {
+/** A row of a records list: an icon, what it is, the figure and when. `k`, its place, staggers the icons popping in. */
+export function RecordRow({ icon, label, value, when, onClick, k = 0 }: { icon: UiName; label: string; value: ComponentChildren; when?: string; onClick?: () => void; k?: number }) {
   const body = (
     <>
-      <span class="tr-rec-ico"><Icon name={icon} size={16} /></span>
+      <span class="tr-rec-ico" style={{ '--k': Math.min(k, 4) }}><Icon name={icon} size={16} /></span>
       <span class="tr-rec-text">
         <span class="tr-rec-label">{label}</span>
         {when && <span class="tr-rec-when">{when}</span>}

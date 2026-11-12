@@ -1,28 +1,33 @@
 // One exercise's sets as rows to fill in: in a plan, what you mean to do; in a workout, what you do, each ticked off as
 // it's done. What a row asks for depends on the exercise: weight and reps; reps of a body move; seconds held; or minutes
-// and distance.
-import { useRef } from 'preact/hooks';
+// and distance. Each number is dragged sideways (or tapped and typed), and the set's power fills the row behind them.
+import { Fragment } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { setPower, type Item, type WSet } from '../../lib/fitness';
 import { haptic } from '../../lib/haptics';
-import { t } from '../../lib/i18n';
-import { Power } from '../fitness';
+import { count, t } from '../../lib/i18n';
+import { usePref } from '../../lib/prefs';
+import { stepOf } from '../../lib/scrub';
+import { burst, flyPower, Rolling, still } from '../power';
 import { Icon, type UiName } from '../icons';
-import { NumInput, num } from './shared';
+import { nudge, Scrubber } from './Scrubber';
+import { FIELDS, ghostOf, kgText, num, withGhost } from './shared';
+import '../../styles/workout-live.css';
 
 type Field = 'kg' | 'reps' | 'secs' | 'mins' | 'km';
-interface Col { f: Field; icon: UiName; unit: string; label: string; need: boolean; decimal?: boolean; max: number }
+interface Col { f: Field; icon: UiName; unit: string; label: string; need: boolean; decimal?: boolean; max: number; say: (n: number) => string }
 
 /** The numbers a set of this exercise asks for, and which of them it can't be ticked off without. */
 function columnsOf(it: Item): Col[] {
-  const reps: Col = { f: 'reps', icon: 'repeat', unit: t('reps'), label: t('Reps'), need: true, max: 10_000 };
-  const secs: Col = { f: 'secs', icon: 'stopwatch', unit: t('sec'), label: t('Seconds'), need: true, max: 86_400 };
+  const reps: Col = { f: 'reps', icon: 'repeat', unit: t('reps'), label: t('Reps'), need: true, max: 10_000, say: (n) => count(n, 'rep', 'reps') };
+  const secs: Col = { f: 'secs', icon: 'stopwatch', unit: t('sec'), label: t('Seconds'), need: true, max: 86_400, say: (n) => t('{n} s', { n }) };
   switch (it.move.kind) {
-    case 'weight': return [{ f: 'kg', icon: 'weight', unit: t('kg'), label: it.pair ? t('Kilograms, each hand') : t('Kilograms'), need: true, decimal: true, max: 1000 }, reps];
+    case 'weight': return [{ f: 'kg', icon: 'weight', unit: t('kg'), label: it.pair ? t('Kilograms, each hand') : t('Kilograms'), need: true, decimal: true, max: 1000, say: kgText }, reps];
     case 'body': return [reps];
     case 'time': return [secs];
     case 'cardio': return [
-      { f: 'mins', icon: 'clock', unit: t('min'), label: t('Minutes'), need: true, decimal: true, max: 1440 },
-      { f: 'km', icon: 'route', unit: t('km'), label: t('Kilometres'), need: false, decimal: true, max: 1000 },
+      { f: 'mins', icon: 'clock', unit: t('min'), label: t('Minutes'), need: true, decimal: true, max: 1440, say: (n) => t('{n} min', { n: num(n) }) },
+      { f: 'km', icon: 'route', unit: t('km'), label: t('Kilometres'), need: false, decimal: true, max: 1000, say: (n) => t('{n} km', { n: num(n, true) }) },
     ];
   }
 }
@@ -40,8 +45,25 @@ function put(s: WSet, f: Field, n: number | null): WSet {
   return { ...s, [KEY[f]]: f === 'mins' ? Math.round(n * 60) : n };
 }
 
-/** Whether a set has any of its numbers filled in. */
-const hasNumbers = (s: WSet) => s.kg !== null || s.reps !== null || s.secs !== null || s.km !== null;
+/** The first-time hint goes for every list of sets at once, the moment a number is dragged or typed anywhere. */
+let tipGone = false;
+const tipWatchers = new Set<() => void>();
+function useScrubTip(): [boolean, () => void] {
+  const [seen, setSeen] = usePref<boolean>('wo-scrub-tip', false);
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const f = () => redraw((n) => n + 1);
+    tipWatchers.add(f);
+    return () => void tipWatchers.delete(f);
+  }, []);
+  const show = !seen && !tipGone;
+  return [show, () => {
+    if (!show) return;
+    tipGone = true;
+    setSeen(true);
+    tipWatchers.forEach((f) => f());
+  }];
+}
 
 /**
  * The rows, numbered. `live` adds the tick that marks a set done (and only done sets count); `ghosts` are last time's
@@ -60,21 +82,22 @@ export function SetRows({ item, bw, live, ghosts, next, onSets, onRemove, onDone
 }) {
   const cols = columnsOf(item);
   const set = (i: number, s: WSet) => onSets(item.sets.map((x, j) => (j === i ? s : x)));
+  const [tip, used] = useScrubTip();
+  const hint = live && tip && next !== undefined;
   return (
     <div class={`wo-sets${live ? ' live' : ''}`} role="group" aria-label={t('Sets')}>
       <div class="wo-set wo-set-head">
         <span class="wo-h wo-h-n" title={t('Set')}>#</span>
-        {cols.map((c) => <span key={c.f} class="wo-h" title={c.label}><Icon name={c.icon} size={14} />{c.unit}</span>)}
+        <span class="wo-set-heads">
+          {cols.map((c) => <span key={c.f} class="wo-h" title={c.label}><Icon name={c.icon} size={14} />{c.unit}</span>)}
+        </span>
         <span class="wo-h wo-h-p" title={t('Power')}><Icon name="bolt" size={14} /></span>
         {live && <span class="wo-h wo-h-tick" title={t('Done')}><Icon name="check" size={14} /></span>}
         <span class="wo-h wo-h-x" />
       </div>
-      {item.sets.map((s, i) => {
-        const above = item.sets[i - 1];
-        const ghost = ghosts?.[i] ?? ghosts?.[ghosts.length - 1] ?? (above && hasNumbers(above) ? above : undefined);
-        return (
+      {item.sets.map((s, i) => (
+        <Fragment key={i}>
           <SetRow
-            key={i}
             n={i + 1}
             next={next === i}
             s={s}
@@ -82,18 +105,31 @@ export function SetRows({ item, bw, live, ghosts, next, onSets, onRemove, onDone
             item={item}
             bw={bw}
             live={live}
-            ghost={ghost}
+            ghost={ghostOf(item, i, ghosts)}
+            past={!!ghosts?.length}
             onSet={(x) => set(i, x)}
             onRemove={() => onRemove(i)}
             onDone={() => onDone?.(i)}
+            onUsed={used}
           />
-        );
-      })}
+          {hint && next === i && (
+            <p class="wo-scrub-tip">
+              <Icon name="hand-grab" size={14} />
+              {t('Drag a number sideways to change it, or tap to type')}
+            </p>
+          )}
+        </Fragment>
+      ))}
     </div>
   );
 }
 
-function SetRow({ n, next, s, cols, item, bw, live, ghost, onSet, onRemove, onDone }: {
+/**
+ * One set: its number, the numbers you drag, the power it comes to and (in a workout) its tick. The power fills the row
+ * behind the numbers, against half again what last time's set came to (a notch marks that), so beating it fills it up;
+ * a set still to do shows what ticking it off now would count, faintly.
+ */
+function SetRow({ n, next, s, cols, item, bw, live, ghost, past, onSet, onRemove, onDone, onUsed }: {
   n: number;
   next: boolean;
   s: WSet;
@@ -102,49 +138,93 @@ function SetRow({ n, next, s, cols, item, bw, live, ghost, onSet, onRemove, onDo
   bw: number;
   live?: boolean;
   ghost?: WSet;
+  /** `ghost` is last time's set (not the set above standing in). */
+  past: boolean;
   onSet: (s: WSet) => void;
   onRemove: () => void;
   onDone: () => void;
+  onUsed: () => void;
 }) {
   const row = useRef<HTMLDivElement>(null);
+  const tickBtn = useRef<HTMLButtonElement>(null);
+  const readout = useRef<HTMLSpanElement>(null);
   const swipe = useSwipeAway(row, onRemove);
-  // what an empty set would count as, ticked off now: last time's numbers
-  const filled = (): WSet => {
-    let x = s;
-    if (ghost) for (const c of cols) if (x[KEY[c.f]] === null && ghost[KEY[c.f]] !== null) x = { ...x, [KEY[c.f]]: ghost[KEY[c.f]] };
-    return x;
-  };
-  const p = setPower(item.move, live && !s.done ? filled() : s, bw, item.pair);
+  // a number being dragged: only this row redraws until it's let go
+  const [preview, setPreview] = useState<WSet | null>(null);
+  // a set just ticked off: the row flashes full (a new key plays it again)
+  const [flash, setFlash] = useState(0);
+  useEffect(() => {
+    if (!flash) return;
+    const timer = setTimeout(() => setFlash(0), 700);
+    return () => clearTimeout(timer);
+  }, [flash]);
+
+  const shown = preview ?? s;
+  const fields = FIELDS[item.move.kind];
+  const maybe = !!live && !shown.done;
+  const p = setPower(item.move, maybe ? withGhost(shown, ghost, fields) : shown, bw, item.pair);
+  const gp = ghost ? setPower(item.move, ghost, bw, item.pair) : 0;
+  // what the fill is measured against: held still while a number's dragged (so the fill moves, not the scale) and only
+  // stretched when it nearly runs out
+  const whole = useRef(0);
+  if (!preview || !whole.current) whole.current = Math.max(gp * 1.5, p / 0.85, 1);
+  else if (p > whole.current * 0.95) whole.current = p / 0.85;
+  const fill = Math.min(1, p / whole.current);
+  const notch = Math.min(1, gp / whole.current);
+
   const tick = () => {
     if (s.done) return onSet({ ...s, done: false });
-    const x = filled();
+    const x = withGhost(s, ghost, fields);
     const missing = cols.find((c) => c.need && x[KEY[c.f]] === null);
-    if (missing) return row.current?.querySelector<HTMLInputElement>(`[data-f="${missing.f}"]`)?.focus();
+    if (missing) return nudge(row.current?.querySelector<HTMLElement>(`[data-f="${missing.f}"]`) ?? null);
     haptic(10);
     onSet({ ...x, done: true });
+    if (!still()) setFlash((f) => f + 1);
+    if (tickBtn.current) burst(tickBtn.current);
+    if (readout.current) flyPower(readout.current, setPower(item.move, x, bw, item.pair));
     onDone();
   };
+  const tickLabel = s.done ? t('Done. Tap to undo') : t('Mark the set done');
+
   return (
-    <div ref={row} class={`wo-set${s.done ? ' is-done' : ''}${next ? ' is-next' : ''}`} {...swipe}>
+    <div ref={row} class={`wo-set${shown.done ? ' is-done' : ''}${next ? ' is-next' : ''}${flash ? ' is-flash' : ''}`} {...swipe}>
       <span class="wo-set-n" aria-label={t('Set {n}', { n })}>{n}</span>
-      {cols.map((c) => {
-        const g = ghost && get(ghost, c.f);
-        return (
-          <NumInput
-            key={c.f}
-            field={c.f}
-            value={get(s, c.f)}
-            onValue={(v) => onSet(put(s, c.f, v))}
-            label={c.label}
-            ghost={g === null || g === undefined ? '–' : c.decimal ? num(g) : String(g)}
-            decimal={c.decimal}
-            max={c.max}
-          />
-        );
-      })}
-      <span class={`wo-set-p${live && !s.done ? ' is-maybe' : ''}`}>{p > 0 && <Power value={p} size={12} />}</span>
+      <span class="wo-set-track">
+        <span class="wo-set-fills" aria-hidden="true">
+          <i class={`wo-set-fill${maybe ? ' is-maybe' : ''}`} style={{ transform: `scaleX(${fill})` }} />
+          {flash > 0 && <i key={flash} class="wo-set-flash" />}
+          {gp > 0 && <i class="wo-set-notch" style={{ transform: `translateX(${notch * 100}%)` }} />}
+        </span>
+        {cols.map((c) => {
+          const g = ghost ? get(ghost, c.f) : null;
+          return (
+            <Scrubber
+              key={c.f}
+              field={c.f}
+              value={get(shown, c.f)}
+              ghost={g}
+              past={past ? g : null}
+              step={stepOf(c.f, item.move.equip)}
+              max={c.max}
+              decimal={c.decimal}
+              label={c.label}
+              say={c.say}
+              onPreview={(v) => setPreview(put(s, c.f, v))}
+              onValue={(v) => {
+                setPreview(null);
+                onSet(put(s, c.f, v));
+              }}
+              onUsed={onUsed}
+            />
+          );
+        })}
+      </span>
+      <span ref={readout} class={`wo-set-p${maybe ? ' is-maybe' : ''}${p > 0 ? '' : ' is-zero'}`} title={t('Power')}>
+        <Icon name="bolt" size={12} />
+        <Rolling value={p} ms={300} />
+      </span>
       {live && (
-        <button class="wo-tick" aria-pressed={s.done} onClick={tick} aria-label={s.done ? t('Done. Tap to undo') : t('Mark the set done')} title={s.done ? t('Done. Tap to undo') : t('Mark the set done')}>
+        <button ref={tickBtn} class="wo-tick" aria-pressed={s.done} onClick={tick} aria-label={tickLabel} title={tickLabel}>
           <Icon name="check" size={18} stroke={2.5} />
         </button>
       )}
@@ -157,8 +237,8 @@ function SetRow({ n, next, s, cols, item, bw, live, ghost, onSet, onRemove, onDo
 
 /**
  * Swiping a row left takes it away, as swiping left deletes in the journal: it follows the finger and, let go far
- * enough, the row goes (the caller offers Undo); short of that it springs back. Touch and pen only; up and down still
- * scroll. A mouse has the row's ×.
+ * enough, the row goes (the caller offers Undo); short of that it springs back. Touch and pen only, and not from the
+ * numbers (they drag sideways themselves); up and down still scroll. A mouse has the row's ×.
  */
 function useSwipeAway(row: { current: HTMLElement | null }, away: () => void) {
   const drag = useRef<{ id: number; x: number; y: number; on: boolean } | null>(null);
@@ -184,7 +264,7 @@ function useSwipeAway(row: { current: HTMLElement | null }, away: () => void) {
   return {
     onPointerDown: (e: PointerEvent) => {
       swiped.current = false;
-      if (e.pointerType === 'mouse' || (e.target as Element).closest('input')) return;
+      if (e.pointerType === 'mouse' || (e.target as Element).closest('input, [data-scrub]')) return;
       drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false };
     },
     onPointerMove: (e: PointerEvent) => {

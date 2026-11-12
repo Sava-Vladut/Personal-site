@@ -11,6 +11,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.199.0',
+    date: '2026-11-12',
+    changes: [
+      'Workouts are redesigned around your power as it builds: rings that fill, strips that light up set by set, and numbers that roll up.',
+      'A set’s numbers are sliders now: drag one sideways to change the reps or the weight and watch its power fill behind it, or tap it to type.',
+      'Each set shows where last time came to, and going past it gives a little bump.',
+      'Ticking a set off throws sparks and sends its power flying into the ring; meeting your target fills the screen for a moment.',
+      'On a computer a workout is laid out like a cockpit: your exercises down the left, the one you’re on in the middle with its pictures, and the power ring, rest timer and Finish on the right.',
+      'The Workout page opens on this week under the sky, then up next with its ring, and plans showing last time against their target.',
+      'An exercise’s page plays its two pictures like a flipbook, shows what one rep is worth, lists the steps as a timeline, and no longer lets the list behind it show through.',
+      'Insights › Workouts shows this week against your usual week, power bars in History, trophies in Bests and each exercise’s recent sessions as bars.',
+      'Finishing a workout counts up the time, the sets and the power around a full ring.',
+    ],
+  },
+  {
     version: '1.198.0',
     date: '2026-11-12',
     changes: [

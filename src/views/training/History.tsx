@@ -6,6 +6,7 @@ import { navigate } from '../../lib/router';
 import { MuscleIcon } from '../../components/BodyMap';
 import { Power } from '../../components/fitness';
 import { Icon } from '../../components/icons';
+import { PowerBar } from '../../components/power';
 import { count, t } from '../../lib/i18n';
 import { Feel, fmtMins, whenOf, WorkoutIcon } from './parts';
 
@@ -18,7 +19,7 @@ export function topMuscles(d: Done, n = 3) {
   return MUSCLES.filter((m) => load[m].sets > 0).sort((a, b) => load[b].sets - load[a].sets).slice(0, n);
 }
 
-/** Every workout, newest first, a month to a group: what it was, when, how long, its ⚡ against its target. */
+/** Every workout, newest first, a month to a group: what it was, when, how long, its ⚡ against its target (a bar under it). */
 export function History({ all, live, records, onOpen }: { all: Done[]; live: Workout | null; records: Map<string, number>; onOpen: (id: string) => void }) {
   const [shown, setShown] = useState(PAGE);
   const months = useMemo(() => {
@@ -43,6 +44,7 @@ export function History({ all, live, records, onOpen }: { all: Done[]; live: Wor
             <span class="tr-row-main">
               <span class="tr-row-name">{live.name || t('Workout')}</span>
               <span class="tr-row-meta"><span class="tr-live-dot" aria-hidden="true" /> {t('In progress')} · {whenOf(live.start)}</span>
+              {live.target > 0 && <PowerBar value={workoutPower(live)} target={live.target} />}
             </span>
             <span class="tr-row-end"><Power value={workoutPower(live)} size={14} /><Icon name="chevron-right" size={16} /></span>
           </button>
@@ -90,6 +92,7 @@ function Row({ d, records, onOpen }: { d: Done; records: number; onOpen: (id: st
           {w.feel > 0 && <Feel value={w.feel} size={16} />}
           {muscles.length > 0 && <span class="tr-row-muscles" aria-hidden="true">{muscles.map((m) => <MuscleIcon muscle={m} size={20} />)}</span>}
         </span>
+        {w.target > 0 && <PowerBar value={d.power} target={w.target} />}
       </span>
       <span class="tr-row-end">
         <Power value={d.power} size={14} />

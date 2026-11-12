@@ -1,0 +1,168 @@
+/* Power you can see (components/power.tsx): a rolling number, the gauge, strips and bars, sparks and flying power, the
+   target-met moment and the exercise flipbook. Shared by the Workout pages and Insights › Workouts; a screen restyles
+   them through its own descendant selectors (`.wo-bar .pw-gauge`). Everything moves on transform and opacity only, and
+   nothing loops at rest: the sparks and the moment play once, the flipbook a few times, the sheen twice. */
+
+.pw-roll { font-variant-numeric: tabular-nums; }
+
+/* ---------- the gauge ---------- */
+
+.pw-gauge {
+  --pw-size: 46px; --pw-dot: 0; position: relative; flex: none; display: grid; place-items: center;
+  width: var(--pw-size); height: var(--pw-size); isolation: isolate; color: var(--accent);
+}
+.pw-gauge.is-m { --pw-size: 96px; --pw-dot: 0.06; }
+.pw-gauge.is-l { --pw-size: 200px; --pw-dot: 0.05; }
+.pw-gauge-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+.pw-gauge-track, .pw-gauge-fill, .pw-gauge-lap { fill: none; stroke-width: 10; }
+.pw-gauge.is-m :is(.pw-gauge-track, .pw-gauge-fill, .pw-gauge-lap) { stroke-width: 8; }
+.pw-gauge.is-l :is(.pw-gauge-track, .pw-gauge-fill, .pw-gauge-lap) { stroke-width: 6; }
+.pw-gauge-track { stroke: var(--surface-2); transition: stroke var(--dur-3); }
+.pw-gauge-fill, .pw-gauge-lap {
+  stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100;
+  transition: stroke-dashoffset var(--dur-5) var(--ease-emph), opacity var(--dur-2);
+}
+.pw-gauge-lap { stroke: color-mix(in oklab, var(--accent) 62%, var(--ink)); }
+.pw-gauge.is-empty .pw-gauge-fill, .pw-gauge:not(.is-over) .pw-gauge-lap { opacity: 0; }
+.pw-stop-a { stop-color: color-mix(in oklab, var(--accent) 58%, var(--emo-joy)); }
+.pw-stop-b { stop-color: var(--accent); }
+.pw-gauge-ticks { fill: none; stroke: var(--line-2); stroke-width: 0.6; stroke-linecap: round; transition: stroke var(--dur-3); }
+.pw-gauge.is-met .pw-gauge-ticks { stroke: color-mix(in oklab, var(--accent) 55%, var(--line-2)); }
+.pw-gauge.is-met .pw-gauge-track { stroke: color-mix(in oklab, var(--accent) 18%, var(--surface-2)); }
+/* met: a soft light inside the ring */
+.pw-gauge::before {
+  content: ''; position: absolute; inset: 14%; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 24%, transparent), transparent);
+  transition: opacity var(--dur-4) var(--ease);
+}
+.pw-gauge.is-met::before { opacity: 1; }
+
+/* the head where the fill has got to, and last time's notch: whole boxes turned, so the drawing never repaints */
+.pw-gauge-head, .pw-gauge-ghost { position: absolute; inset: 0; pointer-events: none; }
+.pw-gauge-head { transition: transform var(--dur-5) var(--ease-emph), opacity var(--dur-2); }
+.pw-gauge-head i {
+  position: absolute; left: 50%; top: 8%; width: calc(var(--pw-size) * var(--pw-dot)); aspect-ratio: 1; translate: -50% -50%;
+  border-radius: 50%; background: var(--on-color); box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 50%, transparent);
+}
+.pw-gauge.is-s .pw-gauge-head, .pw-gauge.is-empty .pw-gauge-head { opacity: 0; }
+.pw-gauge-ghost i {
+  position: absolute; left: 50%; top: 1%; width: 2px; height: 14%; translate: -50% 0;
+  border-radius: var(--r-pill); background: var(--ink-2); box-shadow: 0 0 0 1px var(--surface);
+}
+.pw-gauge.is-s .pw-gauge-ghost i { width: 2px; top: 0; height: 18%; }
+
+.pw-gauge-mid { position: relative; z-index: 1; display: grid; justify-items: center; gap: 2px; text-align: center; line-height: 1; }
+
+/* the surge: a ring of light of its own, scaled and faded by components/power.tsx */
+.pw-gauge-surge {
+  position: absolute; inset: 0; border-radius: 50%; opacity: 0; pointer-events: none;
+  box-shadow: 0 0 0 calc(var(--pw-size) * 0.04) color-mix(in oklab, var(--accent) 55%, transparent), 0 0 calc(var(--pw-size) * 0.22) color-mix(in oklab, var(--accent) 50%, transparent);
+}
+
+/* ---------- strips and bars ---------- */
+
+/* power in parts: a segment a set, as wide as its power, filling as it's done */
+.pw-strip { display: flex; gap: 4px; width: 100%; height: 6px; }
+.pw-strip > i {
+  flex: 1 1 0; min-width: 4px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; transform-origin: left;
+  animation: grow-x var(--dur-3) var(--ease-emph) calc(var(--k, 0) * 20ms) backwards;
+}
+.pw-strip > i > b {
+  display: block; height: 100%; transform-origin: left; transition: transform var(--dur-4) var(--ease-emph);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 58%, var(--emo-joy)), var(--accent));
+}
+.pw-strip > i.is-now { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--accent) 65%, transparent); }
+.pw-strip.is-mini { gap: 2px; height: 4px; }
+.pw-strip.is-mini > i { min-width: 2px; }
+
+/* power against a target: one bar, a notch for last time */
+.pw-bar { position: relative; display: block; height: 6px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.pw-bar > b {
+  position: absolute; inset: 0; border-radius: inherit; transform-origin: left;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 58%, var(--emo-joy)), var(--accent));
+  transition: transform var(--dur-4) var(--ease-emph); animation: grow-x var(--dur-5) var(--ease-emph) backwards;
+}
+.pw-bar.is-met > b { background: var(--accent); }
+.pw-bar-ghost { position: absolute; inset: 0; pointer-events: none; }
+.pw-bar-ghost::before { content: ''; position: absolute; left: -2px; top: 0; bottom: 0; width: 2px; background: var(--ink-2); }
+
+/* ---------- sparks and flying power (one layer over everything, the mention bursts' layer) ---------- */
+
+.pw-layer { position: fixed; inset: 0; z-index: 90; pointer-events: none; overflow: hidden; }
+.pw-spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0; }
+.pw-spark.is-pale { background: color-mix(in oklab, var(--accent) 50%, var(--emo-joy)); }
+.pw-spark.is-streak { width: 3px; height: 12px; border-radius: var(--r-pill); }
+.pw-fly {
+  position: absolute; padding: 4px 10px; border-radius: var(--r-pill); background: var(--accent); color: var(--on-color); opacity: 0;
+  font-size: var(--text-m); font-weight: var(--w-bold); white-space: nowrap; font-variant-numeric: tabular-nums; box-shadow: var(--shadow-2);
+}
+
+/* ---------- the target met ---------- */
+
+.pw-cel {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow: hidden; cursor: pointer;
+  background: color-mix(in oklab, var(--bg) 84%, transparent); animation: fade-in var(--dur-2) var(--ease) both;
+}
+.pw-cel.is-leaving { animation: fade-out var(--dur-1) var(--ease) both; }
+.pw-cel-rays { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.pw-cel-rays i {
+  position: absolute; left: -2px; bottom: 0; width: 4px; height: 44vmin; border-radius: var(--r-pill); transform-origin: 50% 100%;
+  rotate: calc(var(--i) * 22.5deg); opacity: 0;
+  background: linear-gradient(to top, transparent, color-mix(in oklab, var(--accent) 75%, transparent));
+  animation: pw-ray var(--dur-5) var(--ease-emph) calc(120ms + var(--i) * 12ms) both;
+}
+.pw-cel-rays i:nth-child(even) { height: 30vmin; background: linear-gradient(to top, transparent, color-mix(in oklab, var(--accent) 45%, var(--emo-joy))); }
+.pw-cel-wave {
+  position: absolute; left: 50%; top: 50%; width: 64vmin; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; opacity: 0;
+  border: 3px solid color-mix(in oklab, var(--accent) 60%, transparent); animation: pw-wave var(--dur-5) var(--ease-emph) 80ms both;
+}
+.pw-cel-wave.is-late { animation-delay: 320ms; border-width: 2px; }
+.pw-cel-body { position: relative; display: grid; justify-items: center; gap: 14px; padding: 24px; text-align: center; animation: pw-slam var(--dur-4) var(--spring-bouncy) both; }
+.pw-cel-title { font: var(--w-medium) var(--text-2xl)/1.15 var(--serif); letter-spacing: -0.01em; color: var(--ink); }
+
+@keyframes pw-ray { 0% { opacity: 1; transform: translateY(-12%) scaleY(0.12); } 60% { opacity: 1; } 100% { opacity: 0; transform: translateY(-55%) scaleY(1); } }
+@keyframes pw-wave { from { opacity: 0.9; transform: scale(0.3); } to { opacity: 0; transform: scale(1.45); } }
+@keyframes pw-slam { from { opacity: 0; transform: scale(1.8); } }
+
+/* ---------- an exercise's two pictures, played ---------- */
+
+.pw-flip { position: relative; display: grid; }
+.pw-flip-stage { position: relative; display: block; width: 100%; aspect-ratio: 3 / 2; padding: 0; overflow: hidden; border-radius: var(--r-l); background: var(--surface-2); }
+.pw-flip-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pw-flip-end { opacity: 0; transition: opacity var(--dur-2) var(--ease); }
+.pw-flip-end.is-held { opacity: 1; }
+/* start, end, start…: a decorative run over a second, so it keeps its own timing; the count is set from runs */
+.pw-flip-end.is-playing { animation: pw-flip 1.2s var(--ease) 0.5s alternate both; }
+@keyframes pw-flip { 0%, 25% { opacity: 0; } 75%, 100% { opacity: 1; } }
+/* two dots on the picture: the start and the end, held */
+.pw-flip-picks { position: absolute; right: 6px; bottom: 6px; display: flex; border-radius: var(--r-pill); background: color-mix(in oklab, black 36%, transparent); }
+.pw-flip-pick { display: grid; place-items: center; width: var(--h-s); height: var(--h-s); border-radius: 50%; }
+.pw-flip-pick i {
+  width: 8px; height: 8px; border-radius: 50%; background: color-mix(in oklab, var(--on-color) 55%, transparent);
+  transition: background-color var(--dur-1), transform var(--dur-2) var(--spring);
+}
+.pw-flip-pick[aria-pressed='true'] i { background: var(--on-color); transform: scale(1.3); }
+
+/* ---------- small flourishes, played a few times ---------- */
+
+/* a light sweeping once across a button (twice, then still) */
+.pw-sheen { position: relative; overflow: hidden; }
+.pw-sheen::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 55%; pointer-events: none; transform: translateX(-120%);
+  background: linear-gradient(100deg, transparent, color-mix(in oklab, var(--on-color) 36%, transparent), transparent);
+  animation: pw-sheen 1.3s var(--ease-emph) 0.7s 2 both;
+}
+@keyframes pw-sheen { to { transform: translateX(280%); } }
+
+/* a flame that flickers three times */
+.pw-flicker { display: inline-flex; transform-origin: 50% 85%; animation: pw-flicker var(--dur-5) var(--ease) 3; }
+@keyframes pw-flicker { 25% { transform: scale(1.14) rotate(-7deg); } 55% { transform: scale(0.94) rotate(5deg); } 80% { transform: scale(1.05) rotate(-2deg); } }
+
+@media (hover: hover) {
+  .pw-flip-pick[aria-pressed='false']:hover i { background: var(--on-color); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pw-sheen::after, .pw-cel-rays, .pw-cel-wave { display: none; }
+  .pw-flip-end.is-playing { animation: none; }
+}
