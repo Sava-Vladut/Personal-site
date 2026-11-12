@@ -195,6 +195,8 @@ html.tt-locked, html.tt-locked body { overflow: hidden; }
 /* ---------- the download page ---------- */
 
 .tt-dl > .card + .card { margin-top: 12px; }
+/* a form, not a gallery: it stays readable on a wide screen (more specific than desktop.css's .page) */
+@media (min-width: 1024px) { .page.tt-dl { max-width: 880px; } }
 .tt-drop { display: grid; justify-items: center; gap: 10px; padding: 18px 16px; text-align: center; border-style: dashed; border-color: var(--line-2); transition: border-color var(--dur-1), background-color var(--dur-1); }
 .tt-drop p { max-width: 46ch; font-size: var(--text-m); line-height: 1.45; color: var(--ink-3); }
 .tt-drop.is-over { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }

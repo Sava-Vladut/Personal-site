@@ -219,13 +219,15 @@ function Videos({ query }: { query: URLSearchParams }) {
       if (row && on && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - (row.clientWidth - on.offsetWidth) / 2);
     }
   }, [f.y, f.m, !!view]);
-  // after the player closes: the card it was on comes into view, with the focus on it
-  useEffect(() => {
+  // after the player closes: the card it was on comes into view, with the focus on it (once the Starred list has
+  // dropped what was unstarred, when that changed; otherwise straight away)
+  const bringBack = () => {
     if (!focusRec.current) return;
     const card = gridEl.current?.querySelector<HTMLElement>(`.tt-card[data-id="${focusRec.current}"]`);
     focusRec.current = '';
     if (card) { card.scrollIntoView({ block: 'nearest' }); card.focus({ preventScroll: true }); }
-  });
+  };
+  useEffect(() => { bringBack(); }, [listVer]);
 
   const change = (patch: Partial<Filters>, keepScroll = false) => {
     setF((old) => ({ ...old, ...patch }));
@@ -353,9 +355,10 @@ function Videos({ query }: { query: URLSearchParams }) {
     return saving.catch((e) => { setStarsVer((n) => n + 1); throw e; });
   };
   const onClosed = (rec: Rec | null, starsChanged: boolean) => {
+    focusRec.current = rec?.id ?? '';
     // videos unstarred while watching leave the Starred list now, not mid-swipe
     if (starsChanged) setListVer((n) => n + 1);
-    focusRec.current = rec?.id ?? '';
+    else requestAnimationFrame(bringBack);
   };
   const onFind = (q: string) => { clearTimeout(typing.current); setTyped(q); change({ q, y: 0, m: 0 }); };
 
