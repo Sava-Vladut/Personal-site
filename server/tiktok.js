@@ -1,7 +1,8 @@
 // Saved TikToks (github.com/Sava-Vladut/tiktok-favorites-viewer): the viewer, its download page and yt-dlp run in their
 // own container (the `tiktok` service in /root/deploy/compose.yml), only on the Docker network. Everything under
 // /api/tiktok/ is passed on to it as it is, streamed both ways (videos seek with Range requests), and only for the
-// signed-in admin: the videos are someone's favorites, never public. The page under #/tiktok opens it full screen.
+// signed-in admin: the videos are someone's favorites, never public. My Mind's own page (#/tiktok, views/Tiktok.tsx)
+// reads the library, the stars and the download controls through it.
 import http from 'node:http';
 
 // what the viewer needs to know about a request, and what the browser needs back

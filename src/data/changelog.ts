@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.198.0',
+    date: '2026-11-12',
+    changes: [
+      'Saved TikToks is part of My Mind now instead of a separate site: the same search, Random, Starred, years, months and order, in the app’s own look.',
+      'The videos sit under month headings that stay at the top as you scroll; rest the mouse on one, or press and hold it, to preview it.',
+      'The player keeps everything it had: swipe or scroll to the next video, tap the sides to skip 5 seconds, star, random order, sound, and the screen stays on.',
+      'Downloading more has its own page (the download button at the top): add your TikTok export, start or stop the downloader and see this run’s videos.',
+    ],
+  },
+  {
     version: '1.197.2',
     date: '2026-11-10',
     changes: [
