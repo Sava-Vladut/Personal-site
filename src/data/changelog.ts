@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.200.0',
+    date: '2026-11-13',
+    changes: [
+      'Every dropdown on the site now opens the same glass list, matching the rest of the app, instead of your device’s own plain menu.',
+      'The chosen option has a tick; arrow keys, a letter and Escape work in every list.',
+      'The exercise picker’s muscle list is split into its body areas under small headings.',
+    ],
+  },
+  {
     version: '1.199.1',
     date: '2026-11-13',
     changes: [

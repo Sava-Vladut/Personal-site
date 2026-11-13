@@ -4,6 +4,7 @@ import { LOCALE, t } from '../../lib/i18n';
 import { LIB, call, type Status } from '../../lib/tiktok';
 import { PageHead } from '../../components/PageHead';
 import { Icon } from '../../components/icons';
+import { Select } from '../../components/Select';
 
 const AUTO_KEY = 'saved-tiktoks.autostart';
 const num = new Intl.NumberFormat(LOCALE);
@@ -263,21 +264,19 @@ export function Download() {
               </label>
               <label class="list-row fade-arrive-soft">
                 <div>{t('Videos at once')}</div>
-                <select class="tt-select" value={String(set.workers)} onChange={(e) => void setOpt({ workers: Number(e.currentTarget.value) })}>
-                  {[1, 2, 3, 4].map((n) => <option value={String(n)}>{n}</option>)}
-                </select>
+                <Select class="tt-select" label={t('Videos at once')} value={String(set.workers)} onChange={(v) => void setOpt({ workers: Number(v) })} options={[1, 2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))} />
               </label>
               <label class="list-row fade-arrive-soft">
                 <div>
                   <div>{t('Use my TikTok login from')}</div>
                   <div class="muted small">{t('For age-restricted or private videos')}</div>
                 </div>
-                <select class="tt-select" value={set.cookies_browser} onChange={(e) => void setOpt({ cookies_browser: e.currentTarget.value })}>
-                  <option value="">{t('Nobody')}</option>
-                  <option value="firefox">Firefox</option>
-                  <option value="edge">Edge</option>
-                  <option value="chrome">Chrome</option>
-                </select>
+                <Select class="tt-select" label={t('Use my TikTok login from')} value={set.cookies_browser} onChange={(v) => void setOpt({ cookies_browser: v })} options={[
+                  { value: '', label: t('Nobody') },
+                  { value: 'firefox', label: 'Firefox' },
+                  { value: 'edge', label: 'Edge' },
+                  { value: 'chrome', label: 'Chrome' },
+                ]} />
               </label>
             </>}
           </div>

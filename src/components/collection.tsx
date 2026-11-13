@@ -4,6 +4,7 @@
 import type { ComponentChildren } from 'preact';
 import { Icon, type UiName } from './icons';
 import { t } from '../lib/i18n';
+import { Select } from './Select';
 
 export type Sort = 'recent' | 'title' | 'rating';
 export const SORTS: [Sort, string][] = [['recent', t('Recent')], ['title', t('Aâ€“Z')], ['rating', t('Top rated')]];
@@ -13,14 +14,11 @@ export const SORTS: [Sort, string][] = [['recent', t('Recent')], ['title', t('Aâ
 export function SortChip<S extends string>({ sort, onSort, options = SORTS as [S, string][] }: { sort: S; onSort: (s: S) => void; options?: [S, string][] }) {
   const at = Math.max(0, options.findIndex(([s]) => s === sort));
   return (
-    <label class="chip sort-chip" title={t('Order')}>
+    <Select class="chip sort-chip" title={t('Order')} label={t('Order')} value={options[at][0]} onChange={onSort} options={options.map(([value, label]) => ({ value, label }))}>
       <Icon name="arrow-down" size={16} />
       <span key={sort}>{options[at][1]}</span>
       <Icon name="chevron-down" size={14} />
-      <select value={options[at][0]} onChange={(e) => onSort((e.currentTarget as HTMLSelectElement).value as S)} aria-label={t('Order')}>
-        {options.map(([s, label]) => <option value={s}>{label}</option>)}
-      </select>
-    </label>
+    </Select>
   );
 }
 

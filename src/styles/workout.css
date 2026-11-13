@@ -106,9 +106,8 @@
 /* the muscle and equipment dropdowns: chips with the native list over them, unseen */
 .wo-pick-filters { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .wo-drop { position: relative; min-width: 0; gap: 6px; padding: 0 10px 0 12px; cursor: pointer; }
+.wo-drop.is-set { background: var(--ink); color: var(--on-ink); }
 .wo-drop-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wo-drop select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; background: var(--surface); color: var(--ink); }
-.wo-drop:has(select:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
 .wo-pick-tabs { margin-top: 14px; }
 .wo-pick-found { margin-top: 6px; }
 .wo-pick-part { margin-top: 10px; }

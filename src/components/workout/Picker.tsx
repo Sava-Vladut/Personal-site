@@ -12,6 +12,7 @@ import { Icon } from '../icons';
 import { Sheet } from '../Sheet';
 import { CreateMove } from './CreateMove';
 import { ExerciseInfo } from './ExerciseInfo';
+import { Select, type Choice } from '../Select';
 import { PerUnit, Thumb, useBodyWeight, useMoves, useUsedCounts } from './shared';
 
 /** Rows shown at once: the database has about 900, and a phone shouldn't lay them all out. */
@@ -130,22 +131,19 @@ export function Picker({ open, onClose, onPick, single }: { open: boolean; onClo
               onChange={(v) => setMuscle((v || null) as Muscle | null)}
               icon={muscle ? <MuscleIcon muscle={muscle} size={16} /> : <Icon name="body-scan" size={16} />}
               text={muscle ? MUSCLE_NAME[muscle] : t('Muscle')}
-            >
-              <option value="">{t('Any muscle')}</option>
-              {MUSCLE_GROUPS.map(([group, ms]) => (
-                <optgroup key={group} label={group}>{ms.map((m) => <option key={m} value={m}>{MUSCLE_NAME[m]}</option>)}</optgroup>
-              ))}
-            </Dropdown>
+              options={[
+                { value: '', label: t('Any muscle') },
+                ...MUSCLE_GROUPS.flatMap(([group, ms]) => ms.map((m) => ({ value: m as string, label: MUSCLE_NAME[m], group }))),
+              ]}
+            />
             <Dropdown
               label={t('Equipment')}
               value={equip ?? ''}
               onChange={(v) => setEquip((v || null) as Equip | null)}
               icon={<Icon name={equip ? EQUIP_ICON[equip] : 'barbell'} size={16} />}
               text={equip ? EQUIP_NAME[equip] : t('Equipment')}
-            >
-              <option value="">{t('Any equipment')}</option>
-              {EQUIPS.map((e) => <option key={e} value={e}>{EQUIP_NAME[e]}</option>)}
-            </Dropdown>
+              options={[{ value: '', label: t('Any equipment') }, ...EQUIPS.map((e) => ({ value: e as string, label: EQUIP_NAME[e] }))]}
+            />
             {(muscle || equip) && (
               <button class="icon-btn small" onClick={() => (setMuscle(null), setEquip(null))} aria-label={t('Clear filters')} title={t('Clear filters')}>
                 <Icon name="x" size={16} />
@@ -201,17 +199,16 @@ export function Picker({ open, onClose, onPick, single }: { open: boolean; onClo
   );
 }
 
-/** A filter as a chip that opens the platform's own dropdown (the select lies over it, unseen); dark once it's set. */
-function Dropdown({ label, value, onChange, icon, text, children }: {
-  label: string; value: string; onChange: (v: string) => void; icon: ComponentChildren; text: string; children: ComponentChildren;
+/** A filter as a chip that opens the site's dropdown; dark once it's set. */
+function Dropdown({ label, value, onChange, icon, text, options }: {
+  label: string; value: string; onChange: (v: string) => void; icon: ComponentChildren; text: string; options: Choice[];
 }) {
   return (
-    <label class="chip wo-drop" aria-pressed={!!value} title={label}>
+    <Select class={`chip wo-drop${value ? ' is-set' : ''}`} label={label} title={label} value={value} onChange={onChange} options={options}>
       {icon}
       <span class="wo-drop-text">{text}</span>
       <Icon name="chevron-down" size={14} />
-      <select value={value} onChange={(e) => onChange(e.currentTarget.value)} aria-label={label}>{children}</select>
-    </label>
+    </Select>
   );
 }
 

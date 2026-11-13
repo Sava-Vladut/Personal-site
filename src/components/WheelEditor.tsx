@@ -8,6 +8,7 @@ import { haptic } from '../lib/haptics';
 import { count, t } from '../lib/i18n';
 import { Icon } from './icons';
 import { Sheet } from './Sheet';
+import { Select } from './Select';
 import '../styles/wheel.css';
 
 const copy = (l: WheelLayout): WheelLayout => ({ top: [...l.top], kids: Object.fromEntries(Object.entries(l.kids).map(([k, v]) => [k, [...v]])), hidden: [...l.hidden], groups: { ...l.groups } });
@@ -115,13 +116,12 @@ export function WheelEditor({ open, onClose }: { open: boolean; onClose: () => v
         <div class="we-tools">
           {own && <button class="we-dot" onClick={() => restyle(id, 'hue')} aria-label={t('Change its colour')} title={t('Change its colour')} />}
           {!group && groups.length > 0 && (
-            <label class="we-move" title={t('Move to')}>
+            <Select class="we-move" title={t('Move to')} label={t('Move {name} to', { name: n.name })} value={inGroup ?? ''} onChange={(v) => moveTo(id, v)} options={[
+              { value: '', label: t('The ring itself') },
+              ...groups.map((g) => ({ value: g, label: nodeOf(layout, g).name })),
+            ]}>
               <Icon name="folder" size={16} />
-              <select aria-label={t('Move {name} to', { name: n.name })} value={inGroup ?? ''} onChange={(e) => moveTo(id, (e.target as HTMLSelectElement).value)}>
-                <option value="">{t('The ring itself')}</option>
-                {groups.map((g) => <option value={g}>{nodeOf(layout, g).name}</option>)}
-              </select>
-            </label>
+            </Select>
           )}
           <button class="icon-btn" disabled={i <= 0} onClick={() => shift(id, -1)} aria-label={t('Move {name} up', { name: n.name })}><Icon name="arrow-up" size={16} /></button>
           <button class="icon-btn" disabled={i >= list.length - 1} onClick={() => shift(id, 1)} aria-label={t('Move {name} down', { name: n.name })}><Icon name="arrow-down" size={16} /></button>

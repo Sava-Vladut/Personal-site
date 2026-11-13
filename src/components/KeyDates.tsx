@@ -4,6 +4,7 @@ import { Unfold } from './Unfold';
 import { MAX_KEY_DATES, toast, uid, type KeyDate, type KeyDateKind, type Person } from '../lib/store';
 import { dateName, KEY_DATE_LABEL, nextOf, whatsComing, whenLabel } from '../lib/people';
 import { Icon, type UiName } from './icons';
+import { Select } from './Select';
 import { Sheet } from './Sheet';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/shared.css'; // .share-error
@@ -125,12 +126,8 @@ function KeyDateSheet({ open, value, first, hasBirthday, onClose, onSave, onRemo
           <input class="input" placeholder={t('What is it? First met, name day…')} value={label} maxLength={60} onInput={(e) => setLabel(e.currentTarget.value)} aria-label={t('What it is')} />
         </Unfold>
         <div class="key-date-day">
-          <select class="input" value={Math.min(day, days)} onChange={(e) => setDay(Number(e.currentTarget.value))} aria-label={t('Day')}>
-            {Array.from({ length: days }, (_, i) => <option value={i + 1}>{i + 1}</option>)}
-          </select>
-          <select class="input" value={month} onChange={(e) => setMonth(Number(e.currentTarget.value))} aria-label={t('Month')}>
-            {MONTHS.map((name, i) => <option value={i + 1}>{name}</option>)}
-          </select>
+          <Select class="input select-field" label={t('Day')} value={String(Math.min(day, days))} onChange={(v) => setDay(Number(v))} options={Array.from({ length: days }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))} />
+          <Select class="input select-field" label={t('Month')} value={String(month)} onChange={(v) => setMonth(Number(v))} options={MONTHS.map((name, i) => ({ value: String(i + 1), label: name }))} />
           <input
             class="input"
             type="number"
