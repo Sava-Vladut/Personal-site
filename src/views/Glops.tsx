@@ -85,7 +85,7 @@ function Board({ data }: { data: GlopsStats }) {
         <div class="tile-label">{t('Online now')}</div>
         <div class="hero-row">
           <span class="hero-num"><CountUp value={data.online} /></span>
-          <Icon name="device-gamepad-2" size={24} class="gl-mark" />
+          <img src="/games/glops.webp" alt="" class="gl-mark" decoding="async" />
         </div>
         <div class="gl-facts">
           <span><b>{num(data.playing)}</b> {t('in a match')}</span>

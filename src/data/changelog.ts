@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.201.1',
+    date: '2026-11-13',
+    changes: [
+      'The Global Ops and Card Wars cards on the home page show each game’s own cover art instead of a plain icon.',
+      'So do their rows in Edit widgets and the Online now card on the Global Ops statistics page.',
+    ],
+  },
+  {
     version: '1.201.0',
     date: '2026-11-13',
     changes: [

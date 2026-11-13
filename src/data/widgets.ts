@@ -20,6 +20,8 @@ export interface WidgetDef {
   sub: string;
   icon: UiName;
   hue: string;
+  /** cover art shown in place of the icon, like the game's own (public/games) */
+  image?: string;
   /** `panel`: on the day's panel, under the date. `side`: the column beside the feed, which only wide screens have. */
   zone: 'panel' | 'side';
   options: WidgetOption[];
@@ -45,11 +47,11 @@ export const WIDGETS: WidgetDef[] = [
     options: [{ key: 'graph', name: t('Last 30 days graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
   },
   {
-    id: 'glops', name: t('Global Ops'), sub: t('Who’s playing the browser game right now'), icon: 'device-gamepad-2', hue: 'hope-interest', zone: 'side',
+    id: 'glops', name: t('Global Ops'), sub: t('Who’s playing the browser game right now'), icon: 'device-gamepad-2', image: '/games/glops.webp', hue: 'hope-interest', zone: 'side',
     options: [{ key: 'graph', name: t('Last 24 hours graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
   },
   {
-    id: 'cardwars', name: t('Card Wars'), sub: t('Who’s playing Card Wars right now'), icon: 'cards', hue: 'joy', zone: 'side',
+    id: 'cardwars', name: t('Card Wars'), sub: t('Who’s playing Card Wars right now'), icon: 'cards', image: '/games/cardwars.webp', hue: 'joy', zone: 'side',
     options: [{ key: 'graph', name: t('Last 24 hours graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
   },
 ];

@@ -61,7 +61,7 @@ export function WidgetEditor({ open, onClose }: { open: boolean; onClose: () => 
                   return (
                     <div class="we-block" key={w.id}>
                       <div class={`we-row${off ? ' off' : ''}`} style={{ '--c': `var(--emo-${w.hue})` }}>
-                        <span class="we-icon"><Icon name={w.icon} size={18} /></span>
+                        <span class={`we-icon${w.image ? ' is-art' : ''}`}>{w.image ? <img src={w.image} alt="" decoding="async" /> : <Icon name={w.icon} size={18} />}</span>
                         <div class="we-name">
                           <span>{w.name}</span>
                           <small>{w.sub}</small>

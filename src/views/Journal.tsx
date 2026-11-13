@@ -429,7 +429,7 @@ function JournalGlops({ graph }: { graph: boolean }) {
   const d = tail.map((p, i) => `${i ? 'L' : 'M'}${((i / (tail.length - 1 || 1)) * W).toFixed(1)},${(H - 2 - (p[1] / hi) * (H - 4)).toFixed(1)}`).join('');
   return (
     <button class="tw-mini gl-mini fade-arrive" onClick={() => navigate('games?game=glops')} aria-label={t('Global Ops')}>
-      <span class="tw-mini-ico"><Icon name="device-gamepad-2" size={18} /></span>
+      <span class="tw-mini-ico is-art"><img src="/games/glops.webp" alt="" decoding="async" /></span>
       <span class="tw-mini-main">
         <small>{t('Global Ops')}</small>
         <b>{online ? t('{n} online', { n: online }) : t('Nobody on')}</b>
@@ -456,7 +456,7 @@ function JournalCardWars({ graph }: { graph: boolean }) {
   const d = tail.map((p, i) => `${i ? 'L' : 'M'}${((i / (tail.length - 1 || 1)) * W).toFixed(1)},${(H - 2 - (p[1] / hi) * (H - 4)).toFixed(1)}`).join('');
   return (
     <button class="tw-mini gl-mini cw-mini fade-arrive" onClick={() => navigate('games?game=cardwars')} aria-label={t('Card Wars')}>
-      <span class="tw-mini-ico"><Icon name="cards" size={18} /></span>
+      <span class="tw-mini-ico is-art"><img src="/games/cardwars.webp" alt="" decoding="async" /></span>
       <span class="tw-mini-main">
         <small>{t('Card Wars')}</small>
         <b>{online.total ? t('{n} online', { n: online.total }) : t('Nobody on')}</b>

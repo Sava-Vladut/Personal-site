@@ -21,7 +21,7 @@
 
 .gl-hero .hero-row { align-items: center; justify-content: space-between; }
 .gl-hero .hero-num { font-size: clamp(40px, 13vw, 58px); font-variant-numeric: tabular-nums; }
-.gl-mark { color: var(--accent); flex: none; }
+.gl-mark { flex: none; width: 48px; height: 48px; object-fit: cover; object-position: top; border-radius: var(--r-m); }
 .gl-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: var(--text-m); color: var(--ink-3); }
 .gl-facts b { font-weight: var(--w-bold); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
