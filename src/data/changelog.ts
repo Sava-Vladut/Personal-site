@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.201.2',
+    date: '2026-11-13',
+    changes: [
+      'Streamer stats: a stream’s details sheet on a wide screen is one clear column again instead of three squashed ones.',
+    ],
+  },
+  {
     version: '1.201.1',
     date: '2026-11-13',
     changes: [
