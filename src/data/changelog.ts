@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.201.0',
+    date: '2026-11-13',
+    changes: [
+      'Learn cards on a wide screen show their drawing big down the card’s left side, fading into the card behind the text.',
+    ],
+  },
+  {
     version: '1.200.0',
     date: '2026-11-13',
     changes: [

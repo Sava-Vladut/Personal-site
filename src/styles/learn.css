@@ -347,6 +347,17 @@
   }
   .lrn-main .lrn-row-sub { -webkit-line-clamp: 3; }
   .lrn-main .lrn-row-end { align-self: center; }
+  /* the drawing fills the card's left side, bigger than the card so the tile's corners fall outside it, and fades into
+     the card towards the right, where the text begins over its last, faint part */
+  .lrn-main .lrn-row { position: relative; isolation: isolate; overflow: hidden; min-height: 124px; padding-left: 126px; }
+  .lrn-main .lrn-row > .mark {
+    position: absolute; z-index: -1; left: -14px; top: 50%; width: 164px; height: 164px; translate: 0 -50%;
+    -webkit-mask-image: linear-gradient(to right, #000 40%, transparent 96%); mask-image: linear-gradient(to right, #000 40%, transparent 96%);
+  }
+  .lrn-main .lrn-rank {
+    position: absolute; left: 10px; top: 10px; width: auto; min-width: 26px; padding: 2px 6px; border-radius: 99px;
+    text-align: center; background: color-mix(in oklab, var(--surface) 85%, transparent); color: var(--ink);
+  }
   @media (hover: hover) { .lrn-main .lrn-row:hover { background: var(--surface-2); border-color: var(--line-2); } }
   .lrn-main .lrn-row:focus-visible { outline-offset: 2px; }
   .lrn-group-head { padding-left: 2px; }
