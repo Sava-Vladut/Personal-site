@@ -128,13 +128,18 @@ function Home({ workouts }: { workouts: Done[] }) {
           wheel
           world={WORLD}
           actions={
-            <button class="btn btn-quiet btn-s wo-bw" onClick={() => setSheet('weight')} aria-label={t('Your weight: {kg}. Tap to weigh in', { kg: kgText(bw) })} title={t('Your weight')}>
-              <Icon name="scale" size={16} />
-              {kgText(bw)}
-            </button>
+            <>
+              <button class="icon-btn wo-power-info" onClick={() => setSheet('power')} aria-label={t('How power works')} title={t('How power works')}>
+                <Icon name="info-circle" size={18} />
+              </button>
+              <button class="btn btn-quiet btn-s wo-bw" onClick={() => setSheet('weight')} aria-label={t('Your weight: {kg}. Tap to weigh in', { kg: kgText(bw) })} title={t('Your weight')}>
+                <Icon name="scale" size={16} />
+                {kgText(bw)}
+              </button>
+            </>
           }
         />
-        <Week done={done} weekStart={weekStart} onInfo={() => setSheet('power')} />
+        <Week done={done} weekStart={weekStart} />
       </div>
 
       {/* on a phone one column: the nudges, up next, the plans, the recent ones; on a wide screen the recent ones (and
@@ -217,66 +222,59 @@ function powerLabel(last: number | null, target: number, planned: number) {
 /* ---------- this week ---------- */
 
 /**
- * This week, the hero under the sky: the power it has come to (counting up as the page opens), how many workouts, the
- * weeks in a row, and a column a day as tall as that day's power, growing in one after another (a bolt on the days you
- * trained, today ringed, the days to come hollow).
+ * This week under the sky, in the same small figures as Insights' header: the power it has come to (counting up as the
+ * page opens), the days as a little bar chart (a slim bar a day, as tall as that day's power,
+ * growing in one after another; today's letter in the page's colour, the days to come faint), and the weeks in a row
+ * once there are two.
  */
-function Week({ done, weekStart, onInfo }: { done: Done[]; weekStart: 0 | 1; onInfo: () => void }) {
+function Week({ done, weekStart }: { done: Done[]; weekStart: 0 | 1 }) {
   const today = todayKey();
   const from = startOfWeek(today, weekStart);
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const byDay = new Map<string, number>();
-  let n = 0;
   for (const w of done) {
     const d = dayOf(w.start);
     if (d < from || d > days[6]) continue;
-    n++;
     byDay.set(d, (byDay.get(d) ?? 0) + workoutPower(w));
   }
   const total = [...byDay.values()].reduce((a, b) => a + b, 0);
   const top = Math.max(0, ...byDay.values());
   const run = useMemo(() => streaks(finished(done), today, weekStart).weeks, [done, today, weekStart]);
   return (
-    <section class="wo-wk" aria-label={t('This week')}>
-      <div class="wo-wk-top">
-        <span class="wo-label"><Icon name="calendar-week" size={14} />{t('This week')}</span>
-        <button class="icon-btn small wo-wk-info" onClick={onInfo} aria-label={t('How power works')} title={t('How power works')}>
-          <Icon name="info-circle" size={16} />
-        </button>
-      </div>
-      <span class="wo-wk-n"><Icon name="bolt" size={24} /><Rolling value={total} from={0} ms={900} /></span>
-      <div class="wo-wk-line">
-        <span>{n ? count(n, 'workout', 'workouts') : t('No workout yet this week')}</span>
-        {run >= 2 && (
-          <span class="wo-wk-streak" title={t('Weeks in a row with a workout')}>
-            <span class="pw-flicker"><Icon name="flame" size={14} /></span>
-            {count(run, 'week in a row', 'weeks in a row')}
-          </span>
-        )}
-      </div>
-      <ol class="wo-wk-days">
-        {days.map((d, i) => {
-          const p = byDay.get(d);
-          const label = p === undefined ? dayLabel(d) : `${dayLabel(d)}: ${fmtPower(p)} ⚡`;
-          // as tall as the day's power against the week's biggest day; a trained day always shows enough for its bolt
-          const h = p === undefined ? 0 : top > 0 ? Math.max(0.3, p / top) : 0.3;
-          return (
-            <li
-              key={d}
-              class={`wo-wk-day${p !== undefined ? ' is-on' : ''}${d === today ? ' is-today' : ''}${d > today ? ' is-ahead' : ''}`}
-              style={{ '--i': Math.min(i, 4) }}
-              title={label}
-              aria-label={label}
-            >
-              <span class="wo-wk-col">
-                {p !== undefined && <i class="wo-wk-fill" style={{ '--h': h }}><Icon name="bolt" size={12} /></i>}
-              </span>
-              <span class="wo-wk-name" aria-hidden="true">{WEEKDAYS[weekday(d)]}</span>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
+    <div class="media-stats stats-figures wo-wk" role="group" aria-label={t('This week')}>
+      <span class="stat wo-wk-power" style={{ '--i': 0 }}>
+        <b><Icon name="bolt" size={14} /><Rolling value={total} from={0} ms={900} /></b>
+        <small>{t('This week')}</small>
+      </span>
+      <span class="stat wo-wk-days-tile" style={{ '--i': 1 }}>
+        <ol class="wo-wk-days">
+          {days.map((d, i) => {
+            const p = byDay.get(d);
+            const label = p === undefined ? dayLabel(d) : `${dayLabel(d)}: ${fmtPower(p)} ⚡`;
+            // as tall as the day's power against the week's biggest day; a trained day always shows
+            const h = p === undefined ? 0 : top > 0 ? Math.max(0.3, p / top) : 0.3;
+            return (
+              <li
+                key={d}
+                class={`wo-wk-day${p !== undefined ? ' is-on' : ''}${d === today ? ' is-today' : ''}${d > today ? ' is-ahead' : ''}`}
+                style={{ '--i': Math.min(i, 4) }}
+                title={label}
+                aria-label={label}
+              >
+                <span class="wo-wk-col">{p !== undefined && <i class="wo-wk-fill" style={{ '--h': h }} />}</span>
+                <span class="wo-wk-name" aria-hidden="true">{WEEKDAYS[weekday(d)].slice(0, 1)}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </span>
+      {run >= 2 && (
+        <span class="stat wo-wk-run" style={{ '--i': 2 }} title={t('Weeks in a row with a workout')}>
+          <b><span class="pw-flicker"><Icon name="flame" size={14} /></span>{run}</b>
+          <small>{t('Weeks in a row')}</small>
+        </span>
+      )}
+    </div>
   );
 }
 

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.199.1',
+    date: '2026-11-13',
+    changes: [
+      'The top of the Workout page is calmer: this week is a row of small figures like Insights has, with a slim bar a day instead of the big boxes.',
+      'How power works is now a button beside your weight.',
+    ],
+  },
+  {
     version: '1.199.0',
     date: '2026-11-12',
     changes: [

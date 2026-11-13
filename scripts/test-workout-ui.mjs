@@ -326,8 +326,15 @@ test('the home screen: the week in the sky, up next with its gauge, plans with t
   assert.equal(p.$$('.wo-plan-card').length, 2);
   assert.equal(p.$$('.wo-plan-card.is-next').length, 1);
   assert.ok(p.$$('.wo-plan-card .pw-bar').length >= 2);
+  // a slim bar a day, filled on the days trained (the fixtures move with today, so which days varies)
+  assert.equal(p.$$('.wo-wk-day').length, 7);
+  const trained = p.$$('.wo-wk-day.is-on');
+  assert.equal(p.$$('.wo-wk-fill').length, trained.length);
+  // this week's power rolls up to the days' power added up (each day's is in its label, rounded)
   await p.wait(1000);
-  assert.equal(p.$('.wo-wk-n .pw-roll').textContent, '80', 'this week’s power rolls up to what it is');
+  const days = trained.map((li) => Number(/: ([\d.,]+) ⚡/.exec(li.title)[1].replace(',', '')));
+  const sum = days.reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(Number(p.$('.wo-wk-power .pw-roll').textContent.replace(',', '')) - sum) <= trained.length, 'this week’s power rolls up to what it is');
 });
 
 test('a plan: a gauge of what it asks for, and scrubbers without ticks', async () => {
