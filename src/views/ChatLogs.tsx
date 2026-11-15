@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { goBack, navigate } from '../lib/router';
 import { WEEKDAYS, addDays, formatDate, keyOf, monthLabel, parseKey, shortDate, startOfWeek, timeLabel, todayKey } from '../lib/dates';
-import { cleanLogin, loadEmotes, loadMonth, lookup, recentPairs, rememberPair, search, sourceName, unwatch, useLoad, useYearDays, watch, watchList, type Line, type Lookup, type Pair, type WatchList } from '../lib/chatlogs';
+import { cleanLogin, loadEmotes, loadMonth, lookup, recentPairs, rememberPair, search, sourceName, streamsOf, timeIn, unwatch, useLoad, useYearDays, watch, watchList, type Line, type Lookup, type Pair, type Stream, type WatchList } from '../lib/chatlogs';
+import { hours } from '../lib/streamer';
 import type { Emotes } from '../lib/emotes';
 import { signIn, signOut } from '../lib/auth';
 import { ChartCard, HeatLegend, RevealStack, TipRow, tipProps } from '../components/charts';
@@ -20,6 +21,10 @@ const num = (n: number) => n.toLocaleString(LOCALE);
 const monthName = (ym: string) => monthLabel(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1);
 const longDay = (k: string) => formatDate(parseKey(k), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const DAYS_SHOWN = 7;
+/** Time in chat: "3 h 20 min", or "under a minute" for a lone line. */
+const inChat = (ms: number) => (ms < 60_000 ? t('under a minute') : hours(ms));
+/** A stream's span, "18:02–21:40". */
+const span = (s: Stream) => `${timeLabel(s[0])}–${timeLabel(s[1])}`;
 
 function useAccent() {
   useLayoutEffect(() => {
@@ -257,8 +262,9 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
       prev = k;
     }
     const busiest = keys.reduce((b, k) => (days[k] > (days[b] ?? 0) ? k : b), keys[0] ?? '');
-    return { active: keys.length, best, busiest };
-  }, [days]);
+    const longest = a.streams.reduce<Stream | null>((l, s) => (!l || s[1] - s[0] > l[1] - l[0] ? s : l), null);
+    return { active: keys.length, best, busiest, time: timeIn(a.streams), streams: a.streams.length, longest };
+  }, [days, a.streams]);
 
   // the newest weeks are what's wanted first: on a phone the grid starts scrolled to its end
   useLayoutEffect(() => {
@@ -305,6 +311,7 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
                       <>
                         <div class="tip-title">{longDay(k)}</div>
                         <TipRow value={n ? num(n) : t('none')} label={noun(n, 'message', 'messages')} />
+                        {a.time[k] !== undefined && <TipRow value={inChat(a.time[k])} label={t('in chat')} />}
                       </>
                     ), `${longDay(k)}: ${n}`)}
                   />
@@ -320,6 +327,16 @@ function Activity({ d, year, years, day, onYear, onDay }: { d: Lookup; year: num
           <span><b>{num(stats.active)}</b> {noun(stats.active, 'day', 'days')} {t('with messages')}</span>
           <span><b>{num(stats.best)}</b> {t('days in a row at most')}</span>
           {stats.busiest && <span>{t('Busiest: {date}', { date: shortDate(stats.busiest) })} · <b>{num(days[stats.busiest])}</b></span>}
+        </div>
+      )}
+      {!reading && stats.streams > 0 && (
+        <div class="cl-facts cl-time" title={t('From their first message to their last in each stream. Messages more than 3 hours apart are separate streams.')}>
+          <span><Icon name="clock" size={16} /> <b>{inChat(stats.time)}</b> {t('in chat')}</span>
+          <span><b>{num(stats.streams)}</b> {noun(stats.streams, 'stream', 'streams')}</span>
+          <span>{t('{time} a stream on average', { time: inChat(stats.time / stats.streams) })}</span>
+          {stats.longest && stats.longest[1] > stats.longest[0] && (
+            <span>{t('Longest: {date}', { date: shortDate(keyOf(new Date(stats.longest[0]))) })} · <b>{inChat(stats.longest[1] - stats.longest[0])}</b></span>
+          )}
         </div>
       )}
     </ChartCard>
@@ -351,6 +368,19 @@ function Messages({ d, emotes, month, day, year, onMonth, onAll }: { d: Lookup; 
     for (const list of by.values()) list.sort((a, b) => b.t - a.t);
     return [...by].sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [lines, day, asked]);
+  // the month's streams, each on the day it began; a search's lines aren't a stream
+  const streams = useMemo(() => {
+    const by = new Map<string, Stream[]>();
+    if (asked || !m.data) return { all: [] as Stream[], by };
+    const all = streamsOf(m.data.messages.map((x) => x.t));
+    for (const s of all) {
+      const k = keyOf(new Date(s[0]));
+      if (!by.has(k)) by.set(k, []);
+      by.get(k)!.push(s);
+    }
+    return { all, by };
+  }, [m.data, asked]);
+  const shownTime = asked ? null : day ? (streams.by.has(day) ? timeIn(streams.by.get(day)!) : null) : streams.all.length ? timeIn(streams.all) : null;
 
   const submit = (e: Event) => {
     e.preventDefault();
@@ -369,6 +399,7 @@ function Messages({ d, emotes, month, day, year, onMonth, onAll }: { d: Lookup; 
           <h3 class="chart-title">{asked ? t('“{q}” in {year}', { q: asked, year }) : day ? longDay(day) : month ? monthName(month) : t('Messages')}</h3>
           <p class="chart-sub">
             {loading && !lines ? t('Loading…') : `${num(total)} ${noun(total, 'message', 'messages')}`}
+            {lines && shownTime !== null ? ` · ${t('{time} in chat', { time: inChat(shownTime) })}` : ''}
             {asked && found.data?.more ? ` · ${t('the newest {n}', { n: num(500) })}` : ''}
             {!asked && m.data && m.data.total > m.data.messages.length ? ` · ${t('the newest {n}', { n: num(m.data.messages.length) })}` : ''}
           </p>
@@ -410,7 +441,14 @@ function Messages({ d, emotes, month, day, year, onMonth, onAll }: { d: Lookup; 
         <div class={loading ? 'sr-stale' : ''}>
           {groups.slice(0, shown).map(([k, list]) => (
             <div class="cl-day" key={k}>
-              <h4 class="cl-day-head">{longDay(k)} <small>{num(list.length)}</small></h4>
+              <h4 class="cl-day-head">
+                {longDay(k)} <small>{num(list.length)}</small>
+                {!asked && streams.by.has(k) && (
+                  <small class="cl-day-time" title={t('Time in chat: from their first message to their last in each stream')}>
+                    {streams.by.get(k)!.map(span).join(', ')} · {inChat(timeIn(streams.by.get(k)!))}
+                  </small>
+                )}
+              </h4>
               <ol class="cl-lines">
                 {list.map((x) => (
                   <li class={`cl-line k-${x.k}`}>

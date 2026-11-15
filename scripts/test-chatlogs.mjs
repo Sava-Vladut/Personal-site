@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 import { rolldown } from 'rolldown';
-import { cleanLogin, createChatLogs, merge, parseIrc, slimArchive, slimIrc, twitchEmotes } from '../server/chatlogs.js';
+import { cleanLogin, createChatLogs, merge, parseIrc, slimArchive, slimIrc, streamsOf, streamsOfQuarters, twitchEmotes } from '../server/chatlogs.js';
 
 test('IRC lines become kept lines', () => {
   const msg = slimIrc(parseIrc('@color=#FF0000;display-name=Forsen;tmi-sent-ts=1700000000000;user-id=22 :forsen!forsen@forsen.tmi.twitch.tv PRIVMSG #xqc :hello there'));
@@ -201,6 +201,15 @@ test('a slow archive doesn’t hold a lookup or a month up, and joins what’s c
   });
 });
 
+test('lines become streams: time in chat runs from a stream’s first line to its last', () => {
+  const H = 3_600_000;
+  const at = (h) => ({ t: h * H });
+  assert.deepEqual(streamsOf([at(5), at(1), at(2.5), at(4.9), at(9)]), [[1 * H, 5 * H, 4], [9 * H, 9 * H, 1]]);
+  assert.deepEqual(streamsOf([]), []);
+  // from quarter-hour counts, each quarter's lines sit at its middle
+  assert.deepEqual(streamsOfQuarters([[4, 2], [0, 1], [100, 3]]), [[7.5 * 60_000, 67.5 * 60_000, 3], [1507.5 * 60_000, 1507.5 * 60_000, 3]]);
+});
+
 test('a finished month is counted per day in the viewer’s time zone, and kept on disk', async () => {
   const lines = [line('a', Date.UTC(2025, 2, 5, 12)), line('b', Date.UTC(2025, 2, 5, 23, 30)), line('c', Date.UTC(2025, 2, 31, 23, 0))];
   let reads = 0;
@@ -217,7 +226,10 @@ test('a finished month is counted per day in the viewer’s time zone, and kept 
     const open = () => createChatLogs({ directory: dir, isAdmin: () => false, archives: ['a.test'], finder: 'https://finder.test', recent: 'https://recent.test', ivr: 'https://ivr.test', record: false });
     const days = async (h, tz) => (await call(h)('/api/chatlogs/days', `channel=chan&user=who&month=2025-03&tz=${tz}`)).body;
     const h = open();
-    assert.deepEqual((await days(h, 'UTC')).days, { '2025-03-05': 2, '2025-03-31': 1 });
+    const utc = await days(h, 'UTC');
+    assert.deepEqual(utc.days, { '2025-03-05': 2, '2025-03-31': 1 });
+    // 12:00 and 23:30 are more than three hours apart: two streams, each one line long
+    assert.deepEqual(utc.streams, [[Date.UTC(2025, 2, 5, 12), Date.UTC(2025, 2, 5, 12), 1], [Date.UTC(2025, 2, 5, 23, 30), Date.UTC(2025, 2, 5, 23, 30), 1], [Date.UTC(2025, 2, 31, 23), Date.UTC(2025, 2, 31, 23), 1]]);
     // Bucharest is two hours ahead: the late lines are on the next day, and the last one is already April
     const ro = await days(h, 'Europe/Bucharest');
     assert.deepEqual(ro.days, { '2025-03-05': 1, '2025-03-06': 1, '2025-04-01': 1 });
@@ -232,7 +244,9 @@ test('a finished month is counted per day in the viewer’s time zone, and kept 
     // a server that has just started (and finds every archive gone) still has the month
     globalThis.fetch = async (url) => (String(url).startsWith('https://ivr.test') ? fake(url) : new Response('down', { status: 500 }));
     const h2 = open();
-    assert.deepEqual((await days(h2, 'UTC')).days, { '2025-03-05': 2, '2025-03-31': 1 });
+    const saved = await days(h2, 'UTC');
+    assert.deepEqual(saved.days, { '2025-03-05': 2, '2025-03-31': 1 });
+    assert.deepEqual(saved.streams, utc.streams, 'the streams were kept too');
     assert.equal(reads, 1, 'nothing was read from the archive again');
   });
 });

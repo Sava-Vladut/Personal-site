@@ -55,6 +55,8 @@ const MONTHS_AT_ONCE = 6;       // months being read from the archives at the sa
 const PARTIAL_FRESH = MIN;      // a month that no archive answered is asked again soon
 const COUNTS_FRESH = DAY;       // a finished month's saved counts are read again in the background after this
 const COUNTS_PAIRS = 500;       // users' saved counts kept on disk
+/** Lines this close together are one stream's: time in chat runs from a stream's first line to its last. */
+export const STREAM_GAP = 3 * HOUR;
 
 /* ---------- small helpers ---------- */
 
@@ -129,6 +131,28 @@ function dayKeyer(tz) {
     if (!k) memo.set(q, (k = fmt.format(q * 15 * MIN)));
     return k;
   };
+}
+
+/** A month's lines as streams: [first line ms, last line ms, lines], a new one after a STREAM_GAP of quiet. */
+export function streamsOf(list) {
+  const times = list.map((x) => x.t).sort((a, b) => a - b);
+  const out = [];
+  for (const t of times) {
+    const s = out.at(-1);
+    if (s && t - s[1] < STREAM_GAP) { s[1] = t; s[2]++; } else out.push([t, t, 1]);
+  }
+  return out;
+}
+
+/** Streams guessed from quarter-hour counts (saved before streams were): each quarter's lines put at its middle. */
+export function streamsOfQuarters(q) {
+  const out = [];
+  for (const [quarter, n] of [...q].sort((a, b) => a[0] - b[0])) {
+    const t = quarter * 15 * MIN + 7.5 * MIN;
+    const s = out.at(-1);
+    if (s && t - s[1] < STREAM_GAP) { s[1] = t; s[2] += n; } else out.push([t, t, n]);
+  }
+  return out;
 }
 
 /* ---------- IRC lines (the recorder and recent-messages both speak it) ---------- */
@@ -627,7 +651,7 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
   /* a finished month, as counts per quarter hour: all the activity grid needs, kept on disk */
 
   const activityDir = join(directory, 'activity');
-  const savedFiles = new Map(); // `${cid}-${uid}` → Promise<{ [YYYY-MM]: { at, q: [[quarter, n], ...] } }>
+  const savedFiles = new Map(); // `${cid}-${uid}` → Promise<{ [YYYY-MM]: { at, q: [[quarter, n], ...], s: [[from, to, n], ...] } }>
   const unsaved = new Map();    // key → that file, until it's written
   let flushTimer = null;
   let flushes = 0;
@@ -642,9 +666,9 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
     return p;
   }
 
-  async function keep(cid, uid, ym, q) {
+  async function keep(cid, uid, ym, list) {
     const file = await savedOf(cid, uid);
-    file[ym] = { at: Date.now(), q };
+    file[ym] = { at: Date.now(), q: quartersOf(list), s: streamsOf(list) };
     unsaved.set(`${cid}-${uid}`, file);
     flushTimer ??= setTimeout(flush, 1000);
     flushTimer.unref?.();
@@ -685,27 +709,27 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
     return [...q];
   };
 
-  /** How much they wrote in each quarter hour of a month. A finished month comes from disk when it's there. */
+  /** How much they wrote in each quarter hour of a month, and its streams. A finished month comes from disk when it's there. */
   async function monthCounts(look, ym) {
     const { channel: c, user: u } = look;
     const finished = ym < monthOf(Date.now());
     if (finished) {
       const hit = (await savedOf(c.id, u.id))[ym];
       if (hit && Array.isArray(hit.q)) {
-        if (Date.now() - hit.at > COUNTS_FRESH) {
+        const exact = Array.isArray(hit.s);
+        if (!exact || Date.now() - hit.at > COUNTS_FRESH) {
           // what's saved is served now, and read again from the archives for next time
           once(`counts:${c.id}|${u.id}|${ym}`, async () => {
             const e = await month(look, ym, true);
-            if (!e.partial) await keep(c.id, u.id, ym, quartersOf(e.list));
+            if (!e.partial) await keep(c.id, u.id, ym, e.list);
           }).catch(() => {});
         }
-        return hit.q;
+        return { q: hit.q, s: exact ? hit.s : streamsOfQuarters(hit.q) };
       }
     }
     const e = await month(look, ym);
-    const q = quartersOf(e.list);
-    if (finished && !e.partial) keep(c.id, u.id, ym, q).catch(() => {});
-    return q;
+    if (finished && !e.partial) keep(c.id, u.id, ym, e.list).catch(() => {});
+    return { q: quartersOf(e.list), s: streamsOf(e.list) };
   }
 
   /** A month in days (in the viewer's time zone): how many lines each day holds. A day at the edge can be in the next month's too. */
@@ -713,12 +737,13 @@ export function createChatLogs({ directory, isAdmin, archives = ARCHIVES, finder
     const keyOf = dayKeyer(tz);
     const days = {};
     let total = 0;
-    for (const [quarter, n] of await monthCounts(look, ym)) {
+    const { q, s } = await monthCounts(look, ym);
+    for (const [quarter, n] of q) {
       const d = keyOf(quarter * QUARTER);
       days[d] = (days[d] ?? 0) + n;
       total += n;
     }
-    return { month: ym, days, total };
+    return { month: ym, days, total, streams: s };
   }
 
   /** A year in days: every month of it read at once (the server paces them), and the days added up. */

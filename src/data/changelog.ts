@@ -11,6 +11,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.202.0',
+    date: '2026-11-15',
+    changes: [
+      'Chat logs: time in chat for each person, from their first message to their last in each stream (messages more than 3 hours apart start a new stream).',
+      'The Activity card shows the year’s time in chat, how many streams, the average and the longest; each day’s tooltip shows that day’s.',
+      'The messages card shows the month’s or the day’s time in chat, and each day lists its streams’ times, like 18:02–21:40.',
+      'Chat logs: the activity grid has smaller squares, closer together.',
+    ],
+  },
+  {
     version: '1.201.2',
     date: '2026-11-13',
     changes: [

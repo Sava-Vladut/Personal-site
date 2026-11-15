@@ -2,6 +2,7 @@
 // reads the public log archives, the last day of chat, and the channels recorded on this server.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Emotes } from './emotes';
+import { keyOf } from './dates';
 import { t } from './i18n';
 
 export interface TwitchUser { login: string; id: string; name: string; logo: string | null; banned: boolean; color: string | null }
@@ -24,7 +25,35 @@ export interface Lookup {
 export interface Line { t: number; i: string; u: string; n: string; c: string; m: string; k: 'msg' | 'me' | 'ban' | 'sub'; e?: Record<string, string> }
 export interface Month { month: string; total: number; messages: Line[]; sources: string[] }
 /** How many lines each day holds, for the days (YYYY-MM-DD) this UTC month's lines fall on in the viewer's time zone. */
-export interface Days { month: string; days: Record<string, number>; total: number }
+export interface Days { month: string; days: Record<string, number>; total: number; streams?: Stream[] }
+/** A stream they wrote in: first line (ms), last line (ms), lines. Time in chat runs from the first to the last. */
+export type Stream = [number, number, number];
+
+/** Lines this close together are one stream's (as on the server). */
+export const STREAM_GAP = 3 * 3_600_000;
+
+/** Lines' times (ms) as streams, a new one after STREAM_GAP of quiet. */
+export function streamsOf(times: number[]): Stream[] {
+  const out: Stream[] = [];
+  for (const t of [...times].sort((a, b) => a - b)) {
+    const s = out.at(-1);
+    if (s && t - s[1] < STREAM_GAP) { s[1] = t; s[2]++; } else out.push([t, t, 1]);
+  }
+  return out;
+}
+
+/** Streams from several months as one list: a stream cut in two at a month's edge is one again. */
+export function joinStreams(lists: Stream[][]): Stream[] {
+  const out: Stream[] = [];
+  for (const [a, b, n] of lists.flat().sort((x, y) => x[0] - y[0])) {
+    const s = out.at(-1);
+    if (s && a - s[1] < STREAM_GAP) { s[1] = Math.max(s[1], b); s[2] += n; } else out.push([a, b, n]);
+  }
+  return out;
+}
+
+/** Time in chat over some streams, in ms. */
+export const timeIn = (streams: Stream[]) => streams.reduce((sum, s) => sum + s[1] - s[0], 0);
 export interface Found { q: string; year: number; messages: Line[]; more: boolean }
 export interface Watched { login: string; id: string; name: string; since: number; days: number; bytes: number; today: number; last: number | null }
 export interface WatchList { watched: Watched[]; connected: boolean; admin: boolean; max: number }
@@ -108,6 +137,10 @@ export interface YearDays {
   /** each day (YYYY-MM-DD) of the year with how many lines, from the months that have arrived so far */
   days: Record<string, number>;
   total: number;
+  /** the streams they wrote in this year, oldest first, each on the day (in this time zone) it began */
+  streams: Stream[];
+  /** time in chat (ms) each day, by the streams that began on it */
+  time: Record<string, number>;
   /** months of the year still being read, as YYYY-MM */
   waiting: Set<string>;
   done: number;
@@ -143,8 +176,14 @@ export function useYearDays(channel: string, user: string, year: number, all: st
         total += n;
       }
     }
+    const streams = joinStreams(Object.values(here.by).map((d) => d.streams ?? [])).filter((s) => keyOf(new Date(s[0])).startsWith(`${year}-`));
+    const time: Record<string, number> = {};
+    for (const [a, b] of streams) {
+      const k = keyOf(new Date(a));
+      time[k] = (time[k] ?? 0) + b - a;
+    }
     const waiting = new Set(want.filter((m) => !(m in here.by) && !here.failed.includes(m)));
-    return { days: out, total, waiting, done: want.length - waiting.size, of: want.length, error: here.error };
+    return { days: out, total, streams, time, waiting, done: want.length - waiting.size, of: want.length, error: here.error };
   }, [got, key]);
 }
 
