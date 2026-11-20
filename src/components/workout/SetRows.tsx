@@ -181,7 +181,9 @@ function SetRow({ n, next, s, cols, item, bw, live, ghost, past, onSet, onRemove
     onSet({ ...x, done: true });
     if (!still()) setFlash((f) => f + 1);
     if (tickBtn.current) burst(tickBtn.current);
-    if (readout.current) flyPower(readout.current, setPower(item.move, x, bw, item.pair));
+    // the power flies from the row's readout, or from the tick where a phone hides the readout
+    const from = readout.current?.offsetWidth ? readout.current : tickBtn.current;
+    if (from) flyPower(from, setPower(item.move, x, bw, item.pair));
     onDone();
   };
   const tickLabel = s.done ? t('Done. Tap to undo') : t('Mark the set done');

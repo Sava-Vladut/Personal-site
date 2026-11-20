@@ -561,10 +561,10 @@ function LiveItem({ id, it, bw, ghosts, next, folded, stage, onFold, onSets, onR
           <span class="wo-meta">
             <span class={`wo-meta-text wo-sets-done${all ? ' is-all' : ''}`} title={count(done, 'set done', 'sets done')}>
               <Icon name="check" size={12} />
-              {done}/{it.sets.length}
+              {t('{n}/{total} sets', { n: done, total: it.sets.length })}
             </span>
             {line && <span class="wo-meta-text wo-done-line">{line}</span>}
-            {!folded && reps ? <span class="wo-meta-text" title={t('Reps done')}>{totalReps(it, true)}/{count(reps, 'rep', 'reps')}</span> : null}
+            {!folded && reps ? <span class="wo-meta-text wo-reps-so-far" title={t('Reps done')}>{totalReps(it, true)}/{count(reps, 'rep', 'reps')}</span> : null}
             {done > 0 && <Power value={itemPower(it, bw)} size={12} />}
             {!folded && <PerUnit move={it.move} bw={bw} />}
             {!folded && it.pair && <span class="wo-pair" title={t('One in each hand (counts ×2)')}>×2</span>}

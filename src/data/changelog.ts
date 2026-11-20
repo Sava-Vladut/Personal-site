@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.203.0',
+    date: '2026-11-20',
+    changes: [
+      'Workout on a phone: set rows are taller with bigger numbers and a bigger tick, easier to hit mid-workout.',
+      'Workout on a phone: a done set is filled in, the set to do now has an outline, and sets still to come stay plain.',
+      'Workout on a phone: the power fill and last-time marker behind each set and the ⚡ per set are gone, so the rows read at a glance.',
+      'Workout on a phone: each exercise says “1/4 sets” and leaves out the reps-so-far and ⚡-per-rep figures.',
+      'Insights › Workouts on a phone: history rows keep the full date and length, and a missed target shows a target icon instead of an ×.',
+    ],
+  },
+  {
     version: '1.202.0',
     date: '2026-11-15',
     changes: [

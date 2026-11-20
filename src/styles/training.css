@@ -293,3 +293,6 @@
   .tr-history > :is(.tr-live, .tr-more), .tr-exercises > :is(.tr-search, .empty-note) { column-span: all; }
   .tr-exercises > .tr-search { max-width: 640px; margin-bottom: 18px; }
 }
+
+/* a phone: a workout's row keeps its day and length whole; the muscles it worked wait for a wider screen */
+@media (max-width: 559px) { .tr-row-muscles { display: none; } }

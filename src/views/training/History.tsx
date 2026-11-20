@@ -98,7 +98,7 @@ function Row({ d, records, onOpen }: { d: Done; records: number; onOpen: (id: st
         <Power value={d.power} size={14} />
         {w.target > 0 && (
           <span class={d.met ? 'tr-target met' : 'tr-target'} title={d.met ? t('Target met') : t('Target missed')}>
-            <Icon name={d.met ? 'check' : 'x'} size={12} /> {fmtPower(w.target)}
+            <Icon name={d.met ? 'check' : 'target'} size={12} /> {fmtPower(w.target)}
           </span>
         )}
       </span>

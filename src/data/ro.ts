@@ -3521,6 +3521,7 @@ export const RO: Record<string, string> = {
   "Keep the screen on": "Ține ecranul aprins",
   "Workout options": "Opțiunile antrenamentului",
   "{n} of {total} sets done": "{n} din {total} serii făcute",
+  "{n}/{total} sets": "{n}/{total} serii",
   "Show the sets": "Arată seriile",
   "Fold away": "Strânge",
   "Add set": "Adaugă o serie",
