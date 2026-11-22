@@ -4,11 +4,7 @@
 //  • GET /api/watch/<login>.m3u8 — a playback token from Twitch's public GraphQL API (the web player's public client
 //    id, as in server/streamers.js), then Usher's list of qualities, each pointed back at /api/watch/playlist.
 //  • GET /api/watch/playlist?u=<url> — one quality's live playlist, as Twitch wrote it. Only *.ttvnw.net is fetched.
-// Low latency (?ll=1 on the first, passed on to the rest): Twitch also lists the next two segments, still being made,
-// as #EXT-X-TWITCH-PREFETCH. Its own player fetches them early, and the CDN sends each one as it's made (the first
-// is done ~1.5 s after it's listed, ~2 s before it would turn up as an ordinary segment). Other players skip the tag,
-// so here they become ordinary segments, which puts the newest video ~4 s closer to live.
-// How far behind that the video sits is the page's choice (hls.js's liveSyncDuration), not this file's.
+// How far behind live the video sits is the page's choice (hls.js's liveSyncDuration), not this file's.
 import { randomBytes } from 'node:crypto';
 import { HttpError } from './http-error.js';
 
@@ -29,19 +25,9 @@ export function twitchPlaylist(u) {
 }
 
 /** Usher's list of qualities, with each quality's playlist fetched through /api/watch/playlist. */
-export const pointQualities = (m3u8, low = false) =>
-  m3u8.split('\n').map((line) => (/^https:\/\//.test(line.trim()) ? `/api/watch/playlist?u=${encodeURIComponent(line.trim())}${low ? '&ll=1' : ''}` : line)).join('\n');
+export const pointQualities = (m3u8) =>
+  m3u8.split('\n').map((line) => (/^https:\/\//.test(line.trim()) ? `/api/watch/playlist?u=${encodeURIComponent(line.trim())}` : line)).join('\n');
 
-/** Twitch's prefetch entries as ordinary segments, as long as the newest ordinary one (Twitch's are 2 s). */
-export function withPrefetch(m3u8) {
-  let last = '2.000';
-  return m3u8.split('\n').map((line) => {
-    const inf = /^#EXTINF:([\d.]+)/.exec(line);
-    if (inf) last = inf[1];
-    const pre = /^#EXT-X-TWITCH-PREFETCH:(https:\/\/\S+)/.exec(line.trim());
-    return pre ? `#EXTINF:${last},live\n${pre[1]}` : line;
-  }).join('\n');
-}
 
 function sendPlaylist(res, text) {
   res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
@@ -57,7 +43,7 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
     }
   };
 
-  async function qualities(login, low) {
+  async function qualities(login) {
     const r = await get(GQL, {
       method: 'POST',
       headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
@@ -79,7 +65,7 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
     const u = await get(usher);
     if (u.status === 404) throw new HttpError(404, 'offline');
     if (!u.ok) throw new HttpError(502, 'Twitch wouldn’t give out this stream right now.');
-    return pointQualities(await u.text(), low);
+    return pointQualities(await u.text());
   }
 
   return async function api(req, res, p, url) {
@@ -89,11 +75,10 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
       if (!u) throw new HttpError(400, 'Not a Twitch playlist.');
       const r = await get(u);
       if (!r.ok) throw new HttpError(r.status === 403 || r.status === 404 ? 410 : 502, 'The stream ended or moved.');
-      const text = await r.text();
-      return sendPlaylist(res, url.searchParams.get('ll') === '1' ? withPrefetch(text) : text);
+      return sendPlaylist(res, await r.text());
     }
     const login = /^\/api\/watch\/([^/]+)\.m3u8$/.exec(p)?.[1]?.toLowerCase();
     if (!login || !LOGIN.test(login)) throw new HttpError(404, 'Not found');
-    return sendPlaylist(res, await qualities(login, url.searchParams.get('ll') === '1'));
+    return sendPlaylist(res, await qualities(login));
   };
 }

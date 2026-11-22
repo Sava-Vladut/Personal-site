@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.206.1',
+    date: '2026-11-22',
+    changes: [
+      'Watch live stops far less: low latency left no video loaded ahead and stalled every few seconds, so it’s gone. Streams now play about 5 seconds behind Twitch’s newest video, with a couple of seconds always loaded.',
+      'Quality is automatic again and never bigger than the player (a phone no longer pulls 1080p), and it catches up after a stall more gently. Pick a quality under the video to fix it.',
+    ],
+  },
+  {
     version: '1.206.0',
     date: '2026-11-22',
     changes: [

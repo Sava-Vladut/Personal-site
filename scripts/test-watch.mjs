@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { HttpError } from '../server/http-error.js';
-import { createWatchHandler, pointQualities, twitchPlaylist, withPrefetch } from '../server/watch.js';
+import { createWatchHandler, pointQualities, twitchPlaylist } from '../server/watch.js';
 
 test('only https playlists on *.ttvnw.net are fetched', () => {
   assert.equal(twitchPlaylist('https://euc11.playlist.ttvnw.net/v1/playlist/abc.m3u8'), 'https://euc11.playlist.ttvnw.net/v1/playlist/abc.m3u8');
@@ -14,12 +14,6 @@ test('only https playlists on *.ttvnw.net are fetched', () => {
 test('each quality is fetched through /api/watch/playlist, the tags stay', () => {
   const out = pointQualities('#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nhttps://a.playlist.ttvnw.net/v1/p.m3u8?x=1&y=2\n');
   assert.equal(out, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n/api/watch/playlist?u=https%3A%2F%2Fa.playlist.ttvnw.net%2Fv1%2Fp.m3u8%3Fx%3D1%26y%3D2\n');
-});
-
-test('low latency: the qualities say so, and prefetch entries become segments', () => {
-  assert.match(pointQualities('https://a.playlist.ttvnw.net/q.m3u8', true), /&ll=1$/);
-  const pl = '#EXTM3U\n#EXTINF:2.002,live\nhttps://seg/1.mp4\n#EXT-X-TWITCH-PREFETCH:https://seg/2.mp4\n#EXT-X-TWITCH-PREFETCH:https://seg/3.mp4';
-  assert.equal(withPrefetch(pl), '#EXTM3U\n#EXTINF:2.002,live\nhttps://seg/1.mp4\n#EXTINF:2.002,live\nhttps://seg/2.mp4\n#EXTINF:2.002,live\nhttps://seg/3.mp4');
 });
 
 function fakeRes() {
