@@ -22,6 +22,7 @@
 //  • chat logs: one Twitch user's chat in one channel (server/chatlogs.js), from the public log archives, plus the
 //    channels the admin has recorded here (CHATLOGS_DIR) by an anonymous chat connection.
 //  • saved TikToks: /api/tiktok/* is passed on to the tiktok container (TIKTOK_URL), for the admin only (server/tiktok.js)
+//  • watching a live Twitch stream: /api/watch/* hands out its playlists (server/watch.js)
 //  • Card Wars player stats: passed on from the game's PvP relay (CARDWARS_STATS_URL), which only the server can reach.
 //  • push-up counter: hands out MediaPipe's pose model and its WebAssembly runtime, fetched once and kept in data/pose (server/pose.js).
 import http from 'node:http';
@@ -45,6 +46,7 @@ import { createSullyGnome } from './sullygnome.js';
 import { createChatLogs } from './chatlogs.js';
 import { createTiktokProxy } from './tiktok.js';
 import { createTwitchHandler } from './twitch.js';
+import { createWatchHandler } from './watch.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -120,7 +122,7 @@ const SECURITY_HEADERS = {
   'Content-Security-Policy':
     "default-src 'self'; img-src 'self' data: blob: https:; " +
     "style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; manifest-src 'self'; " +
-    "connect-src 'self' https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
+    "media-src 'self' blob:; connect-src 'self' https://*.ttvnw.net https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
     'https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; ' +
     "worker-src 'self'; frame-src 'self' https://open.spotify.com; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
@@ -1017,6 +1019,7 @@ if (TWITCH_CHANNELS) streamers.start();
 const chatLogs = createChatLogs({ directory: CHATLOGS_DIR, isAdmin, record: !!TWITCH_CHANNELS });
 chatLogs.start().catch((e) => console.warn(`Chat logs: ${e.message}`));
 // Saved TikToks: the viewer and downloader in their own container, for the admin only
+const watch = createWatchHandler();
 const tiktok = createTiktokProxy({ target: process.env.TIKTOK_URL || 'http://tiktok:8777', isAdmin });
 
 /* ---------------- Card Wars player stats ---------------- */
@@ -1068,6 +1071,7 @@ async function api(req, res, url) {
     if (p.startsWith('/api/chatlogs/')) return await chatLogs.api(req, res, p, url);
     if (p === '/api/cardwars/stats') return await cardWarsStats(req, res);
     if (p === '/api/tiktok' || p.startsWith('/api/tiktok/')) return await tiktok(req, res, url);
+    if (p.startsWith('/api/watch/')) return await watch(req, res, p, url);
     throw new HttpError(404, 'Not found');
   } finally {
     // A refresh can rotate its token even when the following API call fails.

@@ -3040,7 +3040,7 @@ export const RO: Record<string, string> = {
   "Not next to the wheel, in the notices or on your public status": "Nu lângă roată, în notificări sau pe statusul tău public",
   "It counts down on every device you’re signed in on, only here.": "Numără invers pe fiecare dispozitiv pe care ești conectat, doar aici.",
   // ── Chat logs (views/ChatLogs.tsx, lib/chatlogs.ts) ──
-  "Your channel points, what streamers play and who said what in chat": "Punctele tale de canal, ce joacă streamerii și cine ce a scris în chat",
+  "Your channel points, what streamers play, who said what in chat, and watching live": "Punctele tale de canal, ce joacă streamerii, cine ce a scris în chat și stream-uri live",
   "Chat logs": "Jurnale de chat",
   "Everything someone wrote in a Twitch channel’s chat": "Tot ce a scris cineva în chatul unui canal Twitch",
   "Last 24 hours": "Ultimele 24 de ore",
@@ -3687,4 +3687,17 @@ export const RO: Record<string, string> = {
   "Halfway": "La jumătate",
   "Past last time": "Peste data trecută",
   "Right on target": "Fix pe țintă",
+  // Watch live (views/Watch.tsx)
+  "A Twitch stream, a few seconds behind live": "Un stream de pe Twitch, la câteva secunde în urma live-ului",
+  "Watch": "Urmărește",
+  "Recent channels": "Canale recente",
+  "Type a Twitch channel to watch it live.": "Scrie un canal de Twitch ca să-l urmărești live.",
+  "The stream plays about 4 seconds behind the newest video Twitch has, instead of the 15 seconds most players wait.": "Stream-ul rulează cu aproximativ 4 secunde în urma celui mai nou video de pe Twitch, în loc de cele 15 secunde pe care le așteaptă majoritatea playerelor.",
+  "{channel} isn’t live right now.": "{channel} nu e live acum.",
+  "The stream ended.": "Stream-ul s-a terminat.",
+  "This stream can’t be played here right now.": "Stream-ul ăsta nu poate fi redat aici acum.",
+  "Starting {channel}…": "Se pornește {channel}…",
+  "Live": "Live",
+  "{n} s behind live": "{n} s în urma live-ului",
+  "Jump to live": "Sari la live",
 };

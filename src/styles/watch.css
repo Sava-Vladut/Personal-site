@@ -1,0 +1,25 @@
+/* Watch live (views/Watch.tsx): one channel box, then the video. */
+
+.wt-find { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 559.98px) {
+  .wt-find { grid-template-columns: minmax(0, 1fr) auto; }
+  .wt-find .btn { grid-column: auto; }
+}
+
+.wt-player { display: grid; gap: 10px; }
+.wt-frame { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-l); overflow: hidden; }
+.wt-frame video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+.wt-over {
+  position: absolute; inset: 0; margin: 0; padding: 16px;
+  display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center;
+  color: #fff; background: rgb(0 0 0 / 0.55);
+}
+.wt-over p { margin: 0; }
+.wt-over .btn { color: #fff; }
+.wt-sound { position: absolute; top: 12px; left: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 6px; }
+
+.wt-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.wt-bar .chip { display: inline-flex; align-items: center; gap: 6px; }
+.wt-live { font-variant-numeric: tabular-nums; }
+.wt-dot { width: 8px; height: 8px; border-radius: 50%; background: #eb0400; }

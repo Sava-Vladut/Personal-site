@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.205.0',
+    date: '2026-11-22',
+    changes: [
+      'Watch live (Twitch group): type a channel and watch its stream right in the app.',
+      'It plays about 4 seconds behind Twitch’s newest video instead of the usual 15, and shows how far behind live you are, with a button to jump back.',
+    ],
+  },
+  {
     version: '1.204.0',
     date: '2026-11-22',
     changes: [
