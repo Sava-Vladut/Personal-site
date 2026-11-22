@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.207.0',
+    date: '2026-11-22',
+    changes: [
+      'Watch live: Low latency is back as a toggle under the video (off by default, remembered on this device). It plays the video Twitch is still making as it streams in, like Twitch’s own player, about 3 seconds closer to live.',
+      'With it on, the quality fits the player (480p–1080p) and steps down by itself if it keeps stopping to load. Turn it off for the steadiest playback.',
+    ],
+  },
+  {
     version: '1.206.1',
     date: '2026-11-22',
     changes: [

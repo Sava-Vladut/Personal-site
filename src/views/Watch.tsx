@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import Hls from 'hls.js/light';
+import Hls, { FetchLoader } from 'hls.js/light';
+import type { FragmentLoaderConstructor } from 'hls.js';
 import { goBack, navigate } from '../lib/router';
 import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
@@ -24,6 +25,34 @@ import '../styles/watch.css';
  * left no buffer at all and stalled every few seconds.)
  */
 const BEHIND = 5; // seconds behind the end of the playlist the player aims for
+
+/*
+ * Low latency (a toggle, kept per device): the playlists also list the two segments Twitch is still making
+ * (server/watch.js), and they're played while they stream in. The CDN sends them in ~100 ms moof+mdat chunks as
+ * they're made; hls.js's progressive mode appends whole chunks, but only in 128 KB batches (0.3–0.8 s of 480p–720p),
+ * so the fragment loader below hands them on every 16 KB. The newest playable video is then ~2.4 s behind the
+ * broadcast, ~4 s before the end of a playlist that holds the two prefetches; 6 s keeps ~2 s loaded (~4.5 s behind).
+ * A streaming download lasts as long as its video, which hls.js's automatic quality reads as a slow connection (and
+ * its "abandon slow download" rule as a reason to drop quality), so in this mode the quality is set by hand: the best
+ * up to what the player shows (at least 480p, at most 1080p), one step down after two stalls within 30 s.
+ */
+const BEHIND_LOW = 6;
+const CHUNK = 16 * 1024;
+const STALLS = 2;
+const STALL_WINDOW = 30_000;
+const LOW_KEY = 'mm-watch-low';
+const readLow = () => {
+  try { return localStorage.getItem(LOW_KEY) === '1'; } catch { return false; }
+};
+
+/** hls.js's fetch loader, handing on streamed media every 16 KB instead of every 128 KB. */
+class ChunkLoader extends FetchLoader {
+  load(...[context, config, callbacks]: Parameters<FetchLoader['load']>) {
+    const small = Number.isFinite(config.highWaterMark) ? { ...config, highWaterMark: CHUNK } : config;
+    super.load(context, small, callbacks);
+  }
+}
+
 const RECENT_KEY = 'mm-watch-recent';
 const cleanLogin = (s: string) => s.trim().toLowerCase().replace(/^.*twitch\.tv\//, '').replace(/^@/, '').replace(/[^a-z0-9_]/g, '').slice(0, 25);
 
@@ -54,7 +83,12 @@ export function Watch({ query }: { query: URLSearchParams }) {
   const channel = cleanLogin(query.get('channel') ?? '');
   const [typed, setTyped] = useState(channel);
   const [recent, setRecent] = useState(readRecent);
+  const [low, setLow] = useState(readLow);
   useEffect(() => setTyped(channel), [channel]);
+  const toggleLow = () => {
+    setLow(!low);
+    try { localStorage.setItem(LOW_KEY, low ? '0' : '1'); } catch {}
+  };
 
   const go = (c: string) => navigate(`watch?channel=${c}`, true);
   const submit = (e: Event) => {
@@ -92,11 +126,12 @@ export function Watch({ query }: { query: URLSearchParams }) {
       </div>
 
       {channel ? (
-        <Player key={channel} login={channel} onPlaying={() => setRecent(remember(channel))} />
+        <Player key={`${channel}|${low}`} login={channel} low={low} onLow={toggleLow} onPlaying={() => setRecent(remember(channel))} />
       ) : (
         <section class="card sr-note cl-intro">
           <p>{t('Type a Twitch channel to watch it live.')}</p>
           <p>{t('Most players wait 15 seconds behind Twitch’s newest video. This one waits 5, with enough kept loaded to play without stopping.')}</p>
+          <p>{t('Low latency, under the video, plays the video Twitch is still making as it streams in, like Twitch’s own player: a few seconds closer to live, at a quality picked for the player instead of for your connection.')}</p>
         </section>
       )}
     </div>
@@ -108,7 +143,7 @@ type State = 'loading' | 'playing' | 'offline' | 'ended' | 'error';
 /** "1080p60", "720p", or "Audio" for the sound-only quality. */
 const levelName = (l: { height: number; frameRate: number }) => (l.height ? `${l.height}p${l.frameRate >= 50 ? '60' : ''}` : t('Audio'));
 
-function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) {
+function Player({ login, low, onLow, onPlaying }: { login: string; low: boolean; onLow: () => void; onPlaying: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [state, setState] = useState<State>('loading');
@@ -118,10 +153,11 @@ function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) 
   const [levels, setLevels] = useState<string[]>([]);
   const [level, setLevel] = useState(-1); // -1: picked by hls.js as the connection allows
   const [playingLevel, setPlayingLevel] = useState(-1);
+  const [steppedDown, setSteppedDown] = useState(false);
 
   useEffect(() => {
     const v = video.current!;
-    const src = `/api/watch/${login}.m3u8`;
+    const src = `/api/watch/${login}.m3u8${low ? '?ll=1' : ''}`;
     setState('loading');
     setBehind(null);
 
@@ -142,10 +178,11 @@ function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) 
       v.disableRemotePlayback = true; // iPhone's ManagedMediaSource plays only without AirPlay
       hls = new Hls({
         enableWorker: false, // the page's CSP has no blob: workers
-        liveSyncDuration: BEHIND,
+        ...(low ? { progressive: true, fLoader: ChunkLoader as unknown as FragmentLoaderConstructor } : {}),
+        liveSyncDuration: low ? BEHIND_LOW : BEHIND,
         // after a stall it falls behind; up to this far it catches up by playing 5% faster (gently, so the catching
         // up doesn't eat the buffer it needs), further back it jumps
-        liveMaxLatencyDuration: BEHIND + 15,
+        liveMaxLatencyDuration: (low ? BEHIND_LOW : BEHIND) + 15,
         maxLiveSyncPlaybackRate: 1.05,
         // no bigger picture than the player shows (a phone doesn't need 1080p60 at 8 Mbps), and start careful
         capLevelToPlayerSize: true,
@@ -157,13 +194,46 @@ function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) 
       });
       hlsRef.current = hls;
       const h = hls;
+      const stalls: number[] = [];
       h.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
         setLevels(data.levels.map(levelName));
+        if (low) {
+          // the best the player can show: its height in device pixels, at least 480p, at most 1080p
+          const fits = Math.min(1080, Math.max(480, Math.ceil(v.clientHeight * (devicePixelRatio || 1))));
+          let best = -1;
+          data.levels.forEach((l, i) => {
+            if (l.height && l.height <= fits && (best < 0 || l.bitrate > data.levels[best].bitrate)) best = i;
+          });
+          if (best >= 0) {
+            h.currentLevel = best;
+            setLevel(best);
+          }
+        }
         start();
       });
       h.on(Hls.Events.LEVEL_SWITCHED, (_, data) => setPlayingLevel(data.level));
       h.on(Hls.Events.ERROR, (_, data) => {
-        if (!data.fatal) return;
+        if (!data.fatal) {
+          if (!low || data.details !== Hls.ErrorDetails.BUFFER_STALLED_ERROR) return;
+          const now = Date.now();
+          stalls.push(now);
+          while (stalls.length && now - stalls[0] > STALL_WINDOW) stalls.shift();
+          if (stalls.length < STALLS) return;
+          stalls.length = 0;
+          // the next quality down that still shows video
+          const lv = h.levels;
+          const cur = lv[h.currentLevel];
+          let next = -1;
+          lv.forEach((l, i) => {
+            if (l.height && cur && l.bitrate < cur.bitrate && (next < 0 || l.bitrate > lv[next].bitrate)) next = i;
+          });
+          if (next >= 0) {
+            h.nextLevel = next;
+            setLevel(next);
+            setSteppedDown(true);
+          }
+          return;
+        }
         const code = data.response?.code;
         if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) setState(code === 404 ? 'offline' : 'error');
         else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) h.recoverMediaError();
@@ -198,7 +268,7 @@ function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) 
       v.removeAttribute('src');
       v.load();
     };
-  }, [login, again]);
+  }, [login, low, again]);
 
   const unmute = () => {
     const v = video.current!;
@@ -211,6 +281,7 @@ function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) 
     if (!h) return;
     h.nextLevel = i; // from the next segment on, without emptying what's loaded
     setLevel(i);
+    setSteppedDown(false);
   };
   const toLive = () => {
     const v = video.current!;
@@ -243,16 +314,20 @@ function Player({ login, onPlaying }: { login: string; onPlaying: () => void }) 
         <div class="wt-bar">
           <span class="chip wt-live"><span class="wt-dot" aria-hidden="true" /> {behind == null ? t('Live') : t('{n} s behind live', { n: behind.toFixed(1) })}</span>
           <button class="chip" onClick={toLive}><Icon name="player-skip-forward" size={16} /> {t('Jump to live')}</button>
+          <button class="chip" aria-pressed={low} onClick={onLow} title={t('Play the video Twitch is still making as it streams in')}>{t('Low latency')}</button>
         </div>
       )}
       {state === 'playing' && levels.length > 1 && (
         <div class="chips filters scroll-x" role="toolbar" aria-label={t('Quality')}>
-          <button class="chip" aria-pressed={level < 0} onClick={() => pick(-1)}>
-            {level < 0 && playingLevel >= 0 ? t('Auto ({quality})', { quality: levels[playingLevel] }) : t('Auto')}
-          </button>
+          {!low && (
+            <button class="chip" aria-pressed={level < 0} onClick={() => pick(-1)}>
+              {level < 0 && playingLevel >= 0 ? t('Auto ({quality})', { quality: levels[playingLevel] }) : t('Auto')}
+            </button>
+          )}
           {levels.map((name, i) => <button class="chip" aria-pressed={level === i} onClick={() => pick(i)}>{name}</button>)}
         </div>
       )}
+      {steppedDown && <p class="empty-note">{t('It kept stopping to load, so the quality went down a step.')}</p>}
     </section>
   );
 }
