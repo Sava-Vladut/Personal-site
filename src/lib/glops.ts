@@ -1,8 +1,7 @@
-// Global Ops player stats: who plays the browser port at savavlad.com/glops, counted by its multiplayer relay
-// (netrelay.mjs in the port's repo) and served next to the game at /glops/net/analytics, public, no sign-in.
-// One copy for the whole app, fetched again every 30 seconds while the page is open and visible (lib/liveStats.ts).
+// Global Ops player stats. The game was taken offline on 2026-11-22; the final numbers its multiplayer relay had counted
+// (since 2026-10-28) are kept in data/glopsFinal.json, loaded on demand, and nothing is fetched from a server any more.
+import { useEffect, useState } from 'preact/hooks';
 import { LOCALE, t } from './i18n';
-import { liveStats } from './liveStats';
 
 export interface Peak { n: number; at: string | null }
 export interface GlopsDay { day: string; peak: number; playing: number; visitors: number; new: number; sessions: number; plays: number; playMin: number }
@@ -36,10 +35,17 @@ export interface GlopsStats {
   seriesMs: number;
 }
 
-const live = liveStats<GlopsStats>('/glops/net/analytics');
-export const loadGlops = live.load;
-/** The stats, loaded while `on` and refreshed every 30 seconds the page stays visible. */
-export const useGlops = live.use;
+let final: GlopsStats | null = null;
+const loadGlops = () => import('../data/glopsFinal.json').then((m) => (final = m.default as unknown as GlopsStats));
+
+/** The final stats, loaded while `on`. */
+export function useGlops(on = true) {
+  const [data, setData] = useState(final);
+  useEffect(() => {
+    if (on && !final) void loadGlops().then(setData);
+  }, [on]);
+  return { data, error: null as string | null, loading: on && !data };
+}
 
 /** Minutes with the game open by weekday (Monday first) and 3-hour block of the viewer's own day. */
 export function busyBlocks(week: number[], offsetMin = -new Date().getTimezoneOffset()) {

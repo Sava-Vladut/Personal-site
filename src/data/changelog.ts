@@ -11,6 +11,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.204.0',
+    date: '2026-11-22',
+    changes: [
+      'Global Ops is offline: the game and its servers were taken down, and its page says so at the top.',
+      'Insights › Global Ops keeps the final player stats (players, visits, hours played, busy hours, days) as they stood on 22 Nov; nothing is fetched from the game any more.',
+      'The Global Ops card on the home page now reads “Offline” with the visitor total.',
+    ],
+  },
+  {
     version: '1.203.0',
     date: '2026-11-20',
     changes: [

@@ -70,3 +70,7 @@
 
 .gl-note { font-size: var(--text-s); line-height: 1.45; color: var(--ink-3); padding: 2px 4px; }
 .gl-note a { color: var(--ink-2); }
+
+/* the notice that the game is offline */
+.gl-offline { padding: 16px; }
+.gl-offline p { margin: 6px 0 0; color: var(--ink-2); font-size: var(--text-m); line-height: 1.45; }

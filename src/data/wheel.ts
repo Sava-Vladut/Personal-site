@@ -35,7 +35,7 @@ export const WHEEL: WheelNode[] = [
     kids: [
       { id: 'stats', name: t('Stats'), sub: t('What your feelings add up to, and where'), icon: 'chart-bar', to: 'stats' },
       { id: 'training', name: t('Workouts'), sub: t('Every workout you’ve done: power, muscles, records and progress'), icon: 'activity', to: 'training' },
-      { id: 'games', name: t('Game statistics'), sub: t('Who plays Global Ops and Card Wars: online now, all-time highs, progress and PvP'), icon: 'device-gamepad-2', to: 'games' },
+      { id: 'games', name: t('Game statistics'), sub: t('Global Ops’ final stats, and who plays Card Wars: online now, all-time highs, progress and PvP'), icon: 'device-gamepad-2', to: 'games' },
     ],
   },
   // things to read: how minds, power, people and desire work

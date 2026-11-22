@@ -47,7 +47,7 @@ export const WIDGETS: WidgetDef[] = [
     options: [{ key: 'graph', name: t('Last 30 days graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
   },
   {
-    id: 'glops', name: t('Global Ops'), sub: t('Who’s playing the browser game right now'), icon: 'device-gamepad-2', image: '/games/glops.webp', hue: 'hope-interest', zone: 'side',
+    id: 'glops', name: t('Global Ops'), sub: t('The browser game’s final stats'), icon: 'device-gamepad-2', image: '/games/glops.webp', hue: 'hope-interest', zone: 'side',
     options: [{ key: 'graph', name: t('Last 24 hours graph'), fallback: 1, choices: [[1, t('Show')], [0, t('Hide')]] }],
   },
   {

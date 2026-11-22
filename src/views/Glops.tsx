@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useLayoutEffect } from 'preact/hooks';
 import { goBack } from '../lib/router';
 import { keyOf, shortDate } from '../lib/dates';
-import { hoursText, loadGlops, useGlops, type GlopsDay, type GlopsStats } from '../lib/glops';
+import { hoursText, useGlops, type GlopsDay, type GlopsStats } from '../lib/glops';
 import { barPath, ChartCard, CountUp, HeatLegend, RevealStack, TipRow, tipProps, useWidth, type Table } from '../components/charts';
 import { Busy, evenTop, minuteBuckets, OnlineCard, Spread } from '../components/playerCharts';
 import { PageHead } from '../components/PageHead';
@@ -11,16 +11,6 @@ import { Sky } from '../components/Sky';
 import { LOCALE, t } from '../lib/i18n';
 import '../styles/stats.css';
 import '../styles/glops.css';
-
-const GAME = '/glops/';
-
-/** What each server runs (the server configs in the port's repo); the relay only knows who is on which. */
-const SERVERS: { n: number; name: string; maps: string; size: number }[] = [
-  { n: 1, name: t('Server {n}', { n: 1 }), maps: 'Antarctica · Argentina · Chechnya', size: 16 },
-  { n: 2, name: t('Server {n}', { n: 2 }), maps: 'Colombia · Lima · Mexico', size: 16 },
-  { n: 3, name: t('Server {n}', { n: 3 }), maps: 'North Africa · Quebec · South China Sea', size: 16 },
-  { n: 4, name: t('Server {n}', { n: 4 }), maps: t('Sri Lanka, 18 against 18'), size: 36 },
-];
 
 const num = (n: number) => n.toLocaleString(LOCALE);
 const dateOf = (iso: string | null) => (iso ? shortDate(keyOf(new Date(iso))) : '—');
@@ -45,16 +35,7 @@ export function Glops({ switcher }: { switcher?: ComponentChildren }) {
         <PageHead
           title={switcher ? t('Game statistics') : t('Global Ops')}
           back={() => goBack()}
-          actions={
-            <a class="icon-btn" href={GAME} target="_blank" rel="noopener" aria-label={t('Play Global Ops')} title={t('Play Global Ops')}>
-              <Icon name="player-play" />
-            </a>
-          }
-          subtitle={!data ? t('Who plays the game in the browser') : data.playing ? (
-            <><span class="gl-live" aria-hidden="true" /> {t('{n} in a match right now', { n: data.playing })}</>
-          ) : (
-            t('Counting since {date}', { date: dateOf(data.since) })
-          )}
+          subtitle={data ? t('Offline since {date}', { date: dateOf(data.now) }) : t('Global Ops is offline')}
         />
         {switcher}
       </div>
@@ -64,7 +45,6 @@ export function Glops({ switcher }: { switcher?: ComponentChildren }) {
           <div class="empty fade-arrive-soft">
             <h2 class="title-s">{t('No player stats')}</h2>
             <p>{error}</p>
-            <button class="btn btn-quiet" onClick={() => loadGlops(true)}><Icon name="refresh" size={18} /> {t('Try again')}</button>
           </div>
         ) : (
           <p class="empty-note center loading-note">{loading ? t('Loading…') : ''}</p>
@@ -77,18 +57,22 @@ export function Glops({ switcher }: { switcher?: ComponentChildren }) {
 }
 
 function Board({ data }: { data: GlopsStats }) {
-  const today = data.days.at(-1)?.day === data.now.slice(0, 10) ? data.days.at(-1)! : null;
+  const last = data.days.at(-1);
   const avg = data.sessions ? data.onlineMin / data.sessions : 0;
   return (
     <RevealStack>
+      <section class="card gl-offline" role="status">
+        <h3 class="chart-title">{t('Global Ops is offline')}</h3>
+        <p>{t('The game and its servers were taken down on {date}. These are the final stats, from {since} to the end.', { date: dateOf(data.now), since: dateOf(data.since) })}</p>
+      </section>
+
       <section class="card hero gl-hero">
-        <div class="tile-label">{t('Online now')}</div>
+        <div class="tile-label">{t('Players in total')}</div>
         <div class="hero-row">
-          <span class="hero-num"><CountUp value={data.online} /></span>
+          <span class="hero-num"><CountUp value={data.visitors} /></span>
           <img src="/games/glops.webp" alt="" class="gl-mark" decoding="async" />
         </div>
         <div class="gl-facts">
-          <span><b>{num(data.playing)}</b> {t('in a match')}</span>
           <span><b>{num(data.peak.online.n)}</b> {t('the most ever')}</span>
         </div>
       </section>
@@ -96,13 +80,12 @@ function Board({ data }: { data: GlopsStats }) {
       <div class="tiles">
         <Tile k={0} icon="trophy" label={t('Most online')} value={num(data.peak.online.n)} sub={dateOf(data.peak.online.at)} />
         <Tile k={1} icon="crown" label={t('Most in a match')} value={num(data.peak.playing.n)} sub={dateOf(data.peak.playing.at)} />
-        <Tile k={2} icon="users" label={t('Players')} value={num(data.visitors)} sub={t('{n} visits', { n: num(data.sessions) })} />
+        <Tile k={2} icon="users" label={t('Visits')} value={num(data.sessions)} sub={t('{n} players', { n: num(data.visitors) })} />
         <Tile k={3} icon="clock" label={t('Hours played')} value={hoursText(data.playMin)} sub={t('{n} matches joined', { n: num(data.plays) })} />
         <Tile k={4} icon="hourglass" label={t('Average visit')} value={avg ? hoursText(avg) : '—'} sub={t('longest {time}', { time: data.longest.min ? hoursText(data.longest.min) : '—' })} />
-        <Tile k={5} icon="calendar" label={t('Today')} value={num(today?.visitors ?? 0)} sub={t('{n} new · {m} at once', { n: today?.new ?? 0, m: today?.peak ?? 0 })} />
+        <Tile k={5} icon="calendar" label={t('Last day')} value={num(last?.visitors ?? 0)} sub={t('{n} new · {m} at once', { n: last?.new ?? 0, m: last?.peak ?? 0 })} />
       </div>
 
-      <Servers data={data} />
       <OnlineCard now={data.now} series={data.series} />
       <DaysCard days={data.days} now={data.now} />
 
@@ -120,7 +103,6 @@ function Board({ data }: { data: GlopsStats }) {
 
       <p class="gl-note">
         {t('Online means the game is open in a browser; in a match means playing on one of the servers. Players are told apart by a scrambled form of their address, never the address itself, and no names are kept.')}
-        {' '}<a href={GAME} target="_blank" rel="noopener">savavlad.com/glops</a>
       </p>
     </RevealStack>
   );
@@ -136,36 +118,6 @@ function Tile({ icon, label, value, sub, k }: { icon: UiName; label: string; val
       <div class="tile-value">{value}</div>
       <div class="tile-sub">{sub}</div>
     </div>
-  );
-}
-
-/** The servers that are up: who is on each now (a meter of its slots), its record and the hours played there. */
-function Servers({ data }: { data: GlopsStats }) {
-  const live = new Map(data.servers.map((s) => [s.n, s]));
-  return (
-    <section class="card gl-list">
-      <h3 class="chart-title">{t('Servers')}</h3>
-      {!SERVERS.some((s) => live.has(s.n)) && <p class="empty-note">{t('No server is up right now.')}</p>}
-      <ul>
-        {SERVERS.filter((s) => live.has(s.n)).map((s, i) => {
-          const on = live.get(s.n);
-          const players = on?.players ?? 0;
-          return (
-            <li class="gl-server" style={{ '--k': i, '--w': `${(players / s.size) * 100}%` }}>
-              <span class="gl-sv-name">
-                <b>{s.name}</b>
-                <small>{s.maps}</small>
-                <small>{t('most {n} at once · {time} played', { n: data.peak.servers[s.n]?.n ?? 0, time: hoursText(data.serverMin[s.n] ?? 0) })}</small>
-              </span>
-              <span class="gl-sv-now">
-                <b>{players}<small> / {s.size}</small></b>
-                <span class="gl-meter" aria-hidden="true"><i /></span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }
 
