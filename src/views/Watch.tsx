@@ -6,6 +6,8 @@ import { PageHead } from '../components/PageHead';
 import { Icon } from '../components/icons';
 import { Sky } from '../components/Sky';
 import { t } from '../lib/i18n';
+import { LiveChat } from '../components/LiveChat';
+import { channelInfo, type ChannelInfo } from '../lib/twitchChat';
 import '../styles/stats.css';
 import '../styles/twitch.css';
 import '../styles/streamer.css';
@@ -78,63 +80,126 @@ function useAccent() {
   }, []);
 }
 
+const CHAT_KEY = 'mm-watch-chat';
+const readChatOn = () => {
+  try { return localStorage.getItem(CHAT_KEY) !== '0'; } catch { return true; }
+};
+const INFO_EVERY = 120_000;
+
 export function Watch({ query }: { query: URLSearchParams }) {
   useAccent();
   const channel = cleanLogin(query.get('channel') ?? '');
-  const [typed, setTyped] = useState(channel);
   const [recent, setRecent] = useState(readRecent);
   const [low, setLow] = useState(readLow);
-  useEffect(() => setTyped(channel), [channel]);
+  const [chatOn, setChatOn] = useState(readChatOn);
+  const [finding, setFinding] = useState(false);
+  const [info, setInfo] = useState<ChannelInfo | null>(null);
+  const behind = useRef<number | null>(null);
   const toggleLow = () => {
     setLow(!low);
     try { localStorage.setItem(LOW_KEY, low ? '0' : '1'); } catch {}
   };
+  const toggleChat = () => {
+    setChatOn(!chatOn);
+    try { localStorage.setItem(CHAT_KEY, chatOn ? '0' : '1'); } catch {}
+  };
+
+  // who's on: name, badges and emotes for the chat, title, game and viewers for the top
+  useEffect(() => {
+    setInfo(null);
+    setFinding(false);
+    if (!channel) return;
+    let live = true;
+    const load = () => channelInfo(channel).then((i) => { if (live && i) setInfo(i); });
+    load();
+    const every = setInterval(load, INFO_EVERY);
+    return () => { live = false; clearInterval(every); };
+  }, [channel]);
 
   const go = (c: string) => navigate(`watch?channel=${c}`, true);
+
+  if (!channel) {
+    return (
+      <div class="page stats-page tw-page sr-page cl-page">
+        <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-fear)' }}>
+          <Sky world="fear" letters="live" />
+          <PageHead title={t('Watch live')} back={() => goBack()} subtitle={t('A Twitch stream, a few seconds behind live')} />
+          <Find channel="" recent={recent} go={go} />
+        </div>
+        <section class="card sr-note cl-intro">
+          <p>{t('Type a Twitch channel to watch it live, with its chat and emotes beside the video.')}</p>
+          <p>{t('Most players wait 15 seconds behind Twitch’s newest video. This one waits 5, with enough kept loaded to play without stopping.')}</p>
+          <p>{t('Low latency, under the video, plays the video Twitch is still making as it streams in, like Twitch’s own player: a few seconds closer to live, at a quality picked for the player instead of for your connection.')}</p>
+        </section>
+      </div>
+    );
+  }
+
+  const s = info?.stream;
+  const about = s ? [t('{n} watching', { n: s.viewers.toLocaleString() }), s.game, s.title].filter(Boolean).join(' · ') : null;
+  return (
+    <div class="page wt-page" data-chat={chatOn ? '' : undefined}>
+      <header class="wt-top">
+        <button class="glass glass-btn round" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
+        <div class="wt-title">
+          <h1>{info?.name ?? channel}</h1>
+          {about && <p title={s?.title}>{about}</p>}
+        </div>
+        <button class="glass glass-btn round" aria-pressed={finding} onClick={() => setFinding(!finding)} aria-label={t('Another channel')} title={t('Another channel')}>
+          <Icon name={finding ? 'x' : 'search'} />
+        </button>
+      </header>
+      {finding && <div class="wt-switch"><Find channel={channel} recent={recent} go={go} focus /></div>}
+      <Player
+        key={`${channel}|${low}`}
+        login={channel}
+        low={low}
+        onLow={toggleLow}
+        chat={chatOn}
+        onChat={toggleChat}
+        onBehind={(n) => { behind.current = n; }}
+        onPlaying={() => setRecent(remember(channel))}
+      />
+      {chatOn && <LiveChat key={channel} login={channel} info={info} behind={behind} />}
+    </div>
+  );
+}
+
+/** The channel box, and the channels watched lately. */
+function Find({ channel, recent, go, focus }: { channel: string; recent: string[]; go: (c: string) => void; focus?: boolean }) {
+  const [typed, setTyped] = useState(channel);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (focus) input.current?.focus(); }, []);
   const submit = (e: Event) => {
     e.preventDefault();
     const c = cleanLogin(typed);
     if (c) go(c);
   };
-
   return (
-    <div class="page stats-page tw-page sr-page cl-page">
-      <div class="journal-top stats-top" style={{ '--sky': 'var(--emo-fear)' }}>
-        <Sky world="fear" letters="live" />
-        <PageHead title={t('Watch live')} back={() => goBack()} subtitle={channel || t('A Twitch stream, a few seconds behind live')} />
-        <form class="cl-find wt-find" onSubmit={submit} role="search">
-          <label class="search">
-            <Icon name="brand-twitch" size={18} />
-            <input
-              value={typed}
-              onInput={(e) => setTyped(e.currentTarget.value)}
-              placeholder={t('Channel')}
-              aria-label={t('Channel')}
-              autocomplete="off"
-              autocapitalize="off"
-              spellcheck={false}
-              enterKeyHint="go"
-            />
-          </label>
-          <button class="btn btn-primary" disabled={!cleanLogin(typed)}>{t('Watch')}</button>
-        </form>
-        {recent.length > 0 && (
-          <div class="chips filters scroll-x" role="toolbar" aria-label={t('Recent channels')}>
-            {recent.map((c) => <button class="chip" aria-pressed={c === channel} onClick={() => go(c)}>{c}</button>)}
-          </div>
-        )}
-      </div>
-
-      {channel ? (
-        <Player key={`${channel}|${low}`} login={channel} low={low} onLow={toggleLow} onPlaying={() => setRecent(remember(channel))} />
-      ) : (
-        <section class="card sr-note cl-intro">
-          <p>{t('Type a Twitch channel to watch it live.')}</p>
-          <p>{t('Most players wait 15 seconds behind Twitch’s newest video. This one waits 5, with enough kept loaded to play without stopping.')}</p>
-          <p>{t('Low latency, under the video, plays the video Twitch is still making as it streams in, like Twitch’s own player: a few seconds closer to live, at a quality picked for the player instead of for your connection.')}</p>
-        </section>
+    <>
+      <form class="cl-find wt-find" onSubmit={submit} role="search">
+        <label class="search">
+          <Icon name="brand-twitch" size={18} />
+          <input
+            ref={input}
+            value={typed}
+            onInput={(e) => setTyped(e.currentTarget.value)}
+            placeholder={t('Channel')}
+            aria-label={t('Channel')}
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck={false}
+            enterKeyHint="go"
+          />
+        </label>
+        <button class="btn btn-primary" disabled={!cleanLogin(typed)}>{t('Watch')}</button>
+      </form>
+      {recent.length > 0 && (
+        <div class="chips filters scroll-x" role="toolbar" aria-label={t('Recent channels')}>
+          {recent.map((c) => <button class="chip" aria-pressed={c === channel} onClick={() => go(c)}>{c}</button>)}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -143,7 +208,9 @@ type State = 'loading' | 'playing' | 'offline' | 'ended' | 'error';
 /** "1080p60", "720p", or "Audio" for the sound-only quality. */
 const levelName = (l: { height: number; frameRate: number }) => (l.height ? `${l.height}p${l.frameRate >= 50 ? '60' : ''}` : t('Audio'));
 
-function Player({ login, low, onLow, onPlaying }: { login: string; low: boolean; onLow: () => void; onPlaying: () => void }) {
+function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying }: {
+  login: string; low: boolean; onLow: () => void; chat: boolean; onChat: () => void; onBehind: (n: number | null) => void; onPlaying: () => void;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [state, setState] = useState<State>('loading');
@@ -257,11 +324,14 @@ function Player({ login, low, onLow, onPlaying }: { login: string; low: boolean;
     const tick = setInterval(() => {
       const at = hls?.playingDate ?? (v as HTMLVideoElement & { getStartDate?: () => Date }).getStartDate?.();
       const date = hls ? at : at && !Number.isNaN(at.getTime()) ? new Date(at.getTime() + v.currentTime * 1000) : null;
-      setBehind(date && !v.paused ? Math.max(0, (Date.now() - date.getTime()) / 1000) : null);
+      const n = date && !v.paused ? Math.max(0, (Date.now() - date.getTime()) / 1000) : null;
+      setBehind(n);
+      onBehind(n);
     }, 1000);
 
     return () => {
       clearInterval(tick);
+      onBehind(null);
       v.removeEventListener('playing', playing);
       hls?.destroy();
       hlsRef.current = null;
@@ -310,23 +380,31 @@ function Player({ login, low, onLow, onPlaying }: { login: string; low: boolean;
           <button class="btn btn-primary wt-sound" onClick={unmute}><Icon name="volume" size={18} /> {t('Tap for sound')}</button>
         )}
       </div>
-      {state === 'playing' && (
-        <div class="wt-bar">
-          <span class="chip wt-live"><span class="wt-dot" aria-hidden="true" /> {behind == null ? t('Live') : t('{n} s behind live', { n: behind.toFixed(1) })}</span>
-          <button class="chip" onClick={toLive}><Icon name="player-skip-forward" size={16} /> {t('Jump to live')}</button>
-          <button class="chip" aria-pressed={low} onClick={onLow} title={t('Play the video Twitch is still making as it streams in')}>{t('Low latency')}</button>
-        </div>
-      )}
-      {state === 'playing' && levels.length > 1 && (
-        <div class="chips filters scroll-x" role="toolbar" aria-label={t('Quality')}>
-          {!low && (
-            <button class="chip" aria-pressed={level < 0} onClick={() => pick(-1)}>
-              {level < 0 && playingLevel >= 0 ? t('Auto ({quality})', { quality: levels[playingLevel] }) : t('Auto')}
+      <div class="wt-bar scroll-x" role="toolbar" aria-label={t('Player')}>
+        {state === 'playing' && (
+          <>
+            <button class="chip wt-live" onClick={toLive} title={t('Jump to live')}>
+              <span class="wt-dot" aria-hidden="true" /> {behind == null ? t('Live') : t('{n} s behind', { n: behind.toFixed(1) })}
+              <Icon name="player-skip-forward" size={14} />
             </button>
-          )}
-          {levels.map((name, i) => <button class="chip" aria-pressed={level === i} onClick={() => pick(i)}>{name}</button>)}
-        </div>
-      )}
+            <button class="chip" aria-pressed={low} onClick={onLow} title={t('Play the video Twitch is still making as it streams in')}>
+              <Icon name="bolt" size={14} /> {t('Low latency')}
+            </button>
+            {levels.length > 1 && (
+              <label class="chip wt-quality" title={t('Quality')}>
+                <Icon name="adjustments-horizontal" size={14} />
+                <select value={level} onChange={(e) => pick(Number(e.currentTarget.value))} aria-label={t('Quality')}>
+                  {!low && <option value={-1}>{playingLevel >= 0 ? t('Auto ({quality})', { quality: levels[playingLevel] }) : t('Auto')}</option>}
+                  {levels.map((name, i) => <option value={i}>{name}</option>)}
+                </select>
+              </label>
+            )}
+          </>
+        )}
+        <button class="chip wt-chat" aria-pressed={chat} onClick={onChat}>
+          <Icon name={chat ? 'messages' : 'messages-off'} size={14} /> {t('Chat')}
+        </button>
+      </div>
       {steppedDown && <p class="empty-note">{t('It kept stopping to load, so the quality went down a step.')}</p>}
     </section>
   );

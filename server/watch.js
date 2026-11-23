@@ -9,6 +9,11 @@
 // chunks (fMP4 moof+mdat pairs). Other players skip the tag, so here they become ordinary segments; the page plays
 // them while they stream (hls.js progressive). Later Twitch lists the same bytes at the same sequence number (new URL).
 // How far behind that the video sits is the page's choice (hls.js's liveSyncDuration), not this file's.
+//  • GET /api/watch/chat/<login> — for the chat beside the video: the channel's id (for its 7TV, BetterTTV and
+//    FrankerFaceZ emotes, /api/chatlogs/emotes) and the chat badges, Twitch's global ones with the channel's own
+//    (subscriber months, bits) over them, as { "set/version": [1x image, title] }; and what's on: the stream's
+//    title, game, viewers and start (null when offline). The chat itself the page reads
+//    straight from Twitch (anonymous IRC over a WebSocket), and Twitch's own emotes come with each line.
 import { randomBytes } from 'node:crypto';
 import { HttpError } from './http-error.js';
 
@@ -17,6 +22,9 @@ const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 const LOGIN = /^[a-z0-9_]{2,25}$/;
 const TOKEN = `query($login: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }`;
 const TIMEOUT = 10_000;
+const CHAT = `query($login: String!) { badges { setID version imageURL(size: NORMAL) title } user(login: $login) { id displayName broadcastSettings { title } stream { viewersCount createdAt game { displayName } } broadcastBadges { setID version imageURL(size: NORMAL) title } } }`;
+const CHAT_FRESH = 60_000; // the viewer count moves
+const MAX_CHANNELS = 100;
 
 /** Twitch's playlist servers, and nothing else: this must not become a proxy for anything on the web. */
 export function twitchPlaylist(u) {
@@ -48,7 +56,19 @@ function sendPlaylist(res, text) {
   res.end(text);
 }
 
+/** Badges as { "set/version": [image, title] }, later lists over earlier ones. */
+export function badgeMap(...lists) {
+  const out = {};
+  for (const list of lists) {
+    for (const b of Array.isArray(list) ? list : []) {
+      if (b?.setID && b.version && typeof b.imageURL === 'string' && b.imageURL.startsWith('https://')) out[`${b.setID}/${b.version}`] = [b.imageURL, b.title || b.setID];
+    }
+  }
+  return out;
+}
+
 export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
+  const chats = new Map(); // login → { at, body }
   const get = async (url, init) => {
     try {
       return await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT) });
@@ -82,8 +102,35 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
     return pointQualities(await u.text(), low);
   }
 
+  async function chat(login) {
+    const hit = chats.get(login);
+    if (hit && Date.now() - hit.at < CHAT_FRESH) return hit.body;
+    const r = await get(GQL, {
+      method: 'POST',
+      headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: CHAT, variables: { login } }),
+    });
+    const data = r.ok ? (await r.json().catch(() => null))?.data : null;
+    if (!data) throw new HttpError(502, 'Twitch can’t be reached right now.');
+    if (!data.user?.id) throw new HttpError(404, 'That channel doesn’t exist.');
+    const u = data.user;
+    const stream = u.stream ? { title: u.broadcastSettings?.title || '', game: u.stream.game?.displayName || '', viewers: u.stream.viewersCount ?? 0, since: Date.parse(u.stream.createdAt) || null } : null;
+    const body = { id: String(u.id), name: u.displayName || login, stream, badges: badgeMap(data.badges, u.broadcastBadges) };
+    chats.delete(login);
+    chats.set(login, { at: Date.now(), body });
+    if (chats.size > MAX_CHANNELS) chats.delete(chats.keys().next().value);
+    return body;
+  }
+
   return async function api(req, res, p, url) {
     if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed');
+    if (p.startsWith('/api/watch/chat/')) {
+      const login = p.slice('/api/watch/chat/'.length).toLowerCase();
+      if (!LOGIN.test(login)) throw new HttpError(404, 'Not found');
+      const body = await chat(login);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=600' });
+      return res.end(JSON.stringify(body));
+    }
     if (p === '/api/watch/playlist') {
       const u = twitchPlaylist(url.searchParams.get('u') ?? '');
       if (!u) throw new HttpError(400, 'Not a Twitch playlist.');

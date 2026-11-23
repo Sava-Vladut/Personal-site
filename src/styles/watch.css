@@ -1,12 +1,25 @@
-/* Watch live (views/Watch.tsx): one channel box, then the video. */
+/* Watch live (views/Watch.tsx). Without a channel: the sky, a channel box, a note. With one, the video and its chat
+   (components/LiveChat.tsx) fill the screen: stacked on a phone held upright (video on top, chat under it, no tab
+   bar), side by side when the screen is wider than tall (a phone turned sideways, a tablet, a computer). With the
+   chat hidden, it's an ordinary page with the video. */
 
 .wt-find { grid-template-columns: minmax(0, 1fr) auto; }
 @media (max-width: 559.98px) {
-  .wt-find { grid-template-columns: minmax(0, 1fr) auto; }
   .wt-find .btn { grid-column: auto; }
 }
 
-.wt-player { display: grid; gap: 10px; }
+/* ---------- the page with a channel ---------- */
+
+.page.wt-page { max-width: 1100px; display: flex; flex-direction: column; gap: 10px; }
+
+.wt-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wt-title { flex: 1; min-width: 0; }
+.wt-title h1 { font: var(--w-medium) var(--text-l)/1.25 var(--serif); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt-title p { margin-top: 1px; font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt-switch { display: grid; gap: 2px; }
+.wt-switch .filters { margin: 6px 0 0; }
+
+.wt-player { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .wt-frame { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-l); overflow: hidden; }
 .wt-frame video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 
@@ -19,7 +32,110 @@
 .wt-over .btn { color: #fff; }
 .wt-sound { position: absolute; top: 12px; left: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 6px; }
 
-.wt-bar { display: flex; flex-wrap: wrap; gap: 8px; }
-.wt-bar .chip { display: inline-flex; align-items: center; gap: 6px; }
+/* one row of small controls, sliding sideways when it doesn't fit */
+.wt-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.wt-bar::-webkit-scrollbar { display: none; }
+.wt-bar .chip { height: 32px; padding: 0 12px; gap: 5px; font-size: var(--text-s); white-space: nowrap; }
 .wt-live { font-variant-numeric: tabular-nums; }
 .wt-dot { width: 8px; height: 8px; border-radius: 50%; background: #eb0400; }
+.wt-chat { margin-left: auto; }
+.wt-quality { padding-right: 6px; }
+.wt-quality select { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0 4px; font-weight: inherit; cursor: pointer; }
+.wt-quality select:focus-visible { outline: none; }
+.wt-quality:has(select:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- with the chat: the screen, and nothing to scroll but the chat ---------- */
+
+.app.route-watch:has(.wt-page[data-chat]) { min-height: 0; padding-top: 0; padding-bottom: 0; }
+.page.wt-page[data-chat] { height: 100dvh; max-width: 760px; gap: 8px; padding: calc(var(--safe-t) + 10px) 0 0; overflow: hidden; }
+.wt-page[data-chat] > :is(.wt-top, .wt-switch), .wt-page[data-chat] .wt-bar { padding-inline: var(--gutter); }
+.wt-page[data-chat] > .lc { flex: 1; min-height: 0; }
+@media (max-width: 759.98px) {
+  .wt-page[data-chat] .wt-frame { border-radius: 0; }
+}
+
+@media (orientation: landscape) and (min-width: 640px) {
+  .page.wt-page[data-chat] {
+    display: grid; max-width: none;
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 30vw, 380px);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 12px; row-gap: 8px;
+    padding: calc(var(--safe-t) + 10px) max(env(safe-area-inset-right), 12px) max(var(--safe-b), 12px) max(env(safe-area-inset-left), 12px);
+  }
+  .wt-page[data-chat] > :is(.wt-top, .wt-switch), .wt-page[data-chat] .wt-bar { padding-inline: 0; }
+  .wt-page[data-chat] > .wt-top { grid-column: 1; grid-row: 1; }
+  .wt-page[data-chat] > .wt-switch { grid-column: 1; grid-row: 2; }
+  .wt-page[data-chat] > .wt-player { grid-column: 1; grid-row: 3; }
+  .wt-page[data-chat] > .lc { grid-column: 2; grid-row: 1 / -1; border: 1px solid var(--line); border-radius: var(--r-l); }
+  .wt-page[data-chat] .wt-frame { flex: 1; min-height: 0; aspect-ratio: auto; border-radius: var(--r-l); }
+  .wt-page[data-chat] .lc-foot { padding-bottom: 8px; }
+}
+/* a phone on its side: every pixel of height for the video */
+@media (orientation: landscape) and (max-height: 500px) {
+  .wt-page[data-chat] .wt-title p { display: none; }
+  .wt-page[data-chat] .wt-top .glass-btn { width: 36px; height: 36px; }
+}
+
+/* ---------- the chat (components/LiveChat.tsx) ---------- */
+
+.lc { position: relative; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-top: 1px solid var(--line); overflow: hidden; }
+.wt-page:not([data-chat]) .lc { display: none; }
+
+.lc-head { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--line); }
+.lc-head strong { font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink); }
+.lc-sub { min-width: 0; font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-sync { margin-left: auto; height: 28px; padding: 0 10px; gap: 5px; font-size: var(--text-s); white-space: nowrap; }
+.lc-status { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.lc-status.s-live { background: #2bb673; }
+.lc-status.s-retrying { background: #e8a33a; }
+
+.lc-list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 6px 12px 10px; font-size: 14px; line-height: 1.55; color: var(--ink);
+}
+.lc-line { padding: 2px 0; overflow-wrap: anywhere; }
+.lc-name { font-weight: 700; color: color-mix(in oklab, var(--c) 78%, var(--ink)); }
+@media (hover: hover) { .lc-name:hover { text-decoration: underline; } }
+.lc-badge { display: inline-block; width: 18px; height: 18px; margin-right: 3px; vertical-align: -4px; }
+.lc-line.k-me .lc-text { font-style: italic; color: color-mix(in oklab, var(--c) 78%, var(--ink)); }
+.lc-line.k-sub {
+  margin: 4px -12px; padding: 6px 12px 6px 9px;
+  border-left: 3px solid var(--accent); background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+.lc-note { font-size: var(--text-m); font-weight: var(--w-medium); color: var(--ink-2); }
+.lc-line.gone { opacity: 0.45; }
+.lc-line.gone .lc-text { text-decoration: line-through; }
+.lc-list .cl-emote { cursor: zoom-in; }
+.lc-empty { padding: 14px 0; text-align: center; font-size: var(--text-s); color: var(--ink-3); }
+
+.lc-more {
+  position: absolute; left: 50%; bottom: calc(46px + var(--safe-b)); translate: -50% 0; z-index: 2;
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25); animation: fade-in var(--dur-2) var(--ease);
+}
+
+.lc-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px calc(8px + var(--safe-b)); border-top: 1px solid var(--line);
+  font-size: var(--text-s); color: var(--ink-3);
+}
+.lc-foot a { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); text-decoration: none; }
+
+/* a close-up of an emote, or what one person said */
+.lc-peek {
+  position: absolute; left: 8px; right: 8px; bottom: calc(44px + var(--safe-b)); z-index: 3;
+  max-height: 75%; overflow: auto; padding: 14px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-l);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); animation: fade-in var(--dur-2) var(--ease);
+}
+.lc-peek-x { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+.lc-peek-emote { display: flex; align-items: center; gap: 14px; padding-right: 36px; }
+.lc-peek-emote img { width: 84px; height: 84px; object-fit: contain; }
+.lc-peek-emote div { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.lc-peek-emote span { font-size: var(--text-s); color: var(--ink-3); }
+.lc-peek-who { display: flex; align-items: center; gap: 2px; margin: 0 40px 8px 0; font-size: 15px; }
+.lc-peek-lines { display: grid; gap: 4px; max-height: 40vh; overflow-y: auto; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.lc-peek-lines time { font-size: var(--text-s); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.lc-peek-lines .gone { opacity: 0.45; text-decoration: line-through; }
+.lc-peek-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.lc-peek-actions .chip { height: 30px; padding: 0 12px; font-size: var(--text-s); text-decoration: none; }

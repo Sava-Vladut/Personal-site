@@ -122,7 +122,7 @@ const SECURITY_HEADERS = {
   'Content-Security-Policy':
     "default-src 'self'; img-src 'self' data: blob: https:; " +
     "style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; manifest-src 'self'; " +
-    "media-src 'self' blob:; connect-src 'self' https://*.ttvnw.net https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
+    "media-src 'self' blob:; connect-src 'self' https://*.ttvnw.net wss://irc-ws.chat.twitch.tv https://recent-messages.robotty.de https://api.openverse.org https://openlibrary.org https://api.open-meteo.com https://archive-api.open-meteo.com " +
     'https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org; ' +
     "worker-src 'self'; frame-src 'self' https://open.spotify.com; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",

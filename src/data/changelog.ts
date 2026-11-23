@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.208.0',
+    date: '2026-11-23',
+    changes: [
+      'Watch live has the channel’s chat beside the video, with Twitch, 7TV, BetterTTV and FrankerFaceZ emotes, badges and name colours. Lines a moderator removes are greyed out.',
+      'The chat keeps in step with the video, so it doesn’t give away what’s about to happen. Switch that off at the top of the chat to see lines the moment they’re sent.',
+      'On a phone held upright, the video sits on top and the chat fills the rest of the screen; turned sideways, on a tablet or on a computer, they sit side by side.',
+      'Scroll up in the chat and it stops moving, with a button to get back to the newest lines. Tap an emote for a close-up, or a name for what they’ve said and their chat history.',
+      'The top shows the stream’s title, game and viewer count. Change channel from the search button; quality, low latency and chat are in one row under the video.',
+    ],
+  },
+  {
     version: '1.207.0',
     date: '2026-11-22',
     changes: [
