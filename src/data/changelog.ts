@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.208.1',
+    date: '2026-11-23',
+    changes: [
+      'Watch live on a computer: the video fills its space at its own shape instead of sitting in black bands, with the controls lined up under it, and the page keeps the site’s usual margins.',
+      'Under the video, the stream’s full title, game, viewers and how long it’s been live. Chat lines light up under the pointer, and the chat’s scrollbar is slimmer.',
+    ],
+  },
+  {
     version: '1.208.0',
     date: '2026-11-23',
     changes: [

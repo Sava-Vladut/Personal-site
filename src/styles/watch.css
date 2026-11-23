@@ -18,6 +18,7 @@
 .wt-title p { margin-top: 1px; font-size: var(--text-s); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wt-switch { display: grid; gap: 2px; }
 .wt-switch .filters { margin: 6px 0 0; }
+.wt-info { display: none; }
 
 .wt-player { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .wt-frame { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: var(--r-l); overflow: hidden; }
@@ -59,21 +60,41 @@
     display: grid; max-width: none;
     grid-template-columns: minmax(0, 1fr) clamp(260px, 30vw, 380px);
     grid-template-rows: auto auto minmax(0, 1fr);
-    column-gap: 12px; row-gap: 8px;
+    column-gap: 12px; row-gap: 0;
     padding: calc(var(--safe-t) + 10px) max(env(safe-area-inset-right), 12px) max(var(--safe-b), 12px) max(env(safe-area-inset-left), 12px);
   }
   .wt-page[data-chat] > :is(.wt-top, .wt-switch), .wt-page[data-chat] .wt-bar { padding-inline: 0; }
-  .wt-page[data-chat] > .wt-top { grid-column: 1; grid-row: 1; }
-  .wt-page[data-chat] > .wt-switch { grid-column: 1; grid-row: 2; }
-  .wt-page[data-chat] > .wt-player { grid-column: 1; grid-row: 3; }
+  /* gaps as margins, so the row of the channel box takes no room when it's closed */
+  .wt-page[data-chat] > .wt-top { grid-column: 1; grid-row: 1; margin-bottom: 10px; }
+  .wt-page[data-chat] > .wt-switch { grid-column: 1; grid-row: 2; margin-bottom: 10px; }
   .wt-page[data-chat] > .lc { grid-column: 2; grid-row: 1 / -1; border: 1px solid var(--line); border-radius: var(--r-l); }
-  .wt-page[data-chat] .wt-frame { flex: 1; min-height: 0; aspect-ratio: auto; border-radius: var(--r-l); }
   .wt-page[data-chat] .lc-foot { padding-bottom: 8px; }
+  /* the video as big as its space allows at 16:9 (no black bands around it), the controls and what's on lined up
+     under it; the bar under the video is 32px + an 8px gap */
+  .wt-page[data-chat] > .wt-player { grid-column: 1; grid-row: 3; container-type: size; overflow: hidden; }
+  .wt-page[data-chat] .wt-player > * { flex: none; width: min(100%, calc((100cqh - 40px) * 16 / 9)); margin-inline: auto; }
+  /* without the chat the page scrolls, but the video still fits the window with the top and the bar */
+  .wt-page:not([data-chat]) .wt-player > * { width: min(100%, calc((100dvh - 220px) * 16 / 9)); margin-inline: auto; }
+  /* what's on: the title in full under the video, so the top keeps to viewers and game */
+  .wt-info { display: grid; gap: 4px; min-height: 0; padding: 8px 2px 0; }
+  .wt-info h2 {
+    font: var(--w-medium) var(--text-l)/1.35 var(--serif); color: var(--ink); overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
+  .wt-info p { font-size: var(--text-m); color: var(--ink-3); }
+  .wt-title-more { display: none; }
 }
 /* a phone on its side: every pixel of height for the video */
 @media (orientation: landscape) and (max-height: 500px) {
   .wt-page[data-chat] .wt-title p { display: none; }
   .wt-page[data-chat] .wt-top .glass-btn { width: 36px; height: 36px; }
+  .wt-info { display: none; }
+  .wt-title-more { display: inline; }
+}
+/* a computer: the page's usual margins (the left one clears the arrow that brings back a hidden sidebar) */
+@media (min-width: 1024px) {
+  .page.wt-page[data-chat] { padding: 20px var(--gutter); column-gap: 16px; grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 380px); }
+  .wt-title h1 { font-size: 20px; }
 }
 
 /* ---------- the chat (components/LiveChat.tsx) ---------- */
@@ -91,9 +112,10 @@
 
 .lc-list {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  padding: 6px 12px 10px; font-size: 14px; line-height: 1.55; color: var(--ink);
+  padding: 6px 12px 10px; font-size: 14px; line-height: 1.55; color: var(--ink); scrollbar-width: thin;
 }
-.lc-line { padding: 2px 0; overflow-wrap: anywhere; }
+.lc-line { margin-inline: -12px; padding: 2px 12px; overflow-wrap: anywhere; }
+@media (hover: hover) { .lc-line:hover { background: color-mix(in oklab, var(--ink) 4%, transparent); } }
 .lc-name { font-weight: 700; color: color-mix(in oklab, var(--c) 78%, var(--ink)); }
 @media (hover: hover) { .lc-name:hover { text-decoration: underline; } }
 .lc-badge { display: inline-block; width: 18px; height: 18px; margin-right: 3px; vertical-align: -4px; }

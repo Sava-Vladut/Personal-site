@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import Hls, { FetchLoader } from 'hls.js/light';
 import type { FragmentLoaderConstructor } from 'hls.js';
@@ -8,6 +9,7 @@ import { Sky } from '../components/Sky';
 import { t } from '../lib/i18n';
 import { LiveChat } from '../components/LiveChat';
 import { channelInfo, type ChannelInfo } from '../lib/twitchChat';
+import { hours } from '../lib/streamer';
 import '../styles/stats.css';
 import '../styles/twitch.css';
 import '../styles/streamer.css';
@@ -136,14 +138,14 @@ export function Watch({ query }: { query: URLSearchParams }) {
   }
 
   const s = info?.stream;
-  const about = s ? [t('{n} watching', { n: s.viewers.toLocaleString() }), s.game, s.title].filter(Boolean).join(' · ') : null;
+  const about = s ? [t('{n} watching', { n: s.viewers.toLocaleString() }), s.game].filter(Boolean).join(' · ') : null;
   return (
     <div class="page wt-page" data-chat={chatOn ? '' : undefined}>
       <header class="wt-top">
         <button class="glass glass-btn round" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
         <div class="wt-title">
           <h1>{info?.name ?? channel}</h1>
-          {about && <p title={s?.title}>{about}</p>}
+          {about && <p title={s?.title}>{about}{s?.title && <span class="wt-title-more"> · {s.title}</span>}</p>}
         </div>
         <button class="glass glass-btn round" aria-pressed={finding} onClick={() => setFinding(!finding)} aria-label={t('Another channel')} title={t('Another channel')}>
           <Icon name={finding ? 'x' : 'search'} />
@@ -159,7 +161,14 @@ export function Watch({ query }: { query: URLSearchParams }) {
         onChat={toggleChat}
         onBehind={(n) => { behind.current = n; }}
         onPlaying={() => setRecent(remember(channel))}
-      />
+      >
+        {s && (
+          <div class="wt-info">
+            {s.title && <h2 title={s.title}>{s.title}</h2>}
+            <p>{[s.game, t('{n} watching', { n: s.viewers.toLocaleString() }), s.since ? t('Live for {time}', { time: hours(Date.now() - s.since) }) : null].filter(Boolean).join(' · ')}</p>
+          </div>
+        )}
+      </Player>
       {chatOn && <LiveChat key={channel} login={channel} info={info} behind={behind} />}
     </div>
   );
@@ -208,8 +217,10 @@ type State = 'loading' | 'playing' | 'offline' | 'ended' | 'error';
 /** "1080p60", "720p", or "Audio" for the sound-only quality. */
 const levelName = (l: { height: number; frameRate: number }) => (l.height ? `${l.height}p${l.frameRate >= 50 ? '60' : ''}` : t('Audio'));
 
-function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying }: {
+function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying, children }: {
   login: string; low: boolean; onLow: () => void; chat: boolean; onChat: () => void; onBehind: (n: number | null) => void; onPlaying: () => void;
+  /** what's on, under the controls (shown where there's room: see watch.css) */
+  children?: ComponentChildren;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -406,6 +417,7 @@ function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying }: {
         </button>
       </div>
       {steppedDown && <p class="empty-note">{t('It kept stopping to load, so the quality went down a step.')}</p>}
+      {children}
     </section>
   );
 }
