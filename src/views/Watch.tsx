@@ -1,4 +1,3 @@
-import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import Hls, { FetchLoader } from 'hls.js/light';
 import type { FragmentLoaderConstructor } from 'hls.js';
@@ -83,6 +82,10 @@ function useAccent() {
 }
 
 const CHAT_KEY = 'mm-watch-chat';
+const SYNC_KEY = 'mm-watch-chat-sync';
+const readSync = () => {
+  try { return localStorage.getItem(SYNC_KEY) !== '0'; } catch { return true; }
+};
 const readChatOn = () => {
   try { return localStorage.getItem(CHAT_KEY) !== '0'; } catch { return true; }
 };
@@ -94,22 +97,31 @@ export function Watch({ query }: { query: URLSearchParams }) {
   const [recent, setRecent] = useState(readRecent);
   const [low, setLow] = useState(readLow);
   const [chatOn, setChatOn] = useState(readChatOn);
-  const [finding, setFinding] = useState(false);
+  const [sync, setSync] = useState(readSync);
+  const [menu, setMenu] = useState(false);
   const [info, setInfo] = useState<ChannelInfo | null>(null);
   const behind = useRef<number | null>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const toggleLow = () => {
     setLow(!low);
     try { localStorage.setItem(LOW_KEY, low ? '0' : '1'); } catch {}
   };
+  // from a double tap, which can come twice before a render: the stored value is the truth
   const toggleChat = () => {
-    setChatOn(!chatOn);
-    try { localStorage.setItem(CHAT_KEY, chatOn ? '0' : '1'); } catch {}
+    setChatOn((on) => {
+      try { localStorage.setItem(CHAT_KEY, on ? '0' : '1'); } catch {}
+      return !on;
+    });
+  };
+  const toggleSync = () => {
+    setSync(!sync);
+    try { localStorage.setItem(SYNC_KEY, sync ? '0' : '1'); } catch {}
   };
 
   // who's on: name, badges and emotes for the chat, title, game and viewers for the top
   useEffect(() => {
     setInfo(null);
-    setFinding(false);
+    setMenu(false);
     if (!channel) return;
     let live = true;
     const load = () => channelInfo(channel).then((i) => { if (live && i) setInfo(i); });
@@ -131,45 +143,37 @@ export function Watch({ query }: { query: URLSearchParams }) {
         <section class="card sr-note cl-intro">
           <p>{t('Type a Twitch channel to watch it live, with its chat and emotes beside the video.')}</p>
           <p>{t('Most players wait 15 seconds behind Twitch’s newest video. This one waits 5, with enough kept loaded to play without stopping.')}</p>
-          <p>{t('Low latency, under the video, plays the video Twitch is still making as it streams in, like Twitch’s own player: a few seconds closer to live, at a quality picked for the player instead of for your connection.')}</p>
+          <p>{t('Low latency, in the player’s settings, plays the video Twitch is still making as it streams in, like Twitch’s own player: a few seconds closer to live, at a quality picked for the player instead of for your connection.')}</p>
+          <p>{t('Tap the video for its buttons, double-tap it to hide or show the chat.')}</p>
         </section>
       </div>
     );
   }
 
-  const s = info?.stream;
-  const about = s ? [t('{n} watching', { n: s.viewers.toLocaleString() }), s.game].filter(Boolean).join(' · ') : null;
+  // only the video and the chat; everything else is behind the buttons on the video
   return (
     <div class="page wt-page" data-chat={chatOn ? '' : undefined}>
-      <header class="wt-top">
-        <button class="glass glass-btn round" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
-        <div class="wt-title">
-          <h1>{info?.name ?? channel}</h1>
-          {about && <p title={s?.title}>{about}{s?.title && <span class="wt-title-more"> · {s.title}</span>}</p>}
-        </div>
-        <button class="glass glass-btn round" aria-pressed={finding} onClick={() => setFinding(!finding)} aria-label={t('Another channel')} title={t('Another channel')}>
-          <Icon name={finding ? 'x' : 'search'} />
-        </button>
-      </header>
-      {finding && <div class="wt-switch"><Find channel={channel} recent={recent} go={go} focus /></div>}
-      <Player
-        key={`${channel}|${low}`}
-        login={channel}
-        low={low}
-        onLow={toggleLow}
-        chat={chatOn}
-        onChat={toggleChat}
-        onBehind={(n) => { behind.current = n; }}
-        onPlaying={() => setRecent(remember(channel))}
-      >
-        {s && (
-          <div class="wt-info">
-            {s.title && <h2 title={s.title}>{s.title}</h2>}
-            <p>{[s.game, t('{n} watching', { n: s.viewers.toLocaleString() }), s.since ? t('Live for {time}', { time: hours(Date.now() - s.since) }) : null].filter(Boolean).join(' · ')}</p>
-          </div>
-        )}
-      </Player>
-      {chatOn && <LiveChat key={channel} login={channel} info={info} behind={behind} />}
+      <div class="wt-stage" ref={stage}>
+        <Player
+          key={`${channel}|${low}`}
+          login={channel}
+          low={low}
+          onLow={toggleLow}
+          chat={chatOn}
+          onChat={toggleChat}
+          sync={sync}
+          onSync={toggleSync}
+          menu={menu}
+          setMenu={setMenu}
+          info={info}
+          recent={recent}
+          go={go}
+          stage={stage}
+          onBehind={(n) => { behind.current = n; }}
+          onPlaying={() => setRecent(remember(channel))}
+        />
+        {chatOn && <LiveChat key={channel} login={channel} info={info} behind={behind} sync={sync} />}
+      </div>
     </div>
   );
 }
@@ -217,10 +221,15 @@ type State = 'loading' | 'playing' | 'offline' | 'ended' | 'error';
 /** "1080p60", "720p", or "Audio" for the sound-only quality. */
 const levelName = (l: { height: number; frameRate: number }) => (l.height ? `${l.height}p${l.frameRate >= 50 ? '60' : ''}` : t('Audio'));
 
-function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying, children }: {
-  login: string; low: boolean; onLow: () => void; chat: boolean; onChat: () => void; onBehind: (n: number | null) => void; onPlaying: () => void;
-  /** what's on, under the controls (shown where there's room: see watch.css) */
-  children?: ComponentChildren;
+type Fs = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void; webkitFullscreenEnabled?: boolean };
+const fullscreenElement = () => document.fullscreenElement ?? (document as Fs).webkitFullscreenElement ?? null;
+const HIDE_AFTER = 3000;
+const DOUBLE_TAP = 300;
+
+function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, info, recent, go, stage, onBehind, onPlaying }: {
+  login: string; low: boolean; onLow: () => void; chat: boolean; onChat: () => void; sync: boolean; onSync: () => void;
+  menu: boolean; setMenu: (open: boolean) => void; info: ChannelInfo | null; recent: string[]; go: (c: string) => void;
+  stage: { current: HTMLDivElement | null }; onBehind: (n: number | null) => void; onPlaying: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -232,6 +241,43 @@ function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying, children
   const [level, setLevel] = useState(-1); // -1: picked by hls.js as the connection allows
   const [playingLevel, setPlayingLevel] = useState(-1);
   const [steppedDown, setSteppedDown] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [soundOff, setSoundOff] = useState(false);
+  const [full, setFull] = useState(false);
+  const [shown, setShown] = useState(true); // the buttons on the video
+  const shownRef = useRef(true);
+  const hideTimer = useRef(0);
+  const taps = useRef({ last: 0, timer: 0, touch: false });
+
+  /** Show the buttons, and hide them again after a while. */
+  const poke = () => {
+    shownRef.current = true;
+    setShown(true);
+    clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => { shownRef.current = false; setShown(false); }, HIDE_AFTER);
+  };
+  const hide = () => {
+    clearTimeout(hideTimer.current);
+    shownRef.current = false;
+    setShown(false);
+  };
+  useEffect(() => () => { clearTimeout(hideTimer.current); clearTimeout(taps.current.timer); }, []);
+
+  // the video's own state, for the buttons; and full screen, however it was left
+  useEffect(() => {
+    const v = video.current!;
+    const mirror = () => { setPaused(v.paused); setSoundOff(v.muted); };
+    const evs = ['play', 'pause', 'volumechange'];
+    evs.forEach((e) => v.addEventListener(e, mirror));
+    const fs = () => setFull(!!fullscreenElement());
+    document.addEventListener('fullscreenchange', fs);
+    document.addEventListener('webkitfullscreenchange', fs);
+    return () => {
+      evs.forEach((e) => v.removeEventListener(e, mirror));
+      document.removeEventListener('fullscreenchange', fs);
+      document.removeEventListener('webkitfullscreenchange', fs);
+    };
+  }, []);
 
   useEffect(() => {
     const v = video.current!;
@@ -248,7 +294,7 @@ function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying, children
         v.play().catch(() => {});
       });
     };
-    const playing = () => { setState('playing'); onPlaying(); };
+    const playing = () => { setState('playing'); onPlaying(); if (shownRef.current) poke(); };
     v.addEventListener('playing', playing);
 
     let hls: Hls | null = null;
@@ -371,15 +417,80 @@ function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying, children
     v.play().catch(() => {});
   };
 
+  const playPause = () => {
+    const v = video.current!;
+    if (v.paused) { v.play().catch(() => {}); poke(); } else v.pause();
+  };
+  const toggleSound = () => {
+    const v = video.current!;
+    v.muted = !v.muted;
+    if (!v.muted) setMuted(false);
+    poke();
+  };
+  // the stage (video and chat) where the browser allows it; an iPhone only lets the video itself go full screen
+  const fullscreen = () => {
+    const d = document as Fs;
+    if (fullscreenElement()) {
+      (d.exitFullscreen ?? d.webkitExitFullscreen)?.call(d);
+      return;
+    }
+    const el = stage.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
+    if (el && (d.fullscreenEnabled || d.webkitFullscreenEnabled)) {
+      const req = el.requestFullscreen ?? el.webkitRequestFullscreen;
+      Promise.resolve(req?.call(el)).then(() => {
+        // a phone turns to its side for it, where it can
+        (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.('landscape').catch(() => {});
+      }, () => {});
+    } else (video.current as HTMLVideoElement & { webkitEnterFullscreen?: () => void })?.webkitEnterFullscreen?.();
+  };
+
+  // one tap shows or hides the buttons (a mouse shows them by moving); two in a row show or hide the chat
+  const onSurface = (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, a, select, input')) return;
+    const tp = taps.current;
+    const now = Date.now();
+    clearTimeout(tp.timer);
+    if (now - tp.last < DOUBLE_TAP) {
+      tp.last = 0;
+      onChat();
+      return;
+    }
+    tp.last = now;
+    if (!tp.touch) return;
+    tp.timer = window.setTimeout(() => (shownRef.current ? hide() : poke()), DOUBLE_TAP);
+  };
+
+  // keys, on a computer: f full screen, c chat, m sound, space or k pause
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey || e.altKey || el.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key === 'f') fullscreen();
+      else if (e.key === 'c') onChat();
+      else if (e.key === 'm') toggleSound();
+      else if (e.key === 'k' || (e.key === ' ' && !el.closest('button, a'))) { e.preventDefault(); playPause(); }
+    };
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  });
+
   const message = state === 'offline' ? t('{channel} isn’t live right now.', { channel: login })
     : state === 'ended' ? t('The stream ended.')
     : state === 'error' ? t('This stream can’t be played here right now.')
     : null;
 
+  const live = behind == null ? t('Live') : t('{n} s behind', { n: behind.toFixed(1) });
+  const controls = shown || paused || state !== 'playing';
   return (
     <section class="wt-player">
-      <div class="wt-frame">
-        <video ref={video} controls playsInline autoplay />
+      <div
+        class="wt-frame"
+        data-bare={controls ? undefined : ''}
+        onPointerDown={(e) => { taps.current.touch = e.pointerType !== 'mouse'; }}
+        onClick={onSurface}
+        onPointerMove={(e) => { if (e.pointerType === 'mouse') poke(); }}
+      >
+        <video ref={video} playsInline autoplay />
         {state === 'loading' && <p class="wt-over">{t('Starting {channel}…', { channel: login })}</p>}
         {message && (
           <div class="wt-over">
@@ -390,34 +501,101 @@ function Player({ login, low, onLow, chat, onChat, onBehind, onPlaying, children
         {muted && state === 'playing' && (
           <button class="btn btn-primary wt-sound" onClick={unmute}><Icon name="volume" size={18} /> {t('Tap for sound')}</button>
         )}
-      </div>
-      <div class="wt-bar scroll-x" role="toolbar" aria-label={t('Player')}>
-        {state === 'playing' && (
-          <>
-            <button class="chip wt-live" onClick={toLive} title={t('Jump to live')}>
-              <span class="wt-dot" aria-hidden="true" /> {behind == null ? t('Live') : t('{n} s behind', { n: behind.toFixed(1) })}
-              <Icon name="player-skip-forward" size={14} />
+        <div class="wt-ctl" data-shown={controls ? '' : undefined}>
+          <div class="wt-ctl-row">
+            <button class="wt-ic" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
+            <span class="wt-name">{info?.name ?? login}</span>
+            <button class="wt-ic" onClick={() => setMenu(true)} aria-label={t('Settings')} title={t('Settings')}><Icon name="settings" /></button>
+            <button class="wt-ic" onClick={fullscreen} aria-label={full ? t('Exit full screen') : t('Full screen')} title={full ? t('Exit full screen') : t('Full screen')}>
+              <Icon name={full ? 'minimize' : 'maximize'} />
             </button>
-            <button class="chip" aria-pressed={low} onClick={onLow} title={t('Play the video Twitch is still making as it streams in')}>
-              <Icon name="bolt" size={14} /> {t('Low latency')}
-            </button>
-            {levels.length > 1 && (
-              <label class="chip wt-quality" title={t('Quality')}>
-                <Icon name="adjustments-horizontal" size={14} />
-                <select value={level} onChange={(e) => pick(Number(e.currentTarget.value))} aria-label={t('Quality')}>
-                  {!low && <option value={-1}>{playingLevel >= 0 ? t('Auto ({quality})', { quality: levels[playingLevel] }) : t('Auto')}</option>}
-                  {levels.map((name, i) => <option value={i}>{name}</option>)}
-                </select>
-              </label>
-            )}
-          </>
-        )}
-        <button class="chip wt-chat" aria-pressed={chat} onClick={onChat}>
-          <Icon name={chat ? 'messages' : 'messages-off'} size={14} /> {t('Chat')}
-        </button>
+          </div>
+          {state === 'playing' && (
+            <div class="wt-ctl-row">
+              <button class="wt-ic" onClick={playPause} aria-label={paused ? t('Play') : t('Pause')}><Icon name={paused ? 'player-play' : 'player-pause'} /></button>
+              <button class="wt-ic" onClick={toggleSound} aria-label={soundOff ? t('Sound on') : t('Sound off')}><Icon name={soundOff ? 'volume-off' : 'volume'} /></button>
+              <button class="wt-pill" onClick={toLive} title={t('Jump to live')}><span class="wt-dot" aria-hidden="true" /> {live}</button>
+            </div>
+          )}
+        </div>
       </div>
-      {steppedDown && <p class="empty-note">{t('It kept stopping to load, so the quality went down a step.')}</p>}
-      {children}
+      {menu && (
+        <Menu
+          login={login} info={info} live={live} toLive={toLive}
+          low={low} onLow={onLow} levels={levels} level={level} playingLevel={playingLevel} pick={pick} steppedDown={steppedDown}
+          chat={chat} onChat={onChat} sync={sync} onSync={onSync} recent={recent} go={go}
+          close={() => setMenu(false)}
+        />
+      )}
     </section>
+  );
+}
+
+/** Everything that isn't the video or the chat: what's on, latency, quality, the chat's settings, another channel. */
+function Menu(p: {
+  login: string; info: ChannelInfo | null; live: string; toLive: () => void;
+  low: boolean; onLow: () => void; levels: string[]; level: number; playingLevel: number; pick: (i: number) => void; steppedDown: boolean;
+  chat: boolean; onChat: () => void; sync: boolean; onSync: () => void; recent: string[]; go: (c: string) => void;
+  close: () => void;
+}) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && p.close();
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  }, []);
+  const s = p.info?.stream;
+  return (
+    <>
+      <div class="wt-menu-back" onClick={p.close} />
+      <div class="wt-menu" role="dialog" aria-label={t('Settings')}>
+        <header class="wt-menu-head">
+          <div>
+            <strong>{p.info?.name ?? p.login}</strong>
+            {s && <p>{[s.game, t('{n} watching', { n: s.viewers.toLocaleString() }), s.since ? t('Live for {time}', { time: hours(Date.now() - s.since) }) : null].filter(Boolean).join(' · ')}</p>}
+            {s?.title && <p class="wt-menu-title">{s.title}</p>}
+          </div>
+          <button class="wt-menu-x" onClick={p.close} aria-label={t('Close')}><Icon name="x" size={18} /></button>
+        </header>
+
+        <button class="chip wt-menu-live" onClick={() => { p.toLive(); p.close(); }}>
+          <span class="wt-dot" aria-hidden="true" /> {p.live} · {t('Jump to live')}
+        </button>
+
+        <Opt label={t('Low latency')} hint={t('A few seconds closer to live, at a quality fitted to the player')} on={p.low} toggle={p.onLow} />
+        {p.levels.length > 1 && (
+          <div class="wt-menu-group">
+            <p class="wt-menu-label">{t('Quality')}</p>
+            <div class="chips">
+              {!p.low && (
+                <button class="chip" aria-pressed={p.level < 0} onClick={() => p.pick(-1)}>
+                  {p.level < 0 && p.playingLevel >= 0 ? t('Auto ({quality})', { quality: p.levels[p.playingLevel] }) : t('Auto')}
+                </button>
+              )}
+              {p.levels.map((name, i) => <button class="chip" aria-pressed={p.level === i} onClick={() => p.pick(i)}>{name}</button>)}
+            </div>
+            {p.steppedDown && <p class="wt-menu-hint">{t('It kept stopping to load, so the quality went down a step.')}</p>}
+          </div>
+        )}
+        <Opt label={t('Chat')} hint={t('Or double-tap the video')} on={p.chat} toggle={p.onChat} />
+        <Opt label={t('In step with video')} hint={t('Show each line when the video reaches it')} on={p.sync} toggle={p.onSync} />
+
+        <div class="wt-menu-group">
+          <p class="wt-menu-label">{t('Another channel')}</p>
+          <Find channel={p.login} recent={p.recent} go={p.go} />
+        </div>
+        <a class="wt-menu-link" href={`https://www.twitch.tv/popout/${p.login}/chat`} target="_blank" rel="noopener noreferrer">
+          {t('Chat on Twitch')} <Icon name="external-link" size={14} />
+        </a>
+      </div>
+    </>
+  );
+}
+
+function Opt({ label, hint, on, toggle }: { label: string; hint: string; on: boolean; toggle: () => void }) {
+  return (
+    <div class="wt-opt">
+      <div><strong>{label}</strong><p>{hint}</p></div>
+      <button class="switch" role="switch" aria-checked={on} aria-label={label} onClick={toggle} />
+    </div>
   );
 }

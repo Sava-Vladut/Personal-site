@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.209.0',
+    date: '2026-11-24',
+    changes: [
+      'Watch live is only the video and the chat now, edge to edge: on a phone the video sits at the very top and the chat fills everything under it.',
+      'Double-tap (or double-click) the video to hide the chat and give the video the whole screen; double-tap again to bring it back.',
+      'A full-screen button on the video. On a computer or tablet the chat comes along, and double-clicking still hides it.',
+      'Tap the video for its buttons (back, play, sound, how far behind live, full screen, settings). They fade away after a few seconds.',
+      'Low latency, quality, the chat switches, the stream’s details and another channel are all in the settings button on the video.',
+      'On a computer: f for full screen, c for the chat, m for sound, space to pause.',
+    ],
+  },
+  {
     version: '1.208.1',
     date: '2026-11-23',
     changes: [

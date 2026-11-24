@@ -4,7 +4,7 @@ import { Icon } from './icons';
 import { ChatText } from './ChatText';
 import { loadEmotes } from '../lib/chatlogs';
 import type { Emotes } from '../lib/emotes';
-import { bigEmote, nameColor, readChat, recentLines, type ChannelInfo, type ChatEvent, type ChatLine, type ChatStatus, type Room } from '../lib/twitchChat';
+import { bigEmote, nameColor, readChat, recentLines, type ChannelInfo, type ChatEvent, type ChatLine, type ChatStatus } from '../lib/twitchChat';
 import { navigate } from '../lib/router';
 import { t } from '../lib/i18n';
 
@@ -21,20 +21,14 @@ const TWITCH_BEHIND = 2.5;
 const KEEP = 250;        // lines kept while following
 const KEEP_READING = 1500; // while scrolled up, so what you're reading doesn't move
 const TICK = 200;
-const SYNC_KEY = 'mm-watch-chat-sync';
-
-const readSync = () => {
-  try { return localStorage.getItem(SYNC_KEY) !== '0'; } catch { return true; }
-};
 
 type Peek = { kind: 'emote'; name: string; src: string; from: string } | { kind: 'user'; login: string };
 
-export function LiveChat({ login, info, behind }: { login: string; info: ChannelInfo | null; behind: { current: number | null } }) {
+/** `sync`: in step with the video (its switch is in the player's menu, views/Watch.tsx). */
+export function LiveChat({ login, info, behind, sync }: { login: string; info: ChannelInfo | null; behind: { current: number | null }; sync: boolean }) {
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [status, setStatus] = useState<ChatStatus>('connecting');
-  const [room, setRoom] = useState<Room>({});
   const [emotes, setEmotes] = useState<Emotes | null>(null);
-  const [sync, setSync] = useState(readSync);
   const [following, setFollowing] = useState(true);
   const [unread, setUnread] = useState(0);
   const [peek, setPeek] = useState<Peek | null>(null);
@@ -70,7 +64,7 @@ export function LiveChat({ login, info, behind }: { login: string; info: Channel
           const off = (l: ChatLine) => (l.u === e.login && !l.gone ? { ...l, gone: true } : l);
           next = next.map(off);
           fresh.splice(0, fresh.length, ...fresh.map(off));
-        } else if (e.kind === 'room') setRoom((r) => ({ ...r, ...e.room }));
+        }
       }
       if (fresh.length) next = before ? [...fresh, ...next] : [...next, ...fresh];
       const keep = followRef.current ? KEEP : KEEP_READING;
@@ -127,11 +121,6 @@ export function LiveChat({ login, info, behind }: { login: string; info: Channel
     setUnread(0);
     el.scrollTop = el.scrollHeight;
   };
-  const toggleSync = () => {
-    setSync(!sync);
-    try { localStorage.setItem(SYNC_KEY, sync ? '0' : '1'); } catch {}
-  };
-
   // taps on emotes and names, for the whole list at once
   const onClick = (ev: MouseEvent) => {
     const el = ev.target as HTMLElement;
@@ -144,25 +133,9 @@ export function LiveChat({ login, info, behind }: { login: string; info: Channel
     }
   };
 
-  const modes = [
-    room.emoteOnly && t('Emote only'),
-    room.subsOnly && t('Subscribers only'),
-    room.slow ? t('Slow mode {n} s', { n: room.slow }) : null,
-    room.followers != null && room.followers >= 0 && t('Followers only'),
-  ].filter(Boolean) as string[];
-
   return (
     <section class="lc" aria-label={t('Chat')}>
-      <header class="lc-head">
-        <span class={`lc-status s-${status}`} aria-hidden="true" />
-        <strong>{t('Chat')}</strong>
-        {status !== 'live' && <span class="lc-sub">{status === 'connecting' ? t('Connecting…') : t('Reconnecting…')}</span>}
-        {status === 'live' && modes.length > 0 && <span class="lc-sub">{modes.join(' · ')}</span>}
-        <button class="chip lc-sync" aria-pressed={sync} onClick={toggleSync} title={t('Show each line when the video reaches it')}>
-          <Icon name="clock" size={14} /> {t('In step with video')}
-        </button>
-      </header>
-
+      {status !== 'live' && lines.length > 0 && <p class="lc-status">{status === 'connecting' ? t('Connecting…') : t('Reconnecting…')}</p>}
       <div class="lc-list" ref={list} onScroll={onScroll} onClick={onClick} role="log" aria-live="off">
         {lines.length === 0 && <p class="lc-empty">{status === 'live' ? t('No one has said anything yet.') : t('Connecting…')}</p>}
         {lines.map((l) => <Line key={l.id} line={l} emotes={emotes} badges={info?.badges ?? null} />)}
@@ -176,12 +149,6 @@ export function LiveChat({ login, info, behind }: { login: string; info: Channel
 
       {peek && <PeekCard peek={peek} lines={lines} emotes={emotes} info={info} channel={login} close={() => setPeek(null)} />}
 
-      <footer class="lc-foot">
-        <span>{t('Reading only')}</span>
-        <a href={`https://www.twitch.tv/popout/${login}/chat`} target="_blank" rel="noopener noreferrer">
-          {t('Chat on Twitch')} <Icon name="external-link" size={14} />
-        </a>
-      </footer>
     </section>
   );
 }
