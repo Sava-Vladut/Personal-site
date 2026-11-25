@@ -9,6 +9,13 @@
 // chunks (fMP4 moof+mdat pairs). Other players skip the tag, so here they become ordinary segments; the page plays
 // them while they stream (hls.js progressive). Later Twitch lists the same bytes at the same sequence number (new URL).
 // How far behind that the video sits is the page's choice (hls.js's liveSyncDuration), not this file's.
+// No ads: Twitch splices its ads into the playlist itself. For a break it swaps the video's segments for the ad's
+// ("Amazon|…" instead of "live", under CLASS="twitch-stitched-ad"), with numbering of its own, so there's nothing to
+// keep by cutting them out. Which viewers get a break depends on the token's player type: the website's ("site")
+// gets them, the embedded player's has none so far, so that's the one asked for. If a playlist still comes with an
+// ad, the same quality is fetched with another player type's token (popout, Android, iOS…) and that one is served:
+// the same video, numbered the same, so the player carries on. If every one has the ad, the last clean copy is
+// served again (the video waits) for up to a few minutes; past that, or if there's none, the ad plays.
 //  • GET /api/watch/chat/<login> — for the chat beside the video: the channel's id (for its 7TV, BetterTTV and
 //    FrankerFaceZ emotes, /api/chatlogs/emotes) and the chat badges, Twitch's global ones with the channel's own
 //    (subscriber months, bits) over them, as { "set/version": [1x image, title] }; and what's on: the stream's
@@ -20,7 +27,14 @@ import { HttpError } from './http-error.js';
 const GQL = 'https://gql.twitch.tv/gql';
 const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 const LOGIN = /^[a-z0-9_]{2,25}$/;
-const TOKEN = `query($login: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: "site"}) { value signature } }`;
+const TOKEN = `query($login: String!, $platform: String!, $playerType: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: $platform, playerBackend: "mediaplayer", playerType: $playerType}) { value signature } }`;
+/** The player type asked for first, then the ones tried, in order, when its playlist has an ad. */
+const PRIMARY = ['web', 'embed'];
+const BACKUPS = [['web', 'popout'], ['android', 'site'], ['ios', 'site'], ['web', 'frontpage'], ['web', 'mobile_web']];
+const BACKUP_FOR = 10 * 60_000; // a backup playlist that worked is tried first again for this long
+const RETRY_AFTER = 10_000; // when every backup had the ad, they're asked again only after this
+const STALE_FOR = 3 * 60_000; // how long a clean copy is served again while every playlist has the ad
+const MAX_KEPT = 200;
 const TIMEOUT = 10_000;
 const CHAT = `query($login: String!) { badges { setID version imageURL(size: NORMAL) title } user(login: $login) { id displayName broadcastSettings { title } stream { viewersCount createdAt game { displayName } } broadcastBadges { setID version imageURL(size: NORMAL) title } } }`;
 const CHAT_FRESH = 60_000; // the viewer count moves
@@ -36,9 +50,36 @@ export function twitchPlaylist(u) {
   }
 }
 
-/** Usher's list of qualities, with each quality's playlist fetched through /api/watch/playlist. */
-export const pointQualities = (m3u8, low = false) =>
-  m3u8.split('\n').map((line) => (/^https:\/\//.test(line.trim()) ? `/api/watch/playlist?u=${encodeURIComponent(line.trim())}${low ? '&ll=1' : ''}` : line)).join('\n');
+/** Each quality's id (STABLE-VARIANT-ID, e.g. "720p60", the same in every player type's list) and playlist URL. */
+export function variants(m3u8) {
+  const out = [];
+  let id = '';
+  for (const raw of m3u8.split('\n')) {
+    const line = raw.trim();
+    if (line.startsWith('#EXT-X-STREAM-INF:')) id = /(?:STABLE-VARIANT-ID|IVS-NAME|VIDEO)="([^"]+)"/.exec(line)?.[1] ?? '';
+    else if (/^https:\/\//.test(line)) { out.push({ id, url: line }); id = ''; }
+  }
+  return out;
+}
+
+/** Usher's list of qualities, with each quality's playlist fetched through /api/watch/playlist (with the channel and
+ *  the quality's id, for finding the same quality elsewhere when its playlist has an ad). */
+export function pointQualities(m3u8, low = false, login = '') {
+  let id = '';
+  return m3u8.split('\n').map((line) => {
+    const t = line.trim();
+    if (t.startsWith('#EXT-X-STREAM-INF:')) id = /(?:STABLE-VARIANT-ID|IVS-NAME|VIDEO)="([^"]+)"/.exec(t)?.[1] ?? '';
+    if (!/^https:\/\//.test(t)) return line;
+    const q = new URLSearchParams({ u: t });
+    if (login && id) { q.set('c', login); q.set('v', id); }
+    if (low) q.set('ll', '1');
+    id = '';
+    return `/api/watch/playlist?${q}`;
+  }).join('\n');
+}
+
+/** Whether a quality's playlist has any of Twitch's ad in it, instead of (or as well as) the stream. */
+export const hasAd = (m3u8) => /CLASS="twitch-stitched-ad"/.test(m3u8) || /^#EXTINF:[\d.]+,(?!live\b)/m.test(m3u8);
 
 /** Twitch's prefetch entries as ordinary segments, as long as the newest ordinary one (Twitch's are 2 s). */
 export function withPrefetch(m3u8) {
@@ -77,11 +118,21 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
     }
   };
 
-  async function qualities(login, low) {
+  const backups = new Map(); // "login|quality" → { url, at } of another player type's playlist that had no ad
+  const lastClean = new Map(); // "login|quality" → { text, at }: the newest playlist served without an ad
+  const tried = new Map(); // "login|quality" → when every backup last had the ad
+  const keep = (map, key, value) => {
+    map.delete(key);
+    map.set(key, value);
+    if (map.size > MAX_KEPT) map.delete(map.keys().next().value);
+  };
+
+  /** Usher's list of qualities for one player type's token. */
+  async function master(login, [platform, playerType]) {
     const r = await get(GQL, {
       method: 'POST',
       headers: { 'Client-ID': CLIENT_ID, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: TOKEN, variables: { login } }),
+      body: JSON.stringify({ query: TOKEN, variables: { login, platform, playerType } }),
     });
     const token = r.ok ? (await r.json().catch(() => null))?.data?.streamPlaybackAccessToken : null;
     if (!token?.value || !token.signature) throw new HttpError(404, 'That channel doesn’t exist.');
@@ -90,7 +141,7 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
       token: token.value,
       allow_source: 'true',
       fast_bread: 'true',
-      platform: 'web',
+      platform,
       player_backend: 'mediaplayer',
       playlist_include_framerate: 'true',
       play_session_id: randomBytes(16).toString('hex'),
@@ -99,7 +150,56 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
     const u = await get(usher);
     if (u.status === 404) throw new HttpError(404, 'offline');
     if (!u.ok) throw new HttpError(502, 'Twitch wouldn’t give out this stream right now.');
-    return pointQualities(await u.text(), low);
+    return u.text();
+  }
+
+  /** A playlist's text, or null when it can't be had. */
+  const playlistText = async (u) => {
+    const r = await get(u).catch(() => null);
+    return r?.ok ? r.text() : null;
+  };
+
+  /** The same quality without the ad, from another player type: the one that worked last, else each in turn. */
+  async function withoutAd(login, id) {
+    const key = `${login}|${id}`;
+    const hit = backups.get(key);
+    if (hit && Date.now() - hit.at < BACKUP_FOR) {
+      const text = await playlistText(hit.url);
+      if (text && !hasAd(text)) return text;
+      backups.delete(key);
+    }
+    if (Date.now() - (tried.get(key) ?? 0) < RETRY_AFTER) return null;
+    for (const type of BACKUPS) {
+      const url = await master(login, type).then((m) => variants(m).find((v) => v.id === id)?.url, () => null);
+      const text = url && twitchPlaylist(url) ? await playlistText(url) : null;
+      if (text && !hasAd(text)) {
+        keep(backups, key, { url, at: Date.now() });
+        tried.delete(key);
+        return text;
+      }
+    }
+    keep(tried, key, Date.now());
+    return null;
+  }
+
+  /** One quality's playlist, without an ad when there's any way to. */
+  async function playlist(u, login, id) {
+    const r = await get(u);
+    if (!r.ok) throw new HttpError(r.status === 403 || r.status === 404 ? 410 : 502, 'The stream ended or moved.');
+    const text = await r.text();
+    if (!login || !id) return text;
+    const key = `${login}|${id}`;
+    if (!hasAd(text)) {
+      keep(lastClean, key, { text, at: Date.now() });
+      return text;
+    }
+    const clean = await withoutAd(login, id);
+    if (clean) {
+      keep(lastClean, key, { text: clean, at: Date.now() });
+      return clean;
+    }
+    const old = lastClean.get(key);
+    return old && Date.now() - old.at < STALE_FOR ? old.text : text;
   }
 
   async function chat(login) {
@@ -134,13 +234,13 @@ export function createWatchHandler({ fetch = globalThis.fetch } = {}) {
     if (p === '/api/watch/playlist') {
       const u = twitchPlaylist(url.searchParams.get('u') ?? '');
       if (!u) throw new HttpError(400, 'Not a Twitch playlist.');
-      const r = await get(u);
-      if (!r.ok) throw new HttpError(r.status === 403 || r.status === 404 ? 410 : 502, 'The stream ended or moved.');
-      const text = await r.text();
+      const c = url.searchParams.get('c')?.toLowerCase() ?? '';
+      const v = url.searchParams.get('v') ?? '';
+      const text = await playlist(u, LOGIN.test(c) ? c : '', /^[\w.-]{1,40}$/.test(v) ? v : '');
       return sendPlaylist(res, url.searchParams.get('ll') === '1' ? withPrefetch(text) : text);
     }
     const login = /^\/api\/watch\/([^/]+)\.m3u8$/.exec(p)?.[1]?.toLowerCase();
     if (!login || !LOGIN.test(login)) throw new HttpError(404, 'Not found');
-    return sendPlaylist(res, await qualities(login, url.searchParams.get('ll') === '1'));
+    return sendPlaylist(res, pointQualities(await master(login, PRIMARY), url.searchParams.get('ll') === '1', login));
   };
 }

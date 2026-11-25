@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { HttpError } from '../server/http-error.js';
 import { rolldown } from 'rolldown';
-import { badgeMap, createWatchHandler, pointQualities, twitchPlaylist, withPrefetch } from '../server/watch.js';
+import { badgeMap, createWatchHandler, hasAd, pointQualities, twitchPlaylist, variants, withPrefetch } from '../server/watch.js';
 
 test('only https playlists on *.ttvnw.net are fetched', () => {
   assert.equal(twitchPlaylist('https://euc11.playlist.ttvnw.net/v1/playlist/abc.m3u8'), 'https://euc11.playlist.ttvnw.net/v1/playlist/abc.m3u8');
@@ -21,6 +21,68 @@ test('low latency: the qualities say so, and prefetch entries become segments', 
   assert.match(pointQualities('https://a.playlist.ttvnw.net/q.m3u8', true), /&ll=1$/);
   const pl = '#EXTM3U\n#EXTINF:2.002,live\nhttps://seg/1.mp4\n#EXT-X-TWITCH-PREFETCH:https://seg/2.mp4\n#EXT-X-TWITCH-PREFETCH:https://seg/3.mp4';
   assert.equal(withPrefetch(pl), '#EXTM3U\n#EXTINF:2.002,live\nhttps://seg/1.mp4\n#EXTINF:2.002,live\nhttps://seg/2.mp4\n#EXTINF:2.002,live\nhttps://seg/3.mp4');
+});
+
+const MASTER = (host) => `#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=8,RESOLUTION=1920x1080,STABLE-VARIANT-ID="1080p60"\nhttps://${host}.playlist.ttvnw.net/v1/1080.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=3,STABLE-VARIANT-ID="720p60"\nhttps://${host}.playlist.ttvnw.net/v1/720.m3u8\n`;
+const LIVE = (seq) => `#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:${seq}\n#EXTINF:2.000,live\nhttps://seg/${seq}.mp4\n`;
+const AD = '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-DATERANGE:ID="stitched-ad-1",CLASS="twitch-stitched-ad",DURATION=30\n#EXT-X-DISCONTINUITY\n#EXTINF:2.000,Amazon|247\nhttps://seg/ad.mp4\n';
+
+test('ads are told apart from the stream, and each quality keeps its id', () => {
+  assert.equal(hasAd(LIVE(5)), false);
+  assert.equal(hasAd(AD), true);
+  assert.equal(hasAd('#EXTINF:2.000,Amazon|1\nhttps://seg/a.mp4'), true, 'an ad segment without the date range');
+  assert.deepEqual(variants(MASTER('a')).map((v) => v.id), ['1080p60', '720p60']);
+  assert.deepEqual(pointQualities(MASTER('a'), true, 'some').split('\n').filter((l) => l.startsWith('/api')).map((l) => new URLSearchParams(l.split('?')[1]).get('v')), ['1080p60', '720p60']);
+  assert.match(pointQualities(MASTER('a'), false, 'some'), /\/api\/watch\/playlist\?u=https%3A%2F%2Fa\.playlist\.ttvnw\.net%2Fv1%2F1080\.m3u8&c=some&v=1080p60\n/);
+});
+
+test('a playlist with an ad is swapped for the same quality from another player type, numbered the same', async () => {
+  let primary = AD;
+  let backupHasAd = false;
+  const types = [];
+  const watch = createWatchHandler({
+    fetch: async (u, init) => {
+      const url = String(u);
+      if (url.startsWith('https://gql.twitch.tv')) { types.push(JSON.parse(init.body).variables.playerType); return reply(200, TOKEN); }
+      if (url.startsWith('https://usher')) return reply(200, MASTER(`b${types.length}`));
+      if (url.startsWith('https://main.')) return reply(200, primary);
+      if (url.includes('/720.m3u8')) return reply(200, url.startsWith('https://b1.') ? AD : backupHasAd ? AD : LIVE(9));
+      return reply(404, '');
+    },
+  });
+  const get = async () => {
+    const res = fakeRes();
+    const q = new URLSearchParams({ u: 'https://main.playlist.ttvnw.net/v1/720.m3u8', c: 'some', v: '720p60' });
+    await watch({ method: 'GET' }, res, '/api/watch/playlist', new URL(`http://x/api/watch/playlist?${q}`));
+    return res.body;
+  };
+
+  assert.equal(await get(), LIVE(9), 'popout had the ad too, Android didn’t');
+  assert.deepEqual(types, ['popout', 'site']);
+  assert.equal(await get(), LIVE(9), 'the Android one is asked again first');
+  assert.equal(types.length, 2);
+
+  backupHasAd = true;
+  assert.equal(await get(), LIVE(9), 'every one has the ad: the last clean copy again');
+  const asked = types.length;
+  assert.equal(await get(), LIVE(9));
+  assert.equal(types.length, asked, 'the backups aren’t asked again straight away');
+
+  primary = LIVE(20);
+  assert.equal(await get(), LIVE(20), 'the break is over: the first player type again');
+
+  // Without the channel and quality (an old page), the playlist is passed on as Twitch wrote it.
+  const res = fakeRes();
+  primary = AD;
+  await watch({ method: 'GET' }, res, '/api/watch/playlist', new URL(`http://x/api/watch/playlist?u=${encodeURIComponent('https://main.playlist.ttvnw.net/v1/720.m3u8')}`));
+  assert.equal(res.body, AD);
+});
+
+test('the embedded player’s token is asked for first', async () => {
+  const bodies = [];
+  const watch = createWatchHandler({ fetch: async (u, init) => { if (init?.body) bodies.push(JSON.parse(init.body).variables); return String(u).startsWith('https://gql') ? reply(200, TOKEN) : reply(200, MASTER('a')); } });
+  await watch({ method: 'GET' }, fakeRes(), '/api/watch/some.m3u8', new URL('http://x/api/watch/some.m3u8'));
+  assert.deepEqual(bodies, [{ login: 'some', platform: 'web', playerType: 'embed' }]);
 });
 
 function fakeRes() {

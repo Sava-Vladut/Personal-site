@@ -11,6 +11,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.211.0',
+    date: '2026-11-25',
+    changes: [
+      'Watch live plays without Twitch’s ads: no ad when a stream starts, and during a commercial break the stream keeps playing.',
+    ],
+  },
+  {
     version: '1.210.0',
     date: '2026-11-25',
     changes: [
