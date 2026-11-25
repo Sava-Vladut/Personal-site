@@ -31,6 +31,31 @@
   .wt-stage > .lc { flex: none; width: clamp(260px, 30vw, 360px); padding-right: env(safe-area-inset-right); border-left: 1px solid var(--line); }
 }
 
+/* full screen (the browser's, or on an iPhone the page's own, over everything): the video fills it, and the chat, after
+   a double tap, lies over its right side (its bottom when upright), under the buttons */
+.wt-page[data-own] .wt-stage { position: fixed; inset: 0; z-index: 55; }
+.wt-page[data-full] .wt-stage { display: block; padding: 0; }
+.wt-page[data-full] .wt-frame { position: absolute; inset: 0; width: auto; height: auto; aspect-ratio: auto; }
+.wt-page[data-full] .wt-ctl-row:first-child { padding-top: max(6px, env(safe-area-inset-top)); }
+.wt-page[data-full] .wt-ctl-row { padding-inline: max(6px, env(safe-area-inset-left)) max(6px, env(safe-area-inset-right)); }
+.wt-page[data-full] .wt-ctl-row + .wt-ctl-row { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+.wt-page[data-full] .wt-stage > .lc {
+  position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 42%; width: auto;
+  border: 0; padding: 0; background: linear-gradient(transparent, rgb(0 0 0 / 0.62) 56px);
+}
+.wt-page[data-full] .lc-list {
+  --ink: #f3f3f1; --ink-2: rgb(255 255 255 / 0.8); --ink-3: rgb(255 255 255 / 0.6);
+  padding-top: 40px; text-shadow: 0 1px 2px rgb(0 0 0 / 0.7);
+  mask-image: linear-gradient(transparent, #000 48px);
+}
+@media (orientation: landscape) {
+  .wt-page[data-full] .wt-stage > .lc {
+    top: 0; left: auto; height: auto; width: clamp(240px, 32%, 340px);
+    padding-right: env(safe-area-inset-right); background: rgb(0 0 0 / 0.5);
+  }
+  .wt-page[data-full] .lc-list { padding-top: 56px; mask-image: linear-gradient(transparent, #000 64px); }
+}
+
 .wt-over {
   position: absolute; inset: 0; margin: 0; padding: 16px;
   display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center;

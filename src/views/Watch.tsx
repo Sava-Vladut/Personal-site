@@ -100,6 +100,13 @@ export function Watch({ query }: { query: URLSearchParams }) {
   const [sync, setSync] = useState(readSync);
   const [menu, setMenu] = useState(false);
   const [info, setInfo] = useState<ChannelInfo | null>(null);
+  // full screen: the browser's (the stage, video and chat), or on an iPhone, which lets only a bare video go full
+  // screen in Safari's own player, the page's own: the stage over everything. Either way the video fills the screen and
+  // the chat, hidden at first, comes over it with a double tap.
+  const [real, setReal] = useState(() => !!fullscreenElement());
+  const [own, setOwn] = useState(false);
+  const [fullChat, setFullChat] = useState(false);
+  const full = real || own;
   const behind = useRef<number | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const toggleLow = () => {
@@ -108,6 +115,7 @@ export function Watch({ query }: { query: URLSearchParams }) {
   };
   // from a double tap, which can come twice before a render: the stored value is the truth
   const toggleChat = () => {
+    if (full) { setFullChat((on) => !on); return; }
     setChatOn((on) => {
       try { localStorage.setItem(CHAT_KEY, on ? '0' : '1'); } catch {}
       return !on;
@@ -116,6 +124,40 @@ export function Watch({ query }: { query: URLSearchParams }) {
   const toggleSync = () => {
     setSync(!sync);
     try { localStorage.setItem(SYNC_KEY, sync ? '0' : '1'); } catch {}
+  };
+
+  useEffect(() => {
+    const fs = () => setReal(!!fullscreenElement());
+    document.addEventListener('fullscreenchange', fs);
+    document.addEventListener('webkitfullscreenchange', fs);
+    return () => {
+      document.removeEventListener('fullscreenchange', fs);
+      document.removeEventListener('webkitfullscreenchange', fs);
+    };
+  }, []);
+  useEffect(() => { setFullChat(false); }, [full]);
+  // the page's own full screen ends with Escape too
+  useEffect(() => {
+    if (!own) return;
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOwn(false);
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  }, [own]);
+  const toggleFull = () => {
+    const d = document as Fs;
+    if (own) { setOwn(false); return; }
+    if (fullscreenElement()) {
+      (d.exitFullscreen ?? d.webkitExitFullscreen)?.call(d);
+      return;
+    }
+    const el = stage.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
+    if (el && (d.fullscreenEnabled || d.webkitFullscreenEnabled)) {
+      const req = el.requestFullscreen ?? el.webkitRequestFullscreen;
+      Promise.resolve(req?.call(el)).then(() => {
+        // a phone turns to its side for it, where it can
+        (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.('landscape').catch(() => {});
+      }, () => setOwn(true));
+    } else setOwn(true);
   };
 
   // who's on: name, badges and emotes for the chat, title, game and viewers for the top
@@ -151,16 +193,19 @@ export function Watch({ query }: { query: URLSearchParams }) {
   }
 
   // only the video and the chat; everything else is behind the buttons on the video
+  const showChat = full ? fullChat : chatOn;
   return (
-    <div class="page wt-page" data-chat={chatOn ? '' : undefined}>
+    <div class="page wt-page" data-chat={showChat ? '' : undefined} data-full={full ? '' : undefined} data-own={own ? '' : undefined}>
       <div class="wt-stage" ref={stage}>
         <Player
           key={`${channel}|${low}`}
           login={channel}
           low={low}
           onLow={toggleLow}
-          chat={chatOn}
+          chat={showChat}
           onChat={toggleChat}
+          full={full}
+          onFull={toggleFull}
           sync={sync}
           onSync={toggleSync}
           menu={menu}
@@ -168,11 +213,10 @@ export function Watch({ query }: { query: URLSearchParams }) {
           info={info}
           recent={recent}
           go={go}
-          stage={stage}
           onBehind={(n) => { behind.current = n; }}
           onPlaying={() => setRecent(remember(channel))}
         />
-        {chatOn && <LiveChat key={channel} login={channel} info={info} behind={behind} sync={sync} />}
+        {showChat && <LiveChat key={channel} login={channel} info={info} behind={behind} sync={sync} />}
       </div>
     </div>
   );
@@ -226,10 +270,10 @@ const fullscreenElement = () => document.fullscreenElement ?? (document as Fs).w
 const HIDE_AFTER = 3000;
 const DOUBLE_TAP = 300;
 
-function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, info, recent, go, stage, onBehind, onPlaying }: {
-  login: string; low: boolean; onLow: () => void; chat: boolean; onChat: () => void; sync: boolean; onSync: () => void;
-  menu: boolean; setMenu: (open: boolean) => void; info: ChannelInfo | null; recent: string[]; go: (c: string) => void;
-  stage: { current: HTMLDivElement | null }; onBehind: (n: number | null) => void; onPlaying: () => void;
+function Player({ login, low, onLow, chat, onChat, full, onFull, sync, onSync, menu, setMenu, info, recent, go, onBehind, onPlaying }: {
+  login: string; low: boolean; onLow: () => void; chat: boolean; onChat: () => void; full: boolean; onFull: () => void;
+  sync: boolean; onSync: () => void; menu: boolean; setMenu: (open: boolean) => void; info: ChannelInfo | null; recent: string[]; go: (c: string) => void;
+  onBehind: (n: number | null) => void; onPlaying: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -243,7 +287,6 @@ function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, 
   const [steppedDown, setSteppedDown] = useState(false);
   const [paused, setPaused] = useState(false);
   const [soundOff, setSoundOff] = useState(false);
-  const [full, setFull] = useState(false);
   const [shown, setShown] = useState(true); // the buttons on the video
   const shownRef = useRef(true);
   const hideTimer = useRef(0);
@@ -263,20 +306,13 @@ function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, 
   };
   useEffect(() => () => { clearTimeout(hideTimer.current); clearTimeout(taps.current.timer); }, []);
 
-  // the video's own state, for the buttons; and full screen, however it was left
+  // the video's own state, for the buttons
   useEffect(() => {
     const v = video.current!;
     const mirror = () => { setPaused(v.paused); setSoundOff(v.muted); };
     const evs = ['play', 'pause', 'volumechange'];
     evs.forEach((e) => v.addEventListener(e, mirror));
-    const fs = () => setFull(!!fullscreenElement());
-    document.addEventListener('fullscreenchange', fs);
-    document.addEventListener('webkitfullscreenchange', fs);
-    return () => {
-      evs.forEach((e) => v.removeEventListener(e, mirror));
-      document.removeEventListener('fullscreenchange', fs);
-      document.removeEventListener('webkitfullscreenchange', fs);
-    };
+    return () => evs.forEach((e) => v.removeEventListener(e, mirror));
   }, []);
 
   useEffect(() => {
@@ -427,23 +463,6 @@ function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, 
     if (!v.muted) setMuted(false);
     poke();
   };
-  // the stage (video and chat) where the browser allows it; an iPhone only lets the video itself go full screen
-  const fullscreen = () => {
-    const d = document as Fs;
-    if (fullscreenElement()) {
-      (d.exitFullscreen ?? d.webkitExitFullscreen)?.call(d);
-      return;
-    }
-    const el = stage.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
-    if (el && (d.fullscreenEnabled || d.webkitFullscreenEnabled)) {
-      const req = el.requestFullscreen ?? el.webkitRequestFullscreen;
-      Promise.resolve(req?.call(el)).then(() => {
-        // a phone turns to its side for it, where it can
-        (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.('landscape').catch(() => {});
-      }, () => {});
-    } else (video.current as HTMLVideoElement & { webkitEnterFullscreen?: () => void })?.webkitEnterFullscreen?.();
-  };
-
   // one tap shows or hides the buttons (a mouse shows them by moving); two in a row show or hide the chat
   const onSurface = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, a, select, input')) return;
@@ -465,7 +484,7 @@ function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, 
     const key = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (e.metaKey || e.ctrlKey || e.altKey || el.closest('input, textarea, select, [contenteditable="true"]')) return;
-      if (e.key === 'f') fullscreen();
+      if (e.key === 'f') onFull();
       else if (e.key === 'c') onChat();
       else if (e.key === 'm') toggleSound();
       else if (e.key === 'k' || (e.key === ' ' && !el.closest('button, a'))) { e.preventDefault(); playPause(); }
@@ -506,7 +525,7 @@ function Player({ login, low, onLow, chat, onChat, sync, onSync, menu, setMenu, 
             <button class="wt-ic" onClick={() => goBack()} aria-label={t('Back')}><Icon name="arrow-left" /></button>
             <span class="wt-name">{info?.name ?? login}</span>
             <button class="wt-ic" onClick={() => setMenu(true)} aria-label={t('Settings')} title={t('Settings')}><Icon name="settings" /></button>
-            <button class="wt-ic" onClick={fullscreen} aria-label={full ? t('Exit full screen') : t('Full screen')} title={full ? t('Exit full screen') : t('Full screen')}>
+            <button class="wt-ic" onClick={onFull} aria-label={full ? t('Exit full screen') : t('Full screen')} title={full ? t('Exit full screen') : t('Full screen')}>
               <Icon name={full ? 'minimize' : 'maximize'} />
             </button>
           </div>

@@ -11,6 +11,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.210.0',
+    date: '2026-11-25',
+    changes: [
+      'Watch live’s full screen on an iPhone is now its own player instead of Safari’s: the same buttons, the same double-tap, and the chat.',
+      'In full screen the video fills the screen and the chat starts hidden. Double-tap to bring it over the video (on the right when the phone is on its side, at the bottom when upright), double-tap again to hide it.',
+    ],
+  },
+  {
     version: '1.209.0',
     date: '2026-11-24',
     changes: [
