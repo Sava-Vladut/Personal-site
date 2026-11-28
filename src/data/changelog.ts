@@ -11,6 +11,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.213.0',
+    date: '2026-11-28',
+    changes: [
+      'Adding exercises puts the common ones first: “squats” starts with Barbell Squat and Bodyweight Squat, not variations few people do. Exercises you’ve done before come near the top too.',
+      'Plurals and spellings no longer matter: “squats” finds Squat, and “push ups”, “push-up” and “pushup” all find Push-Ups.',
+      'Everyday names work: rdl, ohp, lat pulldown, bench, air squat, pec deck, db curl, skull crusher and more. A muscle (“chest”, “quads”) or equipment (“db”) on its own lists its most common exercises.',
+      'A typo is forgiven when nothing else matches: “squta” still finds squats.',
+      'Equipment is a row of chips: tap as many as you have (body weight and dumbbells, say), or none for everything. It remembers your choice for next time.',
+      'Popular lists more of the staples, about 30, most common first.',
+    ],
+  },
+  {
     version: '1.212.0',
     date: '2026-11-28',
     changes: [

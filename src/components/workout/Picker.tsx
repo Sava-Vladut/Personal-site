@@ -1,9 +1,11 @@
-// Finding exercises to add: search by name, muscle or equipment, narrow by the muscle it works and what it's done with
-// (two dropdowns), and pick as many as you like. Before anything's typed it shows the ones you do most, the popular ones
-// or all of them, and each says what it's worth at your weight.
+// Finding exercises to add: search by name, muscle or equipment (lib/exercises.ts ranks what you've done and the common
+// ones first), narrow by the muscle it works (a dropdown) and what it's done with (chips: any of them, or none for all,
+// remembered for next time), and pick as many as you like. Before anything's typed it shows the ones you do most, the
+// popular ones or all of them, and each says what it's worth at your weight.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { searchExercises } from '../../lib/exercises';
+import { popularOf, searchExercises } from '../../lib/exercises';
+import { usePref } from '../../lib/prefs';
 import { EQUIPS, type Equip, type Move, type Muscle } from '../../lib/fitness';
 import { count, t } from '../../lib/i18n';
 import { MuscleIcon } from '../BodyMap';
@@ -19,12 +21,8 @@ import { PerUnit, Thumb, useBodyWeight, useMoves, useUsedCounts } from './shared
 const PAGE = 60;
 /** How many of the ones you do most are shown. */
 const MOST = 12;
-/** The staples most people's workouts are built from, as the database names them. */
-const POPULAR = [
-  'Pushups', 'Barbell_Bench_Press_-_Medium_Grip', 'Barbell_Squat', 'Barbell_Deadlift', 'Pullups', 'Bent_Over_Barbell_Row',
-  'Standing_Military_Press', 'Dumbbell_Bicep_Curl', 'Wide-Grip_Lat_Pulldown', 'Dumbbell_Lunges', 'Plank', 'Dips_-_Triceps_Version',
-  'Leg_Press', 'Triceps_Pushdown', 'Side_Lateral_Raise', 'Romanian_Deadlift', 'Crunches', 'Running_Treadmill',
-];
+/** The equipment chips, the most common first. */
+const EQUIP_ORDER: Equip[] = ['body', 'dumbbell', 'barbell', 'machine', 'cable', 'kettlebell', 'bands', 'ezbar', 'medball', 'ball', 'foam', 'other'];
 /** The muscles in the muscle dropdown, by part of the body. */
 const MUSCLE_GROUPS: [string, Muscle[]][] = [
   [t('Upper body'), ['chest', 'shoulders', 'biceps', 'triceps', 'forearms', 'lats', 'middle back', 'traps', 'neck']],
@@ -38,12 +36,16 @@ type Tab = 'yours' | 'popular' | 'all';
  * and the button at the bottom adds them all.
  */
 export function Picker({ open, onClose, onPick, single }: { open: boolean; onClose: () => void; onPick: (moves: Move[]) => void; single?: boolean }) {
-  const { list, ready, byId } = useMoves();
+  const { list, ready } = useMoves();
   const used = useUsedCounts();
   const bw = useBodyWeight();
   const [q, setQ] = useState('');
   const [muscle, setMuscle] = useState<Muscle | null>(null);
-  const [equip, setEquip] = useState<Equip | null>(null);
+  // the equipment picked, kept as "body,dumbbell" (none: all of it)
+  const [equipPref, setEquipPref] = usePref<string>('wo-pick-equip', '');
+  const equip = useMemo(() => equipPref.split(',').filter((e): e is Equip => EQUIPS.includes(e as Equip)), [equipPref]);
+  const setEquip = (list: Equip[]) => setEquipPref(EQUIP_ORDER.filter((e) => list.includes(e)).join(','));
+  const toggleEquip = (e: Equip) => setEquip(equip.includes(e) ? equip.filter((x) => x !== e) : [...equip, e]);
   const [picked, setPicked] = useState<Move[]>([]);
   const [limit, setLimit] = useState(PAGE);
   const [info, setInfo] = useState<Move | null>(null);
@@ -54,17 +56,16 @@ export function Picker({ open, onClose, onPick, single }: { open: boolean; onClo
     if (!open) return;
     setQ('');
     setMuscle(null);
-    setEquip(null);
     setPicked([]);
     setTab(used.size ? 'yours' : 'popular');
   }, [open]);
-  useEffect(() => setLimit(PAGE), [q, muscle, equip, open, tab]);
+  useEffect(() => setLimit(PAGE), [q, muscle, equipPref, open, tab]);
 
-  const narrowed = !!(q.trim() || muscle || equip);
+  const narrowed = !!(q.trim() || muscle || equip.length);
   const found = useMemo(() => searchExercises(list, { q, muscle, equip }, used), [list, q, muscle, equip, used]);
   // with nothing typed or picked, the list is in order of use already: the ones you've done head it
   const yours = useMemo(() => found.filter((m) => used.has(m.id)).slice(0, MOST), [found, used]);
-  const popular = useMemo(() => POPULAR.flatMap((id) => byId.get(id) ?? []), [byId]);
+  const popular = useMemo(() => popularOf(list), [list]);
   const shown = narrowed ? found : tab === 'yours' ? yours : tab === 'popular' ? popular : found;
 
   const isOn = (m: Move) => picked.some((x) => x.id === m.id);
@@ -79,7 +80,7 @@ export function Picker({ open, onClose, onPick, single }: { open: boolean; onClo
   const clear = () => {
     setQ('');
     setMuscle(null);
-    setEquip(null);
+    setEquip([]);
   };
   const tabs: [Tab, string][] = [...(used.size ? [['yours', t('Yours')] as [Tab, string]] : []), ['popular', t('Popular')], ['all', t('All')]];
 
@@ -136,19 +137,21 @@ export function Picker({ open, onClose, onPick, single }: { open: boolean; onClo
                 ...MUSCLE_GROUPS.flatMap(([group, ms]) => ms.map((m) => ({ value: m as string, label: MUSCLE_NAME[m], group }))),
               ]}
             />
-            <Dropdown
-              label={t('Equipment')}
-              value={equip ?? ''}
-              onChange={(v) => setEquip((v || null) as Equip | null)}
-              icon={<Icon name={equip ? EQUIP_ICON[equip] : 'barbell'} size={16} />}
-              text={equip ? EQUIP_NAME[equip] : t('Equipment')}
-              options={[{ value: '', label: t('Any equipment') }, ...EQUIPS.map((e) => ({ value: e as string, label: EQUIP_NAME[e] }))]}
-            />
-            {(muscle || equip) && (
-              <button class="icon-btn small" onClick={() => (setMuscle(null), setEquip(null))} aria-label={t('Clear filters')} title={t('Clear filters')}>
+            {(muscle || equip.length > 0) && (
+              <button class="icon-btn small" onClick={() => (setMuscle(null), setEquip([]))} aria-label={t('Clear filters')} title={t('Clear filters')}>
                 <Icon name="x" size={16} />
               </button>
             )}
+          </div>
+          {/* what you have to hand: any of them (tap more than one), or none for everything */}
+          <div class="chips scroll-x wo-pick-equip" role="group" aria-label={t('Equipment')}>
+            <button class="chip" aria-pressed={!equip.length} onClick={() => setEquip([])}>{t('All equipment')}</button>
+            {EQUIP_ORDER.map((e) => (
+              <button key={e} class="chip" aria-pressed={equip.includes(e)} onClick={() => toggleEquip(e)}>
+                <Icon name={EQUIP_ICON[e]} size={16} />
+                {EQUIP_NAME[e]}
+              </button>
+            ))}
           </div>
           {!narrowed && (
             <div class="seg wo-pick-tabs" role="tablist" aria-label={t('Exercises')}>

@@ -108,6 +108,8 @@
 .wo-drop { position: relative; min-width: 0; gap: 6px; padding: 0 10px 0 12px; cursor: pointer; }
 .wo-drop.is-set { background: var(--ink); color: var(--on-ink); }
 .wo-drop-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wo-pick-equip.chips.scroll-x { margin: 10px -16px 0; padding-inline: 16px; }
+.wo-pick-equip .chip { height: 34px; padding: 0 12px; }
 .wo-pick-tabs { margin-top: 14px; }
 .wo-pick-found { margin-top: 6px; }
 .wo-pick-part { margin-top: 10px; }

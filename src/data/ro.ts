@@ -3763,4 +3763,5 @@ export const RO: Record<string, string> = {
   "Set {n} in a row on one muscle: {p}. Another muscle keeps full power.": "A {n}-a serie la rând pe un mușchi: {p}. Alt mușchi păstrează puterea întreagă.",
   "Form: train well, earn more": "Forma: antrenează-te bine, câștigă mai mult",
   "Each set’s power goes up or down with how it was done, the way muscles grow best. A set ends up between ×0.4 and ×1.5.": "Puterea fiecărei serii crește sau scade după cum a fost făcută, așa cum cresc mușchii cel mai bine. O serie ajunge între ×0,4 și ×1,5.",
+  "All equipment": "Tot echipamentul",
 };

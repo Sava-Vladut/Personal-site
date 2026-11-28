@@ -310,6 +310,27 @@ test('form: a ticked set pops up what it earned, the bar shows the workout’s f
   assert.match(p.$('.wo-form-sum')?.textContent ?? '', /earned/);
 });
 
+test('adding exercises: the common ones first, plurals found, equipment chips for any of several or none', async () => {
+  const p = await open('live-empty', { width: 375 });
+  await p.click('.wo-live-empty .btn-primary');
+  const input = p.$('.wo-pick input[type=search]');
+  const type = async (v) => { await p.act(() => { input.value = v; input.dispatchEvent(new p.window.Event('input', { bubbles: true })); }); await p.wait(); };
+  const shown = () => p.$$('.wo-pick-name').map((x) => x.textContent);
+  await type('squats');
+  assert.deepEqual(shown().slice(0, 2), ['Barbell Squat', 'Bodyweight Squat']);
+  const chip = (name) => p.$$('.wo-pick-equip .chip').find((c) => c.textContent.trim() === name);
+  assert.equal(chip('All equipment').getAttribute('aria-pressed'), 'true');
+  await p.click(chip('Body weight'));
+  assert.equal(shown()[0], 'Bodyweight Squat');
+  assert.equal(chip('All equipment').getAttribute('aria-pressed'), 'false');
+  await p.click(chip('Dumbbells'));
+  assert.ok(shown().includes('Bodyweight Squat') && shown().includes('Dumbbell Squat'));
+  assert.ok(!shown().includes('Barbell Squat'));
+  // none picked again: everything
+  await p.click(chip('All equipment'));
+  assert.equal(shown()[0], 'Barbell Squat');
+});
+
 test('the target met: only by a set ticked off just now, and once a workout', async () => {
   const p = await open('live', { width: 1300 });
   const target = async (n) => {
