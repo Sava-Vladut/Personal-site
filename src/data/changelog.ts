@@ -11,6 +11,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.212.0',
+    date: '2026-11-28',
+    changes: [
+      'Workouts have form: each set’s power goes up or down with how well it was done, the way muscles grow best. A set ends up between ×0.4 and ×1.5.',
+      'Short rests pay: the next set within 2½ minutes earns 15% (a minute more when you change exercise or before heavy squats and deadlifts). The rest timer counts the bonus down; long breaks cost.',
+      'Variety pays: past 4 sets in a row on one muscle, each set loses 15% more, so hammer curls after curls after curls add up to less. Switch muscle and it starts over. Past 10 sets of one muscle in a workout, the rest count half.',
+      '6 to 15 reps (the growth range) earn 10%, beating last time’s set earns 15%, a muscle you haven’t trained in a week earns 10%. Very heavy sets of 1–3 reps, more than 30 reps, and a muscle trained in the last 48 hours count less.',
+      'Ticking a set off pops up what it earned or lost, the bar shows the workout’s form so far, and finishing shows what form added and took off. How power works lists the rules.',
+    ],
+  },
+  {
     version: '1.211.0',
     date: '2026-11-25',
     changes: [

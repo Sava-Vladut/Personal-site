@@ -9,7 +9,10 @@
 // power into the gauge, and meeting the target is a moment of its own. Everything is saved as you go, so leaving the page
 // (or closing the app) and coming back finds it as it was.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { blankSet, fmtPower, itemPower, MAX_SETS, metTarget, planPower, suggestTarget, workoutPower, type Item, type Move, type Routine, type Snap, type WSet, type Workout } from '../../lib/fitness';
+import {
+  applyForm, blankSet, fmtPower, formGroup, formOf, MAX_SETS, metTarget, nextCut, planPower, restWindow, suggestTarget, workoutPower,
+  type Item, type Move, type Routine, type SetForm, type Snap, type WSet, type Workout,
+} from '../../lib/fitness';
 import { imageOf } from '../../lib/exercises';
 import { deleteWorkout, saveRoutine, saveWorkout, toast, useWorkouts } from '../../lib/store';
 import { haptic } from '../../lib/haptics';
@@ -25,6 +28,7 @@ import { burst, Celebrate, Flipbook, FLY_MS, PowerGauge, PowerStrip, Rolling, st
 import { Sheet } from '../Sheet';
 import { ExerciseInfo } from './ExerciseInfo';
 import { FinishSheet } from './Finish';
+import { FormBadge, FormPop, pct } from './Form';
 import { ItemMenu } from './ItemMenu';
 import { Picker } from './Picker';
 import { PushupCounter, unlockSound } from './PushupCounter';
@@ -43,8 +47,15 @@ const cheered = new Set<string>();
 
 export function Live({ workout }: { workout: Workout }) {
   const all = useWorkouts();
-  const { draft: w, update, flush, drop } = useDraft(workout, saveWorkout);
+  const { draft: w, update: put, flush, drop } = useDraft(workout, saveWorkout);
   const ghosts = useMemo(() => lastSets(all, w.id), [all]);
+  // every change goes through form: a set ticked off is timed and measured against last time, and each set's form is kept on it
+  const update = (change: (x: Workout) => Workout) => put((x) => applyForm(change(x), ghosts, Date.now()));
+  const form = useMemo(() => formOf(w), [w.items, w.since, w.bw]);
+  const raw = form.reduce((a, x) => a + x.raw, 0);
+  const latest = form.reduce<SetForm | null>((a, x) => (x.at && x.at > (a?.at ?? 0) ? x : a), null);
+  /** An exercise's power with its form: the sets done. */
+  const powerOf = (i: number) => form.reduce((a, x) => a + (x.i === i ? x.raw * x.f : 0), 0);
   const last = useMemo(() => (w.plan ? lastPlanWorkout(all, w.plan) : undefined), [all]);
   const lastPower = last ? workoutPower(last) : 0;
   const power = workoutPower(w);
@@ -189,6 +200,13 @@ export function Live({ workout }: { workout: Workout }) {
     if (w.items[i].sets.some((s) => !s.done)) after = i;
   }
   const restNext = at ? { name: w.items[at.i].move.name, n: at.k + 1 } : null;
+  // what the next set stands to earn or lose: the short-rest bonus until its window closes, the cut for one muscle again
+  const nextIt = at ? w.items[at.i] : null;
+  const latestIt = latest ? w.items[latest.i] : null;
+  const restForm: RestForm = {
+    until: nextIt && latestIt && latest && formGroup(nextIt.move) ? latest.at + restWindow(latestIt.move, nextIt) * 1000 : 0,
+    cut: at ? nextCut(w, at.i) : null,
+  };
 
   const addBtn = (
     <button class="wo-add-btn" onClick={() => setPicking({ swap: null })}>
@@ -203,10 +221,10 @@ export function Live({ workout }: { workout: Workout }) {
       {/* on a phone its parts are just the bar at the top; on a wide screen it's the cockpit and the rail beside the exercises */}
       <aside class="wo-side" data-no-reveal>
         <div class="wo-cockpit">
-          <LiveBar w={w} power={power} done={done} sets={sets} parts={parts} ghost={lastPower} wide={wide} onOptions={() => setOptions(true)} onFinish={finish} />
-          {wide && rest && <RestPill card rest={rest} onRest={setRest} next={restNext} />}
+          <LiveBar w={w} power={power} raw={raw} done={done} sets={sets} parts={parts} ghost={lastPower} wide={wide} onOptions={() => setOptions(true)} onFinish={finish} />
+          {wide && rest && <RestPill card rest={rest} onRest={setRest} next={restNext} form={restForm} />}
         </div>
-        {wide && w.items.length > 0 && <Rail items={w.items} bw={w.bw} ghosts={ghosts} stage={stage} onGo={go} onAdd={() => setPicking({ swap: null })} />}
+        {wide && w.items.length > 0 && <Rail items={w.items} bw={w.bw} ghosts={ghosts} stage={stage} powerOf={powerOf} onGo={go} onAdd={() => setPicking({ swap: null })} />}
       </aside>
 
       {w.items.length ? (
@@ -217,6 +235,7 @@ export function Live({ workout }: { workout: Workout }) {
               id={`wo-item-${i}`}
               it={it}
               bw={w.bw}
+              power={powerOf(i)}
               ghosts={ghosts.get(it.move.id)}
               next={at?.i === i ? at.k : undefined}
               folded={folded(it, i)}
@@ -252,7 +271,8 @@ export function Live({ workout }: { workout: Workout }) {
         <Empty onPick={() => setPicking({ swap: null })} onAdd={(m) => act.add([m], null)} />
       )}
 
-      {!wide && rest && <RestPill rest={rest} onRest={setRest} next={restNext} />}
+      {!wide && rest && <RestPill rest={rest} onRest={setRest} next={restNext} form={restForm} />}
+      <FormPop form={latest} />
 
       <Celebrate open={cheer} title={t('Target met')} onDone={() => setCheer(false)}>
         <PowerGauge value={power} target={w.target} size="l" class="wo-live-cel-gauge">
@@ -375,9 +395,11 @@ function Milestone({ kind, fresh }: { kind: 'half' | 'past'; fresh: boolean }) {
  * and the time (a tap opens the workout's options, the target among them), the milestones passed, the options and
  * Finish, and a strip of the exercises filling as their sets are ticked off.
  */
-function LiveBar({ w, power, done, sets, parts, ghost, wide, onOptions, onFinish }: {
+function LiveBar({ w, power, raw, done, sets, parts, ghost, wide, onOptions, onFinish }: {
   w: Workout;
   power: number;
+  /** What the sets done come to without their form. */
+  raw: number;
   done: number;
   sets: number;
   parts: StripPart[];
@@ -412,6 +434,7 @@ function LiveBar({ w, power, done, sets, parts, ghost, wide, onOptions, onFinish
             </span>
             <span class="wo-power-sub">
               <Elapsed start={w.start} />
+              <FormBadge raw={raw} power={power} />
               {miles.fresh ? <Milestone kind={miles.fresh} fresh /> : <span class="wo-power-goal">{goal}</span>}
             </span>
           </span>
@@ -419,7 +442,7 @@ function LiveBar({ w, power, done, sets, parts, ghost, wide, onOptions, onFinish
       </button>
       {wide && (
         <span class="wo-live-sub">
-          <span class="wo-power-goal">{met && <Icon name="trophy" size={14} />}{goal}</span>
+          <span class="wo-power-goal">{met && <Icon name="trophy" size={14} />}{goal}<FormBadge raw={raw} power={power} /></span>
           {(miles.half || miles.past) && (
             <span class="wo-live-miles">
               {miles.half && <Milestone kind="half" fresh={miles.fresh === 'half'} />}
@@ -446,11 +469,12 @@ function LiveBar({ w, power, done, sets, parts, ghost, wide, onOptions, onFinish
  * many are ticked off and the power they came to, with a line between them filling as each is finished. The one on the
  * stage is picked out; a tap puts another there.
  */
-function Rail({ items, bw, ghosts, stage, onGo, onAdd }: {
+function Rail({ items, bw, ghosts, stage, powerOf, onGo, onAdd }: {
   items: Item[];
   bw: number;
   ghosts: Map<string, WSet[]>;
   stage: number;
+  powerOf: (i: number) => number;
   onGo: (i: number) => void;
   onAdd: () => void;
 }) {
@@ -470,7 +494,7 @@ function Rail({ items, bw, ghosts, stage, onGo, onAdd }: {
                   <PowerStrip parts={setParts(it, bw, ghosts.get(it.move.id))} class="is-mini" />
                   <span class="wo-meta">
                     <span class="wo-meta-text" title={t('Sets done')}><Icon name="check" size={12} />{done}/{it.sets.length}</span>
-                    {done > 0 && <Power value={itemPower(it, bw)} size={12} />}
+                    {done > 0 && <Power value={powerOf(i)} size={12} />}
                   </span>
                 </span>
               </button>
@@ -521,10 +545,12 @@ function StageBanner({ move }: { move: Snap }) {
   );
 }
 
-function LiveItem({ id, it, bw, ghosts, next, folded, stage, onFold, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo, onCount }: {
+function LiveItem({ id, it, bw, power, ghosts, next, folded, stage, onFold, onSets, onRemoveSet, onAddSet, onDone, onMenu, onInfo, onCount }: {
   id: string;
   it: Item;
   bw: number;
+  /** The power of its sets done, with their form. */
+  power: number;
   ghosts?: WSet[];
   /** The set to do now, when it's in this exercise. */
   next?: number;
@@ -565,7 +591,7 @@ function LiveItem({ id, it, bw, ghosts, next, folded, stage, onFold, onSets, onR
             </span>
             {line && <span class="wo-meta-text wo-done-line">{line}</span>}
             {!folded && reps ? <span class="wo-meta-text wo-reps-so-far" title={t('Reps done')}>{totalReps(it, true)}/{count(reps, 'rep', 'reps')}</span> : null}
-            {done > 0 && <Power value={itemPower(it, bw)} size={12} />}
+            {done > 0 && <Power value={power} size={12} />}
             {!folded && <PerUnit move={it.move} bw={bw} />}
             {!folded && it.pair && <span class="wo-pair" title={t('One in each hand (counts ×2)')}>×2</span>}
             {!folded && it.rest > 0 && <button class="wo-meta-text wo-rest-chip" onClick={onMenu} title={t('Rest between sets')}><Icon name="alarm" size={12} />{restText(it.rest)}</button>}
@@ -678,7 +704,10 @@ function Empty({ onPick, onAdd }: { onPick: () => void; onAdd: (m: Move) => void
  * running down round the clock. What's left, what comes next, 15 seconds less or more, and skip. At zero it buzzes, says
  * go, and steps aside.
  */
-function RestPill({ rest, onRest, next, card }: { rest: Rest; onRest: (r: Rest | null) => void; next: { name: string; n: number } | null; card?: boolean }) {
+/** What the next set stands to earn or lose: the short-rest bonus till `until` (0 for none), the cut for one muscle again. */
+interface RestForm { until: number; cut: { row: number; f: number; cap: boolean } | null }
+
+function RestPill({ rest, onRest, next, card, form }: { rest: Rest; onRest: (r: Rest | null) => void; next: { name: string; n: number } | null; card?: boolean; form: RestForm }) {
   const now = useClock();
   const left = Math.max(0, rest.end - now);
   const over = left <= 0;
@@ -695,7 +724,25 @@ function RestPill({ rest, onRest, next, card }: { rest: Rest; onRest: (r: Rest |
   // from when it ends (or from now, once it has)
   const by = (s: number) => onRest({ end: Math.max(Date.now(), Math.max(Date.now(), rest.end) + s * 1000), total: Math.max(1, rest.total + s) });
   const time = <b class="wo-rest-n">{over ? t('Go') : clock(left + 999)}</b>;
-  const then = next && <span class="wo-rest-next">{t('Next: {name}, set {n}', { name: next.name, n: next.n })}</span>;
+  const bonus = form.until - now;
+  const bonusText = bonus > 0 ? t('Go within {time} for {p} power', { time: clock(bonus + 999), p: pct(1.15) }) : t('The short-rest bonus is gone');
+  const cut = form.cut;
+  const cutText = cut && (cut.cap
+    ? t('This muscle has had its 10 sets today: the next counts {p}. Another muscle keeps full power.', { p: pct(cut.f) })
+    : t('Set {n} in a row on one muscle: {p}. Another muscle keeps full power.', { n: cut.row, p: pct(cut.f) }));
+  const then = next && (
+    <span class="wo-rest-next">
+      {form.until > 0 && (
+        <span class={`wo-rest-bonus${bonus > 0 ? '' : ' is-gone'}`} title={bonusText} aria-label={bonusText}>
+          <Icon name="bolt" size={12} />{clock(Math.max(0, bonus) + 999)}
+        </span>
+      )}
+      {cut && <span class="wo-rest-bonus is-cut" title={cutText!} aria-label={cutText!}><Icon name="repeat" size={12} />{pct(cut.f)}</span>}
+      {card && form.until > 0 && <span class="wo-rest-why">{bonusText}</span>}
+      {card && cutText && <span class="wo-rest-why">{cutText}</span>}
+      <span class="wo-rest-what">{t('Next: {name}, set {n}', { name: next.name, n: next.n })}</span>
+    </span>
+  );
   const tools = (
     <>
       <button class="icon-btn small wo-rest-btn" onClick={() => by(-15)} disabled={over} aria-label={t('15 seconds less')} title={t('15 seconds less')}>−15</button>

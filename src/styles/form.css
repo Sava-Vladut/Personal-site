@@ -1,0 +1,57 @@
+/* Form (components/workout/Form.tsx): the chips a ticked set's form pops up as, the workout's form badge, the summary. */
+
+.wo-form-chip, .wo-form-badge {
+  display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px 0 7px; border-radius: var(--r-pill); white-space: nowrap;
+  font-size: var(--text-s); font-weight: var(--w-medium); font-variant-numeric: tabular-nums;
+}
+.wo-form-chip b { font-weight: var(--w-bold); }
+.wo-form-chip.is-up, .wo-form-badge.is-up { background: color-mix(in oklab, var(--accent) 16%, var(--surface)); color: color-mix(in oklab, var(--accent) 75%, var(--ink)); }
+.wo-form-chip.is-down, .wo-form-badge.is-down { background: color-mix(in oklab, var(--danger) 13%, var(--surface)); color: color-mix(in oklab, var(--danger) 80%, var(--ink)); }
+.wo-form-badge { flex: none; height: 20px; padding: 0 7px 0 5px; gap: 3px; font-weight: var(--w-bold); }
+.wo-power-goal .wo-form-badge { margin-left: 6px; }
+.wo-form-up { color: color-mix(in oklab, var(--accent) 75%, var(--ink)); }
+.wo-form-down { color: color-mix(in oklab, var(--danger) 80%, var(--ink)); }
+
+/* a ticked set's form, popping up over the bottom of the screen (above the rest timer on a phone) */
+.wo-form-pop {
+  position: fixed; z-index: 41; left: calc(50% + var(--side-w, 0px) / 2); bottom: calc(var(--nav-h) + var(--safe-b) + 84px);
+  translate: -50% 0; width: max-content; max-width: min(440px, calc(100% - 2 * var(--gutter) - var(--side-w, 0px)));
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 8px 10px;
+  border-radius: var(--r-l); background: var(--glass-fill-strong); --glass-blur: 24px; pointer-events: none;
+  animation: wo-form-pop 3.2s var(--ease) both;
+}
+.wo-form-pop-total { display: inline-flex; align-items: center; gap: 3px; padding-inline: 4px 2px; font-size: var(--text-m); font-variant-numeric: tabular-nums; }
+.wo-form-pop.is-up .wo-form-pop-total { color: color-mix(in oklab, var(--accent) 80%, var(--ink)); }
+.wo-form-pop.is-down .wo-form-pop-total { color: color-mix(in oklab, var(--danger) 85%, var(--ink)); }
+@keyframes wo-form-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.92); }
+  8% { opacity: 1; transform: none; }
+  85% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+@media (prefers-reduced-motion: reduce) { .wo-form-pop { animation: wo-form-fade 3.2s linear both; } }
+@keyframes wo-form-fade { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
+@media (min-width: 1024px) { .wo-form-pop { bottom: 28px; } }
+
+/* in the rest timer: the short-rest bonus running down, the cut for the same muscle again */
+.wo-rest-next .wo-rest-bonus { display: inline-flex; align-items: center; gap: 2px; margin-right: 6px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; color: color-mix(in oklab, var(--accent) 80%, var(--ink)); }
+.wo-rest-bonus.is-gone { color: var(--ink-3); text-decoration: line-through; }
+.wo-rest-bonus.is-cut { color: color-mix(in oklab, var(--danger) 85%, var(--ink)); }
+.wo-rest.glass.is-over .wo-rest-bonus { color: inherit; }
+.wo-rest-why { display: block; margin-block: 2px; color: var(--ink-2); }
+.wo-rest-what { display: block; }
+.wo-rest.glass .wo-rest-what { display: inline; }
+
+/* the summary: earned and lost, then each reason */
+.wo-form-sum { display: flex; gap: 10px; }
+.wo-form-sum-n { flex: 1; display: grid; gap: 2px; padding: 10px 14px; border-radius: var(--r-m); background: var(--surface-2); }
+.wo-form-sum-n b { font-size: var(--text-l); font-variant-numeric: tabular-nums; }
+.wo-form-sum-n.is-up b { color: color-mix(in oklab, var(--accent) 75%, var(--ink)); }
+.wo-form-sum-n.is-down b { color: color-mix(in oklab, var(--danger) 80%, var(--ink)); }
+.wo-form-row { display: flex; align-items: center; gap: 12px; }
+.wo-form-row .grow { display: grid; gap: 1px; min-width: 0; }
+.wo-form-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wo-form-row .wo-tile { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--r-s); }
+.wo-form-row .wo-tile.is-up { background: color-mix(in oklab, var(--accent) 16%, var(--surface-2)); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+.wo-form-row .wo-tile.is-down { background: color-mix(in oklab, var(--danger) 12%, var(--surface-2)); color: color-mix(in oklab, var(--danger) 80%, var(--ink)); }
+.wo-rules-title { margin: 18px 0 4px; }

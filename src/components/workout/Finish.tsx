@@ -3,7 +3,8 @@
 // and one made up as it went can become a plan of its own.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { fmtPower, oneRepMax, setPower, workoutPower, type Item, type Routine, type Workout } from '../../lib/fitness';
+import { FormSummary } from './Form';
+import { fmtPower, oneRepMax, setPower, undone, workoutPower, type Item, type Routine, type Workout } from '../../lib/fitness';
 import { uid, useRoutines, useWorkouts } from '../../lib/store';
 import { count, t } from '../../lib/i18n';
 import { CountUp } from '../charts';
@@ -47,7 +48,7 @@ function planOf(w: Workout, items: Item[], power: number): Routine {
   const now = Date.now();
   return {
     id: uid(), name: w.name, icon: w.icon, target: Math.ceil(power / 10) * 10, created: now, updated: now,
-    items: items.map((it) => ({ ...it, sets: it.sets.map((s) => ({ ...s, done: false })) })),
+    items: items.map((it) => ({ ...it, sets: it.sets.map(undone) })),
   };
 }
 
@@ -60,7 +61,7 @@ function withToday(plan: Routine, items: Item[]): Routine {
       const k = items.findIndex((it, j) => !used.has(j) && it.move.id === pi.move.id);
       if (k < 0) return pi;
       used.add(k);
-      return { ...pi, sets: items[k].sets.map((s) => ({ ...s, done: false })) };
+      return { ...pi, sets: items[k].sets.map(undone) };
     }),
   };
 }
@@ -171,6 +172,7 @@ export function FinishSheet({ open, w, onClose, onSave, onDiscard }: {
             </div>
           ))}
         </div>
+        <FormSummary w={w} />
         {!sets && <p class="empty-note">{t('Tick off at least one set to save it, or discard it.')}</p>}
 
         {records.length > 0 && (

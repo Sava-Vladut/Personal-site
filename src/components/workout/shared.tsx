@@ -4,7 +4,7 @@ import { createContext, type ComponentChildren } from 'preact';
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { imageOf, useExercises } from '../../lib/exercises';
 import {
-  blankSet, MAX_ITEMS, MAX_SETS, repPower, setPower, snapOf, weightOn,
+  blankSet, MAX_ITEMS, MAX_SETS, repPower, setPower, sinceOf, snapOf, undone, weightOn,
   type Item, type Kind, type Move, type Routine, type Snap, type WSet, type Workout,
 } from '../../lib/fitness';
 import { deleteWorkout, getWorkouts, saveWorkout, toast, uid, useWeighIns, useWorkouts } from '../../lib/store';
@@ -296,7 +296,7 @@ export function itemOf(m: Move, last: WSet[] | undefined, live: boolean): Item {
   const n = last?.length ?? (m.kind === 'cardio' ? 1 : 3);
   const planned = (): WSet => ({ ...blankSet(m.kind), reps: m.kind === 'weight' || m.kind === 'body' ? 10 : null });
   const sets = live ? Array.from({ length: n }, () => blankSet(m.kind))
-    : last ? last.map((s) => ({ ...s, done: false })) : Array.from({ length: n }, planned);
+    : last ? last.map(undone) : Array.from({ length: n }, planned);
   return { move: snapOf(m), sets, pair: m.pair, rest: REST[m.kind], note: '' };
 }
 
@@ -328,7 +328,9 @@ export async function startWorkout(plan: Source | null, bw: number) {
   await saveWorkout({
     id: uid(), plan: plan?.id || null, name: plan ? planName(plan) : partOfDay(now), icon: plan?.icon ?? 'barbell',
     target: plan?.target ?? 0, bw, start: now, end: null,
-    items: plan ? plan.items.map((it) => ({ ...it, sets: it.sets.map((s) => ({ ...s, done: false })) })) : [],
+    items: plan ? plan.items.map((it) => ({ ...it, sets: it.sets.map(undone) })) : [],
+    // which muscles are fresh and which still recovering, for its form
+    since: sinceOf(getWorkouts(), now),
     feel: 0, note: '', created: now, updated: now,
   });
   haptic(10);
@@ -340,7 +342,7 @@ export function againOf(w: Workout, plans: Routine[]): Source {
   return {
     id: w.plan && plans.some((r) => r.id === w.plan) ? w.plan : null,
     name: w.name, icon: w.icon, target: w.target,
-    items: w.items.map((it) => ({ ...it, sets: (it.sets.some((s) => s.done) ? it.sets.filter((s) => s.done) : it.sets).map((s) => ({ ...s, done: false })) })),
+    items: w.items.map((it) => ({ ...it, sets: (it.sets.some((s) => s.done) ? it.sets.filter((s) => s.done) : it.sets).map(undone) })),
   };
 }
 

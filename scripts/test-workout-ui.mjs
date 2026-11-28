@@ -295,6 +295,21 @@ test('ticking a set off: last time’s numbers, sparks, power flying to the gaug
   assert.equal(q.$$('.pw-spark, .pw-fly').length, 0, 'reduced motion: none of it');
 });
 
+test('form: a ticked set pops up what it earned, the bar shows the workout’s form, the rest timer the short-rest bonus', async () => {
+  const p = await open('live', { width: 375 });
+  assert.equal(p.$('.wo-form-badge'), null, 'nothing timed yet');
+  await p.click('.wo-set.is-next .wo-tick');
+  await p.wait(40);
+  // 15 push-ups (last time's numbers) are in the growth range
+  assert.match(p.$('.wo-form-pop')?.textContent ?? '', /Growth range\s*\+10%/);
+  assert.match(p.$('.wo-form-badge')?.textContent ?? '', /\+10%/);
+  assert.ok(p.$('.wo-rest .wo-rest-bonus'), 'the short-rest bonus runs down in the rest timer');
+  assert.deepEqual(badText(p.document), []);
+  // the finish sheet sums it up
+  await p.click('.wo-finish');
+  assert.match(p.$('.wo-form-sum')?.textContent ?? '', /earned/);
+});
+
 test('the target met: only by a set ticked off just now, and once a workout', async () => {
   const p = await open('live', { width: 1300 });
   const target = async (n) => {

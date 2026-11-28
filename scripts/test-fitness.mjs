@@ -93,3 +93,109 @@ test('untrusted workouts are cleaned up or dropped', () => {
   assert.ok(f.normalizeMyMove({ id: 'myabc123', name: 'Mine', kind: 'body', share: 0.5 }));
   assert.equal(f.normalizeWeighIn({ id: 'w', day: '2026-01-01', kg: 10 }), null);
 });
+
+/* ---------- form ---------- */
+
+const curl = move({ id: 'Curl', equip: 'dumbbell', muscles: ['biceps'] });
+const hammer = move({ id: 'Hammer', equip: 'dumbbell', muscles: ['biceps'] });
+const dip = move({ id: 'Dip', kind: 'body', share: 0.9, muscles: ['triceps'] });
+const squat = move({ id: 'Squat', equip: 'barbell', muscles: ['quadriceps'] });
+const item = (m, sets) => ({ move: m, sets, pair: false, rest: 90, note: '' });
+const T0 = 1_700_000_000_000;
+const at = (s) => T0 + s * 1000;
+// objects from the bundle's own realm: compared as plain data
+const same = (a, b) => assert.deepEqual(JSON.parse(JSON.stringify(a)), b);
+const whys = (x) => x.hits.map((h) => h.why).sort().join(',');
+
+test('a short rest earns more, a long one less, sets ticked together are not timed', () => {
+  // 4 reps: outside the growth range, so only the rest shows
+  const sets = [at(0), at(100), at(500), at(1200)].map((t) => set({ kg: 20, reps: 4, at: t }));
+  const form = f.formOf({ items: [item(curl, sets)], bw: 75 });
+  same(form.map(whys), ['', 'rest', 'long', 'cold']);
+  assert.equal(form[1].f, 1.15);
+  // changing exercise gets a minute more
+  const two = f.formOf({ items: [item(curl, [set({ kg: 20, reps: 4, at: at(0) })]), item(dip, [set({ reps: 4, at: at(200) })])], bw: 75 });
+  assert.equal(whys(two[1]), 'rest');
+});
+
+test('reps in the growth range earn more; very heavy or very light sets less', () => {
+  const form = f.formOf({ items: [item(curl, [2, 10, 20, 40].map((reps) => set({ kg: 10, reps })))], bw: 75 });
+  same(form.map((x) => x.f), [0.9, 1.1, 1, 0.8]);
+});
+
+test('the same muscle again and again loses power past four sets in a row; switching starts over', () => {
+  const six = [...Array(6)].map(() => set({ kg: 10, reps: 4 }));
+  const alike = f.formOf({ items: [item(curl, six.slice(0, 3)), item(hammer, six.slice(3))], bw: 75 });
+  same(alike.map((x) => x.f), [1, 1, 1, 1, 0.85, 0.7]);
+  // curls, dips, curls…: never more than one in a row
+  const mixed = f.formOf({ items: [item(curl, [set({ kg: 10, reps: 4, at: at(0) }), set({ kg: 10, reps: 4, at: at(10) }), set({ kg: 10, reps: 4, at: at(20) })]), item(dip, [set({ reps: 4, at: at(5) }), set({ reps: 4, at: at(15) })])], bw: 75 });
+  assert.ok(mixed.every((x) => x.f === 1));
+  // past ten sets of a muscle in a workout, each counts half (on top of the row)
+  const many = f.formOf({ items: [item(curl, [...Array(11)].map(() => set({ kg: 10, reps: 4 })))], bw: 75 });
+  assert.ok(many[10].hits.some((h) => h.why === 'cap'));
+  assert.equal(many[10].f, f.FORM_MIN);
+});
+
+test('beating last time, a fresh muscle and a sore one', () => {
+  const sets = [set({ kg: 22, reps: 4, beat: 20 * (1 + 4 / 30) }), set({ kg: 20, reps: 4, beat: 20 * (1 + 4 / 30) })];
+  const form = f.formOf({ items: [item(curl, sets), item(squat, [set({ kg: 60, reps: 4 })])], bw: 75, since: { quadriceps: 20 } });
+  same(form.map(whys), ['beat,fresh', 'fresh', 'sore']);
+  assert.equal(form[0].f, Math.round(1.15 * 1.1 * 1000) / 1000);
+  // workouts from before form counted: no recovery either way
+  assert.equal(whys(f.formOf({ items: [item(curl, sets.slice(1))], bw: 75 })[0]), '');
+});
+
+test('form is kept between its limits and counts in a set\'s power', () => {
+  const s = set({ kg: 20, reps: 10, beat: 1, at: at(60) });
+  const form = f.formOf({ items: [item(curl, [set({ kg: 20, reps: 10, at: at(0) }), s])], bw: 75, since: {} });
+  assert.equal(form[1].f, f.FORM_MAX);
+  assert.equal(f.setPower(curl, { ...s, boost: 1.5 }, 75), 30);
+  assert.equal(form[1].raw, 20);
+});
+
+test('ticking a set stamps its time and last time\'s score; unticking takes them off; form is stored on the set', () => {
+  const ghosts = new Map([['Curl', [set({ kg: 20, reps: 8 })]]]);
+  let w = { items: [item(curl, [set({ kg: 20, reps: 10 }), set({ kg: 20, reps: 10, done: false })])], bw: 75, since: {} };
+  w = f.applyForm(w, ghosts, T0);
+  const [a, b] = w.items[0].sets;
+  assert.equal(a.at, T0);
+  assert.equal(a.beat, 20 * (1 + 8 / 30));
+  assert.equal(a.boost, Math.round(1.1 * 1.15 * 1.1 * 1000) / 1000);
+  assert.equal(b.at, undefined);
+  w = f.applyForm({ ...w, items: [{ ...w.items[0], sets: [{ ...a, done: false }, b] }] }, ghosts, T0 + 1000);
+  same(Object.keys(w.items[0].sets[0]).sort(), ['done', 'kg', 'km', 'reps', 'secs', 'tag']);
+  // a plan made from it, or a set copied, keeps none of it
+  assert.equal(f.blankSet('weight', a).at, undefined);
+  assert.equal(f.undone(a).boost, undefined);
+});
+
+test('the summary splits what form added and took between its reasons', () => {
+  const w = { items: [item(curl, [set({ kg: 10, reps: 10 }), set({ kg: 10, reps: 2 })])], bw: 75 };
+  const sum = f.formSummary(w);
+  assert.equal(Math.round(sum.gained * 100) / 100, 1);
+  assert.equal(Math.round(sum.lost * 100) / 100, 0.2);
+  same(sum.reasons.map((r) => r.why), ['range', 'heavy']);
+});
+
+test('recovery: hours since each muscle last had two sets, over the week before', () => {
+  const done = (end, m, n) => ({ end, items: [item(m, [...Array(n)].map(() => set({ kg: 10, reps: 10 })))] });
+  const now = T0 + 200 * 3_600_000;
+  const since = f.sinceOf([done(T0 + 190 * 3_600_000, curl, 3), done(T0 + 199 * 3_600_000, dip, 1), done(T0, squat, 5), { end: null, items: [] }], now);
+  same(since, { biceps: 10 });
+});
+
+test('the next set warns of its cut before it is done', () => {
+  const w = { items: [item(curl, [...Array(4)].map(() => set({ kg: 10, reps: 10 }))), item(hammer, [set({ kg: 10, reps: 10, done: false })]), item(dip, [set({ reps: 10, done: false })])] };
+  same(f.nextCut(w, 1), { row: 5, f: 0.85, cap: false });
+  assert.equal(f.nextCut(w, 2), null);
+});
+
+test('stored form survives a round trip and junk is dropped', () => {
+  const w = f.normalizeWorkout({ id: 'a', start: 1, since: { biceps: 5, nope: 3, chest: 999 }, items: [{ move: { id: 'Curl', name: 'Curl' }, sets: [{ kg: 10, reps: 10, done: true, at: 5, beat: 3, boost: 1.2 }, { done: false, at: 5, boost: 1.2 }, { done: true, boost: 9 }] }] });
+  same(w.since, { biceps: 5 });
+  assert.equal(w.items[0].sets[0].boost, 1.2);
+  assert.equal(w.items[0].sets[0].at, 5);
+  assert.equal(w.items[0].sets[1].at, undefined);
+  assert.equal(w.items[0].sets[2].boost, undefined);
+  assert.equal(f.normalizeWorkout({ id: 'b', start: 1 }).since, undefined);
+});
